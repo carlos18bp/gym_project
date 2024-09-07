@@ -1,0 +1,3718 @@
+[
+    {
+        "id": 1,
+        "stages": [
+            {
+                "id": 1,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.225253Z"
+            },
+            {
+                "id": 2,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.229914Z"
+            },
+            {
+                "id": 3,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.234126Z"
+            }
+        ],
+        "client": {
+            "id": 17,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:51.682931Z",
+            "email": "cliente_16@example.com",
+            "first_name": "Katherine",
+            "last_name": "Ward",
+            "contact": "915.237.5881x757",
+            "birthday": "2017-12-03",
+            "identification": "101305464",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 1,
+                "file": "http://127.0.0.1:8000/my.pdf",
+                "name": "File 1 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.244277Z",
+                "description": "Face happen again. Language structure issue mouth Democrat beat laugh. Party off writer rule for school.\nEnjoy watch anyone general. Resource wrong only skin. Card in husband on."
+            },
+            {
+                "id": 2,
+                "file": "http://127.0.0.1:8000/from.pdf",
+                "name": "File 2 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.248976Z",
+                "description": "Dream deal civil must pull. Catch fish rock prepare. Less scientist even speech."
+            },
+            {
+                "id": 3,
+                "file": "http://127.0.0.1:8000/conference.pdf",
+                "name": "File 3 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.253563Z",
+                "description": "Attorney foreign card measure. Popular cultural author citizen. Hour scene trip take form information until.\nReal short anything although. Particularly section on property into daughter bag."
+            },
+            {
+                "id": 4,
+                "file": "http://127.0.0.1:8000/school.pdf",
+                "name": "File 4 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.258666Z",
+                "description": "Ago him consider serious next. Site senior black take authority condition you. Support identify environment join relationship dinner care. War mean seek training I."
+            },
+            {
+                "id": 5,
+                "file": "http://127.0.0.1:8000/north.pdf",
+                "name": "File 5 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.263272Z",
+                "description": "Officer plant investment kid. Lay turn government world arrive appear.\nGovernment threat world test. Herself everyone these newspaper both. Join effect wife benefit suddenly activity white."
+            },
+            {
+                "id": 6,
+                "file": "http://127.0.0.1:8000/until.pdf",
+                "name": "File 6 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.268378Z",
+                "description": "Health young director stop tough note Mrs three. Star card down want wait movement. Mention if conference inside fact maybe street miss."
+            },
+            {
+                "id": 7,
+                "file": "http://127.0.0.1:8000/perform.pdf",
+                "name": "File 7 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.273006Z",
+                "description": "Increase which international cost audience at.\nPush so provide ok wish. Smile actually material.\nSide build tax now bring discover mention garden."
+            },
+            {
+                "id": 8,
+                "file": "http://127.0.0.1:8000/reach.pdf",
+                "name": "File 8 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.278273Z",
+                "description": "Fish thus newspaper consider camera simple success. Believe cell PM TV bill everybody. Create despite boy through focus."
+            },
+            {
+                "id": 9,
+                "file": "http://127.0.0.1:8000/concern.pdf",
+                "name": "File 9 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.283033Z",
+                "description": "School activity institution bring those culture national indicate. Mind court billion reason keep career worry.\nList show wear local."
+            },
+            {
+                "id": 10,
+                "file": "http://127.0.0.1:8000/worry.pdf",
+                "name": "File 10 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.288237Z",
+                "description": "Dinner lawyer when later. Under administration do often. Heart drop discover make toward long would.\nLow small bank learn middle sound impact. Traditional respond scene their instead."
+            },
+            {
+                "id": 11,
+                "file": "http://127.0.0.1:8000/blue.pdf",
+                "name": "File 11 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.293073Z",
+                "description": "Factor worker deal. Popular seat able.\nActually tell beautiful include television task matter. Officer agreement who significant pretty same who network. Situation national public growth develop as."
+            },
+            {
+                "id": 12,
+                "file": "http://127.0.0.1:8000/them.pdf",
+                "name": "File 12 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.297811Z",
+                "description": "Decade future successful change agreement. Receive organization because scene book commercial star training. Movie nearly race maybe station reality night."
+            },
+            {
+                "id": 13,
+                "file": "http://127.0.0.1:8000/government.pdf",
+                "name": "File 13 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.302094Z",
+                "description": "Kitchen relationship place yard expect east dark. Set five direction there.\nMajority indicate physical base any performance our new. Through service guy subject catch star fast member."
+            },
+            {
+                "id": 14,
+                "file": "http://127.0.0.1:8000/onto.pdf",
+                "name": "File 14 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.306160Z",
+                "description": "Social chair born world bank leader we.\nBelieve bar data keep check much.\nTrial full consider positive. Return let mean rich fire subject."
+            },
+            {
+                "id": 15,
+                "file": "http://127.0.0.1:8000/option.pdf",
+                "name": "File 15 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.311030Z",
+                "description": "Suggest best mother worry author Mrs accept. Beyond difficult professor another. Capital against present smile civil make none answer. Near tough herself government single hotel eat cost."
+            },
+            {
+                "id": 16,
+                "file": "http://127.0.0.1:8000/answer.pdf",
+                "name": "File 16 for ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+                "date_uploaded": "2024-09-06T22:34:58.315317Z",
+                "description": "Without up only ahead among food book. Information employee hear.\nHalf already threat rise his into. Either natural some anything write. Thus weight gas expect popular section."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Kennedy, Lopez and Delgado",
+        "plaintiff": "Jennifer Townsend",
+        "defendant": "Angela Solomon",
+        "ref": "ab928a79-9d8e-4dc0-8d07-1630aba1d37f",
+        "case_type": "Criminal",
+        "subcase": "benchmark out-of-the-box platforms"
+    },
+    {
+        "id": 2,
+        "stages": [
+            {
+                "id": 4,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.331379Z"
+            },
+            {
+                "id": 5,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.335979Z"
+            },
+            {
+                "id": 6,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.340214Z"
+            },
+            {
+                "id": 7,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:58.344239Z"
+            },
+            {
+                "id": 8,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:58.348192Z"
+            },
+            {
+                "id": 9,
+                "status": "Stage 6",
+                "date_created": "2024-09-06T22:34:58.351830Z"
+            }
+        ],
+        "client": {
+            "id": 11,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:48.694143Z",
+            "email": "cliente_10@example.com",
+            "first_name": "Christopher",
+            "last_name": "Woods",
+            "contact": "758-766-0404x3064",
+            "birthday": "1956-04-27",
+            "identification": "7953182623",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 17,
+                "file": "http://127.0.0.1:8000/fire.pdf",
+                "name": "File 1 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.361623Z",
+                "description": "Enjoy outside determine foot. Must enough government answer amount key. Join again question important assume."
+            },
+            {
+                "id": 18,
+                "file": "http://127.0.0.1:8000/hear.pdf",
+                "name": "File 2 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.367233Z",
+                "description": "Page rather brother impact cause environmental risk avoid. National popular maintain throughout plan nice.\nAt you include require yet. Ten brother risk. Rate miss personal safe throw start will back."
+            },
+            {
+                "id": 19,
+                "file": "http://127.0.0.1:8000/here.pdf",
+                "name": "File 3 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.371415Z",
+                "description": "Surface ability country about security military. Research authority sing shoulder hotel.\nPolicy top particular window still side election."
+            },
+            {
+                "id": 20,
+                "file": "http://127.0.0.1:8000/back.pdf",
+                "name": "File 4 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.375754Z",
+                "description": "Pull for need. Its contain high will nature will plant.\nImportant teach remember. True prepare world past."
+            },
+            {
+                "id": 21,
+                "file": "http://127.0.0.1:8000/degree.pdf",
+                "name": "File 5 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.379804Z",
+                "description": "Pattern then change significant town consider home remember. Building his partner close outside stuff soon.\nAlways quality design evidence prevent."
+            },
+            {
+                "id": 22,
+                "file": "http://127.0.0.1:8000/number.pdf",
+                "name": "File 6 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.384092Z",
+                "description": "Alone no he order magazine. Some item century eye less from health. Parent approach seven rich series across break."
+            },
+            {
+                "id": 23,
+                "file": "http://127.0.0.1:8000/away.pdf",
+                "name": "File 7 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.388578Z",
+                "description": "Tree share color cover speech true spring. Believe also significant benefit. You seek degree."
+            },
+            {
+                "id": 24,
+                "file": "http://127.0.0.1:8000/throughout.pdf",
+                "name": "File 8 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.392692Z",
+                "description": "Drug American development card factor mission. Check crime attorney night accept computer. Bad cut certain girl."
+            },
+            {
+                "id": 25,
+                "file": "http://127.0.0.1:8000/trade.pdf",
+                "name": "File 9 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.397438Z",
+                "description": "Consumer understand resource suggest. Food treatment agency foot arm instead. Authority six special southern usually society.\nBox federal suggest leg son organization."
+            },
+            {
+                "id": 26,
+                "file": "http://127.0.0.1:8000/really.pdf",
+                "name": "File 10 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.401763Z",
+                "description": "Hold bit study seem second still try.\nOfficial morning character section issue general their. But of minute agree development. Foreign despite dinner live reflect good area."
+            },
+            {
+                "id": 27,
+                "file": "http://127.0.0.1:8000/career.pdf",
+                "name": "File 11 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.405804Z",
+                "description": "Painting son song believe long. Its look spend base enough.\nAfter development general nature radio. Scene attention leg trouble follow former he."
+            },
+            {
+                "id": 28,
+                "file": "http://127.0.0.1:8000/specific.pdf",
+                "name": "File 12 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.409825Z",
+                "description": "Doctor occur reality without old. Huge father major idea. Culture throw cell area prevent.\nMeasure not yet tend class Congress. Beautiful matter about discussion."
+            },
+            {
+                "id": 29,
+                "file": "http://127.0.0.1:8000/total.pdf",
+                "name": "File 13 for 69e0d010-826d-4f34-b569-c60b47402b02",
+                "date_uploaded": "2024-09-06T22:34:58.413521Z",
+                "description": "Will one allow economic quality. Kind may enough always hot.\nAgreement woman sing same. Whatever stop about catch woman adult. Accept student western exist main. Capital sing cultural."
+            }
+        ],
+        "lawyer": {
+            "id": 28,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.189695Z",
+            "email": "lawyer_3@example.com",
+            "first_name": "Brian",
+            "last_name": "Miller",
+            "contact": "(731)202-9922x8102",
+            "birthday": "1998-08-29",
+            "identification": "8973269525",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Vargas, Aguilar and Goodman",
+        "plaintiff": "David Powers",
+        "defendant": "Anthony Jones",
+        "ref": "69e0d010-826d-4f34-b569-c60b47402b02",
+        "case_type": "Family",
+        "subcase": "brand efficient relationships"
+    },
+    {
+        "id": 3,
+        "stages": [
+            {
+                "id": 10,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.427935Z"
+            },
+            {
+                "id": 11,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.431747Z"
+            },
+            {
+                "id": 12,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.435863Z"
+            },
+            {
+                "id": 13,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:58.439958Z"
+            },
+            {
+                "id": 14,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:58.444500Z"
+            },
+            {
+                "id": 15,
+                "status": "Stage 6",
+                "date_created": "2024-09-06T22:34:58.449114Z"
+            }
+        ],
+        "client": {
+            "id": 24,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:55.170640Z",
+            "email": "cliente_23@example.com",
+            "first_name": "Kenneth",
+            "last_name": "Hartman",
+            "contact": "001-930-760-8050x54991",
+            "birthday": "1958-10-05",
+            "identification": "9000862520",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 30,
+                "file": "http://127.0.0.1:8000/enjoy.pdf",
+                "name": "File 1 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.458705Z",
+                "description": "Hundred enough at it behind generation. Arrive federal over matter. Bed age short pressure.\nAt quickly tough spring kind prevent nation. Candidate trade security probably drive."
+            },
+            {
+                "id": 31,
+                "file": "http://127.0.0.1:8000/fill.pdf",
+                "name": "File 2 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.463049Z",
+                "description": "Benefit eight unit guess mean. Congress accept alone west.\nMarriage difference structure power represent small. Director church along situation. Coach mention seem."
+            },
+            {
+                "id": 32,
+                "file": "http://127.0.0.1:8000/yet.pdf",
+                "name": "File 3 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.467689Z",
+                "description": "Street executive admit south. Talk one various. Theory southern same any level set.\nElse daughter choice. Turn specific world create meeting."
+            },
+            {
+                "id": 33,
+                "file": "http://127.0.0.1:8000/throw.pdf",
+                "name": "File 4 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.471766Z",
+                "description": "Class realize hundred support effect. Sense with collection total cell may. Sell successful force."
+            },
+            {
+                "id": 34,
+                "file": "http://127.0.0.1:8000/man.pdf",
+                "name": "File 5 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.476115Z",
+                "description": "Film chair assume rate human out Mr. Decide professor owner.\nDoor edge music control lawyer close. So do activity leader stuff star nice."
+            },
+            {
+                "id": 35,
+                "file": "http://127.0.0.1:8000/draw.pdf",
+                "name": "File 6 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.482123Z",
+                "description": "Bit message note she born another message. Remain beyond condition be leave.\nTreat claim fly race become want see. About TV century adult. Wind around bad hot business."
+            },
+            {
+                "id": 36,
+                "file": "http://127.0.0.1:8000/never.pdf",
+                "name": "File 7 for 716e3aac-fc96-4075-b113-591c906672c9",
+                "date_uploaded": "2024-09-06T22:34:58.486217Z",
+                "description": "Guess identify age door life know. Each create current walk property against subject.\nEntire answer history brother. Government any security blood what. Even bill field line down program."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Nicholson-Moore",
+        "plaintiff": "Mark Contreras",
+        "defendant": "Adam Lopez",
+        "ref": "716e3aac-fc96-4075-b113-591c906672c9",
+        "case_type": "Family",
+        "subcase": "monetize integrated technologies"
+    },
+    {
+        "id": 4,
+        "stages": [
+            {
+                "id": 16,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.500900Z"
+            },
+            {
+                "id": 17,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.504966Z"
+            },
+            {
+                "id": 18,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.509525Z"
+            },
+            {
+                "id": 19,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:58.513544Z"
+            }
+        ],
+        "client": {
+            "id": 21,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:53.668845Z",
+            "email": "cliente_20@example.com",
+            "first_name": "Amy",
+            "last_name": "Gomez",
+            "contact": "6528234662",
+            "birthday": "1928-11-19",
+            "identification": "496137617",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 37,
+                "file": "http://127.0.0.1:8000/anything.pdf",
+                "name": "File 1 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.522642Z",
+                "description": "Minute if yeah. Series significant speech tree truth truth maybe administration. Business standard nearly popular office natural."
+            },
+            {
+                "id": 38,
+                "file": "http://127.0.0.1:8000/fish.pdf",
+                "name": "File 2 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.526819Z",
+                "description": "Painting town partner certain indicate most. To that do participant state actually economic world.\nPage listen father kind local painting. Coach listen fact region."
+            },
+            {
+                "id": 39,
+                "file": "http://127.0.0.1:8000/military.pdf",
+                "name": "File 3 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.531363Z",
+                "description": "Cup protect place PM lose buy computer. Ahead event weight ten there second success. Rich face hear exist price total."
+            },
+            {
+                "id": 40,
+                "file": "http://127.0.0.1:8000/memory.pdf",
+                "name": "File 4 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.535474Z",
+                "description": "All control so small. Order Democrat paper training.\nSenior mean election then build treatment part. Student consider type while finally accept. Wish skin compare large interesting successful bad."
+            },
+            {
+                "id": 41,
+                "file": "http://127.0.0.1:8000/black.pdf",
+                "name": "File 5 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.539858Z",
+                "description": "Certain house listen everyone. Nor system public use again. Environment economy less pay south. Throughout political well across."
+            },
+            {
+                "id": 42,
+                "file": "http://127.0.0.1:8000/guy.pdf",
+                "name": "File 6 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.543912Z",
+                "description": "Trouble consider special perhaps.\nExpert personal value policy as past. Suggest above medical animal. Upon involve however lawyer step sell."
+            },
+            {
+                "id": 43,
+                "file": "http://127.0.0.1:8000/make.pdf",
+                "name": "File 7 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.548417Z",
+                "description": "Rise four task adult century. Test become institution perhaps ok visit.\nBad one include black stay marriage behind. Seat then phone general production."
+            },
+            {
+                "id": 44,
+                "file": "http://127.0.0.1:8000/later.pdf",
+                "name": "File 8 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.552450Z",
+                "description": "Quickly exactly space first. Civil blood available political.\nWell behavior word employee similar population any along. Music nearly result tell."
+            },
+            {
+                "id": 45,
+                "file": "http://127.0.0.1:8000/itself.pdf",
+                "name": "File 9 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.556789Z",
+                "description": "Item fact degree ago run before author. Thought you building whatever look who.\nDecide whole last remain but. Quite expert then assume ground."
+            },
+            {
+                "id": 46,
+                "file": "http://127.0.0.1:8000/laugh.pdf",
+                "name": "File 10 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.561122Z",
+                "description": "Whose short father none meet. Address section week industry performance goal soon market.\nUsually state action side area school drive. Wear PM character certain."
+            },
+            {
+                "id": 47,
+                "file": "http://127.0.0.1:8000/responsibility.pdf",
+                "name": "File 11 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.565099Z",
+                "description": "Factor measure situation process hotel human. At write throw assume child. Art short guy person pay very range."
+            },
+            {
+                "id": 48,
+                "file": "http://127.0.0.1:8000/lot.pdf",
+                "name": "File 12 for b786606b-1903-4231-9a2a-a4920ae645a7",
+                "date_uploaded": "2024-09-06T22:34:58.569740Z",
+                "description": "Wall road lawyer chair song determine good. Spend information three little city change enjoy.\nDirector apply morning family give. Threat evening hard try evidence bed."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Jenkins-Romero",
+        "plaintiff": "Rachael Hood",
+        "defendant": "Ronald Park",
+        "ref": "b786606b-1903-4231-9a2a-a4920ae645a7",
+        "case_type": "Family",
+        "subcase": "repurpose distributed schemas"
+    },
+    {
+        "id": 5,
+        "stages": [
+            {
+                "id": 20,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.585324Z"
+            },
+            {
+                "id": 21,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.590018Z"
+            },
+            {
+                "id": 22,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.594637Z"
+            }
+        ],
+        "client": {
+            "id": 20,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:53.175869Z",
+            "email": "cliente_19@example.com",
+            "first_name": "Paul",
+            "last_name": "Hernandez",
+            "contact": "500.802.7914x298",
+            "birthday": "1920-07-17",
+            "identification": "7496239327",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 49,
+                "file": "http://127.0.0.1:8000/ever.pdf",
+                "name": "File 1 for 02aa9ed1-d0b2-402e-80ca-887dda99e1cd",
+                "date_uploaded": "2024-09-06T22:34:58.604589Z",
+                "description": "Almost answer science year. Cause analysis clearly education institution home.\nStage machine think. Too article through sure work hour table dream. Red source join against dream road."
+            },
+            {
+                "id": 50,
+                "file": "http://127.0.0.1:8000/hair.pdf",
+                "name": "File 2 for 02aa9ed1-d0b2-402e-80ca-887dda99e1cd",
+                "date_uploaded": "2024-09-06T22:34:58.609280Z",
+                "description": "Example it performance term tax. Visit development green add deal she.\nGirl buy full race investment both yet. Film ability partner control thousand."
+            },
+            {
+                "id": 51,
+                "file": "http://127.0.0.1:8000/particular.pdf",
+                "name": "File 3 for 02aa9ed1-d0b2-402e-80ca-887dda99e1cd",
+                "date_uploaded": "2024-09-06T22:34:58.614433Z",
+                "description": "Necessary another value require almost. Street affect entire question. Child study husband join my.\nGuess fund property close large north thank than. Employee there require market how."
+            }
+        ],
+        "lawyer": {
+            "id": 28,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.189695Z",
+            "email": "lawyer_3@example.com",
+            "first_name": "Brian",
+            "last_name": "Miller",
+            "contact": "(731)202-9922x8102",
+            "birthday": "1998-08-29",
+            "identification": "8973269525",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Bishop, Warner and Nelson",
+        "plaintiff": "Philip Lam",
+        "defendant": "Tiffany Rhodes",
+        "ref": "02aa9ed1-d0b2-402e-80ca-887dda99e1cd",
+        "case_type": "Family",
+        "subcase": "target bricks-and-clicks partnerships"
+    },
+    {
+        "id": 6,
+        "stages": [
+            {
+                "id": 23,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.629294Z"
+            },
+            {
+                "id": 24,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.633864Z"
+            }
+        ],
+        "client": {
+            "id": 15,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:50.694404Z",
+            "email": "cliente_14@example.com",
+            "first_name": "Natalie",
+            "last_name": "Hawkins",
+            "contact": "+1-534-263-0703x719",
+            "birthday": "1981-08-20",
+            "identification": "7553099744",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 52,
+                "file": "http://127.0.0.1:8000/good.pdf",
+                "name": "File 1 for d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+                "date_uploaded": "2024-09-06T22:34:58.642338Z",
+                "description": "Society bit nation according age house history. Important market center street also.\nRecent project team responsibility subject blood. Student say almost picture difference site decade."
+            },
+            {
+                "id": 53,
+                "file": "http://127.0.0.1:8000/tough.pdf",
+                "name": "File 2 for d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+                "date_uploaded": "2024-09-06T22:34:58.646334Z",
+                "description": "Win increase none responsibility happen. Hair point population maybe significant detail. Tv cost newspaper happy.\nMeasure believe candidate small attention help. Such true fear summer site if."
+            },
+            {
+                "id": 54,
+                "file": "http://127.0.0.1:8000/over.pdf",
+                "name": "File 3 for d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+                "date_uploaded": "2024-09-06T22:34:58.650410Z",
+                "description": "News account area reach create fill amount. Paper event improve stop financial. Against our administration free bad spring identify."
+            },
+            {
+                "id": 55,
+                "file": "http://127.0.0.1:8000/get.pdf",
+                "name": "File 4 for d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+                "date_uploaded": "2024-09-06T22:34:58.654724Z",
+                "description": "The painting cover recently believe. Dark pressure personal ground beautiful policy.\nAlways record improve why result article everything child. Information movie everybody enter."
+            },
+            {
+                "id": 56,
+                "file": "http://127.0.0.1:8000/the.pdf",
+                "name": "File 5 for d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+                "date_uploaded": "2024-09-06T22:34:58.659563Z",
+                "description": "Charge own into their. South fear about mission media painting. Add tax dog prove prepare up ask."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Barnes, Jackson and Palmer",
+        "plaintiff": "Brad Bennett",
+        "defendant": "Joshua Owen",
+        "ref": "d7e97fca-8d53-404f-ba2e-515d5141b9b7",
+        "case_type": "Civil",
+        "subcase": "re-contextualize B2C e-services"
+    },
+    {
+        "id": 7,
+        "stages": [
+            {
+                "id": 25,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.673665Z"
+            }
+        ],
+        "client": {
+            "id": 9,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:47.689893Z",
+            "email": "cliente_8@example.com",
+            "first_name": "Christopher",
+            "last_name": "Alexander",
+            "contact": "001-836-362-0274x0160",
+            "birthday": "1964-03-20",
+            "identification": "9107604667",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 57,
+                "file": "http://127.0.0.1:8000/our.pdf",
+                "name": "File 1 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.682599Z",
+                "description": "Allow much executive law author. Republican score same do.\nTogether perhaps assume especially speak peace.\nMember affect early give. Source government pick into benefit."
+            },
+            {
+                "id": 58,
+                "file": "http://127.0.0.1:8000/leave.pdf",
+                "name": "File 2 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.686683Z",
+                "description": "Law create program describe half. These risk whether. Themselves prove employee receive."
+            },
+            {
+                "id": 59,
+                "file": "http://127.0.0.1:8000/piece.pdf",
+                "name": "File 3 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.691257Z",
+                "description": "Cut better draw yet national soon hope. Natural per public.\nFinal and enter just. Spend east fill shoulder today up near leg."
+            },
+            {
+                "id": 60,
+                "file": "http://127.0.0.1:8000/despite.pdf",
+                "name": "File 4 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.695514Z",
+                "description": "World close painting suffer beyond agent long. Evidence full give form American especially.\nProject ok police staff section another purpose. Wish nation fear."
+            },
+            {
+                "id": 61,
+                "file": "http://127.0.0.1:8000/small.pdf",
+                "name": "File 5 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.699775Z",
+                "description": "Crime state spring model. Student medical TV approach less.\nStyle realize fight son child child evidence."
+            },
+            {
+                "id": 62,
+                "file": "http://127.0.0.1:8000/day.pdf",
+                "name": "File 6 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.703874Z",
+                "description": "Smile accept customer book. Institution old five. Her ten would drug.\nStyle particularly almost education early authority. Anything realize middle note power. Imagine street still only."
+            },
+            {
+                "id": 63,
+                "file": "http://127.0.0.1:8000/remain.pdf",
+                "name": "File 7 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.708376Z",
+                "description": "Present foot teacher high. You off score least show.\nArgue financial foreign environmental break. Animal share group before hard commercial. Contain you property page."
+            },
+            {
+                "id": 64,
+                "file": "http://127.0.0.1:8000/reality.pdf",
+                "name": "File 8 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.712603Z",
+                "description": "Thousand enough me loss despite buy. Drug part morning ask.\nExecutive newspaper personal politics visit. Energy subject show sell direction positive. Response born size resource truth."
+            },
+            {
+                "id": 65,
+                "file": "http://127.0.0.1:8000/color.pdf",
+                "name": "File 9 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.717161Z",
+                "description": "Attention pretty minute blue standard onto line. Actually two set personal.\nDrive specific interesting whom event. Deal by again. Almost save church ability moment across."
+            },
+            {
+                "id": 66,
+                "file": "http://127.0.0.1:8000/interview.pdf",
+                "name": "File 10 for 0b2d1689-3997-4be8-b467-fa04ad6b3355",
+                "date_uploaded": "2024-09-06T22:34:58.721354Z",
+                "description": "Scene anything remain strategy move office likely. Could land parent team account.\nAlmost gas participant customer our director. Though task measure up agency feel story range."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Hull PLC",
+        "plaintiff": "Brandi Stewart",
+        "defendant": "Jennifer Watson",
+        "ref": "0b2d1689-3997-4be8-b467-fa04ad6b3355",
+        "case_type": "Criminal",
+        "subcase": "deploy holistic portals"
+    },
+    {
+        "id": 8,
+        "stages": [
+            {
+                "id": 26,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.738086Z"
+            },
+            {
+                "id": 27,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.742452Z"
+            },
+            {
+                "id": 28,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.747021Z"
+            },
+            {
+                "id": 29,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:58.751152Z"
+            }
+        ],
+        "client": {
+            "id": 18,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:52.178340Z",
+            "email": "cliente_17@example.com",
+            "first_name": "Sean",
+            "last_name": "Rollins",
+            "contact": "452.302.5222",
+            "birthday": "2019-05-03",
+            "identification": "4940933762",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 67,
+                "file": "http://127.0.0.1:8000/gun.pdf",
+                "name": "File 1 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.760110Z",
+                "description": "Tough power him national one positive. Out agent south do product their interview.\nBenefit person would but last claim leader. Field business see protect last size."
+            },
+            {
+                "id": 68,
+                "file": "http://127.0.0.1:8000/role.pdf",
+                "name": "File 2 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.765764Z",
+                "description": "Drop financial safe policy word. Management important draw heart north. May product everything admit mother or hot human."
+            },
+            {
+                "id": 69,
+                "file": "http://127.0.0.1:8000/south.pdf",
+                "name": "File 3 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.770465Z",
+                "description": "Himself big rule. Indeed remember left ground work middle. Hour young strong both.\nHusband message work true soldier young fill. Risk brother American family with."
+            },
+            {
+                "id": 70,
+                "file": "http://127.0.0.1:8000/here.pdf",
+                "name": "File 4 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.774584Z",
+                "description": "Father firm he risk. Particular sign probably speak second. International attention step bank person."
+            },
+            {
+                "id": 71,
+                "file": "http://127.0.0.1:8000/with.pdf",
+                "name": "File 5 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.778930Z",
+                "description": "Somebody suggest rule watch tax free this. Himself star politics argue.\nLoss open pay of phone happen. Great remain speak whose heavy thing. None as against word where level."
+            },
+            {
+                "id": 72,
+                "file": "http://127.0.0.1:8000/yeah.pdf",
+                "name": "File 6 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.782938Z",
+                "description": "Have early figure of full training.\nPoint give also traditional staff. Hold himself career certain. Since subject soon its body. Table much amount laugh."
+            },
+            {
+                "id": 73,
+                "file": "http://127.0.0.1:8000/avoid.pdf",
+                "name": "File 7 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.787111Z",
+                "description": "Close property most firm meeting hair evening.\nUnit data left question. Realize song pick. Try event various type charge woman economy."
+            },
+            {
+                "id": 74,
+                "file": "http://127.0.0.1:8000/up.pdf",
+                "name": "File 8 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.791537Z",
+                "description": "Simple according fly so sign purpose response determine. Adult coach land start address protect eye.\nBook indicate at and station crime reach. Over Mrs yes agree charge deep pattern raise."
+            },
+            {
+                "id": 75,
+                "file": "http://127.0.0.1:8000/kid.pdf",
+                "name": "File 9 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.795587Z",
+                "description": "Their director close scientist training keep response career.\nSenior Republican he worker century free sort others. Girl strategy at form else center. Window next might see good."
+            },
+            {
+                "id": 76,
+                "file": "http://127.0.0.1:8000/still.pdf",
+                "name": "File 10 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.799896Z",
+                "description": "Remain tax reflect discover card. Executive shake protect such central meeting. Claim much argue process performance herself left size."
+            },
+            {
+                "id": 77,
+                "file": "http://127.0.0.1:8000/support.pdf",
+                "name": "File 11 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.803940Z",
+                "description": "Seat teach happy nothing. Whose keep seat perhaps produce know course. Part huge thank bad."
+            },
+            {
+                "id": 78,
+                "file": "http://127.0.0.1:8000/laugh.pdf",
+                "name": "File 12 for 4a8c7854-b2bd-402d-9e28-750b8ec85066",
+                "date_uploaded": "2024-09-06T22:34:58.808153Z",
+                "description": "Not whatever spring according choice community quite. Foreign score almost opportunity parent.\nBuy interview item under minute drop end half."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Ross, Robinson and Gonzalez",
+        "plaintiff": "Matthew Osborne",
+        "defendant": "Nancy Olson",
+        "ref": "4a8c7854-b2bd-402d-9e28-750b8ec85066",
+        "case_type": "Family",
+        "subcase": "transition back-end initiatives"
+    },
+    {
+        "id": 9,
+        "stages": [
+            {
+                "id": 30,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.824753Z"
+            }
+        ],
+        "client": {
+            "id": 6,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:46.196409Z",
+            "email": "cliente_5@example.com",
+            "first_name": "Jonathan",
+            "last_name": "Vargas",
+            "contact": "(400)662-2301x9367",
+            "birthday": "1935-11-02",
+            "identification": "9997898867",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 79,
+                "file": "http://127.0.0.1:8000/car.pdf",
+                "name": "File 1 for 5fd900f5-75bc-4eb7-8b1b-ff12bd3b1291",
+                "date_uploaded": "2024-09-06T22:34:58.833555Z",
+                "description": "World suggest PM. From story able fact thank heavy knowledge. And help painting language say meet.\nDeep player could keep lead science task. Agent many guy ever condition PM."
+            },
+            {
+                "id": 80,
+                "file": "http://127.0.0.1:8000/sea.pdf",
+                "name": "File 2 for 5fd900f5-75bc-4eb7-8b1b-ff12bd3b1291",
+                "date_uploaded": "2024-09-06T22:34:58.837722Z",
+                "description": "College arrive want lay information bill resource. Listen past kitchen simple he data.\nOfficer wear street sort director tree. Have TV month provide."
+            }
+        ],
+        "lawyer": {
+            "id": 28,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.189695Z",
+            "email": "lawyer_3@example.com",
+            "first_name": "Brian",
+            "last_name": "Miller",
+            "contact": "(731)202-9922x8102",
+            "birthday": "1998-08-29",
+            "identification": "8973269525",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Schmidt-Owens",
+        "plaintiff": "Vanessa Lowe",
+        "defendant": "Michael Kim",
+        "ref": "5fd900f5-75bc-4eb7-8b1b-ff12bd3b1291",
+        "case_type": "Family",
+        "subcase": "brand efficient experiences"
+    },
+    {
+        "id": 10,
+        "stages": [
+            {
+                "id": 31,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.851898Z"
+            },
+            {
+                "id": 32,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.856407Z"
+            },
+            {
+                "id": 33,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.860760Z"
+            }
+        ],
+        "client": {
+            "id": 10,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:48.199506Z",
+            "email": "cliente_9@example.com",
+            "first_name": "Rita",
+            "last_name": "Walters",
+            "contact": "2267731301",
+            "birthday": "1994-12-16",
+            "identification": "26899558",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 81,
+                "file": "http://127.0.0.1:8000/national.pdf",
+                "name": "File 1 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.873856Z",
+                "description": "East available computer sit blue.\nReport fish major simple edge road hope thing. Start pressure nice whether son type spring quality. Sit last common act this simple."
+            },
+            {
+                "id": 82,
+                "file": "http://127.0.0.1:8000/only.pdf",
+                "name": "File 2 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.878627Z",
+                "description": "New think tough election. Federal reveal to certainly trip again.\nTrade mind view more message heavy summer toward. Pull rule prevent environmental coach address story."
+            },
+            {
+                "id": 83,
+                "file": "http://127.0.0.1:8000/rate.pdf",
+                "name": "File 3 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.884478Z",
+                "description": "Point city take attorney trouble notice. Future PM team administration public if. Significant rate control economic evening story career eat."
+            },
+            {
+                "id": 84,
+                "file": "http://127.0.0.1:8000/simple.pdf",
+                "name": "File 4 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.889227Z",
+                "description": "Meeting professional task loss nature.\nOwn black will whom. Themselves should public sense cover. Early pass specific name capital benefit law."
+            },
+            {
+                "id": 85,
+                "file": "http://127.0.0.1:8000/as.pdf",
+                "name": "File 5 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.893690Z",
+                "description": "Program husband significant investment reality. Only dark machine will.\nName pick finally science. While career important wonder support."
+            },
+            {
+                "id": 86,
+                "file": "http://127.0.0.1:8000/her.pdf",
+                "name": "File 6 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.898602Z",
+                "description": "Upon rest push could.\nTable star talk but science hear likely. End catch school road. Less visit peace arm against fish stage every."
+            },
+            {
+                "id": 87,
+                "file": "http://127.0.0.1:8000/reflect.pdf",
+                "name": "File 7 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.903496Z",
+                "description": "History answer police once off significant commercial. Win member article success marriage job. Argue system traditional candidate his challenge marriage."
+            },
+            {
+                "id": 88,
+                "file": "http://127.0.0.1:8000/ready.pdf",
+                "name": "File 8 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.909129Z",
+                "description": "National then someone teach talk. Instead office study fly standard listen coach. Agreement rule contain born up.\nContain security argue of as. Me today that page law would let."
+            },
+            {
+                "id": 89,
+                "file": "http://127.0.0.1:8000/low.pdf",
+                "name": "File 9 for 9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+                "date_uploaded": "2024-09-06T22:34:58.913962Z",
+                "description": "Note will position stock live third able work.\nPm third president recent. Everyone American social notice cell put."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Burns-Becker",
+        "plaintiff": "Mary Castro",
+        "defendant": "Eric Downs",
+        "ref": "9420947a-a6a8-4e68-a03f-3e92dbfc4c0e",
+        "case_type": "Civil",
+        "subcase": "e-enable out-of-the-box e-business"
+    },
+    {
+        "id": 11,
+        "stages": [
+            {
+                "id": 34,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:58.929648Z"
+            },
+            {
+                "id": 35,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:58.934078Z"
+            },
+            {
+                "id": 36,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:58.938091Z"
+            }
+        ],
+        "client": {
+            "id": 18,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:52.178340Z",
+            "email": "cliente_17@example.com",
+            "first_name": "Sean",
+            "last_name": "Rollins",
+            "contact": "452.302.5222",
+            "birthday": "2019-05-03",
+            "identification": "4940933762",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 90,
+                "file": "http://127.0.0.1:8000/teach.pdf",
+                "name": "File 1 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.947743Z",
+                "description": "News though commercial education improve pay organization. Seem focus meet black able light century economy.\nPlay big serious drug during peace cause.\nSpecific worker sister."
+            },
+            {
+                "id": 91,
+                "file": "http://127.0.0.1:8000/performance.pdf",
+                "name": "File 2 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.951957Z",
+                "description": "Left husband staff business such. War deep billion detail. Recent middle race operation class.\nTry test response a huge court director series. Human company never any trade go."
+            },
+            {
+                "id": 92,
+                "file": "http://127.0.0.1:8000/individual.pdf",
+                "name": "File 3 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.956246Z",
+                "description": "Second popular often close. Main upon within office.\nSay consumer herself happen. Resource catch brother speech. Artist baby cover fish camera suddenly. Bag great arrive particularly whatever."
+            },
+            {
+                "id": 93,
+                "file": "http://127.0.0.1:8000/beautiful.pdf",
+                "name": "File 4 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.960891Z",
+                "description": "High throw performance close benefit. Wide test artist impact how bring. Affect call art evening.\nNearly realize foot check major. Line everybody player name decide."
+            },
+            {
+                "id": 94,
+                "file": "http://127.0.0.1:8000/couple.pdf",
+                "name": "File 5 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.964641Z",
+                "description": "Market our ten bit energy someone next election. Result quite word involve senior concern low. Might decade bank."
+            },
+            {
+                "id": 95,
+                "file": "http://127.0.0.1:8000/particular.pdf",
+                "name": "File 6 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.969087Z",
+                "description": "Week stand play here property. Former want now radio many. Character smile scene amount life reduce.\nCitizen us school will. True wonder such learn firm water audience move."
+            },
+            {
+                "id": 96,
+                "file": "http://127.0.0.1:8000/detail.pdf",
+                "name": "File 7 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.974124Z",
+                "description": "Need simply tree music hour take like. Would finally everyone claim rule mention.\nWould exist network keep dinner process buy study."
+            },
+            {
+                "id": 97,
+                "file": "http://127.0.0.1:8000/offer.pdf",
+                "name": "File 8 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.979055Z",
+                "description": "Single election beat bit write also structure. Hold easy class sport information. Above people these fund whether significant. Until significant language total voice nation which."
+            },
+            {
+                "id": 98,
+                "file": "http://127.0.0.1:8000/company.pdf",
+                "name": "File 9 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.982967Z",
+                "description": "Thing just coach recently industry police despite. Fast relationship product candidate hand.\nWhy end speech like resource institution oil here. Up state whole feeling staff billion."
+            },
+            {
+                "id": 99,
+                "file": "http://127.0.0.1:8000/feel.pdf",
+                "name": "File 10 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.988864Z",
+                "description": "Wide teacher become new time fund. Early right pattern information town. Near beat yard he role environmental responsibility."
+            },
+            {
+                "id": 100,
+                "file": "http://127.0.0.1:8000/animal.pdf",
+                "name": "File 11 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.993615Z",
+                "description": "Style financial forget. Military of ever. Usually million always many type.\nHim fill concern music agree answer international condition. Word continue expert practice."
+            },
+            {
+                "id": 101,
+                "file": "http://127.0.0.1:8000/learn.pdf",
+                "name": "File 12 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:58.998191Z",
+                "description": "Expert likely so senior my allow. Single letter respond large everyone. Fish inside identify sometimes."
+            },
+            {
+                "id": 102,
+                "file": "http://127.0.0.1:8000/race.pdf",
+                "name": "File 13 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:59.002112Z",
+                "description": "Main since customer approach agency.\nExample bank else natural. Newspaper professor production later letter beat follow begin."
+            },
+            {
+                "id": 103,
+                "file": "http://127.0.0.1:8000/subject.pdf",
+                "name": "File 14 for 28c05b03-c0c8-416d-81bc-702bf1a67d72",
+                "date_uploaded": "2024-09-06T22:34:59.006465Z",
+                "description": "Simple police sign protect benefit. Citizen believe phone follow PM those.\nCall cultural own probably. Federal there party write."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Vaughn-Valencia",
+        "plaintiff": "Charles Olsen",
+        "defendant": "Ashley Mitchell",
+        "ref": "28c05b03-c0c8-416d-81bc-702bf1a67d72",
+        "case_type": "Family",
+        "subcase": "integrate viral action-items"
+    },
+    {
+        "id": 12,
+        "stages": [
+            {
+                "id": 37,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.024014Z"
+            },
+            {
+                "id": 38,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.028323Z"
+            },
+            {
+                "id": 39,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.032516Z"
+            }
+        ],
+        "client": {
+            "id": 5,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:45.687416Z",
+            "email": "cliente_4@example.com",
+            "first_name": "Vickie",
+            "last_name": "Wu",
+            "contact": "001-238-219-1208x230",
+            "birthday": "1940-07-17",
+            "identification": "6582523460",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 104,
+                "file": "http://127.0.0.1:8000/bank.pdf",
+                "name": "File 1 for dc8c96be-628f-4c75-ab16-abc48615f2d2",
+                "date_uploaded": "2024-09-06T22:34:59.042294Z",
+                "description": "Local claim film fast expert today. Case imagine indicate dark outside behavior. Almost professor life.\nRange allow guess prevent available inside. Appear family notice keep special would."
+            },
+            {
+                "id": 105,
+                "file": "http://127.0.0.1:8000/American.pdf",
+                "name": "File 2 for dc8c96be-628f-4c75-ab16-abc48615f2d2",
+                "date_uploaded": "2024-09-06T22:34:59.046471Z",
+                "description": "Threat significant person successful large. Huge employee time set direction party federal establish. Card very popular take chair rock.\nAlmost free lot health author large affect."
+            },
+            {
+                "id": 106,
+                "file": "http://127.0.0.1:8000/decision.pdf",
+                "name": "File 3 for dc8c96be-628f-4c75-ab16-abc48615f2d2",
+                "date_uploaded": "2024-09-06T22:34:59.050887Z",
+                "description": "Of western many country woman whatever. Seat hold management sound memory. Left likely country site even."
+            },
+            {
+                "id": 107,
+                "file": "http://127.0.0.1:8000/economy.pdf",
+                "name": "File 4 for dc8c96be-628f-4c75-ab16-abc48615f2d2",
+                "date_uploaded": "2024-09-06T22:34:59.054884Z",
+                "description": "Police make mention establish military physical. Term play across run answer. Set various catch ask. Its because board him machine.\nGoal I professional. List blue raise step red though positive."
+            },
+            {
+                "id": 108,
+                "file": "http://127.0.0.1:8000/else.pdf",
+                "name": "File 5 for dc8c96be-628f-4c75-ab16-abc48615f2d2",
+                "date_uploaded": "2024-09-06T22:34:59.058996Z",
+                "description": "Able water letter product. Public week no live laugh raise ahead.\nWhen short dinner ball structure. Seven occur plan born itself by discuss. Since table government although democratic."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Williams-Tran",
+        "plaintiff": "Lisa Frey",
+        "defendant": "Jay Smith",
+        "ref": "dc8c96be-628f-4c75-ab16-abc48615f2d2",
+        "case_type": "Criminal",
+        "subcase": "incentivize bricks-and-clicks applications"
+    },
+    {
+        "id": 13,
+        "stages": [
+            {
+                "id": 40,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.073789Z"
+            },
+            {
+                "id": 41,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.077890Z"
+            },
+            {
+                "id": 42,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.082277Z"
+            }
+        ],
+        "client": {
+            "id": 17,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:51.682931Z",
+            "email": "cliente_16@example.com",
+            "first_name": "Katherine",
+            "last_name": "Ward",
+            "contact": "915.237.5881x757",
+            "birthday": "2017-12-03",
+            "identification": "101305464",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 109,
+                "file": "http://127.0.0.1:8000/soldier.pdf",
+                "name": "File 1 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.091417Z",
+                "description": "Old research term provide woman value.\nDesign physical ground pressure whose fish figure. Water myself recently early race officer. Side hair imagine defense."
+            },
+            {
+                "id": 110,
+                "file": "http://127.0.0.1:8000/recent.pdf",
+                "name": "File 2 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.096396Z",
+                "description": "Throughout chair quite during stage middle positive. Too door agree door concern get."
+            },
+            {
+                "id": 111,
+                "file": "http://127.0.0.1:8000/produce.pdf",
+                "name": "File 3 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.100918Z",
+                "description": "Cause tell wrong speak. Letter great camera various issue. Finally six affect send price carry throughout."
+            },
+            {
+                "id": 112,
+                "file": "http://127.0.0.1:8000/statement.pdf",
+                "name": "File 4 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.106130Z",
+                "description": "Create remember need. Think cold modern reveal resource.\nTotal old at. Hold heavy fine realize anything. Do field state respond everyone."
+            },
+            {
+                "id": 113,
+                "file": "http://127.0.0.1:8000/choice.pdf",
+                "name": "File 5 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.109982Z",
+                "description": "Administration fact better. Plan accept bed decision want. Interesting region risk whether night hear."
+            },
+            {
+                "id": 114,
+                "file": "http://127.0.0.1:8000/himself.pdf",
+                "name": "File 6 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.115138Z",
+                "description": "Seek agent news. Student current face enough. Get administration certain me party measure likely defense."
+            },
+            {
+                "id": 115,
+                "file": "http://127.0.0.1:8000/whatever.pdf",
+                "name": "File 7 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.119971Z",
+                "description": "Plant interesting miss daughter tree minute step. Finally door toward professional."
+            },
+            {
+                "id": 116,
+                "file": "http://127.0.0.1:8000/interview.pdf",
+                "name": "File 8 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.125602Z",
+                "description": "Rate prepare project know response third east. Into yet treat moment history boy.\nTree top recognize painting become. Successful short certainly tend."
+            },
+            {
+                "id": 117,
+                "file": "http://127.0.0.1:8000/network.pdf",
+                "name": "File 9 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.129714Z",
+                "description": "Money three establish inside attorney future. Point plan total late. Important task within natural drop. Apply economy bank form only also."
+            },
+            {
+                "id": 118,
+                "file": "http://127.0.0.1:8000/industry.pdf",
+                "name": "File 10 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.133946Z",
+                "description": "Happen sign exactly hotel value cold. Together half notice attorney speak room."
+            },
+            {
+                "id": 119,
+                "file": "http://127.0.0.1:8000/cold.pdf",
+                "name": "File 11 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.138164Z",
+                "description": "Open TV wide somebody value continue start.\nPerform majority head why able. Commercial goal team. Close organization do drive."
+            },
+            {
+                "id": 120,
+                "file": "http://127.0.0.1:8000/author.pdf",
+                "name": "File 12 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.142211Z",
+                "description": "Born civil single result. Question clear camera activity way.\nMiss notice simple hot professor official strong. Score action just must. Sure sing tough financial measure."
+            },
+            {
+                "id": 121,
+                "file": "http://127.0.0.1:8000/whose.pdf",
+                "name": "File 13 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.146145Z",
+                "description": "Character blue close point sing shake first. Among much consumer total tell office strategy realize. Tough hand side sign.\nMachine set tree try manager maybe. Today learn sport us."
+            },
+            {
+                "id": 122,
+                "file": "http://127.0.0.1:8000/collection.pdf",
+                "name": "File 14 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.150437Z",
+                "description": "Culture magazine others instead man name. Every section physical pay never risk."
+            },
+            {
+                "id": 123,
+                "file": "http://127.0.0.1:8000/with.pdf",
+                "name": "File 15 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.154860Z",
+                "description": "To right study let. Address thought voice. List girl doctor point long.\nBefore able strong me. Present amount fine along. Five that day audience upon visit."
+            },
+            {
+                "id": 124,
+                "file": "http://127.0.0.1:8000/probably.pdf",
+                "name": "File 16 for a74c6820-666f-4dea-9a80-480f929a3173",
+                "date_uploaded": "2024-09-06T22:34:59.159490Z",
+                "description": "Build sell budget sort matter effort if. Far spring analysis company man five personal figure."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Weaver-Garza",
+        "plaintiff": "James Farrell",
+        "defendant": "Crystal Thomas",
+        "ref": "a74c6820-666f-4dea-9a80-480f929a3173",
+        "case_type": "Criminal",
+        "subcase": "optimize revolutionary schemas"
+    },
+    {
+        "id": 14,
+        "stages": [
+            {
+                "id": 43,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.174542Z"
+            },
+            {
+                "id": 44,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.178449Z"
+            }
+        ],
+        "client": {
+            "id": 6,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:46.196409Z",
+            "email": "cliente_5@example.com",
+            "first_name": "Jonathan",
+            "last_name": "Vargas",
+            "contact": "(400)662-2301x9367",
+            "birthday": "1935-11-02",
+            "identification": "9997898867",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 125,
+                "file": "http://127.0.0.1:8000/range.pdf",
+                "name": "File 1 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.187668Z",
+                "description": "Relate follow yeah again compare. Door everyone figure. Act appear laugh mind.\nBenefit before rule. Test tax believe speak. Five investment coach choice."
+            },
+            {
+                "id": 126,
+                "file": "http://127.0.0.1:8000/these.pdf",
+                "name": "File 2 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.191732Z",
+                "description": "Now discover skin. Meeting art into consumer civil.\nHer lose lawyer another. Born like clearly reality toward stage. Tree new gun modern many."
+            },
+            {
+                "id": 127,
+                "file": "http://127.0.0.1:8000/raise.pdf",
+                "name": "File 3 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.195779Z",
+                "description": "Difficult with policy value.\nRule raise expect grow light current buy. Law former sing source. Church claim truth Democrat agreement billion.\nUs risk north tonight public put."
+            },
+            {
+                "id": 128,
+                "file": "http://127.0.0.1:8000/cell.pdf",
+                "name": "File 4 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.200157Z",
+                "description": "Full third home character. Partner professional begin put glass million.\nEasy current manage myself tree. Here data drug mind."
+            },
+            {
+                "id": 129,
+                "file": "http://127.0.0.1:8000/local.pdf",
+                "name": "File 5 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.204398Z",
+                "description": "Health whom resource fire claim number million medical. Speech receive necessary board pressure less.\nInformation head kind mission even their. No whatever firm behind.\nBoy really understand ahead."
+            },
+            {
+                "id": 130,
+                "file": "http://127.0.0.1:8000/main.pdf",
+                "name": "File 6 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.208417Z",
+                "description": "Of case present candidate method late we. Color trade history. Friend up its five common claim will."
+            },
+            {
+                "id": 131,
+                "file": "http://127.0.0.1:8000/spring.pdf",
+                "name": "File 7 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.212627Z",
+                "description": "Six music evening ago thousand while start. Scientist history late book site moment medical.\nMission together society."
+            },
+            {
+                "id": 132,
+                "file": "http://127.0.0.1:8000/music.pdf",
+                "name": "File 8 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.216614Z",
+                "description": "Drive attorney certainly toward imagine. Again state significant outside live. Difficult look which marriage perform want.\nStaff child energy among. Campaign charge college argue role movie."
+            },
+            {
+                "id": 133,
+                "file": "http://127.0.0.1:8000/maybe.pdf",
+                "name": "File 9 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.222244Z",
+                "description": "Amount get economy building. Recently bill huge phone adult experience war.\nEverything hand war together effort. Across whatever authority."
+            },
+            {
+                "id": 134,
+                "file": "http://127.0.0.1:8000/factor.pdf",
+                "name": "File 10 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.226498Z",
+                "description": "Necessary pretty often involve above. Congress finish year vote when.\nFloor threat many discuss look. Ability stop hospital parent bit rate threat book. Knowledge late find require now poor."
+            },
+            {
+                "id": 135,
+                "file": "http://127.0.0.1:8000/view.pdf",
+                "name": "File 11 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.230859Z",
+                "description": "Identify lead employee prevent. Friend bag style return.\nPage will health appear check hundred. Daughter speech kind trade enjoy. Political second democratic lay."
+            },
+            {
+                "id": 136,
+                "file": "http://127.0.0.1:8000/hotel.pdf",
+                "name": "File 12 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.235720Z",
+                "description": "Mission station himself five live. Soldier capital one move trouble. Total home loss fund.\nStock table cell of. Before population out hope yes. Manager subject sure law benefit."
+            },
+            {
+                "id": 137,
+                "file": "http://127.0.0.1:8000/have.pdf",
+                "name": "File 13 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.240187Z",
+                "description": "With suffer sit top article. Paper bank wish cell outside many almost. Enjoy sell almost.\nClear court crime body interesting. Talk news consumer. So single people product I."
+            },
+            {
+                "id": 138,
+                "file": "http://127.0.0.1:8000/ball.pdf",
+                "name": "File 14 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.244145Z",
+                "description": "Let she responsibility today piece animal memory. Image appear take produce book campaign material build."
+            },
+            {
+                "id": 139,
+                "file": "http://127.0.0.1:8000/end.pdf",
+                "name": "File 15 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.248602Z",
+                "description": "So five responsibility evening man seek mission fly. Maybe up person poor decide to."
+            },
+            {
+                "id": 140,
+                "file": "http://127.0.0.1:8000/away.pdf",
+                "name": "File 16 for 3383d423-0114-41aa-8630-0250e173b8da",
+                "date_uploaded": "2024-09-06T22:34:59.252977Z",
+                "description": "Modern manager marriage allow heavy. Write entire bad with.\nPoint nothing impact present property."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Bartlett LLC",
+        "plaintiff": "Michael Kerr",
+        "defendant": "Omar Leblanc",
+        "ref": "3383d423-0114-41aa-8630-0250e173b8da",
+        "case_type": "Criminal",
+        "subcase": "extend turn-key markets"
+    },
+    {
+        "id": 15,
+        "stages": [
+            {
+                "id": 45,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.267593Z"
+            },
+            {
+                "id": 46,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.271901Z"
+            },
+            {
+                "id": 47,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.276214Z"
+            },
+            {
+                "id": 48,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.280675Z"
+            }
+        ],
+        "client": {
+            "id": 15,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:50.694404Z",
+            "email": "cliente_14@example.com",
+            "first_name": "Natalie",
+            "last_name": "Hawkins",
+            "contact": "+1-534-263-0703x719",
+            "birthday": "1981-08-20",
+            "identification": "7553099744",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 141,
+                "file": "http://127.0.0.1:8000/spring.pdf",
+                "name": "File 1 for 7330c0f1-adfb-4a6e-a575-5f6285d96429",
+                "date_uploaded": "2024-09-06T22:34:59.289337Z",
+                "description": "View create direction appear tax few. American get beautiful generation. Situation tough again color exist small."
+            },
+            {
+                "id": 142,
+                "file": "http://127.0.0.1:8000/word.pdf",
+                "name": "File 2 for 7330c0f1-adfb-4a6e-a575-5f6285d96429",
+                "date_uploaded": "2024-09-06T22:34:59.293366Z",
+                "description": "Republican turn fact different beat star.\nHundred similar produce measure remember. Hope identify rate behavior."
+            },
+            {
+                "id": 143,
+                "file": "http://127.0.0.1:8000/indeed.pdf",
+                "name": "File 3 for 7330c0f1-adfb-4a6e-a575-5f6285d96429",
+                "date_uploaded": "2024-09-06T22:34:59.297196Z",
+                "description": "Leave others news who candidate she while moment. Why require form time leg product produce. Red both for least play play scene."
+            },
+            {
+                "id": 144,
+                "file": "http://127.0.0.1:8000/red.pdf",
+                "name": "File 4 for 7330c0f1-adfb-4a6e-a575-5f6285d96429",
+                "date_uploaded": "2024-09-06T22:34:59.301757Z",
+                "description": "Professional window goal pick. Occur go wind nearly step through add. Next theory figure."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Mitchell, Mcguire and Richardson",
+        "plaintiff": "Mary Carter",
+        "defendant": "Veronica Martin",
+        "ref": "7330c0f1-adfb-4a6e-a575-5f6285d96429",
+        "case_type": "Criminal",
+        "subcase": "unleash granular bandwidth"
+    },
+    {
+        "id": 16,
+        "stages": [
+            {
+                "id": 49,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.316486Z"
+            },
+            {
+                "id": 50,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.321492Z"
+            }
+        ],
+        "client": {
+            "id": 3,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:44.663755Z",
+            "email": "cliente_2@example.com",
+            "first_name": "Melissa",
+            "last_name": "Smith",
+            "contact": "314-731-8116x2638",
+            "birthday": "1965-03-18",
+            "identification": "8869421912",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 145,
+                "file": "http://127.0.0.1:8000/available.pdf",
+                "name": "File 1 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.330022Z",
+                "description": "How today significant able.\nCondition fund role during surface blood. There save source dark.\nFeel happy economic style some bad central. Both fine trial a. Leave tend describe case magazine."
+            },
+            {
+                "id": 146,
+                "file": "http://127.0.0.1:8000/throughout.pdf",
+                "name": "File 2 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.334421Z",
+                "description": "Skill sing mind manager do market strong. Book single probably our gas. Relationship than magazine than believe security."
+            },
+            {
+                "id": 147,
+                "file": "http://127.0.0.1:8000/day.pdf",
+                "name": "File 3 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.338350Z",
+                "description": "Newspaper shoulder another value build. Sing candidate thank. Series work both heart change expert draw.\nAhead miss build until century. May child skill better."
+            },
+            {
+                "id": 148,
+                "file": "http://127.0.0.1:8000/beautiful.pdf",
+                "name": "File 4 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.342679Z",
+                "description": "Scene hit eat trip. Home sure after too specific. Feel minute grow baby.\nAbout dinner now direction. Try state near share."
+            },
+            {
+                "id": 149,
+                "file": "http://127.0.0.1:8000/fine.pdf",
+                "name": "File 5 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.346928Z",
+                "description": "Another most economic food couple threat. Seat value manage increase. Join charge product discuss new good method.\nBoard fill change long.\nBox almost writer student."
+            },
+            {
+                "id": 150,
+                "file": "http://127.0.0.1:8000/mother.pdf",
+                "name": "File 6 for 3f025205-7619-4c3f-bfc9-cb014ef30372",
+                "date_uploaded": "2024-09-06T22:34:59.351965Z",
+                "description": "Though sign so. Rule single story cover peace herself voice. Improve draw list receive often.\nOur cover north spend factor strong. Herself say better somebody music form stuff."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Gonzalez LLC",
+        "plaintiff": "Scott Foley",
+        "defendant": "Francisco Conrad",
+        "ref": "3f025205-7619-4c3f-bfc9-cb014ef30372",
+        "case_type": "Family",
+        "subcase": "aggregate vertical technologies"
+    },
+    {
+        "id": 17,
+        "stages": [
+            {
+                "id": 51,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.365885Z"
+            },
+            {
+                "id": 52,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.369963Z"
+            },
+            {
+                "id": 53,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.373668Z"
+            },
+            {
+                "id": 54,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.377956Z"
+            }
+        ],
+        "client": {
+            "id": 24,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:55.170640Z",
+            "email": "cliente_23@example.com",
+            "first_name": "Kenneth",
+            "last_name": "Hartman",
+            "contact": "001-930-760-8050x54991",
+            "birthday": "1958-10-05",
+            "identification": "9000862520",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 151,
+                "file": "http://127.0.0.1:8000/end.pdf",
+                "name": "File 1 for ba6816fa-7028-4230-abc3-b2394633e345",
+                "date_uploaded": "2024-09-06T22:34:59.387807Z",
+                "description": "Scientist resource force soldier lay kitchen term. Must drive program pick. Enough they dog place age simple pattern. Vote five value stay.\nFactor friend building smile listen seat increase."
+            },
+            {
+                "id": 152,
+                "file": "http://127.0.0.1:8000/American.pdf",
+                "name": "File 2 for ba6816fa-7028-4230-abc3-b2394633e345",
+                "date_uploaded": "2024-09-06T22:34:59.392066Z",
+                "description": "Kid possible ever open. Top because since still. Military create challenge show you full who."
+            },
+            {
+                "id": 153,
+                "file": "http://127.0.0.1:8000/Mrs.pdf",
+                "name": "File 3 for ba6816fa-7028-4230-abc3-b2394633e345",
+                "date_uploaded": "2024-09-06T22:34:59.397213Z",
+                "description": "Very daughter recent see morning. Reveal tough remain early never nice. Billion realize fly give.\nIssue country situation foot. Bad which trip care stock.\nHand cup turn kid stand anyone camera."
+            },
+            {
+                "id": 154,
+                "file": "http://127.0.0.1:8000/rich.pdf",
+                "name": "File 4 for ba6816fa-7028-4230-abc3-b2394633e345",
+                "date_uploaded": "2024-09-06T22:34:59.401988Z",
+                "description": "Able leave maybe power coach why manage. Long already look many edge message. Be big daughter country that shoulder skill finally."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Oconnor, Kemp and Mcdonald",
+        "plaintiff": "Charles Jones",
+        "defendant": "James Orozco",
+        "ref": "ba6816fa-7028-4230-abc3-b2394633e345",
+        "case_type": "Family",
+        "subcase": "leverage bleeding-edge mindshare"
+    },
+    {
+        "id": 18,
+        "stages": [
+            {
+                "id": 55,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.417667Z"
+            },
+            {
+                "id": 56,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.422141Z"
+            },
+            {
+                "id": 57,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.426725Z"
+            },
+            {
+                "id": 58,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.431021Z"
+            },
+            {
+                "id": 59,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:59.435474Z"
+            },
+            {
+                "id": 60,
+                "status": "Stage 6",
+                "date_created": "2024-09-06T22:34:59.440432Z"
+            }
+        ],
+        "client": {
+            "id": 4,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:45.171367Z",
+            "email": "cliente_3@example.com",
+            "first_name": "Jennifer",
+            "last_name": "Boone",
+            "contact": "+1-553-394-9222x20190",
+            "birthday": "2018-06-16",
+            "identification": "5878641586",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 155,
+                "file": "http://127.0.0.1:8000/well.pdf",
+                "name": "File 1 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.449754Z",
+                "description": "Quickly school grow Democrat long manage. Less magazine down front ground two method. Wrong try plan work."
+            },
+            {
+                "id": 156,
+                "file": "http://127.0.0.1:8000/reflect.pdf",
+                "name": "File 2 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.454811Z",
+                "description": "Everyone election management left. Political identify quality best very present. Minute top morning information."
+            },
+            {
+                "id": 157,
+                "file": "http://127.0.0.1:8000/career.pdf",
+                "name": "File 3 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.459630Z",
+                "description": "Decision itself election enjoy. Already why difference several material issue plant little. Any beyond girl beyond thousand significant join. Movement about ever few hour themselves."
+            },
+            {
+                "id": 158,
+                "file": "http://127.0.0.1:8000/law.pdf",
+                "name": "File 4 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.464023Z",
+                "description": "Able nature help at minute well white. Idea top but cause follow floor indeed. Have much society once."
+            },
+            {
+                "id": 159,
+                "file": "http://127.0.0.1:8000/feeling.pdf",
+                "name": "File 5 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.468601Z",
+                "description": "On soon have computer order deal second movement. Everyone possible might girl along decision interesting together."
+            },
+            {
+                "id": 160,
+                "file": "http://127.0.0.1:8000/late.pdf",
+                "name": "File 6 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.473651Z",
+                "description": "Miss offer theory think growth religious cause. Listen long notice. But window chance majority.\nEach discover ahead receive quickly. Security create field top firm. Ground myself measure."
+            },
+            {
+                "id": 161,
+                "file": "http://127.0.0.1:8000/must.pdf",
+                "name": "File 7 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.478126Z",
+                "description": "Big film machine democratic any sound check. Maintain full phone respond poor window.\nSpecial open meet either pattern heavy. Practice total Republican pick low."
+            },
+            {
+                "id": 162,
+                "file": "http://127.0.0.1:8000/find.pdf",
+                "name": "File 8 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.482414Z",
+                "description": "Before would name these prepare line must. Guy generation address wear yard appear.\nConsumer wish watch. Wonder range control camera three."
+            },
+            {
+                "id": 163,
+                "file": "http://127.0.0.1:8000/anyone.pdf",
+                "name": "File 9 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.487099Z",
+                "description": "Free team military reduce let line thus. Network throw activity low could amount now. Attorney over report wall send economic."
+            },
+            {
+                "id": 164,
+                "file": "http://127.0.0.1:8000/house.pdf",
+                "name": "File 10 for fcadc5a2-24e0-461c-86f4-131f58391bce",
+                "date_uploaded": "2024-09-06T22:34:59.491718Z",
+                "description": "Also poor successful floor particularly share take. But music heavy can memory our write. Factor wide choose prevent then attention begin."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Ritter, Greene and Horn",
+        "plaintiff": "Sheila Monroe",
+        "defendant": "Erica Rodriguez",
+        "ref": "fcadc5a2-24e0-461c-86f4-131f58391bce",
+        "case_type": "Family",
+        "subcase": "implement collaborative web-readiness"
+    },
+    {
+        "id": 19,
+        "stages": [
+            {
+                "id": 61,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.506966Z"
+            },
+            {
+                "id": 62,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.511937Z"
+            },
+            {
+                "id": 63,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.516035Z"
+            },
+            {
+                "id": 64,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.520062Z"
+            },
+            {
+                "id": 65,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:59.525636Z"
+            }
+        ],
+        "client": {
+            "id": 19,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:52.673370Z",
+            "email": "cliente_18@example.com",
+            "first_name": "Sharon",
+            "last_name": "Miller",
+            "contact": "(659)836-6629x7716",
+            "birthday": "1920-10-02",
+            "identification": "6813332096",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 165,
+                "file": "http://127.0.0.1:8000/popular.pdf",
+                "name": "File 1 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.535402Z",
+                "description": "Perhaps attorney reduce beautiful school.\nWant dark first page. Enjoy politics mother enjoy. Ask sport relate city operation trial."
+            },
+            {
+                "id": 166,
+                "file": "http://127.0.0.1:8000/business.pdf",
+                "name": "File 2 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.539890Z",
+                "description": "Beat condition all explain learn. Everybody happy over material.\nMuch pass bar light fish share general. Half full good. Nearly where early card successful take treat."
+            },
+            {
+                "id": 167,
+                "file": "http://127.0.0.1:8000/situation.pdf",
+                "name": "File 3 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.545795Z",
+                "description": "Citizen policy shake. Off look court seat cup wind while. Cell compare seven area check drop.\nKeep approach suggest do beat."
+            },
+            {
+                "id": 168,
+                "file": "http://127.0.0.1:8000/international.pdf",
+                "name": "File 4 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.550235Z",
+                "description": "Street foot really inside especially easy. Window month member short budget.\nServe boy grow continue sense use provide. Four successful international out west."
+            },
+            {
+                "id": 169,
+                "file": "http://127.0.0.1:8000/situation.pdf",
+                "name": "File 5 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.554892Z",
+                "description": "Matter pass growth though study station more. Response end maybe toward state book. Speak watch tree accept protect character item."
+            },
+            {
+                "id": 170,
+                "file": "http://127.0.0.1:8000/different.pdf",
+                "name": "File 6 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.562518Z",
+                "description": "Shoulder present prevent significant road firm step walk. Have play general listen. Any modern continue situation physical guess loss."
+            },
+            {
+                "id": 171,
+                "file": "http://127.0.0.1:8000/that.pdf",
+                "name": "File 7 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.566861Z",
+                "description": "International space yet national every decade near. Something her woman. Skin glass price occur chair."
+            },
+            {
+                "id": 172,
+                "file": "http://127.0.0.1:8000/road.pdf",
+                "name": "File 8 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.571244Z",
+                "description": "From future forward use situation so along information. Discuss live development fight. Better agency treat sister after.\nAsk above color. Source fall reality economic Republican bank voice."
+            },
+            {
+                "id": 173,
+                "file": "http://127.0.0.1:8000/southern.pdf",
+                "name": "File 9 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.575654Z",
+                "description": "Grow plan turn through early hope. High high education consumer. Yeah sport away base production rate.\nAny for concern knowledge. Attention keep vote. Customer yeah plan stand."
+            },
+            {
+                "id": 174,
+                "file": "http://127.0.0.1:8000/occur.pdf",
+                "name": "File 10 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.580131Z",
+                "description": "Ever realize contain leg range the reveal. One enjoy century stay smile receive most. Street investment themselves arm beat machine phone forward."
+            },
+            {
+                "id": 175,
+                "file": "http://127.0.0.1:8000/should.pdf",
+                "name": "File 11 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.584073Z",
+                "description": "Space score deal father east. Today too newspaper week.\nMinute message action camera include goal. Lawyer current subject artist. Window two three think hold."
+            },
+            {
+                "id": 176,
+                "file": "http://127.0.0.1:8000/exactly.pdf",
+                "name": "File 12 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.588607Z",
+                "description": "Realize find economy result. Wall financial time its heart. Pull two give election worry see data."
+            },
+            {
+                "id": 177,
+                "file": "http://127.0.0.1:8000/control.pdf",
+                "name": "File 13 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.593171Z",
+                "description": "Enter unit sing price hair message. Law truth actually country art cell.\nWeight onto family full factor poor. Send traditional call out. Them upon leg church fund whole."
+            },
+            {
+                "id": 178,
+                "file": "http://127.0.0.1:8000/international.pdf",
+                "name": "File 14 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.597528Z",
+                "description": "Key authority over test day. Name them defense realize. Yeah former west kid question.\nOut east political forward moment hand most. Play mission explain win stay. According ago community clearly."
+            },
+            {
+                "id": 179,
+                "file": "http://127.0.0.1:8000/responsibility.pdf",
+                "name": "File 15 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.601666Z",
+                "description": "Development speech just side field star really. Across style government late should past loss.\nHospital window minute church section exactly. Last eight push operation small author thousand reveal."
+            },
+            {
+                "id": 180,
+                "file": "http://127.0.0.1:8000/purpose.pdf",
+                "name": "File 16 for 5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+                "date_uploaded": "2024-09-06T22:34:59.606645Z",
+                "description": "Whom teach imagine. Stage couple paper development throw plan lot as. Purpose response increase western at speak."
+            }
+        ],
+        "lawyer": {
+            "id": 28,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.189695Z",
+            "email": "lawyer_3@example.com",
+            "first_name": "Brian",
+            "last_name": "Miller",
+            "contact": "(731)202-9922x8102",
+            "birthday": "1998-08-29",
+            "identification": "8973269525",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Mcgee-Norton",
+        "plaintiff": "Ronald Davies",
+        "defendant": "Debra Black",
+        "ref": "5fb10bc5-bb4f-4e65-9795-3a35d450051a",
+        "case_type": "Civil",
+        "subcase": "evolve customized e-commerce"
+    },
+    {
+        "id": 20,
+        "stages": [
+            {
+                "id": 66,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.622479Z"
+            },
+            {
+                "id": 67,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.626738Z"
+            },
+            {
+                "id": 68,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.630898Z"
+            },
+            {
+                "id": 69,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.635488Z"
+            },
+            {
+                "id": 70,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:59.640087Z"
+            }
+        ],
+        "client": {
+            "id": 8,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:47.196048Z",
+            "email": "cliente_7@example.com",
+            "first_name": "Daisy",
+            "last_name": "Jacobs",
+            "contact": "(941)801-6792x9024",
+            "birthday": "1923-04-25",
+            "identification": "346057025",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 181,
+                "file": "http://127.0.0.1:8000/foot.pdf",
+                "name": "File 1 for e76503fb-9a33-4805-85ad-24967aee60cf",
+                "date_uploaded": "2024-09-06T22:34:59.649080Z",
+                "description": "Seek than job tax identify. Become certainly citizen name. Name magazine eat since.\nExplain break audience prove out something. Environment cold left college ability management around describe."
+            },
+            {
+                "id": 182,
+                "file": "http://127.0.0.1:8000/yes.pdf",
+                "name": "File 2 for e76503fb-9a33-4805-85ad-24967aee60cf",
+                "date_uploaded": "2024-09-06T22:34:59.652849Z",
+                "description": "It report north space best. Every participant live serve treatment education crime."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Jones Ltd",
+        "plaintiff": "Mallory Lambert",
+        "defendant": "Angel Porter",
+        "ref": "e76503fb-9a33-4805-85ad-24967aee60cf",
+        "case_type": "Criminal",
+        "subcase": "productize intuitive ROI"
+    },
+    {
+        "id": 21,
+        "stages": [
+            {
+                "id": 71,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.668727Z"
+            },
+            {
+                "id": 72,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.673662Z"
+            },
+            {
+                "id": 73,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.678402Z"
+            }
+        ],
+        "client": {
+            "id": 9,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:47.689893Z",
+            "email": "cliente_8@example.com",
+            "first_name": "Christopher",
+            "last_name": "Alexander",
+            "contact": "001-836-362-0274x0160",
+            "birthday": "1964-03-20",
+            "identification": "9107604667",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 183,
+                "file": "http://127.0.0.1:8000/nation.pdf",
+                "name": "File 1 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.688375Z",
+                "description": "Production performance husband sister. Only such area.\nFall nor time gun. Have quality serve. Learn consider girl provide."
+            },
+            {
+                "id": 184,
+                "file": "http://127.0.0.1:8000/late.pdf",
+                "name": "File 2 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.693221Z",
+                "description": "Citizen theory two suddenly education live must drug. Give care marriage peace impact. Up program site some force example market land."
+            },
+            {
+                "id": 185,
+                "file": "http://127.0.0.1:8000/ever.pdf",
+                "name": "File 3 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.697470Z",
+                "description": "Body current fill huge meet will television. She avoid commercial western test about anyone. Indicate on ago project skin these. General energy dinner walk work movement let."
+            },
+            {
+                "id": 186,
+                "file": "http://127.0.0.1:8000/second.pdf",
+                "name": "File 4 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.701485Z",
+                "description": "Available economic anything without onto. Other stay look many onto.\nBit between resource current per. Large prevent light control tough event."
+            },
+            {
+                "id": 187,
+                "file": "http://127.0.0.1:8000/garden.pdf",
+                "name": "File 5 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.705943Z",
+                "description": "Through officer sure or case. Station modern key dark. Choice it sound. Particularly our save enter century."
+            },
+            {
+                "id": 188,
+                "file": "http://127.0.0.1:8000/police.pdf",
+                "name": "File 6 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.710477Z",
+                "description": "Democrat knowledge last glass. Maybe learn visit give strong treat decade. Agree dark season government personal."
+            },
+            {
+                "id": 189,
+                "file": "http://127.0.0.1:8000/two.pdf",
+                "name": "File 7 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.714535Z",
+                "description": "Few stand local idea like. Campaign allow hold. Never wrong chair little property especially current."
+            },
+            {
+                "id": 190,
+                "file": "http://127.0.0.1:8000/certainly.pdf",
+                "name": "File 8 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.719168Z",
+                "description": "Read subject almost kid expert. Image data set according man. Cultural trip white rate factor speak gun morning."
+            },
+            {
+                "id": 191,
+                "file": "http://127.0.0.1:8000/pull.pdf",
+                "name": "File 9 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.723778Z",
+                "description": "Three data house than only company learn. Community clear late threat if. Child discuss blue quality book southern let want."
+            },
+            {
+                "id": 192,
+                "file": "http://127.0.0.1:8000/couple.pdf",
+                "name": "File 10 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.728349Z",
+                "description": "Level whom leave establish young plant. Truth fine nothing.\nMusic push meeting couple open former realize. Simple face arrive exactly write myself security."
+            },
+            {
+                "id": 193,
+                "file": "http://127.0.0.1:8000/financial.pdf",
+                "name": "File 11 for ba701abf-7248-4674-bb80-e60bed49d08f",
+                "date_uploaded": "2024-09-06T22:34:59.733030Z",
+                "description": "Personal read who financial couple. Office spend nature to part.\nCup plant weight together final use travel. Fly rise indeed idea expect."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Moore and Sons",
+        "plaintiff": "Stephanie Morgan",
+        "defendant": "Jared Williams",
+        "ref": "ba701abf-7248-4674-bb80-e60bed49d08f",
+        "case_type": "Family",
+        "subcase": "mesh enterprise e-services"
+    },
+    {
+        "id": 22,
+        "stages": [
+            {
+                "id": 74,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.749076Z"
+            },
+            {
+                "id": 75,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.754432Z"
+            },
+            {
+                "id": 76,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.759889Z"
+            }
+        ],
+        "client": {
+            "id": 1,
+            "last_login": "2024-09-06T22:35:33.910879Z",
+            "is_superuser": true,
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:38.822292Z",
+            "email": "admin@example.com",
+            "first_name": null,
+            "last_name": null,
+            "contact": null,
+            "birthday": null,
+            "identification": null,
+            "marital_status": null,
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 194,
+                "file": "http://127.0.0.1:8000/kitchen.pdf",
+                "name": "File 1 for 99648df7-955c-458e-9b1c-41cc5de6d851",
+                "date_uploaded": "2024-09-06T22:34:59.769399Z",
+                "description": "That think commercial right house whatever. Exactly kind argue red sound wife pass. Win when heavy word."
+            },
+            {
+                "id": 195,
+                "file": "http://127.0.0.1:8000/even.pdf",
+                "name": "File 2 for 99648df7-955c-458e-9b1c-41cc5de6d851",
+                "date_uploaded": "2024-09-06T22:34:59.774332Z",
+                "description": "Mission Mrs house next in science. Doctor leader owner girl describe.\nState same trouble. Myself prove weight during religious produce."
+            },
+            {
+                "id": 196,
+                "file": "http://127.0.0.1:8000/understand.pdf",
+                "name": "File 3 for 99648df7-955c-458e-9b1c-41cc5de6d851",
+                "date_uploaded": "2024-09-06T22:34:59.778773Z",
+                "description": "Team respond despite generation difficult media its away. Several firm future more design road technology. Half drive perhaps eye create certainly sea course."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Huang-Lee",
+        "plaintiff": "Larry Perkins",
+        "defendant": "Rick Bridges",
+        "ref": "99648df7-955c-458e-9b1c-41cc5de6d851",
+        "case_type": "Family",
+        "subcase": "innovate clicks-and-mortar e-markets"
+    },
+    {
+        "id": 23,
+        "stages": [
+            {
+                "id": 77,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.794034Z"
+            }
+        ],
+        "client": {
+            "id": 12,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:49.203567Z",
+            "email": "cliente_11@example.com",
+            "first_name": "Nicole",
+            "last_name": "Ramirez",
+            "contact": "944.292.1321",
+            "birthday": "1989-09-01",
+            "identification": "3617389653",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 197,
+                "file": "http://127.0.0.1:8000/amount.pdf",
+                "name": "File 1 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.803669Z",
+                "description": "Only economic song she similar trial compare. Decision control less pick police.\nCamera discuss leader.\nSense keep simply of difficult. Back sport adult rate memory plant west."
+            },
+            {
+                "id": 198,
+                "file": "http://127.0.0.1:8000/fast.pdf",
+                "name": "File 2 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.808919Z",
+                "description": "Affect tree along say. Member employee compare. Experience she result movement.\nElse speak size. Lay necessary middle image focus."
+            },
+            {
+                "id": 199,
+                "file": "http://127.0.0.1:8000/free.pdf",
+                "name": "File 3 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.813139Z",
+                "description": "Charge southern tough south evidence than turn. Response science radio major myself region."
+            },
+            {
+                "id": 200,
+                "file": "http://127.0.0.1:8000/family.pdf",
+                "name": "File 4 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.817529Z",
+                "description": "Few condition enjoy think your necessary road structure. Or old place treat. Space often oil popular thought certainly store. School bag herself son back."
+            },
+            {
+                "id": 201,
+                "file": "http://127.0.0.1:8000/require.pdf",
+                "name": "File 5 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.823719Z",
+                "description": "Beat evening after teach everyone. Short yeah tell Republican. Stock leave age continue west. Power room help one collection memory church."
+            },
+            {
+                "id": 202,
+                "file": "http://127.0.0.1:8000/picture.pdf",
+                "name": "File 6 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.827954Z",
+                "description": "Effect food six identify author. Those social television left garden level fight explain. North form should center wide listen lay."
+            },
+            {
+                "id": 203,
+                "file": "http://127.0.0.1:8000/value.pdf",
+                "name": "File 7 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.831737Z",
+                "description": "Agreement his tonight large none sign and where.\nVoice else with conference later try pretty. Measure pick beyond agree such analysis onto."
+            },
+            {
+                "id": 204,
+                "file": "http://127.0.0.1:8000/certain.pdf",
+                "name": "File 8 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.835818Z",
+                "description": "Apply bed inside rock exactly there visit. Would region road without air sit should. Miss knowledge claim continue I."
+            },
+            {
+                "id": 205,
+                "file": "http://127.0.0.1:8000/sense.pdf",
+                "name": "File 9 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.840687Z",
+                "description": "Sport group hope list. Evening my college alone side face different. Dinner up mean woman at evidence."
+            },
+            {
+                "id": 206,
+                "file": "http://127.0.0.1:8000/foot.pdf",
+                "name": "File 10 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.845408Z",
+                "description": "Move plant back child. Memory rule special value century follow.\nBy mother safe."
+            },
+            {
+                "id": 207,
+                "file": "http://127.0.0.1:8000/authority.pdf",
+                "name": "File 11 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.849916Z",
+                "description": "Business democratic air lose huge. Hear call until.\nFinally use term his top situation. Realize realize maintain clearly others room report."
+            },
+            {
+                "id": 208,
+                "file": "http://127.0.0.1:8000/adult.pdf",
+                "name": "File 12 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.854391Z",
+                "description": "Reality family pretty run today realize drop. Carry sport garden become evidence. Pull million event effort here anything."
+            },
+            {
+                "id": 209,
+                "file": "http://127.0.0.1:8000/against.pdf",
+                "name": "File 13 for e60844c9-2114-4a02-b078-95b1f181bd82",
+                "date_uploaded": "2024-09-06T22:34:59.858979Z",
+                "description": "Probably radio front step response. Edge step management available officer song.\nAttention mission right successful serve happy sing."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Lara-Harris",
+        "plaintiff": "Caitlin Ortega",
+        "defendant": "Keith Hayes",
+        "ref": "e60844c9-2114-4a02-b078-95b1f181bd82",
+        "case_type": "Civil",
+        "subcase": "re-intermediate sticky e-services"
+    },
+    {
+        "id": 24,
+        "stages": [
+            {
+                "id": 78,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.874554Z"
+            }
+        ],
+        "client": {
+            "id": 20,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:53.175869Z",
+            "email": "cliente_19@example.com",
+            "first_name": "Paul",
+            "last_name": "Hernandez",
+            "contact": "500.802.7914x298",
+            "birthday": "1920-07-17",
+            "identification": "7496239327",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 210,
+                "file": "http://127.0.0.1:8000/item.pdf",
+                "name": "File 1 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.885333Z",
+                "description": "Lead military him watch minute must.\nCertain want protect surface civil begin control. Ground product civil rate ok.\nParticularly instead yet unit. By blue blue hospital over general."
+            },
+            {
+                "id": 211,
+                "file": "http://127.0.0.1:8000/back.pdf",
+                "name": "File 2 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.890212Z",
+                "description": "Turn material low social mouth add. Company or day think painting worry clearly college."
+            },
+            {
+                "id": 212,
+                "file": "http://127.0.0.1:8000/road.pdf",
+                "name": "File 3 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.895154Z",
+                "description": "Coach cup machine room control bag. International drop indicate hold. Really trip society our camera.\nNewspaper them set north second page design. Huge may big parent front compare."
+            },
+            {
+                "id": 213,
+                "file": "http://127.0.0.1:8000/store.pdf",
+                "name": "File 4 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.898806Z",
+                "description": "Bill over energy even. Network home decade begin moment sell beautiful. Son college truth source long.\nTough member risk pressure claim. Year trade scene fill."
+            },
+            {
+                "id": 214,
+                "file": "http://127.0.0.1:8000/loss.pdf",
+                "name": "File 5 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.903336Z",
+                "description": "Bill certainly act my plant war. Everything condition activity. Political lawyer serve ability system when."
+            },
+            {
+                "id": 215,
+                "file": "http://127.0.0.1:8000/page.pdf",
+                "name": "File 6 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.908398Z",
+                "description": "Compare accept community color prove own paper. Thing well dark live property within. Fly would voice stop national wonder.\nCompany season line health. Any eat now what general grow employee."
+            },
+            {
+                "id": 216,
+                "file": "http://127.0.0.1:8000/drug.pdf",
+                "name": "File 7 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.912974Z",
+                "description": "Dinner nothing blue country. Decision else issue. Among choose approach Republican popular learn.\nDuring certainly final happen practice. Kid represent case exist improve south."
+            },
+            {
+                "id": 217,
+                "file": "http://127.0.0.1:8000/whom.pdf",
+                "name": "File 8 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.917148Z",
+                "description": "Your goal lot many. Hope stock husband school customer simply.\nMeeting decision organization seek society state watch myself. Present outside very such move."
+            },
+            {
+                "id": 218,
+                "file": "http://127.0.0.1:8000/involve.pdf",
+                "name": "File 9 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.923647Z",
+                "description": "Art hear piece.\nStar half employee gas economic tough. Professor experience election detail.\nFocus stuff size feeling meeting. Others hotel know question. Six by data sense including shake."
+            },
+            {
+                "id": 219,
+                "file": "http://127.0.0.1:8000/between.pdf",
+                "name": "File 10 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.928331Z",
+                "description": "Gun type participant reason key remember. Whom author chance Mr personal nothing. Tonight evidence ground agreement soon prove.\nUnder nature law. Think nice street happen call money lose movement."
+            },
+            {
+                "id": 220,
+                "file": "http://127.0.0.1:8000/song.pdf",
+                "name": "File 11 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.932988Z",
+                "description": "Even blood memory support. Democrat fear ahead and full.\nSafe better manage home media. Religious road player no chair drive yeah. Job technology true white we."
+            },
+            {
+                "id": 221,
+                "file": "http://127.0.0.1:8000/identify.pdf",
+                "name": "File 12 for 58d10f4e-06db-4772-9c20-aa049885d3f6",
+                "date_uploaded": "2024-09-06T22:34:59.937304Z",
+                "description": "Get sit forget physical scientist responsibility. Not beyond put religious. Clear increase represent yard.\nTown must why myself recently want. Bit beyond care town six consumer type."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Jones, White and Jordan",
+        "plaintiff": "Amy Zimmerman",
+        "defendant": "John Taylor",
+        "ref": "58d10f4e-06db-4772-9c20-aa049885d3f6",
+        "case_type": "Criminal",
+        "subcase": "empower web-enabled paradigms"
+    },
+    {
+        "id": 25,
+        "stages": [
+            {
+                "id": 79,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:34:59.952734Z"
+            },
+            {
+                "id": 80,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:34:59.957871Z"
+            },
+            {
+                "id": 81,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:34:59.962186Z"
+            },
+            {
+                "id": 82,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:34:59.966975Z"
+            },
+            {
+                "id": 83,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:34:59.971717Z"
+            }
+        ],
+        "client": {
+            "id": 23,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:54.671221Z",
+            "email": "cliente_22@example.com",
+            "first_name": "Timothy",
+            "last_name": "Lang",
+            "contact": "(911)860-8808x301",
+            "birthday": "1948-05-05",
+            "identification": "4764666644",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 222,
+                "file": "http://127.0.0.1:8000/just.pdf",
+                "name": "File 1 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:34:59.981266Z",
+                "description": "Per bad answer. Lot than late.\nCourt good year try threat carry wide parent. Account member once statement. Bed bit child travel human meeting."
+            },
+            {
+                "id": 223,
+                "file": "http://127.0.0.1:8000/after.pdf",
+                "name": "File 2 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:34:59.985715Z",
+                "description": "Candidate way start debate heart. Environment player value could. Foot low may audience.\nReligious college different huge than Republican marriage."
+            },
+            {
+                "id": 224,
+                "file": "http://127.0.0.1:8000/follow.pdf",
+                "name": "File 3 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:34:59.990215Z",
+                "description": "Whom surface successful answer admit teach decision improve. Film world early value after get agent. Crime physical wonder popular right truth."
+            },
+            {
+                "id": 225,
+                "file": "http://127.0.0.1:8000/today.pdf",
+                "name": "File 4 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:34:59.994570Z",
+                "description": "Beyond recognize service pattern. Probably against first employee.\nBelieve almost series land. Senior perhaps nothing decide art current hair."
+            },
+            {
+                "id": 226,
+                "file": "http://127.0.0.1:8000/people.pdf",
+                "name": "File 5 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:34:59.998960Z",
+                "description": "Listen step including phone type. If that face party. About how participant reach.\nClaim its also father page. Physical capital necessary practice education write material."
+            },
+            {
+                "id": 227,
+                "file": "http://127.0.0.1:8000/half.pdf",
+                "name": "File 6 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:35:00.003545Z",
+                "description": "Raise worry involve provide popular expect. Simply method organization back week than yes.\nCause religious society traditional. Tax week fire sound production. Piece one most present theory."
+            },
+            {
+                "id": 228,
+                "file": "http://127.0.0.1:8000/mean.pdf",
+                "name": "File 7 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:35:00.008660Z",
+                "description": "Learn purpose continue perform term quickly theory. Measure six treatment behind population.\nCatch join special cover myself product federal."
+            },
+            {
+                "id": 229,
+                "file": "http://127.0.0.1:8000/Mr.pdf",
+                "name": "File 8 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:35:00.012602Z",
+                "description": "Main that leave. Soldier focus since yes technology.\nResponse no quality collection expert prevent hold. Major get also table. Hand black within thus growth."
+            },
+            {
+                "id": 230,
+                "file": "http://127.0.0.1:8000/understand.pdf",
+                "name": "File 9 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:35:00.016525Z",
+                "description": "Study bring adult similar any.\nSing picture audience others be. You senior base project report. Report not beautiful."
+            },
+            {
+                "id": 231,
+                "file": "http://127.0.0.1:8000/many.pdf",
+                "name": "File 10 for 56b28666-6ecf-4e8d-a8be-5e492f831161",
+                "date_uploaded": "2024-09-06T22:35:00.021868Z",
+                "description": "Here establish bad ground care. Wonder support arm pretty remain rise TV.\nToo nature respond significant simply prove there. Their particularly ability open way five mouth."
+            }
+        ],
+        "lawyer": {
+            "id": 26,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.177751Z",
+            "email": "lawyer_1@example.com",
+            "first_name": "William",
+            "last_name": "Butler",
+            "contact": "+1-588-589-8693x419",
+            "birthday": "2001-05-30",
+            "identification": "472732099",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Moore, Wilson and Jenkins",
+        "plaintiff": "Daniel Duarte",
+        "defendant": "Joshua Montoya",
+        "ref": "56b28666-6ecf-4e8d-a8be-5e492f831161",
+        "case_type": "Civil",
+        "subcase": "transition collaborative channels"
+    },
+    {
+        "id": 26,
+        "stages": [
+            {
+                "id": 84,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:35:00.037328Z"
+            },
+            {
+                "id": 85,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:35:00.041980Z"
+            },
+            {
+                "id": 86,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:35:00.046010Z"
+            },
+            {
+                "id": 87,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:35:00.050331Z"
+            },
+            {
+                "id": 88,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:35:00.054995Z"
+            }
+        ],
+        "client": {
+            "id": 2,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:44.203149Z",
+            "email": "cliente_1@example.com",
+            "first_name": "David",
+            "last_name": "Alvarez",
+            "contact": "+1-792-526-2632",
+            "birthday": "1979-10-12",
+            "identification": "4524156869",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 232,
+                "file": "http://127.0.0.1:8000/central.pdf",
+                "name": "File 1 for 2e35de64-a1c1-43f9-9d19-c20ba37aa6cb",
+                "date_uploaded": "2024-09-06T22:35:00.065016Z",
+                "description": "Ten party product career. Eight collection whether better official star.\nGood board hour natural be environment bring. Why discussion manage write question much. Population family stop gas."
+            },
+            {
+                "id": 233,
+                "file": "http://127.0.0.1:8000/power.pdf",
+                "name": "File 2 for 2e35de64-a1c1-43f9-9d19-c20ba37aa6cb",
+                "date_uploaded": "2024-09-06T22:35:00.070699Z",
+                "description": "Today ground fund too employee young Congress. New real audience manage. Add part natural possible push guess that."
+            },
+            {
+                "id": 234,
+                "file": "http://127.0.0.1:8000/loss.pdf",
+                "name": "File 3 for 2e35de64-a1c1-43f9-9d19-c20ba37aa6cb",
+                "date_uploaded": "2024-09-06T22:35:00.075941Z",
+                "description": "Her cut author discuss such how before on. Painting team outside. Year range lot second any.\nLate anyone American. Respond nice top expert receive main house."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Johnston-Hill",
+        "plaintiff": "Rebecca Williams",
+        "defendant": "Kaitlin Montgomery",
+        "ref": "2e35de64-a1c1-43f9-9d19-c20ba37aa6cb",
+        "case_type": "Family",
+        "subcase": "morph wireless communities"
+    },
+    {
+        "id": 27,
+        "stages": [
+            {
+                "id": 89,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:35:00.090417Z"
+            },
+            {
+                "id": 90,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:35:00.095478Z"
+            }
+        ],
+        "client": {
+            "id": 20,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:53.175869Z",
+            "email": "cliente_19@example.com",
+            "first_name": "Paul",
+            "last_name": "Hernandez",
+            "contact": "500.802.7914x298",
+            "birthday": "1920-07-17",
+            "identification": "7496239327",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 235,
+                "file": "http://127.0.0.1:8000/stay.pdf",
+                "name": "File 1 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.106491Z",
+                "description": "World agency amount fall. It instead dog road. Even cost whom lawyer degree someone fly national.\nHowever model even. Certain mind interesting party night security."
+            },
+            {
+                "id": 236,
+                "file": "http://127.0.0.1:8000/teacher.pdf",
+                "name": "File 2 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.111408Z",
+                "description": "Sure establish thing less born. Set especially choice table be.\nChange shake majority final. Job study military building. Hope contain benefit analysis respond night."
+            },
+            {
+                "id": 237,
+                "file": "http://127.0.0.1:8000/fish.pdf",
+                "name": "File 3 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.115786Z",
+                "description": "Do turn certainly happen everyone hour. Least population energy those determine. Threat support sometimes music.\nThey article challenge art woman. Avoid add health get agreement."
+            },
+            {
+                "id": 238,
+                "file": "http://127.0.0.1:8000/direction.pdf",
+                "name": "File 4 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.119887Z",
+                "description": "Plan he their hit throughout break. Teacher white woman past moment year statement. Speak writer new prove.\nElse coach worker. Her standard style defense inside."
+            },
+            {
+                "id": 239,
+                "file": "http://127.0.0.1:8000/step.pdf",
+                "name": "File 5 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.124932Z",
+                "description": "Seek campaign structure well pay leader security. Gas itself sometimes plan ever could particular. Nice occur movement strong. Herself yard hear trial citizen yeah."
+            },
+            {
+                "id": 240,
+                "file": "http://127.0.0.1:8000/organization.pdf",
+                "name": "File 6 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.129066Z",
+                "description": "Low operation food heavy along oil. Training energy son guess.\nWater son college onto reveal smile stop modern. Tax however half seem down camera."
+            },
+            {
+                "id": 241,
+                "file": "http://127.0.0.1:8000/not.pdf",
+                "name": "File 7 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.133286Z",
+                "description": "Such language end east upon I cause. Me day budget machine week manage.\nEverybody door note movement who parent since. Maintain more range character."
+            },
+            {
+                "id": 242,
+                "file": "http://127.0.0.1:8000/child.pdf",
+                "name": "File 8 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.137710Z",
+                "description": "Stop night perform fish. Inside official stuff security provide on without quite."
+            },
+            {
+                "id": 243,
+                "file": "http://127.0.0.1:8000/wind.pdf",
+                "name": "File 9 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.142506Z",
+                "description": "Customer respond wait technology network other race. Direction thing push cost yourself subject time. Project through which all."
+            },
+            {
+                "id": 244,
+                "file": "http://127.0.0.1:8000/subject.pdf",
+                "name": "File 10 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.146605Z",
+                "description": "Part hot list live set morning. View or thing author.\nSingle southern lay center effect with accept. Dinner check five it develop whatever accept."
+            },
+            {
+                "id": 245,
+                "file": "http://127.0.0.1:8000/others.pdf",
+                "name": "File 11 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.150646Z",
+                "description": "Against national enjoy hundred stock particularly government. Woman lose free sure management understand according. Despite human customer now receive eat.\nSystem visit partner black."
+            },
+            {
+                "id": 246,
+                "file": "http://127.0.0.1:8000/share.pdf",
+                "name": "File 12 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.155737Z",
+                "description": "Well her ever control inside relate. International customer today him bed artist. Opportunity thing parent guy view future.\nAgainst notice like effort research quite. Wear carry form own old."
+            },
+            {
+                "id": 247,
+                "file": "http://127.0.0.1:8000/pick.pdf",
+                "name": "File 13 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.160373Z",
+                "description": "Art possible population available outside short employee mean. Good western field compare theory.\nPaper lead son bit according quality. Similar value us author expect economy involve."
+            },
+            {
+                "id": 248,
+                "file": "http://127.0.0.1:8000/whole.pdf",
+                "name": "File 14 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.164511Z",
+                "description": "Visit thing soldier thousand. Beautiful hospital cost top see. Like military effect only. Not police night these.\nKnowledge protect fill true. Certain quality continue court program future test."
+            },
+            {
+                "id": 249,
+                "file": "http://127.0.0.1:8000/seat.pdf",
+                "name": "File 15 for 1a075810-87d4-4c67-a494-68bce977aa37",
+                "date_uploaded": "2024-09-06T22:35:00.170343Z",
+                "description": "Collection truth style who may participant. Partner interesting above movement before however. Head finally fall modern impact."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Hunter Inc",
+        "plaintiff": "Glenn Brown",
+        "defendant": "Joseph Gilbert",
+        "ref": "1a075810-87d4-4c67-a494-68bce977aa37",
+        "case_type": "Civil",
+        "subcase": "exploit customized portals"
+    },
+    {
+        "id": 28,
+        "stages": [
+            {
+                "id": 91,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:35:00.185624Z"
+            },
+            {
+                "id": 92,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:35:00.190460Z"
+            },
+            {
+                "id": 93,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:35:00.195514Z"
+            },
+            {
+                "id": 94,
+                "status": "Stage 4",
+                "date_created": "2024-09-06T22:35:00.200820Z"
+            },
+            {
+                "id": 95,
+                "status": "Stage 5",
+                "date_created": "2024-09-06T22:35:00.205336Z"
+            }
+        ],
+        "client": {
+            "id": 2,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:44.203149Z",
+            "email": "cliente_1@example.com",
+            "first_name": "David",
+            "last_name": "Alvarez",
+            "contact": "+1-792-526-2632",
+            "birthday": "1979-10-12",
+            "identification": "4524156869",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 250,
+                "file": "http://127.0.0.1:8000/low.pdf",
+                "name": "File 1 for bd19309c-0a89-41ee-85e3-640d4211f2a5",
+                "date_uploaded": "2024-09-06T22:35:00.214921Z",
+                "description": "Start couple sell. Front shoulder century history boy spend.\nNumber both create of law. Along dinner organization evening full my language so. Food stage hope nation enter."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Sanchez, Johnson and Davis",
+        "plaintiff": "Karen Brown",
+        "defendant": "Arthur Ramirez",
+        "ref": "bd19309c-0a89-41ee-85e3-640d4211f2a5",
+        "case_type": "Criminal",
+        "subcase": "generate frictionless solutions"
+    },
+    {
+        "id": 29,
+        "stages": [
+            {
+                "id": 96,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:35:00.229628Z"
+            },
+            {
+                "id": 97,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:35:00.234383Z"
+            },
+            {
+                "id": 98,
+                "status": "Stage 3",
+                "date_created": "2024-09-06T22:35:00.239145Z"
+            }
+        ],
+        "client": {
+            "id": 11,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:48.694143Z",
+            "email": "cliente_10@example.com",
+            "first_name": "Christopher",
+            "last_name": "Woods",
+            "contact": "758-766-0404x3064",
+            "birthday": "1956-04-27",
+            "identification": "7953182623",
+            "marital_status": "Married",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 251,
+                "file": "http://127.0.0.1:8000/official.pdf",
+                "name": "File 1 for 2adddaf0-459d-4312-866e-baca123f940f",
+                "date_uploaded": "2024-09-06T22:35:00.248264Z",
+                "description": "Skill just tax land beat check sit according. History Mrs responsibility remember.\nBlack moment most region century. Almost camera then performance. Finally identify word consider ago cut close."
+            },
+            {
+                "id": 252,
+                "file": "http://127.0.0.1:8000/in.pdf",
+                "name": "File 2 for 2adddaf0-459d-4312-866e-baca123f940f",
+                "date_uploaded": "2024-09-06T22:35:00.252849Z",
+                "description": "Remember defense happen choice. Computer these blood identify debate current pick.\nPay at like worker individual today. With condition go front international. Away white simply many rest."
+            }
+        ],
+        "lawyer": {
+            "id": 29,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:57.686673Z",
+            "email": "lawyer_4@example.com",
+            "first_name": "Veronica",
+            "last_name": "Wells",
+            "contact": "+1-734-882-9785x8975",
+            "birthday": "1941-01-14",
+            "identification": "7804045783",
+            "marital_status": "Married",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Day, Garza and Torres",
+        "plaintiff": "Johnathan Thompson",
+        "defendant": "Melvin Petersen",
+        "ref": "2adddaf0-459d-4312-866e-baca123f940f",
+        "case_type": "Criminal",
+        "subcase": "incentivize compelling methodologies"
+    },
+    {
+        "id": 30,
+        "stages": [
+            {
+                "id": 99,
+                "status": "Stage 1",
+                "date_created": "2024-09-06T22:35:00.267660Z"
+            },
+            {
+                "id": 100,
+                "status": "Stage 2",
+                "date_created": "2024-09-06T22:35:00.272178Z"
+            }
+        ],
+        "client": {
+            "id": 25,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:55.676027Z",
+            "email": "cliente_24@example.com",
+            "first_name": "Stephanie",
+            "last_name": "Harris",
+            "contact": "001-714-870-2977x356",
+            "birthday": "1959-04-22",
+            "identification": "1899760609",
+            "marital_status": "Single",
+            "role": "client",
+            "photo_profile": null
+        },
+        "case_files": [
+            {
+                "id": 253,
+                "file": "http://127.0.0.1:8000/difference.pdf",
+                "name": "File 1 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.282461Z",
+                "description": "Scene determine open science. Possible financial others news story ok. Girl gun president medical generation condition summer.\nTown pull Congress take. Great sure material be create condition style."
+            },
+            {
+                "id": 254,
+                "file": "http://127.0.0.1:8000/across.pdf",
+                "name": "File 2 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.286573Z",
+                "description": "Recent home apply explain. Three among management page direction force bill.\nBoard prepare important another degree how newspaper worry. True style power firm financial do sport."
+            },
+            {
+                "id": 255,
+                "file": "http://127.0.0.1:8000/throw.pdf",
+                "name": "File 3 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.291113Z",
+                "description": "Interest financial another mother share energy.\nSummer amount partner here attorney. Card off cold. Political on someone during recent program."
+            },
+            {
+                "id": 256,
+                "file": "http://127.0.0.1:8000/only.pdf",
+                "name": "File 4 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.295263Z",
+                "description": "Beyond issue through idea real. Garden organization ability reality site present start.\nExactly style kid per admit treat clearly PM. Experience foot actually involve road hour expert."
+            },
+            {
+                "id": 257,
+                "file": "http://127.0.0.1:8000/happen.pdf",
+                "name": "File 5 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.299594Z",
+                "description": "Weight push attention head pass only best Mr. Amount dream wait bank among. Produce for win listen.\nStory somebody popular poor there rest organization."
+            },
+            {
+                "id": 258,
+                "file": "http://127.0.0.1:8000/most.pdf",
+                "name": "File 6 for d22acf5f-bb0f-43e0-aae8-327830c3785b",
+                "date_uploaded": "2024-09-06T22:35:00.303726Z",
+                "description": "For receive put.\nFood contain sound expect hard up. Trip even actually idea amount. Method keep low chance affect carry.\nFor white good well. Pretty win cultural of us."
+            }
+        ],
+        "lawyer": {
+            "id": 27,
+            "last_login": null,
+            "is_superuser": false,
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2024-09-06T22:34:56.685485Z",
+            "email": "lawyer_2@example.com",
+            "first_name": "Cassandra",
+            "last_name": "Johnson",
+            "contact": "+1-424-361-3169",
+            "birthday": "1970-04-25",
+            "identification": "1505136261",
+            "marital_status": "Single",
+            "role": "lawyer",
+            "photo_profile": null
+        },
+        "authority": "Green Ltd",
+        "plaintiff": "Sherri Johnson",
+        "defendant": "Jaime Graham",
+        "ref": "d22acf5f-bb0f-43e0-aae8-327830c3785b",
+        "case_type": "Family",
+        "subcase": "drive transparent models"
+    }
+]
