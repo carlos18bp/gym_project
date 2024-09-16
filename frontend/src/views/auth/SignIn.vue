@@ -6,7 +6,7 @@
     </div>
     <section class="flex h-screen items-center justify-start">
         <form 
-            class="space-y-5 px-32 xl:w-1/2 2xl:w-1/3">
+            class="space-y-5 px-72 xl:w-1/2 2xl:w-2/3 order-2">
             <h1 class="font-bold text-center xl:text-3xl 2xl:text-4xl">We welcome you again</h1>
             <div>
                 <label 
@@ -91,7 +91,7 @@
             </div>
 
         </form>
-        <div class="h-screen xl:w-1/2 2xl:w-2/3 overflow-hidden">
+        <div class="h-screen xl:w-1/2 2xl:w-1/3 overflow-hidden order-1">
             <img src="@/assets/images/signIn/signIn.jpg" alt="illustration" class="w-full h-full object-cover">
         </div>    
     </section>
