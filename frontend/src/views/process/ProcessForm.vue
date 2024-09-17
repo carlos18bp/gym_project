@@ -12,37 +12,44 @@
                     <!-- Plaintiff form -->
                     <div>
                         <label for="plaintiff"
-                            class="block text-base font-medium leading-6 text-primary">Dte./Accionante <span
-                                class="text-red-500">*</span></label>
+                            class="block text-base font-medium leading-6 text-primary">
+                                Dte./Accionante 
+                                <span class="text-red-500">*</span></label>
                         <div class="mt-2">
                             <input type="text" name="plaintiff" id="plaintiff"
-                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" />
+                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                            />
                         </div>
                     </div>
                     <!-- Defendant form -->
                     <div>
-                        <label for="defendant" class="block text-base font-medium leading-6 text-primary">Dte./Accionado
-                            <span class="text-red-500">*</span></label>
+                        <label for="defendant" class="block text-base font-medium leading-6 text-primary">
+                            Dte./Accionado
+                            <span class="text-red-500">*</span>
+                        </label>
                         <div class="mt-2">
                             <input type="text" name="defendant" id="defendant"
-                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" />
+                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                            />
                         </div>
                     </div>
                     <!-- Type case form -->
                     <div>
                         <Combobox as="div" v-model="selectedCaseType" @update:modelValue="query = ''">
-                            <ComboboxLabel class="block text-base font-medium leading-6 text-primary">Tipo de caso
+                            <ComboboxLabel class="block text-base font-medium leading-6 text-primary">
+                                Tipo de caso
                                 <span class="text-red-500">*</span>
                             </ComboboxLabel>
                             <div class="relative mt-2">
                                 <ComboboxInput
                                     class="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-10 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                                     @change="query = $event.target.value" @blur="query = ''"
-                                    :display-value="(caseType) => caseType?.name" />
+                                    :display-value="(caseType) => caseType?.name" 
+                                />
                                 <ComboboxButton
                                     class="absolute inset-y-0 right-0 flex items-center gap-2 rounded-r-md px-2 focus:outline-none border-l border-gray-300">
                                     Seleccionar
-                                    <ChevronDownIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+                                    <ChevronDownIcon class="h-5 w-5 text-gray-400" aria-hidden="true"/>
                                 </ComboboxButton>
 
                                 <ComboboxOptions v-if="filteredCaseTypes.length > 0"
@@ -67,11 +74,14 @@
                     </div>
                     <!-- Subcase form -->
                     <div>
-                        <label for="defendant" class="block text-base font-medium leading-6 text-primary">Subcaso
-                            <span class="text-red-500">*</span></label>
+                        <label for="defendant" class="block text-base font-medium leading-6 text-primary">
+                            Subcaso
+                            <span class="text-red-500">*</span>
+                        </label>
                         <div class="mt-2">
                             <input type="text" name="defendant" id="defendant"
-                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" />
+                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" 
+                            />
                         </div>
                     </div>
                 </div>
@@ -79,26 +89,33 @@
                 <div class="grid grid-cols-3 gap-3">
                     <!-- Ref form -->
                     <div>
-                        <label for="plaintiff" class="block text-base font-medium leading-6 text-primary">Radicado <span
-                                class="text-red-500">*</span></label>
+                        <label for="plaintiff" class="block text-base font-medium leading-6 text-primary">
+                            Radicado 
+                            <span class="text-red-500">*</span>
+                        </label>
                         <div class="mt-2">
                             <input type="text" name="plaintiff" id="plaintiff"
-                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" />
+                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                            />
                         </div>
                     </div>
                     <!-- Authority form -->
                     <div>
-                        <label for="plaintiff" class="block text-base font-medium leading-6 text-primary">Autoridad
-                            <span class="text-red-500">*</span></label>
+                        <label for="plaintiff" class="block text-base font-medium leading-6 text-primary">
+                            Autoridad
+                            <span class="text-red-500">*</span>
+                        </label>
                         <div class="mt-2">
                             <input type="text" name="plaintiff" id="plaintiff"
-                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" />
+                                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                            />
                         </div>
                     </div>
                     <!-- Client form -->
                     <div>
                         <Combobox as="div" v-model="selectedPerson" @update:modelValue="query = ''">
-                            <ComboboxLabel class="block text-sm font-medium leading-6 text-primary">Usuario
+                            <ComboboxLabel class="block text-sm font-medium leading-6 text-primary">
+                                Usuario
                                 <span class="text-red-500">*</span>
                             </ComboboxLabel>
                             <div class="relative mt-2">
