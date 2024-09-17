@@ -3,6 +3,8 @@
     <SlideBar>
       <div class="flex-1 grid place-items-center">
         <div
+          v-for="process in processes"
+          :key="process.id"
           class="w-1/2 p-5 rounded-lg border-2 border-stroke bg-terciary grid"
         >
           <!-- Card header -->
@@ -11,10 +13,10 @@
               <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
               <div class="grid">
                 <h1 class="text-base text-primary font-medium">
-                  Laboral Ordinario
+                  {{ process.case_type }}
                 </h1>
                 <h2 class="text-sm text-gray-500 font-regular">
-                  Acoso Laboral
+                  {{ process.subcase }}
                 </h2>
               </div>
             </div>
@@ -26,28 +28,28 @@
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Autoridad:</h3>
               <p class="text-gray-500">
-                Juzgado 32 Laboral del Circuito de Bogotá DC.
+                {{ process.authority }}
               </p>
             </div>
             <!-- Accionant information -->
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Dte./Accionante:</h3>
-              <p class="text-gray-500">Karen Estefania España Chavez</p>
+              <p class="text-gray-500">{{ process.plaintiff }}</p>
             </div>
             <!-- plaintiff information -->
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Dte./Accionado:</h3>
-              <p class="text-gray-500">SINTRACOLPEN</p>
+              <p class="text-gray-500">{{ process.defendant }}</p>
             </div>
             <!-- Ref information -->
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Radicado:</h3>
-              <p class="text-gray-500">11001310503220210062300</p>
+              <p class="text-gray-500">{{ process.ref }}</p>
             </div>
             <!-- Last stage -->
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Etapa Procesal:</h3>
-              <p class="text-gray-500">Fallo</p>
+              <p class="text-gray-500">{{ process.stages[process.stages.length - 1].status }}</p>
             </div>
           </div>
           <!-- Timeline of process state -->
@@ -91,7 +93,9 @@
               type="button"
               class="p-2.5 text-white bg-secondary rounded-md"
             >
-              <span class="hidden lg:block">Consultar expediente</span>
+              <router-link :to="{ name: 'process_detail', params: { process_id: process.id } }">
+                <span class="hidden lg:block">Consultar expediente</span>
+              </router-link>
             </button>
           </div>
         </div>
@@ -103,4 +107,15 @@
 <script setup>
 import SlideBar from "@/components/layouts/SlideBar.vue";
 import { ChevronUpIcon } from "@heroicons/vue/20/solid";
+import { computed, onMounted, ref } from "vue";
+import { useProcessStore } from "@/stores/process";
+
+const processStore = useProcessStore();
+const processes = ref([]);
+
+onMounted(async () => {
+    await processStore.fetchProcessesData();
+    processes.value = processStore.processes;
+});
+
 </script>

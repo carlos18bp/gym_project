@@ -18,6 +18,7 @@
             <input
               id="search"
               name="search"
+              v-model="searchQuery"
               class="block w-full rounded-md border-0 bg-white py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
               placeholder="Buscar usuarios"
               type="search"
@@ -29,28 +30,35 @@
       <div class="grid grid-cols-2">
         <ul role="list" class="divide-y divide-gray-100">
           <li
-            v-for="person in people"
-            :key="person.email"
+            v-for="user in filteredUsers"
+            :key="user.id"
             class="relative flex justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 sm:px-6 lg:px-8"
           >
-            <div class="flex min-w-0 gap-x-4">
+            <div class="flex min-w-0 gap-x-4 cursor-pointer">
               <img
                 class="h-12 w-12 flex-none rounded-full bg-gray-50"
-                :src="person.imageUrl"
-                alt=""
+                v-if="user.photo_profile"
+                :src="user.photo_profile"
+                alt="Photo Profile"
+              />
+              <img
+                class="h-12 w-12 flex-none rounded-full bg-gray-50"
+                v-else
+                src="@/assets/images/user_avatar.jpg"
+                alt="Photo Profile"
               />
               <div class="min-w-0 flex-auto">
                 <p class="text-sm font-semibold leading-6 text-gray-900">
-                  <a :href="person.href">
+                  <a>
                     <span class="absolute inset-x-0 -top-px bottom-0" />
-                    {{ person.name }}
+                    {{ user.last_name }} {{ user.first_name }}
                   </a>
                 </p>
                 <p class="mt-1 flex text-xs leading-5 text-gray-500">
                   <a
-                    :href="`mailto:${person.email}`"
+                    :href="`mailto:${user.email}`"
                     class="relative truncate hover:underline"
-                    >{{ person.email }}</a
+                    >{{ user.email }}</a
                   >
                 </p>
               </div>
@@ -69,19 +77,20 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from "vue";
+import { useUserStore } from "@/stores/user";
 import SlideBar from "@/components/layouts/SlideBar.vue";
 import { ChevronRightIcon, MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
 
-const people = [
-  {
-    name: "Leslie Alexander",
-    email: "leslie.alexander@example.com",
-    role: "Co-Founder / CEO",
-    imageUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-    href: "#",
-    lastSeen: "3h ago",
-    lastSeenDateTime: "2023-01-23T13:23Z",
-  },
-];
+const userStore = useUserStore();
+const users = ref([]);
+const searchQuery = ref("");
+
+const filteredUsers = computed(() => userStore.filteredUsers(searchQuery.value));
+
+onMounted(async () => {
+    await userStore.fetchUsersData();
+    users.value = userStore.users;
+});
+
 </script>

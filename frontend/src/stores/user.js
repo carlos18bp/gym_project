@@ -19,7 +19,24 @@ export const useUserStore = defineStore("user", {
      * @returns {function} - Function to find user by ID.
      */
     userById: (state) => (userId) => {
-      return state.users.find((user) => user.id === userId);
+      return state.users.find((user) => user.id == userId);
+    },
+
+    /**
+     * Filter users based on search query.
+     * @param {object} state - State.
+     * @returns {function} - Function to filter users by search query.
+     */
+    filteredUsers: (state) => (searchQuery) => {
+      if (!searchQuery) return state.users;
+
+      const lowerCaseQuery = searchQuery.toLowerCase();
+
+      return state.users.filter((user) =>
+        ["first_name", "last_name", "identification", "email"].some((field) =>
+          user[field]?.toLowerCase().includes(lowerCaseQuery)
+        )
+      );
     },
 
     /**

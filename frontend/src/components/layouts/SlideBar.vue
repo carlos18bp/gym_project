@@ -98,13 +98,15 @@
                             v-slot="{ active }"
                           >
                             <a
-                              :href="item.href"
+                              @click="item.action"
+                              class="cursor-pointer"
                               :class="[
                                 active ? 'bg-gray-50' : '',
                                 'block px-3 py-1 text-sm leading-6 text-gray-900',
                               ]"
-                              >{{ item.name }}</a
-                            >
+                              >
+                              {{ item.name }}
+                            </a>
                           </MenuItem>
                         </MenuItems>
                       </transition>
@@ -114,7 +116,8 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                          :href="item.href"
+                          @click="item.action"
+                          class="cursor-pointer"
                           :class="[
                             item.current
                               ? 'bg-gray-50 text-secondary'
@@ -212,13 +215,14 @@
                     v-slot="{ active }"
                   >
                     <a
-                      :href="item.href"
+                      @click="item.action"
+                      class="cursor-pointer"
                       :class="[
                         active ? 'bg-gray-50' : '',
                         'block px-3 py-1 text-sm leading-6 text-gray-900',
                       ]"
-                      >{{ item.name }}</a
-                    >
+                      >{{ item.name }}
+                    </a>
                   </MenuItem>
                 </MenuItems>
               </transition>
@@ -228,7 +232,8 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                  :href="item.href"
+                  @click="item.action"
+                  class="cursor-pointer"
                   :class="[
                     item.current
                       ? 'bg-selected-background text-secondary'
@@ -365,29 +370,70 @@ import {
   PlusIcon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon, MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
+import { useRouter } from 'vue-router';
+import { useAuthStore } from "@/stores/auth";
+import { googleLogout } from "vue3-google-login";
 
-const navigation = [
-  { name: "Procesos", href: "#", icon: HomeIcon, current: true },
-  { name: "Directorio", href: "#", icon: FolderIcon, current: false },
-  { name: "Agenda", href: "#", icon: CalendarIcon, current: false },
+const router = useRouter();
+const authStore = useAuthStore(); // Get the authentication store instance
+
+/**
+ * Logs out the user by clearing the auth store and logging out from Google.
+ */
+const logOut = () => {
+  authStore.logout(); // Log out from the auth store
+  googleLogout(); // Log out from Google
+  router.push({ name: 'home' });
+};
+
+const navigation = ref([
+  { 
+    name: "Procesos", 
+    action: () => router.push({ name: 'process_list' }),
+    icon: HomeIcon, 
+    current: true 
+  },
+  { 
+    name: "Directorio", 
+    action: () => router.push({ name: 'directory_list' }),
+    icon: FolderIcon, 
+    current: false 
+  },
+  { 
+    name: "Agenda", 
+    action: null,
+    icon: CalendarIcon, 
+    current: false 
+  },
   {
     name: "Radicar Proceso",
-    href: "#",
+    action: () => router.push({ name: 'process_form' }),
     icon: PencilSquareIcon,
     current: false,
   },
   {
     name: "Chat",
-    href: "#",
+    action: null,
     icon: ChatBubbleOvalLeftEllipsisIcon,
     current: false,
   },
-  { name: "Historial", href: "#", icon: ClockIcon, current: false },
-];
+  { 
+    name: "Historial", 
+    action: () => router.push({ name: 'process_list', params: { display: 'history' } }),
+    icon: ClockIcon, 
+    current: false 
+  },
+]);
 
 const userNavigation = [
-  { name: "Your profile", href: "#" },
-  { name: "Sign out", href: "#" },
+  { 
+    name: "Your profile", 
+    action: null,
+  },
+  { 
+    name: "Sign out", 
+    action: logOut, 
+  },
 ];
 
 const sidebarOpen = ref(false);

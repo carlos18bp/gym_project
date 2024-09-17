@@ -8,9 +8,9 @@
             <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
             <div class="grid">
               <h1 class="text-base text-primary font-medium">
-                Laboral Ordinario
+                {{ process.case_type }}
               </h1>
-              <h2 class="text-sm text-gray-500 font-regular">Acoso Laboral</h2>
+              <h2 class="text-sm text-gray-500 font-regular">{{ process.subcase }}</h2>
             </div>
           </div>
         </div>
@@ -22,34 +22,38 @@
           <!-- User information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Usuario:</h3>
-            <p class="text-gray-500">Gustavo Adolfo Pérez Pérez</p>
+            <p class="text-gray-500">
+              {{ process.client.last_name }} {{ process.client.first_name }}
+            </p>
           </div>
           <!-- Authority information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Autoridad:</h3>
             <p class="text-gray-500">
-              Juzgado 32 Laboral del Circuito de Bogotá DC.
+              {{ process.authority }}
             </p>
           </div>
           <!-- Accionant information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Dte./Accionante:</h3>
-            <p class="text-gray-500">Karen Estefania España Chavez</p>
+            <p class="text-gray-500">{{ process.plaintiff }}</p>
           </div>
           <!-- plaintiff information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Dte./Accionado:</h3>
-            <p class="text-gray-500">SINTRACOLPEN</p>
+            <p class="text-gray-500">{{ process.defendant }}</p>
           </div>
           <!-- Ref information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Radicado:</h3>
-            <p class="text-gray-500">11001310503220210062300</p>
+            <p class="text-gray-500">{{ process.ref }}</p>
           </div>
           <!-- Last stage -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Etapa Procesal:</h3>
-            <p class="text-gray-500">Fallo</p>
+            <p class="text-gray-500">
+              {{ process.stages[process.stages.length - 1].status }}
+            </p>
           </div>
         </div>
         <!-- Second colum timeline of process status -->
@@ -267,8 +271,22 @@ import {
   ChevronRightIcon,
 } from "@heroicons/vue/20/solid";
 import { EyeIcon } from "@heroicons/vue/24/outline";
+import { computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
+import { useProcessStore } from "@/stores/process";
+
+const route = useRoute();
+const processStore = useProcessStore();
+
+const processId = route.params.process_id;
+const process = computed(() => processStore.processById(processId));
 
 const archive = [
   { description: "Auto de suspención de términos", date: "Abr 18, 2022" },
 ];
+
+onMounted(async () => {
+  await processStore.fetchProcessesData();
+});
+
 </script>

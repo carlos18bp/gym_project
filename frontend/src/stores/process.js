@@ -18,7 +18,7 @@ export const useProcessStore = defineStore("process", {
      * @returns {function} - Function to find process by ID.
      */
     processById: (state) => (processId) => {
-      return state.processes.find((process) => process.id === processId);
+      return state.processes.find((process) => process.id == processId);
     },
   },
 
