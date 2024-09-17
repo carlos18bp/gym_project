@@ -47,7 +47,7 @@ const router = createRouter({
       component: () => import("@/views/process/ProcessForm.vue"),
     },
     {
-      path: "/directory_list",
+      path: "/directory_list",  
       name: "directory_list",
       component: () => import("@/views/directory/DirectoryList.vue"),
     },

@@ -7,22 +7,21 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'bold': ['Ubuntu-Bold', 'sans-serif'],
-        'medium': ['Ubuntu-Medium', 'sans-serif'],
-        'regular': ['Ubuntu-Regular', 'sans-serif'],
-        'light': ['Ubuntu-Light', 'sans-serif'],
-        'bolditalic': ['Ubuntu-BoldItalic', 'sans-serif'],
-        'mediumitalic': ['Ubuntu-MediumItalic', 'sans-serif'],
-        'italic': ['Ubuntu-Italic', 'sans-serif'],
-        'lightitalic': ['Ubuntu-LightItalic', 'sans-serif'],
+        'regular': ['Inter-Regular', 'sans-serif'],
+        'medium': ['Inter-Medium', 'sans-serif'],
+        'semibold': ['Inter-SemiBold', 'sans-serif'],
       },
       colors: {
-        'primary': '#00002E',
-        'secondary': '#D293FB',
-        'therciary': '#3C46FF'
+        'primary': '#141E30',
+        'secondary': '#3348FF',
+        'terciary': '#F0F7FF',
+        'selected-background': '#E0EDFF',
+        'stroke': '#CCE0FF',
       }
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
 }
 
