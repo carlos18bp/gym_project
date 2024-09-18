@@ -49,10 +49,13 @@
             <!-- Last stage -->
             <div class="flex gap-2">
               <h3 class="text-base text-primary">Etapa Procesal:</h3>
-              <p class="text-gray-500">{{ process.stages[process.stages.length - 1].status }}</p>
+              <p class="text-gray-500">
+                {{ process.stages[process.stages.length - 1].status }}
+              </p>
             </div>
           </div>
           <!-- Timeline of process state -->
+
           <div class="relative mt-16">
             <!-- Line -->
             <div class="relative">
@@ -65,35 +68,32 @@
                 <div class="border-2 border-gray-500 h-4 w-0"></div>
                 <div class="border-2 border-gray-500 h-4 w-0"></div>
               </div>
+
               <!-- Bubbles -->
-              <div
-                class="absolute top-1/2 left-0 right-0 z-10 transform -translate-y-1/2 flex w-full h-full px-16 justify-between items-center"
-              >
-                <div class="w-10 h-10 bg-secondary rounded-full"></div>
-                <div class="w-20 h-20 bg-secondary rounded-full"></div>
-                <div
-                  class="w-10 h-10 bg-white border-2 border-secondary rounded-full"
-                ></div>
-              </div>
+              <Bubbles
+                :length="process.stages.length"
+                :displayParam="displayParam ? displayParam : ''"
+              />
             </div>
+
             <!-- Text of states -->
-            <div
-              class="relative mt-5 px-16 flex justify-between items-center text-gray-500 font-medium"
-            >
-              <!-- Last but one state -->
-              <p class="text-xs w-10 text-center">Alegatos de conclusión</p>
-              <!-- Last state -->
-              <p class="text-sm w-20 text-center">Fallo</p>
-              <p class="w-10"></p>
+            <div>
+              <TextStages :stages="process.stages" />
             </div>
           </div>
+
           <!-- Button for detail view -->
           <div class="font-medium text-sm mt-8">
             <button
               type="button"
               class="p-2.5 text-white bg-secondary rounded-md"
             >
-              <router-link :to="{ name: 'process_detail', params: { process_id: process.id } }">
+              <router-link
+                :to="{
+                  name: 'process_detail',
+                  params: { process_id: process.id, display: displayParam },
+                }"
+              >
                 <span class="hidden lg:block">Consultar expediente</span>
               </router-link>
             </button>
@@ -106,16 +106,39 @@
 
 <script setup>
 import SlideBar from "@/components/layouts/SlideBar.vue";
+import Bubbles from "@/components/process/Bubbles.vue";
+import TextStages from "@/components/process/TextStages.vue";
 import { ChevronUpIcon } from "@heroicons/vue/20/solid";
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useProcessStore } from "@/stores/process";
+
+const route = useRoute();
+const displayParam = ref("");
 
 const processStore = useProcessStore();
 const processes = ref([]);
 
-onMounted(async () => {
-    await processStore.fetchProcessesData();
-    processes.value = processStore.processes;
+onMounted(async () =>{
+  displayParam.value = route.params.display;
+  loadProcesses()
 });
 
+watch(
+  () => route.params.display,
+  async (newDisplay) => {
+    displayParam.value = newDisplay;
+    await loadProcesses();
+  }
+);
+
+const loadProcesses = async () => {
+  await processStore.fetchProcessesData();
+
+  if (displayParam.value == "history") {
+    processes.value = processStore.processesWithClosedStatus;
+  } else {
+    processes.value = processStore.processesWithoutClosedStatus;
+  }
+};
 </script>

@@ -1,10 +1,10 @@
 from django.core.management.base import BaseCommand
-from gym_app.models import Process, Stage, CaseFile, User
+from gym_app.models import Process, Stage, CaseFile, User, Case
 import random
 from faker import Faker
 
 class Command(BaseCommand):
-    help = 'Create processes with random stages and files'
+    help = 'Create processes with random stages, files, and cases'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -20,9 +20,18 @@ class Command(BaseCommand):
         clients = User.objects.filter(role='client')
         lawyers = User.objects.filter(role='lawyer')
 
-        for _ in range(number_of_processes):
+        # Crear 10 Case
+        cases = []
+        for i in range(1, 11):
+            case = Case.objects.create(
+                type=f'Case Type {i}'
+            )
+            cases.append(case)
+
+        for index in range(number_of_processes):
             client = random.choice(clients)
             lawyer = random.choice(lawyers)
+            case = random.choice(cases)  # Seleccionar un case aleatorio
 
             process = Process.objects.create(
                 authority=fake.company(),
@@ -31,7 +40,7 @@ class Command(BaseCommand):
                 ref=fake.uuid4(),
                 client=client,
                 lawyer=lawyer,
-                case_type=random.choice(['Criminal', 'Civil', 'Family']),
+                case=case,  # Asignar el case aleatorio al proceso
                 subcase=fake.bs(),
             )
 
@@ -43,6 +52,14 @@ class Command(BaseCommand):
                     date_created=fake.date_this_year(),
                 )
                 stages.append(stage)
+
+            # Para los últimos 10 procesos, añadir una etapa final con estado "fallo"
+            if index >= number_of_processes - 10:
+                stage_fallo = Stage.objects.create(
+                    status='Fallo',
+                    date_created=fake.date_this_year(),
+                )
+                stages.append(stage_fallo)
 
             process.stages.add(*stages)
 

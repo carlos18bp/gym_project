@@ -1,4 +1,4 @@
-from .views import userAuth, user, process
+from .views import userAuth, user, case_type, process
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -14,12 +14,12 @@ sign_in_sign_on_urls = [
 
 user_urls = [
     path('users/', user.user_list, name='user-list'),
-    path('users/<int:pk>/', user.user_detail, name='user-detail'),
 ]
 
 process_urls = [
+    path('case_types/', case_type.case_list, name='case-list'),
     path('processes/', process.process_list, name='process-list'),
-    path('processes/<int:pk>/', process.process_detail, name='process-detail'),   
+    #path('create_process/', process.create_process, name='create-process'),
 ]
 
 urlpatterns = sign_in_sign_on_urls + user_urls + process_urls

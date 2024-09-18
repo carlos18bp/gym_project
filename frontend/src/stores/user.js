@@ -23,6 +23,15 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
+     * Get users with role of 'client'.
+     * @param {object} state - State.
+     * @returns {array} - List of users with 'client' role.
+     */
+    clients: (state) => {
+      return state.users.filter((user) => user.role === "client");
+    },
+
+    /**
      * Filter users based on search query.
      * @param {object} state - State.
      * @returns {function} - Function to filter users by search query.

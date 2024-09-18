@@ -37,7 +37,7 @@ const router = createRouter({
       component: () => import("@/views/process/ProcessList.vue"),
     },
     {
-      path: "/process_detail/:process_id",
+      path: "/process_detail/:process_id/:display?",
       name: "process_detail",
       component: () => import("@/views/process/ProcessDetail.vue"),
     },

@@ -1,10 +1,66 @@
 from django.db import models
 from django.conf import settings
 
+class Case(models.Model):
+    """
+    Model representing a case type.
+    
+    Attributes:
+        type (CharField): The type of the case.
+    """
+    type = models.CharField(max_length=100, help_text="The type of the case.")
+    
+    def __str__(self):
+        return self.type
+
+class CaseFile(models.Model):
+    """
+    Model representing a case file.
+
+    Attributes:
+        file (FileField): The file associated with the case.
+        name (CharField): The name of the file.
+        date_uploaded (DateTimeField): The date the file was uploaded.
+        description (TextField): A brief description of the file's content.
+    """
+    file = models.FileField(upload_to='case_files/', help_text="The file associated with the case.")
+    name = models.CharField(max_length=255, help_text="The name of the file.")
+    date_uploaded = models.DateTimeField(auto_now_add=True, help_text="The date the file was uploaded.")
+    description = models.TextField(help_text="A brief description of the file's content.")
+
+    def __str__(self):
+        """
+        String representation of the CaseFile instance.
+
+        Returns:
+            str: The name of the file.
+        """
+        return self.name
+
+class Stage(models.Model):
+    """
+    Model representing a stage in the legal process.
+
+    Attributes:
+        status (CharField): The current status of the stage.
+        date_created (DateTimeField): The date the stage was created.
+    """
+    status = models.CharField(max_length=100, help_text="The current status of the stage.")
+    date_created = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
+
+    def __str__(self):
+        """
+        String representation of the Stage instance.
+
+        Returns:
+            str: The status of the stage.
+        """
+        return self.status
+
 class Process(models.Model):
     """
     Model representing a legal process.
-
+    
     Attributes:
         authority (CharField): The authority handling the case.
         plaintiff (CharField): The person or entity initiating the legal action.
@@ -13,7 +69,7 @@ class Process(models.Model):
         stages (ManyToManyField): The stages associated with the process, related to the Stage model.
         client (ForeignKey): The client related to the process, related to the User model.
         case_files (ManyToManyField): The files associated with the case, related to the CaseFile model.
-        case_type (CharField): The type of case being processed.
+        case (ForeignKey): The case type being processed, related to the Case model.
         subcase (CharField): The subcase classification within the main case type.
         lawyer (ForeignKey): The lawyer handling the case, related to the User model.
     """
@@ -24,15 +80,9 @@ class Process(models.Model):
     stages = models.ManyToManyField('Stage', help_text="The stages associated with the process.")
     client = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="client_processes", on_delete=models.CASCADE, help_text="The client associated with the process.")
     case_files = models.ManyToManyField('CaseFile', help_text="The case files associated with the process.")
-    case_type = models.CharField(max_length=100, help_text="The type of case.")
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="The case type being processed.")
     subcase = models.CharField(max_length=100, help_text="The subcase classification.")
     lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.CASCADE, help_text="The lawyer handling the case.")
 
     def __str__(self):
-        """
-        String representation of the Process instance.
-
-        Returns:
-            str: The unique file number of the process.
-        """
         return self.ref

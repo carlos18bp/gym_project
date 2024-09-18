@@ -10,7 +10,9 @@
               <h1 class="text-base text-primary font-medium">
                 {{ process.case_type }}
               </h1>
-              <h2 class="text-sm text-gray-500 font-regular">{{ process.subcase }}</h2>
+              <h2 class="text-sm text-gray-500 font-regular">
+                {{ process.subcase }}
+              </h2>
             </div>
           </div>
         </div>
@@ -56,7 +58,9 @@
             </p>
           </div>
         </div>
+
         <!-- Second colum timeline of process status -->
+
         <div class="relative mt-16">
           <!-- Line -->
           <div class="relative">
@@ -69,29 +73,21 @@
               <div class="border-2 border-gray-500 h-4 w-0"></div>
               <div class="border-2 border-gray-500 h-4 w-0"></div>
             </div>
+
             <!-- Bubbles -->
-            <div
-              class="absolute top-1/2 left-0 right-0 z-10 transform -translate-y-1/2 flex w-full h-full px-16 justify-between items-center"
-            >
-              <div class="w-10 h-10 bg-secondary rounded-full"></div>
-              <div class="w-20 h-20 bg-secondary rounded-full"></div>
-              <div
-                class="w-10 h-10 bg-white border-2 border-secondary rounded-full"
-              ></div>
-            </div>
+            <Bubbles
+              :length="process.stages.length"
+              :displayParam="displayParam"
+            />
           </div>
+
           <!-- Text of states -->
-          <div
-            class="relative mt-5 px-16 flex justify-between items-center text-gray-500 font-medium"
-          >
-            <!-- Last but one state -->
-            <p class="text-xs w-10 text-center">Alegatos de conclusión</p>
-            <!-- Last state -->
-            <p class="text-sm w-20 text-center">Fallo</p>
-            <p class="w-10"></p>
+          <div>
+            <TextStages :stages="process.stages" />
           </div>
         </div>
       </div>
+
       <!-- Process archive -->
       <div class="mt-14">
         <!-- Title and searchbar container -->
@@ -264,6 +260,8 @@
 
 <script setup>
 import SlideBar from "@/components/layouts/SlideBar.vue";
+import Bubbles from "@/components/process/Bubbles.vue";
+import TextStages from "@/components/process/TextStages.vue";
 import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
@@ -276,6 +274,8 @@ import { useRoute } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 
 const route = useRoute();
+const displayParam = route.params.display;
+
 const processStore = useProcessStore();
 
 const processId = route.params.process_id;
@@ -288,5 +288,4 @@ const archive = [
 onMounted(async () => {
   await processStore.fetchProcessesData();
 });
-
 </script>
