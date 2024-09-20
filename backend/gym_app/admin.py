@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile
+from gym_app.models import User, Process, Stage, CaseFile, Case
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -19,9 +19,16 @@ class ProcessAdmin(admin.ModelAdmin):
     """
     list_display = (
         'ref', 'authority', 'plaintiff', 'defendant', 
-        'client', 'lawyer', 'case_type', 'subcase'
+        'client', 'lawyer', 'case', 'subcase'
     )
     filter_horizontal = ('stages', 'case_files')  # This adds a better UI for ManyToMany fields
+
+class CaseAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the Case model.
+    Display all fields of the Case model.
+    """
+    list_display = ('type',)  # Display the type of the case
 
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
@@ -46,7 +53,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'process_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['Process']
+                    if model['object_name'] in ['Process', 'Case']
                 ]
             }
         ]
@@ -59,5 +66,6 @@ admin_site = GyMAdminSite(name='myadmin')
 # Register models with the custom AdminSite
 admin_site.register(User, UserAdmin)
 admin_site.register(Process, ProcessAdmin)
+admin_site.register(Case, CaseAdmin)  # Register Case with CaseAdmin
 admin_site.register(Stage)
 admin_site.register(CaseFile)

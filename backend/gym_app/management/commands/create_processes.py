@@ -1,14 +1,14 @@
 from django.core.management.base import BaseCommand
-from gym_app.models import Process, Stage, CaseFile, User
+from gym_app.models import Process, Stage, CaseFile, User, Case
 import random
 from faker import Faker
 
 class Command(BaseCommand):
-    help = 'Create processes with random stages and files'
+    help = 'Create processes with random stages, files, and cases'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--number_of_processes',  # Use -- para pasar como opción
+            '--number_of_processes',  # Use -- to pass as an option
             type=int,
             help='Indicates the number of processes to be created'
         )
@@ -20,9 +20,18 @@ class Command(BaseCommand):
         clients = User.objects.filter(role='client')
         lawyers = User.objects.filter(role='lawyer')
 
-        for _ in range(number_of_processes):
+        # Create 10 Cases
+        cases = []
+        for i in range(1, 11):
+            case = Case.objects.create(
+                type=f'Case Type {i}'
+            )
+            cases.append(case)
+
+        for index in range(number_of_processes):
             client = random.choice(clients)
             lawyer = random.choice(lawyers)
+            case = random.choice(cases)  # Select a random case
 
             process = Process.objects.create(
                 authority=fake.company(),
@@ -31,7 +40,7 @@ class Command(BaseCommand):
                 ref=fake.uuid4(),
                 client=client,
                 lawyer=lawyer,
-                case_type=random.choice(['Criminal', 'Civil', 'Family']),
+                case=case,  # Assign the random case to the process
                 subcase=fake.bs(),
             )
 
@@ -43,6 +52,14 @@ class Command(BaseCommand):
                     date_created=fake.date_this_year(),
                 )
                 stages.append(stage)
+
+            # For the last 10 processes, add a final stage with status "Fallo"
+            if index >= number_of_processes - 10:
+                stage_fallo = Stage.objects.create(
+                    status='Fallo',
+                    date_created=fake.date_this_year(),
+                )
+                stages.append(stage_fallo)
 
             process.stages.add(*stages)
 

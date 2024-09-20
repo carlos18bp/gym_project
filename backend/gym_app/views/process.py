@@ -41,17 +41,3 @@ def process_list(request):
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def process_detail(request, pk):
-    """
-    API view to retrieve a single process by id (requires authentication).
-    """
-    try:
-        process = Process.objects.get(pk=pk)
-    except Process.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    serializer = ProcessSerializer(process, context={'request': request})
-    return Response(serializer.data, status=status.HTTP_200_OK)
-

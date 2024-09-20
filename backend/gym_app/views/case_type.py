@@ -1,17 +1,17 @@
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models import User
-from gym_app.serializers.user import UserSerializer
+from gym_app.models import Case
+from gym_app.serializers.process import CaseSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def user_list(request):
+def case_list(request):
     """
-    API view to retrieve a list of users (requires authentication).
+    API view to retrieve a list of cases (requires authentication).
     """
-    users = User.objects.all()
-    serializer = UserSerializer(users, many=True, context={'request': request})
+    cases = Case.objects.all()
+    serializer = CaseSerializer(cases, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 

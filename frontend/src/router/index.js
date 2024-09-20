@@ -32,12 +32,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/process_list",
+      path: "/process_list/:display?",
       name: "process_list",
       component: () => import("@/views/process/ProcessList.vue"),
     },
     {
-      path: "/process_detail",
+      path: "/process_detail/:process_id/:display?",
       name: "process_detail",
       component: () => import("@/views/process/ProcessDetail.vue"),
     },

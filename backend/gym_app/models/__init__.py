@@ -1,5 +1,3 @@
 from .user import User
-from .case_file import CaseFile
-from .stage import Stage
-from .process import Process
+from .process import Case, Stage, CaseFile, Process
 from .password_code import PasswordCode

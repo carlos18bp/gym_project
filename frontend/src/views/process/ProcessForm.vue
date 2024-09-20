@@ -18,10 +18,11 @@
               class="block text-base font-medium leading-6 text-primary"
             >
               Dte./Accionante
-              <span class="text-red-500">*</span></label
-            >
+              <span class="text-red-500">*</span>
+            </label>
             <div class="mt-2">
               <input
+                v-model="formData.plaintiff"
                 type="text"
                 name="plaintiff"
                 id="plaintiff"
@@ -40,6 +41,7 @@
             </label>
             <div class="mt-2">
               <input
+                v-model="formData.defendant"
                 type="text"
                 name="defendant"
                 id="defendant"
@@ -65,7 +67,7 @@
                   class="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-10 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   @change="query = $event.target.value"
                   @blur="query = ''"
-                  :display-value="(caseType) => caseType?.name"
+                  :display-value="(caseType) => caseType?.type"
                 />
                 <ComboboxButton
                   class="absolute inset-y-0 right-0 flex items-center gap-2 rounded-r-md px-2 focus:outline-none border-l border-gray-300"
@@ -97,7 +99,7 @@
                       <span
                         :class="['block truncate', selected && 'font-semibold']"
                       >
-                        {{ caseType.name }}
+                        {{ caseType.type }}
                       </span>
 
                       <span
@@ -126,6 +128,7 @@
             </label>
             <div class="mt-2">
               <input
+                v-model="formData.subcase"
                 type="text"
                 name="defendant"
                 id="defendant"
@@ -147,6 +150,7 @@
             </label>
             <div class="mt-2">
               <input
+                v-model="formData.ref"
                 type="text"
                 name="plaintiff"
                 id="plaintiff"
@@ -165,6 +169,7 @@
             </label>
             <div class="mt-2">
               <input
+                v-model="formData.authority"
                 type="text"
                 name="plaintiff"
                 id="plaintiff"
@@ -176,7 +181,7 @@
           <div>
             <Combobox
               as="div"
-              v-model="selectedPerson"
+              v-model="selectedClient"
               @update:modelValue="query = ''"
             >
               <ComboboxLabel
@@ -190,7 +195,12 @@
                   class="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-12 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   @change="query = $event.target.value"
                   @blur="query = ''"
-                  :display-value="(person) => person?.name"
+                  :display-value="
+                    (client) =>
+                      client?.last_name && client?.first_name
+                        ? `${client?.last_name} ${client?.first_name}`
+                        : ''
+                  "
                 />
                 <ComboboxButton
                   class="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none"
@@ -202,13 +212,13 @@
                 </ComboboxButton>
 
                 <ComboboxOptions
-                  v-if="filteredPeople.length > 0"
+                  v-if="filteredClients.length > 0"
                   class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
                 >
                   <ComboboxOption
-                    v-for="person in filteredPeople"
-                    :key="person.id"
-                    :value="person"
+                    v-for="client in filteredClients"
+                    :key="client.id"
+                    :value="client"
                     as="template"
                     v-slot="{ active, selected }"
                   >
@@ -220,7 +230,7 @@
                     >
                       <div class="flex items-center">
                         <img
-                          :src="person.imageUrl"
+                          :src="client.imageUrl"
                           alt=""
                           class="h-6 w-6 flex-shrink-0 rounded-full"
                         />
@@ -230,7 +240,7 @@
                             selected && 'font-semibold',
                           ]"
                         >
-                          {{ person.name }}
+                          {{ client.last_name }} {{ client.first_name }}
                         </span>
                       </div>
 
@@ -282,6 +292,7 @@
         <!-- Save button -->
         <div>
           <button
+            @click="onSubmit"
             type="button"
             class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
           >
@@ -294,8 +305,9 @@
 </template>
 
 <script setup>
+import { submitHandler } from "@/shared/submit_handler";
 import SlideBar from "@/components/layouts/SlideBar.vue";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, reactive } from "vue";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@heroicons/vue/20/solid";
 import {
   Combobox,
@@ -305,40 +317,83 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@headlessui/vue";
+import { useCaseTypeStore } from "@/stores/case_type";
+import { useUserStore } from "@/stores/user";
+import { useAuthStore } from "@/stores/auth";
 
-const caseTypes = [
-  { id: 1, name: "Laboral" },
-  { id: 2, name: "Penal" },
-  { id: 3, name: "Civil" },
-  // More cases ...
-];
+const caseTypeStore = useCaseTypeStore();
+const caseTypes = computed(() => caseTypeStore.caseTypes);
+
+const userStore = useUserStore();
+const clients = computed(() => userStore.clients);
+
+const authStore = useAuthStore();
+
+const formData = reactive({
+  plaintiff: "",
+  defendant: "",
+  caseTypeId: "",
+  subcase: "",
+  ref: "",
+  authority: "",
+  clientId: "",
+  lawyerId: "",
+  states: [],
+  caseFiles: [],
+});
+
+onMounted(async () => {
+  await caseTypeStore.fetchCaseTypesData();
+  await userStore.fetchUsersData();
+});
+
+// Handle form submission
+const onSubmit = async () => {
+  formData.caseTypeId = selectedCaseType.value.id;
+  formData.clientId = selectedClient.value.id;
+  formData.lawyerId = authStore.userAuth.id;
+
+  const success = await submitHandler(
+    formData,
+    "Process information saved successfully!"
+  );
+
+  if (success) resetForm();
+};
+
+const resetForm = () => {
+  formData.plaintiff = "";
+  formData.defendant = "";
+  formData.caseTypeId = "";
+  formData.subcase = "";
+  formData.ref = "";
+  formData.authority = "";
+  formData.clientId = "";
+  formData.lawyerId = "";
+  formData.states = [];
+  formData.caseFiles = [];
+};
 
 const query = ref("");
+
 const selectedCaseType = ref(null);
 const filteredCaseTypes = computed(() =>
   query.value === ""
-    ? caseTypes
-    : caseTypes.filter((caseType) => {
-        return caseType.name.toLowerCase().includes(query.value.toLowerCase());
+    ? caseTypes.value
+    : caseTypes.value.filter((caseType) => {
+        return caseType.type.toLowerCase().includes(query.value.toLowerCase());
       })
 );
 
-const people = [
-  {
-    id: 1,
-    name: "Leslie Alexander",
-    imageUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-  },
-  // More users...
-];
-
-const selectedPerson = ref(null);
-const filteredPeople = computed(() =>
+const selectedClient = ref(null);
+const filteredClients = computed(() =>
   query.value === ""
-    ? people
-    : people.filter((person) => {
-        return person.name.toLowerCase().includes(query.value.toLowerCase());
+    ? clients.value
+    : clients.value.filter((client) => {
+        return ["first_name", "last_name", "identification", "email"].some(
+          (field) =>
+            client[field]?.toLowerCase().includes(query.value.toLowerCase())
+        );
       })
 );
 </script>

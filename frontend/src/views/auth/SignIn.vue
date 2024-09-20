@@ -152,7 +152,7 @@ const userForm = reactive({
 onMounted(() => {
   authStore.attempsSignIn("initial");
   if (authStore.isAuthenticated) {
-    router.push({ name: "profile" }); // Redirect to profile if already authenticated
+    router.push({ name: "process_list" }); // Redirect to process_list if already authenticated
   }
 });
 
@@ -178,7 +178,7 @@ const signInUser = async () => {
       authStore.login(response.data); // Log in the user
 
       showNotification("Sign In successful!", "success");
-      router.push({ name: "profile" }); // Redirect to profile
+      router.push({ name: "process_list" }); // Redirect to process_list
     } catch (error) {
       if (error.response && error.response.status === 401) {
         showNotification("Invalid credentials!", "warning");

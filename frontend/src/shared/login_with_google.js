@@ -17,7 +17,7 @@ export const loginWithGoogle = async (response, router, authStore) => {
         // Log in the user and save the authentication data
         authStore.login(res.data);
         showNotification("Sign In successful!", "success");
-        router.push({ name: 'profile' }); // Redirect to the profile page
+        router.push({ name: 'process_list' }); // Redirect to the process_list page
     } catch (error) {
         handleLoginError(error);
     }
