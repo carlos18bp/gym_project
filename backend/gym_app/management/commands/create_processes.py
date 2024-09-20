@@ -8,7 +8,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--number_of_processes',  # Use -- para pasar como opción
+            '--number_of_processes',  # Use -- to pass as an option
             type=int,
             help='Indicates the number of processes to be created'
         )
@@ -20,7 +20,7 @@ class Command(BaseCommand):
         clients = User.objects.filter(role='client')
         lawyers = User.objects.filter(role='lawyer')
 
-        # Crear 10 Case
+        # Create 10 Cases
         cases = []
         for i in range(1, 11):
             case = Case.objects.create(
@@ -31,7 +31,7 @@ class Command(BaseCommand):
         for index in range(number_of_processes):
             client = random.choice(clients)
             lawyer = random.choice(lawyers)
-            case = random.choice(cases)  # Seleccionar un case aleatorio
+            case = random.choice(cases)  # Select a random case
 
             process = Process.objects.create(
                 authority=fake.company(),
@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 ref=fake.uuid4(),
                 client=client,
                 lawyer=lawyer,
-                case=case,  # Asignar el case aleatorio al proceso
+                case=case,  # Assign the random case to the process
                 subcase=fake.bs(),
             )
 
@@ -53,7 +53,7 @@ class Command(BaseCommand):
                 )
                 stages.append(stage)
 
-            # Para los últimos 10 procesos, añadir una etapa final con estado "fallo"
+            # For the last 10 processes, add a final stage with status "Fallo"
             if index >= number_of_processes - 10:
                 stage_fallo = Stage.objects.create(
                     status='Fallo',
