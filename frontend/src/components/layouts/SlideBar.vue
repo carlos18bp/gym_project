@@ -116,7 +116,7 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                          @click="item.action"
+                          @click="item.action(item)"
                           class="cursor-pointer"
                           :class="[
                             item.current
@@ -141,10 +141,7 @@
                     </ul>
                   </li>
                   <li class="mt-auto">
-                    <a
-                      href="#"
-                      class="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-secondary"
-                    >
+                    <a class="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-secondary">
                       <QuestionMarkCircleIcon
                         class="h-6 w-6 shrink-0 text-gray-400 group-hover:text-secondary"
                         aria-hidden="true"
@@ -232,7 +229,7 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                  @click="item.action"
+                  @click="item.action(item)"
                   class="cursor-pointer"
                   :class="[
                     item.current
@@ -338,8 +335,8 @@
       </div>
     </div>
     <main class="py-10 px-4 flex flex-1 sm:px-6 lg:px-8">
-      <!-- Your content -->
-      <slot></slot>
+      <!-- Content -->
+      <router-view></router-view>
     </main>
   </div>
 </template>
@@ -389,13 +386,19 @@ const logOut = () => {
 const navigation = ref([
   { 
     name: "Procesos", 
-    action: () => router.push({ name: 'process_list' }),
+    action: (item) => {
+      setCurrent(item)
+      router.push({ name: 'process_list' })
+    },
     icon: HomeIcon, 
     current: true 
   },
   { 
     name: "Directorio", 
-    action: () => router.push({ name: 'directory_list' }),
+    action: (item) => {
+      setCurrent(item)
+      router.push({ name: 'directory_list' })
+    },
     icon: FolderIcon, 
     current: false 
   },
@@ -407,7 +410,10 @@ const navigation = ref([
   },
   {
     name: "Radicar Proceso",
-    action: () => router.push({ name: 'process_form' }),
+    action: (item) => {
+      setCurrent(item)
+      router.push({ name: 'process_form' })
+    },
     icon: PencilSquareIcon,
     current: false,
   },
@@ -419,7 +425,10 @@ const navigation = ref([
   },
   { 
     name: "Historial", 
-    action: () => router.push({ name: 'process_list', params: { display: 'history' } }),
+    action: (item) => {
+      setCurrent(item)
+      router.push({ name: 'process_list', params: { display: 'history' } })
+    },
     icon: ClockIcon, 
     current: false 
   },
@@ -437,4 +446,14 @@ const userNavigation = [
 ];
 
 const sidebarOpen = ref(false);
+
+const setCurrent = (item) => {
+  navigation.value.forEach(navItem => {
+    navItem.current = false;
+  });
+
+  item.current = true;
+  console.log(item)
+  console.log(navigation.value)
+};
 </script>
