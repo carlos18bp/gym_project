@@ -1,61 +1,79 @@
 <template>
-  <div>
-    <SlideBar>
-      <div class="flex-1 grid place-items-center">
-        <div
-          v-for="process in processes"
-          :key="process.id"
-          class="w-1/2 p-5 rounded-lg border-2 border-stroke bg-terciary grid"
+  <div
+    class="flex-1 grid place-items-center gap-3"
+    :class="processes.length === 1 ? 'grid-cols-1' : 'grid grid-cols-2'"
+  >
+    <div
+      v-for="process in processes"
+      :key="process.id"
+      :class="[
+        'p-5 rounded-lg border-2 border-stroke bg-terciary grid',
+        processes.length === 1 ? 'w-1/2' : 'w-full',
+      ]"
+    >
+      <!-- Card header -->
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
+          <div class="grid">
+            <h1 class="text-base text-primary font-medium">
+              {{ process.case.type }}
+            </h1>
+            <h2 class="text-sm text-gray-500 font-regular">
+              {{ process.subcase }}
+            </h2>
+          </div>
+        </div>
+        <ChevronUpIcon
+          class="h-6 w-6 cursor-pointer"
+          :class="
+            expandedProcesses.includes(process.id)
+              ? 'transform rotate-180'
+              : 'transform rotate-0'
+          "
+          @click="toggleExpand(process.id)"
         >
-          <!-- Card header -->
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
-              <div class="grid">
-                <h1 class="text-base text-primary font-medium">
-                  {{ process.case_type }}
-                </h1>
-                <h2 class="text-sm text-gray-500 font-regular">
-                  {{ process.subcase }}
-                </h2>
-              </div>
-            </div>
-            <ChevronUpIcon class="h-6 w-6"></ChevronUpIcon>
-          </div>
-          <!-- Relevant information -->
-          <div class="font-medium mt-4 space-y-1">
-            <!-- Authority information -->
-            <div class="flex gap-2">
-              <h3 class="text-base text-primary">Autoridad:</h3>
-              <p class="text-gray-500">
-                {{ process.authority }}
-              </p>
-            </div>
-            <!-- Accionant information -->
-            <div class="flex gap-2">
-              <h3 class="text-base text-primary">Dte./Accionante:</h3>
-              <p class="text-gray-500">{{ process.plaintiff }}</p>
-            </div>
-            <!-- plaintiff information -->
-            <div class="flex gap-2">
-              <h3 class="text-base text-primary">Dte./Accionado:</h3>
-              <p class="text-gray-500">{{ process.defendant }}</p>
-            </div>
-            <!-- Ref information -->
-            <div class="flex gap-2">
-              <h3 class="text-base text-primary">Radicado:</h3>
-              <p class="text-gray-500">{{ process.ref }}</p>
-            </div>
-            <!-- Last stage -->
-            <div class="flex gap-2">
-              <h3 class="text-base text-primary">Etapa Procesal:</h3>
-              <p class="text-gray-500">
-                {{ process.stages[process.stages.length - 1].status }}
-              </p>
-            </div>
-          </div>
-          <!-- Timeline of process state -->
+        </ChevronUpIcon>
+      </div>
 
+      <!-- Content -->
+      <div v-if="expandedProcesses.includes(process.id)">
+        <!-- Relevant information -->
+        <div class="font-medium mt-4 space-y-1">
+          <!-- Authority information -->
+          <div class="flex gap-2">
+            <h3 class="text-base text-primary">Autoridad:</h3>
+            <p class="text-gray-500">
+              {{ process.authority }}
+            </p>
+          </div>
+          <!-- Accionant information -->
+          <div class="flex gap-2">
+            <h3 class="text-base text-primary">Dte./Accionante:</h3>
+            <p class="text-gray-500">{{ process.plaintiff }}</p>
+          </div>
+          <!-- plaintiff information -->
+          <div class="flex gap-2">
+            <h3 class="text-base text-primary">Dte./Accionado:</h3>
+            <p class="text-gray-500">{{ process.defendant }}</p>
+          </div>
+          <!-- Ref information -->
+          <div class="flex gap-2">
+            <h3 class="text-base text-primary">Radicado:</h3>
+            <p class="text-gray-500">{{ process.ref }}</p>
+          </div>
+          <!-- Last stage -->
+          <div class="flex gap-2">
+            <h3 class="text-base text-primary">Etapa Procesal:</h3>
+            <p class="text-gray-500">
+              {{ process.stages[process.stages.length - 1].status }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div>
+          <!-- Timeline of process state -->
           <div class="relative mt-16">
             <!-- Line -->
             <div class="relative">
@@ -100,16 +118,15 @@
           </div>
         </div>
       </div>
-    </SlideBar>
+    </div>
   </div>
 </template>
 
 <script setup>
-import SlideBar from "@/components/layouts/SlideBar.vue";
 import Bubbles from "@/components/process/Bubbles.vue";
 import TextStages from "@/components/process/TextStages.vue";
-import { ChevronUpIcon } from "@heroicons/vue/20/solid";
-import { onMounted, ref, watch } from "vue";
+import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/vue/20/solid";
+import { onBeforeMount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 
@@ -119,9 +136,11 @@ const displayParam = ref("");
 const processStore = useProcessStore();
 const processes = ref([]);
 
-onMounted(async () =>{
+const expandedProcesses = ref([]);
+
+onBeforeMount(async () => {
   displayParam.value = route.params.display;
-  loadProcesses()
+  loadProcesses();
 });
 
 watch(
@@ -139,6 +158,16 @@ const loadProcesses = async () => {
     processes.value = processStore.processesWithClosedStatus;
   } else {
     processes.value = processStore.processesWithoutClosedStatus;
+  }
+};
+
+const toggleExpand = (id) => {
+  if (expandedProcesses.value.includes(id)) {
+    expandedProcesses.value = expandedProcesses.value.filter(
+      (item) => item !== id
+    );
+  } else {
+    expandedProcesses.value.push(id);
   }
 };
 </script>

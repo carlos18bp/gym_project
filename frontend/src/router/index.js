@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { createRouter, createWebHistory } from "vue-router";
+import SlideBar from '@/components/layouts/SlideBar.vue';
 
 // Define the routes for the application
 const router = createRouter({
@@ -33,23 +34,47 @@ const router = createRouter({
     },
     {
       path: "/process_list/:display?",
-      name: "process_list",
-      component: () => import("@/views/process/ProcessList.vue"),
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "process_list",
+          component: () => import("@/views/process/ProcessList.vue")
+        },
+      ],
     },
     {
       path: "/process_detail/:process_id/:display?",
-      name: "process_detail",
-      component: () => import("@/views/process/ProcessDetail.vue"),
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "process_detail",
+          component: () => import("@/views/process/ProcessDetail.vue"),
+        },
+      ],
     },
     {
       path: "/process_form",
-      name: "process_form",
-      component: () => import("@/views/process/ProcessForm.vue"),
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "process_form",
+          component: () => import("@/views/process/ProcessForm.vue"),
+        },
+      ],
     },
     {
       path: "/directory_list",  
-      name: "directory_list",
-      component: () => import("@/views/directory/DirectoryList.vue"),
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "directory_list",
+          component: () => import("@/views/directory/DirectoryList.vue"),
+        },
+      ],
     },
   ],
 });
