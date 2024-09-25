@@ -1,30 +1,8 @@
 <template>
+  <!-- Replacing the old search bar with the new component -->
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
+
   <div class="flex-1">
-    <!-- Search bar container -->
-    <div class="w-full flex justify-end">
-      <!-- Search bar -->
-      <div class="w-full max-w-lg lg:max-w-xs">
-        <label for="search" class="sr-only"> Buscar usuarios </label>
-        <div class="relative">
-          <div
-            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
-          >
-            <MagnifyingGlassIcon
-              class="h-5 w-5 text-gray-400"
-              aria-hidden="true"
-            />
-          </div>
-          <input
-            id="search"
-            name="search"
-            v-model="searchQuery"
-            class="block w-full rounded-md border-0 bg-white py-1.5 pl-10 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-            placeholder="Buscar usuarios"
-            type="search"
-          />
-        </div>
-      </div>
-    </div>
     <!-- Directory by cards -->
     <div>
       <ul role="list" class="divide-y divide-gray-100 grid grid-cols-2">
@@ -75,21 +53,21 @@
 </template>
 
 <script setup>
+import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { computed, onMounted, ref } from "vue";
 import { useUserStore } from "@/stores/user";
-import SlideBar from "@/components/layouts/SlideBar.vue";
-import { ChevronRightIcon, MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
+import { ChevronRightIcon } from "@heroicons/vue/20/solid";
 
 const userStore = useUserStore();
-const users = ref([]);
 const searchQuery = ref("");
 
+// Filter users based on search query
 const filteredUsers = computed(() =>
   userStore.filteredUsers(searchQuery.value)
 );
 
+// Fetch users data on mount
 onMounted(async () => {
   await userStore.fetchUsersData();
-  users.value = userStore.users;
 });
 </script>

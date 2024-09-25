@@ -1,14 +1,17 @@
 <template>
+  <!-- Using the SearchBarAndFilterBy component -->
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
+
   <div
-    class="flex-1 grid place-items-center gap-3"
-    :class="processes.length === 1 ? 'grid-cols-1' : 'grid grid-cols-2'"
+    class="py-10 px-4 sm:px-6 lg:px-8 grid place-items-center gap-3"
+    :class="filteredProcesses.length === 1 ? 'grid-cols-1' : 'grid grid-cols-2'"
   >
     <div
-      v-for="process in processes"
+      v-for="process in filteredProcesses"
       :key="process.id"
       :class="[
         'p-5 rounded-lg border-2 border-stroke bg-terciary grid',
-        processes.length === 1 ? 'w-1/2' : 'w-full',
+        filteredProcesses.length === 1 ? 'w-1/2' : 'w-full',
       ]"
     >
       <!-- Card header -->
@@ -123,10 +126,11 @@
 </template>
 
 <script setup>
+import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import Bubbles from "@/components/process/Bubbles.vue";
 import TextStages from "@/components/process/TextStages.vue";
-import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/vue/20/solid";
-import { onBeforeMount, ref, watch } from "vue";
+import { ChevronUpIcon } from "@heroicons/vue/20/solid";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 
@@ -134,32 +138,29 @@ const route = useRoute();
 const displayParam = ref("");
 
 const processStore = useProcessStore();
-const processes = ref([]);
+
+// Reactive variable for search query
+const searchQuery = ref("");
+
+// Filtered processes based on search query
+const filteredProcesses = computed(() =>
+  processStore.filteredProcesses(searchQuery.value, displayParam.value)
+);
 
 const expandedProcesses = ref([]);
 
 onBeforeMount(async () => {
   displayParam.value = route.params.display;
-  loadProcesses();
+  await processStore.init();
 });
 
 watch(
   () => route.params.display,
   async (newDisplay) => {
     displayParam.value = newDisplay;
-    await loadProcesses();
+    await processStore.init();
   }
 );
-
-const loadProcesses = async () => {
-  await processStore.fetchProcessesData();
-
-  if (displayParam.value == "history") {
-    processes.value = processStore.processesWithClosedStatus;
-  } else {
-    processes.value = processStore.processesWithoutClosedStatus;
-  }
-};
 
 const toggleExpand = (id) => {
   if (expandedProcesses.value.includes(id)) {

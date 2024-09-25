@@ -1,5 +1,8 @@
+import os
 from django.db import models
 from django.conf import settings
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 class Case(models.Model):
     """
@@ -19,14 +22,10 @@ class CaseFile(models.Model):
 
     Attributes:
         file (FileField): The file associated with the case.
-        name (CharField): The name of the file.
         date_uploaded (DateTimeField): The date the file was uploaded.
-        description (TextField): A brief description of the file's content.
     """
     file = models.FileField(upload_to='case_files/', help_text="The file associated with the case.")
-    name = models.CharField(max_length=255, help_text="The name of the file.")
     date_uploaded = models.DateTimeField(auto_now_add=True, help_text="The date the file was uploaded.")
-    description = models.TextField(help_text="A brief description of the file's content.")
 
     def __str__(self):
         """
@@ -35,7 +34,17 @@ class CaseFile(models.Model):
         Returns:
             str: The name of the file.
         """
-        return self.name
+        return os.path.basename(self.file.name)
+    
+# Signal to delete the physical file when the CaseFile object is deleted
+@receiver(post_delete, sender=CaseFile)
+def delete_file(sender, instance, **kwargs):
+    """
+    Deletes the file from the file system when the CaseFile object is deleted.
+    """
+    if instance.file:
+        if os.path.isfile(instance.file.path):
+            os.remove(instance.file.path)
 
 class Stage(models.Model):
     """
@@ -83,6 +92,7 @@ class Process(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="The case type being processed.")
     subcase = models.CharField(max_length=100, help_text="The subcase classification.")
     lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.CASCADE, help_text="The lawyer handling the case.")
+    date_created = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
 
     def __str__(self):
         return self.ref

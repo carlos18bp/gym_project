@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { get_request, create_request } from "./services/request_http";
+import { get_request, create_request, update_request } from "./services/request_http";
 
 export const useProcessStore = defineStore("process", {
   /**
@@ -83,18 +83,130 @@ export const useProcessStore = defineStore("process", {
     },
 
     /**
+     * Filter processes based on search query.
+     * @param {object} state - State.
+     * @returns {function} - Function to filter processes by search query.
+     */
+    filteredProcesses(searchQuery, displayParam) {
+      let processesToFilter = this.processes;
+
+      // Filter based on displayParam
+      if (displayParam === "history") {
+        processesToFilter = this.processesWithClosedStatus;
+      } else {
+        processesToFilter = this.processesWithoutClosedStatus;
+      }
+      if (!searchQuery) return processesToFilter;
+
+      const lowerCaseQuery = searchQuery.toLowerCase();
+
+      // Apply the robust filter logic
+      return processesToFilter.filter((process) => {
+        // Check for match in top-level fields
+        const topLevelMatch = [
+          "plaintiff",
+          "defendant",
+          "authority",
+          "ref",
+          "subcase",
+        ].some((field) =>
+          process[field]?.toLowerCase().includes(lowerCaseQuery)
+        );
+
+        // Check for match in stages array (status field)
+        const stagesMatch = process.stages.some((stage) =>
+          stage.status.toLowerCase().includes(lowerCaseQuery)
+        );
+
+        // Check for match in case_files array (name field)
+        const caseFilesMatch = process.case_files.some((file) =>
+          file.name.toLowerCase().includes(lowerCaseQuery)
+        );
+
+        // Return true if any of the matches are found
+        return topLevelMatch || stagesMatch || caseFilesMatch;
+      });
+    },
+
+    /**
      * Call creation process request.
      * @param {object} formData - Form data.
      */
     async createProcess(formData) {
+      // Create a JSON object for the main form data
+      const mainData = {
+        plaintiff: formData.plaintiff,
+        defendant: formData.defendant,
+        caseTypeId: formData.caseTypeId,
+        subcase: formData.subcase,
+        ref: formData.ref,
+        authority: formData.authority,
+        clientId: formData.clientId,
+        lawyerId: formData.lawyerId,
+        stages: formData.stages, // Now directly an array of objects
+      };
+
+      // Create a FormData object for the request
+      const formDataObject = new FormData();
+      formDataObject.append("mainData", JSON.stringify(mainData)); // Add the main data as a string
+
+      // Add case files separately to FormData
+      formData.caseFiles.forEach((caseFile, index) => {
+        if (caseFile.file) {
+          formDataObject.append(`caseFiles[${index}]`, caseFile.file); // Just add the file without nesting
+        }
+      });
+
       try {
-        let response = await create_request(
-          "create_process/",
-          JSON.stringify(formData)
-        );
+        let response = await create_request("create_process/", formDataObject);
 
         this.dataLoaded = false;
-        await this.fetchReviewsData();
+        await this.fetchProcessesData();
+
+        return response.status;
+      } catch (error) {
+        console.error("Error creating process:", error.message);
+        return null;
+      }
+    },
+
+    /**
+     * Call update process request.
+     * @param {object} formData - Form data.
+     */
+    async updateProcess(formData) {
+      // Create a JSON object for the main form data
+      const mainData = {
+        plaintiff: formData.plaintiff,
+        defendant: formData.defendant,
+        caseTypeId: formData.caseTypeId,
+        subcase: formData.subcase,
+        ref: formData.ref,
+        authority: formData.authority,
+        clientId: formData.clientId,
+        lawyerId: formData.lawyerId,
+        stages: formData.stages, // Directly an array of objects
+        caseFileIds: formData.caseFiles
+          .filter((caseFile) => caseFile.id) // Filter to include only case files with an id
+          .map((caseFile) => caseFile.id) // Map filtered case files to an array of ids
+      };      
+
+      // Create a FormData object for the request
+      const formDataObject = new FormData();
+      formDataObject.append("mainData", JSON.stringify(mainData)); // Add the main data as a string
+
+      // Add the new case files without ID to FormData
+      formData.caseFiles.forEach((caseFile, index) => {
+        if (caseFile.file && !caseFile.id) {
+          formDataObject.append(`caseFiles[${index}]`, caseFile.file); // Just add the file without nesting
+        }
+      });
+
+      try {
+        let response = await update_request(`update_process/${formData.processIdParam}/`, formDataObject);
+
+        this.dataLoaded = false;
+        await this.fetchProcessesData();
 
         return response.status;
       } catch (error) {

@@ -75,7 +75,6 @@ def send_verification_code(request):
                   or an error message if the email is already registered or if email is missing.
     """
     # Get the email from the request data
-    print(request.data)
     email = request.data.get('email')
     
     if not email:

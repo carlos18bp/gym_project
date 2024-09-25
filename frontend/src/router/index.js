@@ -55,7 +55,7 @@ const router = createRouter({
       ],
     },
     {
-      path: "/process_form",
+      path: "/process_form/:action/:process_id?",
       component: SlideBar,
       children: [
         {

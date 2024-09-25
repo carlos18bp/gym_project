@@ -42,7 +42,7 @@ export const useUserStore = defineStore("user", {
       const lowerCaseQuery = searchQuery.toLowerCase();
 
       return state.users.filter((user) =>
-        ["first_name", "last_name", "identification", "email"].some((field) =>
+        ["first_name", "last_name", "identification", "email", "role"].some((field) =>
           user[field]?.toLowerCase().includes(lowerCaseQuery)
         )
       );
