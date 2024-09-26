@@ -83,7 +83,7 @@ class Command(BaseCommand):
             for i in range(num_stages):
                 stage = Stage.objects.create(
                     status=f'Stage {i+1}',
-                    date_created=fake.date_this_year(),
+                    created_at=fake.date_this_year(),
                 )
                 stages.append(stage)
 
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             if index >= number_of_processes - 10:
                 stage_fallo = Stage.objects.create(
                     status='Fallo',
-                    date_created=fake.date_this_year(),
+                    created_at=fake.date_this_year(),
                 )
                 stages.append(stage_fallo)
 

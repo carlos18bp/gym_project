@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from gym_app.models import Case, CaseFile, Stage, Process
 from gym_app.serializers import UserSerializer
-from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.conf import settings
 
 class CaseSerializer(serializers.ModelSerializer):
     class Meta:

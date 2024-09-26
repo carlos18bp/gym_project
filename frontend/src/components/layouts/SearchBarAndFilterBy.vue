@@ -44,10 +44,7 @@
 
 <script setup>
 import { ref, defineEmits } from 'vue';
-import {
-  Bars3Icon,
-  PlusIcon,
-} from "@heroicons/vue/24/outline";
+import { Bars3Icon } from "@heroicons/vue/24/outline";
 import { MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
 
 // Emits definition

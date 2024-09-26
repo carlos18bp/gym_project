@@ -25,7 +25,7 @@ class CaseFile(models.Model):
         date_uploaded (DateTimeField): The date the file was uploaded.
     """
     file = models.FileField(upload_to='case_files/', help_text="The file associated with the case.")
-    date_uploaded = models.DateTimeField(auto_now_add=True, help_text="The date the file was uploaded.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="The date the file was uploaded.")
 
     def __str__(self):
         """
@@ -52,10 +52,10 @@ class Stage(models.Model):
 
     Attributes:
         status (CharField): The current status of the stage.
-        date_created (DateTimeField): The date the stage was created.
+        created_at (DateTimeField): The date the stage was created.
     """
     status = models.CharField(max_length=100, help_text="The current status of the stage.")
-    date_created = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
 
     def __str__(self):
         """
@@ -81,6 +81,7 @@ class Process(models.Model):
         case (ForeignKey): The case type being processed, related to the Case model.
         subcase (CharField): The subcase classification within the main case type.
         lawyer (ForeignKey): The lawyer handling the case, related to the User model.
+        created_at (DateTimeField): The date the process was created.
     """
     authority = models.CharField(max_length=100, help_text="The authority handling the case.")
     plaintiff = models.CharField(max_length=100, help_text="The person initiating the legal action.")
@@ -92,7 +93,7 @@ class Process(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="The case type being processed.")
     subcase = models.CharField(max_length=100, help_text="The subcase classification.")
     lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.CASCADE, help_text="The lawyer handling the case.")
-    date_created = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="The date the process was created.")
 
     def __str__(self):
         return self.ref

@@ -307,12 +307,24 @@ const logOut = () => {
   router.push({ name: 'home' });
 };
 
-const navigation = ref([
+/**
+ * Navigation items for the sidebar menu.
+ *
+ * This array contains objects representing different navigation items in the sidebar menu.
+ * Each object has the following properties:
+ * - `name` {string}: The display name of the navigation item.
+ * - `action` {function|null}: The function to execute when the item is clicked. If `null`, no action is taken.
+ * - `icon` {Component}: The icon component to display next to the navigation item name.
+ * - `current` {boolean}: Indicates if the navigation item is currently active (true) or not (false).
+ *
+ * @constant {Array<Object>}
+ */
+ const navigation = ref([
   { 
     name: "Procesos", 
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_list', params: { display: '' } })
+      setCurrent(item);
+      router.push({ name: 'process_list', params: { display: '' } });
     },
     icon: HomeIcon, 
     current: true 
@@ -320,8 +332,8 @@ const navigation = ref([
   { 
     name: "Directorio", 
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'directory_list' })
+      setCurrent(item);
+      router.push({ name: 'directory_list' });
     },
     icon: FolderIcon, 
     current: false 
@@ -335,8 +347,8 @@ const navigation = ref([
   {
     name: "Radicar Proceso",
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_form', params: { action: 'add' } })
+      setCurrent(item);
+      router.push({ name: 'process_form', params: { action: 'add' } });
     },
     icon: PencilSquareIcon,
     current: false,
@@ -350,14 +362,24 @@ const navigation = ref([
   { 
     name: "Historial", 
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_list', params: { display: 'history' } })
+      setCurrent(item);
+      router.push({ name: 'process_list', params: { display: 'history' } });
     },
     icon: ClockIcon, 
     current: false 
   },
 ]);
 
+/**
+ * User navigation items for the user menu.
+ *
+ * This array contains objects representing different actions available to the user in the user menu.
+ * Each object has the following properties:
+ * - `name` {string}: The display name of the user menu item.
+ * - `action` {function|null}: The function to execute when the item is clicked. If `null`, no action is taken.
+ *
+ * @constant {Array<Object>}
+ */
 const userNavigation = [
   { 
     name: "Your profile", 
@@ -369,8 +391,25 @@ const userNavigation = [
   },
 ];
 
+/**
+ * Boolean reactive variable to control the visibility of the sidebar.
+ *
+ * This variable determines whether the sidebar is open (`true`) or closed (`false`).
+ *
+ * @constant {Ref<boolean>}
+ */
 const sidebarOpen = ref(false);
 
+/**
+ * Sets the current navigation item as active.
+ *
+ * This function iterates through the `navigation` items, setting the `current` property of each item to `false`.
+ * Then, it sets the `current` property of the provided `item` to `true`, marking it as the active navigation item.
+ *
+ * @function setCurrent
+ * @param {Object} item - The navigation item object to set as active.
+ * @returns {void}
+ */
 const setCurrent = (item) => {
   navigation.value.forEach(navItem => {
     navItem.current = false;

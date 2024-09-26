@@ -9,7 +9,7 @@ class UserAdmin(admin.ModelAdmin):
     """
     list_display = (
         'first_name', 'last_name', 'identification', 'marital_status', 
-        'email', 'role', 'birthday', 'contact'
+        'email', 'role', 'birthday', 'contact', 'created_at'
     )
 
 class ProcessAdmin(admin.ModelAdmin):
@@ -19,7 +19,7 @@ class ProcessAdmin(admin.ModelAdmin):
     """
     list_display = (
         'ref', 'authority', 'plaintiff', 'defendant', 
-        'client', 'lawyer', 'case', 'subcase'
+        'client', 'lawyer', 'case', 'subcase', 'created_at'
     )
     filter_horizontal = ('stages', 'case_files')  # This adds a better UI for ManyToMany fields
 

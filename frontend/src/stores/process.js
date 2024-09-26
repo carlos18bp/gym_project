@@ -1,5 +1,9 @@
 import { defineStore } from "pinia";
-import { get_request, create_request, update_request } from "./services/request_http";
+import {
+  get_request,
+  create_request,
+  update_request,
+} from "./services/request_http";
 
 export const useProcessStore = defineStore("process", {
   /**
@@ -113,18 +117,18 @@ export const useProcessStore = defineStore("process", {
           process[field]?.toLowerCase().includes(lowerCaseQuery)
         );
 
+        // Check for match in case type
+        const caseTypeMatch = process.case.type
+          .toLowerCase()
+          .includes(lowerCaseQuery);
+
         // Check for match in stages array (status field)
         const stagesMatch = process.stages.some((stage) =>
           stage.status.toLowerCase().includes(lowerCaseQuery)
         );
 
-        // Check for match in case_files array (name field)
-        const caseFilesMatch = process.case_files.some((file) =>
-          file.name.toLowerCase().includes(lowerCaseQuery)
-        );
-
         // Return true if any of the matches are found
-        return topLevelMatch || stagesMatch || caseFilesMatch;
+        return topLevelMatch || caseTypeMatch || stagesMatch;
       });
     },
 
@@ -188,8 +192,8 @@ export const useProcessStore = defineStore("process", {
         stages: formData.stages, // Directly an array of objects
         caseFileIds: formData.caseFiles
           .filter((caseFile) => caseFile.id) // Filter to include only case files with an id
-          .map((caseFile) => caseFile.id) // Map filtered case files to an array of ids
-      };      
+          .map((caseFile) => caseFile.id), // Map filtered case files to an array of ids
+      };
 
       // Create a FormData object for the request
       const formDataObject = new FormData();
@@ -203,7 +207,10 @@ export const useProcessStore = defineStore("process", {
       });
 
       try {
-        let response = await update_request(`update_process/${formData.processIdParam}/`, formDataObject);
+        let response = await update_request(
+          `update_process/${formData.processIdParam}/`,
+          formDataObject
+        );
 
         this.dataLoaded = false;
         await this.fetchProcessesData();

@@ -5,7 +5,7 @@ import { useProcessStore } from "@/stores/process";
  * Show a success message for create or edit request.
  * @param {object} formData - form data to create or edit a record.
  * @param {string} text_response - text success message.
- * @param {string} redirectUrl - Redirect endpoint.
+ * @param {string} isEditing - flag to define editing mode.
  */
 export async function submitHandler(formData, text_response, isEditing) {
   const processStore = useProcessStore();

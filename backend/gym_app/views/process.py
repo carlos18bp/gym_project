@@ -1,12 +1,12 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+import json
+import traceback
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from gym_app.models import Process, Stage, CaseFile, Case, User
 from gym_app.serializers.process import ProcessSerializer
 from django.shortcuts import get_object_or_404
-import json
-import traceback
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -25,25 +25,26 @@ def process_list(request):
             processes = Process.objects.filter(client=user) \
                 .select_related('client', 'lawyer') \
                 .prefetch_related('stages', 'case_files') \
-                .order_by('-date_created')
+                .order_by('-created_at')
         
         elif user.role == 'Lawyer':
             processes = Process.objects.filter(lawyer=user) \
                 .select_related('client', 'lawyer') \
                 .prefetch_related('stages', 'case_files') \
-                .order_by('-date_created')
+                .order_by('-created_at')
         else:
             # If the user has any other role, return all processes
             processes = Process.objects.all() \
                 .select_related('client', 'lawyer') \
                 .prefetch_related('stages', 'case_files') \
-                .order_by('-date_created')
+                .order_by('-created_at')
 
         serializer = ProcessSerializer(processes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     except Exception as e:
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -92,7 +93,7 @@ def create_process(request):
 
         # Handle Stage instances
         stages_data = main_data.get('stages', [])
-        print("Parsed Stages Data:", stages_data)  # Debugging
+        print("Parsed Stages Data:", stages_data)
 
         # Create and add stages to process
         for stage_data in stages_data:
@@ -104,7 +105,7 @@ def create_process(request):
 
         # Handle CaseFile instances (files sent separately)
         files = request.FILES
-        print("Files Received:", files)  # Debugging
+        print("Files Received:", files)
 
         for key, file in files.items():
             if key.startswith('caseFiles['):  # Ensure we're handling caseFiles
@@ -123,7 +124,6 @@ def create_process(request):
     except Exception as e:
         print("Error Traceback:", traceback.format_exc())
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 @api_view(['PUT', 'PATCH'])

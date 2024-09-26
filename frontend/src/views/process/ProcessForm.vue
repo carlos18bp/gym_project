@@ -572,8 +572,17 @@ function assignProcessToFormData(process) {
   isFormModified.value = false; // Reset to false after initial assignment
 }
 
-// Method to validate the form data
-const validateFormData = () => {
+/**
+ * Validates the form data before submission.
+ *
+ * This function checks the fields of the form data to ensure that they contain valid information.
+ * It also verifies that each case file has a file attached; if any file is missing, it shows a warning
+ * using a Swal (SweetAlert) modal and returns `false` to indicate that the validation failed.
+ *
+ * @function validateFormData
+ * @returns {boolean} - Returns `true` if all fields are valid; otherwise, `false`.
+ */
+ const validateFormData = () => {
   // Create a list of field names and their corresponding values
   const fields = {
     Accionante: formData.plaintiff,
@@ -601,7 +610,17 @@ const validateFormData = () => {
   return true; // All fields are valid
 };
 
-// Handle form submission
+/**
+ * Handles the form submission process.
+ *
+ * This function updates form data with selected values, validates the form,
+ * and if valid, calls the `submitHandler` function to save the data. 
+ * Upon successful submission, it navigates to the process list view.
+ *
+ * @async
+ * @function onSubmit
+ * @returns {void}
+ */
 const onSubmit = async () => {
   formData.caseTypeId = selectedCaseType.value.id;
   formData.clientId = selectedClient.value.id;
@@ -617,9 +636,32 @@ const onSubmit = async () => {
   }
 };
 
+/**
+ * Search query for filtering case types or clients.
+ *
+ * This reactive reference stores the search query entered by the user.
+ *
+ * @constant {Ref<string>}
+ */
 const query = ref("");
 
+/**
+ * The currently selected case type.
+ *
+ * This reactive reference stores the case type selected by the user.
+ *
+ * @constant {Ref<Object|null>}
+ */
 const selectedCaseType = ref(null);
+
+/**
+ * Filters the list of case types based on the search query.
+ *
+ * If the `query` is empty, all case types are returned.
+ * Otherwise, it filters the case types to include only those whose type matches the query.
+ *
+ * @constant {ComputedRef<Array>}
+ */
 const filteredCaseTypes = computed(() =>
   query.value === ""
     ? caseTypes.value
@@ -628,7 +670,24 @@ const filteredCaseTypes = computed(() =>
       })
 );
 
+/**
+ * The currently selected client.
+ *
+ * This reactive reference stores the client selected by the user.
+ *
+ * @constant {Ref<Object|null>}
+ */
 const selectedClient = ref(null);
+
+/**
+ * Filters the list of clients based on the search query.
+ *
+ * If the `query` is empty, all clients are returned.
+ * Otherwise, it filters the clients to include only those whose `first_name`, `last_name`,
+ * `identification`, or `email` match the query.
+ *
+ * @constant {ComputedRef<Array>}
+ */
 const filteredClients = computed(() =>
   query.value === ""
     ? clients.value
@@ -640,28 +699,68 @@ const filteredClients = computed(() =>
       })
 );
 
-// Method to delete a stage
+/**
+ * Adds a new stage to the form data.
+ *
+ * This function appends an empty stage object to the `formData.stages` array.
+ *
+ * @function addStage
+ * @returns {void}
+ */
 const addStage = () => {
   formData.stages.push({ status: "" });
 };
 
-// Method to add a new stage
+/**
+ * Deletes a stage from the form data by its index.
+ *
+ * This function removes a stage from the `formData.stages` array based on the provided index.
+ *
+ * @function deleteStage
+ * @param {number} index - The index of the stage to be removed.
+ * @returns {void}
+ */
 const deleteStage = (index) => {
   formData.stages.splice(index, 1);
 };
 
-// Method to handle file input change
+/**
+ * Handles the file input change event for case files.
+ *
+ * This function updates the `file` property of the case file at the specified index
+ * with the selected file from the input event.
+ *
+ * @function handleFileUpload
+ * @param {Event} event - The file input change event.
+ * @param {number} index - The index of the case file to be updated.
+ * @returns {void}
+ */
 const handleFileUpload = (event, index) => {
   const file = event.target.files[0];
   formData.caseFiles[index].file = file;
 };
 
-// Method to add a new case file input group
+/**
+ * Adds a new case file input group to the form data.
+ *
+ * This function appends a new case file object with an empty file property to the `formData.caseFiles` array.
+ *
+ * @function addCaseFile
+ * @returns {void}
+ */
 const addCaseFile = () => {
   formData.caseFiles.push({ file: null, id: '' });
 };
 
-// Method to remove a case file input group
+/**
+ * Removes a case file input group from the form data by its index.
+ *
+ * This function removes a case file from the `formData.caseFiles` array based on the provided index.
+ *
+ * @function removeCaseFile
+ * @param {number} index - The index of the case file to be removed.
+ * @returns {void}
+ */
 const removeCaseFile = (index) => {
   formData.caseFiles.splice(index, 1);
 };

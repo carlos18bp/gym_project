@@ -8,7 +8,6 @@ from django.contrib.auth.hashers import make_password
 from gym_app.serializers.user import UserSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-
 from rest_framework_simplejwt.tokens import RefreshToken
 
 @api_view(['POST'])
@@ -374,4 +373,3 @@ def verify_passcode_and_reset_password(request):
 
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-

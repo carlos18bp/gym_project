@@ -162,6 +162,17 @@ watch(
   }
 );
 
+/**
+ * Toggles the expansion state of a process by its ID.
+ *
+ * This function checks if the given `id` is present in the `expandedProcesses` array.
+ * If the `id` is already present, it removes the `id` from the array, collapsing the process.
+ * If the `id` is not present, it adds the `id` to the array, expanding the process.
+ *
+ * @function toggleExpand
+ * @param {number|string} id - The unique identifier of the process to toggle.
+ * @returns {void}
+ */
 const toggleExpand = (id) => {
   if (expandedProcesses.value.includes(id)) {
     expandedProcesses.value = expandedProcesses.value.filter(

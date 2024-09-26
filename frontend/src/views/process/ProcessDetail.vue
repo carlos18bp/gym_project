@@ -144,7 +144,7 @@
                   <td
                     class="whitespace-nowrap w-2/5 px-3 py-4 text-sm text-primary"
                   >
-                    {{ caseFile.date_uploaded }}
+                    {{ convertToBogotaTime(caseFile.created_at) }}
                   </td>
                   <!-- Actions buttons -->
                   <td
@@ -261,7 +261,6 @@ const currentUser = computed(() => userStore.userById(authStore.userAuth.id));
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
 
-// Fetch process data on component mount
 onBeforeMount(async () => {
   await processStore.init();
   await userStore.init();
@@ -362,5 +361,39 @@ const downloadFile = async (fileUrl) => {
   } catch (error) {
     console.error("An error occurred while downloading the file:", error);
   }
+};
+
+/**
+ * Converts an ISO date string to a formatted date and time string in the Bogota, Colombia time zone.
+ *
+ * @param {string} isoDateString - The ISO date string to be converted, e.g., "2024-09-25T23:56:28.630717Z".
+ * @returns {string} - The formatted date and time string in the format "YYYY-MM-DD HH:mm:ss hora Bogotá Colombia".
+ * 
+ * @example
+ * const isoDateString = "2024-09-25T23:56:28.630717Z";
+ * const bogotaTime = convertToBogotaTime(isoDateString);
+ * console.log(bogotaTime); // Output: "2024-09-25 18:56:28 hora Bogotá Colombia"
+ */
+ const convertToBogotaTime = (isoDateString) => {
+  // Crear un objeto Date a partir de la cadena ISO
+  const date = new Date(isoDateString);
+  
+  // Convertir a la hora de Bogotá (America/Bogota) usando toLocaleString
+  const options = {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false, // Usar formato de 24 horas
+  };
+
+  // Formatear la fecha y hora en la zona horaria de Bogotá
+  const formattedDate = date.toLocaleString("en-CA", options);
+
+  // Retornar la fecha en el formato deseado
+  return formattedDate
 };
 </script>
