@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { get_request } from "./services/request_http";
+import { useAuthStore } from "./auth"; // Asegúrate de importar el store de auth
 
 export const useUserStore = defineStore("user", {
   /**
@@ -8,8 +9,8 @@ export const useUserStore = defineStore("user", {
    */
   state: () => ({
     users: [],
-    currentUser: null,
     dataLoaded: false,
+    currentUser: null, // Definimos currentUser en el estado
   }),
 
   getters: {
@@ -32,19 +33,13 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
-     * Filter users based on search query.
+     * Get users with role of 'client' and 'lawyer'.
      * @param {object} state - State.
-     * @returns {function} - Function to filter users by search query.
+     * @returns {array} - List of users with 'client' and 'lawyer' role.
      */
-    filteredUsers: (state) => (searchQuery) => {
-      if (!searchQuery) return state.users;
-
-      const lowerCaseQuery = searchQuery.toLowerCase();
-
-      return state.users.filter((user) =>
-        ["first_name", "last_name", "identification", "email", "role"].some((field) =>
-          user[field]?.toLowerCase().includes(lowerCaseQuery)
-        )
+    clientsAndLawyers: (state) => {
+      return state.users.filter(
+        (user) => user.role == "client" || user.role == "lawyer"
       );
     },
 
@@ -85,6 +80,7 @@ export const useUserStore = defineStore("user", {
 
         this.users = jsonData ?? [];
         this.dataLoaded = true;
+        this.setCurrentUser();
       } catch (error) {
         console.error("Error fetching users data:", error.message);
         this.users = [];
@@ -93,11 +89,28 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
-     * Set the current authenticated user.
-     * @param {object} user - User object.
+     * Set the current user based on authenticated user's ID.
      */
-    setCurrentUser(user) {
-      this.currentUser = user;
+    setCurrentUser() {
+      const authStore = useAuthStore(); // Usar el store de auth
+      this.currentUser = this.userById(authStore.userAuth.id) || null; // Asignar el usuario autenticado a currentUser
+    },
+
+    /**
+     * Filter users based on search query.
+     * @param {object} state - State.
+     * @returns {function} - Function to filter users by search query.
+     */
+    filteredUsers(searchQuery) {
+      if (!searchQuery) return this.clientsAndLawyers;
+
+      const lowerCaseQuery = searchQuery.toLowerCase();
+
+      return this.clientsAndLawyers.filter((user) =>
+        ["first_name", "last_name", "identification", "email", "role"].some(
+          (field) => user[field]?.toLowerCase().includes(lowerCaseQuery)
+        )
+      );
     },
   },
 });

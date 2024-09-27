@@ -66,7 +66,7 @@ AUTH_USER_MODEL = 'gym_app.User'
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
 }
 
 ROOT_URLCONF = 'gym_project.urls'

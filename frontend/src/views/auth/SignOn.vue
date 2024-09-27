@@ -159,7 +159,13 @@ const emailUsedToSentPasscode = ref("");
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    router.push({ name: "process_list" }); // Redirect to process_list if already authenticated
+    router.push({
+      name: "process_list",
+      params: {
+        user_id: userId,
+        display: "",
+      },
+    }); // Redirect to process_list if already authenticated
   }
 });
 
@@ -222,7 +228,13 @@ const signOnUser = async () => {
     authStore.login(response.data); // Log in the user
 
     showNotification("Sign On successful!", "success");
-    router.push({ name: "process_list" }); // Redirect to process_list
+    router.push({
+      name: "process_list",
+      params: {
+        user_id: userId,
+        display: "",
+      },
+    }); // Redirect to process_list
   } else {
     showNotification("Code is not valid", "warning");
   }

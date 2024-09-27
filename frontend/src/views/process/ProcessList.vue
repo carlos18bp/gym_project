@@ -3,19 +3,19 @@
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
 
   <div
-    class="py-10 px-4 sm:px-6 lg:px-8 grid place-items-center gap-3"
-    :class="filteredProcesses.length === 1 ? 'grid-cols-1' : 'grid grid-cols-2'"
+    v-if="filteredProcesses.length"
+    class="py-10 px-4 sm:px-6 lg:px-8 grid place-items-center gap-3 grid-cols-1"
   >
     <div
       v-for="process in filteredProcesses"
       :key="process.id"
-      :class="[
-        'p-5 rounded-lg border-2 border-stroke bg-terciary grid',
-        filteredProcesses.length === 1 ? 'w-1/2' : 'w-full',
-      ]"
+      class="p-5 rounded-lg border-2 border-stroke bg-terciary grid w-full"
     >
       <!-- Card header -->
-      <div class="flex items-center justify-between gap-3">
+      <div
+        class="flex items-center justify-between gap-3 cursor-pointer"
+        @click="toggleExpand(process.id)"
+      >
         <div class="flex items-center gap-3">
           <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
           <div class="grid">
@@ -34,7 +34,6 @@
               ? 'transform rotate-180'
               : 'transform rotate-0'
           "
-          @click="toggleExpand(process.id)"
         >
         </ChevronUpIcon>
       </div>
@@ -123,6 +122,10 @@
       </div>
     </div>
   </div>
+  <div v-else-if="user" class="flex justify-center m-6">
+      No existen procesos para el usuario {{ user.first_name }}
+      {{ user.last_name }} identificada con C.C. {{ user.identification }}
+  </div>
 </template>
 
 <script setup>
@@ -132,33 +135,59 @@ import TextStages from "@/components/process/TextStages.vue";
 import { ChevronUpIcon } from "@heroicons/vue/20/solid";
 import { computed, onBeforeMount, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useUserStore } from "@/stores/user";
 import { useProcessStore } from "@/stores/process";
 
 const route = useRoute();
+const userIdParam = ref("");
 const displayParam = ref("");
 
+const userStore = useUserStore();
 const processStore = useProcessStore();
+
+const user = ref(null);
+const isClient = ref(true);
 
 // Reactive variable for search query
 const searchQuery = ref("");
 
 // Filtered processes based on search query
-const filteredProcesses = computed(() =>
-  processStore.filteredProcesses(searchQuery.value, displayParam.value)
-);
+const filteredProcesses = computed(() => {
+  return processStore.filteredProcesses(
+    searchQuery.value,
+    isClient.value,
+    userIdParam.value,
+    displayParam.value
+  );
+});
 
 const expandedProcesses = ref([]);
 
 onBeforeMount(async () => {
-  displayParam.value = route.params.display;
   await processStore.init();
+  userIdParam.value = route.params.user_id;
+  displayParam.value = route.params.display;
+
+  if (userIdParam.value) {
+    await userStore.init();
+    user.value = userStore.userById(userIdParam.value);
+    isClient.value = !!(user.value.role == "client");
+  }
 });
+
+watch(
+  () => route.params.user_id,
+  async (newUserId) => {
+    userIdParam.value = newUserId;
+    displayParam.value = route.params.display;
+  }
+);
 
 watch(
   () => route.params.display,
   async (newDisplay) => {
+    userIdParam.value = route.params.user_id;
     displayParam.value = newDisplay;
-    await processStore.init();
   }
 );
 

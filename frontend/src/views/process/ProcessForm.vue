@@ -336,7 +336,7 @@
       <div>
         <!-- Title and button add container -->
         <div class="flex items-center gap-3 font-medium">
-          <p class="inline-block text-base text-primary">Expediente</p>
+          <p class="inline-block text-base text-primary">Documento</p>
           <button
             @click="addCaseFile"
             class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background"
@@ -354,7 +354,9 @@
               <table class="min-w-full divide-y divide-gray-300">
                 <thead>
                   <tr class="text-left text-base font-regular text-primary">
-                    <th scope="col" class="py-3.5 pr-3 w-3/5">Descripción</th>
+                    <th scope="col" class="py-3.5 pr-3 w-3/5">
+                      Documentos Cargados
+                    </th>
                     <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
                   </tr>
                 </thead>
@@ -394,7 +396,7 @@
                       class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
                     >
                       <!-- See file -->
-                      <button>
+                      <button @click="openFile(caseFile.file)">
                         <EyeIcon class="h-7 w-7 text-primary"></EyeIcon>
                       </button>
                       <!-- Delete file -->
@@ -527,6 +529,16 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => route.params.action, 
+  (newValue) => {
+    if (newValue === "add") {
+      resetForm();
+    }
+  }
+);
+
+
 /**
  * Función para comparar dos objetos profundamente.
  * @param {object} obj1 - El primer objeto a comparar.
@@ -539,7 +551,9 @@ function deepEqual(obj1, obj2) {
 
 // Computed property to enable/disable the save button
 const isSaveButtonEnabled = computed(() => {
-  return (actionParam.value == 'add') ? true :  programIdParam.value && isFormModified.value;
+  return actionParam.value == "add"
+    ? true
+    : programIdParam.value && isFormModified.value;
 });
 
 /**
@@ -582,7 +596,7 @@ function assignProcessToFormData(process) {
  * @function validateFormData
  * @returns {boolean} - Returns `true` if all fields are valid; otherwise, `false`.
  */
- const validateFormData = () => {
+const validateFormData = () => {
   // Create a list of field names and their corresponding values
   const fields = {
     Accionante: formData.plaintiff,
@@ -593,14 +607,41 @@ function assignProcessToFormData(process) {
     Autoridad: formData.authority,
     Cliente: formData.clientId,
     Abogado: formData.lawyerId,
-    "Estado de la Etapa Procesal": formData.stages[0].status, // If you have multiple stages, iterate over them
   };
+
+  // Check if any of the basic fields are empty or null
+  for (const [fieldName, value] of Object.entries(fields)) {
+    if (!value || String(value).trim() === "") {
+      Swal.fire({
+        title: "Campo requerido!",
+        text: `El campo "${fieldName}" es obligatorio.`,
+        icon: "warning",
+      });
+      return false;
+    }
+  }
+
+  // Check each stage to ensure they have a valid status
+  for (const [index, stage] of formData.stages.entries()) {
+    if (!stage.status || stage.status.trim() === "") {
+      Swal.fire({
+        title: "Estado requerido!",
+        text: `El estado de la etapa procesal en la fila ${
+          index + 1
+        } es obligatorio o debe ser eliminado si no es necesario.`,
+        icon: "warning",
+      });
+      return false;
+    }
+  }
 
   for (const [index, caseFile] of formData.caseFiles.entries()) {
     if (!caseFile.file) {
       Swal.fire({
         title: "Archivo requerido!",
-        text: `El archivo en la fila ${index + 1} es obligatorio o debe ser eliminado si no es necesario.`,
+        text: `El archivo en la fila ${
+          index + 1
+        } es obligatorio o debe ser eliminado si no es necesario.`,
         icon: "warning",
       });
       return false;
@@ -614,7 +655,7 @@ function assignProcessToFormData(process) {
  * Handles the form submission process.
  *
  * This function updates form data with selected values, validates the form,
- * and if valid, calls the `submitHandler` function to save the data. 
+ * and if valid, calls the `submitHandler` function to save the data.
  * Upon successful submission, it navigates to the process list view.
  *
  * @async
@@ -622,9 +663,9 @@ function assignProcessToFormData(process) {
  * @returns {void}
  */
 const onSubmit = async () => {
-  formData.caseTypeId = selectedCaseType.value.id;
-  formData.clientId = selectedClient.value.id;
-  formData.lawyerId = authStore.userAuth.id;
+  formData.caseTypeId = selectedCaseType.value?.id || '';
+  formData.clientId = selectedClient.value?.id || '';
+  formData.lawyerId = authStore.userAuth?.id || '';
 
   if (validateFormData()) {
     await submitHandler(
@@ -632,7 +673,7 @@ const onSubmit = async () => {
       "Process information saved successfully!",
       !!programIdParam.value
     );
-    router.push({ name: 'process_list', params: { display: '' } });
+    router.push({ name: "process_list", params: { user_id: '', display: "" } });
   }
 };
 
@@ -749,8 +790,13 @@ const handleFileUpload = (event, index) => {
  * @returns {void}
  */
 const addCaseFile = () => {
-  formData.caseFiles.push({ file: null, id: '' });
+  formData.caseFiles.push({ file: null, id: "" });
 };
+
+// Open file in new tab
+function openFile(fileUrl) {
+  window.open(fileUrl, "_blank");
+}
 
 /**
  * Removes a case file input group from the form data by its index.
@@ -763,5 +809,26 @@ const addCaseFile = () => {
  */
 const removeCaseFile = (index) => {
   formData.caseFiles.splice(index, 1);
+};
+
+const resetForm = () => {
+  formData.plaintiff = "";
+  formData.defendant = "";
+  formData.caseTypeId = "";
+  formData.subcase = "";
+  formData.ref = "";
+  formData.authority = "";
+  formData.clientId = "";
+  formData.lawyerId = "";
+  formData.stages = [
+    {
+      status: "",
+    },
+  ];
+  formData.caseFiles = [
+    {
+      file: null,
+    },
+  ];
 };
 </script>

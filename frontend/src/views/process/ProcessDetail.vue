@@ -78,7 +78,7 @@
           <!-- Bubbles -->
           <Bubbles
             :length="process.stages.length"
-            :displayParam="''"
+            :displayParam="'history'"
           />
         </div>
 
@@ -136,13 +136,13 @@
                 <tr v-for="caseFile in paginatedCaseFiles" :key="caseFile.id">
                   <!-- File descripction -->
                   <td
-                    class="w-2/5 py-4 pr-3 text-sm font-medium text-primary sm:pl-0 break-words"
+                    class="w-2/5 py-4 pr-3 text-sm font-medium text-stone-700 sm:pl-0 break-words"
                   >
                     {{ getFileName(caseFile.file) }}
                   </td>
                   <!-- Date (The same it was created or edited) -->
                   <td
-                    class="whitespace-nowrap w-2/5 px-3 py-4 text-sm text-primary"
+                    class="whitespace-nowrap w-2/5 px-3 py-4 text-sm text-stone-700"
                   >
                     {{ convertToBogotaTime(caseFile.created_at) }}
                   </td>
@@ -153,14 +153,14 @@
                     <!-- Download file -->
                     <button @click="downloadFile(caseFile.file)">
                       <ArrowDownTrayIcon
-                        class="h-5 w-5 text-primary"
+                        class="h-5 w-5"
                         aria-hidden="true"
                       ></ArrowDownTrayIcon>
                     </button>
                     <!-- See file in another pad -->
                     <button @click="openFile(caseFile.file)">
                       <EyeIcon
-                        class="h-5 w-5 text-primary"
+                        class="h-5 w-5"
                         aria-hidden="true"
                       ></EyeIcon>
                     </button>
@@ -246,16 +246,14 @@ import { EyeIcon } from "@heroicons/vue/24/outline";
 import { computed, onBeforeMount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
-import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 
 // Route and store
 const route = useRoute();
 const router = useRouter();
 const processStore = useProcessStore();
-const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
-const currentUser = computed(() => userStore.userById(authStore.userAuth.id));
+const currentUser = computed(() => userStore.currentUser);
 
 // Get process ID from route and fetch process data
 const processId = route.params.process_id;

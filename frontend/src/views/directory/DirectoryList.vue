@@ -11,7 +11,10 @@
           :key="user.id"
           class="relative flex justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 sm:px-6 lg:px-8"
         >
-          <div class="flex min-w-0 gap-x-4 cursor-pointer">
+          <div
+            class="flex min-w-0 gap-x-4 cursor-pointer"
+            @click="navigateToProcessList(user.id)"
+          >
             <img
               class="h-12 w-12 flex-none rounded-full bg-gray-50"
               v-if="user.photo_profile"
@@ -29,6 +32,9 @@
                 <a>
                   <span class="absolute inset-x-0 -top-px bottom-0" />
                   {{ user.last_name }} {{ user.first_name }}
+                  <span class=" text-gray-400">
+                    ({{ user.role == "client" ? "Cliente" : "Abogado" }})
+                  </span>
                 </a>
               </p>
               <p class="mt-1 flex text-xs leading-5 text-gray-500">
@@ -53,11 +59,13 @@
 </template>
 
 <script setup>
+import { useRouter } from "vue-router";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { computed, onMounted, ref } from "vue";
 import { useUserStore } from "@/stores/user";
 import { ChevronRightIcon } from "@heroicons/vue/20/solid";
 
+const router = useRouter();
 const userStore = useUserStore();
 const searchQuery = ref("");
 
@@ -68,6 +76,20 @@ const filteredUsers = computed(() =>
 
 // Fetch users data on mount
 onMounted(async () => {
-  await userStore.fetchUsersData();
+  await userStore.init();
 });
+
+/**
+ * Navigates to the process list view for a specific user.
+ *
+ * This method is used to navigate to the "process_list" view, passing the user ID
+ * as a parameter to display processes associated with the selected user.
+ *
+ * @function navigateToProcessList
+ * @param {number|string} userId - The ID of the user for whom the processes are to be displayed.
+ * @returns {void}
+ */
+const navigateToProcessList = (userId) => {
+  window.location.href = `${window.location.origin}/process_list/${userId}`;
+};
 </script>

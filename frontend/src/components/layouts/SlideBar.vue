@@ -73,7 +73,8 @@
                           <span
                             class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                             aria-hidden="true"
-                            >Tom Cook</span
+                            >{{ currentUser.first_name }}
+                            {{ currentUser.last_name }}</span
                           >
                           <ChevronDownIcon
                             class="ml-2 h-5 w-5 text-gray-400"
@@ -104,7 +105,7 @@
                                 active ? 'bg-gray-50' : '',
                                 'block px-3 py-1 text-sm leading-6 text-gray-900',
                               ]"
-                              >
+                            >
                               {{ item.name }}
                             </a>
                           </MenuItem>
@@ -116,7 +117,9 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                          @click="item.action(item)"
+                        :href="item.href || 'javascript:void(0)'"
+                        :target="item.target || null" 
+                        @click="!item.href && item.action(item)" 
                           class="cursor-pointer"
                           :class="[
                             item.current
@@ -178,7 +181,8 @@
                   <span
                     class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                     aria-hidden="true"
-                    >Tom Cook</span
+                    >{{ currentUser.first_name }}
+                    {{ currentUser.last_name }}</span
                   >
                   <ChevronDownIcon
                     class="ml-2 h-5 w-5 text-gray-400"
@@ -220,7 +224,9 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                  @click="item.action(item)"
+                :href="item.href || 'javascript:void(0)'"
+                :target="item.target || null" 
+                @click="!item.href && item.action(item)" 
                   class="cursor-pointer"
                   :class="[
                     item.current
@@ -241,6 +247,7 @@
                   />
                   {{ item.name }}
                 </a>
+                
               </li>
             </ul>
           </li>
@@ -258,7 +265,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import {
   Dialog,
   DialogPanel,
@@ -279,7 +286,7 @@ import {
   ClockIcon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
-import { useRouter } from 'vue-router';
+import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
@@ -287,14 +294,17 @@ import { googleLogout } from "vue3-google-login";
 const router = useRouter();
 const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
+const currentUser = reactive({});
 
 onMounted(async () => {
   await userStore.init();
-  const currentUser = userStore.userById(authStore.userAuth.id);
-  
+  Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
+
   // Filter out the "Radicar Proceso" option if the user role is "client"
-  if (currentUser.role == 'client') {
-    navigation.value = navigation.value.filter(navItem => navItem.name !== 'Radicar Proceso');
+  if (currentUser.role == "client") {
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+    );
   }
 });
 
@@ -304,7 +314,7 @@ onMounted(async () => {
 const logOut = () => {
   authStore.logout(); // Log out from the auth store
   googleLogout(); // Log out from Google
-  router.push({ name: 'home' });
+  router.push({ name: "home" });
 };
 
 /**
@@ -319,36 +329,36 @@ const logOut = () => {
  *
  * @constant {Array<Object>}
  */
- const navigation = ref([
-  { 
-    name: "Procesos", 
+const navigation = ref([
+  {
+    name: "Procesos",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: 'process_list', params: { display: '' } });
+      router.push({ name: "process_list", params: { user_id: '', display: '' } });
     },
-    icon: HomeIcon, 
-    current: true 
+    icon: HomeIcon,
+    current: true,
   },
-  { 
-    name: "Directorio", 
+  {
+    name: "Directorio",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: 'directory_list' });
+      router.push({ name: "directory_list" });
     },
-    icon: FolderIcon, 
-    current: false 
+    icon: FolderIcon,
+    current: false,
   },
-  { 
-    name: "Agenda", 
+  {
+    name: "Agenda",
     action: null,
-    icon: CalendarIcon, 
-    current: false 
+    icon: CalendarIcon,
+    current: false,
   },
   {
     name: "Radicar Proceso",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: 'process_form', params: { action: 'add' } });
+      router.push({ name: "process_form", params: { action: "add", process_id: '' } });
     },
     icon: PencilSquareIcon,
     current: false,
@@ -356,17 +366,19 @@ const logOut = () => {
   {
     name: "Chat",
     action: null,
+    href: "https://wa.me/message/XR7PDKOQS3R6A1",
+    target: "_blank",
     icon: ChatBubbleOvalLeftEllipsisIcon,
     current: false,
   },
-  { 
-    name: "Historial", 
+  {
+    name: "Historial",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: 'process_list', params: { display: 'history' } });
+      router.push({ name: "process_list", params: { user_id: '', display: "history" } });
     },
-    icon: ClockIcon, 
-    current: false 
+    icon: ClockIcon,
+    current: false,
   },
 ]);
 
@@ -381,13 +393,13 @@ const logOut = () => {
  * @constant {Array<Object>}
  */
 const userNavigation = [
-  { 
-    name: "Your profile", 
+  {
+    name: "Your profile",
     action: null,
   },
-  { 
-    name: "Sign out", 
-    action: logOut, 
+  {
+    name: "Sign out",
+    action: logOut,
   },
 ];
 
@@ -411,7 +423,7 @@ const sidebarOpen = ref(false);
  * @returns {void}
  */
 const setCurrent = (item) => {
-  navigation.value.forEach(navItem => {
+  navigation.value.forEach((navItem) => {
     navItem.current = false;
   });
 

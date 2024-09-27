@@ -33,7 +33,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/process_list/:display?",
+      path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [
         {
