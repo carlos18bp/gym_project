@@ -33,7 +33,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/process_list/:display?",
+      path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [
         {
@@ -55,7 +55,7 @@ const router = createRouter({
       ],
     },
     {
-      path: "/process_form",
+      path: "/process_form/:action/:process_id?",
       component: SlideBar,
       children: [
         {

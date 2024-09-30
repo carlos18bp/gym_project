@@ -26,6 +26,7 @@
               name="plaintiff"
               id="plaintiff"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+              required
             />
           </div>
         </div>
@@ -45,6 +46,7 @@
               name="defendant"
               id="defendant"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+              required
             />
           </div>
         </div>
@@ -132,6 +134,7 @@
               name="defendant"
               id="defendant"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+              required
             />
           </div>
         </div>
@@ -154,6 +157,7 @@
               name="plaintiff"
               id="plaintiff"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+              required
             />
           </div>
         </div>
@@ -173,6 +177,7 @@
               name="plaintiff"
               id="plaintiff"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+              required
             />
           </div>
         </div>
@@ -266,6 +271,7 @@
             <span class="text-red-500">*</span>
           </p>
           <button
+            @click="addStage"
             class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background"
           >
             <PlusIcon class="h-5 w-5" />
@@ -286,25 +292,37 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                  <tr>
-                    <!-- Stage descripction -->
+                  <tr v-for="(stage, index) in formData.stages" :key="index">
+                    <!-- Stage description -->
                     <td
                       class="w-4/5 py-4 pr-3 text-sm font-medium text-primary sm:pl-0 break-words"
                     >
-                    <input
-                      type="text"
-                      name="stage"
-                      id="stage"
-                      class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                    />
+                      <input
+                        v-model="stage.status"
+                        type="text"
+                        name="stage"
+                        id="stage"
+                        class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                        required
+                      />
                     </td>
                     <!-- Actions buttons -->
                     <td
                       class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
                     >
                       <!-- Delete stage -->
-                      <button>
-                        <TrashIcon class="h-7 w-7 text-red-500"></TrashIcon>
+                      <button
+                        @click="deleteStage(index)"
+                        :disabled="index == 0"
+                      >
+                        <TrashIcon
+                          class="mx-3 h-7 w-7"
+                          :class="
+                            index == 0
+                              ? 'text-gray-500 cursor-not-allowed'
+                              : 'text-red-500'
+                          "
+                        ></TrashIcon>
                       </button>
                     </td>
                   </tr>
@@ -318,8 +336,9 @@
       <div>
         <!-- Title and button add container -->
         <div class="flex items-center gap-3 font-medium">
-          <p class="inline-block text-base text-primary">Expediente</p>
+          <p class="inline-block text-base text-primary">Documento</p>
           <button
+            @click="addCaseFile"
             class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background"
           >
             <PlusIcon class="h-5 w-5" />
@@ -335,21 +354,41 @@
               <table class="min-w-full divide-y divide-gray-300">
                 <thead>
                   <tr class="text-left text-base font-regular text-primary">
-                    <th scope="col" class="py-3.5 pr-3 w-3/5">Descripción</th>
+                    <th scope="col" class="py-3.5 pr-3 w-3/5">
+                      Documentos Cargados
+                    </th>
                     <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                  <tr>
+                  <tr
+                    v-for="(caseFile, index) in formData.caseFiles"
+                    :key="index"
+                  >
                     <!-- Stage descripction -->
                     <td
                       class="w-4/5 py-4 pr-3 text-sm font-medium text-primary sm:pl-0 break-words"
                     >
+                      <!-- Show the current file name if available -->
+                      <span v-if="typeof caseFile.file === 'string'">
+                        <a
+                          :href="caseFile.file"
+                          target="_blank"
+                          class="text-blue-500 hover:underline"
+                        >
+                          {{ caseFile.file.split("/").pop() }}
+                        </a>
+                      </span>
+                      <span v-else-if="caseFile.file" class="text-gray-500">
+                        File uploaded
+                      </span>
+                      <span v-else class="text-gray-500">No file uploaded</span>
                       <input
-                        type="text"
-                        name="file"
-                        id="file"
+                        type="file"
+                        :id="'file-' + index"
+                        @change="handleFileUpload($event, index)"
                         class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                        required
                       />
                     </td>
                     <!-- Actions buttons -->
@@ -357,15 +396,11 @@
                       class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
                     >
                       <!-- See file -->
-                      <button>
+                      <button @click="openFile(caseFile.file)">
                         <EyeIcon class="h-7 w-7 text-primary"></EyeIcon>
                       </button>
-                      <!-- Edit file -->
-                      <button>
-                        <PencilIcon class="h-7 w-7 text-primary"></PencilIcon>
-                      </button>
                       <!-- Delete file -->
-                      <button>
+                      <button @click="removeCaseFile(index)">
                         <TrashIcon class="h-7 w-7 text-red-500"></TrashIcon>
                       </button>
                     </td>
@@ -381,7 +416,13 @@
         <button
           @click="onSubmit"
           type="button"
-          class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
+          class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+          :class="
+            !isSaveButtonEnabled
+              ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed opacity-50'
+              : 'bg-secondary text-white'
+          "
+          :disabled="!isSaveButtonEnabled"
         >
           <span class="hidden lg:block">Guardar</span>
         </button>
@@ -391,10 +432,11 @@
 </template>
 
 <script setup>
+import Swal from "sweetalert2";
 import { submitHandler } from "@/shared/submit_handler";
-import { computed, onMounted, ref, reactive } from "vue";
+import { computed, onMounted, ref, reactive, watch } from "vue";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@heroicons/vue/20/solid";
-import { TrashIcon, EyeIcon, PencilIcon } from "@heroicons/vue/24/outline";
+import { TrashIcon, EyeIcon } from "@heroicons/vue/24/outline";
 import {
   Combobox,
   ComboboxButton,
@@ -403,17 +445,25 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@headlessui/vue";
+import { useRoute } from "vue-router";
+import router from "@/router";
 import { useCaseTypeStore } from "@/stores/case_type";
 import { useUserStore } from "@/stores/user";
 import { useAuthStore } from "@/stores/auth";
+import { useProcessStore } from "@/stores/process";
 import userAvatar from "@/assets/images/user_avatar.jpg";
+
+const route = useRoute();
+const actionParam = ref("");
+const programIdParam = ref("");
+
+const processStore = useProcessStore();
 
 const caseTypeStore = useCaseTypeStore();
 const caseTypes = computed(() => caseTypeStore.caseTypes);
 
 const userStore = useUserStore();
 const clients = computed(() => userStore.clients);
-console.log(clients);
 
 const authStore = useAuthStore();
 
@@ -426,27 +476,339 @@ const formData = reactive({
   authority: "",
   clientId: "",
   lawyerId: "",
-  states: [],
-  caseFiles: [],
+  stages: [
+    {
+      status: "",
+    },
+  ],
+  caseFiles: [
+    {
+      file: null,
+    },
+  ],
 });
+
+// Variable to track if the form is modified
+const isFormModified = ref(false);
+
+let originalFormData = {};
 
 onMounted(async () => {
-  await caseTypeStore.fetchCaseTypesData();
-  await userStore.fetchUsersData();
+  actionParam.value = route.params.action;
+  programIdParam.value = route.params.process_id;
+
+  if (programIdParam.value) {
+    await processStore.init();
+    const process = processStore.processById(programIdParam.value);
+    if (process) {
+      // Map the data from the process object to the formData reactive object
+      assignProcessToFormData(process);
+      originalFormData = JSON.parse(JSON.stringify(formData));
+    }
+  }
+
+  await caseTypeStore.init();
+  await userStore.init();
 });
 
-// Handle form submission
+/**
+ * Watch para detectar cambios en formData y compararlo con originalFormData.
+ */
+watch(
+  formData,
+  () => {
+    // Comparamos formData con originalFormData
+    if (!deepEqual(formData, originalFormData)) {
+      console.log("Detected changes in formData");
+      isFormModified.value = true;
+    } else {
+      console.log("No changes detected in formData");
+      isFormModified.value = false;
+    }
+  },
+  { deep: true }
+);
+
+watch(
+  () => route.params.action, 
+  (newValue) => {
+    if (newValue === "add") {
+      resetForm();
+    }
+  }
+);
+
+
+/**
+ * Función para comparar dos objetos profundamente.
+ * @param {object} obj1 - El primer objeto a comparar.
+ * @param {object} obj2 - El segundo objeto a comparar.
+ * @returns {boolean} - True si los objetos son iguales, false de lo contrario.
+ */
+function deepEqual(obj1, obj2) {
+  return JSON.stringify(obj1) === JSON.stringify(obj2);
+}
+
+// Computed property to enable/disable the save button
+const isSaveButtonEnabled = computed(() => {
+  return actionParam.value == "add"
+    ? true
+    : programIdParam.value && isFormModified.value;
+});
+
+/**
+ * Function to map process data to formData.
+ * @param {object} process - The process data to be assigned to formData.
+ */
+function assignProcessToFormData(process) {
+  formData.processIdParam = process.id;
+  formData.plaintiff = process.plaintiff || "";
+  formData.defendant = process.defendant || "";
+  selectedCaseType.value = process.case || "";
+  formData.subcase = process.subcase || "";
+  formData.ref = process.ref || "";
+  formData.authority = process.authority || "";
+  selectedClient.value = process.client || "";
+  formData.lawyerId = process.lawyer.id || "";
+
+  // Assign stages
+  formData.stages = process.stages.map((stage) => ({
+    status: stage.status || "",
+  }));
+
+  // Assign case files
+  formData.caseFiles = process.case_files.map((casefile) => ({
+    file: casefile.file,
+    id: casefile.id || "",
+  }));
+
+  // Mark form as modified after initial assignment
+  isFormModified.value = false; // Reset to false after initial assignment
+}
+
+/**
+ * Validates the form data before submission.
+ *
+ * This function checks the fields of the form data to ensure that they contain valid information.
+ * It also verifies that each case file has a file attached; if any file is missing, it shows a warning
+ * using a Swal (SweetAlert) modal and returns `false` to indicate that the validation failed.
+ *
+ * @function validateFormData
+ * @returns {boolean} - Returns `true` if all fields are valid; otherwise, `false`.
+ */
+const validateFormData = () => {
+  // Create a list of field names and their corresponding values
+  const fields = {
+    Accionante: formData.plaintiff,
+    Accionado: formData.defendant,
+    "Tipo de Caso": formData.caseTypeId,
+    "Sub Caso": formData.subcase,
+    Radicado: formData.ref,
+    Autoridad: formData.authority,
+    Cliente: formData.clientId,
+    Abogado: formData.lawyerId,
+  };
+
+  // Check if any of the basic fields are empty or null
+  for (const [fieldName, value] of Object.entries(fields)) {
+    if (!value || String(value).trim() === "") {
+      Swal.fire({
+        title: "Campo requerido!",
+        text: `El campo "${fieldName}" es obligatorio.`,
+        icon: "warning",
+      });
+      return false;
+    }
+  }
+
+  // Check each stage to ensure they have a valid status
+  for (const [index, stage] of formData.stages.entries()) {
+    if (!stage.status || stage.status.trim() === "") {
+      Swal.fire({
+        title: "Estado requerido!",
+        text: `El estado de la etapa procesal en la fila ${
+          index + 1
+        } es obligatorio o debe ser eliminado si no es necesario.`,
+        icon: "warning",
+      });
+      return false;
+    }
+  }
+
+  for (const [index, caseFile] of formData.caseFiles.entries()) {
+    if (!caseFile.file) {
+      Swal.fire({
+        title: "Archivo requerido!",
+        text: `El archivo en la fila ${
+          index + 1
+        } es obligatorio o debe ser eliminado si no es necesario.`,
+        icon: "warning",
+      });
+      return false;
+    }
+  }
+
+  return true; // All fields are valid
+};
+
+/**
+ * Handles the form submission process.
+ *
+ * This function updates form data with selected values, validates the form,
+ * and if valid, calls the `submitHandler` function to save the data.
+ * Upon successful submission, it navigates to the process list view.
+ *
+ * @async
+ * @function onSubmit
+ * @returns {void}
+ */
 const onSubmit = async () => {
-  formData.caseTypeId = selectedCaseType.value.id;
-  formData.clientId = selectedClient.value.id;
-  formData.lawyerId = authStore.userAuth.id;
+  formData.caseTypeId = selectedCaseType.value?.id || '';
+  formData.clientId = selectedClient.value?.id || '';
+  formData.lawyerId = authStore.userAuth?.id || '';
 
-  const success = await submitHandler(
-    formData,
-    "Process information saved successfully!"
-  );
+  if (validateFormData()) {
+    await submitHandler(
+      formData,
+      "Process information saved successfully!",
+      !!programIdParam.value
+    );
+    router.push({ name: "process_list", params: { user_id: '', display: "" } });
+  }
+};
 
-  if (success) resetForm();
+/**
+ * Search query for filtering case types or clients.
+ *
+ * This reactive reference stores the search query entered by the user.
+ *
+ * @constant {Ref<string>}
+ */
+const query = ref("");
+
+/**
+ * The currently selected case type.
+ *
+ * This reactive reference stores the case type selected by the user.
+ *
+ * @constant {Ref<Object|null>}
+ */
+const selectedCaseType = ref(null);
+
+/**
+ * Filters the list of case types based on the search query.
+ *
+ * If the `query` is empty, all case types are returned.
+ * Otherwise, it filters the case types to include only those whose type matches the query.
+ *
+ * @constant {ComputedRef<Array>}
+ */
+const filteredCaseTypes = computed(() =>
+  query.value === ""
+    ? caseTypes.value
+    : caseTypes.value.filter((caseType) => {
+        return caseType.type.toLowerCase().includes(query.value.toLowerCase());
+      })
+);
+
+/**
+ * The currently selected client.
+ *
+ * This reactive reference stores the client selected by the user.
+ *
+ * @constant {Ref<Object|null>}
+ */
+const selectedClient = ref(null);
+
+/**
+ * Filters the list of clients based on the search query.
+ *
+ * If the `query` is empty, all clients are returned.
+ * Otherwise, it filters the clients to include only those whose `first_name`, `last_name`,
+ * `identification`, or `email` match the query.
+ *
+ * @constant {ComputedRef<Array>}
+ */
+const filteredClients = computed(() =>
+  query.value === ""
+    ? clients.value
+    : clients.value.filter((client) => {
+        return ["first_name", "last_name", "identification", "email"].some(
+          (field) =>
+            client[field]?.toLowerCase().includes(query.value.toLowerCase())
+        );
+      })
+);
+
+/**
+ * Adds a new stage to the form data.
+ *
+ * This function appends an empty stage object to the `formData.stages` array.
+ *
+ * @function addStage
+ * @returns {void}
+ */
+const addStage = () => {
+  formData.stages.push({ status: "" });
+};
+
+/**
+ * Deletes a stage from the form data by its index.
+ *
+ * This function removes a stage from the `formData.stages` array based on the provided index.
+ *
+ * @function deleteStage
+ * @param {number} index - The index of the stage to be removed.
+ * @returns {void}
+ */
+const deleteStage = (index) => {
+  formData.stages.splice(index, 1);
+};
+
+/**
+ * Handles the file input change event for case files.
+ *
+ * This function updates the `file` property of the case file at the specified index
+ * with the selected file from the input event.
+ *
+ * @function handleFileUpload
+ * @param {Event} event - The file input change event.
+ * @param {number} index - The index of the case file to be updated.
+ * @returns {void}
+ */
+const handleFileUpload = (event, index) => {
+  const file = event.target.files[0];
+  formData.caseFiles[index].file = file;
+};
+
+/**
+ * Adds a new case file input group to the form data.
+ *
+ * This function appends a new case file object with an empty file property to the `formData.caseFiles` array.
+ *
+ * @function addCaseFile
+ * @returns {void}
+ */
+const addCaseFile = () => {
+  formData.caseFiles.push({ file: null, id: "" });
+};
+
+// Open file in new tab
+function openFile(fileUrl) {
+  window.open(fileUrl, "_blank");
+}
+
+/**
+ * Removes a case file input group from the form data by its index.
+ *
+ * This function removes a case file from the `formData.caseFiles` array based on the provided index.
+ *
+ * @function removeCaseFile
+ * @param {number} index - The index of the case file to be removed.
+ * @returns {void}
+ */
+const removeCaseFile = (index) => {
+  formData.caseFiles.splice(index, 1);
 };
 
 const resetForm = () => {
@@ -458,30 +820,15 @@ const resetForm = () => {
   formData.authority = "";
   formData.clientId = "";
   formData.lawyerId = "";
-  formData.states = [];
-  formData.caseFiles = [];
+  formData.stages = [
+    {
+      status: "",
+    },
+  ];
+  formData.caseFiles = [
+    {
+      file: null,
+    },
+  ];
 };
-
-const query = ref("");
-
-const selectedCaseType = ref(null);
-const filteredCaseTypes = computed(() =>
-  query.value === ""
-    ? caseTypes.value
-    : caseTypes.value.filter((caseType) => {
-        return caseType.type.toLowerCase().includes(query.value.toLowerCase());
-      })
-);
-
-const selectedClient = ref(null);
-const filteredClients = computed(() =>
-  query.value === ""
-    ? clients.value
-    : clients.value.filter((client) => {
-        return ["first_name", "last_name", "identification", "email"].some(
-          (field) =>
-            client[field]?.toLowerCase().includes(query.value.toLowerCase())
-        );
-      })
-);
 </script>

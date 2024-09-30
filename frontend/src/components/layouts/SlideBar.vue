@@ -73,7 +73,8 @@
                           <span
                             class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                             aria-hidden="true"
-                            >Tom Cook</span
+                            >{{ currentUser.first_name }}
+                            {{ currentUser.last_name }}</span
                           >
                           <ChevronDownIcon
                             class="ml-2 h-5 w-5 text-gray-400"
@@ -104,7 +105,7 @@
                                 active ? 'bg-gray-50' : '',
                                 'block px-3 py-1 text-sm leading-6 text-gray-900',
                               ]"
-                              >
+                            >
                               {{ item.name }}
                             </a>
                           </MenuItem>
@@ -116,7 +117,9 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                          @click="item.action(item)"
+                        :href="item.href || 'javascript:void(0)'"
+                        :target="item.target || null" 
+                        @click="!item.href && item.action(item)" 
                           class="cursor-pointer"
                           :class="[
                             item.current
@@ -139,15 +142,6 @@
                         </a>
                       </li>
                     </ul>
-                  </li>
-                  <li class="mt-auto">
-                    <a class="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-700 hover:bg-gray-50 hover:text-secondary">
-                      <QuestionMarkCircleIcon
-                        class="h-6 w-6 shrink-0 text-gray-400 group-hover:text-secondary"
-                        aria-hidden="true"
-                      />
-                      Soporte
-                    </a>
                   </li>
                 </ul>
               </nav>
@@ -187,7 +181,8 @@
                   <span
                     class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                     aria-hidden="true"
-                    >Tom Cook</span
+                    >{{ currentUser.first_name }}
+                    {{ currentUser.last_name }}</span
                   >
                   <ChevronDownIcon
                     class="ml-2 h-5 w-5 text-gray-400"
@@ -229,7 +224,9 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                  @click="item.action(item)"
+                :href="item.href || 'javascript:void(0)'"
+                :target="item.target || null" 
+                @click="!item.href && item.action(item)" 
                   class="cursor-pointer"
                   :class="[
                     item.current
@@ -250,20 +247,9 @@
                   />
                   {{ item.name }}
                 </a>
+                
               </li>
             </ul>
-          </li>
-          <li class="mt-auto">
-            <a
-              href="#"
-              class="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-primary hover:bg-gray-50 hover:text-secondary"
-            >
-              <QuestionMarkCircleIcon
-                class="h-6 w-6 shrink-0 text-primary group-hover:text-secondary"
-                aria-hidden="true"
-              />
-              Soporte
-            </a>
           </li>
         </ul>
       </nav>
@@ -271,70 +257,7 @@
   </div>
 
   <div class="lg:pl-72 w-full h-screen flex-1 flex flex-col">
-    <div
-      class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8"
-    >
-      <button
-        type="button"
-        class="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-        @click="sidebarOpen = true"
-      >
-        <span class="sr-only">Open sidebar</span>
-        <Bars3Icon class="h-6 w-6" aria-hidden="true" />
-      </button>
-
-      <!-- Separator -->
-      <div class="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
-
-      <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-        <form class="relative flex flex-1" action="#" method="GET">
-          <label for="search-field" class="sr-only">Buscar</label>
-          <MagnifyingGlassIcon
-            class="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-gray-400"
-            aria-hidden="true"
-          />
-          <input
-            id="search-field"
-            class="block h-full w-full border-0 py-0 pl-8 pr-0 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
-            placeholder="Buscar"
-            type="search"
-            name="search"
-          />
-        </form>
-        <div class="flex items-center gap-x-6 font-medium">
-          <button
-            type="button"
-            class="-m-2.5 p-2.5 text-primary hover:text-gray-500 flex gap-2"
-          >
-            <span class="hidden lg:block">Filtrar por</span>
-            <ChevronDownIcon
-              class="hidden lg:block h-6 w-6"
-              aria-hidden="true"
-            />
-            <AdjustmentsHorizontalIcon
-              class="block lg:hidden h-6 w-6"
-              aria-hidden="true"
-            />
-          </button>
-
-          <!-- Separator -->
-          <div
-            class="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200"
-            aria-hidden="true"
-          />
-
-          <!-- Add Process -->
-          <button
-            type="button"
-            class="-m-2.5 p-2.5 text-base text-white bg-secondary rounded-md flex gap-2"
-          >
-            <PlusIcon class="h-6 w-6" aria-hidden="true" />
-            <span class="hidden lg:block">Radicar Proceso</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <main class="py-10 px-4 flex flex-1 sm:px-6 lg:px-8">
+    <main>
       <!-- Content -->
       <router-view></router-view>
     </main>
@@ -342,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import {
   Dialog,
   DialogPanel,
@@ -354,25 +277,36 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 import {
-  AdjustmentsHorizontalIcon,
-  Bars3Icon,
   CalendarIcon,
   ChatBubbleOvalLeftEllipsisIcon,
-  QuestionMarkCircleIcon,
   PencilSquareIcon,
   FolderIcon,
   HomeIcon,
   XMarkIcon,
   ClockIcon,
-  PlusIcon,
 } from "@heroicons/vue/24/outline";
-import { ChevronDownIcon, MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
-import { useRouter } from 'vue-router';
+import { ChevronDownIcon } from "@heroicons/vue/20/solid";
+import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
 
 const router = useRouter();
 const authStore = useAuthStore(); // Get the authentication store instance
+const userStore = useUserStore();
+const currentUser = reactive({});
+
+onMounted(async () => {
+  await userStore.init();
+  Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
+
+  // Filter out the "Radicar Proceso" option if the user role is "client"
+  if (currentUser.role == "client") {
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+    );
+  }
+});
 
 /**
  * Logs out the user by clearing the auth store and logging out from Google.
@@ -380,39 +314,51 @@ const authStore = useAuthStore(); // Get the authentication store instance
 const logOut = () => {
   authStore.logout(); // Log out from the auth store
   googleLogout(); // Log out from Google
-  router.push({ name: 'home' });
+  router.push({ name: "home" });
 };
 
+/**
+ * Navigation items for the sidebar menu.
+ *
+ * This array contains objects representing different navigation items in the sidebar menu.
+ * Each object has the following properties:
+ * - `name` {string}: The display name of the navigation item.
+ * - `action` {function|null}: The function to execute when the item is clicked. If `null`, no action is taken.
+ * - `icon` {Component}: The icon component to display next to the navigation item name.
+ * - `current` {boolean}: Indicates if the navigation item is currently active (true) or not (false).
+ *
+ * @constant {Array<Object>}
+ */
 const navigation = ref([
-  { 
-    name: "Procesos", 
+  {
+    name: "Procesos",
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_list' })
+      setCurrent(item);
+      router.push({ name: "process_list", params: { user_id: '', display: '' } });
     },
-    icon: HomeIcon, 
-    current: true 
+    icon: HomeIcon,
+    current: true,
   },
-  { 
-    name: "Directorio", 
+  {
+    name: "Directorio",
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'directory_list' })
+      setCurrent(item);
+      router.push({ name: "directory_list" });
     },
-    icon: FolderIcon, 
-    current: false 
+    icon: FolderIcon,
+    current: false,
   },
-  { 
-    name: "Agenda", 
+  {
+    name: "Agenda",
     action: null,
-    icon: CalendarIcon, 
-    current: false 
+    icon: CalendarIcon,
+    current: false,
   },
   {
     name: "Radicar Proceso",
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_form' })
+      setCurrent(item);
+      router.push({ name: "process_form", params: { action: "add", process_id: '' } });
     },
     icon: PencilSquareIcon,
     current: false,
@@ -420,40 +366,67 @@ const navigation = ref([
   {
     name: "Chat",
     action: null,
+    href: "https://wa.me/message/XR7PDKOQS3R6A1",
+    target: "_blank",
     icon: ChatBubbleOvalLeftEllipsisIcon,
     current: false,
   },
-  { 
-    name: "Historial", 
+  {
+    name: "Historial",
     action: (item) => {
-      setCurrent(item)
-      router.push({ name: 'process_list', params: { display: 'history' } })
+      setCurrent(item);
+      router.push({ name: "process_list", params: { user_id: '', display: "history" } });
     },
-    icon: ClockIcon, 
-    current: false 
+    icon: ClockIcon,
+    current: false,
   },
 ]);
 
+/**
+ * User navigation items for the user menu.
+ *
+ * This array contains objects representing different actions available to the user in the user menu.
+ * Each object has the following properties:
+ * - `name` {string}: The display name of the user menu item.
+ * - `action` {function|null}: The function to execute when the item is clicked. If `null`, no action is taken.
+ *
+ * @constant {Array<Object>}
+ */
 const userNavigation = [
-  { 
-    name: "Your profile", 
+  {
+    name: "Your profile",
     action: null,
   },
-  { 
-    name: "Sign out", 
-    action: logOut, 
+  {
+    name: "Sign out",
+    action: logOut,
   },
 ];
 
+/**
+ * Boolean reactive variable to control the visibility of the sidebar.
+ *
+ * This variable determines whether the sidebar is open (`true`) or closed (`false`).
+ *
+ * @constant {Ref<boolean>}
+ */
 const sidebarOpen = ref(false);
 
+/**
+ * Sets the current navigation item as active.
+ *
+ * This function iterates through the `navigation` items, setting the `current` property of each item to `false`.
+ * Then, it sets the `current` property of the provided `item` to `true`, marking it as the active navigation item.
+ *
+ * @function setCurrent
+ * @param {Object} item - The navigation item object to set as active.
+ * @returns {void}
+ */
 const setCurrent = (item) => {
-  navigation.value.forEach(navItem => {
+  navigation.value.forEach((navItem) => {
     navItem.current = false;
   });
 
   item.current = true;
-  console.log(item)
-  console.log(navigation.value)
 };
 </script>

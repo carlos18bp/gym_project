@@ -19,7 +19,8 @@ user_urls = [
 process_urls = [
     path('case_types/', case_type.case_list, name='case-list'),
     path('processes/', process.process_list, name='process-list'),
-    #path('create_process/', process.create_process, name='create-process'),
+    path('create_process/', process.create_process, name='create-process'),
+    path('update_process/<int:pk>/', process.update_process, name='update-process'),
 ]
 
 urlpatterns = sign_in_sign_on_urls + user_urls + process_urls

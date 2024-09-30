@@ -68,6 +68,7 @@ class User(AbstractUser):
         marital_status (CharField): The marital status of the user (optional).
         role (CharField): The role of the user within the system (default: 'client').
         photo_profile (ImageField): The profile picture of the user (optional).
+        created_at (DateTimeField): The date the user was created.
     """
     # Remove the username, groups, and user_permissions fields
     username = None
@@ -86,6 +87,7 @@ class User(AbstractUser):
     marital_status = models.CharField(max_length=20, blank=True, null=True, help_text="The marital status of the user (e.g., single, married).")
     role = models.CharField(max_length=50, blank=True, null=True, default='client', help_text="The role of the user within the system (default: 'client').")
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
 
     # Set email as the username field and define required fields
     USERNAME_FIELD = 'email'

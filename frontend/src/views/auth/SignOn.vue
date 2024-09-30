@@ -145,7 +145,6 @@ import { showNotification } from "@/shared/notification_message";
 
 const authStore = useAuthStore(); // Get the authentication store instance
 
-// Reactive form data object
 const userForm = reactive({
   email: "",
   firstName: "",
@@ -153,17 +152,38 @@ const userForm = reactive({
   password: "",
   confirmPassword: "",
 });
+
 const passcode = ref("");
 const passcodeSent = ref("");
 const emailUsedToSentPasscode = ref("");
 
-// Run on component mount
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    router.push({ name: "process_list" }); // Redirect to process_list if already authenticated
+    router.push({
+      name: "process_list",
+      params: {
+        user_id: userId,
+        display: "",
+      },
+    }); // Redirect to process_list if already authenticated
   }
 });
 
+/**
+ * Sends a verification passcode to the user's email.
+ *
+ * This function performs the following steps:
+ * 1. Validates the input fields using the `checkInputs` function.
+ * 2. Displays a notification indicating that an access code has been sent.
+ * 3. Attempts to send a verification code to the provided email address via an API request.
+ * 4. If successful, stores the passcode in the `passcodeSent` reactive variable.
+ * 5. If the email is already registered (status code 409), displays an appropriate notification.
+ * 6. Handles other errors by displaying a generic error notification.
+ *
+ * @async
+ * @function sendVerificationPasscode
+ * @throws Will display an error notification if the API request fails for any reason.
+ */
 const sendVerificationPasscode = async () => {
   checkInputs();
   showNotification("An access code has been sent to your email", "info");
@@ -208,7 +228,13 @@ const signOnUser = async () => {
     authStore.login(response.data); // Log in the user
 
     showNotification("Sign On successful!", "success");
-    router.push({ name: "process_list" }); // Redirect to process_list
+    router.push({
+      name: "process_list",
+      params: {
+        user_id: userId,
+        display: "",
+      },
+    }); // Redirect to process_list
   } else {
     showNotification("Code is not valid", "warning");
   }
@@ -244,6 +270,7 @@ const checkInputs = () => {
     return;
   }
 };
+
 /**
  * Handles login with Google response
  */

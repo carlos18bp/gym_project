@@ -17,7 +17,7 @@ export const useCaseTypeStore = defineStore("case_type", {
      * @param {object} state - State.
      * @returns {function} - Function to find case_type by ID.
      */
-    case_typeById: (state) => (caseTypeId) => {
+    caseTypeById: (state) => (caseTypeId) => {
       return state.caseTypes.find((caseType) => caseType.id == caseTypeId);
     },
   },
