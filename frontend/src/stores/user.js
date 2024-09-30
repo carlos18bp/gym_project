@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { get_request } from "./services/request_http";
-import { useAuthStore } from "./auth"; // Asegúrate de importar el store de auth
+import { useAuthStore } from "./auth";
 
 export const useUserStore = defineStore("user", {
   /**
@@ -10,7 +10,7 @@ export const useUserStore = defineStore("user", {
   state: () => ({
     users: [],
     dataLoaded: false,
-    currentUser: null, // Definimos currentUser en el estado
+    currentUser: null,
   }),
 
   getters: {
@@ -92,8 +92,8 @@ export const useUserStore = defineStore("user", {
      * Set the current user based on authenticated user's ID.
      */
     setCurrentUser() {
-      const authStore = useAuthStore(); // Usar el store de auth
-      this.currentUser = this.userById(authStore.userAuth.id) || null; // Asignar el usuario autenticado a currentUser
+      const authStore = useAuthStore();
+      this.currentUser = this.userById(authStore.userAuth.id) || null;
     },
 
     /**
