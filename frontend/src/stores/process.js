@@ -107,8 +107,6 @@ export const useProcessStore = defineStore("process", {
      */
 
     filteredProcesses(searchQuery, isClient, userIdParam, displayParam) {
-      console.log(this.processes)
-      console.log(userIdParam)
       let processesToFilter = this.processes;
 
       // Filter based on displayParam
@@ -130,7 +128,7 @@ export const useProcessStore = defineStore("process", {
           );
         }
       }
-      console.log(processesToFilter)
+
       if (!searchQuery) return processesToFilter;
 
       const lowerCaseQuery = searchQuery.toLowerCase();

@@ -66,8 +66,8 @@
                         <span class="sr-only">Open user menu</span>
                         <img
                           class="h-8 w-8 rounded-full bg-gray-50"
-                          src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                          alt=""
+                          :src="currentUser.photo_profile || userAvatar"
+                          alt="Phone Profile"
                         />
                         <span class="flex items-center">
                           <span
@@ -174,8 +174,8 @@
                 <span class="sr-only">Open user menu</span>
                 <img
                   class="h-8 w-8 rounded-full bg-gray-50"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  alt=""
+                  :src="currentUser.photo_profile || userAvatar"
+                  alt="Phone Profile"
                 />
                 <span class="hidden lg:flex lg:items-center">
                   <span
@@ -263,7 +263,11 @@
     </main>
   </div>
   <!-- Profile modal information -->
-  <Profile :visible="showProfile" @update:visible="showProfile = $event"></Profile>
+  <Profile
+    :currentUser="currentUser"
+    :visible="showProfile" 
+    @update:visible="showProfile = $event">
+  </Profile>
 </template>
 
 <script setup>
@@ -293,6 +297,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
+import userAvatar from "@/assets/images/user_avatar.jpg";
 
 const router = useRouter();
 const authStore = useAuthStore(); // Get the authentication store instance

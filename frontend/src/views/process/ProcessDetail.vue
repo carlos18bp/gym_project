@@ -370,7 +370,6 @@ const downloadFile = async (fileUrl) => {
  * @example
  * const isoDateString = "2024-09-25T23:56:28.630717Z";
  * const bogotaTime = convertToBogotaTime(isoDateString);
- * console.log(bogotaTime); // Output: "2024-09-25 18:56:28 hora Bogotá Colombia"
  */
  const convertToBogotaTime = (isoDateString) => {
   // Crear un objeto Date a partir de la cadena ISO

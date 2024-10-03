@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { get_request } from "./services/request_http";
+import { get_request, update_request } from "./services/request_http";
 import { useAuthStore } from "./auth";
 
 export const useUserStore = defineStore("user", {
@@ -111,6 +111,36 @@ export const useUserStore = defineStore("user", {
           (field) => user[field]?.toLowerCase().includes(lowerCaseQuery)
         )
       );
+    },
+
+    async updateUser(formData) {
+      // Create FormData to include the user information
+      const formDataObject = new FormData();
+      formDataObject.append("first_name", formData.first_name);
+      formDataObject.append("last_name", formData.last_name);
+      formDataObject.append("contact", formData.contact);
+      formDataObject.append("identification", formData.identification);
+      formDataObject.append("birthday", formData.birthday);
+      formDataObject.append("email", formData.email);
+      formDataObject.append("marital_status", formData.marital_status);
+
+      // Add the profile photo only if a new file was selected
+      if (formData.photo_profile instanceof File) {
+        formDataObject.append("photo_profile", formData.photo_profile);
+      }
+
+      try {
+        let response = await update_request(
+          `update_profile/${formData.id}/`,
+          formDataObject
+        );
+        this.dataLoaded = false; // Reload the data after update
+        await this.fetchUsersData();
+        return response.status;
+      } catch (error) {
+        console.error("Error updating user:", error.message);
+        return null;
+      }
     },
   },
 });

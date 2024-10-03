@@ -32,7 +32,7 @@
             class="absolute bottom-0 left-0 -mb-16 ml-8 w-40 h-40 rounded-full border-4 border-white overflow-hidden flex justify-center items-center"
           >
             <img
-              src="https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=8&w=1024&h=1024&q=80"
+              :src="currentUser.photo_profile || userAvatar"
               class="w-full h-full object-cover"
             />
           </div>
@@ -43,12 +43,17 @@
       <div>
         <!-- Main information -->
         <div class="p-8 border-b border-gray-300">
-          <h2 class="text-2xl font-semibold text-primary">Mary Jackson</h2>
+          <h2 class="text-2xl font-semibold text-primary">
+            {{ currentUser.first_name }} {{ currentUser.last_name }}
+            <span class="text-gray-400">
+              ({{ currentUser.role == "client" ? "Cliente" : "Abogado" }})
+            </span>
+          </h2>
           <p class="text-lg font-regular text-gray-500">
-            Email: masdasd@gmail.com
+            Email: {{ currentUser.email }}
           </p>
           <p class="text-lg font-regular text-gray-500">
-            Telefono: 315 237 1666
+            Telefono: {{ currentUser.contact }}
           </p>
         </div>
         <!-- Secondary information -->
@@ -59,19 +64,21 @@
               class="text-lg font-regular text-gray-500 flex items-center gap-2"
             >
               <ClockIcon class="h-5 w-5"></ClockIcon>
-              <span>Fecha de nacimiento: 15/07/2006</span>
+              <span>Fecha de nacimiento: {{ currentUser.birthday }}</span>
             </p>
             <p
               class="text-lg font-regular text-gray-500 flex items-center gap-2"
             >
               <DocumentArrowUpIcon class="h-5 w-5"></DocumentArrowUpIcon>
-              <span>Cédula de ciudadania: 1.021.513.348</span>
+              <span
+                >Cédula de ciudadania: {{ currentUser.identification }}</span
+              >
             </p>
             <p
               class="text-lg font-regular text-gray-500 flex items-center gap-2"
             >
               <HeartIcon class="h-5 w-5"></HeartIcon>
-              <span>Estado civil: Casado/a</span>
+              <span>Estado civil: {{ currentUser.marital_status }}</span>
             </p>
           </div>
         </div>
@@ -116,6 +123,7 @@
           </label>
           <div class="mt-2">
             <input
+              v-model="currentUser.first_name"
               type="text"
               name="firstName"
               id="firstName"
@@ -135,6 +143,7 @@
           </label>
           <div class="mt-2">
             <input
+              v-model="currentUser.last_name"
               type="text"
               name="lastName"
               id="lastName"
@@ -152,24 +161,13 @@
             Telefono
             <span class="text-red-500">*</span>
           </label>
-          <div class="relative mt-2 rounded-md shadow-sm">
-            <div class="absolute inset-y-0 left-0 flex items-center">
-              <label for="country" class="sr-only">Colombia</label>
-              <select
-                disabled
-                id="country"
-                name="country"
-                autocomplete="country"
-                class="h-full rounded-md border-0 bg-transparent py-0 pl-3 pr-7 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
-              >
-                <option>CO</option>
-              </select>
-            </div>
+          <div class="mt-2 rounded-md shadow-sm">
             <input
+              v-model="currentUser.contact"
               type="text"
               name="phone-number"
               id="phone-number"
-              class="block w-full rounded-md border-0 py-1.5 pl-16 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+              class="w-full rounded-md border-0 py-1.5 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               placeholder="+57 315 237 1666"
             />
           </div>
@@ -180,15 +178,25 @@
             <label
               for="photo"
               class="block text-base font-medium leading-6 text-primary"
-              >Foto</label
             >
+              Foto
+            </label>
             <div class="flex items-center gap-x-3">
-              <UserCircleIcon
-                class="h-12 w-12 text-gray-300"
-                aria-hidden="true"
+              <img
+                :src="currentUser.photo_profile_preview || currentUser.photo_profile || userAvatar"
+                alt="User Avatar"
+                class="h-12 w-12 rounded-full object-cover"
+              />
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleFileChange"
               />
               <button
                 type="button"
+                @click="triggerFileInput"
                 class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
               >
                 Cambiar
@@ -212,6 +220,7 @@
               <EnvelopeIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>
             <input
+              v-model="currentUser.email"
               type="email"
               name="email"
               id="email"
@@ -231,6 +240,7 @@
           </label>
           <div class="mt-2">
             <input
+              v-model="currentUser.birthday"
               type="date"
               name="dob"
               id="dob"
@@ -250,6 +260,7 @@
           </label>
           <div class="mt-2">
             <input
+              v-model="currentUser.identification"
               type="number"
               name="idNumber"
               id="idNumber"
@@ -261,19 +272,23 @@
         <!-- Civil Status form -->
         <div>
           <label
-            for="civilStatus"
+            for="civil-status"
             class="block text-base font-medium leading-6 text-primary"
           >
             Estado Civil
             <span class="text-red-500">*</span>
           </label>
           <select
-            id="civilStatus"
-            name="civilStatus"
+            v-model="currentUser.marital_status"
+            id="civil-status"
+            name="civil-status"
             class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
           >
-            <option>Soltero</option>
-            <option>Casado</option>
+            <option value="Single">Soltero(a)</option>
+            <option value="Married">Casado(a)</option>
+            <option value="Divorced">Divorciado(a)</option>
+            <option value="Domestic Partnership">Unión libre</option>
+            <option value="Widowed">Viudo(a)</option>
           </select>
         </div>
       </div>
@@ -282,7 +297,7 @@
         <button
           type="button"
           class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
-          @click="goToProfile"
+          @click="updateUserProfile"
         >
           <span class="hidden lg:block">Guardar</span>
         </button>
@@ -304,20 +319,49 @@ import {
   XMarkIcon,
   ChevronLeftIcon,
 } from "@heroicons/vue/24/outline";
-import { UserCircleIcon, EnvelopeIcon } from "@heroicons/vue/24/solid";
+import { EnvelopeIcon } from "@heroicons/vue/24/solid";
 import { gsap } from "gsap";
 import { watch, ref, nextTick } from "vue";
+import { useUserStore } from "@/stores/user";
+import userAvatar from "@/assets/images/user_avatar.jpg";
+
+const userStore = useUserStore();
 
 /**
  * Props:
  * @prop {Boolean} visible - Controls whether the modal is visible or not.
  */
 const props = defineProps({
+  currentUser: {
+    type: Object,
+    required: true,
+  },
   visible: {
     type: Boolean,
     required: true,
   },
 });
+
+const fileInput = ref(null);
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    const fileURL = URL.createObjectURL(file);
+    props.currentUser.photo_profile = file;
+    props.currentUser.photo_profile_preview = fileURL;
+  }
+};
+
+const updateUserProfile = async () => {
+  await userStore.updateUser(props.currentUser);
+  props.currentUser.photo_profile = props.currentUser.photo_profile_preview
+  goToProfile();
+};
 
 /**
  * Emits:
@@ -332,9 +376,8 @@ const emit = defineEmits(["update:visible"]);
 const modalContent = ref(null);
 
 /**
- * Watcher:
- * Watches for changes in the `visible` prop. If `true`, 
- * waits for the DOM to fully render using `nextTick` 
+ * Watches for changes in the `visible` prop. If `true`,
+ * waits for the DOM to fully render using `nextTick`
  * and then applies a fade-in animation from 0 to 1 opacity.
  *
  * @param {Boolean} newVal - The new value of the `visible` prop.
@@ -355,7 +398,7 @@ watch(
 
 /**
  * closeModal:
- * Closes the modal by applying a fade-out animation 
+ * Closes the modal by applying a fade-out animation
  * and then emits `update:visible` with `false` to hide the modal.
  */
 const closeModal = () => {
@@ -370,7 +413,7 @@ const closeModal = () => {
 
 /**
  * goToEditProfile:
- * Slides the profile view and edit profile modal to the left (-150%) 
+ * Slides the profile view and edit profile modal to the left (-150%)
  * to switch views inside the modal.
  */
 const goToEditProfile = () => {
@@ -382,7 +425,7 @@ const goToEditProfile = () => {
 
 /**
  * goToProfile:
- * Slides both modals back to their original position (0%) 
+ * Slides both modals back to their original position (0%)
  * to display the profile view.
  */
 const goToProfile = () => {

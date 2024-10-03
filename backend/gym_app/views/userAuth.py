@@ -211,40 +211,6 @@ from django.contrib.auth.models import update_last_login
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def update_profile(request):
-    """
-    Handle updating the authenticated user's profile.
-
-    This view processes POST requests to update the profile of the authenticated user.
-    It uses the UserSerializer to validate and save the updated user data.
-
-    Args:
-        request (Request): The HTTP request object containing user data.
-
-    Returns:
-        Response: A Response object with a success message if the update is successful,
-                  or an error message if the update fails.
-    """
-    # Serialize the request data with the current user instance
-    serializer = UserSerializer(instance=request.user, data=request.data, partial=True)
-    
-    # Validate the serialized data
-    if serializer.is_valid():
-        # Save the updated user data
-        serializer.save()
-        
-        # Update the last login timestamp for the user
-        update_last_login(None, request.user)
-        
-        # Return a success message
-        return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
-    
-    # Return validation errors
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def update_password(request):
     """
     Handle updating the authenticated user's password.
