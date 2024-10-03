@@ -16,6 +16,7 @@
     "axios": "^1.7.2",
     "bootstrap-icons": "^1.11.3",
     "flowbite": "^2.3.0",
+    "gsap": "^3.12.5",
     "headlessui": "^0.0.0",
     "heroicons": "^2.1.5",
     "pinia": "^2.1.7",

@@ -262,10 +262,13 @@
       <router-view></router-view>
     </main>
   </div>
+  <!-- Profile modal information -->
+  <Profile :visible="showProfile" @update:visible="showProfile = $event"></Profile>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import Profile from "@/components/user/Profile.vue";
 import {
   Dialog,
   DialogPanel,
@@ -296,6 +299,8 @@ const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
 const currentUser = reactive({});
 
+const showProfile = ref(false); // Show modal with profile information
+
 onMounted(async () => {
   await userStore.init();
   Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
@@ -316,6 +321,13 @@ const logOut = () => {
   googleLogout(); // Log out from Google
   router.push({ name: "home" });
 };
+
+/**
+ * Shows to profile modal.
+ */
+const goProfile = () => {
+  showProfile.value = true
+}
 
 /**
  * Navigation items for the sidebar menu.
@@ -394,11 +406,11 @@ const navigation = ref([
  */
 const userNavigation = [
   {
-    name: "Your profile",
-    action: null,
+    name: "Perfil",
+    action: goProfile,
   },
   {
-    name: "Sign out",
+    name: "Cerrar sesión",
     action: logOut,
   },
 ];
