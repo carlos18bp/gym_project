@@ -14,22 +14,22 @@ const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
 
 onBeforeMount(async () => {
-  if (!authStore.isAuthenticated) {
-    router.push({ name: "home" });
-  } else {
+  if (authStore.isAuthenticated) {
     await userStore.init();
 
-    if (userStore.currentUser.role == "client") {
+    if (userStore.currentUser?.role == "client") {
       if (route.name == "process_form" || route.name == "directory_list") {
         router.push({
           name: "process_list",
           params: {
-            user_id: userId,
+            user_id: "",
             display: "",
           },
         });
       }
     }
+  } else {
+    router.push({ name: "home" });
   }
 });
 </script>

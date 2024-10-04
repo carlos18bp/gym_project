@@ -73,9 +73,10 @@
                           <span
                             class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                             aria-hidden="true"
-                            >{{ currentUser.first_name }}
-                            {{ currentUser.last_name }}</span
                           >
+                            {{ currentUser.first_name }}
+                            {{ currentUser.last_name }}
+                          </span>
                           <ChevronDownIcon
                             class="ml-2 h-5 w-5 text-gray-400"
                             aria-hidden="true"
@@ -117,9 +118,9 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                        :href="item.href || 'javascript:void(0)'"
-                        :target="item.target || null" 
-                        @click="!item.href && item.action(item)" 
+                          :href="item.href || 'javascript:void(0)'"
+                          :target="item.target || null"
+                          @click="!item.href && item.action(item)"
                           class="cursor-pointer"
                           :class="[
                             item.current
@@ -224,9 +225,9 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                :href="item.href || 'javascript:void(0)'"
-                :target="item.target || null" 
-                @click="!item.href && item.action(item)" 
+                  :href="item.href || 'javascript:void(0)'"
+                  :target="item.target || null"
+                  @click="!item.href && item.action(item)"
                   class="cursor-pointer"
                   :class="[
                     item.current
@@ -247,7 +248,6 @@
                   />
                   {{ item.name }}
                 </a>
-                
               </li>
             </ul>
           </li>
@@ -265,8 +265,9 @@
   <!-- Profile modal information -->
   <Profile
     :currentUser="currentUser"
-    :visible="showProfile" 
-    @update:visible="showProfile = $event">
+    :visible="showProfile"
+    @update:visible="showProfile = $event"
+  >
   </Profile>
 </template>
 
@@ -313,7 +314,8 @@ onMounted(async () => {
   // Filter out the "Radicar Proceso" option if the user role is "client"
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+      (navItem) =>
+        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
     );
   }
 });
@@ -331,8 +333,8 @@ const logOut = () => {
  * Shows to profile modal.
  */
 const goProfile = () => {
-  showProfile.value = true
-}
+  showProfile.value = true;
+};
 
 /**
  * Navigation items for the sidebar menu.
@@ -351,7 +353,10 @@ const navigation = ref([
     name: "Procesos",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_list", params: { user_id: '', display: '' } });
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "" },
+      });
     },
     icon: HomeIcon,
     current: true,
@@ -375,7 +380,10 @@ const navigation = ref([
     name: "Radicar Proceso",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_form", params: { action: "add", process_id: '' } });
+      router.push({
+        name: "process_form",
+        params: { action: "add", process_id: "" },
+      });
     },
     icon: PencilSquareIcon,
     current: false,
@@ -392,7 +400,10 @@ const navigation = ref([
     name: "Historial",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_list", params: { user_id: '', display: "history" } });
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "history" },
+      });
     },
     icon: ClockIcon,
     current: false,
