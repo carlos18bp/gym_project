@@ -538,7 +538,6 @@ watch(
   }
 );
 
-
 /**
  * Función para comparar dos objetos profundamente.
  * @param {object} obj1 - El primer objeto a comparar.

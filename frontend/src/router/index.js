@@ -27,12 +27,6 @@ const router = createRouter({
       component: () => import("@/views/auth/ForgetPassword.vue"),
     },
     {
-      path: "/profile",
-      name: "profile",
-      component: () => import("@/views/Profile.vue"),
-      meta: { requiresAuth: true },
-    },
-    {
       path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [

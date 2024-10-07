@@ -66,16 +66,17 @@
                         <span class="sr-only">Open user menu</span>
                         <img
                           class="h-8 w-8 rounded-full bg-gray-50"
-                          src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                          alt=""
+                          :src="currentUser.photo_profile || userAvatar"
+                          alt="Phone Profile"
                         />
                         <span class="flex items-center">
                           <span
                             class="ml-4 text-sm font-semibold leading-6 text-gray-900"
                             aria-hidden="true"
-                            >{{ currentUser.first_name }}
-                            {{ currentUser.last_name }}</span
                           >
+                            {{ currentUser.first_name }}
+                            {{ currentUser.last_name }}
+                          </span>
                           <ChevronDownIcon
                             class="ml-2 h-5 w-5 text-gray-400"
                             aria-hidden="true"
@@ -117,9 +118,9 @@
                     <ul role="list" class="-mx-2 space-y-1">
                       <li v-for="item in navigation" :key="item.name">
                         <a
-                        :href="item.href || 'javascript:void(0)'"
-                        :target="item.target || null" 
-                        @click="!item.href && item.action(item)" 
+                          :href="item.href || 'javascript:void(0)'"
+                          :target="item.target || null"
+                          @click="!item.href && item.action(item)"
                           class="cursor-pointer"
                           :class="[
                             item.current
@@ -174,8 +175,8 @@
                 <span class="sr-only">Open user menu</span>
                 <img
                   class="h-8 w-8 rounded-full bg-gray-50"
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                  alt=""
+                  :src="currentUser.photo_profile || userAvatar"
+                  alt="Phone Profile"
                 />
                 <span class="hidden lg:flex lg:items-center">
                   <span
@@ -224,9 +225,9 @@
             <ul role="list" class="-mx-2 space-y-1">
               <li v-for="item in navigation" :key="item.name">
                 <a
-                :href="item.href || 'javascript:void(0)'"
-                :target="item.target || null" 
-                @click="!item.href && item.action(item)" 
+                  :href="item.href || 'javascript:void(0)'"
+                  :target="item.target || null"
+                  @click="!item.href && item.action(item)"
                   class="cursor-pointer"
                   :class="[
                     item.current
@@ -247,7 +248,6 @@
                   />
                   {{ item.name }}
                 </a>
-                
               </li>
             </ul>
           </li>
@@ -263,7 +263,12 @@
     </main>
   </div>
   <!-- Profile modal information -->
-  <Profile :visible="showProfile" @update:visible="showProfile = $event"></Profile>
+  <Profile
+    :currentUser="currentUser"
+    :visible="showProfile"
+    @update:visible="showProfile = $event"
+  >
+  </Profile>
 </template>
 
 <script setup>
@@ -293,6 +298,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
+import userAvatar from "@/assets/images/user_avatar.jpg";
 
 const router = useRouter();
 const authStore = useAuthStore(); // Get the authentication store instance
@@ -308,7 +314,8 @@ onMounted(async () => {
   // Filter out the "Radicar Proceso" option if the user role is "client"
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+      (navItem) =>
+        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
     );
   }
 });
@@ -326,8 +333,8 @@ const logOut = () => {
  * Shows to profile modal.
  */
 const goProfile = () => {
-  showProfile.value = true
-}
+  showProfile.value = true;
+};
 
 /**
  * Navigation items for the sidebar menu.
@@ -346,7 +353,10 @@ const navigation = ref([
     name: "Procesos",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_list", params: { user_id: '', display: '' } });
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "" },
+      });
     },
     icon: HomeIcon,
     current: true,
@@ -370,7 +380,10 @@ const navigation = ref([
     name: "Radicar Proceso",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_form", params: { action: "add", process_id: '' } });
+      router.push({
+        name: "process_form",
+        params: { action: "add", process_id: "" },
+      });
     },
     icon: PencilSquareIcon,
     current: false,
@@ -387,7 +400,10 @@ const navigation = ref([
     name: "Historial",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "process_list", params: { user_id: '', display: "history" } });
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "history" },
+      });
     },
     icon: ClockIcon,
     current: false,

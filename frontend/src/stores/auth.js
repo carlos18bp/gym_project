@@ -14,7 +14,7 @@ export const useAuthStore = defineStore("auth", {
   }),
   // Getter methods
   getters: {
-    isAuthenticated: (state) => state.token !== null, // Check if the user is authenticated based on the presence of a token
+    isAuthenticated: (state) => state.token && state.userAuth.id, // Check if the user is authenticated based on the presence of a token and user ID
   },
   // Action methods
   actions: {

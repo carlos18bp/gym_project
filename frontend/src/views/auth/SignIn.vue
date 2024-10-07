@@ -153,7 +153,7 @@ onMounted(() => {
     router.push({
       name: "process_list",
       params: {
-        user_id: userId,
+        user_id: "",
         display: "",
       },
     }); // Redirect to process_list if already authenticated
@@ -185,7 +185,7 @@ const signInUser = async () => {
       router.push({
         name: "process_list",
         params: {
-          user_id: userId,
+          user_id: "",
           display: "",
         },
       }); // Redirect to process_list
