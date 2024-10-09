@@ -1,16 +1,16 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <h2 class="font-bold text-xl">Project<br />App</h2>
+      <img src="@/assets/images/logo/logo1.png">
     </div>
   </div>
   <section class="flex h-screen items-center">
     <form
-      class="space-y-5 px-36 xl:w-1/2 2xl:w-1/3"
+      class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2"
       @submit.prevent="handleResetPassword"
     >
-      <h1 class="font-bold text-center xl:text-3xl 2xl:text-4xl">
-        No worry, let's help you
+      <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl">
+        No te preocupes, vamos ayudarte
       </h1>
 
       <div class="grid">
@@ -19,7 +19,7 @@
             for="email"
             class="block mb-2 text-sm font-medium text-gray-900"
           >
-            Email Address
+            Correo electronico
           </label>
           <input
             v-model="email"
@@ -36,7 +36,7 @@
           for="passcode"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Verification Code
+          Código de verificación
         </label>
         <input
           v-model="passcode"
@@ -53,12 +53,12 @@
           @click.prevent="handleRequestPasswordReset"
           :disabled="isButtonDisabled"
         >
-          Send Code
+          Enviar código
         </button>
         <div v-if="timer > 0" class="text-start text-sm mt-2 text-gray-600">
-          <span class="font-regular">Send a new code in </span
+          <span class="font-regular">Enviar nuevo código en </span
           ><span class="font-bold">{{ timer }}</span>
-          <span class="font-regular">seconds.</span>
+          <span class="font-regular"> segundos.</span>
         </div>
       </div>
 
@@ -67,7 +67,7 @@
           for="password"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Password
+          Contraseña
         </label>
         <input
           v-model="newPassword"
@@ -82,7 +82,7 @@
           for="confirm_password"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Confirm Password
+          Confirmar contraseña
         </label>
         <input
           v-model="confirmPassword"
@@ -97,22 +97,21 @@
           type="submit"
           class="w-full text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
         >
-          Sign In
+          Iniciar sesión
         </button>
         <p class="w-full font-medium rounded-lg text-sm py-2.5 text-start">
-          <span>Was a misclick? </span>
+          <span>¿Recordaste tu contraseña? </span>
           <RouterLink :to="{ name: 'sign_in' }">
-            <span class="text-blue-800">Go back</span>
+            <span class="text-blue-800">Volver a iniciar sesión</span>
           </RouterLink>
         </p>
       </div>
 
       <div v-if="timer > 0" class="text-center mt-2 text-gray-600">
-        Please wait <span class="font-bold">{{ timer }}</span> seconds before
-        requesting another code.
+        Por favor espere <span class="font-bold">{{ timer }}</span> antes de enviar un nuevo código.
       </div>
     </form>
-    <div class="h-screen xl:w-1/2 2xl:w-2/3 overflow-hidden">
+    <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"

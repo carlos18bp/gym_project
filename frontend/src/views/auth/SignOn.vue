@@ -1,17 +1,17 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <h2 class="font-bold text-xl">Project<br />App</h2>
+      <img src="@/assets/images/logo/logo1.png">
     </div>
   </div>
-  <section class="flex h-screen items-center">
-    <form class="space-y-5 px-32 xl:w-1/2 2xl:w-1/3">
-      <h1 class="font-bold text-center xl:text-3xl 2xl:text-4xl">
-        We welcome you
+  <section class="pt-16 flex h-screen items-center md:pt-0">
+    <form class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2">
+      <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl">
+        Te damos la bienvenida
       </h1>
       <div>
         <label for="email" class="block mb-2 text-sm font-medium text-gray-900">
-          Email Address
+          Correo electronico
         </label>
         <input
           v-model="userForm.email"
@@ -27,7 +27,7 @@
           for="password"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Password
+          Contraseña
         </label>
         <input
           v-model="userForm.password"
@@ -42,7 +42,7 @@
           for="confirm_password"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Confirm Password
+          Confirmar contraseña
         </label>
         <input
           v-model="userForm.confirmPassword"
@@ -58,7 +58,7 @@
             for="first_name"
             class="block mb-2 text-sm font-medium text-gray-900"
           >
-            First Name
+            Nombre
           </label>
           <input
             v-model="userForm.firstName"
@@ -72,7 +72,7 @@
             for="last_name"
             class="block mb-2 text-sm font-medium text-gray-900"
           >
-            Last Name
+            Apellido
           </label>
           <input
             v-model="userForm.lastName"
@@ -88,7 +88,7 @@
         type="submit"
         class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
       >
-        Sign On
+        Registrarse
       </button>
 
       <div v-if="passcodeSent" class="flex gap-4">
@@ -104,20 +104,20 @@
           type="submit"
           class="text-white bg-blue-500 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
         >
-          Validate Code
+          Código de verificación
         </button>
       </div>
 
       <div class="flex flex-col">
         <p class="font-regular">
-          Have Account?
+          ¿Tienes una cuenta?
           <a class="font-regular text-blue-800">
-            <RouterLink :to="{ name: 'sign_in' }"> Sign In </RouterLink>
+            <RouterLink :to="{ name: 'sign_in' }"> Iniciar sesión </RouterLink>
           </a>
         </p>
-        <div class="flex items-center w-full max-w-lg mx-4 mt-4">
+        <div class="flex items-center w-full max-w-lg mt-4">
           <div class="flex-grow border-t border-gray-300"></div>
-          <span class="mx-4 text-gray-500">Or Continue With</span>
+          <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
         <div class="flex justify-center">
@@ -125,7 +125,7 @@
         </div>
       </div>
     </form>
-    <div class="h-screen xl:w-1/2 2xl:w-2/3 overflow-hidden">
+    <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"
