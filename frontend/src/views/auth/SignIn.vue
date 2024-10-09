@@ -1,17 +1,17 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <h2 class="font-bold text-xl">Project<br />App</h2>
+      <img src="@/assets/images/logo/logo1.png">
     </div>
   </div>
   <section class="flex h-screen items-center justify-start">
-    <form class="space-y-5 px-72 xl:w-1/2 2xl:w-2/3 order-2">
-      <h1 class="font-bold text-center xl:text-3xl 2xl:text-4xl">
-        We welcome you again
+    <form class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2">
+      <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl">
+        Te damos la bienvenida de nuevo
       </h1>
       <div>
         <label for="email" class="block mb-2 text-sm font-medium text-gray-900">
-          Email Address
+          Correo electronico
         </label>
         <input
           v-model="userForm.email"
@@ -27,7 +27,7 @@
           for="passcode"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Verification Code
+          Código de verificación
         </label>
         <input
           v-model="userForm.passcode"
@@ -44,12 +44,12 @@
           @click.prevent="handleSendPassword"
           :disabled="isButtonDisabled"
         >
-          Send Code
+          Enviar código
         </button>
         <div v-if="timer > 0" class="text-start text-sm mt-2 text-gray-600">
-          <span class="font-regular">Send a new code in </span
+          <span class="font-regular">Enviar nuevo código en </span
           ><span class="font-bold">{{ timer }}</span>
-          <span class="font-regular">seconds.</span>
+          <span class="font-regular"> segundos.</span>
         </div>
       </div>
 
@@ -58,7 +58,7 @@
           for="password"
           class="block mb-2 text-sm font-medium text-gray-900"
         >
-          Password
+          Contraseña
         </label>
         <input
           v-model="userForm.password"
@@ -69,7 +69,7 @@
         />
         <a class="text-sm font-medium text-blue-800">
           <RouterLink :to="{ name: 'forget_password' }">
-            Forgot Password?
+            ¿Olvidaste tu contraseña?
           </RouterLink>
         </a>
       </div>
@@ -87,21 +87,21 @@
                 signInSecondsRemaining >= 1,
             }"
           >
-            Sign In
+            Iniciar sesión
           </button>
           <div
             v-if="signInSecondsRemaining > 0"
             class="text-start text-sm mt-2 text-gray-600"
           >
-            <span class="font-regular">Try again in </span
+            <span class="font-regular">Intentar de nuevo en </span
             ><span class="font-bold">{{ signInSecondsRemaining }}</span>
-            <span class="font-regular">seconds.</span>
+            <span class="font-regular">segundos.</span>
           </div>
         </div>
         <p>
-          <span class="font-regular">New to Project App?</span>
+          <span class="font-regular">¿Nuevo en G&M?</span>
           <a class="font-regular text-blue-800">
-            <RouterLink :to="{ name: 'sign_on' }"> Sign up now. </RouterLink>
+            <RouterLink :to="{ name: 'sign_on' }"> Registrarse. </RouterLink>
           </a>
         </p>
       </div>
@@ -109,14 +109,14 @@
       <div class="flex flex-col items-center justify-center text-center">
         <div class="flex items-center w-full max-w-lg mx-4">
           <div class="flex-grow border-t border-gray-300"></div>
-          <span class="mx-4 text-gray-500">Or Continue With</span>
+          <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
 
         <GoogleLogin class="mt-6" :callback="handleLoginWithGoogle" prompt />
       </div>
     </form>
-    <div class="h-screen xl:w-1/2 2xl:w-1/3 overflow-hidden order-1">
+    <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"

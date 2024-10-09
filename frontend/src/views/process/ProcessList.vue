@@ -1,7 +1,8 @@
 <template>
   <!-- Using the SearchBarAndFilterBy component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
-
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
+    <slot></slot>
+  </SearchBarAndFilterBy>
   <div
     v-if="filteredProcesses.length"
     class="py-10 px-4 sm:px-6 lg:px-8 grid place-items-center gap-3 grid-cols-1"
@@ -114,7 +115,7 @@
                   params: { process_id: process.id, display: displayParam },
                 }"
               >
-                <span class="hidden lg:block">Consultar expediente</span>
+                <span>Consultar expediente</span>
               </router-link>
             </button>
           </div>

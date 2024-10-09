@@ -8,8 +8,7 @@ export const useAuthStore = defineStore("auth", {
     token: localStorage.getItem("token") || null, // Get the token from localStorage or set to null
     userAuth: JSON.parse(localStorage.getItem("userAuth")) || {}, // Get the user authentication details from localStorage or set to an empty object
     signInTries: parseInt(localStorage.getItem("signInTries"), 10) || 0, // Get the Sign In attempts
-    signInSecondsAcumulated:
-      localStorage.getItem("signInSecondsAcumulated") || 0,
+    signInSecondsAcumulated: localStorage.getItem("signInSecondsAcumulated") || 0,
     signInSecondsRemaining: localStorage.getItem("signInSecondsRemaining") || 0, // Get remaining seconds only because user exceeds allowed attempts
   }),
   // Getter methods
@@ -54,11 +53,11 @@ export const useAuthStore = defineStore("auth", {
      * Removes the token and user authentication details from localStorage.
      */
     removeFromLocalStorage() {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userAuth");
       localStorage.removeItem("signInTries");
       localStorage.removeItem("signInSecondsAcumulated");
       localStorage.removeItem("signInSecondsRemaining");
+      localStorage.removeItem("token");
+      localStorage.removeItem("userAuth");
     },
     /**
      * Clears the authorization header from Axios.

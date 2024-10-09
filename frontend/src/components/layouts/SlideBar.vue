@@ -1,6 +1,6 @@
 <template>
-  <TransitionRoot as="template" :show="sidebarOpen">
-    <Dialog class="relative z-50 lg:hidden" @close="sidebarOpen = false">
+  <TransitionRoot as="template" :show="slidebarOpen">
+    <Dialog class="relative z-50 lg:hidden" @close="slidebarOpen = false">
       <TransitionChild
         as="template"
         enter="transition-opacity ease-linear duration-300"
@@ -39,9 +39,9 @@
                 <button
                   type="button"
                   class="-m-2.5 p-2.5"
-                  @click="sidebarOpen = false"
+                  @click="slidebarOpen = false"
                 >
-                  <span class="sr-only">Close sidebar</span>
+                  <span class="sr-only">Cerrar slidebar</span>
                   <XMarkIcon class="h-6 w-6 text-white" aria-hidden="true" />
                 </button>
               </div>
@@ -63,9 +63,9 @@
                     <!-- Profile dropdown -->
                     <Menu as="div" class="relative">
                       <MenuButton class="-m-1.5 flex items-center p-1.5">
-                        <span class="sr-only">Open user menu</span>
+                        <span class="sr-only">Abrir menú de usuario</span>
                         <img
-                          class="h-8 w-8 rounded-full bg-gray-50"
+                          class="h-8 w-8 rounded-full bg-gray-50 object-cover object-center"
                           :src="currentUser.photo_profile || userAvatar"
                           alt="Phone Profile"
                         />
@@ -174,7 +174,7 @@
               <MenuButton class="-m-1.5 flex items-center p-1.5">
                 <span class="sr-only">Open user menu</span>
                 <img
-                  class="h-8 w-8 rounded-full bg-gray-50"
+                  class="h-8 w-8 rounded-full bg-gray-50 object-cover object-center"
                   :src="currentUser.photo_profile || userAvatar"
                   alt="Phone Profile"
                 />
@@ -259,7 +259,20 @@
   <div class="lg:pl-72 w-full h-screen flex-1 flex flex-col">
     <main>
       <!-- Content -->
-      <router-view></router-view>
+      <router-view v-slot="{ Component }">
+        <component :is="Component">
+          <template #default>
+            <button
+              type="button"
+              class="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+              @click="slidebarOpen = true"
+            >
+              <span class="sr-only">Open sidebar</span>
+              <Bars3Icon class="h-6 w-6" aria-hidden="true" />
+            </button>
+          </template>
+        </component>
+      </router-view>
     </main>
   </div>
   <!-- Profile modal information -->
@@ -292,6 +305,7 @@ import {
   HomeIcon,
   XMarkIcon,
   ClockIcon,
+  Bars3Icon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -306,6 +320,7 @@ const userStore = useUserStore();
 const currentUser = reactive({});
 
 const showProfile = ref(false); // Show modal with profile information
+const slidebarOpen = ref(false); // Show modal with navigation
 
 onMounted(async () => {
   await userStore.init();
@@ -326,13 +341,14 @@ onMounted(async () => {
 const logOut = () => {
   authStore.logout(); // Log out from the auth store
   googleLogout(); // Log out from Google
-  router.push({ name: "home" });
+  router.push({ name: "sign_in" });
 };
 
 /**
  * Shows to profile modal.
  */
 const goProfile = () => {
+  slidebarOpen.value = false;
   showProfile.value = true;
 };
 
@@ -431,14 +447,6 @@ const userNavigation = [
   },
 ];
 
-/**
- * Boolean reactive variable to control the visibility of the sidebar.
- *
- * This variable determines whether the sidebar is open (`true`) or closed (`false`).
- *
- * @constant {Ref<boolean>}
- */
-const sidebarOpen = ref(false);
 
 /**
  * Sets the current navigation item as active.
@@ -456,5 +464,6 @@ const setCurrent = (item) => {
   });
 
   item.current = true;
+  slidebarOpen.value = false;
 };
 </script>

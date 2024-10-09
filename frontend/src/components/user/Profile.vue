@@ -2,305 +2,314 @@
   <!-- Container modal -->
   <div
     ref="modalContent"
-    class="fixed inset-0 z-50 h-screen w-screen bg-gray-400 bg-opacity-40 backdrop-blur-md flex justify-center items-center"
+    class="fixed inset-0 z-50 h-screen w-screen bg-gray-400 bg-opacity-40 backdrop-blur-md"
     v-if="visible"
-  >
-    <!-- Modal container -->
-    <div id="viewProfileModal" class="w-1/2 bg-white rounded-xl">
-      <!-- Profile photo container -->
-      <div>
-        <div
-          class="relative w-full h-52 rounded-t-xl"
-          style="
-            background-image: linear-gradient(
-              to right,
-              #3b82f6,
-              #6366f1,
-              #8b5cf6,
-              #a855f7
-            );
-          "
-        >
-          <div class="absolute top-0 right-0 p-8">
-            <XMarkIcon
-              class="h-7 w-7 text-white font-semibold cursor-pointer"
-              @click="closeModal()"
-            >
-            </XMarkIcon>
-          </div>
+  > 
+    <!-- Modal profile container -->
+    <div 
+      id="viewProfileModal" 
+      class="absolute w-full h-full px-4 flex justify-center items-center"
+    >
+      <div class="w-full xl:w-1/2 bg-white rounded-xl">
+        <!-- Profile photo container -->
+        <div>
           <div
-            class="absolute bottom-0 left-0 -mb-16 ml-8 w-40 h-40 rounded-full border-4 border-white overflow-hidden flex justify-center items-center"
+            class="relative w-full h-52 rounded-t-xl"
+            style="
+              background-image: linear-gradient(
+                to right,
+                #3b82f6,
+                #6366f1,
+                #8b5cf6,
+                #a855f7
+              );
+            "
           >
-            <img
-              :src="currentUser.photo_profile || userAvatar"
-              class="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-        <div class="w-full h-20"></div>
-      </div>
-      <!-- Content container -->
-      <div>
-        <!-- Main information -->
-        <div class="p-8 border-b border-gray-300">
-          <h2 class="text-2xl font-semibold text-primary">
-            {{ currentUser.first_name }} {{ currentUser.last_name }}
-            <span class="text-gray-400">
-              ({{ currentUser.role == "client" ? "Cliente" : "Abogado" }})
-            </span>
-          </h2>
-          <p class="text-lg font-regular text-gray-500">
-            Email: {{ currentUser.email }}
-          </p>
-          <p class="text-lg font-regular text-gray-500">
-            Telefono: {{ currentUser.contact }}
-          </p>
-        </div>
-        <!-- Secondary information -->
-        <div class="p-8 mt-6">
-          <h2 class="text-xl font-semibold text-primary">Acerca de mi</h2>
-          <div class="grid gap-1">
-            <p
-              class="text-lg font-regular text-gray-500 flex items-center gap-2"
-            >
-              <ClockIcon class="h-5 w-5"></ClockIcon>
-              <span>Fecha de nacimiento: {{ currentUser.birthday }}</span>
-            </p>
-            <p
-              class="text-lg font-regular text-gray-500 flex items-center gap-2"
-            >
-              <DocumentArrowUpIcon class="h-5 w-5"></DocumentArrowUpIcon>
-              <span
-                >Cédula de ciudadania: {{ currentUser.identification }}</span
+            <div class="absolute top-0 right-0 p-8">
+              <XMarkIcon
+                class="h-7 w-7 text-white font-semibold cursor-pointer"
+                @click="closeModal()"
               >
-            </p>
-            <p
-              class="text-lg font-regular text-gray-500 flex items-center gap-2"
+              </XMarkIcon>
+            </div>
+            <div
+              class="absolute bottom-0 left-0 -mb-16 ml-8 w-40 h-40 rounded-full border-4 border-white overflow-hidden flex justify-center items-center"
             >
-              <HeartIcon class="h-5 w-5"></HeartIcon>
-              <span>Estado civil: {{ currentUser.marital_status }}</span>
+              <img
+                :src="currentUser.photo_profile || userAvatar"
+                class="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+          <div class="w-full h-20"></div>
+        </div>
+        <!-- Content container -->
+        <div>
+          <!-- Main information -->
+          <div class="p-8 border-b border-gray-300">
+            <h2 class="text-2xl font-semibold text-primary">
+              {{ currentUser.first_name }} {{ currentUser.last_name }}
+              <span class="text-gray-400">
+                ({{ currentUser.role == "client" ? "Cliente" : "Abogado" }})
+              </span>
+            </h2>
+            <p class="text-lg font-regular text-gray-500">
+              Email: {{ currentUser.email }}
+            </p>
+            <p class="text-lg font-regular text-gray-500">
+              Telefono: {{ currentUser.contact }}
             </p>
           </div>
-        </div>
-        <!-- Button edit -->
-        <div class="p-8">
-          <button
-            type="button"
-            class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
-            @click="goToEditProfile"
-          >
-            <span class="hidden lg:block">Editar</span>
-          </button>
+          <!-- Secondary information -->
+          <div class="p-8 mt-6">
+            <h2 class="text-xl font-semibold text-primary">Acerca de mi</h2>
+            <div class="grid gap-1">
+              <p
+                class="text-lg font-regular text-gray-500 flex items-center gap-2"
+              >
+                <ClockIcon class="h-5 w-5"></ClockIcon>
+                <span>Fecha de nacimiento: {{ currentUser.birthday }}</span>
+              </p>
+              <p
+                class="text-lg font-regular text-gray-500 flex items-center gap-2"
+              >
+                <DocumentArrowUpIcon class="h-5 w-5"></DocumentArrowUpIcon>
+                <span
+                  >Cédula de ciudadania: {{ currentUser.identification }}</span
+                >
+              </p>
+              <p
+                class="text-lg font-regular text-gray-500 flex items-center gap-2"
+              >
+                <HeartIcon class="h-5 w-5"></HeartIcon>
+                <span>Estado civil: {{ currentUser.marital_status }}</span>
+              </p>
+            </div>
+          </div>
+          <!-- Button edit -->
+          <div class="p-8">
+            <button
+              type="button"
+              class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
+              @click="goToEditProfile"
+            >
+              <span class="block">Editar</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
     <!-- Edit profile -->
-    <div
-      id="editProfileModal"
-      class="w-1/2 p-8 bg-white rounded-xl fixed left-full"
+    <div 
+      id="editProfileModal" 
+      class="absolute w-full h-full px-4 flex justify-center items-center left-full"
     >
-      <!-- Navigation button -->
-      <div>
-        <!-- Come back button -->
-        <button @click="goToProfile">
-          <ChevronLeftIcon
-            class="-ml-5 -mt-4 w-7 h-7 text-primary"
-          ></ChevronLeftIcon>
-        </button>
-      </div>
-      <h1 class="mt-4 text-2xl font-semibold text-primary">Editar perfil</h1>
-      <!-- Main information -->
-
-      <div class="mt-4 grid grid-cols-2 gap-3">
-        <!-- First name form -->
+      <div
+        class="w-full xl:w-1/2 p-8 bg-white rounded-xl"
+      >
+        <!-- Navigation button -->
         <div>
-          <label
-            for="firstName"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Nombre
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-2">
-            <input
-              v-model="currentUser.first_name"
-              type="text"
-              name="firstName"
-              id="firstName"
-              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-              required
-            />
-          </div>
+          <!-- Come back button -->
+          <button @click="goToProfile">
+            <ChevronLeftIcon
+              class="-ml-5 -mt-4 w-7 h-7 text-primary"
+            ></ChevronLeftIcon>
+          </button>
         </div>
-        <!-- Last name form -->
-        <div>
-          <label
-            for="lastName"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Apellido
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-2">
-            <input
-              v-model="currentUser.last_name"
-              type="text"
-              name="lastName"
-              id="lastName"
-              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-              required
-            />
-          </div>
-        </div>
-        <!-- Contact form -->
-        <div>
-          <label
-            for="contact"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Telefono
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-2 rounded-md shadow-sm">
-            <input
-              v-model="currentUser.contact"
-              type="text"
-              name="phone-number"
-              id="phone-number"
-              class="w-full rounded-md border-0 py-1.5 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              placeholder="+57 315 237 1666"
-            />
-          </div>
-        </div>
-        <!-- Profile picture form -->
-        <div>
-          <div class="col-span-full">
+        <h1 class="mt-4 text-2xl font-semibold text-primary">Editar perfil</h1>
+        <!-- Main information -->
+  
+        <div class="mt-4 grid md:grid-cols-2 gap-3">
+          <!-- First name form -->
+          <div>
             <label
-              for="photo"
+              for="firstName"
               class="block text-base font-medium leading-6 text-primary"
             >
-              Foto
+              Nombre
+              <span class="text-red-500">*</span>
             </label>
-            <div class="flex items-center gap-x-3">
-              <img
-                :src="currentUser.photo_profile_preview || currentUser.photo_profile || userAvatar"
-                alt="User Avatar"
-                class="h-12 w-12 rounded-full object-cover"
-              />
+            <div class="mt-2">
               <input
-                ref="fileInput"
-                type="file"
-                accept="image/*"
-                class="hidden"
-                @change="handleFileChange"
+                v-model="currentUser.first_name"
+                type="text"
+                name="firstName"
+                id="firstName"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                required
               />
-              <button
-                type="button"
-                @click="triggerFileInput"
-                class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-              >
-                Cambiar
-              </button>
             </div>
           </div>
-        </div>
-        <!-- Contact form -->
-        <div>
-          <label
-            for="contact"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Correo electronico
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="relative mt-2 rounded-md shadow-sm">
-            <div
-              class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+          <!-- Last name form -->
+          <div>
+            <label
+              for="lastName"
+              class="block text-base font-medium leading-6 text-primary"
             >
-              <EnvelopeIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+              Apellido
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-2">
+              <input
+                v-model="currentUser.last_name"
+                type="text"
+                name="lastName"
+                id="lastName"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                required
+              />
             </div>
-            <input
-              v-model="currentUser.email"
-              type="email"
-              name="email"
-              id="email"
-              class="block w-full rounded-md border-0 py-1.5 pl-10 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              placeholder="you@example.com"
-            />
+          </div>
+          <!-- Contact form -->
+          <div>
+            <label
+              for="contact"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Telefono
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-2 rounded-md shadow-sm">
+              <input
+                v-model="currentUser.contact"
+                type="text"
+                name="phone-number"
+                id="phone-number"
+                class="w-full rounded-md border-0 py-1.5 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder="+57 315 237 1666"
+              />
+            </div>
+          </div>
+          <!-- Profile picture form -->
+          <div>
+            <div class="col-span-full">
+              <label
+                for="photo"
+                class="block text-base font-medium leading-6 text-primary"
+              >
+                Foto de perfil
+              </label>
+              <div class="flex items-center gap-x-3">
+                <img
+                  :src="currentUser.photo_profile_preview || currentUser.photo_profile || userAvatar"
+                  alt="User Avatar"
+                  class="h-12 w-12 rounded-full object-cover"
+                />
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleFileChange"
+                />
+                <button
+                  type="button"
+                  @click="triggerFileInput"
+                  class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                >
+                  Cambiar
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Contact form -->
+          <div>
+            <label
+              for="contact"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Correo electronico
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="relative mt-2 rounded-md shadow-sm">
+              <div
+                class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+              >
+                <EnvelopeIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                v-model="currentUser.email"
+                type="email"
+                name="email"
+                id="email"
+                class="block w-full rounded-md border-0 py-1.5 pl-10 text-primary ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+          <!-- Date of birth form -->
+          <div>
+            <label
+              for="dob"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Fecha de Nacimiento
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-2">
+              <input
+                v-model="currentUser.birthday"
+                type="date"
+                name="dob"
+                id="dob"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                required
+              />
+            </div>
+          </div>
+          <!-- National ID form -->
+          <div>
+            <label
+              for="idNumber"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Número de Cédula
+              <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-2">
+              <input
+                v-model="currentUser.identification"
+                type="number"
+                name="idNumber"
+                id="idNumber"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                required
+              />
+            </div>
+          </div>
+          <!-- Civil Status form -->
+          <div>
+            <label
+              for="civil-status"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Estado Civil
+              <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="currentUser.marital_status"
+              id="civil-status"
+              name="civil-status"
+              class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            >
+              <option value="Single">Soltero(a)</option>
+              <option value="Married">Casado(a)</option>
+              <option value="Divorced">Divorciado(a)</option>
+              <option value="Domestic Partnership">Unión libre</option>
+              <option value="Widowed">Viudo(a)</option>
+            </select>
           </div>
         </div>
-        <!-- Date of birth form -->
-        <div>
-          <label
-            for="dob"
-            class="block text-base font-medium leading-6 text-primary"
+        <!-- Button edit -->
+        <div class="mt-4">
+          <button
+            type="button"
+            class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
+            @click="updateUserProfile"
           >
-            Fecha de Nacimiento
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-2">
-            <input
-              v-model="currentUser.birthday"
-              type="date"
-              name="dob"
-              id="dob"
-              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-              required
-            />
-          </div>
+            <span class="block">Guardar</span>
+          </button>
         </div>
-        <!-- National ID form -->
-        <div>
-          <label
-            for="idNumber"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Número de Cédula
-            <span class="text-red-500">*</span>
-          </label>
-          <div class="mt-2">
-            <input
-              v-model="currentUser.identification"
-              type="number"
-              name="idNumber"
-              id="idNumber"
-              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-              required
-            />
-          </div>
-        </div>
-        <!-- Civil Status form -->
-        <div>
-          <label
-            for="civil-status"
-            class="block text-base font-medium leading-6 text-primary"
-          >
-            Estado Civil
-            <span class="text-red-500">*</span>
-          </label>
-          <select
-            v-model="currentUser.marital_status"
-            id="civil-status"
-            name="civil-status"
-            class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
-          >
-            <option value="Single">Soltero(a)</option>
-            <option value="Married">Casado(a)</option>
-            <option value="Divorced">Divorciado(a)</option>
-            <option value="Domestic Partnership">Unión libre</option>
-            <option value="Widowed">Viudo(a)</option>
-          </select>
-        </div>
-      </div>
-      <!-- Button edit -->
-      <div class="mt-4">
-        <button
-          type="button"
-          class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
-          @click="updateUserProfile"
-        >
-          <span class="hidden lg:block">Guardar</span>
-        </button>
       </div>
     </div>
   </div>
@@ -418,7 +427,7 @@ const closeModal = () => {
  */
 const goToEditProfile = () => {
   gsap.to(["#viewProfileModal", "#editProfileModal"], {
-    x: "-150%",
+    x: "-100%",
     duration: 0.5,
   });
 };

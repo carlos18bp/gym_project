@@ -1,11 +1,13 @@
 <template>
   <!-- Replacing the old search bar with the new component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
+    <slot></slot>
+  </SearchBarAndFilterBy>
 
   <div class="flex-1">
     <!-- Directory by cards -->
     <div>
-      <ul role="list" class="divide-y divide-gray-100 grid grid-cols-2">
+      <ul role="list" class="divide-y divide-gray-100 grid xl:grid-cols-2">
         <li
           v-for="user in filteredUsers"
           :key="user.id"
@@ -16,7 +18,7 @@
             @click="navigateToProcessList(user.id)"
           >
             <img
-              class="h-12 w-12 flex-none rounded-full bg-gray-50"
+              class="h-12 w-12 flex-none rounded-full bg-gray-50 object-cover object-center"
               v-if="user.photo_profile"
               :src="user.photo_profile"
               alt="Photo Profile"
