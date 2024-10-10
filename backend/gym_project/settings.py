@@ -11,7 +11,7 @@ SECRET_KEY = 'django-insecure-6kg(nl718cb!8ltn3m%t2ol-he+0y5=bgsto756*2@ue!vb29s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['gmconsultoresjuridicos.com', 'www.gmconsultoresjuridicos.com']
 
 # Application definition
 
@@ -40,15 +40,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-]
+CORS_ALLOWED_ORIGINS = []
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-]
+CSRF_TRUSTED_ORIGINS = []
 
 """
 Authentication methods used, JWT (JSON Web Token) Authentication: JWT is an 
