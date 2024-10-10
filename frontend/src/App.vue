@@ -29,7 +29,7 @@ onBeforeMount(async () => {
       }
     }
   } else {
-    router.push({ name: "home" });
+    router.push({ name: "sign_in" });
   }
 });
 </script>

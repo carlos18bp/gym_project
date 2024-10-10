@@ -7,7 +7,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: "/sign_in",
+      path: "/",
       name: "sign_in",
       component: () => import("@/views/auth/SignIn.vue"),
     },
