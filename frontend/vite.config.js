@@ -158,10 +158,21 @@ if (isE2ECoverage) {
 }
 
 export default defineConfig({
+  base: '/static/',
+  build: {
+    outDir: 'static',
+    rollupOptions: {
+      output: {
+        assetFileNames: 'frontend/[name][extname]',
+        entryFileNames: 'frontend/[name].js',
+        chunkFileNames: 'frontend/[name].js',
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000/',
+        target: '', 
         changeOrigin: true,
         secure: false,
       },
