@@ -125,8 +125,8 @@
           </div>
         </div>
         <!-- Archive table -->
-        <div class="flow-root overflow-x-auto whitespace-nowrap">
-          <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="flow-root overflow-y-auto max-h-[400px] whitespace-nowrap">
+          <div class="-my-2 sm:-mx-6 lg:-mx-8">
             <div
               class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8"
             >
@@ -226,7 +226,7 @@
           </div>
         </div>
         <!-- Edit Button (It's gonna redirect to /process_form view) -->
-        <div v-if="currentUser.role !== 'client'">
+        <div v-if="currentUser.role !== 'client' && isOwnsProcess()">
           <button
             @click="navigateToEdit"
             type="button"
@@ -280,6 +280,11 @@ const itemsPerPage = ref(10);
 watch(searchTerm, () => {
   currentPage.value = 1;
 });
+
+// Validate if the process belongs to Current User
+function isOwnsProcess() {
+  return (currentUser.value.id == process.value.lawyer.id)
+}
 
 // Navigate to Edit form
 function navigateToEdit() {
@@ -373,10 +378,6 @@ const downloadFile = async (fileUrl) => {
  *
  * @param {string} isoDateString - The ISO date string to be converted, e.g., "2024-09-25T23:56:28.630717Z".
  * @returns {string} - The formatted date and time string in the format "YYYY-MM-DD HH:mm:ss hora Bogotá Colombia".
- * 
- * @example
- * const isoDateString = "2024-09-25T23:56:28.630717Z";
- * const bogotaTime = convertToBogotaTime(isoDateString);
  */
  const convertToBogotaTime = (isoDateString) => {
   // Crear un objeto Date a partir de la cadena ISO

@@ -95,7 +95,7 @@
           >
             <span class="font-regular">Intentar de nuevo en </span
             ><span class="font-bold">{{ signInSecondsRemaining }}</span>
-            <span class="font-regular">segundos.</span>
+            <span class="font-regular"> segundos.</span>
           </div>
         </div>
         <p>
