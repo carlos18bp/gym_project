@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-6kg(nl718cb!8ltn3m%t2ol-he+0y5=bgsto756*2@ue!vb29s'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['gmconsultoresjuridicos.com', 'www.gmconsultoresjuridicos.com']
 
@@ -89,8 +89,12 @@ WSGI_APPLICATION = 'gym_project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'gym_intranet',
+        'USER': 'Naxcar',
+        'PASSWORD': 'Peck247742@51',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -148,9 +152,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'misfotoscmbp@gmail.com'
-EMAIL_HOST_PASSWORD = 'ikdvsyikywczdnkk'
-DEFAULT_FROM_EMAIL = 'G&M Consultores Jurídicos <misfotoscmbp@gmail.com>'
+EMAIL_HOST_USER = 'avisos@gymconsultoresjuridicos.com'
+EMAIL_HOST_PASSWORD = 'qqkonucyrihfgfpv'
 
 # Google reCAPTCHA configuration
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6Lc2AHgrAAAAAIflkJJNbK1c5Ts6pmY5uEQrFCZP')
