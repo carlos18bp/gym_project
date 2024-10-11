@@ -9,6 +9,15 @@ urlpatterns = [
     path('admin/', admin_site.urls),    
     path('api/', include('gym_app.urls')),
     path('', TemplateView.as_view(template_name='index.html')),
+    path('sign_on/', TemplateView.as_view(template_name='index.html')),
+    path('forget_password/', TemplateView.as_view(template_name='index.html')),
+    re_path(r'^process_list(?:/(?P<user_id>\d+))?(?:/(?P<display>\w+))?/$',
+        TemplateView.as_view(template_name='index.html')),
+    re_path(r'^process_detail/(?P<process_id>\d+)(?:/(?P<display>\w+))?/$', 
+        TemplateView.as_view(template_name='index.html')),
+    re_path(r'^process_form/(?P<action>\w+)(?:/(?P<process_id>\d+))?/$', 
+        TemplateView.as_view(template_name='index.html')),
+    path('directory_list/', TemplateView.as_view(template_name='index.html')),
 ]
 
 if settings.DEBUG:
