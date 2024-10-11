@@ -152,4 +152,4 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'intranetgym@gmail.com'
-EMAIL_HOST_PASSWORD = 'qwyo uwgb qslb wvrw'
+EMAIL_HOST_PASSWORD = 'qwyouwgbqslbwvrw'
