@@ -157,7 +157,7 @@ const filteredProcesses = computed(() => {
   return processStore.filteredProcesses(
     searchQuery.value,
     isClient.value,
-    userIdParam.value,
+    user.value ? user.value.id : null,
     displayParam.value
   );
 });
@@ -169,11 +169,10 @@ onBeforeMount(async () => {
   userIdParam.value = route.params.user_id;
   displayParam.value = route.params.display;
 
-  if (userIdParam.value) {
-    await userStore.init();
-    user.value = userStore.userById(userIdParam.value);
-    isClient.value = !!(user.value.role == "client");
-  }
+  await userStore.init();
+  user.value = userIdParam.value ? userStore.userById(userIdParam.value) : userStore.getCurrentUser;
+  isClient.value = !!(user.value.role == "client");
+
 });
 
 watch(

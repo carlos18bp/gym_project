@@ -75,6 +75,7 @@
             Apellido
           </label>
           <input
+            
             v-model="userForm.lastName"
             type="text"
             id="last_name"
@@ -84,6 +85,7 @@
       </div>
 
       <button
+        v-if="!passcodeSent"
         @click.prevent="sendVerificationPasscode"
         type="submit"
         class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
@@ -91,20 +93,20 @@
         Registrarse
       </button>
 
-      <div v-if="passcodeSent" class="flex gap-4">
+      <div v-if="passcodeSent" class="grid md:grid-cols-2 md:gap-6">
         <input
           v-model="passcode"
           type="text"
           id="passcode"
           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-          placeholder="Copy your code sent"
+          placeholder="Código de verificación"
         />
         <button
           @click.prevent="signOnUser"
           type="submit"
-          class="text-white bg-blue-500 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
+          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
         >
-          Código de verificación
+          Verificar
         </button>
       </div>
 
@@ -115,7 +117,7 @@
             <RouterLink :to="{ name: 'sign_in' }"> Iniciar sesión </RouterLink>
           </a>
         </p>
-        <div class="flex items-center w-full max-w-lg mt-4">
+        <div class="flex items-center w-full mt-4">
           <div class="flex-grow border-t border-gray-300"></div>
           <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
@@ -186,7 +188,7 @@ onMounted(() => {
  */
 const sendVerificationPasscode = async () => {
   checkInputs();
-  showNotification("An access code has been sent to your email", "info");
+  showNotification("Se ha enviado un código de acceso a tu correo electrónico", "info");
   try {
     emailUsedToSentPasscode.value = userForm.email;
     const response = await axios.post("/api/sign_on/send_verification_code/", {
@@ -197,9 +199,9 @@ const sendVerificationPasscode = async () => {
   } catch (error) {
     console.error("Error during verification code process:", error);
     if (error.response && error.response.status === 409) {
-      showNotification("The email is already registered", "error");
+      showNotification("El correo electrónico ya está registrado", "error");
     } else {
-      showNotification("Send code failed!", "error");
+      showNotification("¡Error al enviar el código!", "error");
     }
   }
 };
@@ -211,7 +213,7 @@ const signOnUser = async () => {
   checkInputs();
   if (emailUsedToSentPasscode.value !== userForm.email) {
     showNotification(
-      "You have changed the verification email, you will have to generate a new code again",
+      "Has cambiado el correo electrónico de verificación, tendrás que generar un nuevo código nuevamente",
       "warning"
     );
     return;
@@ -227,21 +229,21 @@ const signOnUser = async () => {
     });
     authStore.login(response.data); // Log in the user
 
-    showNotification("Sign On successful!", "success");
+    showNotification("¡Inicio de sesión exitoso!", "success");
     router.push({
       name: "process_list",
       params: {
-        user_id: userId,
+        user_id: "",
         display: "",
       },
     }); // Redirect to process_list
   } else {
-    showNotification("Code is not valid", "warning");
+    showNotification("El código no es válido", "warning");
   }
   try {
   } catch (error) {
     console.error("Error during sign on process:", error);
-    showNotification("Sign On failed!", "error");
+    showNotification("¡Fallo en el inicio de sesión!", "error");
   }
 };
 
@@ -250,23 +252,23 @@ const signOnUser = async () => {
  */
 const checkInputs = () => {
   if (!userForm.email) {
-    showNotification("Email is required", "warning");
+    showNotification("El correo electrónico es obligatorio", "warning");
     return;
   }
   if (!userForm.password) {
-    showNotification("Passwords is required", "warning");
+    showNotification("La contraseña es obligatoria", "warning");
     return;
   }
   if (!userForm.confirmPassword) {
-    showNotification("Confirm Passwords is required", "warning");
+    showNotification("La confirmación de la contraseña es obligatoria", "warning");
     return;
   }
   if (userForm.password !== userForm.confirmPassword) {
-    showNotification("Passwords do not match!", "warning");
+    showNotification("¡Las contraseñas no coinciden!", "warning");
     return;
   }
   if (userForm.password !== userForm.confirmPassword) {
-    showNotification("Passwords do not match!", "warning");
+    showNotification("¡Las contraseñas no coinciden!", "warning");
     return;
   }
 };
