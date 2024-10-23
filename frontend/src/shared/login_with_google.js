@@ -16,7 +16,7 @@ export const loginWithGoogle = async (response, router, authStore) => {
 
         // Log in the user and save the authentication data
         authStore.login(res.data);
-        showNotification("Sign In successful!", "success");
+        showNotification("¡Registro exitoso!", "success");
         router.push({ name: 'process_list' }); // Redirect to the process_list page
     } catch (error) {
         handleLoginError(error);
@@ -29,5 +29,5 @@ export const loginWithGoogle = async (response, router, authStore) => {
  */
 const handleLoginError = (error) => {
     console.error('Error during login:', error);
-    showNotification("Error during login", "error"); // Show error notification
+    showNotification("Error durante el registro: ", "error"); // Show error notification
 };

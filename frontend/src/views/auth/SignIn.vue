@@ -107,7 +107,7 @@
       </div>
 
       <div class="flex flex-col items-center justify-center text-center">
-        <div class="flex items-center w-full max-w-lg mx-4">
+        <div class="flex items-center w-full mx-4">
           <div class="flex-grow border-t border-gray-300"></div>
           <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
