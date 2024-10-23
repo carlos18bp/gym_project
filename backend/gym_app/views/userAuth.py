@@ -180,7 +180,7 @@ def google_login(request):
             idinfo = id_token.verify_oauth2_token(
                 token, 
                 requests.Request(), 
-                '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com'
+                '911084961992-qosfj4blhr31olteguo4enmkfgs8tfo7.apps.googleusercontent.com'
             )
 
             # Check the issuer to ensure the token is from Google
