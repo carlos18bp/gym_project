@@ -22,6 +22,16 @@ const router = createRouter({
       component: () => import("@/views/auth/ForgetPassword.vue"),
     },
     {
+      path: "/policies/privacy_policy",
+      name: "privacy_policy",
+      component: () => import("@/views/policies/PrivacyPolicy.vue"),
+    },
+    {
+      path: "/policies/terms_of_use",
+      name: "terms_of_use",
+      component: () => import("@/views/policies/TermsOfUse.vue"),
+    },
+    {
       path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [
