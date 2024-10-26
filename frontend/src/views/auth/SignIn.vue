@@ -1,7 +1,8 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <img src="@/assets/images/logo/logo1.png">
+      <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png">
+      <img class="w-32 block xl:hidden" src="@/assets/images/logo/logo1.png">
     </div>
   </div>
   <section class="flex h-screen items-center justify-start">
@@ -17,7 +18,7 @@
           v-model="userForm.email"
           type="email"
           id="email"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-secondary focus:border-secondary block w-full p-2.5"
           required
         />
       </div>
@@ -33,11 +34,11 @@
           v-model="userForm.passcode"
           type="number"
           id="passcode"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-secondary focus:border-secondary block w-full p-2.5"
         />
         <button
           :class="{
-            'text-sm font-medium text-blue-800 cursor-pointer':
+            'text-sm font-medium text-secondary cursor-pointer':
               !isButtonDisabled,
             hidden: isButtonDisabled,
           }"
@@ -64,10 +65,10 @@
           v-model="userForm.password"
           type="password"
           id="password"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-secondary focus:border-secondary block w-full p-2.5"
           placeholder=""
         />
-        <a class="text-sm font-medium text-blue-800">
+        <a class="text-sm font-medium text-secondary">
           <RouterLink :to="{ name: 'forget_password' }">
             ¿Olvidaste tu contraseña?
           </RouterLink>
@@ -81,7 +82,7 @@
             type="submit"
             :disabled="signInSecondsRemaining > 1"
             :class="{
-              'w-full text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center':
+              'w-full text-white bg-secondary hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center':
                 signInSecondsRemaining < 1,
               'w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center':
                 signInSecondsRemaining >= 1,
@@ -100,7 +101,7 @@
         </div>
         <p>
           <span class="font-regular">¿Nuevo en G&M?</span>
-          <a class="font-regular text-blue-800">
+          <a class="font-regular text-secondary">
             <RouterLink :to="{ name: 'sign_on' }"> Registrarse. </RouterLink>
           </a>
         </p>
@@ -114,6 +115,12 @@
         </div>
 
         <GoogleLogin class="mt-6" :callback="handleLoginWithGoogle" prompt />
+      </div>
+
+      <!--Terms and conditions and Privacy Policy -->
+      <div class="w-full pt-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+        <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
+        <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
       </div>
     </form>
     <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">

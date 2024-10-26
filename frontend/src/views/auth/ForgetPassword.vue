@@ -1,7 +1,8 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <img src="@/assets/images/logo/logo1.png">
+      <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png">
+      <img class="w-32 block xl:hidden" src="@/assets/images/logo/logo1.png">
     </div>
   </div>
   <section class="flex h-screen items-center">
@@ -109,6 +110,12 @@
 
       <div v-if="timer > 0" class="text-center mt-2 text-gray-600">
         Por favor espere <span class="font-bold">{{ timer }}</span> antes de enviar un nuevo código.
+      </div>
+
+      <!--Terms and conditions and Privacy Policy -->
+      <div class="w-full pt-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+        <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
+        <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
       </div>
     </form>
     <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">

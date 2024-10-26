@@ -1,7 +1,8 @@
 <template>
   <div class="absolute">
     <div class="flex justify-center p-4">
-      <img src="@/assets/images/logo/logo1.png">
+      <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png">
+      <img class="w-32 block xl:hidden" src="@/assets/images/logo/logo1.png">
     </div>
   </div>
   <section class="pt-16 flex h-screen items-center md:pt-0">
@@ -125,6 +126,12 @@
         <div class="flex justify-center">
           <GoogleLogin class="mt-6" :callback="handleLoginWithGoogle" prompt />
         </div>
+      </div>
+
+      <!--Terms and conditions and Privacy Policy -->
+      <div class="w-full pt-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+        <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
+        <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
       </div>
     </form>
     <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">
