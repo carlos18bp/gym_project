@@ -158,23 +158,24 @@ if (isE2ECoverage) {
 }
 
 export default defineConfig({
-  base: '/static/',
+  base: '/static/frontend/',
   build: {
-    outDir: 'static',
+    outDir: 'static/frontend',
     rollupOptions: {
       output: {
-        assetFileNames: 'frontend/[name][extname]',
-        entryFileNames: 'frontend/[name].js',
-        chunkFileNames: 'frontend/[name].js',
-      },
-    },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: '', 
-        changeOrigin: true,
-        secure: false,
+        assetFileNames: (assetInfo) => {
+          // Organizar las imágenes en subcarpetas según el tipo de archivo
+          if (/\.(png|jpg|jpeg|gif|svg)$/.test(assetInfo.name)) {
+            return 'img/[name][extname]';
+          }
+          if (/\.css$/.test(assetInfo.name)) {
+            return 'css/[name][extname]';
+          }
+          // Para otros tipos de assets (fuentes, etc.), puedes añadir más condiciones si es necesario
+          return 'assets/[name][extname]';
+        },
+        entryFileNames: 'js/[name].js',
+        chunkFileNames: 'js/[name].js',
       },
     },
   },
