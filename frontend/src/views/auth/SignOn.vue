@@ -1,11 +1,11 @@
 <template>
-  <div class="absolute">
-    <div class="flex justify-center p-4">
+  <div class="relative xl:absolute">
+    <div class="flex justify-start p-4">
       <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png">
-      <img class="w-32 block xl:hidden" src="@/assets/images/logo/logo1.png">
+      <img class="w-20 block xl:hidden" src="@/assets/images/logo/logo1.png">
     </div>
   </div>
-  <section class="pt-16 flex h-screen items-center md:pt-0">
+  <section class="flex mt-6 justify-center xl:mt-0 xl:h-screen xl:items-center">
     <form class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2">
       <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl">
         Te damos la bienvenida
@@ -53,7 +53,7 @@
         />
       </div>
 
-      <div class="grid md:grid-cols-2 md:gap-6">
+      <div class="grid space-y-5 md:grid-cols-2 md:gap-6 xl:space-y-0">
         <div>
           <label
             for="first_name"
@@ -89,7 +89,7 @@
         v-if="!passcodeSent"
         @click.prevent="sendVerificationPasscode"
         type="submit"
-        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
+        class="text-white bg-secondary hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
       >
         Registrarse
       </button>
@@ -105,7 +105,7 @@
         <button
           @click.prevent="signOnUser"
           type="submit"
-          class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
+          class="text-white bg-secondary hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
         >
           Verificar
         </button>
@@ -114,7 +114,7 @@
       <div class="flex flex-col">
         <p class="font-regular">
           ¿Tienes una cuenta?
-          <a class="font-regular text-blue-800">
+          <a class="font-regular text-secondary">
             <RouterLink :to="{ name: 'sign_in' }"> Iniciar sesión </RouterLink>
           </a>
         </p>
@@ -129,7 +129,7 @@
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
-      <div class="w-full pt-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+      <div class="w-full py-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
         <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
         <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
       </div>
