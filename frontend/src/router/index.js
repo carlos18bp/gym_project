@@ -36,6 +36,12 @@ const router = createRouter({
       meta: { requiresAuth: false },
     },
     {
+      path: "/no_connection",
+      name: "no_connection",
+      component: () => import("@/views/offline/NoConnection.vue"),
+      meta: { requiresAuth: false },
+    },
+    {
       path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [

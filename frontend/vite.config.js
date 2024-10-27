@@ -37,6 +37,23 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
+      },
+      workbox: {
+        navigateFallback: '/static/frontend/index.html',
+        globPatterns: ['**/*.{js,css,png,jpg,svg,webp,woff2,woff}'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/no_connection$/,
+            handler: 'NetworkOnly',
+            options: {
+              cacheName: 'offline-page',
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 7 * 24 * 60 * 60,
+              },
+            },
+          },
+        ],
       }
     })
   ],
