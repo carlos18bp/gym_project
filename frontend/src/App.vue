@@ -17,19 +17,22 @@ onBeforeMount(async () => {
   if (authStore.isAuthenticated) {
     await userStore.init();
 
-    if (userStore.currentUser?.role == "client") {
-      if (route.name == "process_form" || route.name == "directory_list") {
-        router.push({
-          name: "process_list",
-          params: {
-            user_id: "",
-            display: "",
-          },
-        });
-      }
+    // If the user role is "client" and is on restricted routes, redirect to "process_list"
+    if (userStore.currentUser?.role === "client" && 
+        (route.name === "process_form" || route.name === "directory_list")) {
+      router.push({
+        name: "process_list",
+        params: {
+          user_id: "",
+          display: "",
+        },
+      });
     }
   } else {
-    router.push({ name: "sign_in" });
+    // Redirect to "sign_in" only if the route requires authentication
+    if (route.meta.requiresAuth) {
+      router.push({ name: "sign_in" });
+    }
   }
 });
 </script>
