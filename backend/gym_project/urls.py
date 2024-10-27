@@ -11,6 +11,8 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html')),
     path('sign_on/', TemplateView.as_view(template_name='index.html')),
     path('forget_password/', TemplateView.as_view(template_name='index.html')),
+    path('policies/terms_of_use', TemplateView.as_view(template_name='index.html')),
+    path('policies/privacy_policy', TemplateView.as_view(template_name='index.html')),
     re_path(r'^process_list(?:/(?P<user_id>\d+))?(?:/(?P<display>\w+))?/$',
         TemplateView.as_view(template_name='index.html')),
     re_path(r'^process_detail/(?P<process_id>\d+)(?:/(?P<display>\w+))?/$', 
