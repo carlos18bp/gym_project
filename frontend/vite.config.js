@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'G&M',
         short_name: 'G&M',
-        start_url: '/static/frontend/',
+        start_url: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#42b983',
@@ -39,12 +39,12 @@ export default defineConfig({
         ]
       },
       workbox: {
-        navigateFallback: '/static/frontend/index.html',
+        navigateFallback: '/no_connection',
         globPatterns: ['**/*.{js,css,png,jpg,svg,webp,woff2,woff}'],
         runtimeCaching: [
           {
             urlPattern: /\/no_connection$/,
-            handler: 'NetworkOnly',
+            handler: 'CacheFirst',
             options: {
               cacheName: 'offline-page',
               expiration: {
