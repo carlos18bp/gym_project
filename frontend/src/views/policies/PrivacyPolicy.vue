@@ -1,13 +1,11 @@
 <template>
-  <div class="absolute">
-    <div class="flex justify-center p-4">
+  <div class="relative p-4">
       <router-link :to="{ name: 'sign_in' }">
-        <img src="@/assets/images/logo/logo1.png">
+        <img class="w-20 xl:w-auto" src="@/assets/images/logo/logo1.png">
       </router-link>
-    </div>
   </div>
 
-  <div class="max-w-3xl mx-auto py-40 px-5">
+  <div class="max-w-3xl mx-auto mt-6 px-5">
     <!-- Main Title -->
     <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl mb-10">
       Política de Privacidad
