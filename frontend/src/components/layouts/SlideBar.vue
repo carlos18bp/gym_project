@@ -249,6 +249,7 @@
                   {{ item.name }}
                 </a>
               </li>
+              <PWAInstallButton></PWAInstallButton>
             </ul>
           </li>
         </ul>
@@ -287,6 +288,7 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import Profile from "@/components/user/Profile.vue";
+import PWAInstallButton from "@/components/pwa/PWAInstallButton.vue";
 import {
   Dialog,
   DialogPanel,
