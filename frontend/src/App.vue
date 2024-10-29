@@ -1,5 +1,6 @@
 <template>
   <RouterView />
+  <PWAInstallAlert />
 </template>
 
 <script setup>
@@ -8,6 +9,7 @@ import { onBeforeMount } from "vue";
 import { RouterView, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
+import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 
 const route = useRoute();
 const authStore = useAuthStore(); // Get the authentication store instance
