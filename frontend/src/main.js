@@ -23,7 +23,7 @@ const initializeApp = () => {
 
   // Use the Google Login plugin with the specified client ID
   app.use(vue3GoogleLogin, {
-    clientId: '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com'
+    clientId: '911084961992-qosfj4blhr31olteguo4enmkfgs8tfo7.apps.googleusercontent.com'
   });
 
   app.mount('#app'); // Mount the Vue app to the DOM element with id 'app'
