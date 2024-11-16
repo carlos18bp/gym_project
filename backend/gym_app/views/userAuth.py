@@ -152,60 +152,71 @@ def sign_in(request):
 
 
 from django.http import JsonResponse
-from google.oauth2 import id_token
-from google.auth.transport import requests
+from urllib.request import urlopen
+from django.core.files.base import ContentFile
 
 @api_view(['POST'])
 def google_login(request):
     """
-    Handle user login via Google OAuth2.
+    Handle user login via Google data.
 
-    This view processes POST requests to authenticate a user using a Google OAuth2 token.
-    If the token is valid, it creates a new user if necessary and returns JWT tokens for the user.
+    This view processes POST requests containing user information from Google,
+    and uses it to authenticate the user. If the user does not exist, it creates a new one
+    with the provided information, then returns a JWT token.
 
     Args:
-        request (Request): The HTTP request object containing the Google OAuth2 token.
+        request (Request): The HTTP request object containing user data from Google.
 
     Returns:
         JsonResponse: A JsonResponse object with JWT tokens if authentication is successful,
                       or an error message if authentication fails.
     """
     if request.method == 'POST':
-        # Get the token from the request data
-        token = request.POST.get('token')
-        if not token:
-            return JsonResponse({'status': 'error', 'error_message': 'Token is missing'}, status=400)
+        # Extract user data from the request body
+        email = request.data.get('email')
+        given_name = request.data.get('given_name')
+        family_name = request.data.get('family_name')
+        picture_url = request.data.get('picture')
+
+        # Validate that all required data is present
+        if not email or not given_name or not family_name:
+            return JsonResponse({'status': 'error', 'error_message': 'Required fields are missing'}, status=400)
+        
         try:
-            # Verify the token with Google
-            idinfo = id_token.verify_oauth2_token(
-                token, 
-                requests.Request(), 
-                '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com'
-            )
-
-            # Check the issuer to ensure the token is from Google
-            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-                raise ValueError('Wrong issuer.')
-
             # Get or create the user based on the email
             user, created = User.objects.get_or_create(
-                email=idinfo['email'],
-                defaults={'first_name': idinfo['given_name'], 'last_name': idinfo['family_name']}
+                email=email,
+                defaults={'first_name': given_name, 'last_name': family_name}
             )
 
-            # Return the generated authentication tokens
-            return JsonResponse(generate_auth_tokens(user), status=200)
+                    # Download and save profile picture if provided
+            if picture_url:
+                try:
+                    # Fetch image from the URL
+                    response = urlopen(picture_url, timeout=1)
+                    image_data = response.read()
 
-        except ValueError as e:
-            # Handle token validation errors
-            return JsonResponse({'status': 'error', 'error_message': str(e)}, status=400)
+                    # Create a unique filename for the profile photo
+                    filename = f"profile_photos/{user.id}_profile.jpg"
+
+                    # Save the image data to the user's photo_profile field
+                    user.photo_profile.save(filename, ContentFile(image_data), save=True)
+                except Exception as e:
+                    print(f"Error saving profile image: {e}")
+            
+            # Generate authentication token
+            tokens = generate_auth_tokens(user)
+
+            # Return the generated authentication tokens
+            return JsonResponse(tokens, status=200)
+
         except Exception as e:
-            # Handle other exceptions
+            # Handle unexpected exceptions
             return JsonResponse({'status': 'error', 'error_message': str(e)}, status=500)
     else:
         # Handle invalid request methods
         return JsonResponse({'status': 'error', 'error_message': 'Invalid request method'}, status=405)
-
+    
 
 from django.contrib.auth.models import update_last_login
 

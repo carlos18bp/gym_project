@@ -24,7 +24,7 @@
     "vite-plugin-pwa": "^0.20.5",
     "vue": "^3.4.21",
     "vue-router": "^4.3.2",
-    "vue3-google-login": "^2.0.26"
+    "vue3-google-login": "^2.0.33"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
