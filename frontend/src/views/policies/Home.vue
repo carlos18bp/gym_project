@@ -65,15 +65,21 @@
         </div>
       </div>
 
+      
       <div class="mt-8 flex justify-center">
         <router-link
-          :to="{ name: 'sign_on' }"
-          class="px-6 py-3 bg-secondary text-white font-regular rounded-lg shadow-md hover:bg-blue-600"
+        :to="{ name: 'sign_on' }"
+        class="px-6 py-3 bg-secondary text-white font-regular rounded-lg shadow-md hover:bg-blue-600"
         >
-          Regístrate ahora
-        </router-link>
-      </div>
+        Regístrate ahora
+      </router-link>
     </div>
+    <!--Terms and conditions and Privacy Policy -->
+    <div class="w-full py-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+      <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
+      <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
+    </div>
+  </div>
   </section>
 </template>
 
