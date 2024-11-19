@@ -174,48 +174,63 @@ def google_login(request):
     if request.method == 'POST':
         # Extract user data from the request body
         email = request.data.get('email')
-        given_name = request.data.get('given_name')
-        family_name = request.data.get('family_name')
-        picture_url = request.data.get('picture')
+        given_name = request.data.get('given_name', '')  # Default to empty string if missing
+        family_name = request.data.get('family_name', '')  # Default to empty string if missing
+        picture_url = request.data.get('picture')  # Optional picture URL
 
-        # Validate that all required data is present
-        if not email or not given_name or not family_name:
-            return JsonResponse({'status': 'error', 'error_message': 'Required fields are missing'}, status=400)
-        
+        # Validate that the email is present
+        if not email:
+            return Response({'status': 'error', 'error_message': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             # Get or create the user based on the email
             user, created = User.objects.get_or_create(
                 email=email,
-                defaults={'first_name': given_name, 'last_name': family_name}
+                defaults={
+                    'first_name': given_name,
+                    'last_name': family_name,
+                }
             )
 
-                    # Download and save profile picture if provided
-            if picture_url:
-                try:
-                    # Fetch image from the URL
-                    response = urlopen(picture_url, timeout=1)
-                    image_data = response.read()
+            if created:
+                # If the user was created, handle the optional profile picture
+                if picture_url:
+                    try:
+                        # Fetch image from the URL
+                        response = urlopen(picture_url, timeout=1)
+                        image_data = response.read()
 
-                    # Create a unique filename for the profile photo
-                    filename = f"profile_photos/{user.id}_profile.jpg"
+                        # Create a unique filename for the profile photo
+                        filename = f"profile_photos/{user.id}_profile.jpg"
 
-                    # Save the image data to the user's photo_profile field
-                    user.photo_profile.save(filename, ContentFile(image_data), save=True)
-                except Exception as e:
-                    print(f"Error saving profile image: {e}")
-            
+                        # Save the image data to the user's photo_profile field
+                        user.photo_profile.save(filename, ContentFile(image_data), save=True)
+                    except Exception as e:
+                        print(f"Error saving profile image: {e}")
+                else:
+                    # If no picture is provided, leave the field as null (frontend handles default image)
+                    user.photo_profile = None
+                    user.save()
+
+            # Serialize the user data
+            serializer = UserSerializer(user)
+
             # Generate authentication token
             tokens = generate_auth_tokens(user)
 
-            # Return the generated authentication tokens
-            return JsonResponse(tokens, status=200)
+            # Return the generated authentication tokens and user data
+            return Response({
+                'refresh': tokens['refresh'],
+                'access': tokens['access'],
+                'user': serializer.data
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             # Handle unexpected exceptions
-            return JsonResponse({'status': 'error', 'error_message': str(e)}, status=500)
+            return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         # Handle invalid request methods
-        return JsonResponse({'status': 'error', 'error_message': 'Invalid request method'}, status=405)
+        return Response({'status': 'error', 'error_message': 'Invalid request method.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
 
 from django.contrib.auth.models import update_last_login
