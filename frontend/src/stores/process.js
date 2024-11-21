@@ -162,11 +162,15 @@ export const useProcessStore = defineStore("process", {
     },
 
     /**
-     * Call creation process request.
-     * @param {object} formData - Form data.
+     * Create a new process and optionally upload associated files.
+     *
+     * This function sends the main process data to the backend to create a new process.
+     * After successfully creating the process, it uploads any associated files one by one.
+     *
+     * @param {object} formData - The form data containing process details and files.
+     * @returns {number|null} - HTTP status code (201 for success) or null in case of error.
      */
     async createProcess(formData) {
-      // Create a JSON object for the main form data
       const mainData = {
         plaintiff: formData.plaintiff,
         defendant: formData.defendant,
@@ -176,27 +180,47 @@ export const useProcessStore = defineStore("process", {
         authority: formData.authority,
         clientId: formData.clientId,
         lawyerId: formData.lawyerId,
-        stages: formData.stages, // Now directly an array of objects
+        stages: formData.stages,
       };
 
-      // Create a FormData object for the request
       const formDataObject = new FormData();
-      formDataObject.append("mainData", JSON.stringify(mainData)); // Add the main data as a string
-
-      // Add case files separately to FormData
-      formData.caseFiles.forEach((caseFile, index) => {
-        if (caseFile.file) {
-          formDataObject.append(`caseFiles[${index}]`, caseFile.file); // Just add the file without nesting
-        }
-      });
+      formDataObject.append("mainData", JSON.stringify(mainData)); // Attach main process data as JSON
 
       try {
-        let response = await create_request("create_process/", formDataObject);
+        // Step 1: Send main process data to the backend
+        const response = await create_request(
+          "create_process/",
+          formDataObject
+        );
 
-        this.dataLoaded = false;
-        await this.fetchProcessesData();
+        if (response.status === 201) {
+          const processId = response.data.id; // Retrieve the created process ID
 
-        return response.status;
+          // Step 2: Upload associated files (if any)
+          if (formData.caseFiles.length > 0) {
+            const uploadResults = await this.uploadFiles(
+              processId,
+              formData.caseFiles
+            );
+
+            // Check if all files were uploaded successfully
+            const allUploaded = uploadResults.every((result) => result.success);
+            if (!allUploaded) {
+              console.warn(
+                "Some files failed to upload:",
+                uploadResults.filter((r) => !r.success)
+              );
+            }
+          }
+
+          this.dataLoaded = false;
+          await this.fetchProcessesData();
+
+          return response.status; // Return success status code
+        } else {
+          console.error("Failed to create process:", response.status);
+          return null;
+        }
       } catch (error) {
         console.error("Error creating process:", error.message);
         return null;
@@ -204,11 +228,15 @@ export const useProcessStore = defineStore("process", {
     },
 
     /**
-     * Call update process request.
-     * @param {object} formData - Form data.
+     * Update an existing process and optionally upload new files.
+     *
+     * This function updates the main process data on the backend and uploads any new files
+     * associated with the process that do not already exist in the system.
+     *
+     * @param {object} formData - The form data containing process details and files.
+     * @returns {number|null} - HTTP status code (200 for success) or null in case of error.
      */
     async updateProcess(formData) {
-      // Create a JSON object for the main form data
       const mainData = {
         plaintiff: formData.plaintiff,
         defendant: formData.defendant,
@@ -218,37 +246,95 @@ export const useProcessStore = defineStore("process", {
         authority: formData.authority,
         clientId: formData.clientId,
         lawyerId: formData.lawyerId,
-        stages: formData.stages, // Directly an array of objects
+        stages: formData.stages,
         caseFileIds: formData.caseFiles
-          .filter((caseFile) => caseFile.id) // Filter to include only case files with an id
-          .map((caseFile) => caseFile.id), // Map filtered case files to an array of ids
+          .filter((caseFile) => caseFile.id) // Include only existing files by ID
+          .map((caseFile) => caseFile.id), // Map to an array of IDs
       };
 
-      // Create a FormData object for the request
       const formDataObject = new FormData();
-      formDataObject.append("mainData", JSON.stringify(mainData)); // Add the main data as a string
-
-      // Add the new case files without ID to FormData
-      formData.caseFiles.forEach((caseFile, index) => {
-        if (caseFile.file && !caseFile.id) {
-          formDataObject.append(`caseFiles[${index}]`, caseFile.file); // Just add the file without nesting
-        }
-      });
+      formDataObject.append("mainData", JSON.stringify(mainData)); // Attach main process data as JSON
 
       try {
-        let response = await update_request(
+        // Step 1: Send updated process data to the backend
+        const response = await update_request(
           `update_process/${formData.processIdParam}/`,
           formDataObject
         );
 
-        this.dataLoaded = false;
-        await this.fetchProcessesData();
+        if (response.status === 200) {
+          // Step 2: Upload new files (files without an existing ID)
+          const newFiles = formData.caseFiles.filter(
+            (file) => file.file && !file.id
+          );
+          if (newFiles.length > 0) {
+            const uploadResults = await this.uploadFiles(
+              formData.processIdParam,
+              newFiles
+            );
 
-        return response.status;
+            // Check upload results
+            const allUploaded = uploadResults.every((result) => result.success);
+            if (!allUploaded) {
+              console.warn(
+                "Some files failed to upload:",
+                uploadResults.filter((r) => !r.success)
+              );
+            }
+          }
+
+          this.dataLoaded = false;
+          await this.fetchProcessesData();
+
+          return response.status; // Return success status code
+        } else {
+          console.error("Failed to update process:", response.status);
+          return null;
+        }
       } catch (error) {
-        console.error("Error creating process:", error.message);
+        console.error("Error updating process:", error.message);
         return null;
       }
+    },
+
+    /**
+     * Upload multiple files for a specific process.
+     *
+     * This function iterates over a list of files and uploads each file individually
+     * to the backend, associating it with the given process ID.
+     *
+     * @param {number} processId - The ID of the process to associate the files with.
+     * @param {Array} files - List of files to be uploaded.
+     * @returns {Array} - List of results for each file, containing the file name and success status.
+     */
+    async uploadFiles(processId, files) {
+      const results = [];
+
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.append("file", file.file); // Attach the file
+          formData.append("processId", processId); // Associate with the process
+
+          const response = await create_request("upload_file/", formData);
+
+          results.push({
+            file: file.file.name,
+            success: response.status === 201, // Check if the upload was successful
+          });
+        } catch (error) {
+          console.error(
+            `Error uploading file ${file.file.name}:`,
+            error.message
+          );
+          results.push({
+            file: file.file.name,
+            success: false,
+          });
+        }
+      }
+
+      return results; // Return a list of upload results
     },
   },
 });

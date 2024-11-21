@@ -171,3 +171,64 @@ def update_process(request, pk):
     else:
         print("Serializer Errors:", serializer.errors)  # Print any errors in the serializer validation
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_file(request):
+    """
+    Upload a single file and associate it with an existing process.
+
+    This API endpoint allows authenticated users to upload a file and link it 
+    to an existing legal process identified by its `processId`.
+
+    **Request parameters**:
+    - `processId` (str): The ID of the process to which the file will be associated.
+    - `file` (File): The file to be uploaded.
+
+    **Responses**:
+    - `201 Created`: File successfully uploaded and associated with the process.
+        - Example response: `{"detail": "File uploaded successfully.", "fileId": 123}`
+    - `400 Bad Request`: Missing required parameters or invalid data.
+        - Example response: `{"detail": "Process ID is required."}`
+    - `404 Not Found`: Process with the specified ID does not exist.
+        - Example response: `{"detail": "Not found."}`
+    - `500 Internal Server Error`: An unexpected error occurred while processing the request.
+        - Example response: `{"detail": "Internal error uploading file."}`
+
+    **Permission required**:
+    - Authenticated users only.
+
+    **Example usage**:
+    ```bash
+    curl -X POST http://127.0.0.1:8000/api/upload_file/ \
+      -H "Authorization: Token <your_token>" \
+      -F "processId=1" \
+      -F "file=@/path/to/file.pdf"
+    ```
+    """
+    # Extract request data
+    process_id = request.data.get('processId')  # ID of the process
+    file = request.FILES.get('file')  # File to be uploaded
+
+    # Validate required parameters
+    if not process_id:
+        return Response({'detail': 'Process ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not file:
+        return Response({'detail': 'File is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Ensure the process exists
+        process = get_object_or_404(Process, pk=process_id)
+
+        # Create a new CaseFile instance and associate it with the process
+        case_file = CaseFile.objects.create(file=file)
+        process.case_files.add(case_file)
+
+        # Return success response with the ID of the uploaded file
+        return Response({'detail': 'File uploaded successfully.', 'fileId': case_file.id}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        # Log the exception for debugging purposes
+        print("Error uploading file:", str(e))
+        return Response({'detail': 'Internal error uploading file.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

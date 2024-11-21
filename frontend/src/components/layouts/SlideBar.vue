@@ -71,7 +71,7 @@
                         />
                         <span class="flex items-center">
                           <span
-                            class="ml-4 text-sm font-semibold leading-6 text-gray-900"
+                            class="ml-4 text-sm font-semibold leading-6 text-gray-900 truncate max-w-44"
                             aria-hidden="true"
                           >
                             {{ currentUser.first_name }}
@@ -125,7 +125,7 @@
                           :class="[
                             item.current
                               ? 'bg-gray-50 text-secondary'
-                              : 'text-gray-700 hover:bg-gray-50 hover:text-secondary',
+                              : 'text-primary hover:bg-gray-50 hover:text-secondary',
                             'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                           ]"
                         >
@@ -134,7 +134,7 @@
                             :class="[
                               item.current
                                 ? 'text-secondary'
-                                : 'text-gray-400 group-hover:text-secondary',
+                                : 'text-primary group-hover:text-secondary',
                               'h-6 w-6 shrink-0',
                             ]"
                             aria-hidden="true"
@@ -142,6 +142,7 @@
                           {{ item.name }}
                         </a>
                       </li>
+                      <PWAInstallButton></PWAInstallButton>
                     </ul>
                   </li>
                 </ul>
@@ -180,7 +181,7 @@
                 />
                 <span class="hidden lg:flex lg:items-center">
                   <span
-                    class="ml-4 text-sm font-semibold leading-6 text-gray-900"
+                    class="ml-4 text-sm font-semibold leading-6 text-gray-900 truncate max-w-44"
                     aria-hidden="true"
                     >{{ currentUser.first_name }}
                     {{ currentUser.last_name }}</span
