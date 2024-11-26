@@ -176,14 +176,7 @@ def upload_file(request):
 
     **Permission required**:
     - Authenticated users only.
-
-    **Example usage**:
-    ```bash
-    curl -X POST http://127.0.0.1:8000/api/upload_file/ \
-      -H "Authorization: Token <your_token>" \
-      -F "processId=1" \
-      -F "file=@/path/to/file.pdf"
-    ```
+    
     """
     # Extract request data
     process_id = request.data.get('processId')  # ID of the process
