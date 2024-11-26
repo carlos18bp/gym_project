@@ -54,7 +54,7 @@ def create_process(request):
     This view will:
     - Validate client, lawyer, and case type.
     - Check for unique 'ref' value.
-    - Create the process, stages, and case files based on the provided data.
+    - Create the process and stages based on the provided data.
     """
     try:
         # Parse the main data from the request
@@ -103,18 +103,7 @@ def create_process(request):
                 )
                 process.stages.add(stage)
 
-        # Handle CaseFile instances (files sent separately)
-        files = request.FILES
-        print("Files Received:", files)
-
-        for key, file in files.items():
-            if key.startswith('caseFiles['):  # Ensure we're handling caseFiles
-                case_file = CaseFile.objects.create(
-                    file=file
-                )
-                process.case_files.add(case_file)
-
-        # Save process with associated stages and case files
+        # Save process with associated stages
         process.save()
 
         # Serialize and return the created process
@@ -134,7 +123,6 @@ def update_process(request, pk):
     This view will:
     - Update the process data using the provided main data.
     - Retain only the specified case files by 'caseFileIds'.
-    - Add new case files sent in the 'caseFiles' data.
     """
     process = get_object_or_404(Process, pk=pk)
     print("Received request.data:", request.data)
@@ -154,16 +142,6 @@ def update_process(request, pk):
         # Remove any case files not in the list of 'caseFileIds'
         process.case_files.set(process.case_files.filter(id__in=case_file_ids_to_retain))
 
-        # Step 2: Add new case files sent in the 'caseFiles' data
-        new_files = request.FILES
-        print("Files Received:", new_files)
-
-        for key, file in new_files.items():
-            if key.startswith('caseFiles['):  # Ensure we're handling caseFiles with this pattern
-                case_file = CaseFile.objects.create(file=file)
-                process.case_files.add(case_file)
-                print(f"Added new case file: {case_file.file.name}")
-
         # Save the process with updated case files
         process.save()
 
@@ -171,6 +149,7 @@ def update_process(request, pk):
     else:
         print("Serializer Errors:", serializer.errors)  # Print any errors in the serializer validation
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -15,8 +15,8 @@ export async function submitHandler(formData, text_response, isEditing) {
 
   // Show loading alert
   Swal.fire({
-    title: "Processing...",
-    text: "Please wait while we process your request.",
+    title: "Procesando...",
+    text: "Por favor espere, estamos procesando la solicitud.",
     allowOutsideClick: false,
     showConfirmButton: false,
     didOpen: () => {
@@ -36,7 +36,7 @@ export async function submitHandler(formData, text_response, isEditing) {
   if (responseStatus == 201 || (isEditing && responseStatus == 200)) {
     Swal.fire({
       icon: "success",
-      title: "Success",
+      title: "Exitoso",
       text: text_response,
       confirmButtonText: "OK!",
     }).then((result) => {

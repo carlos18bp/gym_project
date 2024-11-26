@@ -676,7 +676,7 @@ const onSubmit = async () => {
   if (validateFormData()) {
     await submitHandler(
       formData,
-      "Process information saved successfully!",
+      "La información del proceso se ha guardado exitosamente!",
       !!programIdParam.value
     );
     router.push({ name: "process_list", params: { user_id: '', display: "" } });
