@@ -54,7 +54,7 @@ def create_process(request):
     This view will:
     - Validate client, lawyer, and case type.
     - Check for unique 'ref' value.
-    - Create the process, stages, and case files based on the provided data.
+    - Create the process and stages based on the provided data.
     """
     try:
         # Parse the main data from the request
@@ -103,18 +103,7 @@ def create_process(request):
                 )
                 process.stages.add(stage)
 
-        # Handle CaseFile instances (files sent separately)
-        files = request.FILES
-        print("Files Received:", files)
-
-        for key, file in files.items():
-            if key.startswith('caseFiles['):  # Ensure we're handling caseFiles
-                case_file = CaseFile.objects.create(
-                    file=file
-                )
-                process.case_files.add(case_file)
-
-        # Save process with associated stages and case files
+        # Save process with associated stages
         process.save()
 
         # Serialize and return the created process
@@ -134,7 +123,6 @@ def update_process(request, pk):
     This view will:
     - Update the process data using the provided main data.
     - Retain only the specified case files by 'caseFileIds'.
-    - Add new case files sent in the 'caseFiles' data.
     """
     process = get_object_or_404(Process, pk=pk)
     print("Received request.data:", request.data)
@@ -147,22 +135,12 @@ def update_process(request, pk):
     if serializer.is_valid():
         process = serializer.save()
 
-        # Step 1: Retain only the specified case files by 'caseFileIds'
+        # Retain only the specified case files by 'caseFileIds'
         case_file_ids_to_retain = set(main_data.get('caseFileIds', []))
         print("Case File IDs to retain:", case_file_ids_to_retain)
 
         # Remove any case files not in the list of 'caseFileIds'
         process.case_files.set(process.case_files.filter(id__in=case_file_ids_to_retain))
-
-        # Step 2: Add new case files sent in the 'caseFiles' data
-        new_files = request.FILES
-        print("Files Received:", new_files)
-
-        for key, file in new_files.items():
-            if key.startswith('caseFiles['):  # Ensure we're handling caseFiles with this pattern
-                case_file = CaseFile.objects.create(file=file)
-                process.case_files.add(case_file)
-                print(f"Added new case file: {case_file.file.name}")
 
         # Save the process with updated case files
         process.save()
@@ -171,3 +149,58 @@ def update_process(request, pk):
     else:
         print("Serializer Errors:", serializer.errors)  # Print any errors in the serializer validation
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_case_file(request):
+    """
+    Upload a single file and associate it with an existing process.
+
+    This API endpoint allows authenticated users to upload a file and link it 
+    to an existing legal process identified by its `processId`.
+
+    **Request parameters**:
+    - `processId` (str): The ID of the process to which the file will be associated.
+    - `file` (File): The file to be uploaded.
+
+    **Responses**:
+    - `201 Created`: File successfully uploaded and associated with the process.
+        - Example response: `{"detail": "File uploaded successfully.", "fileId": 123}`
+    - `400 Bad Request`: Missing required parameters or invalid data.
+        - Example response: `{"detail": "Process ID is required."}`
+    - `404 Not Found`: Process with the specified ID does not exist.
+        - Example response: `{"detail": "Not found."}`
+    - `500 Internal Server Error`: An unexpected error occurred while processing the request.
+        - Example response: `{"detail": "Internal error uploading file."}`
+
+    **Permission required**:
+    - Authenticated users only.
+    
+    """
+    # Extract request data
+    process_id = request.data.get('processId')  # ID of the process
+    file = request.FILES.get('file')  # File to be uploaded
+
+    # Validate required parameters
+    if not process_id:
+        return Response({'detail': 'Process ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not file:
+        return Response({'detail': 'File is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Ensure the process exists
+        process = get_object_or_404(Process, pk=process_id)
+
+        # Create a new CaseFile instance and associate it with the process
+        case_file = CaseFile.objects.create(file=file)
+        process.case_files.add(case_file)
+
+        # Return success response with the ID of the uploaded file
+        return Response({'detail': 'File uploaded successfully.', 'fileId': case_file.id}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        # Log the exception for debugging purposes
+        print("Error uploading file:", str(e))
+        return Response({'detail': 'Internal error uploading file.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
