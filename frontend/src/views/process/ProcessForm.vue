@@ -42,7 +42,7 @@
               for="defendant"
               class="block text-base font-medium leading-6 text-primary"
             >
-              Dte./Accionado
+              Ddo./Accionado
               <span class="text-red-500">*</span>
             </label>
             <div class="mt-2">
@@ -66,7 +66,7 @@
               <ComboboxLabel
                 class="block text-base font-medium leading-6 text-primary"
               >
-                Tipo de caso
+                Tipo Proceso
                 <span class="text-red-500">*</span>
               </ComboboxLabel>
               <div class="relative mt-2">
@@ -130,7 +130,7 @@
               for="defendant"
               class="block text-base font-medium leading-6 text-primary"
             >
-              Subcaso
+              Subclase
               <span class="text-red-500">*</span>
             </label>
             <div class="mt-2">

@@ -135,7 +135,7 @@ def update_process(request, pk):
     if serializer.is_valid():
         process = serializer.save()
 
-        # Step 1: Retain only the specified case files by 'caseFileIds'
+        # Retain only the specified case files by 'caseFileIds'
         case_file_ids_to_retain = set(main_data.get('caseFileIds', []))
         print("Case File IDs to retain:", case_file_ids_to_retain)
 
@@ -153,7 +153,7 @@ def update_process(request, pk):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def upload_file(request):
+def update_case_file(request):
     """
     Upload a single file and associate it with an existing process.
 

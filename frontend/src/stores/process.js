@@ -316,7 +316,7 @@ export const useProcessStore = defineStore("process", {
           formData.append("file", file.file); // Attach the file
           formData.append("processId", processId); // Associate with the process
 
-          const response = await create_request("upload_file/", formData);
+          const response = await create_request("update_case_file/", formData);
 
           results.push({
             file: file.file.name,
