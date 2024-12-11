@@ -32,7 +32,7 @@ class Command(BaseCommand):
 
         # Delete clients and lawyers
         for user in User.objects.filter(role__in=['client', 'lawyer']):
-            #user.delete()
+            user.delete()
             self.stdout.write(self.style.SUCCESS(f'User "{user}" deleted'))
 
         # Delete all LegalRequests
