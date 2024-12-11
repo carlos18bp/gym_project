@@ -61,6 +61,25 @@ def update_profile(request, pk):
         # Save the validated data, including any profile photo updates
         serializer.save()
 
+        # Check if the user profile is completely filled
+        required_fields = [
+            user.first_name,
+            user.last_name,
+            user.contact,
+            user.birthday,
+            user.identification,
+            user.email,
+            user.marital_status,
+        ]
+        # If all required fields have a value, mark is_profile_completed as True
+        if all(required_fields):
+            user.is_profile_completed = True
+        else:
+            user.is_profile_completed = False
+
+        # Save the updated is_profile_completed value
+        user.save()
+
         # Return a success message after updating the profile
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
 

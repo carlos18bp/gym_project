@@ -330,6 +330,7 @@ const slidebarOpen = ref(false); // Show modal with navigation
 onMounted(async () => {
   await userStore.init();
   Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
+  showProfile.value = !!!currentUser.is_profile_completed;
 
   // Filter out the "Radicar Proceso" option if the user role is "client"
   if (currentUser.role == "client") {
