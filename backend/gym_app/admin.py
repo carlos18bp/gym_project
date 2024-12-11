@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -30,6 +30,38 @@ class CaseAdmin(admin.ModelAdmin):
     """
     list_display = ('type',)  # Display the type of the case
 
+class LegalRequestAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalRequest model.
+    Display relevant fields for the admin interface.
+    """
+    list_display = (
+        'first_name', 'last_name', 'email', 'request_type', 
+        'discipline', 'description', 'created_at'
+    )
+    filter_horizontal = ('files',)  # Better UI for ManyToMany fields
+
+class LegalRequestTypeAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalRequestType model.
+    Display the name field.
+    """
+    list_display = ('name',)
+
+class LegalDisciplineAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalDiscipline model.
+    Display the name field.
+    """
+    list_display = ('name',)
+
+class LegalRequestFilesAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalRequestFiles model.
+    Display the file and creation date.
+    """
+    list_display = ('file', 'created_at')
+
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
     site_header = 'G&M App Administration'
@@ -55,7 +87,15 @@ class GyMAdminSite(admin.AdminSite):
                     model for model in app_dict.get('gym_app', {}).get('models', [])
                     if model['object_name'] in ['Process', 'Case']
                 ]
-            }
+            },
+            {
+                'name': _('Legal Request Management'),
+                'app_label': 'legal_request_management',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['LegalRequest', 'LegalRequestType', 'LegalDiscipline', 'LegalRequestFiles']
+                ]
+            },
         ]
         return custom_app_list
 
@@ -69,3 +109,7 @@ admin_site.register(Process, ProcessAdmin)
 admin_site.register(Case, CaseAdmin)  # Register Case with CaseAdmin
 admin_site.register(Stage)
 admin_site.register(CaseFile)
+admin_site.register(LegalRequest, LegalRequestAdmin)
+admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
+admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
+admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)

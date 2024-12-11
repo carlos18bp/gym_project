@@ -9,5 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         number_of_records = options['number_of_records']
-        call_command('create_clients_lawyers')
-        call_command('create_processes', '--number_of_processes', number_of_records)
+        #call_command('create_clients_lawyers')
+        call_command('create_legal_requests')
+        #call_command('create_processes', '--number_of_processes', number_of_records)
