@@ -301,14 +301,16 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 import {
-  CalendarIcon,
+  CalendarDaysIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   PencilSquareIcon,
-  FolderIcon,
+  ScaleIcon,
   HomeIcon,
   XMarkIcon,
   ClockIcon,
   Bars3Icon,
+  InboxArrowDownIcon,
+  UsersIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -386,13 +388,22 @@ const navigation = ref([
       setCurrent(item);
       router.push({ name: "directory_list" });
     },
-    icon: FolderIcon,
+    icon: UsersIcon,
     current: false,
   },
   {
-    name: "Agenda",
+    name: "Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "legal_request" });
+    },
+    icon: InboxArrowDownIcon,
+    current: false,
+  },
+  {
+    name: "Calendario",
     action: null,
-    icon: CalendarIcon,
+    icon: CalendarDaysIcon,
     current: false,
   },
   {
@@ -408,7 +419,7 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Chat",
+    name: "WhatsApp",
     action: null,
     href: "https://wa.me/message/XR7PDKOQS3R6A1",
     target: "_blank",
@@ -425,6 +436,15 @@ const navigation = ref([
       });
     },
     icon: ClockIcon,
+    current: false,
+  },
+  {
+    name: "Intranet G&M",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "intranet_g_y_m" });
+    },
+    icon: ScaleIcon,
     current: false,
   },
 ]);
