@@ -53,7 +53,7 @@
         />
       </div>
 
-      <div class="grid space-y-5 md:grid-cols-2 md:gap-6 xl:space-y-0">
+      <div class="grid md:grid-cols-2 md:gap-6 xl:space-y-0">
         <div>
           <label
             for="first_name"

@@ -134,7 +134,7 @@ import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue"
 import Bubbles from "@/components/process/Bubbles.vue";
 import TextStages from "@/components/process/TextStages.vue";
 import { ChevronUpIcon } from "@heroicons/vue/20/solid";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { useProcessStore } from "@/stores/process";
@@ -164,7 +164,7 @@ const filteredProcesses = computed(() => {
 
 const expandedProcesses = ref([]);
 
-onBeforeMount(async () => {
+onMounted(async () => {
   await processStore.init();
   userIdParam.value = route.params.user_id;
   displayParam.value = route.params.display;
