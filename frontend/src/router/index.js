@@ -95,6 +95,30 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: "/legal_request",  
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "legal_request",
+          component: () => import("@/views/legal_request/LegalRequest.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/intranet_g_y_m",  
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "intranet_g_y_m",
+          component: () => import("@/views/intranet_g_y_m/IntranetGyM.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
   ],
   scrollBehavior() {
     return { top: 0 };
