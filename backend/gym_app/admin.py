@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalUserLink
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -11,6 +11,17 @@ class UserAdmin(admin.ModelAdmin):
         'first_name', 'last_name', 'identification', 'marital_status', 
         'email', 'role', 'birthday', 'contact', 'created_at'
     )
+    search_fields = ('first_name', 'last_name', 'email', 'identification', 'role')
+    list_filter = ('first_name', 'last_name', 'identification', 'role')
+
+class LegalUserLinkAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalUserLink model.
+    Display relevant fields for the admin interface.
+    """
+    list_display = ('user', 'name', 'link')
+    search_fields = ('name', 'link', 'user__email', 'user__first_name', 'user__last_name')  # Enable search by name, link, or user email
+    list_filter = ('user', 'name')  # Filter links by user
 
 class ProcessAdmin(admin.ModelAdmin):
     """
@@ -22,6 +33,14 @@ class ProcessAdmin(admin.ModelAdmin):
         'client', 'lawyer', 'case', 'subcase', 'created_at'
     )
     filter_horizontal = ('stages', 'case_files')  # This adds a better UI for ManyToMany fields
+    search_fields = (
+        'ref', 'authority', 'plaintiff', 'defendant', 
+        'client__email', 'lawyer__email', 'case__type', 'subcase', 'created_at'
+    )  # Enables searching by these fields
+    list_filter = (
+        'ref', 'authority', 'plaintiff', 'defendant', 
+        'client', 'lawyer', 'case', 'subcase', 'created_at'
+    )  # Enables filtering by these fields
 
 class CaseAdmin(admin.ModelAdmin):
     """
@@ -29,6 +48,8 @@ class CaseAdmin(admin.ModelAdmin):
     Display all fields of the Case model.
     """
     list_display = ('type',)  # Display the type of the case
+    search_fields = ('type',)  # Enable searching by the type of the case
+    list_filter = ('type',)  # Enable filtering by the type of the case
 
 class LegalRequestAdmin(admin.ModelAdmin):
     """
@@ -40,6 +61,14 @@ class LegalRequestAdmin(admin.ModelAdmin):
         'discipline', 'description', 'created_at'
     )
     filter_horizontal = ('files',)  # Better UI for ManyToMany fields
+    search_fields = (
+        'first_name', 'last_name', 'email', 
+        'request_type__name', 'discipline__name', 'description', 'created_at'
+    )  # Enable searching by these fields
+    list_filter = (
+        'request_type', 'discipline', 'created_at'
+    )  # Enable filtering by request type and discipline
+
 
 class LegalRequestTypeAdmin(admin.ModelAdmin):
     """
@@ -47,6 +76,8 @@ class LegalRequestTypeAdmin(admin.ModelAdmin):
     Display the name field.
     """
     list_display = ('name',)
+    search_fields = ('name',)  # Enable searching by name
+    list_filter = ('name',)  # Enable filtering by name
 
 class LegalDisciplineAdmin(admin.ModelAdmin):
     """
@@ -54,6 +85,9 @@ class LegalDisciplineAdmin(admin.ModelAdmin):
     Display the name field.
     """
     list_display = ('name',)
+    search_fields = ('name',)  # Enable searching by name
+    list_filter = ('name',)  # Enable filtering by name
+
 
 class LegalRequestFilesAdmin(admin.ModelAdmin):
     """
@@ -61,6 +95,8 @@ class LegalRequestFilesAdmin(admin.ModelAdmin):
     Display the file and creation date.
     """
     list_display = ('file', 'created_at')
+    search_fields = ('file',)  # Enable searching by file name
+    list_filter = ('created_at',)  # Enable filtering by creation date
 
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
@@ -78,6 +114,14 @@ class GyMAdminSite(admin.AdminSite):
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
                     if model['object_name'] in ['User']
+                ]
+            },
+            {
+                'name': _('Legal User Links Management'),
+                'app_label': 'legal_user_link_management',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['LegalUserLink']
                 ]
             },
             {
@@ -113,3 +157,4 @@ admin_site.register(LegalRequest, LegalRequestAdmin)
 admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
+admin_site.register(LegalUserLink, LegalUserLinkAdmin)

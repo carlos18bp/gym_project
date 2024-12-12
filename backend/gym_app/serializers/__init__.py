@@ -1,3 +1,3 @@
-from .user import UserSerializer
+from .user import UserSerializer, LegalUserLinkSerializer
 from .process import CaseFileSerializer, StageSerializer, ProcessSerializer
 from .legal_request import LegalRequestSerializer, LegalRequestFilesSerializer, LegalRequestTypeSerializer, LegalDisciplineSerializer
