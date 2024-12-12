@@ -4,7 +4,6 @@ import {
   create_request,
   update_request,
 } from "./services/request_http";
-import { useUserStore } from "./user";
 
 export const useProcessStore = defineStore("process", {
   /**
