@@ -402,8 +402,11 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Calendario",
-    action: null,
+    name: "Agendar Cita",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "schedule_appointment" });
+    },
     icon: CalendarDaysIcon,
     current: false,
   },
