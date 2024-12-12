@@ -336,7 +336,12 @@ onMounted(async () => {
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio" && navItem.name !== "Intranet G&M"
+    );
+  } else if (currentUser.role == "lawyer" && !currentUser.is_gym_lawyer) {
+    // Remove "Intranet G&M" for lawyers who are not GYM lawyers
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Intranet G&M"
     );
   }
 });

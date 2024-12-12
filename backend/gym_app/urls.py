@@ -1,4 +1,4 @@
-from .views import userAuth, user, case_type, process, legal_request
+from .views import userAuth, user, case_type, process, legal_request, legal_user_link
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -28,4 +28,8 @@ legal_request_urls = [
     path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
 ]
 
-urlpatterns = sign_in_sign_on_urls + user_urls + process_urls + legal_request_urls
+legal_user_link_urls = [
+    path('users/<int:user_id>/legal-links/', legal_user_link.list_legal_user_links, name='list-legal-user-links'),
+]
+
+urlpatterns = sign_in_sign_on_urls + user_urls + process_urls + legal_request_urls + legal_user_link_urls

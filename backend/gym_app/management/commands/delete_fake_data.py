@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from gym_app.models import Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+from gym_app.models import Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalUserLink
 
 class Command(BaseCommand):
     help = 'Delete all fake data for clients, lawyers, processes, stages, and case files'
@@ -51,6 +51,11 @@ class Command(BaseCommand):
         for legal_request_files in LegalRequestFiles.objects.all():
             legal_request_files.delete()
             self.stdout.write(self.style.SUCCESS(f'LegalRequestFiles "{legal_request_files}" deleted'))
+
+        # Delete all LegalUserLink
+        for legal_user_link in LegalUserLink.objects.all():
+            legal_user_link.delete()
+            self.stdout.write(self.style.SUCCESS(f'LegalUserLink "{legal_user_link}" deleted'))
 
 
         self.stdout.write(self.style.SUCCESS('All fake data deleted successfully'))
