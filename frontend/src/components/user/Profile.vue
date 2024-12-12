@@ -94,7 +94,8 @@
               class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
               @click="goToEditProfile"
             >
-              <span class="block">Editar</span>
+              <span v-if="currentUser.is_profile_completed" class="block">Editar</span>
+              <span v-else class="block">Completa tu perfil</span>
             </button>
           </div>
         </div>
