@@ -259,7 +259,7 @@
   </div>
 
   <div class="lg:pl-72 w-full h-screen flex-1 flex flex-col">
-    <main>
+    <main class="h-full">
       <!-- Content -->
       <router-view v-slot="{ Component }">
         <component :is="Component">
