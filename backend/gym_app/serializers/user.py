@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from gym_app.models.user import User
+from gym_app.models.user import User, LegalUserLink
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -14,3 +14,9 @@ class UserSerializer(serializers.ModelSerializer):
         model = User  # The model that is being serialized
         fields = fields = '__all__'
         extra_kwargs = {'password': {'write_only': True}}  # Additional kwargs, setting 'password' as write-only
+
+
+class LegalUserLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LegalUserLink
+        fields = '__all__'

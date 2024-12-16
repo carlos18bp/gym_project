@@ -189,13 +189,8 @@ const signInUser = async () => {
       authStore.login(response.data); // Log in the user
 
       showNotification("Sign In successful!", "success");
-      router.push({
-        name: "process_list",
-        params: {
-          user_id: "",
-          display: "",
-        },
-      }); // Redirect to process_list
+      // Reload the page to ensure a clean state
+      window.location.href = "/process_list";
     } catch (error) {
       if (error.response && error.response.status === 401) {
         showNotification("Invalid credentials!", "warning");

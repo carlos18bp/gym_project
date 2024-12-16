@@ -59,7 +59,7 @@ def create_process(request):
     try:
         # Parse the main data from the request
         main_data = json.loads(request.data.get('mainData', '{}'))
-        print("Received Main Data:", main_data)  # Debugging
+        print("Received Main Data:", main_data)
 
         # Validate client and lawyer
         try:
@@ -74,17 +74,12 @@ def create_process(request):
         except Case.DoesNotExist:
             return Response({'detail': 'Case type not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check for unique 'ref' value
-        ref_value = main_data.get('ref')
-        if Process.objects.filter(ref=ref_value).exists():
-            return Response({'detail': f'Process with ref {ref_value} already exists.'}, status=status.HTTP_400_BAD_REQUEST)
-
         # Create the Process instance
         process = Process.objects.create(
             authority=main_data.get('authority'),
             plaintiff=main_data.get('plaintiff'),
             defendant=main_data.get('defendant'),
-            ref=ref_value,
+            ref=main_data.get('ref'),
             client=client,
             lawyer=lawyer,
             case=case_type,

@@ -3,5 +3,5 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
 backend/media/
-!backend/media/example_case_files/
+!backend/media/example_files/
 backend/gym_project_env/

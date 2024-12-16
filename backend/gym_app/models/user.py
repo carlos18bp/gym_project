@@ -88,6 +88,9 @@ class User(AbstractUser):
     role = models.CharField(max_length=50, blank=True, null=True, default='client', help_text="The role of the user within the system (default: 'client').")
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
+    is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
+    is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")
+
 
     # Set email as the username field and define required fields
     USERNAME_FIELD = 'email'
@@ -103,4 +106,21 @@ class User(AbstractUser):
         Returns:
             str: The email of the user.
         """
-        return self.email
+        return f"{self.email} ({self.last_name} {self.first_name})"
+    
+
+class LegalUserLink(models.Model):
+    """
+    Model representing a legal link associated with a user.
+
+    Attributes:
+        user (ForeignKey): The user who owns this legal link.
+        name (CharField): The name of the legal link.
+        link (URLField): The URL for the legal link.
+    """
+    user = models.ForeignKey(User, related_name='legal_links', on_delete=models.CASCADE, help_text="The user associated with this legal link.")
+    name = models.CharField(max_length=255, help_text="The name of the legal link.")
+    link = models.URLField(help_text="The URL for the legal link.")
+
+    def __str__(self):
+        return f"{self.name} ({self.user.email})"

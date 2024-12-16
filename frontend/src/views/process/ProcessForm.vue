@@ -326,7 +326,7 @@
                             :class="
                               index == 0
                                 ? 'text-gray-500 cursor-not-allowed'
-                                : 'text-red-500'
+                                : 'text-red-600/80'
                             "
                           ></TrashIcon>
                         </button>
@@ -386,7 +386,7 @@
                           </a>
                         </span>
                         <span v-else-if="caseFile.file" class="text-gray-500">
-                          Archivo subido
+                          Archivo cargado: {{ caseFile.file.name }}
                         </span>
                         <span v-else class="text-gray-500">Ningún archivo subido</span>
                         <input
@@ -407,7 +407,7 @@
                         </button>
                         <!-- Delete file -->
                         <button @click="removeCaseFile(index)">
-                          <TrashIcon class="h-7 w-7 text-red-500"></TrashIcon>
+                          <TrashIcon class="h-7 w-7 text-red-600/80"></TrashIcon>
                         </button>
                       </td>
                     </tr>
@@ -418,7 +418,7 @@
           </div>
         </div>
         <!-- Save button -->
-        <div>
+        <div class=" flex space-x-4">
           <button
             @click="onSubmit"
             type="button"
@@ -432,6 +432,13 @@
           >
             <span>Guardar</span>
           </button>
+          <button
+            @click="cancelAction"
+            type="button"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-gray-200 text-gray-600 hover:bg-gray-300"
+          >
+            Cancelar
+          </button>
         </div>
       </div>
     </div>
@@ -444,6 +451,7 @@ import { submitHandler } from "@/shared/submit_handler";
 import { computed, onMounted, ref, reactive, watch } from "vue";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@heroicons/vue/20/solid";
 import { TrashIcon, EyeIcon } from "@heroicons/vue/24/outline";
+import { showNotification } from "@/shared/notification_message.js";
 import {
   Combobox,
   ComboboxButton,
@@ -644,7 +652,7 @@ const validateFormData = () => {
   for (const [index, caseFile] of formData.caseFiles.entries()) {
     if (!caseFile.file) {
       Swal.fire({
-        title: "Archivo requerido!",
+        title: "¡Archivo requerido!",
         text: `El archivo en la fila ${
           index + 1
         } es obligatorio o debe ser eliminado si no es necesario.`,
@@ -679,7 +687,11 @@ const onSubmit = async () => {
       "La información del proceso se ha guardado exitosamente!",
       !!programIdParam.value
     );
-    router.push({ name: "process_list", params: { user_id: '', display: "" } });
+    if (actionParam.value == "add") {
+      router.push({ name: "process_list", params: { user_id: '', display: "" } });
+    } else {
+      router.back();
+    }
   }
 };
 
@@ -782,10 +794,38 @@ const deleteStage = (index) => {
  * @param {number} index - The index of the case file to be updated.
  * @returns {void}
  */
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // Maximum file size of 50 MB
+const ALLOWED_FILE_TYPES = ['png', 'jpg', 'jpeg', 'pdf', 'docx']; // Allowed file extensions
+
 const handleFileUpload = (event, index) => {
-  const file = event.target.files[0];
+  const file = event.target.files[0]; // Get the selected file
+
+  if (!file) return; // Exit if no file is selected
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    showNotification(
+      `El archivo "${file.name}" excede el límite de 50 MB. Por favor, selecciona un archivo más pequeño.`,
+      "warning"
+    );
+    return; // Skip further processing if the file is too large
+  }
+
+  // Validate file type
+  const extension = file.name.split('.').pop().toLowerCase(); // Extract file extension
+  if (!ALLOWED_FILE_TYPES.includes(extension)) {
+    showNotification(
+      "¡Ups! Ese tipo de archivo no es compatible. Asegúrate de que el archivo sea PDF, DOCX, JPG, PNG, JPEG.",
+      "warning"
+    );
+    return; // Skip further processing if the file type is not allowed
+  }
+
+  // Assign the file to the corresponding index in the form data
   formData.caseFiles[index].file = file;
 };
+
 
 /**
  * Adds a new case file input group to the form data.
@@ -836,5 +876,13 @@ const resetForm = () => {
       file: null,
     },
   ];
+};
+
+/**
+ * Function to handle the cancel action.
+ * Navigates back to the previous page.
+ */
+ const cancelAction = () => {
+  router.back();
 };
 </script>

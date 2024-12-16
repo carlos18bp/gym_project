@@ -46,7 +46,7 @@ class Command(BaseCommand):
             cases.append(case)
 
         # Directory containing example PDF files
-        case_files_directory = 'media/example_case_files/'
+        case_files_directory = 'media/example_files/'
 
         # List all PDF files in the specified directory
         available_files = [

@@ -25,7 +25,8 @@
               );
             "
           >
-            <div class="absolute top-0 right-0 p-8">
+            <div v-if="currentUser.is_profile_completed"
+              class="absolute top-0 right-0 p-8">
               <XMarkIcon
                 class="h-7 w-7 text-white font-semibold cursor-pointer"
                 @click="closeModal()"
@@ -93,7 +94,8 @@
               class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
               @click="goToEditProfile"
             >
-              <span class="block">Editar</span>
+              <span v-if="currentUser.is_profile_completed" class="block">Editar</span>
+              <span v-else class="block">Completa tu perfil</span>
             </button>
           </div>
         </div>
@@ -333,6 +335,7 @@ import { gsap } from "gsap";
 import { watch, ref, nextTick } from "vue";
 import { useUserStore } from "@/stores/user";
 import userAvatar from "@/assets/images/user_avatar.jpg";
+import { showNotification } from "@/shared/notification_message";
 
 const userStore = useUserStore();
 
@@ -367,9 +370,46 @@ const handleFileChange = (event) => {
 };
 
 const updateUserProfile = async () => {
+
+  if (!props.currentUser.email) {
+    showNotification("Email es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.first_name) {
+    showNotification("El nombre es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.last_name) {
+    showNotification("El apellido es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.contact) {
+    showNotification("Un numero de contacto es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.birthday) {
+    showNotification("Una fecha de nacimiento es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.identification) {
+    showNotification("Numero de cedula es requerido!", "warning");
+    return;
+  }
+
+  if (!props.currentUser.marital_status) {
+    showNotification("Estado civil es requerido!", "warning");
+    return;
+  }
+
   await userStore.updateUser(props.currentUser);
   props.currentUser.photo_profile = props.currentUser.photo_profile_preview
   goToProfile();
+  props.currentUser.is_profile_completed = true;
 };
 
 /**

@@ -1,5 +1,7 @@
 import axios from "axios";
 import { defineStore } from "pinia";
+import { useUserStore } from "./user";
+import { useProcessStore } from "./process";
 
 // Define the authentication store
 export const useAuthStore = defineStore("auth", {
@@ -15,7 +17,13 @@ export const useAuthStore = defineStore("auth", {
   }),
   // Getter methods
   getters: {
-    isAuthenticated: (state) => state.token && state.userAuth.id, // Check if the user is authenticated based on the presence of a token and user ID
+    isAuthenticated: (state) => {
+      // Check if the user is authenticated based on the presence of a token and user ID
+      if (state.token && state.userAuth.id) {
+        return true;
+      }
+      return false;
+    }
   },
   // Action methods
   actions: {
@@ -43,6 +51,12 @@ export const useAuthStore = defineStore("auth", {
       this.userAuth = {};
       this.clearAuthorizationHeader();
       this.removeFromLocalStorage();
+
+      // Reset other stores
+      const processStore = useProcessStore();
+      const userStore = useUserStore();
+      processStore.$reset();
+      userStore.$reset();
     },
     /**
      * Saves the token and user authentication details to localStorage.
