@@ -386,7 +386,7 @@
                           </a>
                         </span>
                         <span v-else-if="caseFile.file" class="text-gray-500">
-                          Archivo subido
+                          Archivo cargado: {{ caseFile.file.name }}
                         </span>
                         <span v-else class="text-gray-500">Ningún archivo subido</span>
                         <input
@@ -418,7 +418,7 @@
           </div>
         </div>
         <!-- Save button -->
-        <div>
+        <div class=" flex space-x-4">
           <button
             @click="onSubmit"
             type="button"
@@ -431,6 +431,13 @@
             :disabled="!isSaveButtonEnabled"
           >
             <span>Guardar</span>
+          </button>
+          <button
+            @click="cancelAction"
+            type="button"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-gray-200 text-gray-600 hover:bg-gray-300"
+          >
+            Cancelar
           </button>
         </div>
       </div>
@@ -680,7 +687,11 @@ const onSubmit = async () => {
       "La información del proceso se ha guardado exitosamente!",
       !!programIdParam.value
     );
-    router.push({ name: "process_list", params: { user_id: '', display: "" } });
+    if (actionParam.value == "add") {
+      router.push({ name: "process_list", params: { user_id: '', display: "" } });
+    } else {
+      router.back();
+    }
   }
 };
 
@@ -865,5 +876,13 @@ const resetForm = () => {
       file: null,
     },
   ];
+};
+
+/**
+ * Function to handle the cancel action.
+ * Navigates back to the previous page.
+ */
+ const cancelAction = () => {
+  router.back();
 };
 </script>
