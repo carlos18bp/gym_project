@@ -26,6 +26,8 @@ process_urls = [
 
 legal_request_urls = [
     path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
+    path('upload_legal_request_file/', legal_request.upload_legal_request_file, name='upload-legal-request-file'),
+    path('dropdown_options_legal_request/', legal_request.get_dropdown_options, name='get-dropdown-options'),
 ]
 
 legal_user_link_urls = [

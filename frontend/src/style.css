@@ -22,3 +22,58 @@
     font-weight: normal;
     font-style: normal;
   }
+
+
+/* Global styles for SweetAlert2 alerts */
+
+/* General style for the container (popup) */
+.swal2-popup {
+  background-color: rgba(37, 99, 235, 0.6); /* bg-blue-600/60 */
+  color: white; /* text-white */
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05); /* shadow-lg */
+}
+
+/* Title style */
+.swal2-title {
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 500; /* font-medium */
+}
+
+/* Confirmation button style */
+.swal2-confirm {
+  background-color: white; /* bg-white */
+  color: rgba(37, 99, 235, 0.6); /* text-blue-600/60 */
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 500; /* font-medium */
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  border-radius: 0.375rem; /* rounded */
+  transition: background-color 0.2s, color 0.2s; /* smooth hover transition */
+}
+
+/* Hover and focus styles for the confirmation button */
+.swal2-confirm:hover {
+  background-color: rgba(37, 99, 235, 1); /* hover:bg-blue-700 */
+  color: white; /* hover:text-white */
+}
+
+.swal2-confirm:focus {
+  outline: none; /* focus:outline-none */
+}
+
+/* Remove the background for the 'success' icon */
+.swal2-icon.swal2-success {
+  background: none !important; /* Removes the background */
+  box-shadow: none !important; /* Removes the shadow */
+}
+
+/* Remove the circular rings for the 'success' icon */
+.swal2-icon.swal2-success .swal2-success-ring {
+  display: none !important; /* Hides the outer ring */
+}
+
+.swal2-icon.swal2-success .swal2-success-circular-line-left,
+.swal2-icon.swal2-success .swal2-success-circular-line-right,
+.swal2-success-fix {
+  display: none !important; /* Hides the split circle */
+}
