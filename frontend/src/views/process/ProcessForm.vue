@@ -425,7 +425,7 @@
             class="p-2.5 text-sm font-medium rounded-md flex gap-2"
             :class="
               !isSaveButtonEnabled
-                ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed opacity-50'
+                ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
                 : 'bg-secondary text-white'
             "
             :disabled="!isSaveButtonEnabled"
@@ -435,7 +435,7 @@
           <button
             @click="cancelAction"
             type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-gray-200 text-gray-600 hover:bg-gray-300"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
           >
             Cancelar
           </button>
@@ -565,9 +565,17 @@ function deepEqual(obj1, obj2) {
 
 // Computed property to enable/disable the save button
 const isSaveButtonEnabled = computed(() => {
-  return actionParam.value == "add"
-    ? true
-    : programIdParam.value && isFormModified.value;
+  return (
+    formData.plaintiff.trim() &&
+    formData.defendant.trim() &&
+    formData.caseTypeId.trim() &&
+    formData.subcase.trim() &&
+    formData.ref.trim() &&
+    formData.authority.trim() &&
+    formData.clientId.trim() &&
+    formData.lawyerId.trim() &&
+    formData.stages.every((stage) => stage.status.trim())
+  );
 });
 
 /**

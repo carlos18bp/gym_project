@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalUserLink
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -14,14 +14,14 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role')
     list_filter = ('first_name', 'last_name', 'identification', 'role')
 
-class LegalUserLinkAdmin(admin.ModelAdmin):
+class LegalLinkAdmin(admin.ModelAdmin):
     """
-    Custom admin configuration for the LegalUserLink model.
+    Custom admin configuration for the LegalLinks model.
     Display relevant fields for the admin interface.
     """
-    list_display = ('user', 'name', 'link')
-    search_fields = ('name', 'link', 'user__email', 'user__first_name', 'user__last_name')  # Enable search by name, link, or user email
-    list_filter = ('user', 'name')  # Filter links by user
+    list_display = ('name', 'url')  # Display the name and link in the admin list view
+    search_fields = ('name', 'url')  # Enable search by name or link
+    list_filter = ('name',)  # Filter links by name
 
 class ProcessAdmin(admin.ModelAdmin):
     """
@@ -121,7 +121,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'legal_user_link_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['LegalUserLink']
+                    if model['object_name'] in ['LegalLink']
                 ]
             },
             {
@@ -157,4 +157,4 @@ admin_site.register(LegalRequest, LegalRequestAdmin)
 admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
-admin_site.register(LegalUserLink, LegalUserLinkAdmin)
+admin_site.register(LegalLink, LegalLinkAdmin)

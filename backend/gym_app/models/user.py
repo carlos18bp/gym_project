@@ -107,20 +107,3 @@ class User(AbstractUser):
             str: The email of the user.
         """
         return f"{self.email} ({self.last_name} {self.first_name})"
-    
-
-class LegalUserLink(models.Model):
-    """
-    Model representing a legal link associated with a user.
-
-    Attributes:
-        user (ForeignKey): The user who owns this legal link.
-        name (CharField): The name of the legal link.
-        link (URLField): The URL for the legal link.
-    """
-    user = models.ForeignKey(User, related_name='legal_links', on_delete=models.CASCADE, help_text="The user associated with this legal link.")
-    name = models.CharField(max_length=255, help_text="The name of the legal link.")
-    link = models.URLField(help_text="The URL for the legal link.")
-
-    def __str__(self):
-        return f"{self.name} ({self.user.email})"

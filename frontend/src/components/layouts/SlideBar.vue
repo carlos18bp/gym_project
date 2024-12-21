@@ -336,7 +336,9 @@ onMounted(async () => {
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio" && navItem.name !== "Intranet G&M"
+        navItem.name !== "Radicar Proceso" && 
+        navItem.name !== "Directorio" && 
+        navItem.name !== "Intranet G&M"
     );
   } else if (currentUser.role == "lawyer" && !currentUser.is_gym_lawyer) {
     // Remove "Intranet G&M" for lawyers who are not GYM lawyers
@@ -344,7 +346,18 @@ onMounted(async () => {
       (navItem) => navItem.name !== "Intranet G&M"
     );
   }
+
+  // Filter out the "Solicitudes" option if the user role is "lawyer" or is_gym_lawyer
+  if (currentUser.role === "lawyer" || currentUser.is_gym_lawyer) {
+    navigation.value = navigation.value.filter(
+      (navItem) => 
+        navItem.name !== "Solicitudes" &&
+        navItem.name !== "Agendar Cita" &&
+        navItem.name !== "WhatsApp"
+    );
+  }
 });
+
 
 /**
  * Logs out the user by clearing the auth store and logging out from Google.
@@ -436,7 +449,16 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Historial",
+    name: "Intranet G&M",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "intranet_g_y_m" });
+    },
+    icon: ScaleIcon,
+    current: false,
+  },
+  {
+    name: "Archivados",
     action: (item) => {
       setCurrent(item);
       router.push({
@@ -445,15 +467,6 @@ const navigation = ref([
       });
     },
     icon: ClockIcon,
-    current: false,
-  },
-  {
-    name: "Intranet G&M",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "intranet_g_y_m" });
-    },
-    icon: ScaleIcon,
     current: false,
   },
 ]);

@@ -8,6 +8,13 @@
     font-weight: normal;
     font-style: normal;
   }
+
+@font-face {
+    font-family: 'Inter-Italic';
+    src: url('@/assets/fonts/Inter_18pt-Italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
   
 @font-face {
     font-family: 'Inter-Medium';
