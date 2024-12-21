@@ -88,6 +88,9 @@ class User(AbstractUser):
     role = models.CharField(max_length=50, blank=True, null=True, default='client', help_text="The role of the user within the system (default: 'client').")
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
+    is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
+    is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")
+
 
     # Set email as the username field and define required fields
     USERNAME_FIELD = 'email'
@@ -103,4 +106,4 @@ class User(AbstractUser):
         Returns:
             str: The email of the user.
         """
-        return self.email
+        return f"{self.email} ({self.last_name} {self.first_name})"

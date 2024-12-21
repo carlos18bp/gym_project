@@ -259,7 +259,7 @@
   </div>
 
   <div class="lg:pl-72 w-full h-screen flex-1 flex flex-col">
-    <main>
+    <main class="h-full">
       <!-- Content -->
       <router-view v-slot="{ Component }">
         <component :is="Component">
@@ -301,14 +301,16 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 import {
-  CalendarIcon,
+  CalendarDaysIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   PencilSquareIcon,
-  FolderIcon,
+  ScaleIcon,
   HomeIcon,
   XMarkIcon,
   ClockIcon,
   Bars3Icon,
+  InboxArrowDownIcon,
+  UsersIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -328,15 +330,34 @@ const slidebarOpen = ref(false); // Show modal with navigation
 onMounted(async () => {
   await userStore.init();
   Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
+  showProfile.value = !!!currentUser.is_profile_completed;
 
   // Filter out the "Radicar Proceso" option if the user role is "client"
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" && navItem.name !== "Directorio"
+        navItem.name !== "Radicar Proceso" && 
+        navItem.name !== "Directorio" && 
+        navItem.name !== "Intranet G&M"
+    );
+  } else if (currentUser.role == "lawyer" && !currentUser.is_gym_lawyer) {
+    // Remove "Intranet G&M" for lawyers who are not GYM lawyers
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Intranet G&M"
+    );
+  }
+
+  // Filter out the "Solicitudes" option if the user role is "lawyer" or is_gym_lawyer
+  if (currentUser.role === "lawyer" || currentUser.is_gym_lawyer) {
+    navigation.value = navigation.value.filter(
+      (navItem) => 
+        navItem.name !== "Solicitudes" &&
+        navItem.name !== "Agendar Cita" &&
+        navItem.name !== "WhatsApp"
     );
   }
 });
+
 
 /**
  * Logs out the user by clearing the auth store and logging out from Google.
@@ -386,13 +407,25 @@ const navigation = ref([
       setCurrent(item);
       router.push({ name: "directory_list" });
     },
-    icon: FolderIcon,
+    icon: UsersIcon,
     current: false,
   },
   {
-    name: "Agenda",
-    action: null,
-    icon: CalendarIcon,
+    name: "Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "legal_request" });
+    },
+    icon: InboxArrowDownIcon,
+    current: false,
+  },
+  {
+    name: "Agendar Cita",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "schedule_appointment" });
+    },
+    icon: CalendarDaysIcon,
     current: false,
   },
   {
@@ -408,7 +441,7 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Chat",
+    name: "WhatsApp",
     action: null,
     href: "https://wa.me/message/XR7PDKOQS3R6A1",
     target: "_blank",
@@ -416,7 +449,16 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Historial",
+    name: "Intranet G&M",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "intranet_g_y_m" });
+    },
+    icon: ScaleIcon,
+    current: false,
+  },
+  {
+    name: "Archivados",
     action: (item) => {
       setCurrent(item);
       router.push({

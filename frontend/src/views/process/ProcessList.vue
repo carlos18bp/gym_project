@@ -123,9 +123,9 @@
       </div>
     </div>
   </div>
-  <div v-else-if="user" class="flex justify-center m-6">
-      No existen procesos para el usuario {{ user.first_name }}
-      {{ user.last_name }} identificada con C.C. {{ user.identification }}
+  <div v-else class="absolute top-1/2 left-1/2 grid justify-center items-center transform -translate-y-1/2 text-gray-400">
+    <CubeTransparentIcon class="mx-auto h-40 w-40"></CubeTransparentIcon>
+    <p class="text-center font-semibold pt-4 text-2xl">Parece que no hay<br>nada por aqui.</p>
   </div>
 </template>
 
@@ -133,8 +133,8 @@
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import Bubbles from "@/components/process/Bubbles.vue";
 import TextStages from "@/components/process/TextStages.vue";
-import { ChevronUpIcon } from "@heroicons/vue/20/solid";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { ChevronUpIcon, CubeTransparentIcon } from "@heroicons/vue/20/solid";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { useProcessStore } from "@/stores/process";
@@ -164,7 +164,7 @@ const filteredProcesses = computed(() => {
 
 const expandedProcesses = ref([]);
 
-onBeforeMount(async () => {
+onMounted(async () => {
   await processStore.init();
   userIdParam.value = route.params.user_id;
   displayParam.value = route.params.display;

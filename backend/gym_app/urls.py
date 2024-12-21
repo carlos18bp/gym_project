@@ -1,4 +1,4 @@
-from .views import userAuth, user, case_type, process
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -21,7 +21,18 @@ process_urls = [
     path('processes/', process.process_list, name='process-list'),
     path('create_process/', process.create_process, name='create-process'),
     path('update_process/<int:pk>/', process.update_process, name='update-process'),
-    path('update_case_file/', process.update_case_file, name="update-file")
+    path('update_case_file/', process.update_case_file, name="update-file"),
 ]
 
-urlpatterns = sign_in_sign_on_urls + user_urls + process_urls
+legal_request_urls = [
+    path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
+    path('upload_legal_request_file/', legal_request.upload_legal_request_file, name='upload-legal-request-file'),
+    path('dropdown_options_legal_request/', legal_request.get_dropdown_options, name='get-dropdown-options'),
+]
+
+intranet_gym_urls = [
+    path('legal_intranet_links/', intranet_gym.list_legal_intranet_links, name='list-legal-intranet-links'),
+    path('create_report_request/', intranet_gym.create_report, name='create-report-request'),
+]
+
+urlpatterns = sign_in_sign_on_urls + user_urls + process_urls + legal_request_urls + intranet_gym_urls
