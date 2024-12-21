@@ -226,7 +226,7 @@
           </div>
         </div>
         <!-- Edit Button (It's gonna redirect to /process_form view) -->
-        <div v-if="currentUser.role !== 'client' && isOwnsProcess()">
+        <div v-if="currentUser.role !== 'client'">
           <button
             @click="navigateToEdit"
             type="button"
@@ -280,11 +280,6 @@ const itemsPerPage = ref(10);
 watch(searchTerm, () => {
   currentPage.value = 1;
 });
-
-// Validate if the process belongs to Current User
-function isOwnsProcess() {
-  return (currentUser.value.id == process.value.lawyer.id)
-}
 
 // Navigate to Edit form
 function navigateToEdit() {

@@ -8,6 +8,7 @@ export default {
     extend: {
       fontFamily: {
         'regular': ['Inter-Regular', 'sans-serif'],
+        'italic': ['Inter-Italic', 'sans-serif'],
         'medium': ['Inter-Medium', 'sans-serif'],
         'semibold': ['Inter-SemiBold', 'sans-serif'],
       },
