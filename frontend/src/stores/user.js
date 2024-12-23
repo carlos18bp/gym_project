@@ -122,7 +122,7 @@ export const useUserStore = defineStore("user", {
       formDataObject.append("identification", formData.identification);
       formDataObject.append("birthday", formData.birthday);
       formDataObject.append("email", formData.email);
-      formDataObject.append("marital_status", formData.marital_status);
+      formDataObject.append("document_type", formData.document_type);
 
       // Add the profile photo only if a new file was selected
       if (formData.photo_profile instanceof File) {

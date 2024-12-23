@@ -65,7 +65,7 @@ class User(AbstractUser):
         contact (CharField): The contact number of the user (optional).
         birthday (DateField): The birth date of the user (optional).
         identification (CharField): The identification number of the user (optional).
-        marital_status (CharField): The marital status of the user (optional).
+        document_type (CharField): The type of document (e.g., NIT, CC).
         role (CharField): The role of the user within the system (default: 'client').
         photo_profile (ImageField): The profile picture of the user (optional).
         created_at (DateTimeField): The date the user was created.
@@ -84,13 +84,27 @@ class User(AbstractUser):
     contact = models.CharField(max_length=15, blank=True, null=True, help_text="The contact number of the user.")
     birthday = models.DateField(blank=True, null=True, help_text="The birth date of the user.")
     identification = models.CharField(max_length=20, blank=True, null=True, help_text="The identification number of the user.")
-    marital_status = models.CharField(max_length=20, blank=True, null=True, help_text="The marital status of the user (e.g., single, married).")
-    role = models.CharField(max_length=50, blank=True, null=True, default='client', help_text="The role of the user within the system (default: 'client').")
+
+    # New field: document_type
+    DOCUMENT_TYPE_CHOICES = [
+        ('NIT', 'NIT'),
+        ('CC', 'CC'),
+        ('NUIP', 'NUIP'),
+        ('EIN', 'EIN'),
+    ]
+    document_type = models.CharField(max_length=10, choices=DOCUMENT_TYPE_CHOICES, blank=True, null=True, help_text="The type of identification document.")
+
+    # Updated field: role
+    ROLE_CHOICES = [
+        ('client', 'Client'),
+        ('lawyer', 'Lawyer'),
+    ]
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
+
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
     is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
     is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")
-
 
     # Set email as the username field and define required fields
     USERNAME_FIELD = 'email'
@@ -107,3 +121,4 @@ class User(AbstractUser):
             str: The email of the user.
         """
         return f"{self.email} ({self.last_name} {self.first_name})"
+

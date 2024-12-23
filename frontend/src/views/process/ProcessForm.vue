@@ -4,7 +4,7 @@
     <slot></slot>
   </div>
   <!-- Content -->
-  <div class="py-10 px-4 sm:px-6 lg:px-8">
+  <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <div class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary">
       <!-- Title -->
       <div>

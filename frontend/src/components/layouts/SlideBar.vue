@@ -57,7 +57,7 @@
                   alt="G&M Consultores Juridicos"
                 />
               </div>
-              <nav class="flex flex-1 flex-col">
+              <nav class="relative flex flex-1 flex-col">
                 <ul role="list" class="flex flex-1 flex-col gap-y-5">
                   <li>
                     <!-- Profile dropdown -->
@@ -146,6 +146,30 @@
                     </ul>
                   </li>
                 </ul>
+                <!-- Social Networks Buttons -->
+                <div class="absolute bottom-0 w-full flex gap-0.5 items-center">
+                  <a 
+                    href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0" 
+                    target="_blank" 
+                    class="cursor-pointer"
+                  >
+                    <img :src="WhatsappIcon">
+                  </a>
+                  <a 
+                    href="https://www.instagram.com/gymconsultoresjuridicos/" 
+                    target="_blank" 
+                    class="cursor-pointer"
+                  >
+                    <img :src="InstagramIcon">
+                  </a>
+                  <a 
+                    href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL" 
+                    target="_blank" 
+                    class="-mt-2 cursor-pointer"
+                  >
+                    <img :src="FacebookIcon">
+                  </a>
+                </div>
               </nav>
             </div>
           </DialogPanel>
@@ -167,7 +191,7 @@
           alt="G&M Consultores Juridicos"
         />
       </div>
-      <nav class="flex flex-1 flex-col">
+      <nav class="relative flex flex-1 flex-col">
         <ul role="list" class="flex flex-1 flex-col gap-y-5">
           <li>
             <!-- Profile dropdown -->
@@ -254,6 +278,30 @@
             </ul>
           </li>
         </ul>
+        <!-- Social Networks Buttons -->
+        <div class="absolute bottom-0 w-full flex gap-0.5 items-center">
+          <a 
+            href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0" 
+            target="_blank" 
+            class="cursor-pointer"
+          >
+            <img :src="WhatsappIcon">
+          </a>
+          <a 
+            href="https://www.instagram.com/gymconsultoresjuridicos/" 
+            target="_blank" 
+            class="cursor-pointer"
+          >
+            <img :src="InstagramIcon">
+          </a>
+          <a 
+            href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL" 
+            target="_blank" 
+            class="-mt-2 cursor-pointer"
+          >
+            <img :src="FacebookIcon">
+          </a>
+        </div>
       </nav>
     </div>
   </div>
@@ -302,7 +350,6 @@ import {
 } from "@headlessui/vue";
 import {
   CalendarDaysIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
   PencilSquareIcon,
   ScaleIcon,
   HomeIcon,
@@ -318,6 +365,9 @@ import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
+import WhatsappIcon from "@/assets/icons/social_network/whatsapp.svg";
+import FacebookIcon from "@/assets/icons/social_network/facebook.svg";
+import InstagramIcon from "@/assets/icons/social_network/instagram.svg";
 
 const router = useRouter();
 const authStore = useAuthStore(); // Get the authentication store instance
@@ -352,8 +402,7 @@ onMounted(async () => {
     navigation.value = navigation.value.filter(
       (navItem) => 
         navItem.name !== "Solicitudes" &&
-        navItem.name !== "Agendar Cita" &&
-        navItem.name !== "WhatsApp"
+        navItem.name !== "Agendar Cita"
     );
   }
 });
@@ -438,14 +487,6 @@ const navigation = ref([
       });
     },
     icon: PencilSquareIcon,
-    current: false,
-  },
-  {
-    name: "WhatsApp",
-    action: null,
-    href: "https://wa.me/message/XR7PDKOQS3R6A1",
-    target: "_blank",
-    icon: ChatBubbleOvalLeftEllipsisIcon,
     current: false,
   },
   {

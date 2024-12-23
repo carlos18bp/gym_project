@@ -76,14 +76,8 @@
               >
                 <DocumentArrowUpIcon class="h-5 w-5"></DocumentArrowUpIcon>
                 <span
-                  >Cédula de ciudadania: {{ currentUser.identification }}</span
+                  >{{ currentUser.document_type }}: {{ currentUser.identification }}</span
                 >
-              </p>
-              <p
-                class="text-lg font-regular text-gray-500 flex items-center gap-2"
-              >
-                <HeartIcon class="h-5 w-5"></HeartIcon>
-                <span>Estado civil: {{ currentUser.marital_status }}</span>
               </p>
             </div>
           </div>
@@ -259,13 +253,34 @@
               />
             </div>
           </div>
+          <!-- Civil Status form -->
+          <div>
+            <label
+              for="civil-status"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Tipo de Documento
+              <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="currentUser.document_type"
+              id="civil-status"
+              name="civil-status"
+              class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            >
+              <option value="NIT">(NIT) Número de Identificación Tributaria</option>
+              <option value="CC">(CC) Cédula de Ciudadanía</option>
+              <option value="NUIP">(NUIP) Número Único de Identificación Personal</option>
+              <option value="EIN">(EIN) Número de identificación del empleador</option>
+            </select>
+          </div>
           <!-- National ID form -->
           <div>
             <label
               for="idNumber"
               class="block text-base font-medium leading-6 text-primary"
             >
-              Número de Cédula
+              Número de Documento
               <span class="text-red-500">*</span>
             </label>
             <div class="mt-2">
@@ -278,28 +293,6 @@
                 required
               />
             </div>
-          </div>
-          <!-- Civil Status form -->
-          <div>
-            <label
-              for="civil-status"
-              class="block text-base font-medium leading-6 text-primary"
-            >
-              Estado Civil
-              <span class="text-red-500">*</span>
-            </label>
-            <select
-              v-model="currentUser.marital_status"
-              id="civil-status"
-              name="civil-status"
-              class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            >
-              <option value="Single">Soltero(a)</option>
-              <option value="Married">Casado(a)</option>
-              <option value="Divorced">Divorciado(a)</option>
-              <option value="Domestic Partnership">Unión libre</option>
-              <option value="Widowed">Viudo(a)</option>
-            </select>
           </div>
         </div>
         <!-- Button edit -->
@@ -326,7 +319,6 @@
 import {
   ClockIcon,
   DocumentArrowUpIcon,
-  HeartIcon,
   XMarkIcon,
   ChevronLeftIcon,
 } from "@heroicons/vue/24/outline";
@@ -372,37 +364,37 @@ const handleFileChange = (event) => {
 const updateUserProfile = async () => {
 
   if (!props.currentUser.email) {
-    showNotification("Email es requerido!", "warning");
+    showNotification("¡Email es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.first_name) {
-    showNotification("El nombre es requerido!", "warning");
+    showNotification("¡El nombre es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.last_name) {
-    showNotification("El apellido es requerido!", "warning");
+    showNotification("¡El apellido es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.contact) {
-    showNotification("Un numero de contacto es requerido!", "warning");
+    showNotification("¡Un numero de contacto es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.birthday) {
-    showNotification("Una fecha de nacimiento es requerido!", "warning");
+    showNotification("¡Una fecha de nacimiento es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.identification) {
-    showNotification("Numero de cedula es requerido!", "warning");
+    showNotification("¡Numero de cedula es requerido!", "warning");
     return;
   }
 
-  if (!props.currentUser.marital_status) {
-    showNotification("Estado civil es requerido!", "warning");
+  if (!props.currentUser.document_type) {
+    showNotification("¡El tipo de documento es requerido!", "warning");
     return;
   }
 

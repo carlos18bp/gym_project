@@ -69,7 +69,7 @@ def update_profile(request, pk):
             user.birthday,
             user.identification,
             user.email,
-            user.marital_status,
+            user.document_type,
         ]
         # If all required fields have a value, mark is_profile_completed as True
         if all(required_fields):
