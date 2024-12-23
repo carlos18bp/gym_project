@@ -8,11 +8,11 @@ class UserAdmin(admin.ModelAdmin):
     Display all fields of the User model.
     """
     list_display = (
-        'first_name', 'last_name', 'identification', 'marital_status', 
+        'first_name', 'last_name', 'document_type', 'identification',
         'email', 'role', 'birthday', 'contact', 'created_at'
     )
-    search_fields = ('first_name', 'last_name', 'email', 'identification', 'role')
-    list_filter = ('first_name', 'last_name', 'identification', 'role')
+    search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
+    list_filter = ('role', 'document_type', 'created_at')
 
 class LegalLinkAdmin(admin.ModelAdmin):
     """

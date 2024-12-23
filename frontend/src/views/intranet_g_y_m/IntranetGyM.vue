@@ -1,6 +1,10 @@
 <template>
+  <!-- Using the SearchBarAndFilterBy component -->
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
+    <slot></slot>
+  </SearchBarAndFilterBy>
   <!-- Main content -->
-  <div class="py-10 px-4 sm:px-6 lg:px-8">
+  <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <!--Company's content-->
     <div class="w-full p-5 rounded-lg border-2 border-yellow-300 bg-yellow-300/30 space-y-3">
       <!--Fundamental principles-->
@@ -292,6 +296,7 @@
 </template>
 
 <script setup>
+import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { 
   TrophyIcon,
   CheckBadgeIcon, 
@@ -461,7 +466,6 @@ const removeFile = (index) => {
  const isSaveButtonEnabled = computed(() => {
   return (
     formData.contract !== null &&
-    !isNaN(formData.contract) &&
     formData.initialDate !== null &&
     formData.endDate !== null &&
     formData.paymentConcept.trim() &&

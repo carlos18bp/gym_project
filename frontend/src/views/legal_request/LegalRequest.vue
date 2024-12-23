@@ -1,6 +1,12 @@
 <template>
+  <div class="p-6">
+    <!-- Using the SearchBarAndFilterBy component -->
+    <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
+      <slot></slot>
+    </SearchBarAndFilterBy>
+  </div>
   <!-- Content -->
-  <div class="py-10 px-4 sm:px-6 lg:px-8">
+  <div class="pb-10 px-4 sm:px-6 lg:px-8">
     <div class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary">
       <!-- Title -->
       <div>
