@@ -131,6 +131,18 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: "/poc_contract_v2",
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "poc_contract_v2",
+          component: () => import("@/views/poc_contract_v2/DynamicDocument.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
   ],
   scrollBehavior() {
     return { top: 0 };

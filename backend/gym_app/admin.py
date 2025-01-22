@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink, DynamicDocument
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -98,6 +98,14 @@ class LegalRequestFilesAdmin(admin.ModelAdmin):
     search_fields = ('file',)  # Enable searching by file name
     list_filter = ('created_at',)  # Enable filtering by creation date
 
+class DynamicDocumentAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the DynamicDocument model.
+    """
+    list_display = ('title', 'created_at', 'updated_at')
+    search_fields = ('title', 'content')  # Enable searching by title and content
+    list_filter = ('created_at', 'updated_at')  # Enable filtering by creation and update date
+
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
     site_header = 'G&M App Administration'
@@ -140,6 +148,14 @@ class GyMAdminSite(admin.AdminSite):
                     if model['object_name'] in ['LegalRequest', 'LegalRequestType', 'LegalDiscipline', 'LegalRequestFiles']
                 ]
             },
+            {
+                'name': _('Dynamic Document Generate'),
+                'app_label': 'dynamic_document',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['DynamicDocument']
+                ]
+            },
         ]
         return custom_app_list
 
@@ -158,3 +174,4 @@ admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalLink, LegalLinkAdmin)
+admin_site.register(DynamicDocument, DynamicDocumentAdmin)

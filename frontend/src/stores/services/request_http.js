@@ -41,6 +41,9 @@ async function makeRequest(method, url, params = {}) {
       case "PUT":
         response = await axios.put(`/api/${url}`, params, { headers });
         break;
+      case "DELETE":
+        response = await axios.delete(`/api/${url}`, { headers });
+        break;
       default:
         throw new Error(`Unsupported method: ${method}`);
     }
@@ -80,3 +83,13 @@ export async function create_request(url, params) {
 export async function update_request(url, params) {
   return await makeRequest("PUT", url, params);
 }
+
+/**
+ * Delete request.
+ * @param {string} url - Endpoint.
+ * @returns {object} - Data and status from endpoint.
+ */
+export async function delete_request(url) {
+  return await makeRequest("DELETE", url);
+}
+

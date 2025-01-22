@@ -399,7 +399,10 @@ const updateUserProfile = async () => {
   }
 
   await userStore.updateUser(props.currentUser);
-  props.currentUser.photo_profile = props.currentUser.photo_profile_preview
+  if (props.currentUser.photo_profile instanceof File) {
+    props.currentUser.photo_profile = props.currentUser.photo_profile_preview;
+  }
+
   goToProfile();
   props.currentUser.is_profile_completed = true;
 };
