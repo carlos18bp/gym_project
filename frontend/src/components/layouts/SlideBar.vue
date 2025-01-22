@@ -357,7 +357,8 @@ import {
   ClockIcon,
   Bars3Icon,
   InboxArrowDownIcon,
-  UsersIcon
+  UsersIcon,
+  WrenchScrewdriverIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -508,6 +509,17 @@ const navigation = ref([
       });
     },
     icon: ClockIcon,
+    current: false,
+  },
+  {
+    name: "POC Contratos V2.0",
+    action: (item) => {
+      setCurrent(item);
+      router.push({
+        name: "poc_contract_v2",
+      });
+    },
+    icon: WrenchScrewdriverIcon,
     current: false,
   },
 ]);

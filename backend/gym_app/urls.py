@@ -1,4 +1,4 @@
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -35,4 +35,18 @@ intranet_gym_urls = [
     path('create_report_request/', intranet_gym.create_report, name='create-report-request'),
 ]
 
-urlpatterns = sign_in_sign_on_urls + user_urls + process_urls + legal_request_urls + intranet_gym_urls
+dynamic_document_urls = [
+    path('dynamic-documents/', dynamic_document.list_dynamic_documents, name='list_dynamic_documents'),
+    path('dynamic-documents/create/', dynamic_document.create_dynamic_document, name='create_dynamic_document'),
+    path('dynamic-documents/<int:pk>/update/', dynamic_document.update_dynamic_document, name='update_dynamic_document'),
+    path('dynamic-documents/<int:pk>/delete/', dynamic_document.delete_dynamic_document, name='delete_dynamic_document'),
+]
+
+urlpatterns = (
+    sign_in_sign_on_urls +
+    user_urls +
+    process_urls +
+    legal_request_urls +
+    intranet_gym_urls +
+    dynamic_document_urls
+)
