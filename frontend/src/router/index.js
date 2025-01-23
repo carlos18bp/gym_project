@@ -131,6 +131,18 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: "/dynamic_document_dashboard",
+      component: SlideBar,
+      children: [
+        {
+          path: '',
+          name: "dynamic_document_dashboard",
+          component: () => import("@/views/dynamic_document/DynamicDocumentDashboard.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
   ],
   scrollBehavior() {
     return { top: 0 };
