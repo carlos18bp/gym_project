@@ -52,10 +52,5 @@ class Command(BaseCommand):
             legal_request_files.delete()
             self.stdout.write(self.style.SUCCESS(f'LegalRequestFiles "{legal_request_files}" deleted'))
 
-        # Delete all LegalUserLink
-        for legal_user_link in LegalUserLink.objects.all():
-            legal_user_link.delete()
-            self.stdout.write(self.style.SUCCESS(f'LegalUserLink "{legal_user_link}" deleted'))
-
 
         self.stdout.write(self.style.SUCCESS('All fake data deleted successfully'))

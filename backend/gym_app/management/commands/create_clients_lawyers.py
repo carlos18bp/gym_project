@@ -20,7 +20,6 @@ class Command(BaseCommand):
                 contact=fake.phone_number(),
                 birthday=fake.date_of_birth(),
                 identification=fake.random_number(digits=10),
-                marital_status=random.choice(['Single', 'Married']),
                 role='client',
             )
             self.stdout.write(self.style.SUCCESS(f'Client "{client}" created'))
@@ -35,7 +34,6 @@ class Command(BaseCommand):
                 contact=fake.phone_number(),
                 birthday=fake.date_of_birth(),
                 identification=fake.random_number(digits=10),
-                marital_status=random.choice(['Single', 'Married']),
                 role='lawyer',
             )
             self.stdout.write(self.style.SUCCESS(f'Lawyer "{lawyer}" created'))
