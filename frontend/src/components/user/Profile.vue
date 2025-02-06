@@ -82,7 +82,7 @@
             </div>
           </div>
           <!-- Button edit -->
-          <div class="p-8">
+          <div class="p-8 flex gap-4">
             <button
               type="button"
               class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
@@ -90,6 +90,14 @@
             >
               <span v-if="currentUser.is_profile_completed" class="block">Editar</span>
               <span v-else class="block">Completa tu perfil</span>
+            </button>
+            <!-- Sign out button -->
+            <button
+              type="button"
+              class="p-2.5 text-sm text-secondary font-medium bg-white border-2 border-secondary rounded-md flex gap-2"
+              @click="logOut()"
+            >
+              <span class="block">Cerrar sesión</span>
             </button>
           </div>
         </div>
@@ -325,11 +333,16 @@ import {
 import { EnvelopeIcon } from "@heroicons/vue/24/solid";
 import { gsap } from "gsap";
 import { watch, ref, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user";
+import { useAuthStore } from "@/stores/auth";
+import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import { showNotification } from "@/shared/notification_message";
 
 const userStore = useUserStore();
+const authStore = useAuthStore(); // Get the authentication store instance
+const router = useRouter();
 
 /**
  * Props:
@@ -439,6 +452,15 @@ watch(
     }
   }
 );
+
+/**
+ * Logs out the user by clearing the auth store and logging out from Google.
+ */
+ const logOut = () => {
+  authStore.logout(); // Log out from the auth store
+  googleLogout(); // Log out from Google
+  router.push({ name: "sign_in" });
+};
 
 /**
  * closeModal:
