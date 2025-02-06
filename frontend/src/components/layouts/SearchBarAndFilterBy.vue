@@ -32,6 +32,7 @@
         />
       </div>
     </div>
+    <slot name="auxiliary_button"></slot>
   </div>
 </template>
 

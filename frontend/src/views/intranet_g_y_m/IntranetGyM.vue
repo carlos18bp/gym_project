@@ -1,8 +1,4 @@
 <template>
-  <!-- Using the SearchBarAndFilterBy component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>
-  </SearchBarAndFilterBy>
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <!--Company's content-->
