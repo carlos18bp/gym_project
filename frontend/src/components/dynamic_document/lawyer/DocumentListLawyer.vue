@@ -1,6 +1,6 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
-    <!-- Contract Published -->
+    <!-- Document Published -->
     <div
       class="flex items-center gap-2 py-2 px-4 border rounded-md border-green-400 bg-green-300/30"
     >
@@ -26,7 +26,7 @@
             class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
           >
             <div class="py-1">
-              <MenuItem v-for="option in contractPublishingOptions">
+              <MenuItem v-for="option in documentPublishingOptions">
                 <a class="bg-gray-100 block px-4 py-2 text-sm font-regular">{{
                   option.label
                 }}</a>
@@ -62,7 +62,7 @@
             class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
           >
             <div class="py-1">
-              <MenuItem v-for="option in contractEditingOptions">
+              <MenuItem v-for="option in documentEditingOptions">
                 <a class="bg-gray-100 block px-4 py-2 text-sm font-regular">{{
                   option.label
                 }}</a>
@@ -83,7 +83,7 @@ import {
   PencilIcon,
 } from "@heroicons/vue/24/outline";
 
-const contractEditingOptions = [
+const documentEditingOptions = [
   { label: "Editar", action: "" },
   { label: "Enviar", action: "" },
   { label: "Eliminar", action: "" },
@@ -92,7 +92,7 @@ const contractEditingOptions = [
   { label: "Descargar", action: "" },
 ];
 
-const contractPublishingOptions = [
+const documentPublishingOptions = [
   { label: "Editar", action: "" },
   { label: "Enviar", action: "" },
   { label: "Eliminar", action: "" },

@@ -62,11 +62,11 @@ const editorConfig = {
       icon: "chevron-right", // Icon to display
       onAction: () => {
         // Get the 'name' parameter from the current route
-        const contractName = route.params.name;
+        const documentName = route.params.name;
 
-        // Redirect to a nested route using the contract name
+        // Redirect to a nested route using the document name
         router.push(
-          `/dynamic_document_dashboard/contract/new/${contractName}/variables-config`
+          `/dynamic_document_dashboard/document/new/${documentName}/variables-config`
         );
       },
     });

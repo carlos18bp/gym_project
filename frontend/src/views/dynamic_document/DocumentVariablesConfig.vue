@@ -2,10 +2,10 @@
   <!-- Content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <div class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary">
-      <!-- Contract's name -->
+      <!-- Document's name -->
       <div>
         <h1 class="text-primary text-xl font-semibold">
-          {{ contractName }}
+          {{ documentName }}
         </h1>
       </div>
       <!-- Relevant information form -->
@@ -147,7 +147,7 @@ import { ChevronDownIcon, CheckIcon } from '@heroicons/vue/20/solid';
 
 // Access route parameters
 const route = useRoute();
-const contractName = route.params.name;  // Extract 'name' parameter from the route
+const documentName = route.params.name;  // Extract 'name' parameter from the route
 
 // Define input types for the combobox
 const inputTypes = [

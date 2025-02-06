@@ -6,27 +6,27 @@
       </button>
     </div>
     <form @submit.prevent="handleSubmit">
-      <!-- Contract Name -->
+      <!-- Emial address -->
       <div>
         <label
-          for="contract-name"
+          for="email"
           class="block text-base font-medium leading-6 text-primary"
         >
-          Nombre
+          Correo electronico
           <span class="text-red-500">*</span>
         </label>
         <div class="mt-2">
           <input
-            v-model="formData.contractName"
+            v-model="formData.email"
             type="text"
-            name="contract-name"
-            id="contract-name"
+            name="email"
+            id="email"
             class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
             required
           />
         </div>
       </div>
-      <!-- Continue Button -->
+      <!-- Send Button -->
       <button
         type="submit"
         class="mt-2.5 p-2.5 text-sm font-medium rounded-md flex gap-2"
@@ -37,7 +37,7 @@
         "
         :disabled="!isSaveButtonEnabled"
       >
-        <span>Continuar</span>
+        <span>Enviar</span>
       </button>
     </form>
   </div>
@@ -45,34 +45,25 @@
 <script setup>
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, reactive } from "vue";
-import { useRouter } from "vue-router";
 
-// Initialize the Vue Router for navigation
-const router = useRouter();
-
-// Reactive object to store form data
+// Reactive form data
 const formData = reactive({
-  contractName: null, // Holds the input value for the contract name
+  email: null, // Stores the email input from the user
 });
 
 /**
  * Computes whether the save button should be enabled based on form validation.
- * - The button is enabled if the contract name is not empty after trimming whitespace.
+ * - The button is enabled only if the email input is not empty and contains valid characters.
  */
 const isSaveButtonEnabled = computed(() => {
-  return formData.contractName?.trim().length > 0; // Checks if the contract name is valid
+  return formData.email?.trim().length > 0; // Checks if the email field has a non-empty value
 });
 
 /**
  * Handles the form submission when the save button is clicked.
- * - Validates the form to ensure the contract name is provided.
- * - URL-encodes the contract name to make it safe for inclusion in a URL.
- * - Redirects the user to the new contract creation route.
+ * - Logs a message indicating that the email is being sent with the document.
  */
 function handleSubmit() {
-  if (isSaveButtonEnabled.value) {
-    const encodedName = encodeURIComponent(formData.contractName.trim()); // Encode the contract name for URL safety
-    router.push(`/dynamic_document_dashboard/contract/new/${encodedName}`); // Navigate to the new contract creation route
-  }
+  console.log("Send email with the document");
 }
 </script>

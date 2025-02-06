@@ -1,6 +1,6 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
-    <!-- Contract Published -->
+    <!-- Document Published -->
     <div
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-green-400 bg-green-300/30"
     >
@@ -29,7 +29,7 @@
             class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
           >
             <div class="py-1">
-              <MenuItem v-for="option in contractFinishedOptions">
+              <MenuItem v-for="option in documentFinishedOptions">
                 <a
                   @click="handleOptionClick(option)"
                   class="bg-gray-100 block px-4 py-2 text-sm font-regular"
@@ -52,19 +52,19 @@ import {
 } from "@heroicons/vue/24/outline";
 
 // Define the emits for communication with the parent component
-const emit = defineEmits(["show-send-contract-modal"]);
+const emit = defineEmits(["show-send-document-modal"]);
 
 // Array of options displayed in the menu, each option has a label and an action
-const contractFinishedOptions = [
+const documentFinishedOptions = [
   { label: "Enviar", action: "showModal" }, // This option triggers the modal
   { label: "Datos", action: "" }, // Placeholder for another action
   { label: "Previsualización", action: "" }, // Placeholder for preview action
   { label: "Descargar", action: "" }, // Placeholder for download action
 ];
 
-// Function to emit the 'show-send-contract-modal' event to the parent component
+// Function to emit the 'show-send-document-modal' event to the parent component
 const emitShowModal = () => {
-  emit("show-send-contract-modal");
+  emit("show-send-document-modal");
 };
 
 // Function to handle the click event on a menu option

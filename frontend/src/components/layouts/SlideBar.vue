@@ -512,7 +512,7 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Contratos",
+    name: "Documentos Juridicos",
     action: (item) => {
       setCurrent(item);
       router.push({

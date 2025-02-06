@@ -1,12 +1,12 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
-    <!-- Contract Published -->
+    <!-- Document Published -->
     <div
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-green-400 bg-green-300/30"
     >
       <CheckCircleIcon class="size-6 text-green-500"></CheckCircleIcon>
       <div class="grid gap-1">
-        <span class="text-base font-medium">Contrato Desarrollador Web</span>
+        <span class="text-base font-medium">Documento Desarrollador Web</span>
         <span class="text-sm font-regular text-gray-400"
           >Prestación de servicios</span
         >
@@ -31,7 +31,7 @@
             class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
           >
             <div class="py-1">
-              <MenuItem v-for="option in contractFinishedOptions">
+              <MenuItem v-for="option in documentFinishedOptions">
                 <a class="bg-gray-100 block px-4 py-2 text-sm font-regular">{{
                   option.label
                 }}</a>
@@ -70,7 +70,7 @@
             class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
           >
             <div class="py-1">
-              <MenuItem v-for="option in contractEditingOptions">
+              <MenuItem v-for="option in documentEditingOptions">
                 <a class="bg-gray-100 block px-4 py-2 text-sm font-regular">{{
                   option.label
                 }}</a>
@@ -91,13 +91,13 @@ import {
   PencilIcon,
 } from "@heroicons/vue/24/outline";
 
-const contractEditingOptions = [
+const documentEditingOptions = [
   { label: "Completar", action: "" },
   { label: "Eliminar", action: "" },
   { label: "Previsualización", action: "" },
 ];
 
-const contractFinishedOptions = [
+const documentFinishedOptions = [
   { label: "Editar", action: "" },
   { label: "Enviar", action: "" },
   { label: "Eliminar", action: "" },
