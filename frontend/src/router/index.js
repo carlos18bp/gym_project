@@ -154,6 +154,12 @@ const router = createRouter({
           props: true,
           meta: { requiresAuth: true },
         },
+        {
+          path: 'document/use/:name',
+          component: () => import('@/views/dynamic_document/client/DocumentForm.vue'),
+          props: true,
+          meta: { requiresAuth: true },
+        },
       ],
     }
     

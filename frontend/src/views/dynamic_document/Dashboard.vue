@@ -30,7 +30,8 @@
         <DocumentListLawyer v-if="currentSection === 'default'"></DocumentListLawyer>
     </div>
     <div v-if="currentUser?.role === 'client'">
-        <DocumentListClient></DocumentListClient>
+        <UseDocument v-if="currentSection === 'useDocument'"></UseDocument>
+        <DocumentListClient v-if="currentSection === 'default'"></DocumentListClient>
     </div>
   </div>
 
@@ -46,16 +47,26 @@
 </template>
 
 <script setup>
+// Icons
 import { PlusIcon } from "@heroicons/vue/24/outline";
+
+// Shared components
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import DocumentsNavigation from "@/components/dynamic_document/layouts/DocumentsNavigation.vue";
+import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
+import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+
+// Client components
 import DocumentListClient from "@/components/dynamic_document/client/DocumentListClient.vue";
+import UseDocument from "@/components/dynamic_document/client/UseDocument.vue"
+
+// Lawyer components
 import DocumentListLawyer from "@/components/dynamic_document/lawyer/DocumentListLawyer.vue";
 import DocumentFinishedByClientList from "@/components/dynamic_document/lawyer/DocumentFinishedByClientList.vue";
 import DocumentInProgressByClientList from "@/components/dynamic_document/lawyer/DocumentInProgressByClientList.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
-import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
-import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+
+// Instances
 import { useUserStore } from "@/stores/user";
 import { onMounted, computed, ref } from "vue";
 

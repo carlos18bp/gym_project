@@ -52,6 +52,7 @@
     v-if="props?.role === 'client'"
     class="pb-8 border-b border-gray-200 flex gap-6 flex-wrap"
   >
+    <!--Default section button-->
     <button
       @click="handleSection('default')"
       class="flex gap-2 items-center py-2 px-4 rounded-md border-2 border-yellow-300 bg-white text-start"
@@ -62,12 +63,15 @@
         <span class="font-medium text-base">Mis Documentos</span>
       </div>
     </button>
+    <!--Create document button-->
     <button
+      @click="handleSection('useDocument')"
       class="flex gap-2 items-center py-2 px-4 rounded-md bg-white text-start"
+      :class="{ 'bg-selected-background': currentSection == 'useDocument' }"
     >
       <PlusIcon class="size-6 text-secondary font-semibold"></PlusIcon>
       <div class="grid">
-        <span class="font-medium text-base">Nuevo Contrato</span>
+        <span class="font-medium text-base">Nuevo Documento</span>
       </div>
     </button>
   </div>

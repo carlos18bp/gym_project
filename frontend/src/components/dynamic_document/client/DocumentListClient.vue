@@ -6,7 +6,7 @@
     >
       <CheckCircleIcon class="size-6 text-green-500"></CheckCircleIcon>
       <div class="grid gap-1">
-        <span class="text-base font-medium">Documento Desarrollador Web</span>
+        <span class="text-base font-medium">Contrato Desarrollador Web</span>
         <span class="text-sm font-regular text-gray-400"
           >Prestación de servicios</span
         >
