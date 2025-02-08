@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink, DynamicDocument
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink, DynamicDocument, DocumentVariable
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -98,13 +98,38 @@ class LegalRequestFilesAdmin(admin.ModelAdmin):
     search_fields = ('file',)  # Enable searching by file name
     list_filter = ('created_at',)  # Enable filtering by creation date
 
+class DocumentVariableInline(admin.StackedInline):
+    """
+    Inline configuration to manage document variables within the DynamicDocument admin.
+    """
+    model = DocumentVariable
+    extra = 1  # Display one empty inline by default
+    verbose_name = "Variable"
+    verbose_name_plural = "Variables"
+
+
 class DynamicDocumentAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the DynamicDocument model.
     """
     list_display = ('title', 'created_by', 'assigned_to', 'created_at', 'updated_at')
-    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email')  # Enable searching by title and content
-    list_filter = ('created_at', 'updated_at')  # Enable filtering by creation and update date
+    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email')
+    list_filter = ('created_at', 'updated_at', 'state')
+    inlines = [DocumentVariableInline]  # Add inline for managing document variables
+
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'content', 'state')
+        }),
+        ('User Management', {
+            'fields': ('created_by', 'assigned_to')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('created_at', 'updated_at')  # Make timestamps read-only
 
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):

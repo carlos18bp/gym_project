@@ -17,7 +17,7 @@
         </label>
         <div class="mt-2">
           <input
-            v-model="formData.documentName"
+            v-model="documentTitle"
             type="text"
             name="document-name"
             id="document-name"
@@ -37,42 +37,54 @@
         "
         :disabled="!isSaveButtonEnabled"
       >
-        <span>Continuar</span>
+        <span>{{ isEditMode ? 'Editar' : 'Continuar' }}</span>
       </button>
     </form>
   </div>
 </template>
+
 <script setup>
 import { XMarkIcon } from "@heroicons/vue/24/outline";
-import { computed, reactive } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
+import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 
-// Initialize the Vue Router for navigation
 const router = useRouter();
+const store = useDynamicDocumentStore();
 
-// Reactive object to store form data
-const formData = reactive({
-  documentName: null, // Holds the input value for the document name
+// Reactive title field to safely bind to the input
+const documentTitle = ref('');
+
+// Synchronize the title field with the selected document
+watchEffect(() => {
+  documentTitle.value = store.selectedDocument?.title || '';
 });
 
 /**
- * Computes whether the save button should be enabled based on form validation.
- * - The button is enabled if the document name is not empty after trimming whitespace.
+ * Computes whether the save button should be enabled.
  */
-const isSaveButtonEnabled = computed(() => {
-  return formData.documentName?.trim().length > 0; // Checks if the document name is valid
-});
+const isSaveButtonEnabled = computed(() => documentTitle.value.trim().length > 0);
 
 /**
- * Handles the form submission when the save button is clicked.
- * - Validates the form to ensure the document name is provided.
- * - URL-encodes the document name to make it safe for inclusion in a URL.
- * - Redirects the user to the new document creation route.
+ * Determine if the modal is in edit mode.
+ */
+const isEditMode = computed(() => !!store.selectedDocument?.id);
+
+/**
+ * Handles the form submission.
  */
 function handleSubmit() {
   if (isSaveButtonEnabled.value) {
-    const encodedName = encodeURIComponent(formData.documentName.trim()); // Encode the document name for URL safety
-    router.push(`/dynamic_document_dashboard/document/new/${encodedName}`); // Navigate to the new document creation route
+    const encodedName = encodeURIComponent(documentTitle.value.trim());
+
+    // Update the store's selected document title
+    if (isEditMode.value) store.selectedDocument.title = documentTitle.value;
+
+    if (isEditMode.value) {
+      router.push(`/dynamic_document_dashboard/lawyer/editor/edit/${store.selectedDocument.id}`);
+    } else {
+      router.push(`/dynamic_document_dashboard/lawyer/editor/create/${encodedName}`);
+    }
   }
 }
 </script>

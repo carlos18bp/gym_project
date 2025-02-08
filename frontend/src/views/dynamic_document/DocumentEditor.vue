@@ -10,70 +10,141 @@
 
 <script setup>
 import Editor from "@tinymce/tinymce-vue";
-import { ref } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
 
-// Reactive reference to store the editor's content
-const editorContent = ref("");
+const editorContent = ref(''); // Content of the editor
+const router = useRouter();
+const route = useRoute();
+const store = useDynamicDocumentStore();
 
-// Access the Vue Router and current route
-const router = useRouter(); // Used for programmatic navigation
-const route = useRoute(); // Used to access route parameters
-
-// Configuration for the TinyMCE editor
-const editorConfig = {
-  // Set the editor language to Spanish
-  language: "es",
-
-  // Define the menu structure with custom items
-  menu: {
-    file: { title: "Archivo", items: "preview save continue" }, // Custom menu options in the 'Archivo' menu
-  },
-
-  // Enable plugins for various editor features
-  plugins: "lists link image table code help wordcount",
-
-  // Define the toolbar layout with formatting options
-  toolbar:
-    "undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | outdent indent | link image code",
-
-  // Enable the menubar with default and custom menus
-  menubar: "file edit view insert format tools help",
-
-  // Setup function to define custom menu items
-  setup: (editor) => {
-    // Add a custom 'Preview' menu item
-    editor.ui.registry.addMenuItem("preview", {
-      text: "Previsualizar", // Label for the menu item
-      icon: "preview", // Icon to display
-      onAction: () => alert("Previsualización en desarrollo"), // Action triggered when clicked
-    });
-
-    // Add a custom 'Save' menu item
-    editor.ui.registry.addMenuItem("save", {
-      text: "Guardar", // Label for the menu item
-      icon: "save", // Icon to display
-      onAction: () => alert("Guardado en desarrollo"), // Action triggered when clicked
-    });
-
-    // Add a custom 'Continue' menu item
-    editor.ui.registry.addMenuItem("continue", {
-      text: "Continuar", // Label for the menu item
-      icon: "chevron-right", // Icon to display
-      onAction: () => {
-        // Get the 'name' parameter from the current route
-        const documentName = route.params.name;
-
-        // Redirect to a nested route using the document name
-        router.push(
-          `/dynamic_document_dashboard/document/new/${documentName}/variables-config`
-        );
-      },
-    });
-  },
-
-  // Set the height and width of the editor
-  height: "100vh",
-  width: "100%",
+/**
+ * Extracts variables from the editor content using regex.
+ */
+const extractVariables = () => {
+  const regex = /{{(.*?)}}/g;
+  return Array.from(new Set([...editorContent.value.matchAll(regex)].map(match => match[1])));
 };
+
+/**
+ * Synchronizes extracted variables with the document's existing variables.
+ * Maintains name_es and field_type if they already exist for a variable.
+ * @param {Array<string>} variables - Extracted variable names.
+ */
+const syncVariables = (variables) => {
+  const existingVariables = store.selectedDocument?.variables || [];
+
+  // Map variables with existing details
+  const updatedVariables = variables.map(name => {
+    const existingVariable = existingVariables.find(v => v.name_en === name);
+    return {
+      name_en: name,
+      name_es: existingVariable?.name_es || '',
+      field_type: existingVariable?.field_type || 'input',
+      value: existingVariable?.value || '',
+    };
+  });
+
+  store.selectedDocument.variables = updatedVariables;
+};
+
+/**
+ * Save the document as a draft.
+ */
+const saveDocumentDraft = async () => {
+  // Update the document content before saving
+  if (store.selectedDocument) {
+    store.selectedDocument.content = editorContent.value;
+    store.selectedDocument.state = 'Draft';
+  } else {
+    store.selectedDocument = {
+      title: store.selectedDocument?.title || route.params.title || 'Untitled Document',
+      content: editorContent.value,
+      state: 'Draft',
+    };
+  }
+
+
+  try {
+    if (store.selectedDocument?.id) {
+      await store.updateDocument(store.selectedDocument.id, store.selectedDocument);
+    } else {
+      await store.createDocument(store.selectedDocument);
+    }
+
+    store.selectedDocument = null;
+    await store.fetchDocuments();
+    alert('Draft saved successfully!');
+    router.push('/dynamic_document_dashboard');
+  } catch (error) {
+    console.error('Error saving draft:', error);
+  }
+};
+
+/**
+ * Handle the continue action by synchronizing variables and navigating to the next step.
+ */
+const handleContinue = async () => {
+  const variables = extractVariables();
+
+  if (variables.length > 0) {
+    // Update the document content
+    if (store.selectedDocument) {
+      store.selectedDocument.content = editorContent.value;
+    } else {
+      // If the document does not exist yet, create the initial structure
+      store.selectedDocument = {
+        title: route.params.title || 'Untitled Document',
+        content: editorContent.value,
+        variables: [],
+      };
+    }
+
+    // Synchronize variables with the current document
+    syncVariables(variables);
+
+    // Navigate to the variables configuration step
+    router.push('/dynamic_document_dashboard/lawyer/variables-config');
+  } else {
+    saveDocumentDraft();
+  }
+};
+
+const editorConfig = {
+  language: 'es',
+  menu: {
+    file: { title: 'Archivo', items: 'preview save continue' },
+  },
+  plugins: 'lists',
+  toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | outdent indent',
+  menubar: 'file edit insert format tools',
+  setup: (editor) => {
+    editor.ui.registry.addMenuItem('preview', {
+      text: 'Previsualizar',
+      icon: 'preview',
+      onAction: () => alert('Previsualización en desarrollo'),
+    });
+    editor.ui.registry.addMenuItem('save', {
+      text: 'Guardar',
+      icon: 'save',
+      onAction: saveDocumentDraft,
+    });
+    editor.ui.registry.addMenuItem('continue', {
+      text: 'Continuar',
+      icon: 'chevron-right',
+      onAction: handleContinue,
+    });
+  },
+  height: '100vh',
+  width: '100%',
+};
+
+onMounted(async () => {
+  const documentId = route.params.id;
+  if (documentId) {
+    store.selectedDocument = await store.documentById(documentId);
+    editorContent.value = store.selectedDocument?.content || '';
+  }
+});
 </script>
