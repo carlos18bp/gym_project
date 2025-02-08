@@ -2,11 +2,6 @@ from django.db import models
 from django.conf import settings
 
 class DynamicDocument(models.Model):
-    FIELD_TYPE_CHOICES = [
-        ('input', 'Input'),
-        ('text_area', 'Text Area'),
-    ]
-
     STATE_CHOICES = [
         ('Published', 'Published'),
         ('Draft', 'Draft'),
@@ -16,15 +11,6 @@ class DynamicDocument(models.Model):
 
     title = models.CharField(max_length=200, help_text="Title of the dynamic document.")
     content = models.TextField(help_text="Content of the document.")
-    variables_en = models.JSONField(default=list, blank=True, help_text="List of variables (in English) used in the document.")
-    variables_es = models.JSONField(default=list, blank=True, help_text="List of variables (in Spanish) used in the document.")
-    values = models.JSONField(default=dict, blank=True, help_text="Values of the variables.")
-    field_type = models.CharField(
-        max_length=20,
-        choices=FIELD_TYPE_CHOICES,
-        default='input',
-        help_text="Field type for the document (input or text_area)."
-    )
     state = models.CharField(
         max_length=20,
         choices=STATE_CHOICES,
@@ -51,3 +37,47 @@ class DynamicDocument(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class DocumentVariable(models.Model):
+    FIELD_TYPE_CHOICES = [
+        ('input', 'Input'),
+        ('text_area', 'Text Area'),
+    ]
+
+    document = models.ForeignKey(
+        DynamicDocument,
+        related_name='variables',
+        on_delete=models.CASCADE,
+        help_text="The dynamic document this variable belongs to."
+    )
+    name_en = models.CharField(
+        max_length=100,
+        help_text="Variable name in English.",
+        null=True,
+        blank=True
+    )
+
+    name_es = models.CharField(
+        max_length=100,
+        help_text="Display name in Spanish.",
+        null=True,
+        blank=True
+    )
+
+    tooltip = models.CharField(
+        max_length=200,
+        help_text="Display a tooltip message.",
+        null=True,
+        blank=True
+    )
+    field_type = models.CharField(
+        max_length=20,
+        choices=FIELD_TYPE_CHOICES,
+        default='input',
+        help_text="Field type for the variable."
+    )
+    value = models.TextField(blank=True, null=True, help_text="Value filled by the user.")
+
+    def __str__(self):
+        return self.name_en

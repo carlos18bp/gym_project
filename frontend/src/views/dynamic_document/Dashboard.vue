@@ -1,48 +1,55 @@
 <template>
-  <!-- Replacing the old search bar with the new component -->
+  <!-- Search bar and filter component -->
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
     <template #auxiliary_button>
-        <!-- Create Button for admin -->
-        <button
-            v-if="currentUser?.role === 'lawyer'"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
-            @click="showCreateDocumentModal = true">
-          <div class="flex gap-1 items-center"> 
-            <PlusIcon class="text-white font-bold size-6"></PlusIcon>
-            <span>Nuevo</span>
+      <button
+        v-if="currentUser?.role === 'lawyer'"
+        class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
+        @click="showCreateDocumentModal = true"
+      >
+        <div class="flex gap-1 items-center">
+          <PlusIcon class="text-white font-bold size-6"></PlusIcon>
+          <span>Nuevo</span>
         </div>
-        </button>
+      </button>
     </template>
   </SearchBarAndFilterBy>
+
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
-    <!-- Documents Navigation -->
-    <DocumentsNavigation 
+    <DocumentsNavigation
       @openNewDocument="showCreateDocumentModal = true"
       @updateCurrentSection="handleSection"
-      :role="currentUser.role"></DocumentsNavigation
-    >
+      :role="currentUser.role"
+    />
 
-    <!--Documents sections depending on the user's role-->
+    <!-- Documents sections for lawyers -->
     <div v-if="currentUser?.role === 'lawyer'">
-        <DocumentFinishedByClientList @show-send-document-modal="showSendDocumentViaEmailModal = true" v-if="currentSection === 'documentFinished'"></DocumentFinishedByClientList>
-        <DocumentInProgressByClientList v-if="currentSection === 'documentInProgress'"></DocumentInProgressByClientList>
-        <DocumentListLawyer v-if="currentSection === 'default'"></DocumentListLawyer>
+      <DocumentFinishedByClientList v-if="currentSection === 'documentFinished'" />
+      <DocumentInProgressByClientList v-if="currentSection === 'documentInProgress'" />
+      <DocumentListLawyer v-if="currentSection === 'default'" :documents="documents" />
+
+      <!-- No documents message -->
+      <div v-if="currentSection === 'default' && documents.length === 0" class="mt-6 text-center text-gray-500">
+        <p>No hay documentos disponibles para mostrar.</p>
+        <p>Utiliza el botón "Nuevo" para crear un documento.</p>
+      </div>
     </div>
+
+    <!-- Documents section for clients -->
     <div v-if="currentUser?.role === 'client'">
         <UseDocument v-if="currentSection === 'useDocument'"></UseDocument>
         <DocumentListClient v-if="currentSection === 'default'"></DocumentListClient>
     </div>
   </div>
 
-  <!-- Show create document model for lawyer -->
+  <!-- Modals -->
   <ModalTransition v-show="showCreateDocumentModal">
     <CreateDocumentByLawyer @close="closeModal" />
   </ModalTransition>
 
-  <!-- Show send document via email model -->
   <ModalTransition v-show="showSendDocumentViaEmailModal">
-    <SendDocument @close="closeModal"></SendDocument>
+    <SendDocument @close="closeModal" />
   </ModalTransition>
 </template>
 
@@ -68,37 +75,37 @@ import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/
 
 // Instances
 import { useUserStore } from "@/stores/user";
+import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { onMounted, computed, ref } from "vue";
 
-// Store reference to user information
+// Store references
 const userStore = useUserStore();
+const documentStore = useDynamicDocumentStore();
 
 // Computed property to get the current authenticated user
 const currentUser = computed(() => userStore.getCurrentUser);
 
-// Reactive reference to track the current section in the navigation
+// Reactive state for documents and UI
 const currentSection = ref("default");
-
-// Reactive references to manage modal visibility
+const documents = computed(() => documentStore.draftAndPublishedDocumentsUnassigned);
 const showCreateDocumentModal = ref(false);
 const showSendDocumentViaEmailModal = ref(false);
 
-// Lifecycle hook: executed when the component is mounted
-// Fetches and sets the current user data from the store
+// Load documents on mount
 onMounted(async () => {
   await userStore.setCurrentUser();
+  await documentStore.fetchDocuments();
+  documentStore.selectedDocument = null;
 });
 
-// Function to handle section changes in the document navigation
-// Updates the value of 'currentSection' based on the message received
+// Handle section updates from the navigation
 const handleSection = (message) => {
   currentSection.value = message;
 };
 
-// Function to close all open modals
-// Resets the visibility of both 'Create Document' and 'Send Document' modals
-function closeModal() {
+// Close any open modals
+const closeModal = () => {
   showCreateDocumentModal.value = false;
   showSendDocumentViaEmailModal.value = false;
-}
+};
 </script>

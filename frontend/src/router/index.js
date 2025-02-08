@@ -142,27 +142,30 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
-          path: 'document/new/:name',
+          path: 'lawyer/editor/create/:title',
           component: () => import('@/views/dynamic_document/DocumentEditor.vue'),
           props: true,
           meta: { requiresAuth: true },
         },
         {
-          path: 'document/new/:name/variables-config',
-          name: 'document_variables_config',
-          component: () => import('@/views/dynamic_document/DocumentVariablesConfig.vue'),
+          path: 'lawyer/editor/edit/:id',
+          component: () => import('@/views/dynamic_document/DocumentEditor.vue'),
           props: true,
           meta: { requiresAuth: true },
         },
         {
-          path: 'document/use/:name',
+          path: 'document/use/:mode/:id/:title',
           component: () => import('@/views/dynamic_document/client/DocumentForm.vue'),
           props: true,
           meta: { requiresAuth: true },
         },
+        {
+          path: 'lawyer/variables-config',
+          component: () => import('@/views/dynamic_document/DocumentVariablesConfig.vue'),
+          meta: { requiresAuth: true },
+        },
       ],
-    }
-    
+    }    
   ],
   scrollBehavior() {
     return { top: 0 };
