@@ -39,7 +39,7 @@
     </button>
     <button
       @click="$emit('openNewDocument')"
-      class="flex gap-2 items-center py-2 px-4 rounded-md bg-white text-start"
+      class="flex gap-2 items-center py-2 px-4 rounded-md bg-white text-start hover:bg-gray-100"
     >
       <PlusIcon class="size-6 text-secondary font-semibold"></PlusIcon>
       <div class="grid">
@@ -66,7 +66,7 @@
     <!--Create document button-->
     <button
       @click="handleSection('useDocument')"
-      class="flex gap-2 items-center py-2 px-4 rounded-md bg-white text-start"
+      class="flex gap-2 items-center py-2 px-4 rounded-md bg-white text-start hover:bg-gray-100"
       :class="{ 'bg-selected-background': currentSection == 'useDocument' }"
     >
       <PlusIcon class="size-6 text-secondary font-semibold"></PlusIcon>
