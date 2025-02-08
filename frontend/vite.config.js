@@ -60,6 +60,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
-  }
+    },
+  },
+  optimizeDeps: {
+    include: ['@tinymce/tinymce-vue', 'tinymce'],
+  },
 });

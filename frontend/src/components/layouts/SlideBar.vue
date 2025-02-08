@@ -358,7 +358,7 @@ import {
   Bars3Icon,
   InboxArrowDownIcon,
   UsersIcon,
-  WrenchScrewdriverIcon,
+  DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -512,14 +512,14 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Documentos juridicos",
+    name: "Documentos Juridicos",
     action: (item) => {
       setCurrent(item);
       router.push({
         name: "dynamic_document_dashboard",
       });
     },
-    icon: WrenchScrewdriverIcon,
+    icon: DocumentTextIcon,
     current: false,
   },
 ]);
