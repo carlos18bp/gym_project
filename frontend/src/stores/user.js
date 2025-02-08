@@ -92,8 +92,12 @@ export const useUserStore = defineStore("user", {
      * Set the current user based on authenticated user's ID.
      */
     setCurrentUser() {
-      const authStore = useAuthStore();
-      this.currentUser = this.userById(authStore.userAuth.id) || null;
+      if (!this.currentUser) {
+        const authStore = useAuthStore();
+        this.currentUser = authStore.userAuth;
+      } else {
+        return null;
+      }
     },
 
     /**

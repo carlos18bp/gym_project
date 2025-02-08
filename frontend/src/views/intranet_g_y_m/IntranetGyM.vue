@@ -1,8 +1,4 @@
 <template>
-  <!-- Using the SearchBarAndFilterBy component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>
-  </SearchBarAndFilterBy>
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <!--Company's content-->
@@ -99,10 +95,10 @@
         <div class="mt-4 space-y-3">
           <!-- First row -->
           <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <!-- Contract's number form -->
+            <!-- Document's number form -->
             <div>
               <label
-                for="contract-number"
+                for="document-number"
                 class="block text-base font-medium leading-6 text-primary"
               >
                 No. Contrato
@@ -110,10 +106,10 @@
               </label>
               <div class="mt-2">
                 <input
-                  v-model="formData.contract"
+                  v-model="formData.document"
                   type="text"
-                  name="contract-number"
-                  id="contract-number"
+                  name="document-number"
+                  id="document-number"
                   class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   required
                 />
@@ -337,7 +333,7 @@ onMounted(async () => {
  const files = ref([]);
 
  const formData = reactive({
-  contract: null,
+  document: null,
   initialDate: null,
   endDate: null,
   paymentConcept: "",
@@ -465,7 +461,7 @@ const removeFile = (index) => {
  */
  const isSaveButtonEnabled = computed(() => {
   return (
-    formData.contract !== null &&
+    formData.document !== null &&
     formData.initialDate !== null &&
     formData.endDate !== null &&
     formData.paymentConcept.trim() &&

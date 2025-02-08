@@ -47,7 +47,7 @@
       <ul class="list-disc ml-5 text-sm font-medium text-gray-900">
         <li>Gestionar su acceso a la plataforma.</li>
         <li>Facilitar la interacción entre abogados y clientes.</li>
-        <li>Cumplir con las obligaciones legales y contractuales.</li>
+        <li>Cumplir con las obligaciones legales y documentuales.</li>
         <li>Mejorar la calidad de nuestros servicios mediante el análisis de su uso.</li>
       </ul>
       <p class="block mt-4 text-sm font-medium text-gray-900">

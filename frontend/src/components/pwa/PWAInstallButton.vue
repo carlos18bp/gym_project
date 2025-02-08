@@ -8,7 +8,7 @@
           class="h-6 w-6 shrink-0 text-primary group-hover:text-secondary"
           aria-hidden="true"
         ></ArrowDownTrayIcon>
-        <span>Instalar aplicación</span>
+        <span>Instalar Aplicación</span>
         <div class="flex justify-center items-center bg-purple-100 text-purple-600 text-xs px-1.5 py-0.5 rounded-full">
           <SparklesIcon class="h-4 w-4 shrink-0"></SparklesIcon>
         </div>

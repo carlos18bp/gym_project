@@ -138,11 +138,31 @@ const router = createRouter({
         {
           path: '',
           name: "dynamic_document_dashboard",
-          component: () => import("@/views/dynamic_document/DynamicDocumentDashboard.vue"),
+          component: () => import("@/views/dynamic_document/Dashboard.vue"),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'document/new/:name',
+          component: () => import('@/views/dynamic_document/DocumentEditor.vue'),
+          props: true,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'document/new/:name/variables-config',
+          name: 'document_variables_config',
+          component: () => import('@/views/dynamic_document/DocumentVariablesConfig.vue'),
+          props: true,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'document/use/:name',
+          component: () => import('@/views/dynamic_document/client/DocumentForm.vue'),
+          props: true,
           meta: { requiresAuth: true },
         },
       ],
-    },
+    }
+    
   ],
   scrollBehavior() {
     return { top: 0 };

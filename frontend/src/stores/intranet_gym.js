@@ -49,7 +49,7 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
       const formDataObject = new FormData();
 
       // Append main text fields
-      formDataObject.append("contract", formData.contract); // Contract number
+      formDataObject.append("document", formData.document); // Document number
       formDataObject.append("initialDate", formData.initialDate); // Start date
       formDataObject.append("endDate", formData.endDate); // End date
       formDataObject.append("paymentConcept", formData.paymentConcept); // Payment concept
