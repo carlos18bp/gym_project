@@ -1,4 +1,5 @@
 from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document
+from .views.layouts import sendEmail
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -40,6 +41,7 @@ dynamic_document_urls = [
     path('dynamic-documents/create/', dynamic_document.create_dynamic_document, name='create_dynamic_document'),
     path('dynamic-documents/<int:pk>/update/', dynamic_document.update_dynamic_document, name='update_dynamic_document'),
     path('dynamic-documents/<int:pk>/delete/', dynamic_document.delete_dynamic_document, name='delete_dynamic_document'),
+    path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments')
 ]
 
 urlpatterns = (

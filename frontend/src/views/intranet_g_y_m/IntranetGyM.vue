@@ -292,7 +292,6 @@
 </template>
 
 <script setup>
-import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { 
   TrophyIcon,
   CheckBadgeIcon, 

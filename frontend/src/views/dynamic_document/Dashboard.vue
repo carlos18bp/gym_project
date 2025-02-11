@@ -1,4 +1,4 @@
-<template>
+handleContinue<template>
   <!-- Search bar and filter component -->
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
     <template #auxiliary_button>
@@ -47,10 +47,6 @@
   <ModalTransition v-show="showCreateDocumentModal">
     <CreateDocumentByLawyer @close="closeModal" />
   </ModalTransition>
-
-  <ModalTransition v-show="showSendDocumentViaEmailModal">
-    <SendDocument @close="closeModal" />
-  </ModalTransition>
 </template>
 
 <script setup>
@@ -60,7 +56,6 @@ import { PlusIcon } from "@heroicons/vue/24/outline";
 // Shared components
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import DocumentsNavigation from "@/components/dynamic_document/layouts/DocumentsNavigation.vue";
-import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 
 // Client components
@@ -89,7 +84,6 @@ const currentUser = computed(() => userStore.getCurrentUser);
 const currentSection = ref("default");
 const documents = computed(() => documentStore.draftAndPublishedDocumentsUnassigned);
 const showCreateDocumentModal = ref(false);
-const showSendDocumentViaEmailModal = ref(false);
 
 // Load documents on mount
 onMounted(async () => {
@@ -106,6 +100,5 @@ const handleSection = (message) => {
 // Close any open modals
 const closeModal = () => {
   showCreateDocumentModal.value = false;
-  showSendDocumentViaEmailModal.value = false;
 };
 </script>

@@ -34,7 +34,7 @@
               :key="option.label"
             >
               <button
-                class="block w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
+                class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
                 :disabled="option.disabled"
                 @click="!option.disabled && handleOption(option.action, document)"
                 :class="{
@@ -82,6 +82,8 @@ import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, XMarkIcon, NoSymbolI
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
+import { showNotification } from '@/shared/notification_message';
+import { showConfirmationAlert } from '@/shared/confirmation_alert';
 
 // Props
 defineProps({
@@ -133,30 +135,32 @@ const canPublishDocument = (document) => {
   return document.variables.every((variable) => variable.value && variable.value.trim().length > 0);
 };
 
+
 /**
  * Handle document option actions.
  * @param {string} action - The action to perform.
  * @param {object} document - The document to apply the action on.
  */
-const handleOption = async (action, document) => {
+ const handleOption = async (action, document) => {
   switch (action) {
     case "edit":
       store.selectedDocument = document;
       showEditDocumentModal.value = true;
       break;
     case "delete":
-      if (confirm(`¿Deseas eliminar el documento '${document.title}'?`)) {
+      const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento '${document.title}'?`);
+      if (confirmed) {
         await store.deleteDocument(document.id);
-        alert("Documento eliminado correctamente");
+        await showNotification('Documento eliminado correctamente.', 'success');
       }
       break;
     case "publish":
       await publishDocument(document);
-      alert("Documento publicado correctamente");
+      await showNotification('Documento publicado correctamente.', 'success');
       break;
     case "draft":
       await moveToDraft(document);
-      alert("Documento movido a borrador");
+      await showNotification('Documento movido a borrador.', 'info');
       break;
     case "preview":
       openPreviewModal(document);

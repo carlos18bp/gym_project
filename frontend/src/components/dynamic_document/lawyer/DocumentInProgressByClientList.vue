@@ -75,6 +75,7 @@ import { jsPDF } from "jspdf";
 import { parse } from "node-html-parser";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
+import { showNotification } from '@/shared/notification_message';
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
@@ -136,7 +137,7 @@ const completeDocument = async (document) => {
   try {
     const updatedData = { ...document, state: "Completed" };
     await documentStore.updateDocument(document.id, updatedData);
-    alert("Documento marcado como completado.");
+    await showNotification('Documento marcado como completado.', 'success');
   } catch (error) {
     console.error("Error completing document:", error);
   }
