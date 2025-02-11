@@ -179,12 +179,15 @@ const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 
-// Filter documents
+const props = defineProps({
+  searchQuery: String,
+});
+
+// Retrieve documents in progress and completed from the store, applying the search filter.
 const filteredDocuments = computed(() => {
-  return documentStore.documents.filter(
-    (doc) =>
-      doc.assigned_to === currentUser.value.id &&
-      (doc.state === "Progress" || doc.state === "Completed")
+  const allProgressAndCompletedDocs = documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
+  return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc =>
+    allProgressAndCompletedDocs.some(progressOrCompletedDoc => progressOrCompletedDoc.id === doc.id)
   );
 });
 

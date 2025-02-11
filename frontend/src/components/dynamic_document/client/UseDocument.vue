@@ -1,7 +1,7 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
     <button
-      v-for="document in availableDocuments"
+      v-for="document in filteredavailableDocuments"
       :key="document.id"
       @click="openModal(document.id)"
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-stroke bg-white hover:bg-gray-100"
@@ -36,8 +36,16 @@ const documentStore = useDynamicDocumentStore();
 const showUseDocumentModal = ref(false);
 const selectedDocumentId = ref(null);
 
-const availableDocuments = computed(() => {
-  return documentStore.publishedDocumentsUnassigned;
+const props = defineProps({
+  searchQuery: String,
+});
+
+// Retrieve documents in drafted and published from the store, applying the search filter.
+const filteredavailableDocuments = computed(() => {
+  const allPublishedDocs = documentStore.publishedDocumentsUnassigned;
+  return documentStore.filteredDocuments(props.searchQuery, "").filter(doc =>
+    allPublishedDocs.some(publishedDoc => publishedDoc.id === doc.id)
+  );
 });
 
 function openModal(documentId) {

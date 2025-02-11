@@ -1,7 +1,7 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
     <div
-      v-for="document in documents"
+      v-for="document in filteredDocuments"
       :key="document.id"
       :class="[ 
         'flex items-center gap-2 py-2 px-4 border rounded-md cursor-pointer transition',
@@ -66,7 +66,7 @@
     <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold">Previsualización del Documento: {{ previewDocumentData.title }}</h2>
-        <button @click="closePreviewModal">
+        <button @click="showPreviewModal = false">
           <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
         </button>
       </div>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, XMarkIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
@@ -85,19 +85,25 @@ import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/
 import { showNotification } from '@/shared/notification_message';
 import { showConfirmationAlert } from '@/shared/confirmation_alert';
 
-// Props
-defineProps({
-  documents: {
-    type: Array,
-    required: true,
-  },
-});
+// Store instance
+const documentStore = useDynamicDocumentStore();
 
-// State and dependencies
-const store = useDynamicDocumentStore();
+// Reactive state
 const showEditDocumentModal = ref(false);
 const showPreviewModal = ref(false);
 const previewDocumentData = ref({ title: "", content: "" });
+
+const props = defineProps({
+  searchQuery: String,
+});
+
+// Retrieve documents in drafted and published from the store, applying the search filter.
+const filteredDocuments = computed(() => {
+  const allDraftAndPublishedDocs = documentStore.draftAndPublishedDocumentsUnassigned;
+  return documentStore.filteredDocuments(props.searchQuery, "").filter(doc =>
+  allDraftAndPublishedDocs.some(draftAndPublishedDoc => draftAndPublishedDoc.id === doc.id)
+  );
+});
 
 /**
  * Get the available options for a document based on its state.
@@ -135,22 +141,21 @@ const canPublishDocument = (document) => {
   return document.variables.every((variable) => variable.value && variable.value.trim().length > 0);
 };
 
-
 /**
  * Handle document option actions.
  * @param {string} action - The action to perform.
  * @param {object} document - The document to apply the action on.
  */
- const handleOption = async (action, document) => {
+const handleOption = async (action, document) => {
   switch (action) {
     case "edit":
-      store.selectedDocument = document;
+      documentStore.selectedDocument = document;
       showEditDocumentModal.value = true;
       break;
     case "delete":
       const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento '${document.title}'?`);
       if (confirmed) {
-        await store.deleteDocument(document.id);
+        await documentStore.deleteDocument(document.id);
         await showNotification('Documento eliminado correctamente.', 'success');
       }
       break;
@@ -183,14 +188,6 @@ const openPreviewModal = (document) => {
 };
 
 /**
- * Close the preview modal.
- */
-const closePreviewModal = () => {
-  showPreviewModal.value = false;
-  previewDocumentData.value = { title: "", content: "" };
-};
-
-/**
  * Publish the document by updating its state.
  * @param {object} document - The document to publish.
  */
@@ -199,7 +196,7 @@ const publishDocument = async (document) => {
     ...document,
     state: "Published",
   };
-  await store.updateDocument(document.id, updatedData);
+  await documentStore.updateDocument(document.id, updatedData);
 };
 
 /**
@@ -211,7 +208,7 @@ const moveToDraft = async (document) => {
     ...document,
     state: "Draft",
   };
-  await store.updateDocument(document.id, updatedData);
+  await documentStore.updateDocument(document.id, updatedData);
 };
 
 /**
@@ -219,6 +216,6 @@ const moveToDraft = async (document) => {
  */
 const closeEditModal = () => {
   showEditDocumentModal.value = false;
-  store.selectedDocument = null;
+  documentStore.selectedDocument = null;
 };
 </script>

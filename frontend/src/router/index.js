@@ -172,7 +172,6 @@ const router = createRouter({
   },
 });
 
-// Navigation guard to check for authentication
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
@@ -181,17 +180,21 @@ router.beforeEach(async (to, from, next) => {
     console.warn("User is not authenticated. Redirecting to sign_in.");
     next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
   } 
-  // Handle undefined routes
-  else if (!router.hasRoute(to.name)) {
-    console.warn("Route not found. Redirecting...");
-    if (await authStore.isAuthenticated()) {
-      next({ name: "process_list" });  // Redirect to process_list if authenticated
-    } else {
-      next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
-    }
-  } 
+  // Use router.resolve to check if the route exists, accounting for dynamic paths
   else {
-    next();  // Proceed to the defined route
+    const resolvedRoute = router.resolve(to);
+
+    // If the resolved route does not match any defined route, handle it as undefined
+    if (!resolvedRoute.matched.length) {
+      console.warn("Route not found. Redirecting...");
+      if (await authStore.isAuthenticated()) {
+        next({ name: "process_list" });  // Redirect to process_list if authenticated
+      } else {
+        next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
+      }
+    } else {
+      next();  // Proceed to the defined route
+    }
   }
 });
 

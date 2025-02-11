@@ -2,7 +2,7 @@
   <div class="mt-8 flex flex-wrap gap-6">
     <!-- Document In Progress -->
     <div
-      v-for="document in progressDocuments"
+      v-for="document in filteredProgressDocuments"
       :key="document.id"
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-stroke bg-white"
     >
@@ -92,9 +92,16 @@ onMounted(() => {
   userStore.init();
 });
 
-// Computed properties
-const progressDocuments = computed(() => {
-  return documentStore.progressDocumentsByClient(userStore.getCurrentUser?.id);
+const props = defineProps({
+  searchQuery: String,
+});
+
+// Compute filtered progress documents
+const filteredProgressDocuments = computed(() => {
+  const allProgressDocuments = documentStore.progressDocumentsByClient(userStore.getCurrentUser?.id);
+  return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc => 
+    allProgressDocuments.some(progressDoc => progressDoc.id === doc.id)
+  );
 });
 
 // Options for the document menu

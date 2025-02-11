@@ -2,7 +2,7 @@
   <div class="mt-8 flex flex-wrap gap-6">
     <!-- Document Completed -->
     <div
-      v-for="document in completedDocuments"
+      v-for="document in filteredCompletedDocuments"
       :key="document.id"
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-green-400 bg-green-300/30"
     >
@@ -91,14 +91,20 @@ onMounted(() => {
   userStore.init();
 });
 
-// Computed properties
-const completedDocuments = computed(() => {
-  return documentStore.completedDocumentsByClient(userStore.getCurrentUser?.id);
+const props = defineProps({
+  searchQuery: String,
+});
+
+// Compute filtered completed documents
+const filteredCompletedDocuments = computed(() => {
+  const allCompletedDocuments = documentStore.completedDocumentsByClient(userStore.getCurrentUser?.id);
+  return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc => 
+    allCompletedDocuments.some(completedDoc => completedDoc.id === doc.id)
+  );
 });
 
 // Options for the document menu
 const documentFinishedOptions = [
-  { label: "Enviar", action: "showModal" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
   { label: "Descargar Word", action: "downloadWord" },
@@ -111,9 +117,6 @@ const documentFinishedOptions = [
  */
 const handleOptionClick = (option, document) => {
   switch (option.action) {
-    case "showModal":
-      emit("show-send-document-modal");
-      break;
     case "preview":
       openPreviewModal(document);
       break;

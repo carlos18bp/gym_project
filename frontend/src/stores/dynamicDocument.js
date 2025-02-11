@@ -66,6 +66,65 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         (doc) => doc.state === "Completed" && doc.assigned_to === clientId
       );
     },
+
+    /**
+     * Get filtered documents assigned to a specific client.
+     * @param {object} state - Store state.
+     * @returns {function} - Function that takes a client ID and returns filtered documents.
+     */
+    progressAndCompletedDocumentsByClient: (state) => (clientId) => {
+      return state.documents.filter(
+        (doc) =>
+          doc.assigned_to === clientId &&
+          (doc.state === "Progress" || doc.state === "Completed")
+      );
+    },
+
+    /**
+     * Get filtered documents based on a search query.
+     * @param {object} state - The store state.
+     * @returns {function} - Function that takes a search query and filters documents.
+     */
+    filteredDocuments: (state) => (query, userStore) => {
+      if (!query) return state.documents; // Return all documents if no search query is present
+
+      const lowerQuery = query.toLowerCase();
+
+      return state.documents.filter((doc) => {
+        return (
+          doc.title.toLowerCase().includes(lowerQuery) || // Search in title
+          doc.state.toLowerCase().includes(lowerQuery) || // Search in state
+          (doc.assigned_to &&
+            userStore &&
+            (userStore
+              .userById(doc.assigned_to)
+              ?.first_name?.toLowerCase()
+              .includes(lowerQuery) ||
+              userStore
+                .userById(doc.assigned_to)
+                ?.last_name?.toLowerCase()
+                .includes(lowerQuery) ||
+              userStore
+                .userById(doc.assigned_to)
+                ?.email?.toLowerCase()
+                .includes(lowerQuery) ||
+              userStore
+                .userById(doc.assigned_to)
+                ?.identification?.toLowerCase()
+                .includes(lowerQuery))) // Search by assigned client
+          /**
+           * TODO: Should it be included ?
+          (doc.variables &&
+            doc.variables.some(
+              (variable) =>
+                variable.name_en.toLowerCase().includes(lowerQuery) ||
+                variable.name_es.toLowerCase().includes(lowerQuery) ||
+                variable.value?.toLowerCase().includes(lowerQuery)
+            )
+          */
+        );
+      });
+    },
   },
 
   actions: {
