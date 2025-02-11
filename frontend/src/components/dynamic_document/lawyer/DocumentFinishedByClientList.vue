@@ -54,6 +54,7 @@
 
 <script setup>
 import { computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { CheckCircleIcon, EllipsisVerticalIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
@@ -62,11 +63,10 @@ import { useUserStore } from "@/stores/user";
 import { showPreviewModal, previewDocumentData, openPreviewModal, downloadPDFDocument, downloadWordDocument } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
-// Store instances
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const router = useRouter();
 
-// Fetch data on mount
 onMounted(() => {
   documentStore.init();
   userStore.init();
@@ -76,28 +76,22 @@ const props = defineProps({
   searchQuery: String,
 });
 
-// Compute filtered completed documents
 const filteredCompletedDocuments = computed(() => {
-  const allCompletedDocuments = documentStore.completedDocumentsByClient(userStore.getCurrentUser?.id);
-  return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc => 
-    allCompletedDocuments.some(completedDoc => completedDoc.id === doc.id)
-  );
+  return documentStore.completedDocumentsByClient(userStore.getCurrentUser?.id);
 });
 
-// Options for the document menu
 const documentFinishedOptions = [
+  { label: "Editar", action: "edit" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
   { label: "Descargar Word", action: "downloadWord" },
 ];
 
-/**
- * Handle click event on document options.
- * @param {object} option - The selected option.
- * @param {object} document - The document related to the option.
- */
 const handleOptionClick = (option, document) => {
   switch (option.action) {
+    case "edit":
+      openEditModal(document);
+      break;
     case "preview":
       openPreviewModal(document);
       break;
@@ -112,11 +106,11 @@ const handleOptionClick = (option, document) => {
   }
 };
 
-/**
- * Get the client's name by user ID.
- * @param {number} clientId - The ID of the client.
- * @returns {string} - The client's full name.
- */
+const openEditModal = (document) => {
+  const encodedTitle = encodeURIComponent(document.title.trim());
+  router.push(`/dynamic_document_dashboard/document/use/editor/${document.id}/${encodedTitle}`);
+};
+
 const getClientName = (clientId) => {
   const client = userStore.userById(clientId);
   return client ? `${client.first_name} ${client.last_name}` : "Desconocido";

@@ -54,20 +54,19 @@
 
 <script setup>
 import { computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { PencilIcon, EllipsisVerticalIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { PencilIcon, EllipsisVerticalIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
 
-import { showNotification } from '@/shared/notification_message';
 import { showPreviewModal, previewDocumentData, openPreviewModal, downloadPDFDocument, downloadWordDocument } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
-// Store instances
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const router = useRouter();
 
-// Fetch data on mount
 onMounted(() => {
   documentStore.init();
   userStore.init();
@@ -77,7 +76,6 @@ const props = defineProps({
   searchQuery: String,
 });
 
-// Compute filtered progress documents
 const filteredProgressDocuments = computed(() => {
   const allProgressDocuments = documentStore.progressDocumentsByClient(userStore.getCurrentUser?.id);
   return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc => 
@@ -85,23 +83,17 @@ const filteredProgressDocuments = computed(() => {
   );
 });
 
-// Options for the document menu
 const documentEditingOptions = [
-  { label: "Completar", action: "complete" },
+  { label: "Editar", action: "edit" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
   { label: "Descargar Word", action: "downloadWord" },
 ];
 
-/**
- * Handle click event on document options.
- * @param {object} option - The selected option.
- * @param {object} document - The document related to the option.
- */
 const handleOptionClick = (option, document) => {
   switch (option.action) {
-    case "complete":
-      completeDocument(document);
+    case "edit":
+      openEditModal(document);
       break;
     case "preview":
       openPreviewModal(document);
@@ -117,25 +109,11 @@ const handleOptionClick = (option, document) => {
   }
 };
 
-/**
- * Mark the document as completed.
- * @param {object} document - The document to complete.
- */
-const completeDocument = async (document) => {
-  try {
-    const updatedData = { ...document, state: "Completed" };
-    await documentStore.updateDocument(document.id, updatedData);
-    await showNotification('Documento marcado como completado.', 'success');
-  } catch (error) {
-    console.error("Error completing document:", error);
-  }
+const openEditModal = (document) => {
+  const encodedTitle = encodeURIComponent(document.title.trim());
+  router.push(`/dynamic_document_dashboard/document/use/editor/${document.id}/${encodedTitle}`);
 };
 
-/**
- * Get the client's name by user ID.
- * @param {number} clientId - The ID of the client.
- * @returns {string} - The client's full name.
- */
 const getClientName = (clientId) => {
   const client = userStore.userById(clientId);
   return client ? `${client.first_name} ${client.last_name}` : "Desconocido";

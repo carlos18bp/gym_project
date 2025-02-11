@@ -184,6 +184,16 @@ const filteredDocuments = computed(() => {
 };
 
 /**
+ * Open the edit modal for the selected document.
+ * @param {object} document - The document to edit or complete.
+ */
+ const openEditModal = (document) => {
+  documentStore.selectedDocument = document; // Set selected document in the store
+  selectedDocumentId.value = document.id;
+  showEditDocumentModal.value = true;
+};
+
+/**
  * Close the edit modal and clear the selected document.
  */
  const closeEditModal = () => {

@@ -143,7 +143,6 @@ const saveDocument = async (state) => {
     document.value.state = state;
     document.value.assigned_to = store.currentUser?.id;
 
-    console.log(isEditMode.value)
     if (isEditMode.value) {
       document.value.variables = 
         document.value.variables.map((variable) => ({
