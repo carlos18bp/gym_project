@@ -16,7 +16,7 @@ const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
 
 onBeforeMount(async () => {
-  if (authStore.isAuthenticated) {
+  if ((await authStore.isAuthenticated())) {
     await userStore.init();
 
     // If the user role is "client" and is on restricted routes, redirect to "process_list"
@@ -29,11 +29,6 @@ onBeforeMount(async () => {
           display: "",
         },
       });
-    }
-  } else {
-    // Redirect to "sign_in" only if the route requires authentication
-    if (route.meta.requiresAuth) {
-      router.push({ name: "sign_in" });
     }
   }
 });

@@ -6,7 +6,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: "/",
+      path: "/sign_in",
       name: "sign_in",
       component: () => import("@/views/auth/SignIn.vue"),
       meta: { requiresAuth: false },
@@ -173,14 +173,25 @@ const router = createRouter({
 });
 
 // Navigation guard to check for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
   // Check if the route requires authentication
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: "sign_in" });
-  } else {
-    next();
+  if (to.meta.requiresAuth && !(await authStore.isAuthenticated())) {
+    console.warn("User is not authenticated. Redirecting to sign_in.");
+    next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
+  } 
+  // Handle undefined routes
+  else if (!router.hasRoute(to.name)) {
+    console.warn("Route not found. Redirecting...");
+    if (await authStore.isAuthenticated()) {
+      next({ name: "process_list" });  // Redirect to process_list if authenticated
+    } else {
+      next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
+    }
+  } 
+  else {
+    next();  // Proceed to the defined route
   }
 });
 

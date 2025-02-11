@@ -34,8 +34,6 @@ export const useCaseTypeStore = defineStore("case_type", {
      * Fetch caseTypes data from backend.
      */
     async fetchCaseTypesData() {
-      if (this.dataLoaded) return;
-
       try {
         let response = await get_request("case_types/");
         let jsonData = response.data;

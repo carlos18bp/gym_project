@@ -182,6 +182,34 @@ const processGroup = ref('default');
 // Computed property to get the current authenticated user
 const currentUser = computed(() => userStore.getCurrentUser);
 
+const expandedProcesses = ref([]);
+
+onMounted(async () => {
+  await processStore.init();
+  userIdParam.value = route.params.user_id;
+  displayParam.value = route.params.display;
+
+  await userStore.init();
+  user.value = userIdParam.value ? userStore.userById(userIdParam.value) : userStore.getCurrentUser;
+  isClient.value = !!(user.value.role == "client");
+});
+
+watch(
+  () => route.params.user_id,
+  async (newUserId) => {
+    userIdParam.value = newUserId;
+    displayParam.value = route.params.display;
+  }
+);
+
+watch(
+  () => route.params.display,
+  async (newDisplay) => {
+    userIdParam.value = route.params.user_id;
+    displayParam.value = newDisplay;
+  }
+);
+
 // Filtered processes based on search query
 const filteredProcesses = computed(() => {
   if (processGroup.value === 'default') {
@@ -200,35 +228,6 @@ const filteredProcesses = computed(() => {
     );
   }
 });
-
-const expandedProcesses = ref([]);
-
-onMounted(async () => {
-  await processStore.init();
-  userIdParam.value = route.params.user_id;
-  displayParam.value = route.params.display;
-
-  await userStore.init();
-  user.value = userIdParam.value ? userStore.userById(userIdParam.value) : userStore.getCurrentUser;
-  isClient.value = !!(user.value.role == "client");
-
-});
-
-watch(
-  () => route.params.user_id,
-  async (newUserId) => {
-    userIdParam.value = newUserId;
-    displayParam.value = route.params.display;
-  }
-);
-
-watch(
-  () => route.params.display,
-  async (newDisplay) => {
-    userIdParam.value = route.params.user_id;
-    displayParam.value = newDisplay;
-  }
-);
 
 /**
  * Toggles the expansion state of a process by its ID.

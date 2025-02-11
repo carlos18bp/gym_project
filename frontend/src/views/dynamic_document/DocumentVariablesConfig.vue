@@ -120,7 +120,7 @@ const saveDocument = async (state) => {
     }
 
     store.selectedDocument = null;
-    await store.fetchDocuments();
+    await store.init();
     await showNotification(
         state === 'Draft' ? 'Documento guardado como borrador' : 'Documento publicado exitosamente',
         'success'

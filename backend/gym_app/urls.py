@@ -10,6 +10,7 @@ sign_in_sign_on_urls = [
     path('google_login/', userAuth.google_login, name='google_login'),
     path('update_password/', userAuth.update_password, name='update_password'),    
     path('verify_passcode_and_reset_password/', userAuth.verify_passcode_and_reset_password, name='verify_passcode_and_reset_password'),
+    path('validate_token/', userAuth.validate_token, name='validate_token'),
 ]
 
 user_urls = [

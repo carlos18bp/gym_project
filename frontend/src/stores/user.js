@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import { get_request, update_request } from "./services/request_http";
 import { useAuthStore } from "./auth";
+import { get_request, update_request } from "./services/request_http";
 
 export const useUserStore = defineStore("user", {
   /**
@@ -63,8 +63,6 @@ export const useUserStore = defineStore("user", {
      * Fetch users data from backend.
      */
     async fetchUsersData() {
-      if (this.dataLoaded) return;
-
       try {
         let response = await get_request("users/");
         let jsonData = response.data;

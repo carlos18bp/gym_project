@@ -88,7 +88,7 @@ const previewDocumentContent = ref("");
 
 // Fetch data on mount
 onMounted(() => {
-  documentStore.fetchDocuments();
+  documentStore.init();
   userStore.init();
 });
 

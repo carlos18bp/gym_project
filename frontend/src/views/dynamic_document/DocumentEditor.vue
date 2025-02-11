@@ -20,6 +20,14 @@ const router = useRouter();
 const route = useRoute();
 const store = useDynamicDocumentStore();
 
+onMounted(async () => {
+  const documentId = route.params.id;
+  if (documentId) {
+    store.selectedDocument = await store.documentById(documentId);
+    editorContent.value = store.selectedDocument?.content || '';
+  }
+});
+
 /**
  * Extracts variables from the editor content using regex.
  */
@@ -42,6 +50,7 @@ const syncVariables = (variables) => {
     return {
       name_en: name,
       name_es: existingVariable?.name_es || '',
+      tooltip: existingVariable?.tooltip || '',
       field_type: existingVariable?.field_type || 'input',
       value: existingVariable?.value || '',
     };
@@ -75,7 +84,7 @@ const saveDocumentDraft = async () => {
     }
 
     store.selectedDocument = null;
-    await store.fetchDocuments();
+    await store.init();
     await showNotification('¡Borrador guardado exitosamente!', 'success');
     router.push('/dynamic_document_dashboard');
   } catch (error) {
@@ -112,10 +121,6 @@ const handleContinue = async () => {
   }
 };
 
-const handleBack = () => {
-  router.push('/dynamic_document_dashboard');
-};
-
 const editorConfig = {
   language: 'es',
   menu: {
@@ -150,11 +155,7 @@ const editorConfig = {
   width: '100%',
 };
 
-onMounted(async () => {
-  const documentId = route.params.id;
-  if (documentId) {
-    store.selectedDocument = await store.documentById(documentId);
-    editorContent.value = store.selectedDocument?.content || '';
-  }
-});
+const handleBack = () => {
+  router.push('/dynamic_document_dashboard');
+};
 </script>

@@ -50,7 +50,13 @@ async function makeRequest(method, url, params = {}) {
 
     return response;
   } catch (error) {
-    console.error(error);
+    console.error("Error during request:", error);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+      console.error("Status code:", error.response.status);
+    } else {
+      console.error("Request failed without response.");
+    }
     throw error;
   }
 }

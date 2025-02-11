@@ -114,9 +114,9 @@
       <div class="flex flex-col">
         <p class="font-regular">
           ¿Tienes una cuenta?
-          <a class="font-regular text-secondary">
-            <RouterLink :to="{ name: 'sign_in' }"> Iniciar sesión </RouterLink>
-          </a>
+          <router-link :to="{ name: 'sign_in' }" class="font-regular text-secondary">
+            Iniciar sesión
+          </router-link>
         </p>
         <div class="flex items-center w-full mt-4">
           <div class="flex-grow border-t border-gray-300"></div>
@@ -129,7 +129,7 @@
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
-      <div class="w-full py-12 flex justify-around items-center text-center text-secondary font font-regular text-sm">
+      <div class="w-full flex justify-around items-center text-center text-secondary font font-regular text-sm">
         <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
         <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
       </div>
@@ -166,8 +166,8 @@ const passcode = ref("");
 const passcodeSent = ref("");
 const emailUsedToSentPasscode = ref("");
 
-onMounted(() => {
-  if (authStore.isAuthenticated) {
+onMounted(async () => {
+  if ((await authStore.isAuthenticated())) {
     router.push({
       name: "process_list",
       params: {

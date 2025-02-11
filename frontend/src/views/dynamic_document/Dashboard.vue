@@ -88,7 +88,7 @@ const showCreateDocumentModal = ref(false);
 // Load documents on mount
 onMounted(async () => {
   await userStore.setCurrentUser();
-  await documentStore.fetchDocuments();
+  await documentStore.init();
   documentStore.selectedDocument = null;
 });
 
