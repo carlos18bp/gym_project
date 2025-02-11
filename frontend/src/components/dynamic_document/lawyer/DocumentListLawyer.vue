@@ -62,36 +62,27 @@
   </ModalTransition>
 
   <!-- Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Previsualización del Documento: {{ previewDocumentData.title }}</h2>
-        <button @click="showPreviewModal = false">
-          <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
-        </button>
-      </div>
-      <div class="prose max-w-none" v-html="previewDocumentData.content"></div>
-    </div>
-  </ModalTransition>
+  <DocumentPreviewModal :isVisible="showPreviewModal" :documentData="previewDocumentData" @close="showPreviewModal = false" />
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, XMarkIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
+import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import { showNotification } from '@/shared/notification_message';
 import { showConfirmationAlert } from '@/shared/confirmation_alert';
 
+import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+
 // Store instance
 const documentStore = useDynamicDocumentStore();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
-const showPreviewModal = ref(false);
-const previewDocumentData = ref({ title: "", content: "" });
 
 const props = defineProps({
   searchQuery: String,
@@ -173,18 +164,6 @@ const handleOption = async (action, document) => {
     default:
       console.warn(`Acción desconocida: ${action}`);
   }
-};
-
-/**
- * Open the preview modal with the document data.
- * @param {object} document - The document to preview.
- */
-const openPreviewModal = (document) => {
-  previewDocumentData.value = {
-    title: document.title,
-    content: document.content, // Mostrar el contenido sin reemplazar variables
-  };
-  showPreviewModal.value = true;
 };
 
 /**

@@ -49,41 +49,22 @@
   </div>
 
   <!-- Document Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-semibold">Previsualización del Documento: {{ previewDocumentTitle }}</h2>
-        <button @click="closePreviewModal">
-          <XMarkIcon class="size-6" />
-        </button>
-      </div>
-      <div class="mt-4 overflow-auto max-h-96 text-primary">
-        <div v-html="previewDocumentContent" class="prose"></div>
-      </div>
-    </div>
-  </ModalTransition>
+  <DocumentPreviewModal :isVisible="showPreviewModal" :documentData="previewDocumentData" @close="showPreviewModal = false" />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { CheckCircleIcon, EllipsisVerticalIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { CheckCircleIcon, EllipsisVerticalIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
-import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { saveAs } from "file-saver";
+
+import { showPreviewModal, previewDocumentData, openPreviewModal, downloadPDFDocument, downloadWordDocument } from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
-
-// State variables
-const showPreviewModal = ref(false);
-const previewDocumentTitle = ref("");
-const previewDocumentContent = ref("");
 
 // Fetch data on mount
 onMounted(() => {
@@ -128,113 +109,6 @@ const handleOptionClick = (option, document) => {
       break;
     default:
       console.warn("Unknown action:", option.action);
-  }
-};
-
-/**
- * Open the preview modal for the document.
- * @param {object} document - The document to preview.
- */
-const openPreviewModal = (document) => {
-  previewDocumentTitle.value = document.title;
-
-  // Reemplazar las variables en el contenido
-  let processedContent = document.content;
-  document.variables.forEach((variable) => {
-    const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
-    processedContent = processedContent.replace(regex, variable.value || "");
-  });
-
-  // Parsear el contenido HTML
-  const root = parse(processedContent);
-  previewDocumentContent.value = root.toString();
-
-  showPreviewModal.value = true;
-};
-
-/**
- * Close the preview modal.
- */
-const closePreviewModal = () => {
-  showPreviewModal.value = false;
-};
-
-/**
- * Download the document as a PDF.
- * @param {object} doc - The document to download.
- */
-const downloadPDFDocument = (doc) => {
-  try {
-    // Reemplazar las variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
-    });
-
-    // Parsear el contenido HTML
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText;  // Convierte HTML a texto plano
-
-    // Crear el PDF
-    const pdf = new jsPDF();
-
-    // Configuración de fuente
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-
-    // Dividir el contenido en líneas ajustadas al ancho del PDF
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;  // Ancho de página con márgenes
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-
-    // Añadir texto al PDF
-    pdf.text(textLines, 10, 10);
-
-    // Descargar el archivo
-    pdf.save(`${doc.title}.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-/**
- * Download the document as a Word file.
- * @param {object} doc - The document to download.
- */
-const downloadWordDocument = (doc) => {
-  try {
-    // Reemplazar variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{${variable.name_en}}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
-
-    // Convertir el contenido HTML a texto
-    const parser = new DOMParser();
-    const parsedHtml = parser.parseFromString(processedContent, "text/html");
-    const textContent = parsedHtml.body.innerText;
-
-    // Crear el documento Word
-    const docxDocument = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              children: [new TextRun({ text: textContent, font: "Arial", size: 24 })],
-            }),
-          ],
-        },
-      ],
-    });
-
-    // Descargar el archivo Word
-    Packer.toBlob(docxDocument).then((blob) => {
-      saveAs(blob, `${doc.title}.docx`);
-    });
-  } catch (error) {
-    console.error("Error generating Word document:", error);
   }
 };
 

@@ -50,7 +50,7 @@
               <MenuItem>
                 <button
                   class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                  @click="previewDocument(document)"
+                  @click="openPreviewModal(document)"
                 >
                   Previsualizar
                 </button>
@@ -118,27 +118,7 @@
   </div>
 
   <!-- Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white rounded-lg p-6 shadow-xl max-w-4xl w-full mx-auto">
-      <div class="flex justify-between items-center border-b pb-2 mb-4">
-        <!-- Título del documento -->
-        <h2 class="text-xl font-semibold text-primary">
-          Previsualización del Documento: {{ documentTitle }}
-        </h2>
-
-        <!-- Botón para cerrar el modal -->
-        <button @click="showPreviewModal = false">
-          <XMarkIcon class="size-6 text-gray-500 hover:text-secondary cursor-pointer" />
-        </button>
-      </div>
-
-      <!-- Contenido del documento -->
-      <div class="prose max-w-none overflow-y-auto max-h-[60vh]">
-        <div v-html="previewContent"></div>
-      </div>
-    </div>
-  </ModalTransition>
-
+  <DocumentPreviewModal :isVisible="showPreviewModal" :documentData="previewDocumentData" @close="showPreviewModal = false" />
 
   <!-- Modal Email -->
   <ModalTransition v-show="showSendDocumentViaEmailModal">
@@ -151,7 +131,6 @@ import {
   CheckCircleIcon,
   EllipsisVerticalIcon,
   PencilIcon,
-  XMarkIcon ,
 } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
@@ -163,10 +142,8 @@ import { useUserStore } from "@/stores/user";
 import { showNotification } from '@/shared/notification_message';
 import { showConfirmationAlert } from '@/shared/confirmation_alert';
 
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { saveAs } from 'file-saver';
+import { showPreviewModal, previewDocumentData, openPreviewModal, downloadPDFDocument, downloadWordDocument } from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
@@ -192,48 +169,6 @@ const filteredDocuments = computed(() => {
 });
 
 /**
- * Open the edit modal for the selected document.
- * @param {object} document - The document to edit or complete.
- */
-const openEditModal = (document) => {
-  documentStore.selectedDocument = document; // Set selected document in the store
-  selectedDocumentId.value = document.id;
-  showEditDocumentModal.value = true;
-};
-
-/**
- * Close the edit modal and clear the selected document.
- */
-const closeEditModal = () => {
-  showEditDocumentModal.value = false;
-  documentStore.clearSelectedDocument();
-};
-
-
-const showPreviewModal = ref(false);
-const previewContent = ref('');
-const documentTitle = ref('');
-
-const previewDocument = (doc) => {
-  try {
-    // Reemplazar las variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
-    });
-
-    // Asignar el contenido procesado y el título al modal
-    previewContent.value = processedContent;
-    documentTitle.value = doc.title;
-    showPreviewModal.value = true;  // Mostrar el modal
-  } catch (error) {
-    console.error('Error previewing document:', error);
-  }
-};
-
-
-/**
  * Delete the document.
  * @param {object} document - The document to delete.
  */
@@ -249,94 +184,11 @@ const previewDocument = (doc) => {
 };
 
 /**
- * Download the document in the specified format (PDF or Word).
- * @param {object} doc - The document to download.
- * @param {string} format - The format to download ('pdf' or 'word').
+ * Close the edit modal and clear the selected document.
  */
-const downloadPDFDocument = (doc) => {
-  try {
-    // Reemplazar las variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
-    });
-
-    // Parsear el contenido HTML
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText;  // Convierte HTML a texto plano
-
-    // Crear el PDF
-    const pdf = new jsPDF();
-
-    // Configuración de fuente
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-
-    // Dividir el contenido en líneas ajustadas al ancho del PDF
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;  // Ancho de página con márgenes
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-
-    // Añadir texto al PDF
-    pdf.text(textLines, 10, 10);
-
-    // Descargar el archivo
-    pdf.save(`${doc.title}.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-const downloadWordDocument = (doc) => {
-  try {
-    // Reemplazar variables en el contenido
-    let content = doc.content;
-    doc.variables.forEach(variable => {
-      const regex = new RegExp(`{{${variable.name_en}}}`, 'g');
-      content = content.replace(regex, variable.value || '');
-    });
-
-    // Convertir el contenido HTML en texto plano para el documento Word
-    const parser = new DOMParser();
-    const parsedHtml = parser.parseFromString(content, 'text/html');
-    const textContent = parsedHtml.body.innerText;
-
-    // Crear un documento Word con el contenido procesado
-    const docxDocument = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: textContent,
-                  font: 'Arial',
-                  size: 24, // Tamaño de la fuente en puntos (24 equivale a 12pt)
-                }),
-              ],
-            }),
-          ],
-        },
-      ],
-    });
-
-    // Empaquetar el documento y descargarlo
-    Packer.toBlob(docxDocument).then((blob) => {
-      saveAs(blob, `${doc.title}.docx`);
-    });
-  } catch (error) {
-    console.error('Error downloading Word document:', error);
-  }
-};
-
-
-/**
- * Send the document (placeholder function).
- * @param {object} document - The document to send.
- */
-const sendDocument = (document) => {
-  console.log(`Sending document: ${document.title}`);
+ const closeEditModal = () => {
+  showEditDocumentModal.value = false;
+  documentStore.clearSelectedDocument();
 };
 
 const openEmailModal = (doc) => {
