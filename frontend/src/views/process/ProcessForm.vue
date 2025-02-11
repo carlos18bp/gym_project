@@ -399,15 +399,18 @@
                       </td>
                       <!-- Actions buttons -->
                       <td
-                        class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
+                        class="whitespace-nowrap w-1/5  py-4 text-sm text-primary flex gap-2"
+                        :class="caseFile.file ? '' : 'px-3'"
                       >
                         <!-- See file -->
-                        <button @click="openFile(caseFile.file)">
+                        <button v-if="caseFile.file" @click="openFile(caseFile.file)">
                           <EyeIcon class="h-7 w-7 text-primary"></EyeIcon>
                         </button>
                         <!-- Delete file -->
                         <button @click="removeCaseFile(index)">
-                          <TrashIcon class="h-7 w-7 text-red-600/80"></TrashIcon>
+                          <TrashIcon 
+                            class="h-7 w-7 text-red-600/80"
+                            :class="caseFile.file ? '' : 'mx-3'"></TrashIcon>
                         </button>
                       </td>
                     </tr>
@@ -568,12 +571,9 @@ const isSaveButtonEnabled = computed(() => {
   return (
     formData.plaintiff.trim() &&
     formData.defendant.trim() &&
-    formData.caseTypeId.trim() &&
     formData.subcase.trim() &&
     formData.ref.trim() &&
     formData.authority.trim() &&
-    formData.clientId.trim() &&
-    formData.lawyerId.trim() &&
     formData.stages.every((stage) => stage.status.trim())
   );
 });
