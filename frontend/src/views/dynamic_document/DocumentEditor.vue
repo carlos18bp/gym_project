@@ -13,6 +13,7 @@ import Editor from "@tinymce/tinymce-vue";
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
+import { showNotification } from '@/shared/notification_message';
 
 const editorContent = ref(''); // Content of the editor
 const router = useRouter();
@@ -75,7 +76,7 @@ const saveDocumentDraft = async () => {
 
     store.selectedDocument = null;
     await store.fetchDocuments();
-    alert('Draft saved successfully!');
+    await showNotification('¡Borrador guardado exitosamente!', 'success');
     router.push('/dynamic_document_dashboard');
   } catch (error) {
     console.error('Error saving draft:', error);
@@ -111,10 +112,14 @@ const handleContinue = async () => {
   }
 };
 
+const handleBack = () => {
+  router.push('/dynamic_document_dashboard');
+};
+
 const editorConfig = {
   language: 'es',
   menu: {
-    file: { title: 'Archivo', items: 'preview save continue' },
+    file: { title: 'Archivo', items: 'preview save continue return' },
   },
   plugins: 'lists',
   toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | outdent indent',
@@ -123,7 +128,7 @@ const editorConfig = {
     editor.ui.registry.addMenuItem('preview', {
       text: 'Previsualizar',
       icon: 'preview',
-      onAction: () => alert('Previsualización en desarrollo'),
+      onAction: async () => await showNotification('Previsualización en desarrollo', 'info'),
     });
     editor.ui.registry.addMenuItem('save', {
       text: 'Guardar',
@@ -134,6 +139,11 @@ const editorConfig = {
       text: 'Continuar',
       icon: 'chevron-right',
       onAction: handleContinue,
+    });
+    editor.ui.registry.addMenuItem('return', {
+      text: 'Regresar',
+      icon: 'chevron-left',
+      onAction: handleBack,
     });
   },
   height: '100vh',

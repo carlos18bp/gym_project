@@ -87,7 +87,7 @@
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="sendDocument(document)"
+                    @click="openEmailModal(document)"
                   >
                     Enviar
                   </button>
@@ -138,6 +138,12 @@
       </div>
     </div>
   </ModalTransition>
+
+
+  <!-- Modal Email -->
+  <ModalTransition v-show="showSendDocumentViaEmailModal">
+    <SendDocument @closeEmailModal="closeEmailModal()" :emailDocument="emailDocument"/>
+  </ModalTransition>
 </template>
 
 <script setup>
@@ -149,10 +155,13 @@ import {
 } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
+import { showNotification } from '@/shared/notification_message';
+import { showConfirmationAlert } from '@/shared/confirmation_alert';
 
 import { jsPDF } from "jspdf";
 import { parse } from "node-html-parser";
@@ -167,6 +176,8 @@ const userStore = useUserStore();
 const currentUser = computed(() => userStore.getCurrentUser);
 const showEditDocumentModal = ref(false);
 const selectedDocumentId = ref(null);
+const showSendDocumentViaEmailModal = ref(false);
+const emailDocument = ref({});
 
 // Filter documents
 const filteredDocuments = computed(() => {
@@ -223,10 +234,14 @@ const previewDocument = (doc) => {
  * Delete the document.
  * @param {object} document - The document to delete.
  */
-const deleteDocument = async (document) => {
-  if (confirm(`¿Deseas eliminar el documento "${document.title}"?`)) {
+ const deleteDocument = async (document) => {
+  // Show modal confirmation
+  const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento "${document.title}"?`);
+  
+  // Delete in confirmed case
+  if (confirmed) {
     await documentStore.deleteDocument(document.id);
-    alert("Documento eliminado exitosamente.");
+    await showNotification('Documento eliminado exitosamente.', 'success');
   }
 };
 
@@ -268,7 +283,6 @@ const downloadPDFDocument = (doc) => {
     console.error("Error generating PDF:", error);
   }
 };
-
 
 const downloadWordDocument = (doc) => {
   try {
@@ -320,5 +334,15 @@ const downloadWordDocument = (doc) => {
  */
 const sendDocument = (document) => {
   console.log(`Sending document: ${document.title}`);
+};
+
+const openEmailModal = (doc) => {
+  emailDocument.value = doc;
+  showSendDocumentViaEmailModal.value = true;
+};
+
+const closeEmailModal = () => {
+  emailDocument.value = {};
+  showSendDocumentViaEmailModal.value = false;
 };
 </script>

@@ -41,6 +41,13 @@
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05); /* shadow-lg */
 }
 
+/* Fondo de superposición detrás del popup */
+.swal2-container {
+  --tw-bg-opacity: 1;
+  background-color: rgb(156 163 175 / var(--tw-bg-opacity));
+  backdrop-filter: blur(8px); /* Desenfoque para el fondo */
+}
+
 /* Title style */
 .swal2-title {
   font-size: 1.125rem; /* text-lg */
@@ -48,7 +55,7 @@
 }
 
 /* Confirmation button style */
-.swal2-confirm {
+.swal2-confirm, .swal2-cancel {
   background-color: white; /* bg-white */
   color: rgba(37, 99, 235, 0.6); /* text-blue-600/60 */
   font-size: 1.125rem; /* text-lg */
@@ -59,12 +66,12 @@
 }
 
 /* Hover and focus styles for the confirmation button */
-.swal2-confirm:hover {
+.swal2-confirm:hover, .swal2-cancel:hover {
   background-color: rgba(37, 99, 235, 1); /* hover:bg-blue-700 */
   color: white; /* hover:text-white */
 }
 
-.swal2-confirm:focus {
+.swal2-confirm:focus, .swal2-cancel:focus l {
   outline: none; /* focus:outline-none */
 }
 
@@ -83,4 +90,8 @@
 .swal2-icon.swal2-success .swal2-success-circular-line-right,
 .swal2-success-fix {
   display: none !important; /* Hides the split circle */
+}
+
+.swal2-actions {
+  gap: 1rem; /* Ajusta el espacio entre los botones */
 }

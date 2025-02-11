@@ -65,6 +65,13 @@
         <button @click="saveDocument('Published')" class="p-2.5 text-sm font-medium rounded-md bg-gray-200 text-secondary border-2">
           Publicar
         </button>
+        <button
+            @click="handleBack()"
+            type="button"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+          >
+            Cancelar
+        </button>
       </div>
     </div>
   </div>
@@ -74,6 +81,7 @@
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
+import { showNotification } from '@/shared/notification_message';
 
 // Access route parameters and document store
 const router = useRouter();
@@ -113,10 +121,17 @@ const saveDocument = async (state) => {
 
     store.selectedDocument = null;
     await store.fetchDocuments();
-    alert(state === 'Draft' ? 'Documento guardado como borrador' : 'Documento publicado exitosamente');
+    await showNotification(
+        state === 'Draft' ? 'Documento guardado como borrador' : 'Documento publicado exitosamente',
+        'success'
+    );
     router.push('/dynamic_document_dashboard');    
   } catch (error) {
     console.error('Error saving document:', error);
   }
+};
+
+const handleBack = () => {
+  router.push('/dynamic_document_dashboard');
 };
 </script>

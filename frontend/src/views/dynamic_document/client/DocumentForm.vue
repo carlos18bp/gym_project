@@ -67,13 +67,25 @@
         </button>
         <button
           type="button"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
-          :class="{ 'cursor-not-allowed opacity-50': !allFieldsComplete }"
+          class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+          :class=" 
+            !allFieldsComplete
+            ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
+            : 'bg-secondary text-white'
+          "
           :disabled="!allFieldsComplete"
           @click="saveDocument('Completed')"
         >
           {{ isEditMode ? 'Completar' : 'Generar' }}
         </button>
+        <button
+            @click="handleBack()"
+            type="button"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+          >
+            Cancelar
+        </button>
+        
       </div>
     </div>
   </div>
@@ -87,6 +99,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
+import { showNotification } from '@/shared/notification_message';
 
 const route = useRoute();
 const router = useRouter();
@@ -143,7 +156,10 @@ const saveDocument = async (state) => {
 
       await store.updateDocument(document.value.id, document.value);
 
-      alert(state === "Completed" ? "Documento completado exitosamente" : "Documento actualizado.");
+      await showNotification(
+        state === "Completed" ? "Documento completado exitosamente" : "Documento actualizado.",
+        "success"
+      );
     } else {
       document.value.variables = 
         document.value.variables.map((variable) => ({
@@ -154,12 +170,20 @@ const saveDocument = async (state) => {
         }));
       await store.createDocument(document.value);
 
-      alert(state === "Completed" ? "Documento generado exitosamente" : "Documento guardado como borrador");
+      await showNotification(
+        state === "Completed" ? "Documento generado exitosamente" : "Documento guardado como borrador",
+        "success"
+      );
+
     }
 
     router.push("/dynamic_document_dashboard");
   } catch (error) {
     console.error("Error saving document:", error);
   }
+};
+
+const handleBack = () => {
+  router.push('/dynamic_document_dashboard');
 };
 </script>

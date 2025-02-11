@@ -23,11 +23,12 @@
       <button
         type="submit"
         class="mt-2.5 p-2.5 text-sm font-medium rounded-md flex gap-2"
-        :class="{
-          'bg-gray-200 cursor-not-allowed opacity-50': !isSaveButtonEnabled,
-          'bg-secondary text-white': isSaveButtonEnabled
-        }"
-        :disabled="!isSaveButtonEnabled"
+        :class="
+              !isSaveButtonEnabled
+                ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
+                : 'bg-secondary text-white'
+            "
+            :disabled="!isSaveButtonEnabled"
       >
         Continuar
       </button>
@@ -40,6 +41,7 @@ import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { showNotification } from '@/shared/notification_message';
 
 const props = defineProps({
   documentId: {
@@ -81,7 +83,7 @@ const isSaveButtonEnabled = computed(() => documentTitle.value.trim().length > 0
     // Edit a document
     router.push(`/dynamic_document_dashboard/document/use/editor/${store.selectedDocument.id}/${encodedName}`);
   } else {
-    alert("Error: No se pudo continuar. Documento no seleccionado.");
+    showNotification('Error: No se pudo continuar. Documento no seleccionado.', 'error');
   }
 }
 </script>
