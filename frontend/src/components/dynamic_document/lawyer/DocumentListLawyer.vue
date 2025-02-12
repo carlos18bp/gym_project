@@ -3,16 +3,20 @@
     <div
       v-for="document in filteredDocuments"
       :key="document.id"
-      :class="[ 
+      :class="[
         'flex items-center gap-2 py-2 px-4 border rounded-md cursor-pointer transition',
-        document.state === 'Published' 
-          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50' 
-          : 'border-stroke bg-white hover:bg-gray-100'
+        document.state === 'Published'
+          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
+          : 'border-stroke bg-white hover:bg-gray-100',
       ]"
     >
       <component
         :is="document.state === 'Published' ? CheckCircleIcon : PencilIcon"
-        :class="document.state === 'Published' ? 'size-6 text-green-500' : 'size-6 text-secondary'"
+        :class="
+          document.state === 'Published'
+            ? 'size-6 text-green-500'
+            : 'size-6 text-secondary'
+        "
       />
       <span class="text-base font-medium">{{ document.title }}</span>
 
@@ -28,7 +32,9 @@
           leave-from-class="transform opacity-100 scale-100"
           leave-to-class="transform opacity-0 scale-95"
         >
-          <MenuItems class="absolute left-0 z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5">
+          <MenuItems
+            class="absolute left-0 z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+          >
             <MenuItem
               v-for="option in getDocumentOptions(document)"
               :key="option.label"
@@ -36,10 +42,12 @@
               <button
                 class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
                 :disabled="option.disabled"
-                @click="!option.disabled && handleOption(option.action, document)"
+                @click="
+                  !option.disabled && handleOption(option.action, document)
+                "
                 :class="{
-                  'opacity-50 cursor-not-allowed': option.disabled, 
-                  'cursor-pointer': !option.disabled
+                  'opacity-50 cursor-not-allowed': option.disabled,
+                  'cursor-pointer': !option.disabled,
                 }"
               >
                 <NoSymbolIcon
@@ -62,20 +70,33 @@
   </ModalTransition>
 
   <!-- Preview Modal -->
-  <DocumentPreviewModal :isVisible="showPreviewModal" :documentData="previewDocumentData" @close="showPreviewModal = false" />
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
+import {
+  EllipsisVerticalIcon,
+  PencilIcon,
+  CheckCircleIcon,
+  NoSymbolIcon,
+} from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
-import { showNotification } from '@/shared/notification_message';
-import { showConfirmationAlert } from '@/shared/confirmation_alert';
+import { showNotification } from "@/shared/notification_message";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
 
-import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
+import {
+  showPreviewModal,
+  previewDocumentData,
+  openPreviewModal,
+} from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 // Store instance
@@ -90,10 +111,15 @@ const props = defineProps({
 
 // Retrieve documents in drafted and published from the store, applying the search filter.
 const filteredDocuments = computed(() => {
-  const allDraftAndPublishedDocs = documentStore.draftAndPublishedDocumentsUnassigned;
-  return documentStore.filteredDocuments(props.searchQuery, "").filter(doc =>
-  allDraftAndPublishedDocs.some(draftAndPublishedDoc => draftAndPublishedDoc.id === doc.id)
-  );
+  const allDraftAndPublishedDocs =
+    documentStore.draftAndPublishedDocumentsUnassigned;
+  return documentStore
+    .filteredDocuments(props.searchQuery, "")
+    .filter((doc) =>
+      allDraftAndPublishedDocs.some(
+        (draftAndPublishedDoc) => draftAndPublishedDoc.id === doc.id
+      )
+    );
 });
 
 /**
@@ -117,7 +143,11 @@ const getDocumentOptions = (document) => {
       disabled: !canPublishDocument(document),
     });
   } else if (document.state === "Published") {
-    baseOptions.push({ label: "Mover a Borrador", action: "draft", disabled: false });
+    baseOptions.push({
+      label: "Mover a Borrador",
+      action: "draft",
+      disabled: false,
+    });
   }
 
   return baseOptions;
@@ -129,7 +159,9 @@ const getDocumentOptions = (document) => {
  * @returns {boolean} - True if the document can be published, false otherwise.
  */
 const canPublishDocument = (document) => {
-  return document.variables.every((variable) => variable.value && variable.value.trim().length > 0);
+  return document.variables.every(
+    (variable) => variable.value && variable.value.trim().length > 0
+  );
 };
 
 /**
@@ -144,19 +176,21 @@ const handleOption = async (action, document) => {
       showEditDocumentModal.value = true;
       break;
     case "delete":
-      const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento '${document.title}'?`);
+      const confirmed = await showConfirmationAlert(
+        `¿Deseas eliminar el documento '${document.title}'?`
+      );
       if (confirmed) {
         await documentStore.deleteDocument(document.id);
-        await showNotification('Documento eliminado correctamente.', 'success');
+        await showNotification("Documento eliminado correctamente.", "success");
       }
       break;
     case "publish":
       await publishDocument(document);
-      await showNotification('Documento publicado correctamente.', 'success');
+      await showNotification("Documento publicado correctamente.", "success");
       break;
     case "draft":
       await moveToDraft(document);
-      await showNotification('Documento movido a borrador.', 'info');
+      await showNotification("Documento movido a borrador.", "info");
       break;
     case "preview":
       openPreviewModal(document);

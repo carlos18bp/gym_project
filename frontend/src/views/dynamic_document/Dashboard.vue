@@ -12,12 +12,24 @@
 
     <!-- Documents for lawyers -->
     <div v-if="currentUser?.role === 'lawyer'">
-      <DocumentFinishedByClientList v-if="currentSection === 'documentFinished'" :searchQuery="searchQuery" />
-      <DocumentInProgressByClientList v-if="currentSection === 'documentInProgress'" :searchQuery="searchQuery" />
-      <DocumentListLawyer v-if="currentSection === 'default'" :searchQuery="searchQuery" />
+      <DocumentFinishedByClientList
+        v-if="currentSection === 'documentFinished'"
+        :searchQuery="searchQuery"
+      />
+      <DocumentInProgressByClientList
+        v-if="currentSection === 'documentInProgress'"
+        :searchQuery="searchQuery"
+      />
+      <DocumentListLawyer
+        v-if="currentSection === 'default'"
+        :searchQuery="searchQuery"
+      />
 
       <!-- No documents message -->
-      <div v-if="currentSection === 'default' && filteredDocuments.length === 0" class="mt-6 text-center text-gray-500">
+      <div
+        v-if="currentSection === 'default' && filteredDocuments.length === 0"
+        class="mt-6 text-center text-gray-500"
+      >
         <p>No documents available to display.</p>
         <p>Use the "New" button to create a document.</p>
       </div>
@@ -25,8 +37,14 @@
 
     <!-- Documents for clients -->
     <div v-if="currentUser?.role === 'client'">
-      <UseDocument v-if="currentSection === 'useDocument'" :searchQuery="searchQuery"></UseDocument>
-      <DocumentListClient v-if="currentSection === 'default'" :searchQuery="searchQuery"></DocumentListClient>
+      <UseDocument
+        v-if="currentSection === 'useDocument'"
+        :searchQuery="searchQuery"
+      ></UseDocument>
+      <DocumentListClient
+        v-if="currentSection === 'default'"
+        :searchQuery="searchQuery"
+      ></DocumentListClient>
     </div>
   </div>
 
@@ -75,12 +93,16 @@ const filteredDocuments = computed(() => {
   if (currentUser.value?.role === "lawyer") {
     allDocuments = documentStore.draftAndPublishedDocumentsUnassigned;
   } else if (currentUser.value?.role === "client") {
-    allDocuments = documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
+    allDocuments = documentStore.progressAndCompletedDocumentsByClient(
+      currentUser.value.id
+    );
   }
 
-  return documentStore.filteredDocuments(searchQuery.value, userStore).filter(doc => 
-    allDocuments.some(filteredDoc => filteredDoc.id === doc.id)
-  );
+  return documentStore
+    .filteredDocuments(searchQuery.value, userStore)
+    .filter((doc) =>
+      allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
+    );
 });
 
 // Load data when the component is mounted
@@ -92,7 +114,7 @@ onMounted(async () => {
 
 /**
  * Handles section updates from the navigation.
- * 
+ *
  * @param {string} message - The selected section name.
  */
 const handleSection = (message) => {

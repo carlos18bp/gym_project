@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { createRouter, createWebHistory } from "vue-router";
-import SlideBar from '@/components/layouts/SlideBar.vue';
+import SlideBar from "@/components/layouts/SlideBar.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -52,7 +52,7 @@ const router = createRouter({
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "process_list",
           component: () => import("@/views/process/ProcessList.vue"),
           meta: { requiresAuth: true },
@@ -64,7 +64,7 @@ const router = createRouter({
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "process_detail",
           component: () => import("@/views/process/ProcessDetail.vue"),
           meta: { requiresAuth: true },
@@ -76,7 +76,7 @@ const router = createRouter({
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "process_form",
           component: () => import("@/views/process/ProcessForm.vue"),
           meta: { requiresAuth: true },
@@ -84,11 +84,11 @@ const router = createRouter({
       ],
     },
     {
-      path: "/directory_list",  
+      path: "/directory_list",
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "directory_list",
           component: () => import("@/views/directory/DirectoryList.vue"),
           meta: { requiresAuth: true },
@@ -96,11 +96,11 @@ const router = createRouter({
       ],
     },
     {
-      path: "/legal_request",  
+      path: "/legal_request",
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "legal_request",
           component: () => import("@/views/legal_request/LegalRequest.vue"),
           meta: { requiresAuth: true },
@@ -108,11 +108,11 @@ const router = createRouter({
       ],
     },
     {
-      path: "/intranet_g_y_m",  
+      path: "/intranet_g_y_m",
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "intranet_g_y_m",
           component: () => import("@/views/intranet_g_y_m/IntranetGyM.vue"),
           meta: { requiresAuth: true },
@@ -124,9 +124,10 @@ const router = createRouter({
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "schedule_appointment",
-          component: () => import("@/views/schedule_appointment/ScheduleAppointment.vue"),
+          component: () =>
+            import("@/views/schedule_appointment/ScheduleAppointment.vue"),
           meta: { requiresAuth: true },
         },
       ],
@@ -136,36 +137,40 @@ const router = createRouter({
       component: SlideBar,
       children: [
         {
-          path: '',
+          path: "",
           name: "dynamic_document_dashboard",
           component: () => import("@/views/dynamic_document/Dashboard.vue"),
           meta: { requiresAuth: true },
         },
         {
-          path: 'lawyer/editor/create/:title',
-          component: () => import('@/views/dynamic_document/DocumentEditor.vue'),
+          path: "lawyer/editor/create/:title",
+          component: () =>
+            import("@/views/dynamic_document/DocumentEditor.vue"),
           props: true,
           meta: { requiresAuth: true },
         },
         {
-          path: 'lawyer/editor/edit/:id',
-          component: () => import('@/views/dynamic_document/DocumentEditor.vue'),
+          path: "lawyer/editor/edit/:id",
+          component: () =>
+            import("@/views/dynamic_document/DocumentEditor.vue"),
           props: true,
           meta: { requiresAuth: true },
         },
         {
-          path: 'document/use/:mode/:id/:title',
-          component: () => import('@/views/dynamic_document/client/DocumentForm.vue'),
+          path: "document/use/:mode/:id/:title",
+          component: () =>
+            import("@/views/dynamic_document/client/DocumentForm.vue"),
           props: true,
           meta: { requiresAuth: true },
         },
         {
-          path: 'lawyer/variables-config',
-          component: () => import('@/views/dynamic_document/DocumentVariablesConfig.vue'),
+          path: "lawyer/variables-config",
+          component: () =>
+            import("@/views/dynamic_document/DocumentVariablesConfig.vue"),
           meta: { requiresAuth: true },
         },
       ],
-    }    
+    },
   ],
   scrollBehavior() {
     return { top: 0 };
@@ -178,8 +183,8 @@ router.beforeEach(async (to, from, next) => {
   // Check if the route requires authentication
   if (to.meta.requiresAuth && !(await authStore.isAuthenticated())) {
     console.warn("User is not authenticated. Redirecting to sign_in.");
-    next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
-  } 
+    next({ name: "sign_in" }); // Redirect to sign_in if not authenticated
+  }
   // Use router.resolve to check if the route exists, accounting for dynamic paths
   else {
     const resolvedRoute = router.resolve(to);
@@ -188,12 +193,12 @@ router.beforeEach(async (to, from, next) => {
     if (!resolvedRoute.matched.length) {
       console.warn("Route not found. Redirecting...");
       if (await authStore.isAuthenticated()) {
-        next({ name: "process_list" });  // Redirect to process_list if authenticated
+        next({ name: "process_list" }); // Redirect to process_list if authenticated
       } else {
-        next({ name: "sign_in" });  // Redirect to sign_in if not authenticated
+        next({ name: "sign_in" }); // Redirect to sign_in if not authenticated
       }
     } else {
-      next();  // Proceed to the defined route
+      next(); // Proceed to the defined route
     }
   }
 });

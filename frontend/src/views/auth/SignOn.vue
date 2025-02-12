@@ -1,12 +1,14 @@
 <template>
   <div class="relative xl:absolute">
     <div class="flex justify-start p-4">
-      <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png">
-      <img class="w-20 block xl:hidden" src="@/assets/images/logo/logo1.png">
+      <img class="w-40 hidden xl:block" src="@/assets/images/logo/logo2.png" />
+      <img class="w-20 block xl:hidden" src="@/assets/images/logo/logo1.png" />
     </div>
   </div>
   <section class="flex mt-6 justify-center xl:mt-0 xl:h-screen xl:items-center">
-    <form class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2">
+    <form
+      class="space-y-5 px-8 w-full md:px-32 2xl:px-72 xl:w-1/2 2xl:w-2/3 order-2"
+    >
       <h1 class="font-bold text-center text-2xl xl:text-3xl 2xl:text-4xl">
         Te damos la bienvenida
       </h1>
@@ -76,7 +78,6 @@
             Apellido
           </label>
           <input
-            
             v-model="userForm.lastName"
             type="text"
             id="last_name"
@@ -114,7 +115,10 @@
       <div class="flex flex-col">
         <p class="font-regular">
           ¿Tienes una cuenta?
-          <router-link :to="{ name: 'sign_in' }" class="font-regular text-secondary">
+          <router-link
+            :to="{ name: 'sign_in' }"
+            class="font-regular text-secondary"
+          >
             Iniciar sesión
           </router-link>
         </p>
@@ -129,12 +133,20 @@
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
-      <div class="w-full flex justify-around items-center text-center text-secondary font font-regular text-sm">
-        <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer">Condiciones de uso</router-link>
-        <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer">Aviso de privacidad</router-link>
+      <div
+        class="w-full flex justify-around items-center text-center text-secondary font font-regular text-sm"
+      >
+        <router-link :to="{ name: 'terms_of_use' }" class="cursor-pointer"
+          >Condiciones de uso</router-link
+        >
+        <router-link :to="{ name: 'privacy_policy' }" class="cursor-pointer"
+          >Aviso de privacidad</router-link
+        >
       </div>
     </form>
-    <div class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block">
+    <div
+      class="h-screen hidden overflow-hidden order-1 xl:w-1/2 2xl:w-1/3 xl:block"
+    >
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"
@@ -167,7 +179,7 @@ const passcodeSent = ref("");
 const emailUsedToSentPasscode = ref("");
 
 onMounted(async () => {
-  if ((await authStore.isAuthenticated())) {
+  if (await authStore.isAuthenticated()) {
     router.push({
       name: "process_list",
       params: {
@@ -195,7 +207,10 @@ onMounted(async () => {
  */
 const sendVerificationPasscode = async () => {
   checkInputs();
-  showNotification("Se ha enviado un código de acceso a tu correo electrónico", "info");
+  showNotification(
+    "Se ha enviado un código de acceso a tu correo electrónico",
+    "info"
+  );
   try {
     emailUsedToSentPasscode.value = userForm.email;
     const response = await axios.post("/api/sign_on/send_verification_code/", {
@@ -267,7 +282,10 @@ const checkInputs = () => {
     return;
   }
   if (!userForm.confirmPassword) {
-    showNotification("La confirmación de la contraseña es obligatoria", "warning");
+    showNotification(
+      "La confirmación de la contraseña es obligatoria",
+      "warning"
+    );
     return;
   }
   if (userForm.password !== userForm.confirmPassword) {

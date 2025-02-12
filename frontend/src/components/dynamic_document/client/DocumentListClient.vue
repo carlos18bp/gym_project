@@ -7,7 +7,7 @@
       class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer"
       :class="{
         'border-green-400 bg-green-300/30': document.state === 'Completed',
-        'border-stroke bg-white': document.state === 'Progress'
+        'border-stroke bg-white': document.state === 'Progress',
       }"
     >
       <component
@@ -15,12 +15,14 @@
         class="size-6"
         :class="{
           'text-green-500': document.state === 'Completed',
-          'text-secondary': document.state === 'Progress'
+          'text-secondary': document.state === 'Progress',
         }"
       />
       <div class="grid gap-1">
         <span class="text-base font-medium">{{ document.title }}</span>
-        <span class="text-sm font-regular text-gray-400">{{ document.description }}</span>
+        <span class="text-sm font-regular text-gray-400">{{
+          document.description
+        }}</span>
       </div>
       <Menu as="div" class="relative inline-block text-left">
         <MenuButton class="flex items-center text-gray-400">
@@ -34,7 +36,9 @@
           leave-from-class="transform opacity-100 scale-100"
           leave-to-class="transform opacity-0 scale-95"
         >
-          <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+          <MenuItems
+            class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+          >
             <div class="py-1">
               <!-- Edit/Complete option -->
               <MenuItem>
@@ -42,7 +46,7 @@
                   class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
                   @click="openEditModal(document)"
                 >
-                  {{ document.state === 'Completed' ? 'Editar' : 'Completar' }}
+                  {{ document.state === "Completed" ? "Editar" : "Completar" }}
                 </button>
               </MenuItem>
 
@@ -104,8 +108,12 @@
       v-if="filteredDocuments.length === 0"
       class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
     >
-      <p class="text-lg font-semibold">No hay documentos disponibles para mostrar.</p>
-      <p class="text-sm">Contacta a tu abogado para gestionar tus documentos.</p>
+      <p class="text-lg font-semibold">
+        No hay documentos disponibles para mostrar.
+      </p>
+      <p class="text-sm">
+        Contacta a tu abogado para gestionar tus documentos.
+      </p>
     </div>
 
     <!-- Edit Document Modal -->
@@ -118,11 +126,18 @@
   </div>
 
   <!-- Preview Modal -->
-  <DocumentPreviewModal :isVisible="showPreviewModal" :documentData="previewDocumentData" @close="showPreviewModal = false" />
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 
   <!-- Modal Email -->
   <ModalTransition v-show="showSendDocumentViaEmailModal">
-    <SendDocument @closeEmailModal="closeEmailModal()" :emailDocument="emailDocument"/>
+    <SendDocument
+      @closeEmailModal="closeEmailModal()"
+      :emailDocument="emailDocument"
+    />
   </ModalTransition>
 </template>
 
@@ -139,10 +154,16 @@ import UseDocumentByClient from "@/components/dynamic_document/client/modals/Use
 import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
-import { showNotification } from '@/shared/notification_message';
-import { showConfirmationAlert } from '@/shared/confirmation_alert';
+import { showNotification } from "@/shared/notification_message";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
 
-import { showPreviewModal, previewDocumentData, openPreviewModal, downloadPDFDocument, downloadWordDocument } from "@/shared/document_utils";
+import {
+  showPreviewModal,
+  previewDocumentData,
+  openPreviewModal,
+  downloadPDFDocument,
+  downloadWordDocument,
+} from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 // Store instances
@@ -162,24 +183,31 @@ const props = defineProps({
 
 // Retrieve documents in progress and completed from the store, applying the search filter.
 const filteredDocuments = computed(() => {
-  const allProgressAndCompletedDocs = documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
-  return documentStore.filteredDocuments(props.searchQuery, userStore).filter(doc =>
-    allProgressAndCompletedDocs.some(progressOrCompletedDoc => progressOrCompletedDoc.id === doc.id)
-  );
+  const allProgressAndCompletedDocs =
+    documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
+  return documentStore
+    .filteredDocuments(props.searchQuery, userStore)
+    .filter((doc) =>
+      allProgressAndCompletedDocs.some(
+        (progressOrCompletedDoc) => progressOrCompletedDoc.id === doc.id
+      )
+    );
 });
 
 /**
  * Delete the document.
  * @param {object} document - The document to delete.
  */
- const deleteDocument = async (document) => {
+const deleteDocument = async (document) => {
   // Show modal confirmation
-  const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento "${document.title}"?`);
-  
+  const confirmed = await showConfirmationAlert(
+    `¿Deseas eliminar el documento "${document.title}"?`
+  );
+
   // Delete in confirmed case
   if (confirmed) {
     await documentStore.deleteDocument(document.id);
-    await showNotification('Documento eliminado exitosamente.', 'success');
+    await showNotification("Documento eliminado exitosamente.", "success");
   }
 };
 
@@ -187,7 +215,7 @@ const filteredDocuments = computed(() => {
  * Open the edit modal for the selected document.
  * @param {object} document - The document to edit or complete.
  */
- const openEditModal = (document) => {
+const openEditModal = (document) => {
   documentStore.selectedDocument = document; // Set selected document in the store
   selectedDocumentId.value = document.id;
   showEditDocumentModal.value = true;
@@ -196,16 +224,24 @@ const filteredDocuments = computed(() => {
 /**
  * Close the edit modal and clear the selected document.
  */
- const closeEditModal = () => {
+const closeEditModal = () => {
   showEditDocumentModal.value = false;
   documentStore.clearSelectedDocument();
 };
 
+/**
+ * Opens the email modal and sets the selected document.
+ *
+ * @param {Object} doc - The document to be sent via email.
+ */
 const openEmailModal = (doc) => {
   emailDocument.value = doc;
   showSendDocumentViaEmailModal.value = true;
 };
 
+/**
+ * Closes the email modal and resets the selected document.
+ */
 const closeEmailModal = () => {
   emailDocument.value = {};
   showSendDocumentViaEmailModal.value = false;

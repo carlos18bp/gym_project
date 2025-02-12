@@ -42,8 +42,8 @@ async function makeRequest(method, url, params = {}) {
         response = await axios.put(`/api/${url}`, params, { headers });
         break;
       case "DELETE":
-          response = await axios.delete(`/api/${url}`, { headers });
-          break;
+        response = await axios.delete(`/api/${url}`, { headers });
+        break;
       default:
         throw new Error(`Unsupported method: ${method}`);
     }

@@ -74,7 +74,9 @@ export const downloadWordDocument = (doc) => {
           properties: {},
           children: [
             new Paragraph({
-              children: [new TextRun({ text: textContent, font: "Arial", size: 24 })],
+              children: [
+                new TextRun({ text: textContent, font: "Arial", size: 24 }),
+              ],
             }),
           ],
         },

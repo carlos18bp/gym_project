@@ -10,9 +10,7 @@
     <div class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary">
       <!-- Title -->
       <div>
-        <h1 class="text-primary text-xl font-semibold">
-          Presentar Solicitud
-        </h1>
+        <h1 class="text-primary text-xl font-semibold">Presentar Solicitud</h1>
       </div>
       <!--Form-->
       <form @submit.prevent="submitHandler()">
@@ -77,7 +75,10 @@
                   class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   required
                 />
-                <p v-if="formData.email && !isValidEmail(formData.email)" class="absolute font-regular text-red-500 text-sm">
+                <p
+                  v-if="formData.email && !isValidEmail(formData.email)"
+                  class="absolute font-regular text-red-500 text-sm"
+                >
                   Por favor, introduce un correo válido.
                 </p>
               </div>
@@ -101,9 +102,8 @@
                     @change="query = $event.target.value"
                     @blur="query = ''"
                     :display-value="
-                      (requestType) => requestType?.name 
-                      ? `${requestType?.name}`
-                      : ''
+                      (requestType) =>
+                        requestType?.name ? `${requestType?.name}` : ''
                     "
                   />
                   <ComboboxButton
@@ -115,7 +115,7 @@
                       aria-hidden="true"
                     />
                   </ComboboxButton>
-    
+
                   <ComboboxOptions
                     v-if="legalRequestTypes"
                     class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
@@ -134,11 +134,14 @@
                         ]"
                       >
                         <span
-                          :class="['block truncate', selected && 'font-semibold']"
+                          :class="[
+                            'block truncate',
+                            selected && 'font-semibold',
+                          ]"
                         >
                           {{ requestType.name }}
                         </span>
-    
+
                         <span
                           v-if="selected"
                           :class="[
@@ -173,9 +176,8 @@
                     @change="query = $event.target.value"
                     @blur="query = ''"
                     :display-value="
-                      (legalDiscipline) => legalDiscipline?.name
-                      ? `${legalDiscipline?.name}`
-                      : ''
+                      (legalDiscipline) =>
+                        legalDiscipline?.name ? `${legalDiscipline?.name}` : ''
                     "
                   />
                   <ComboboxButton
@@ -187,7 +189,7 @@
                       aria-hidden="true"
                     />
                   </ComboboxButton>
-    
+
                   <ComboboxOptions
                     v-if="legalDisciplines"
                     class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
@@ -206,11 +208,14 @@
                         ]"
                       >
                         <span
-                          :class="['block truncate', selected && 'font-semibold']"
+                          :class="[
+                            'block truncate',
+                            selected && 'font-semibold',
+                          ]"
                         >
                           {{ legalDiscipline.name }}
                         </span>
-    
+
                         <span
                           v-if="selected"
                           :class="[
@@ -236,14 +241,14 @@
                 <span class="text-red-500">*</span>
               </label>
               <div class="mt-2">
-                <textarea 
+                <textarea
                   v-model="formData.description"
-                  rows="4" 
-                  name="comment" 
-                  id="comment" 
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6" 
+                  rows="4"
+                  name="comment"
+                  id="comment"
+                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   required
-                  />
+                />
               </div>
             </div>
             <!-- Files Form -->
@@ -261,7 +266,10 @@
               >
                 <!-- Drag and drop -->
                 <div v-if="files.length < 1" class="text-center">
-                  <CloudArrowUpIcon class="mx-auto size-12 text-gray-300" aria-hidden="true" />
+                  <CloudArrowUpIcon
+                    class="mx-auto size-12 text-gray-300"
+                    aria-hidden="true"
+                  />
                   <div class="mt-4 flex text-sm/6 text-gray-600">
                     <label
                       for="file-upload"
@@ -278,22 +286,32 @@
                     </label>
                     <p class="pl-1">o arrastra y suelta</p>
                   </div>
-                  <p class="text-xs/5 text-gray-600">PNG, JPG, PDF, DOCX de hasta 30MB</p>
+                  <p class="text-xs/5 text-gray-600">
+                    PNG, JPG, PDF, DOCX de hasta 30MB
+                  </p>
                 </div>
                 <!-- list of files -->
                 <div v-else class="w-full flex flex-wrap gap-3">
-                  <div 
+                  <div
                     v-for="(file, index) in files"
                     :key="index"
                     class="relative p-4 grid rounded-md bg-white border-2"
                     :class="file.style.general"
-                    @mouseenter="file.hover = true;"
-                    @mouseleave="file.hover = false;"
+                    @mouseenter="file.hover = true"
+                    @mouseleave="file.hover = false"
                   >
-                    <div v-show="file.hover" class="absolute p-0.5 mt-2 ml-2 rounded-full" :class="file.style.xMark" @click="removeFile(index)">
+                    <div
+                      v-show="file.hover"
+                      class="absolute p-0.5 mt-2 ml-2 rounded-full"
+                      :class="file.style.xMark"
+                      @click="removeFile(index)"
+                    >
                       <XMarkIcon class="size-3 text-white"></XMarkIcon>
                     </div>
-                    <component :is="file.icon" class="size-12 mx-auto"></component>
+                    <component
+                      :is="file.icon"
+                      class="size-12 mx-auto"
+                    ></component>
                     <span class="text-center text-xs truncate w-20">
                       {{ file.name }}
                     </span>
@@ -344,14 +362,20 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@headlessui/vue";
-import { CheckIcon, ChevronDownIcon, PhotoIcon, XMarkIcon, CloudArrowUpIcon } from "@heroicons/vue/20/solid";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  PhotoIcon,
+  XMarkIcon,
+  CloudArrowUpIcon,
+} from "@heroicons/vue/20/solid";
 import { DocumentIcon } from "@heroicons/vue/24/outline";
 import { ref, reactive, onMounted, computed } from "vue";
 import { useLegalRequestStore } from "@/stores/legal_request.js";
 import { showNotification } from "@/shared/notification_message.js";
 import { RouterLink } from "vue-router";
-import { showLoading, hideLoading } from '@/shared/loading_message.js';
-import { useRouter } from 'vue-router';
+import { showLoading, hideLoading } from "@/shared/loading_message.js";
+import { useRouter } from "vue-router";
 
 /**
  * Router of app used for redirect the user.
@@ -367,17 +391,17 @@ const legalRequestStore = useLegalRequestStore();
  * Reactive references for storing data related to legal request types, disciplines, form data, and file uploads.
  */
 const legalRequestTypes = ref([]); // List of legal request types
-const legalDisciplines = ref([]);  // List of legal disciplines
+const legalDisciplines = ref([]); // List of legal disciplines
 const formData = reactive({
-  firstName: "",          // User's first name
-  lastName: "",           // User's last name
-  email: "",              // User's email address
-  requestTypeId: "",      // Selected legal request type ID
-  disciplineId: "",       // Selected discipline ID
-  description: "",        // Request description
-  files: [],              // Files associated with the legal request
+  firstName: "", // User's first name
+  lastName: "", // User's last name
+  email: "", // User's email address
+  requestTypeId: "", // Selected legal request type ID
+  disciplineId: "", // Selected discipline ID
+  description: "", // Request description
+  files: [], // Files associated with the legal request
 });
-const query = ref(null);  // Query for filtering options in the dropdowns
+const query = ref(null); // Query for filtering options in the dropdowns
 
 /**
  * Reactive reference for managing uploaded files.
@@ -430,7 +454,7 @@ const processFiles = (fileList) => {
     let icon = "";
     let style = {
       general: "", // General style for the file container
-      xMark: "",  // Style for the remove button
+      xMark: "", // Style for the remove button
     };
 
     // Assign appropriate icon and style based on the file extension
@@ -525,13 +549,19 @@ const submitHandler = async () => {
     if (status === 201) {
       showNotification("¡Solicitud creada exitosamente!", "success");
       resetForm(); // Reset the form after successful submission
-      router.push({ name: 'process_list' });
+      router.push({ name: "process_list" });
     } else {
-      showNotification("Error al crear la solicitud. Intenta nuevamente.", "error");
+      showNotification(
+        "Error al crear la solicitud. Intenta nuevamente.",
+        "error"
+      );
     }
   } catch (error) {
     console.error("Error al enviar la solicitud:", error);
-    showNotification("Hubo un error inesperado. Por favor, inténtalo más tarde.", "error");
+    showNotification(
+      "Hubo un error inesperado. Por favor, inténtalo más tarde.",
+      "error"
+    );
   }
 };
 

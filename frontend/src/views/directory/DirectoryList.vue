@@ -34,7 +34,7 @@
                 <a>
                   <span class="absolute inset-x-0 -top-px bottom-0" />
                   {{ user.last_name }} {{ user.first_name }}
-                  <span class=" text-gray-400">
+                  <span class="text-gray-400">
                     ({{ user.role == "client" ? "Cliente" : "Abogado" }})
                   </span>
                 </a>

@@ -32,21 +32,22 @@
         />
       </div>
     </div>
+    <slot name="auxiliary_button"></slot>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref } from "vue";
 import { MagnifyingGlassIcon } from "@heroicons/vue/20/solid";
 
 // Emits definition
-const emit = defineEmits(['update:searchQuery']);
+const emit = defineEmits(["update:searchQuery"]);
 
 // Reactive search query
-const searchQuery = ref('');
+const searchQuery = ref("");
 
 // Emit the updated search query
 const updateSearchQuery = () => {
-  emit('update:searchQuery', searchQuery.value);
+  emit("update:searchQuery", searchQuery.value);
 };
 </script>

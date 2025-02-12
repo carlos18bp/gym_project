@@ -1,8 +1,12 @@
 <template>
   <ModalTransition v-show="isVisible">
-    <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]">
+    <div
+      class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]"
+    >
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Previsualización del Documento: {{ documentData.title }}</h2>
+        <h2 class="text-lg font-bold">
+          Previsualización del Documento: {{ documentData.title }}
+        </h2>
         <button @click="closeModal">
           <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
         </button>

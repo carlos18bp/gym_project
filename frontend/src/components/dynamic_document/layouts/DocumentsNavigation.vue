@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { FolderIcon, PlusIcon } from "@heroicons/vue/24/outline";
 
 // Define events that the component can emit
@@ -89,11 +89,18 @@ const currentSection = ref("default");
 
 // Define properties received from the parent component
 const props = defineProps({
-  role: String, // The role of the user (e.g., 'lawyer', 'client')
+  /**
+   * The role of the user (e.g., 'lawyer', 'client').
+   * @type {String}
+   */
+  role: String,
 });
 
-// Function to handle section changes
-// - `sectionName`: The name of the section to switch to
+/**
+ * Handles section changes.
+ *
+ * @param {String} sectionName - The name of the section to switch to.
+ */
 const handleSection = (sectionName) => {
   currentSection.value = sectionName; // Update the current section
   emit("updateCurrentSection", sectionName); // Emit an event to notify the parent component

@@ -1,6 +1,8 @@
 <template>
   <!-- Menu button -->
-  <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+  <div
+    class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8"
+  >
     <slot></slot>
   </div>
   <!-- Content -->
@@ -85,7 +87,7 @@
                     aria-hidden="true"
                   />
                 </ComboboxButton>
-  
+
                 <ComboboxOptions
                   v-if="filteredCaseTypes.length > 0"
                   class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
@@ -108,7 +110,7 @@
                       >
                         {{ caseType.type }}
                       </span>
-  
+
                       <span
                         v-if="selected"
                         :class="[
@@ -220,7 +222,7 @@
                     aria-hidden="true"
                   />
                 </ComboboxButton>
-  
+
                 <ComboboxOptions
                   v-if="filteredClients.length > 0"
                   class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
@@ -244,14 +246,17 @@
                           alt="Foto de perfil"
                           class="h-6 w-6 flex-shrink-0 rounded-full"
                         />
-  
+
                         <span
-                          :class="['ml-3 truncate', selected && 'font-semibold']"
+                          :class="[
+                            'ml-3 truncate',
+                            selected && 'font-semibold',
+                          ]"
                         >
                           {{ client.last_name }} {{ client.first_name }}
                         </span>
                       </div>
-  
+
                       <span
                         v-if="selected"
                         :class="[
@@ -388,7 +393,9 @@
                         <span v-else-if="caseFile.file" class="text-gray-500">
                           Archivo cargado: {{ caseFile.file.name }}
                         </span>
-                        <span v-else class="text-gray-500">Ningún archivo subido</span>
+                        <span v-else class="text-gray-500"
+                          >Ningún archivo subido</span
+                        >
                         <input
                           type="file"
                           :id="'file-' + index"
@@ -399,18 +406,22 @@
                       </td>
                       <!-- Actions buttons -->
                       <td
-                        class="whitespace-nowrap w-1/5  py-4 text-sm text-primary flex gap-2"
+                        class="whitespace-nowrap w-1/5 py-4 text-sm text-primary flex gap-2"
                         :class="caseFile.file ? '' : 'px-3'"
                       >
                         <!-- See file -->
-                        <button v-if="caseFile.file" @click="openFile(caseFile.file)">
+                        <button
+                          v-if="caseFile.file"
+                          @click="openFile(caseFile.file)"
+                        >
                           <EyeIcon class="h-7 w-7 text-primary"></EyeIcon>
                         </button>
                         <!-- Delete file -->
                         <button @click="removeCaseFile(index)">
-                          <TrashIcon 
+                          <TrashIcon
                             class="h-7 w-7 text-red-600/80"
-                            :class="caseFile.file ? '' : 'mx-3'"></TrashIcon>
+                            :class="caseFile.file ? '' : 'mx-3'"
+                          ></TrashIcon>
                         </button>
                       </td>
                     </tr>
@@ -421,7 +432,7 @@
           </div>
         </div>
         <!-- Save button -->
-        <div class=" flex space-x-4">
+        <div class="flex space-x-4">
           <button
             @click="onSubmit"
             type="button"
@@ -548,7 +559,7 @@ watch(
 );
 
 watch(
-  () => route.params.action, 
+  () => route.params.action,
   (newValue) => {
     if (newValue === "add") {
       resetForm();
@@ -685,9 +696,9 @@ const validateFormData = () => {
  * @returns {void}
  */
 const onSubmit = async () => {
-  formData.caseTypeId = selectedCaseType.value?.id || '';
-  formData.clientId = selectedClient.value?.id || '';
-  formData.lawyerId = authStore.userAuth?.id || '';
+  formData.caseTypeId = selectedCaseType.value?.id || "";
+  formData.clientId = selectedClient.value?.id || "";
+  formData.lawyerId = authStore.userAuth?.id || "";
 
   if (validateFormData()) {
     await submitHandler(
@@ -696,7 +707,10 @@ const onSubmit = async () => {
       !!programIdParam.value
     );
     if (actionParam.value == "add") {
-      router.push({ name: "process_list", params: { user_id: '', display: "" } });
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "" },
+      });
     } else {
       router.back();
     }
@@ -804,7 +818,7 @@ const deleteStage = (index) => {
  */
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // Maximum file size of 50 MB
-const ALLOWED_FILE_TYPES = ['png', 'jpg', 'jpeg', 'pdf', 'docx']; // Allowed file extensions
+const ALLOWED_FILE_TYPES = ["png", "jpg", "jpeg", "pdf", "docx"]; // Allowed file extensions
 
 const handleFileUpload = (event, index) => {
   const file = event.target.files[0]; // Get the selected file
@@ -821,7 +835,7 @@ const handleFileUpload = (event, index) => {
   }
 
   // Validate file type
-  const extension = file.name.split('.').pop().toLowerCase(); // Extract file extension
+  const extension = file.name.split(".").pop().toLowerCase(); // Extract file extension
   if (!ALLOWED_FILE_TYPES.includes(extension)) {
     showNotification(
       "¡Ups! Ese tipo de archivo no es compatible. Asegúrate de que el archivo sea PDF, DOCX, JPG, PNG, JPEG.",
@@ -833,7 +847,6 @@ const handleFileUpload = (event, index) => {
   // Assign the file to the corresponding index in the form data
   formData.caseFiles[index].file = file;
 };
-
 
 /**
  * Adds a new case file input group to the form data.
@@ -865,20 +878,27 @@ const removeCaseFile = (index) => {
   formData.caseFiles.splice(index, 1);
 };
 
+/**
+ * Resets the form fields to their default empty values.
+ */
 const resetForm = () => {
-  formData.plaintiff = "";
-  formData.defendant = "";
-  formData.caseTypeId = "";
-  formData.subcase = "";
-  formData.ref = "";
-  formData.authority = "";
-  formData.clientId = "";
-  formData.lawyerId = "";
+  formData.plaintiff = ""; // Reset plaintiff field
+  formData.defendant = ""; // Reset defendant field
+  formData.caseTypeId = ""; // Reset case type ID
+  formData.subcase = ""; // Reset subcase field
+  formData.ref = ""; // Reset reference field
+  formData.authority = ""; // Reset authority field
+  formData.clientId = ""; // Reset client ID field
+  formData.lawyerId = ""; // Reset lawyer ID field
+
+  // Reset stages array with an empty status
   formData.stages = [
     {
       status: "",
     },
   ];
+
+  // Reset caseFiles array with a null file field
   formData.caseFiles = [
     {
       file: null,
@@ -890,7 +910,7 @@ const resetForm = () => {
  * Function to handle the cancel action.
  * Navigates back to the previous page.
  */
- const cancelAction = () => {
+const cancelAction = () => {
   router.back();
 };
 </script>

@@ -115,6 +115,20 @@ export const useUserStore = defineStore("user", {
       );
     },
 
+    /**
+     * Updates user profile information.
+     *
+     * @param {Object} formData - The user data to be updated.
+     * @param {string} formData.first_name - The user's first name.
+     * @param {string} formData.last_name - The user's last name.
+     * @param {string} formData.contact - The user's contact number.
+     * @param {string} formData.identification - The user's identification number.
+     * @param {string} formData.birthday - The user's birthdate.
+     * @param {string} formData.email - The user's email address.
+     * @param {string} formData.document_type - The user's document type.
+     * @param {File|string} [formData.photo_profile] - The user's profile photo (File object if new, string if existing).
+     * @returns {Promise<number|null>} - The response status code if successful, otherwise null.
+     */
     async updateUser(formData) {
       // Create FormData to include the user information
       const formDataObject = new FormData();

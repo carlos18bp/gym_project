@@ -23,13 +23,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     },
 
     /**
-     * Get documents assigned to a specific client by their user ID.
-     */
-    documentsByClient: (state) => (clientId) => {
-      return state.documents.filter((doc) => doc.assigned_to === clientId);
-    },
-
-    /**
      * Get documents with state 'Published' and no assigned client.
      */
     publishedDocumentsUnassigned: (state) => {

@@ -9,7 +9,9 @@
       <DocumentArrowUpIcon class="size-6 text-secondary" />
       <div class="grid gap-1">
         <span class="text-base font-medium">{{ document.title }}</span>
-        <span class="text-sm font-regular text-gray-400">{{ document.description }}</span>
+        <span class="text-sm font-regular text-gray-400">{{
+          document.description
+        }}</span>
       </div>
       <ChevronRightIcon class="size-6 text-gray-400" />
     </button>
@@ -26,7 +28,10 @@
 </template>
 
 <script setup>
-import { ChevronRightIcon, DocumentArrowUpIcon } from "@heroicons/vue/24/outline";
+import {
+  ChevronRightIcon,
+  DocumentArrowUpIcon,
+} from "@heroicons/vue/24/outline";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import { computed, ref } from "vue";
@@ -43,11 +48,18 @@ const props = defineProps({
 // Retrieve documents in drafted and published from the store, applying the search filter.
 const filteredavailableDocuments = computed(() => {
   const allPublishedDocs = documentStore.publishedDocumentsUnassigned;
-  return documentStore.filteredDocuments(props.searchQuery, "").filter(doc =>
-    allPublishedDocs.some(publishedDoc => publishedDoc.id === doc.id)
-  );
+  return documentStore
+    .filteredDocuments(props.searchQuery, "")
+    .filter((doc) =>
+      allPublishedDocs.some((publishedDoc) => publishedDoc.id === doc.id)
+    );
 });
 
+/**
+ * Opens the modal and sets the selected document ID.
+ *
+ * @param {string|number} documentId - The ID of the document to be used.
+ */
 function openModal(documentId) {
   if (documentId) {
     selectedDocumentId.value = documentId;
@@ -55,6 +67,9 @@ function openModal(documentId) {
   }
 }
 
+/**
+ * Closes the modal and resets the selected document ID.
+ */
 function closeModal() {
   showUseDocumentModal.value = false;
   selectedDocumentId.value = null;

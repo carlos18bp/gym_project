@@ -63,29 +63,28 @@
           class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
           @click="saveDocument('Progress')"
         >
-          {{ isEditMode ? 'Guardar Cambios' : 'Guardar' }}
+          {{ isEditMode ? "Guardar Cambios" : "Guardar" }}
         </button>
         <button
           type="button"
           class="p-2.5 text-sm font-medium rounded-md flex gap-2"
-          :class=" 
+          :class="
             !allFieldsComplete
-            ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-            : 'bg-secondary text-white'
+              ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
+              : 'bg-secondary text-white'
           "
           :disabled="!allFieldsComplete"
           @click="saveDocument('Completed')"
         >
-          {{ isEditMode ? 'Completar' : 'Generar' }}
+          {{ isEditMode ? "Completar" : "Generar" }}
         </button>
         <button
-            @click="handleBack()"
-            type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
-          >
-            Cancelar
+          @click="handleBack()"
+          type="button"
+          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+        >
+          Cancelar
         </button>
-        
       </div>
     </div>
   </div>
@@ -99,7 +98,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
-import { showNotification } from '@/shared/notification_message';
+import { showNotification } from "@/shared/notification_message";
 
 const route = useRoute();
 const router = useRouter();
@@ -111,12 +110,15 @@ const document = ref(null);
 // Detect edit mode based on the presence of a document ID
 const isEditMode = ref(false);
 
+/**
+ * Fetches document data based on the route parameters when the component is mounted.
+ */
 onMounted(async () => {
   const documentId = route.params.id;
-  isEditMode.value = route.params.mode == 'editor' ? true : false;
-  documentBase.value = await store.documentById(documentId); 
+  isEditMode.value = route.params.mode == "editor" ? true : false;
+  documentBase.value = await store.documentById(documentId);
 
-  if (route.params.mode == 'creator') {
+  if (route.params.mode == "creator") {
     document.value = {
       title: route.params.title,
       variables: documentBase.value.variables,
@@ -126,54 +128,65 @@ onMounted(async () => {
     };
   }
 
-  if (route.params.mode == 'editor') {  
+  if (route.params.mode == "editor") {
     document.value = documentBase.value;
     document.value.title = route.params.title;
   }
 });
 
+/**
+ * Computes whether all required fields in the document are complete.
+ *
+ * @returns {Boolean} True if all variables have values, false otherwise.
+ */
 const allFieldsComplete = computed(() => {
   return document.value?.variables.every(
     (variable) => variable.value && variable.value.trim().length > 0
   );
 });
 
+/**
+ * Saves the document based on its mode (edit or create).
+ *
+ * @param {String} state - The state of the document (e.g., "Completed", "Draft").
+ */
 const saveDocument = async (state) => {
   try {
     document.value.state = state;
     document.value.assigned_to = store.currentUser?.id;
 
     if (isEditMode.value) {
-      document.value.variables = 
-        document.value.variables.map((variable) => ({
-          id: variable.id,
-          name_en: variable.name_en,
-          name_es: variable.name_es,
-          field_type: variable.field_type,
-          value: variable.value,
-        }));
+      document.value.variables = document.value.variables.map((variable) => ({
+        id: variable.id,
+        name_en: variable.name_en,
+        name_es: variable.name_es,
+        field_type: variable.field_type,
+        value: variable.value,
+      }));
 
       await store.updateDocument(document.value.id, document.value);
 
       await showNotification(
-        state === "Completed" ? "Documento completado exitosamente" : "Documento actualizado.",
+        state === "Completed"
+          ? "Document successfully completed"
+          : "Document updated.",
         "success"
       );
     } else {
-      document.value.variables = 
-        document.value.variables.map((variable) => ({
-          name_en: variable.name_en,
-          name_es: variable.name_es,
-          field_type: variable.field_type,
-          value: variable.value,
-        }));
+      document.value.variables = document.value.variables.map((variable) => ({
+        name_en: variable.name_en,
+        name_es: variable.name_es,
+        field_type: variable.field_type,
+        value: variable.value,
+      }));
       await store.createDocument(document.value);
 
       await showNotification(
-        state === "Completed" ? "Documento generado exitosamente" : "Documento guardado como borrador",
+        state === "Completed"
+          ? "Document successfully generated"
+          : "Document saved as draft",
         "success"
       );
-
     }
 
     router.push("/dynamic_document_dashboard");
@@ -182,7 +195,10 @@ const saveDocument = async (state) => {
   }
 };
 
+/**
+ * Handles navigation back to the document dashboard.
+ */
 const handleBack = () => {
-  router.push('/dynamic_document_dashboard');
+  router.push("/dynamic_document_dashboard");
 };
 </script>

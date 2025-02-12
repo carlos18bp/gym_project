@@ -4,8 +4,12 @@
     <slot></slot>
   </SearchBarAndFilterBy>
   <!-- Calendly inline widget begin -->
-  <div class="calendly-inline-widget" style="min-width: 320px; height: 1200px;" data-url="https://calendly.com/infogym/cita-abogado"></div>
-  <!-- Calendly inline widget end -->  
+  <div
+    class="calendly-inline-widget"
+    style="min-width: 320px; height: 1200px"
+    data-url="https://calendly.com/infogym/cita-abogado"
+  ></div>
+  <!-- Calendly inline widget end -->
 </template>
 
 <script setup>
