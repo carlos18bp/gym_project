@@ -10,18 +10,31 @@ from django.conf import settings
 def send_email_with_attachments(request):
     """
     API view to send an email with attachments (requires authentication).
+    
+    This endpoint allows an authenticated user to send an email with optional attachments.
+    
+    Request Data:
+    - to_email (str): Recipient's email address (required).
+    - subject (str): Email subject (optional, defaults to 'Sin asunto').
+    - body (str): Email body content (optional, defaults to 'Sin contenido').
+    - FILES (dict): Dictionary of files to be attached to the email.
+    
+    Returns:
+    - 200 OK: If the email is successfully sent.
+    - 400 Bad Request: If 'to_email' is missing.
+    - 500 Internal Server Error: If an unexpected error occurs.
     """
     try:
-        # Extraer datos del request
+        # Extract data from the request
         to_email = request.data.get('to_email')
         subject = request.data.get('subject', 'Sin asunto')
         body = request.data.get('body', 'Sin contenido')
 
-        # Validar los datos requeridos
+        # Validate required fields
         if not to_email:
-            return Response({'error': 'El campo "to_email" es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'The "to_email" field is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Configurar el mensaje de correo
+        # Configure the email message
         email = EmailMessage(
             subject=subject,
             body=body,
@@ -29,15 +42,15 @@ def send_email_with_attachments(request):
             to=[to_email]
         )
 
-        # Procesar archivos adjuntos
+        # Process attached files
         for file_key in request.FILES:
             file = request.FILES[file_key]
             email.attach(file.name, file.read(), file.content_type)
 
-        # Enviar el correo
+        # Send the email
         email.send()
 
-        return Response({'message': 'Correo enviado exitosamente.'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Email sent successfully.'}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

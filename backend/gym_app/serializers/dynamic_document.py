@@ -6,6 +6,12 @@ User = get_user_model()
 
 
 class DocumentVariableSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the DocumentVariable model.
+
+    This serializer handles the serialization and deserialization of document variables, 
+    including their name in English and Spanish, tooltip, field type, and value.
+    """
     id = serializers.IntegerField(required=False)
 
     class Meta:
@@ -14,7 +20,13 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
 
 
 class DynamicDocumentSerializer(serializers.ModelSerializer):
-    # Relación con las variables del documento
+    """
+    Serializer for the DynamicDocument model.
+
+    This serializer manages the serialization and deserialization of dynamic documents.
+    It includes related document variables and handles the creation and updating of documents.
+    """
+    # Relationship with document variables
     variables = DocumentVariableSerializer(many=True, required=False)
 
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
@@ -25,48 +37,66 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'content', 'state', 'created_by', 'assigned_to', 'created_at', 'updated_at', 'variables']
 
     def create(self, validated_data):
-        # Extraer datos de variables
+        """
+        Creates a new DynamicDocument instance.
+
+        Extracts document variables from validated data, assigns the authenticated user as the creator,
+        and creates the document along with its related variables.
+
+        :param validated_data: Validated data containing document attributes and related variables.
+        :return: Newly created DynamicDocument instance.
+        """
+        # Extract variable data
         variables_data = validated_data.pop('variables', [])
-        
-        # Asignar automáticamente el usuario autenticado
+
+        # Automatically assign the authenticated user
         request = self.context.get('request')
         if request and request.user:
             validated_data['created_by'] = request.user
 
-        # Crear el documento
+        # Create the document
         document = DynamicDocument.objects.create(**validated_data)
 
-        # Crear las variables relacionadas
+        # Create related variables
         for variable_data in variables_data:
             DocumentVariable.objects.create(document=document, **variable_data)
 
         return document
 
     def update(self, instance, validated_data):
-        # Extraer las variables enviadas en la solicitud
+        """
+        Updates an existing DynamicDocument instance.
+
+        Updates document fields, manages related document variables (updates existing ones,
+        creates new ones, and deletes omitted ones).
+
+        :param instance: The DynamicDocument instance to be updated.
+        :param validated_data: Validated data containing updated document attributes and related variables.
+        :return: Updated DynamicDocument instance.
+        """
+        # Extract variables sent in the request
         variables_data = validated_data.pop('variables', [])
         existing_variables = {var.id: var for var in instance.variables.all()}
 
-        # Actualizar los campos principales del documento
+        # Update main document fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Manejar las variables
+        # Handle document variables
         for var_data in variables_data:
             if 'id' in var_data and var_data['id'] in existing_variables:
-                # Actualizar variable existente
+                # Update existing variable
                 variable_instance = existing_variables.pop(var_data['id'])
                 for attr, value in var_data.items():
                     setattr(variable_instance, attr, value)
                 variable_instance.save()
             else:
-                # Crear nueva variable si no tiene id
+                # Create a new variable if it has no ID
                 DocumentVariable.objects.create(document=instance, **var_data)
 
-        # Eliminar variables no incluidas en la solicitud
+        # Delete variables that were not included in the request
         for var_to_delete in existing_variables.values():
             var_to_delete.delete()
 
         return instance
-
