@@ -365,3 +365,12 @@ def verify_passcode_and_reset_password(request):
 
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def validate_token(request):
+    """
+    Endpoint to validate if the JWT token is still valid.
+    If the request is authenticated, it returns a 200 response.
+    """
+    return Response({"detail": "Token is valid"}, status=200)

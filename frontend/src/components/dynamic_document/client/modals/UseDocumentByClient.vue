@@ -7,7 +7,10 @@
     </div>
     <form @submit.prevent="handleSubmit">
       <div>
-        <label for="document-name" class="block text-base font-medium leading-6 text-primary">
+        <label
+          for="document-name"
+          class="block text-base font-medium leading-6 text-primary"
+        >
           Nombre <span class="text-red-500">*</span>
         </label>
         <div class="mt-2">
@@ -24,11 +27,11 @@
         type="submit"
         class="mt-2.5 p-2.5 text-sm font-medium rounded-md flex gap-2"
         :class="
-              !isSaveButtonEnabled
-                ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-                : 'bg-secondary text-white'
-            "
-            :disabled="!isSaveButtonEnabled"
+          !isSaveButtonEnabled
+            ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
+            : 'bg-secondary text-white'
+        "
+        :disabled="!isSaveButtonEnabled"
       >
         Continuar
       </button>
@@ -41,7 +44,7 @@ import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { showNotification } from '@/shared/notification_message';
+import { showNotification } from "@/shared/notification_message";
 
 const props = defineProps({
   documentId: {
@@ -55,35 +58,44 @@ const router = useRouter();
 const store = useDynamicDocumentStore();
 
 // Reactive state for document title
-const documentTitle = ref('');
+const documentTitle = ref("");
 
 // Sync the title field with the selected document
 watchEffect(() => {
   if (store.selectedDocument) {
-    documentTitle.value = store.selectedDocument?.title || '';
+    documentTitle.value = store.selectedDocument?.title || "";
   } else {
-    documentTitle.value = '';  // En caso de creación, el título debe estar vacío
+    documentTitle.value = ""; // In case of creation, the title must be empty.
   }
 });
 
 // Computed properties for form validation
-const isSaveButtonEnabled = computed(() => documentTitle.value.trim().length > 0);
+const isSaveButtonEnabled = computed(
+  () => documentTitle.value.trim().length > 0
+);
 
 /**
  * Handle form submission.
  */
- function handleSubmit() {
+function handleSubmit() {
   const encodedName = encodeURIComponent(documentTitle.value.trim());
-  
+
   if (props.documentId && !store.selectedDocument) {
     // Create a new document
-    router.push(`/dynamic_document_dashboard/document/use/creator/${props.documentId}/${encodedName}`);
+    router.push(
+      `/dynamic_document_dashboard/document/use/creator/${props.documentId}/${encodedName}`
+    );
   } else if (store.selectedDocument) {
     const encodedName = encodeURIComponent(documentTitle.value.trim());
     // Edit a document
-    router.push(`/dynamic_document_dashboard/document/use/editor/${store.selectedDocument.id}/${encodedName}`);
+    router.push(
+      `/dynamic_document_dashboard/document/use/editor/${store.selectedDocument.id}/${encodedName}`
+    );
   } else {
-    showNotification('Error: No se pudo continuar. Documento no seleccionado.', 'error');
+    showNotification(
+      "Error: No se pudo continuar. Documento no seleccionado.",
+      "error"
+    );
   }
 }
 </script>

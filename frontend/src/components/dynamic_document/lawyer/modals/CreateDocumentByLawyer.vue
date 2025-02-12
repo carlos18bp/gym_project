@@ -37,7 +37,7 @@
         "
         :disabled="!isSaveButtonEnabled"
       >
-        <span>{{ isEditMode ? 'Editar' : 'Continuar' }}</span>
+        <span>{{ isEditMode ? "Editar" : "Continuar" }}</span>
       </button>
     </form>
   </div>
@@ -53,17 +53,19 @@ const router = useRouter();
 const store = useDynamicDocumentStore();
 
 // Reactive title field to safely bind to the input
-const documentTitle = ref('');
+const documentTitle = ref("");
 
 // Synchronize the title field with the selected document
 watchEffect(() => {
-  documentTitle.value = store.selectedDocument?.title || '';
+  documentTitle.value = store.selectedDocument?.title || "";
 });
 
 /**
  * Computes whether the save button should be enabled.
  */
-const isSaveButtonEnabled = computed(() => documentTitle.value.trim().length > 0);
+const isSaveButtonEnabled = computed(
+  () => documentTitle.value.trim().length > 0
+);
 
 /**
  * Determine if the modal is in edit mode.
@@ -81,9 +83,13 @@ function handleSubmit() {
     if (isEditMode.value) store.selectedDocument.title = documentTitle.value;
 
     if (isEditMode.value) {
-      router.push(`/dynamic_document_dashboard/lawyer/editor/edit/${store.selectedDocument.id}`);
+      router.push(
+        `/dynamic_document_dashboard/lawyer/editor/edit/${store.selectedDocument.id}`
+      );
     } else {
-      router.push(`/dynamic_document_dashboard/lawyer/editor/create/${encodedName}`);
+      router.push(
+        `/dynamic_document_dashboard/lawyer/editor/create/${encodedName}`
+      );
     }
   }
 }

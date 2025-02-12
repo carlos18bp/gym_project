@@ -1,8 +1,5 @@
 import { defineStore } from "pinia";
-import { 
-  get_request,
-  create_request 
-} from "./services/request_http";
+import { get_request, create_request } from "./services/request_http";
 
 export const useLegalRequestStore = defineStore("legalRequest", {
   /**
@@ -28,13 +25,11 @@ export const useLegalRequestStore = defineStore("legalRequest", {
      * Fetch Dropdown options data from backend.
      */
     async fetchDropDownOptionsData() {
-      if (this.dataLoaded) return; // Avoid the repetitive requests
-    
       try {
         // Makes the request to endpoint
         let response = await get_request("dropdown_options_legal_request/");
         let jsonData = response.data;
-    
+
         // Verify if the response is available
         if (jsonData && typeof jsonData === "string") {
           try {
@@ -44,7 +39,7 @@ export const useLegalRequestStore = defineStore("legalRequest", {
             jsonData = { legal_request_types: [], legal_disciplines: [] }; // Default value
           }
         }
-    
+
         // Assing the data to the variables
         this.legalRequestTypes = jsonData.legal_request_types ?? [];
         this.legalDisciplines = jsonData.legal_disciplines ?? [];
@@ -78,14 +73,20 @@ export const useLegalRequestStore = defineStore("legalRequest", {
       formDataObject.append("mainData", JSON.stringify(mainData)); // Attach main request data as JSON
       try {
         // Step 1: Send main text data to the backend
-        const response = await create_request("create_legal_request/", formDataObject);
+        const response = await create_request(
+          "create_legal_request/",
+          formDataObject
+        );
 
         if (response.status === 201) {
           const legalRequestId = response.data.id; // Retrieve the created legal request ID
 
           // Step 2: Upload associated files (if any)
           if (formData.files && formData.files.length > 0) {
-            const uploadResults = await this.uploadFiles(legalRequestId, formData.files);
+            const uploadResults = await this.uploadFiles(
+              legalRequestId,
+              formData.files
+            );
             // Check if all files were uploaded successfully
             const allUploaded = uploadResults.every((result) => result.success);
             if (!allUploaded) {
@@ -123,7 +124,10 @@ export const useLegalRequestStore = defineStore("legalRequest", {
           formData.append("file", file); // Attach the file
           formData.append("legalRequestId", legalRequestId); // Associate with the legal request
 
-          const response = await create_request("upload_legal_request_file/", formData);
+          const response = await create_request(
+            "upload_legal_request_file/",
+            formData
+          );
 
           results.push({
             file: file.name,
@@ -139,6 +143,6 @@ export const useLegalRequestStore = defineStore("legalRequest", {
       }
 
       return results; // Return a list of upload results
-    }
+    },
   },
 });

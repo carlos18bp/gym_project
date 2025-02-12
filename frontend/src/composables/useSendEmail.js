@@ -1,71 +1,81 @@
-import { ref } from 'vue';
-import { create_request } from '@/stores/services/request_http';
-import { showNotification } from '@/shared/notification_message';
-import { showLoading, hideLoading } from '@/shared/loading_message';
+import { ref } from "vue";
+import { create_request } from "@/stores/services/request_http";
+import { showNotification } from "@/shared/notification_message";
+import { showLoading, hideLoading } from "@/shared/loading_message";
 
 /**
- * Composable para enviar correos electrónicos.
- * @returns {object} Función para enviar correos y estado de carga.
+ * Composable for sending emails.
+ * @returns {object} Functions for sending emails and loading state.
  */
 export function useSendEmail() {
   const isLoading = ref(false);
-  const errorMessage = ref('');
+  const errorMessage = ref("");
 
   /**
-   * Enviar un correo electrónico.
-   * @param {string} endpoint - El endpoint del backend para enviar el correo.
-   * @param {string} toEmail - El email de destino.
-   * @param {string} [subject] - Asunto del correo (opcional).
-   * @param {string} [body] - Cuerpo del correo (opcional).
-   * @param {File[]} [attachments] - Archivos adjuntos (opcional).
-   * @param {object} [extraParams] - Parámetros adicionales para el backend (opcional).
-   * @returns {Promise<object>} - Respuesta de la solicitud.
+   * Sends an email.
+   *
+   * @param {string} endpoint - The backend endpoint for sending the email.
+   * @param {string} toEmail - The recipient's email address.
+   * @param {string} [subject] - The email subject (optional).
+   * @param {string} [body] - The email body content (optional).
+   * @param {File[]} [attachments] - List of attached files (optional).
+   * @param {object} [extraParams] - Additional parameters for the backend (optional).
+   * @returns {Promise<object>} - Response data from the request.
+   * @throws {Error} - Throws an error if the request fails.
    */
-  async function sendEmail(endpoint, toEmail, subject = '', body = '', attachments = [], extraParams = {}) {
+  async function sendEmail(
+    endpoint,
+    toEmail,
+    subject = "",
+    body = "",
+    attachments = [],
+    extraParams = {}
+  ) {
     if (!toEmail) {
-      errorMessage.value = 'El correo de destino es obligatorio.';
-      await showNotification(errorMessage.value, 'error');
+      errorMessage.value = "Recipient email is required.";
+      await showNotification(errorMessage.value, "error");
       throw new Error(errorMessage.value);
     }
 
-    // Crear un objeto FormData para manejar los datos y archivos adjuntos
+    // Create a FormData object to handle data and attachments
     const formData = new FormData();
-    formData.append('to_email', toEmail);
-    formData.append('subject', subject);
-    formData.append('body', body);
+    formData.append("to_email", toEmail);
+    formData.append("subject", subject);
+    formData.append("body", body);
 
-    // Agregar los archivos adjuntos al FormData
+    // Add attachments to FormData
     attachments.forEach((file, index) => {
       formData.append(`attachments[${index}]`, file);
     });
 
-    // Agregar parámetros adicionales al FormData
+    // Add extra parameters to FormData
     for (const [key, value] of Object.entries(extraParams)) {
       formData.append(key, value);
     }
 
     try {
       isLoading.value = true;
-      errorMessage.value = '';
+      errorMessage.value = "";
 
-      // Mostrar alerta de carga
-      showLoading('Enviando correo...', 'Por favor espere mientras enviamos el correo.');
+      // Show loading notification
+      showLoading("Sending email...", "Please wait while we send the email.");
 
-      // Enviar la solicitud al backend
+      // Send the request to the backend
       const response = await create_request(endpoint, formData);
 
-      // Ocultar alerta de carga y mostrar notificación de éxito
+      // Hide loading notification and show success message
       hideLoading();
-      await showNotification('Correo enviado exitosamente.', 'success');
+      await showNotification("Email sent successfully.", "success");
 
       return response.data;
     } catch (error) {
-      hideLoading(); // Ocultar alerta de carga en caso de error
-      console.error('Error al enviar el correo:', error.message);
-      errorMessage.value = 'Ocurrió un error al enviar el correo. Por favor, intenta nuevamente.';
+      hideLoading(); // Hide loading notification in case of an error
+      console.error("Error sending email:", error.message);
+      errorMessage.value =
+        "An error occurred while sending the email. Please try again.";
 
-      // Mostrar notificación de error
-      await showNotification(errorMessage.value, 'error');
+      // Show error notification
+      await showNotification(errorMessage.value, "error");
 
       throw error;
     } finally {

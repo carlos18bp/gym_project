@@ -62,8 +62,6 @@ export const useProcessStore = defineStore("process", {
      * Fetch processes data from backend.
      */
     async fetchProcessesData() {
-      if (this.dataLoaded) return;
-
       try {
         let response = await get_request("processes/");
         let jsonData = response.data;

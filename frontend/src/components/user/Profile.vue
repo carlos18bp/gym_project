@@ -4,10 +4,10 @@
     ref="modalContent"
     class="fixed inset-0 z-50 h-screen w-screen bg-gray-400 bg-opacity-40 backdrop-blur-md"
     v-if="visible"
-  > 
+  >
     <!-- Modal profile container -->
-    <div 
-      id="viewProfileModal" 
+    <div
+      id="viewProfileModal"
       class="absolute w-full h-full px-4 flex justify-center items-center"
     >
       <div class="w-full xl:w-1/2 bg-white rounded-xl">
@@ -25,8 +25,10 @@
               );
             "
           >
-            <div v-if="currentUser.is_profile_completed"
-              class="absolute top-0 right-0 p-8">
+            <div
+              v-if="currentUser.is_profile_completed"
+              class="absolute top-0 right-0 p-8"
+            >
               <XMarkIcon
                 class="h-7 w-7 text-white font-semibold cursor-pointer"
                 @click="closeModal()"
@@ -76,7 +78,8 @@
               >
                 <DocumentArrowUpIcon class="h-5 w-5"></DocumentArrowUpIcon>
                 <span
-                  >{{ currentUser.document_type }}: {{ currentUser.identification }}</span
+                  >{{ currentUser.document_type }}:
+                  {{ currentUser.identification }}</span
                 >
               </p>
             </div>
@@ -88,7 +91,9 @@
               class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
               @click="goToEditProfile"
             >
-              <span v-if="currentUser.is_profile_completed" class="block">Editar</span>
+              <span v-if="currentUser.is_profile_completed" class="block"
+                >Editar</span
+              >
               <span v-else class="block">Completa tu perfil</span>
             </button>
             <!-- Sign out button -->
@@ -104,13 +109,11 @@
       </div>
     </div>
     <!-- Edit profile -->
-    <div 
-      id="editProfileModal" 
+    <div
+      id="editProfileModal"
       class="absolute w-full h-full px-4 flex justify-center items-center left-full"
     >
-      <div
-        class="w-full xl:w-1/2 p-8 bg-white rounded-xl"
-      >
+      <div class="w-full xl:w-1/2 p-8 bg-white rounded-xl">
         <!-- Navigation button -->
         <div>
           <!-- Come back button -->
@@ -122,7 +125,7 @@
         </div>
         <h1 class="mt-4 text-2xl font-semibold text-primary">Editar perfil</h1>
         <!-- Main information -->
-  
+
         <div class="mt-4 grid md:grid-cols-2 gap-3">
           <!-- First name form -->
           <div>
@@ -195,7 +198,11 @@
               </label>
               <div class="flex items-center gap-x-3">
                 <img
-                  :src="currentUser.photo_profile_preview || currentUser.photo_profile || userAvatar"
+                  :src="
+                    currentUser.photo_profile_preview ||
+                    currentUser.photo_profile ||
+                    userAvatar
+                  "
                   alt="User Avatar"
                   class="h-12 w-12 rounded-full object-cover"
                 />
@@ -229,7 +236,10 @@
               <div
                 class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
               >
-                <EnvelopeIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+                <EnvelopeIcon
+                  class="h-5 w-5 text-gray-400"
+                  aria-hidden="true"
+                />
               </div>
               <input
                 v-model="currentUser.email"
@@ -276,10 +286,16 @@
               name="civil-status"
               class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-primary ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
             >
-              <option value="NIT">(NIT) Número de Identificación Tributaria</option>
+              <option value="NIT">
+                (NIT) Número de Identificación Tributaria
+              </option>
               <option value="CC">(CC) Cédula de Ciudadanía</option>
-              <option value="NUIP">(NUIP) Número Único de Identificación Personal</option>
-              <option value="EIN">(EIN) Número de identificación del empleador</option>
+              <option value="NUIP">
+                (NUIP) Número Único de Identificación Personal
+              </option>
+              <option value="EIN">
+                (EIN) Número de identificación del empleador
+              </option>
             </select>
           </div>
           <!-- National ID form -->
@@ -346,6 +362,7 @@ const router = useRouter();
 
 /**
  * Props:
+ * @prop {Object} currentUser - The currently logged-in user.
  * @prop {Boolean} visible - Controls whether the modal is visible or not.
  */
 const props = defineProps({
@@ -359,12 +376,31 @@ const props = defineProps({
   },
 });
 
+/**
+ * Emits:
+ * @event update:visible - Emitted to change the modal's visibility state.
+ */
+const emit = defineEmits(["update:visible"]);
+
+/**
+ * Ref:
+ * @ref modalContent - Reference to the modal content to apply GSAP animations.
+ */
+const modalContent = ref(null);
 const fileInput = ref(null);
 
+/**
+ * Triggers the file input selection dialog.
+ */
 const triggerFileInput = () => {
   fileInput.value.click();
 };
 
+/**
+ * Handles file selection and updates the user's profile picture.
+ *
+ * @param {Event} event - The file input change event.
+ */
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -374,8 +410,11 @@ const handleFileChange = (event) => {
   }
 };
 
+/**
+ * Updates the user profile after validating the required fields.
+ * Displays notifications for missing fields.
+ */
 const updateUserProfile = async () => {
-
   if (!props.currentUser.email) {
     showNotification("¡Email es requerido!", "warning");
     return;
@@ -392,17 +431,17 @@ const updateUserProfile = async () => {
   }
 
   if (!props.currentUser.contact) {
-    showNotification("¡Un numero de contacto es requerido!", "warning");
+    showNotification("¡Un número de contacto es requerido!", "warning");
     return;
   }
 
   if (!props.currentUser.birthday) {
-    showNotification("¡Una fecha de nacimiento es requerido!", "warning");
+    showNotification("¡Una fecha de nacimiento es requerida!", "warning");
     return;
   }
 
   if (!props.currentUser.identification) {
-    showNotification("¡Numero de cedula es requerido!", "warning");
+    showNotification("¡Número de cédula es requerido!", "warning");
     return;
   }
 
@@ -419,18 +458,6 @@ const updateUserProfile = async () => {
   goToProfile();
   props.currentUser.is_profile_completed = true;
 };
-
-/**
- * Emits:
- * @event update:visible - Emitted to change the modal's visibility state.
- */
-const emit = defineEmits(["update:visible"]);
-
-/**
- * Ref:
- * @ref modalContent - Reference to the modal content to apply GSAP animations.
- */
-const modalContent = ref(null);
 
 /**
  * Watches for changes in the `visible` prop. If `true`,
@@ -456,14 +483,13 @@ watch(
 /**
  * Logs out the user by clearing the auth store and logging out from Google.
  */
- const logOut = () => {
+const logOut = () => {
   authStore.logout(); // Log out from the auth store
   googleLogout(); // Log out from Google
   router.push({ name: "sign_in" });
 };
 
 /**
- * closeModal:
  * Closes the modal by applying a fade-out animation
  * and then emits `update:visible` with `false` to hide the modal.
  */
@@ -478,8 +504,7 @@ const closeModal = () => {
 };
 
 /**
- * goToEditProfile:
- * Slides the profile view and edit profile modal to the left (-150%)
+ * Slides the profile view and edit profile modal to the left (-100%)
  * to switch views inside the modal.
  */
 const goToEditProfile = () => {
@@ -490,7 +515,6 @@ const goToEditProfile = () => {
 };
 
 /**
- * goToProfile:
  * Slides both modals back to their original position (0%)
  * to display the profile view.
  */

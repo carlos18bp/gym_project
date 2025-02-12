@@ -1,4 +1,4 @@
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 
 /**
  * Displays a notification using SweetAlert2 with Tailwind styling.
@@ -8,9 +8,9 @@ import Swal from 'sweetalert2';
  * @returns {Promise<void>} - A promise that resolves when the user confirms the alert.
  */
 export function showNotification(message, icon) {
-    return Swal.fire({
-        title: message,
-        icon: icon,
-        buttonsStyling: false, // Deactivate the main styles from sweetalert2 for use Tailwind styles
-    });
+  return Swal.fire({
+    title: message,
+    icon: icon,
+    buttonsStyling: false, // Deactivate the main styles from sweetalert2 for use Tailwind styles
+  });
 }

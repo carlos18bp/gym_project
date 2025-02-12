@@ -2,6 +2,9 @@ from django.db import models
 from django.conf import settings
 
 class DynamicDocument(models.Model):
+    """
+    Model representing a dynamic document that can be created, edited, and assigned to users.
+    """
     STATE_CHOICES = [
         ('Published', 'Published'),
         ('Draft', 'Draft'),
@@ -36,10 +39,16 @@ class DynamicDocument(models.Model):
     updated_at = models.DateTimeField(auto_now=True, help_text="Document last updated timestamp.")
 
     def __str__(self):
+        """
+        Returns the string representation of the document, which is its title.
+        """
         return self.title
 
 
 class DocumentVariable(models.Model):
+    """
+    Model representing a variable within a dynamic document.
+    """
     FIELD_TYPE_CHOICES = [
         ('input', 'Input'),
         ('text_area', 'Text Area'),
@@ -80,4 +89,7 @@ class DocumentVariable(models.Model):
     value = models.TextField(blank=True, null=True, help_text="Value filled by the user.")
 
     def __str__(self):
+        """
+        Returns the string representation of the variable, which is its English name.
+        """
         return self.name_en
