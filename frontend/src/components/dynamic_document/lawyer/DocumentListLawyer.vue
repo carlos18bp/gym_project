@@ -1,18 +1,22 @@
 <template>
   <div class="mt-8 flex flex-wrap gap-6">
     <div
-      v-for="document in documents"
+      v-for="document in filteredDocuments"
       :key="document.id"
-      :class="[ 
+      :class="[
         'flex items-center gap-2 py-2 px-4 border rounded-md cursor-pointer transition',
-        document.state === 'Published' 
-          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50' 
-          : 'border-stroke bg-white hover:bg-gray-100'
+        document.state === 'Published'
+          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
+          : 'border-stroke bg-white hover:bg-gray-100',
       ]"
     >
       <component
         :is="document.state === 'Published' ? CheckCircleIcon : PencilIcon"
-        :class="document.state === 'Published' ? 'size-6 text-green-500' : 'size-6 text-secondary'"
+        :class="
+          document.state === 'Published'
+            ? 'size-6 text-green-500'
+            : 'size-6 text-secondary'
+        "
       />
       <span class="text-base font-medium">{{ document.title }}</span>
 
@@ -28,7 +32,9 @@
           leave-from-class="transform opacity-100 scale-100"
           leave-to-class="transform opacity-0 scale-95"
         >
-          <MenuItems class="absolute left-0 z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5">
+          <MenuItems
+            class="absolute left-0 z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+          >
             <MenuItem
               v-for="option in getDocumentOptions(document)"
               :key="option.label"
@@ -36,10 +42,12 @@
               <button
                 class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
                 :disabled="option.disabled"
-                @click="!option.disabled && handleOption(option.action, document)"
+                @click="
+                  !option.disabled && handleOption(option.action, document)
+                "
                 :class="{
-                  'opacity-50 cursor-not-allowed': option.disabled, 
-                  'cursor-pointer': !option.disabled
+                  'opacity-50 cursor-not-allowed': option.disabled,
+                  'cursor-pointer': !option.disabled,
                 }"
               >
                 <NoSymbolIcon
@@ -62,42 +70,57 @@
   </ModalTransition>
 
   <!-- Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Previsualización del Documento: {{ previewDocumentData.title }}</h2>
-        <button @click="closePreviewModal">
-          <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
-        </button>
-      </div>
-      <div class="prose max-w-none" v-html="previewDocumentData.content"></div>
-    </div>
-  </ModalTransition>
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { EllipsisVerticalIcon, PencilIcon, CheckCircleIcon, XMarkIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
+import {
+  EllipsisVerticalIcon,
+  PencilIcon,
+  CheckCircleIcon,
+  NoSymbolIcon,
+} from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
-import { showNotification } from '@/shared/notification_message';
-import { showConfirmationAlert } from '@/shared/confirmation_alert';
+import { showNotification } from "@/shared/notification_message";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
 
-// Props
-defineProps({
-  documents: {
-    type: Array,
-    required: true,
-  },
+import {
+  showPreviewModal,
+  previewDocumentData,
+  openPreviewModal,
+} from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+
+// Store instance
+const documentStore = useDynamicDocumentStore();
+
+// Reactive state
+const showEditDocumentModal = ref(false);
+
+const props = defineProps({
+  searchQuery: String,
 });
 
-// State and dependencies
-const store = useDynamicDocumentStore();
-const showEditDocumentModal = ref(false);
-const showPreviewModal = ref(false);
-const previewDocumentData = ref({ title: "", content: "" });
+// Retrieve documents in drafted and published from the store, applying the search filter.
+const filteredDocuments = computed(() => {
+  const allDraftAndPublishedDocs =
+    documentStore.draftAndPublishedDocumentsUnassigned;
+  return documentStore
+    .filteredDocuments(props.searchQuery, "")
+    .filter((doc) =>
+      allDraftAndPublishedDocs.some(
+        (draftAndPublishedDoc) => draftAndPublishedDoc.id === doc.id
+      )
+    );
+});
 
 /**
  * Get the available options for a document based on its state.
@@ -120,7 +143,11 @@ const getDocumentOptions = (document) => {
       disabled: !canPublishDocument(document),
     });
   } else if (document.state === "Published") {
-    baseOptions.push({ label: "Mover a Borrador", action: "draft", disabled: false });
+    baseOptions.push({
+      label: "Mover a Borrador",
+      action: "draft",
+      disabled: false,
+    });
   }
 
   return baseOptions;
@@ -132,35 +159,38 @@ const getDocumentOptions = (document) => {
  * @returns {boolean} - True if the document can be published, false otherwise.
  */
 const canPublishDocument = (document) => {
-  return document.variables.every((variable) => variable.value && variable.value.trim().length > 0);
+  return document.variables.every(
+    (variable) => variable.value && variable.value.trim().length > 0
+  );
 };
-
 
 /**
  * Handle document option actions.
  * @param {string} action - The action to perform.
  * @param {object} document - The document to apply the action on.
  */
- const handleOption = async (action, document) => {
+const handleOption = async (action, document) => {
   switch (action) {
     case "edit":
-      store.selectedDocument = document;
+      documentStore.selectedDocument = document;
       showEditDocumentModal.value = true;
       break;
     case "delete":
-      const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento '${document.title}'?`);
+      const confirmed = await showConfirmationAlert(
+        `¿Deseas eliminar el documento '${document.title}'?`
+      );
       if (confirmed) {
-        await store.deleteDocument(document.id);
-        await showNotification('Documento eliminado correctamente.', 'success');
+        await documentStore.deleteDocument(document.id);
+        await showNotification("Documento eliminado correctamente.", "success");
       }
       break;
     case "publish":
       await publishDocument(document);
-      await showNotification('Documento publicado correctamente.', 'success');
+      await showNotification("Documento publicado correctamente.", "success");
       break;
     case "draft":
       await moveToDraft(document);
-      await showNotification('Documento movido a borrador.', 'info');
+      await showNotification("Documento movido a borrador.", "info");
       break;
     case "preview":
       openPreviewModal(document);
@@ -168,26 +198,6 @@ const canPublishDocument = (document) => {
     default:
       console.warn(`Acción desconocida: ${action}`);
   }
-};
-
-/**
- * Open the preview modal with the document data.
- * @param {object} document - The document to preview.
- */
-const openPreviewModal = (document) => {
-  previewDocumentData.value = {
-    title: document.title,
-    content: document.content, // Mostrar el contenido sin reemplazar variables
-  };
-  showPreviewModal.value = true;
-};
-
-/**
- * Close the preview modal.
- */
-const closePreviewModal = () => {
-  showPreviewModal.value = false;
-  previewDocumentData.value = { title: "", content: "" };
 };
 
 /**
@@ -199,7 +209,7 @@ const publishDocument = async (document) => {
     ...document,
     state: "Published",
   };
-  await store.updateDocument(document.id, updatedData);
+  await documentStore.updateDocument(document.id, updatedData);
 };
 
 /**
@@ -211,7 +221,7 @@ const moveToDraft = async (document) => {
     ...document,
     state: "Draft",
   };
-  await store.updateDocument(document.id, updatedData);
+  await documentStore.updateDocument(document.id, updatedData);
 };
 
 /**
@@ -219,6 +229,6 @@ const moveToDraft = async (document) => {
  */
 const closeEditModal = () => {
   showEditDocumentModal.value = false;
-  store.selectedDocument = null;
+  documentStore.selectedDocument = null;
 };
 </script>

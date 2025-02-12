@@ -11,7 +11,10 @@
     <form @submit.prevent="handleSubmit">
       <!-- Email address input -->
       <div>
-        <label for="email" class="block text-base font-medium leading-6 text-primary">
+        <label
+          for="email"
+          class="block text-base font-medium leading-6 text-primary"
+        >
           Correo electrónico <span class="text-red-500">*</span>
         </label>
         <div class="mt-2">
@@ -28,7 +31,10 @@
 
       <!-- Files drag and drop -->
       <div class="mt-4">
-        <label for="files" class="block text-base font-medium leading-6 text-primary">
+        <label
+          for="files"
+          class="block text-base font-medium leading-6 text-primary"
+        >
           Anexos
         </label>
         <div
@@ -38,7 +44,10 @@
         >
           <!-- Drag and drop area -->
           <div v-if="files.length < 1" class="text-center">
-            <CloudArrowUpIcon class="mx-auto size-12 text-gray-300" aria-hidden="true" />
+            <CloudArrowUpIcon
+              class="mx-auto size-12 text-gray-300"
+              aria-hidden="true"
+            />
             <div class="mt-4 flex text-sm/6 text-gray-600">
               <label
                 for="file-upload"
@@ -55,7 +64,9 @@
               </label>
               <p class="pl-1">o arrastra y suelta</p>
             </div>
-            <p class="text-xs/5 text-gray-600">PNG, JPG, PDF, DOCX de hasta 20MB</p>
+            <p class="text-xs/5 text-gray-600">
+              PNG, JPG, PDF, DOCX de hasta 20MB
+            </p>
           </div>
           <!-- List of files -->
           <div v-else class="w-full flex flex-wrap gap-3">
@@ -76,7 +87,9 @@
                 <XMarkIcon class="size-3 text-white" />
               </div>
               <component :is="file.icon" class="size-12 mx-auto" />
-              <span class="text-center text-xs truncate w-20">{{ file.name }}</span>
+              <span class="text-center text-xs truncate w-20">{{
+                file.name
+              }}</span>
             </div>
           </div>
         </div>
@@ -100,27 +113,36 @@
 </template>
 
 <script setup>
-import { XMarkIcon, CloudArrowUpIcon, PhotoIcon, DocumentIcon } from '@heroicons/vue/24/outline';
-import { ref, reactive, computed, watch } from 'vue';
-import { showNotification } from '@/shared/notification_message.js';
-import { useSendEmail } from '@/composables/useSendEmail';
-import { jsPDF } from 'jspdf';
-import { parse } from 'node-html-parser';
+import {
+  XMarkIcon,
+  CloudArrowUpIcon,
+  PhotoIcon,
+  DocumentIcon,
+} from "@heroicons/vue/24/outline";
+import { ref, reactive, computed, watch } from "vue";
+import { showNotification } from "@/shared/notification_message.js";
+import { useSendEmail } from "@/composables/useSendEmail";
+import { jsPDF } from "jspdf";
+import { parse } from "node-html-parser";
 
 // Define Emits
-const emit = defineEmits(['closeEmailModal']);
+const emit = defineEmits(["closeEmailModal"]);
 
 // Import composable for emails
 const { sendEmail } = useSendEmail();
 
 // Email endpoint for backend
-const EMAIL_ENDPOINT = 'dynamic-documents/send_email_with_attachments/';
+const EMAIL_ENDPOINT = "dynamic-documents/send_email_with_attachments/";
 
-// pdf generated
+// PDF attachment reference
 const pdfAttachment = ref(null);
 
 // Props definition
 const props = defineProps({
+  /**
+   * The document to be sent via email.
+   * @type {Object}
+   */
   emailDocument: {
     type: Object,
     required: true,
@@ -128,72 +150,87 @@ const props = defineProps({
 });
 
 /**
- * Restablece los valores del formulario.
+ * Resets the form values.
  */
- const resetForm = () => {
-  formData.email = '';      // Restablecer el email
-  files.value = [];         // Limpiar los archivos adjuntos
-  pdfAttachment.value = null;  // Limpiar el PDF generado
+const resetForm = () => {
+  formData.email = ""; // Reset email field
+  files.value = []; // Clear attached files
+  pdfAttachment.value = null; // Clear the generated PDF
 };
 
-// Reactive data for form and files
+// Reactive data for form and file handling
 const formData = reactive({
-  email: '',
+  email: "",
 });
 const files = ref([]);
 
 // Maximum file size (20 MB)
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-// Handle file selection from input
+/**
+ * Handles file selection from the input.
+ * @param {Event} event - The file input change event.
+ */
 const handleFileChange = (event) => {
   const uploadedFiles = Array.from(event.target.files);
   processFiles(uploadedFiles);
   event.target.value = null; // Clear input to avoid conflicts
 };
 
-// Handle file dropping via drag-and-drop
+/**
+ * Handles file drop event via drag-and-drop.
+ * @param {Event} event - The drag-and-drop event.
+ */
 const handleDrop = (event) => {
   const droppedFiles = Array.from(event.dataTransfer.files);
   processFiles(droppedFiles);
 };
 
-// Process and validate files
+/**
+ * Processes and validates uploaded files.
+ * @param {Array<File>} fileList - List of files to be processed.
+ */
 const processFiles = (fileList) => {
   let totalSize = files.value.reduce((sum, file) => sum + file.file.size, 0);
 
   fileList.forEach((file) => {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      showNotification(`El archivo "${file.name}" excede el límite de 20 MB.`, 'warning');
+      showNotification(
+        `The file "${file.name}" exceeds the 20 MB limit.`,
+        "warning"
+      );
       return;
     }
 
     // Validate file type and assign icon/style
-    const extension = file.name.split('.').pop().toLowerCase();
-    let icon = '';
-    let style = { general: '', xMark: '' };
+    const extension = file.name.split(".").pop().toLowerCase();
+    let icon = "";
+    let style = { general: "", xMark: "" };
 
     switch (extension) {
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
+      case "png":
+      case "jpg":
+      case "jpeg":
         icon = PhotoIcon;
-        style.general = 'border-gray-200 text-gray-400';
-        style.xMark = 'bg-gray-400';
+        style.general = "border-gray-200 text-gray-400";
+        style.xMark = "bg-gray-400";
         break;
-      case 'pdf':
+      case "pdf":
         icon = DocumentIcon;
-        style.general = 'border-red-600/20 text-red-600/60';
-        style.xMark = 'bg-red-600/60';
+        style.general = "border-red-600/20 text-red-600/60";
+        style.xMark = "bg-red-600/60";
         break;
-      case 'docx':
+      case "docx":
         icon = DocumentIcon;
-        style.general = 'border-blue-600/20 text-blue-600/60';
-        style.xMark = 'bg-blue-600/60';
+        style.general = "border-blue-600/20 text-blue-600/60";
+        style.xMark = "bg-blue-600/60";
         break;
       default:
-        showNotification('Tipo de archivo no compatible. Solo se permiten PDF, DOCX, JPG, PNG.', 'warning');
+        showNotification(
+          "Unsupported file type. Only PDF, DOCX, JPG, and PNG are allowed.",
+          "warning"
+        );
         return;
     }
 
@@ -203,12 +240,19 @@ const processFiles = (fileList) => {
   });
 };
 
-// Remove a file from the list
+/**
+ * Removes a file from the attached files list.
+ * @param {number} index - Index of the file to remove.
+ */
 const removeFile = (index) => {
   files.value.splice(index, 1);
 };
 
-// Function to validate email format
+/**
+ * Validates the email format.
+ * @param {string} email - Email address to validate.
+ * @returns {boolean} True if valid, false otherwise.
+ */
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -221,48 +265,48 @@ const isEmailValid = computed(() => isValidEmail(formData.email));
 const isSaveButtonEnabled = computed(() => isEmailValid.value);
 
 /**
- * Generate a PDF from the document and store it as an attachment.
- * @param {object} doc - The document to convert to PDF.
+ * Generates a PDF from the document and stores it as an attachment.
+ * @param {Object} doc - The document to convert to PDF.
  */
- const generatePDFDocument = (doc) => {
+const generatePDFDocument = (doc) => {
   try {
-    // Reemplazar variables en el contenido del documento
+    // Replace variables in the document content
     let processedContent = doc.content;
     doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
+      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
+      processedContent = processedContent.replace(regex, variable.value || "");
     });
 
-    // Parsear el contenido HTML
+    // Parse the HTML content
     const root = parse(processedContent);
-    const plainTextContent = root.innerText;  // Convertir HTML a texto plano
+    const plainTextContent = root.innerText; // Convert HTML to plain text
 
-    // Crear el PDF
+    // Create the PDF
     const pdf = new jsPDF();
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
 
-    // Ajustar el contenido al ancho del PDF
+    // Adjust content width to fit the PDF page
     const pageWidth = pdf.internal.pageSize.getWidth() - 20;
     const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
 
-    // Añadir texto al PDF
+    // Add text to the PDF
     pdf.text(textLines, 10, 10);
 
-    // Convertir el PDF a un Blob y almacenarlo
-    const pdfBlob = pdf.output('blob');
-    pdfAttachment.value = new File([pdfBlob], `${doc.title}.pdf`, { type: 'application/pdf' });
-
+    // Convert the PDF to a Blob and store it
+    const pdfBlob = pdf.output("blob");
+    pdfAttachment.value = new File([pdfBlob], `${doc.title}.pdf`, {
+      type: "application/pdf",
+    });
   } catch (error) {
-    console.error('Error generando el PDF:', error);
+    console.error("Error generating the PDF:", error);
   }
 };
 
-// Llamar a la función cuando el prop `emailDocument` esté disponible
+// Watch for changes in `emailDocument` and generate a PDF when available
 watch(
   () => props.emailDocument,
   (newDoc) => {
-    // Validar que `newDoc` no sea nulo y tenga contenido
     if (newDoc && Object.keys(newDoc).length > 0 && newDoc.id) {
       generatePDFDocument(newDoc);
     }
@@ -270,49 +314,50 @@ watch(
   { immediate: true }
 );
 
-
 /**
- * Handle form submission and send the email.
+ * Handles form submission and sends the email.
  */
- const handleSubmit = async () => {
+const handleSubmit = async () => {
   try {
-    // Agregar el PDF generado a los archivos adjuntos si existe
+    // Add the generated PDF to attachments if it exists
     if (pdfAttachment.value) {
       files.value.push({
         name: pdfAttachment.value.name,
         file: pdfAttachment.value,
         icon: DocumentIcon,
         style: {
-          general: 'border-blue-600/20 text-blue-600/60',
-          xMark: 'bg-blue-600/60',
+          general: "border-blue-600/20 text-blue-600/60",
+          xMark: "bg-blue-600/60",
         },
         hover: false,
       });
     }
 
-    // Extraer los archivos desde la lista de objetos
+    // Extract the actual files from the list
     const attachmentFiles = files.value.map((file) => file.file);
 
-    // Llamar al composable para enviar el correo
+    // Call the composable function to send the email
     await sendEmail(
       EMAIL_ENDPOINT,
       formData.email,
       props.emailDocument.title,
-      'Adjunto el documento solicitado junto con anexos adicionales.',
+      "Attached is the requested document along with additional attachments.",
       attachmentFiles,
       { documentId: props.emailDocument.id }
     );
   } catch (error) {
-    console.error('Error al enviar el correo:', error);
+    console.error("Error sending the email:", error);
   } finally {
-    // Emitir el evento para cerrar el modal
+    // Emit event to close the modal
     closeModal();
   }
 };
 
+/**
+ * Closes the modal and resets the form.
+ */
 const closeModal = () => {
   resetForm();
-  emit('closeEmailModal');
-}
+  emit("closeEmailModal");
+};
 </script>
-

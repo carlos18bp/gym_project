@@ -4,18 +4,27 @@ from django.dispatch import receiver
 import os
 
 class LegalRequestType(models.Model):
+    """
+    Model representing a type of legal request.
+    """
     name = models.CharField(max_length=100, unique=True, help_text="The name of the legal request type.")
 
     def __str__(self):
         return self.name
 
 class LegalDiscipline(models.Model):
+    """
+    Model representing a legal discipline.
+    """
     name = models.CharField(max_length=100, unique=True, help_text="The name of the legal discipline.")
 
     def __str__(self):
         return self.name
 
 class LegalRequestFiles(models.Model):
+    """
+    Model representing files associated with a legal request.
+    """
     file = models.FileField(upload_to='legal_request_files/', help_text="The file associated with the legal request.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the file was uploaded.")
 
@@ -33,6 +42,9 @@ def delete_legal_request_file(sender, instance, **kwargs):
             os.remove(instance.file.path)
 
 class LegalRequest(models.Model):
+    """
+    Model representing a legal request with user details, request type, discipline, description, and associated files.
+    """
     first_name = models.CharField(max_length=100, help_text="The first name of the user.")
     last_name = models.CharField(max_length=100, help_text="The last name of the user.")
     email = models.EmailField(help_text="The email address of the user.")
@@ -44,4 +56,3 @@ class LegalRequest(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.request_type.name}"
-

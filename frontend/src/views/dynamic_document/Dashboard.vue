@@ -1,19 +1,6 @@
-handleContinue<template>
-  <!-- Search bar and filter component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <template #auxiliary_button>
-      <button
-        v-if="currentUser?.role === 'lawyer'"
-        class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
-        @click="showCreateDocumentModal = true"
-      >
-        <div class="flex gap-1 items-center">
-          <PlusIcon class="text-white font-bold size-6"></PlusIcon>
-          <span>Nuevo</span>
-        </div>
-      </button>
-    </template>
-  </SearchBarAndFilterBy>
+<template>
+  <!-- Search bar and filter -->
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
 
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
@@ -23,23 +10,41 @@ handleContinue<template>
       :role="currentUser.role"
     />
 
-    <!-- Documents sections for lawyers -->
+    <!-- Documents for lawyers -->
     <div v-if="currentUser?.role === 'lawyer'">
-      <DocumentFinishedByClientList v-if="currentSection === 'documentFinished'" />
-      <DocumentInProgressByClientList v-if="currentSection === 'documentInProgress'" />
-      <DocumentListLawyer v-if="currentSection === 'default'" :documents="documents" />
+      <DocumentFinishedByClientList
+        v-if="currentSection === 'documentFinished'"
+        :searchQuery="searchQuery"
+      />
+      <DocumentInProgressByClientList
+        v-if="currentSection === 'documentInProgress'"
+        :searchQuery="searchQuery"
+      />
+      <DocumentListLawyer
+        v-if="currentSection === 'default'"
+        :searchQuery="searchQuery"
+      />
 
       <!-- No documents message -->
-      <div v-if="currentSection === 'default' && documents.length === 0" class="mt-6 text-center text-gray-500">
-        <p>No hay documentos disponibles para mostrar.</p>
-        <p>Utiliza el botón "Nuevo" para crear un documento.</p>
+      <div
+        v-if="currentSection === 'default' && filteredDocuments.length === 0"
+        class="mt-6 text-center text-gray-500"
+      >
+        <p>No documents available to display.</p>
+        <p>Use the "New" button to create a document.</p>
       </div>
     </div>
 
-    <!-- Documents section for clients -->
+    <!-- Documents for clients -->
     <div v-if="currentUser?.role === 'client'">
-        <UseDocument v-if="currentSection === 'useDocument'"></UseDocument>
-        <DocumentListClient v-if="currentSection === 'default'"></DocumentListClient>
+      <UseDocument
+        v-if="currentSection === 'useDocument'"
+        :searchQuery="searchQuery"
+      ></UseDocument>
+      <DocumentListClient
+        v-if="currentSection === 'default'"
+        :searchQuery="searchQuery"
+      ></DocumentListClient>
     </div>
   </div>
 
@@ -50,8 +55,9 @@ handleContinue<template>
 </template>
 
 <script setup>
-// Icons
-import { PlusIcon } from "@heroicons/vue/24/outline";
+import { onMounted, computed, ref } from "vue";
+import { useUserStore } from "@/stores/user";
+import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 
 // Shared components
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
@@ -60,7 +66,7 @@ import ModalTransition from "@/components/layouts/animations/ModalTransition.vue
 
 // Client components
 import DocumentListClient from "@/components/dynamic_document/client/DocumentListClient.vue";
-import UseDocument from "@/components/dynamic_document/client/UseDocument.vue"
+import UseDocument from "@/components/dynamic_document/client/UseDocument.vue";
 
 // Lawyer components
 import DocumentListLawyer from "@/components/dynamic_document/lawyer/DocumentListLawyer.vue";
@@ -68,36 +74,56 @@ import DocumentFinishedByClientList from "@/components/dynamic_document/lawyer/D
 import DocumentInProgressByClientList from "@/components/dynamic_document/lawyer/DocumentInProgressByClientList.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 
-// Instances
-import { useUserStore } from "@/stores/user";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { onMounted, computed, ref } from "vue";
-
-// Store references
+// Store instances
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
 
-// Computed property to get the current authenticated user
-const currentUser = computed(() => userStore.getCurrentUser);
-
-// Reactive state for documents and UI
+// Reactive state
+const searchQuery = ref("");
 const currentSection = ref("default");
-const documents = computed(() => documentStore.draftAndPublishedDocumentsUnassigned);
 const showCreateDocumentModal = ref(false);
 
-// Load documents on mount
+// Get the current user
+const currentUser = computed(() => userStore.getCurrentUser);
+
+// Get filtered documents using the store getter, ensuring role-specific documents
+const filteredDocuments = computed(() => {
+  let allDocuments = [];
+
+  if (currentUser.value?.role === "lawyer") {
+    allDocuments = documentStore.draftAndPublishedDocumentsUnassigned;
+  } else if (currentUser.value?.role === "client") {
+    allDocuments = documentStore.progressAndCompletedDocumentsByClient(
+      currentUser.value.id
+    );
+  }
+
+  return documentStore
+    .filteredDocuments(searchQuery.value, userStore)
+    .filter((doc) =>
+      allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
+    );
+});
+
+// Load data when the component is mounted
 onMounted(async () => {
   await userStore.setCurrentUser();
-  await documentStore.fetchDocuments();
+  await documentStore.init();
   documentStore.selectedDocument = null;
 });
 
-// Handle section updates from the navigation
+/**
+ * Handles section updates from the navigation.
+ *
+ * @param {string} message - The selected section name.
+ */
 const handleSection = (message) => {
   currentSection.value = message;
 };
 
-// Close any open modals
+/**
+ * Closes any open modals.
+ */
 const closeModal = () => {
   showCreateDocumentModal.value = false;
 };

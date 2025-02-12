@@ -1,7 +1,9 @@
 <template>
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <div class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary">
-      <h1 class="text-primary text-xl font-semibold">{{ store.selectedDocument?.title }}</h1>
+      <h1 class="text-primary text-xl font-semibold">
+        {{ store.selectedDocument?.title }}
+      </h1>
 
       <!-- Display form fields for variables -->
       <div class="mt-4 space-y-4">
@@ -10,11 +12,16 @@
           :key="index"
           class="grid grid-cols-12 gap-4 items-center"
         >
-          <h2 class="text-primary text-lg font-semibold col-span-12">{{ variable.name_en }}</h2>
+          <h2 class="text-primary text-lg font-semibold col-span-12">
+            {{ variable.name_en }}
+          </h2>
 
           <!-- Display name in Spanish input -->
           <div class="col-span-4">
-            <label for="name_es" class="block text-sm font-medium leading-6 text-primary">
+            <label
+              for="name_es"
+              class="block text-sm font-medium leading-6 text-primary"
+            >
               Nombre en pantalla <span class="text-red-500">*</span>
             </label>
             <input
@@ -28,7 +35,10 @@
 
           <!-- Display tooltip input -->
           <div class="col-span-4">
-            <label for="tooltip" class="block text-sm font-medium leading-6 text-primary">
+            <label
+              for="tooltip"
+              class="block text-sm font-medium leading-6 text-primary"
+            >
               Tooltip <span class="text-red-500">*</span>
             </label>
             <input
@@ -42,7 +52,10 @@
 
           <!-- Input type selector -->
           <div class="col-span-4">
-            <label for="field_type" class="block text-sm font-medium leading-6 text-primary">
+            <label
+              for="field_type"
+              class="block text-sm font-medium leading-6 text-primary"
+            >
               Tipo de input <span class="text-red-500">*</span>
             </label>
             <select
@@ -59,18 +72,24 @@
 
       <!-- Action Buttons -->
       <div class="mt-6 flex space-x-4">
-        <button @click="saveDocument('Draft')" class="p-2.5 text-sm font-medium rounded-md bg-secondary text-white">
+        <button
+          @click="saveDocument('Draft')"
+          class="p-2.5 text-sm font-medium rounded-md bg-secondary text-white"
+        >
           Guardar
         </button>
-        <button @click="saveDocument('Published')" class="p-2.5 text-sm font-medium rounded-md bg-gray-200 text-secondary border-2">
+        <button
+          @click="saveDocument('Published')"
+          class="p-2.5 text-sm font-medium rounded-md bg-gray-200 text-secondary border-2"
+        >
           Publicar
         </button>
         <button
-            @click="handleBack()"
-            type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
-          >
-            Cancelar
+          @click="handleBack()"
+          type="button"
+          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+        >
+          Cancelar
         </button>
       </div>
     </div>
@@ -78,10 +97,10 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
-import { showNotification } from '@/shared/notification_message';
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { showNotification } from "@/shared/notification_message";
 
 // Access route parameters and document store
 const router = useRouter();
@@ -90,7 +109,7 @@ const store = useDynamicDocumentStore();
 // Initialize form data on mount
 onMounted(() => {
   if (!store.selectedDocument) {
-    console.error('No selected document found');
+    console.error("No selected document found");
   }
 });
 
@@ -104,7 +123,7 @@ const saveDocument = async (state) => {
       title: store.selectedDocument.title,
       content: store.selectedDocument.content,
       state: state,
-      variables: store.selectedDocument.variables.map(variable => ({
+      variables: store.selectedDocument.variables.map((variable) => ({
         name_en: variable.name_en,
         name_es: variable.name_es,
         tooltip: variable.tooltip,
@@ -120,18 +139,20 @@ const saveDocument = async (state) => {
     }
 
     store.selectedDocument = null;
-    await store.fetchDocuments();
+    await store.init();
     await showNotification(
-        state === 'Draft' ? 'Documento guardado como borrador' : 'Documento publicado exitosamente',
-        'success'
+      state === "Draft"
+        ? "Documento guardado como borrador"
+        : "Documento publicado exitosamente",
+      "success"
     );
-    router.push('/dynamic_document_dashboard');    
+    router.push("/dynamic_document_dashboard");
   } catch (error) {
-    console.error('Error saving document:', error);
+    console.error("Error saving document:", error);
   }
 };
 
 const handleBack = () => {
-  router.push('/dynamic_document_dashboard');
+  router.push("/dynamic_document_dashboard");
 };
 </script>

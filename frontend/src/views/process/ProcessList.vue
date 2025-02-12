@@ -1,24 +1,53 @@
 <template>
   <!-- Using the SearchBarAndFilterBy component -->
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>
-    <template v-if="currentUser?.role === 'lawyer'" #auxiliary_button>
+    <slot></slot>    
+    <template v-if="currentUser?.role == 'lawyer'" #auxiliary_button>
       <Menu as="div" class="relative inline-block text-left">
         <div>
-          <MenuButton class="flex items-center rounded-full bg-gray-100 text-gray-400 hover:text-gray-600">
+          <MenuButton
+            class="flex items-center rounded-full bg-gray-100 text-gray-400 hover:text-gray-600"
+          >
             <span class="sr-only">Open options</span>
             <AdjustmentsVerticalIcon class="size-5" aria-hidden="true" />
           </MenuButton>
         </div>
 
-        <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-          <MenuItems class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+        <transition
+          enter-active-class="transition ease-out duration-100"
+          enter-from-class="transform opacity-0 scale-95"
+          enter-to-class="transform opacity-100 scale-100"
+          leave-active-class="transition ease-in duration-75"
+          leave-from-class="transform opacity-100 scale-100"
+          leave-to-class="transform opacity-0 scale-95"
+        >
+          <MenuItems
+            class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+          >
             <div class="py-1">
               <MenuItem v-slot="{ active }">
-                <a @click = "processGroup = 'default'" :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80']">Mis procesos</a>
+                <a
+                  @click="processGroup = 'default'"
+                  :class="[
+                    active
+                      ? 'bg-gray-100 text-gray-900 outline-none'
+                      : 'text-gray-700',
+                    'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80',
+                  ]"
+                  >Mis procesos</a
+                >
               </MenuItem>
               <MenuItem v-slot="{ active }">
-                <a @click = "processGroup = 'general'" :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80']">Todos los procesos</a>
+                <a
+                  @click="processGroup = 'general'"
+                  :class="[
+                    active
+                      ? 'bg-gray-100 text-gray-900 outline-none'
+                      : 'text-gray-700',
+                    'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80',
+                  ]"
+                  >Todos los procesos</a
+                >
               </MenuItem>
             </div>
           </MenuItems>
@@ -26,6 +55,7 @@
       </Menu>
     </template>
   </SearchBarAndFilterBy>
+
   <div
     v-if="filteredProcesses.length"
     class="py-10 px-4 sm:px-6 lg:px-8 grid gap-3 auto-rows-auto place-items-start grid-cols-1 md:grid-cols-2 2xl:grid-cols-4"
@@ -127,7 +157,11 @@
                 class="relative mt-5 px-16 flex justify-center items-center text-gray-500 font-medium"
               >
                 <p class="text-sm w-16 text-center">
-                  {{ process.stages.length > 0 ? process.stages[process.stages.length - 1].status : 'Sin estado' }}
+                  {{
+                    process.stages.length > 0
+                      ? process.stages[process.stages.length - 1].status
+                      : "Sin estado"
+                  }}
                 </p>
               </div>
             </div>
@@ -135,29 +169,34 @@
 
           <!-- Button for detail view -->
           <div class="font-medium text-sm mt-8">
-              <router-link
-                class="p-2.5 text-white bg-secondary rounded-md"
-                :to="{
-                  name: 'process_detail',
-                  params: { process_id: process.id, display: displayParam },
-                }"
-              >
-                <span>Consultar expediente</span>
-              </router-link>
+            <router-link
+              class="p-2.5 text-white bg-secondary rounded-md"
+              :to="{
+                name: 'process_detail',
+                params: { process_id: process.id, display: displayParam },
+              }"
+            >
+              <span>Consultar expediente</span>
+            </router-link>
           </div>
         </div>
       </div>
     </div>
   </div>
-  <div v-else class="absolute top-1/2 left-1/2 grid justify-center items-center transform -translate-y-1/2 -translate-x-1/2 lg:-translate-x-0 text-gray-400">
+  <div
+    v-else
+    class="absolute top-1/2 left-1/2 grid justify-center items-center transform -translate-y-1/2 -translate-x-1/2 lg:-translate-x-0 text-gray-400"
+  >
     <CubeTransparentIcon class="mx-auto h-40 w-40"></CubeTransparentIcon>
-    <p class="text-center font-semibold pt-4 text-2xl">Parece que no hay<br>nada por aqui.</p>
+    <p class="text-center font-semibold pt-4 text-2xl">
+      Parece que no hay<br />nada por aqui.
+    </p>
   </div>
 </template>
 
 <script setup>
-import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { AdjustmentsVerticalIcon } from '@heroicons/vue/20/solid'
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
+import { AdjustmentsVerticalIcon } from "@heroicons/vue/20/solid";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { ChevronUpIcon, CubeTransparentIcon } from "@heroicons/vue/20/solid";
 import { computed, onMounted, ref, watch } from "vue";
@@ -177,29 +216,10 @@ const isClient = ref(true);
 
 // Reactive variable for search query
 const searchQuery = ref("");
-const processGroup = ref('default');
+const processGroup = ref("default");
 
 // Computed property to get the current authenticated user
 const currentUser = computed(() => userStore.getCurrentUser);
-
-// Filtered processes based on search query
-const filteredProcesses = computed(() => {
-  if (processGroup.value === 'default') {
-    return processStore.filteredProcesses(
-    searchQuery.value,
-    isClient.value,
-    user.value ? user.value.id : null,
-    displayParam.value
-    );
-  } else if (processGroup.value === 'general') {
-    return processStore.filteredProcesses(
-    searchQuery.value,
-    isClient.value,
-    null,
-    displayParam.value
-    );
-  }
-});
 
 const expandedProcesses = ref([]);
 
@@ -209,9 +229,10 @@ onMounted(async () => {
   displayParam.value = route.params.display;
 
   await userStore.init();
-  user.value = userIdParam.value ? userStore.userById(userIdParam.value) : userStore.getCurrentUser;
+  user.value = userIdParam.value
+    ? userStore.userById(userIdParam.value)
+    : userStore.getCurrentUser;
   isClient.value = !!(user.value.role == "client");
-
 });
 
 watch(
@@ -229,6 +250,25 @@ watch(
     displayParam.value = newDisplay;
   }
 );
+
+// Filtered processes based on search query
+const filteredProcesses = computed(() => {
+  if (processGroup.value === "default") {
+    return processStore.filteredProcesses(
+      searchQuery.value,
+      isClient.value,
+      user.value ? user.value.id : null,
+      displayParam.value
+    );
+  } else if (processGroup.value === "general") {
+    return processStore.filteredProcesses(
+      searchQuery.value,
+      isClient.value,
+      null,
+      displayParam.value
+    );
+  }
+});
 
 /**
  * Toggles the expansion state of a process by its ID.

@@ -7,7 +7,7 @@
       class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer"
       :class="{
         'border-green-400 bg-green-300/30': document.state === 'Completed',
-        'border-stroke bg-white': document.state === 'Progress'
+        'border-stroke bg-white': document.state === 'Progress',
       }"
     >
       <component
@@ -15,12 +15,14 @@
         class="size-6"
         :class="{
           'text-green-500': document.state === 'Completed',
-          'text-secondary': document.state === 'Progress'
+          'text-secondary': document.state === 'Progress',
         }"
       />
       <div class="grid gap-1">
         <span class="text-base font-medium">{{ document.title }}</span>
-        <span class="text-sm font-regular text-gray-400">{{ document.description }}</span>
+        <span class="text-sm font-regular text-gray-400">{{
+          document.description
+        }}</span>
       </div>
       <Menu as="div" class="relative inline-block text-left">
         <MenuButton class="flex items-center text-gray-400">
@@ -34,7 +36,9 @@
           leave-from-class="transform opacity-100 scale-100"
           leave-to-class="transform opacity-0 scale-95"
         >
-          <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+          <MenuItems
+            class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+          >
             <div class="py-1">
               <!-- Edit/Complete option -->
               <MenuItem>
@@ -42,7 +46,7 @@
                   class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
                   @click="openEditModal(document)"
                 >
-                  {{ document.state === 'Completed' ? 'Editar' : 'Completar' }}
+                  {{ document.state === "Completed" ? "Editar" : "Completar" }}
                 </button>
               </MenuItem>
 
@@ -50,7 +54,7 @@
               <MenuItem>
                 <button
                   class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                  @click="previewDocument(document)"
+                  @click="openPreviewModal(document)"
                 >
                   Previsualizar
                 </button>
@@ -104,8 +108,12 @@
       v-if="filteredDocuments.length === 0"
       class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
     >
-      <p class="text-lg font-semibold">No hay documentos disponibles para mostrar.</p>
-      <p class="text-sm">Contacta a tu abogado para gestionar tus documentos.</p>
+      <p class="text-lg font-semibold">
+        No hay documentos disponibles para mostrar.
+      </p>
+      <p class="text-sm">
+        Contacta a tu abogado para gestionar tus documentos.
+      </p>
     </div>
 
     <!-- Edit Document Modal -->
@@ -118,31 +126,18 @@
   </div>
 
   <!-- Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white rounded-lg p-6 shadow-xl max-w-4xl w-full mx-auto">
-      <div class="flex justify-between items-center border-b pb-2 mb-4">
-        <!-- Título del documento -->
-        <h2 class="text-xl font-semibold text-primary">
-          Previsualización del Documento: {{ documentTitle }}
-        </h2>
-
-        <!-- Botón para cerrar el modal -->
-        <button @click="showPreviewModal = false">
-          <XMarkIcon class="size-6 text-gray-500 hover:text-secondary cursor-pointer" />
-        </button>
-      </div>
-
-      <!-- Contenido del documento -->
-      <div class="prose max-w-none overflow-y-auto max-h-[60vh]">
-        <div v-html="previewContent"></div>
-      </div>
-    </div>
-  </ModalTransition>
-
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 
   <!-- Modal Email -->
   <ModalTransition v-show="showSendDocumentViaEmailModal">
-    <SendDocument @closeEmailModal="closeEmailModal()" :emailDocument="emailDocument"/>
+    <SendDocument
+      @closeEmailModal="closeEmailModal()"
+      :emailDocument="emailDocument"
+    />
   </ModalTransition>
 </template>
 
@@ -151,7 +146,6 @@ import {
   CheckCircleIcon,
   EllipsisVerticalIcon,
   PencilIcon,
-  XMarkIcon ,
 } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
@@ -160,13 +154,17 @@ import UseDocumentByClient from "@/components/dynamic_document/client/modals/Use
 import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
-import { showNotification } from '@/shared/notification_message';
-import { showConfirmationAlert } from '@/shared/confirmation_alert';
+import { showNotification } from "@/shared/notification_message";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
 
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-import { Document, Packer, Paragraph, TextRun } from 'docx';
-import { saveAs } from 'file-saver';
+import {
+  showPreviewModal,
+  previewDocumentData,
+  openPreviewModal,
+  downloadPDFDocument,
+  downloadWordDocument,
+} from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
@@ -179,14 +177,39 @@ const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 
-// Filter documents
-const filteredDocuments = computed(() => {
-  return documentStore.documents.filter(
-    (doc) =>
-      doc.assigned_to === currentUser.value.id &&
-      (doc.state === "Progress" || doc.state === "Completed")
-  );
+const props = defineProps({
+  searchQuery: String,
 });
+
+// Retrieve documents in progress and completed from the store, applying the search filter.
+const filteredDocuments = computed(() => {
+  const allProgressAndCompletedDocs =
+    documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
+  return documentStore
+    .filteredDocuments(props.searchQuery, userStore)
+    .filter((doc) =>
+      allProgressAndCompletedDocs.some(
+        (progressOrCompletedDoc) => progressOrCompletedDoc.id === doc.id
+      )
+    );
+});
+
+/**
+ * Delete the document.
+ * @param {object} document - The document to delete.
+ */
+const deleteDocument = async (document) => {
+  // Show modal confirmation
+  const confirmed = await showConfirmationAlert(
+    `¿Deseas eliminar el documento "${document.title}"?`
+  );
+
+  // Delete in confirmed case
+  if (confirmed) {
+    await documentStore.deleteDocument(document.id);
+    await showNotification("Documento eliminado exitosamente.", "success");
+  }
+};
 
 /**
  * Open the edit modal for the selected document.
@@ -206,141 +229,19 @@ const closeEditModal = () => {
   documentStore.clearSelectedDocument();
 };
 
-
-const showPreviewModal = ref(false);
-const previewContent = ref('');
-const documentTitle = ref('');
-
-const previewDocument = (doc) => {
-  try {
-    // Reemplazar las variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
-    });
-
-    // Asignar el contenido procesado y el título al modal
-    previewContent.value = processedContent;
-    documentTitle.value = doc.title;
-    showPreviewModal.value = true;  // Mostrar el modal
-  } catch (error) {
-    console.error('Error previewing document:', error);
-  }
-};
-
-
 /**
- * Delete the document.
- * @param {object} document - The document to delete.
+ * Opens the email modal and sets the selected document.
+ *
+ * @param {Object} doc - The document to be sent via email.
  */
- const deleteDocument = async (document) => {
-  // Show modal confirmation
-  const confirmed = await showConfirmationAlert(`¿Deseas eliminar el documento "${document.title}"?`);
-  
-  // Delete in confirmed case
-  if (confirmed) {
-    await documentStore.deleteDocument(document.id);
-    await showNotification('Documento eliminado exitosamente.', 'success');
-  }
-};
-
-/**
- * Download the document in the specified format (PDF or Word).
- * @param {object} doc - The document to download.
- * @param {string} format - The format to download ('pdf' or 'word').
- */
-const downloadPDFDocument = (doc) => {
-  try {
-    // Reemplazar las variables en el contenido
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, 'g');
-      processedContent = processedContent.replace(regex, variable.value || '');
-    });
-
-    // Parsear el contenido HTML
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText;  // Convierte HTML a texto plano
-
-    // Crear el PDF
-    const pdf = new jsPDF();
-
-    // Configuración de fuente
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-
-    // Dividir el contenido en líneas ajustadas al ancho del PDF
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;  // Ancho de página con márgenes
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-
-    // Añadir texto al PDF
-    pdf.text(textLines, 10, 10);
-
-    // Descargar el archivo
-    pdf.save(`${doc.title}.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-const downloadWordDocument = (doc) => {
-  try {
-    // Reemplazar variables en el contenido
-    let content = doc.content;
-    doc.variables.forEach(variable => {
-      const regex = new RegExp(`{{${variable.name_en}}}`, 'g');
-      content = content.replace(regex, variable.value || '');
-    });
-
-    // Convertir el contenido HTML en texto plano para el documento Word
-    const parser = new DOMParser();
-    const parsedHtml = parser.parseFromString(content, 'text/html');
-    const textContent = parsedHtml.body.innerText;
-
-    // Crear un documento Word con el contenido procesado
-    const docxDocument = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: textContent,
-                  font: 'Arial',
-                  size: 24, // Tamaño de la fuente en puntos (24 equivale a 12pt)
-                }),
-              ],
-            }),
-          ],
-        },
-      ],
-    });
-
-    // Empaquetar el documento y descargarlo
-    Packer.toBlob(docxDocument).then((blob) => {
-      saveAs(blob, `${doc.title}.docx`);
-    });
-  } catch (error) {
-    console.error('Error downloading Word document:', error);
-  }
-};
-
-
-/**
- * Send the document (placeholder function).
- * @param {object} document - The document to send.
- */
-const sendDocument = (document) => {
-  console.log(`Sending document: ${document.title}`);
-};
-
 const openEmailModal = (doc) => {
   emailDocument.value = doc;
   showSendDocumentViaEmailModal.value = true;
 };
 
+/**
+ * Closes the email modal and resets the selected document.
+ */
 const closeEmailModal = () => {
   emailDocument.value = {};
   showSendDocumentViaEmailModal.value = false;

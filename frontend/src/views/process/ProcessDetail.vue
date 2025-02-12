@@ -1,10 +1,12 @@
 <template>
   <!-- Menu button -->
-  <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+  <div
+    class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8"
+  >
     <slot></slot>
   </div>
   <!-- Content -->
-  <div class="py-10 px-4 sm:px-6 lg:px-8 ">
+  <div class="py-10 px-4 sm:px-6 lg:px-8">
     <div
       v-if="process"
       class="p-5 rounded-lg border-2 border-stroke bg-terciary"
@@ -66,7 +68,7 @@
             </p>
           </div>
         </div>
-  
+
         <!-- Second colum timeline of process status -->
         <div class="hidden md:block relative mt-16">
           <!-- Line -->
@@ -80,25 +82,27 @@
               <div class="border-2 border-gray-500 h-4 w-0"></div>
               <div class="border-2 border-gray-500 h-4 w-0"></div>
             </div>
-  
+
             <!-- Bubbles -->
             <Bubbles
               :length="process.stages.length"
               :displayParam="'history'"
             />
           </div>
-  
+
           <!-- Text of states -->
           <div>
             <TextStages :stages="process.stages" />
           </div>
         </div>
       </div>
-  
+
       <!-- Process archive -->
       <div class="mt-14">
         <!-- Title and searchbar container -->
-        <div class="flex flex-col gap-3 justify-between font-medium md:flex-row">
+        <div
+          class="flex flex-col gap-3 justify-between font-medium md:flex-row"
+        >
           <!-- Title -->
           <h3 class="text-base text-primary">Expendiente:</h3>
           <!-- Search bar -->
@@ -165,10 +169,7 @@
                       </button>
                       <!-- See file in another pad -->
                       <button @click="openFile(caseFile.file)">
-                        <EyeIcon
-                          class="h-5 w-5"
-                          aria-hidden="true"
-                        ></EyeIcon>
+                        <EyeIcon class="h-5 w-5" aria-hidden="true"></EyeIcon>
                       </button>
                     </td>
                   </tr>
@@ -182,9 +183,7 @@
       <div class="w-full flex justify-between mt-4">
         <!-- Pagination -->
         <div class="flex items-center justify-between">
-          <div
-            class="sm:flex sm:flex-1 sm:items-center sm:justify-between"
-          >
+          <div class="sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <nav
                 class="isolate inline-flex -space-x-px rounded-md shadow-sm"
@@ -255,7 +254,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 import { useUserStore } from "@/stores/user";
 
-// Route and store
+// Route and store instances
 const route = useRoute();
 const router = useRouter();
 const processStore = useProcessStore();
@@ -266,27 +265,41 @@ const currentUser = computed(() => userStore.currentUser);
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
 
+/**
+ * Initializes process and user data before the component is mounted.
+ */
 onBeforeMount(async () => {
   await processStore.init();
   await userStore.init();
 });
 
-// State for search and pagination
+// State variables for search and pagination
 const searchTerm = ref("");
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
-// Watch search term and reset page when it changes
+/**
+ * Watches for changes in the search term and resets the page to the first one.
+ */
 watch(searchTerm, () => {
   currentPage.value = 1;
 });
 
-// Navigate to Edit form
+/**
+ * Navigates to the edit form for the current process.
+ */
 function navigateToEdit() {
-  router.push({ name: 'process_form', params: { action: 'edit', process_id: processId } });
+  router.push({
+    name: "process_form",
+    params: { action: "edit", process_id: processId },
+  });
 }
 
-// Get filtered and paginated case files
+/**
+ * Filters case files based on the search term.
+ *
+ * @returns {Array} Filtered case files.
+ */
 const filteredCaseFiles = computed(() => {
   if (!searchTerm.value) return process.value.case_files;
   return process.value.case_files.filter((caseFile) =>
@@ -296,47 +309,81 @@ const filteredCaseFiles = computed(() => {
   );
 });
 
-// Paginated case files based on current page and items per page
+/**
+ * Retrieves a paginated list of case files based on the current page.
+ *
+ * @returns {Array} Paginated case files.
+ */
 const paginatedCaseFiles = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value;
   const end = start + itemsPerPage.value;
   return filteredCaseFiles.value.slice(start, end);
 });
 
-// Total pages for pagination
+/**
+ * Calculates the total number of pages based on the number of case files.
+ *
+ * @returns {number} Total pages.
+ */
 const totalPages = computed(() => {
   return Math.ceil(filteredCaseFiles.value.length / itemsPerPage.value);
 });
 
 // Pagination methods
+
+/**
+ * Moves to the previous page if possible.
+ */
 function previousPage() {
   if (currentPage.value > 1) currentPage.value--;
 }
 
+/**
+ * Moves to the next page if possible.
+ */
 function nextPage() {
   if (currentPage.value < totalPages.value) currentPage.value++;
 }
 
+/**
+ * Navigates to a specific page.
+ *
+ * @param {number} page - The page number to navigate to.
+ */
 function goToPage(page) {
   currentPage.value = page;
 }
 
-// Helper function to get file name
+/**
+ * Extracts the file name from a given URL.
+ *
+ * @param {string} fileUrl - The URL of the file.
+ * @returns {string} The extracted file name.
+ */
 function getFileName(fileUrl) {
   return fileUrl.split("/").pop();
 }
 
-// Open file in new tab
+/**
+ * Opens a file in a new browser tab.
+ *
+ * @param {string} fileUrl - The URL of the file to open.
+ */
 function openFile(fileUrl) {
   window.open(fileUrl, "_blank");
 }
 
+/**
+ * Downloads a file from the given URL.
+ *
+ * @param {string} fileUrl - The URL of the file to download.
+ */
 const downloadFile = async (fileUrl) => {
   try {
     // Fetch the file from the server
     const response = await fetch(fileUrl);
 
-    // Check if the response is okay
+    // Check if the response is valid
     if (!response.ok) {
       throw new Error(`Failed to fetch the file: ${response.statusText}`);
     }
@@ -345,23 +392,19 @@ const downloadFile = async (fileUrl) => {
     const blob = await response.blob();
 
     // Create a temporary link element
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = window.URL.createObjectURL(blob);
 
-    // Get the file name from the URL
-    const fileName = fileUrl.split('/').pop();
+    // Extract the file name from the URL
+    const fileName = fileUrl.split("/").pop();
     link.download = fileName;
 
-    // Append the link to the DOM
+    // Append the link to the DOM and trigger download
     document.body.appendChild(link);
-
-    // Trigger a click on the link to start the download
     link.click();
-
-    // Remove the link from the DOM
     document.body.removeChild(link);
 
-    // Revoke the object URL to release memory
+    // Revoke the object URL to free up memory
     window.URL.revokeObjectURL(link.href);
   } catch (error) {
     console.error("An error occurred while downloading the file:", error);
@@ -371,14 +414,14 @@ const downloadFile = async (fileUrl) => {
 /**
  * Converts an ISO date string to a formatted date and time string in the Bogota, Colombia time zone.
  *
- * @param {string} isoDateString - The ISO date string to be converted, e.g., "2024-09-25T23:56:28.630717Z".
- * @returns {string} - The formatted date and time string in the format "YYYY-MM-DD HH:mm:ss hora Bogotá Colombia".
+ * @param {string} isoDateString - The ISO date string to be converted (e.g., "2024-09-25T23:56:28.630717Z").
+ * @returns {string} - The formatted date and time string in the format "YYYY-MM-DD HH:mm:ss Bogotá time".
  */
- const convertToBogotaTime = (isoDateString) => {
-  // Crear un objeto Date a partir de la cadena ISO
+const convertToBogotaTime = (isoDateString) => {
+  // Create a Date object from the ISO string
   const date = new Date(isoDateString);
-  
-  // Convertir a la hora de Bogotá (America/Bogota) usando toLocaleString
+
+  // Convert to Bogotá time zone using toLocaleString
   const options = {
     timeZone: "America/Bogota",
     year: "numeric",
@@ -387,13 +430,12 @@ const downloadFile = async (fileUrl) => {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false, // Usar formato de 24 horas
+    hour12: false, // Use 24-hour format
   };
 
-  // Formatear la fecha y hora en la zona horaria de Bogotá
+  // Format the date and time in Bogotá's time zone
   const formattedDate = date.toLocaleString("en-CA", options);
 
-  // Retornar la fecha en el formato deseado
-  return formattedDate
+  return formattedDate;
 };
 </script>

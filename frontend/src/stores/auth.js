@@ -2,6 +2,7 @@ import axios from "axios";
 import { defineStore } from "pinia";
 import { useUserStore } from "./user";
 import { useProcessStore } from "./process";
+import { get_request } from "./services/request_http";
 
 // Define the authentication store
 export const useAuthStore = defineStore("auth", {
@@ -16,15 +17,7 @@ export const useAuthStore = defineStore("auth", {
     signInIntervalId: localStorage.getItem("signInSecondsAcumulated") || null,
   }),
   // Getter methods
-  getters: {
-    isAuthenticated: (state) => {
-      // Check if the user is authenticated based on the presence of a token and user ID
-      if (state.token && state.userAuth.id) {
-        return true;
-      }
-      return false;
-    }
-  },
+  getters: {},
   // Action methods
   actions: {
     /**
@@ -44,9 +37,40 @@ export const useAuthStore = defineStore("auth", {
       }
     },
     /**
+     * Validates the current JWT token by sending a request to the backend.
+     *
+     * This method sends a GET request to the '/api/validate_token/' endpoint to
+     * verify if the stored JWT token is still valid. If the token is valid, it
+     * returns `true`. If the token has expired or is invalid, it logs out the user
+     * and returns `false`. Any other errors are rethrown for further handling.
+     *
+     * @returns {Promise<boolean>} - Returns `true` if the token is valid, or `false` if it is invalid or expired.
+     * @throws {Error} - Rethrows any unexpected errors that occur during the request.
+     */
+    async validateToken() {
+      try {
+        await get_request("validate_token/");
+        return true;
+      } catch (error) {
+        this.logout(); // Handle logout if token is not valid
+        return false;
+      }
+    },
+    /**
+     * Checks if the user is authenticated by validating the token.
+     * @returns {Promise<boolean>} - Returns `true` if the token is valid, or `false` if it is invalid or expired.
+     */
+    async isAuthenticated() {
+      if (!this.token || !this.userAuth.id) return false;
+
+      const isValid = await this.validateToken();
+      return isValid;
+    },
+    /**
      * Logs out the user by clearing the token and user details.
      */
     logout() {
+      console.log("Executing logout...");
       this.token = null;
       this.userAuth = {};
       this.clearAuthorizationHeader();

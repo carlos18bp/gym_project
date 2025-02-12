@@ -1,8 +1,5 @@
 import { defineStore } from "pinia";
-import { 
-  get_request, 
-  create_request 
-} from "./services/request_http";
+import { get_request, create_request } from "./services/request_http";
 
 export const useIntranetGymStore = defineStore("intranetGymStore", {
   /**
@@ -64,7 +61,10 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
 
       try {
         // Send the form data to the backend
-        const response = await create_request("create_report_request/", formDataObject);
+        const response = await create_request(
+          "create_report_request/",
+          formDataObject
+        );
 
         if (response.status === 201) {
           console.log("Report request created successfully!");

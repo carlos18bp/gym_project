@@ -3,21 +3,42 @@ from gym_app.models import Case, CaseFile, Stage, Process
 from gym_app.serializers import UserSerializer
 
 class CaseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Case model.
+    Serializes all fields of the Case model.
+    """
     class Meta:
         model = Case
         fields = '__all__'
 
 class CaseFileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the CaseFile model.
+    Serializes all fields of the CaseFile model.
+    """
     class Meta:
         model = CaseFile
         fields = '__all__'
 
 class StageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Stage model.
+    Serializes all fields of the Stage model.
+    """
     class Meta:
         model = Stage
         fields = '__all__'
 
 class ProcessSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Process model.
+    Includes nested serializers for related models:
+    - Stages (ManyToManyField)
+    - Case (ForeignKey)
+    - Case Files (ManyToManyField)
+    - Client (ForeignKey to User)
+    - Lawyer (ForeignKey to User)
+    """
     stages = StageSerializer(many=True)  # ManyToManyField for stages    
     case = CaseSerializer()  # ForeignKey for case
     case_files = CaseFileSerializer(many=True)  # ManyToManyField for case_files
@@ -29,6 +50,20 @@ class ProcessSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def update(self, instance, validated_data):
+        """
+        Updates an existing Process instance.
+        
+        - Updates simple fields such as plaintiff, defendant, ref, authority, and subcase.
+        - Updates related stages:
+            - Removes stages that are no longer present.
+            - Updates existing stages based on their ID.
+            - Creates new stages if no ID is provided.
+        - The update for case_files is not handled in this method.
+        
+        :param instance: The existing Process instance to be updated.
+        :param validated_data: The validated data for the update.
+        :return: The updated Process instance.
+        """
         # Update simple fields
         instance.plaintiff = validated_data.get('plaintiff', instance.plaintiff)
         instance.defendant = validated_data.get('defendant', instance.defendant)
@@ -67,5 +102,3 @@ class ProcessSerializer(serializers.ModelSerializer):
         # Save the updated instance without handling case_files here
         instance.save()
         return instance
-
-

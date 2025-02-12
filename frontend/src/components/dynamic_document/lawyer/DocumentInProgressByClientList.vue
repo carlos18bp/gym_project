@@ -2,7 +2,7 @@
   <div class="mt-8 flex flex-wrap gap-6">
     <!-- Document In Progress -->
     <div
-      v-for="document in progressDocuments"
+      v-for="document in filteredProgressDocuments"
       :key="document.id"
       class="flex items-center gap-3 py-2 px-4 border rounded-xl border-stroke bg-white"
     >
@@ -33,7 +33,10 @@
             class="absolute left-0 z-10 mt-2 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5"
           >
             <div class="py-1">
-              <MenuItem v-for="option in documentEditingOptions" :key="option.label">
+              <MenuItem
+                v-for="option in documentEditingOptions"
+                :key="option.label"
+              >
                 <button
                   @click="handleOptionClick(option, document)"
                   class="block w-full text-left px-4 py-2 text-sm font-regular cursor-pointer hover:bg-gray-100 transition"
@@ -49,71 +52,86 @@
   </div>
 
   <!-- Document Preview Modal -->
-  <ModalTransition v-show="showPreviewModal">
-    <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-semibold">Previsualización del Documento: {{ previewDocumentTitle }}</h2>
-        <button @click="closePreviewModal">
-          <XMarkIcon class="size-6" />
-        </button>
-      </div>
-      <div class="mt-4 overflow-auto max-h-96 text-primary">
-        <div v-html="previewDocumentContent" class="prose"></div>
-      </div>
-    </div>
-  </ModalTransition>
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { PencilIcon, EllipsisVerticalIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { PencilIcon, EllipsisVerticalIcon } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
-import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { saveAs } from "file-saver";
-import { showNotification } from '@/shared/notification_message';
 
-// Store instances
+import {
+  showPreviewModal,
+  previewDocumentData,
+  openPreviewModal,
+  downloadPDFDocument,
+  downloadWordDocument,
+} from "@/shared/document_utils";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const router = useRouter();
 
-// State variables
-const showPreviewModal = ref(false);
-const previewDocumentTitle = ref("");
-const previewDocumentContent = ref("");
-
-// Fetch data on mount
+/**
+ * Initializes the document and user stores when the component is mounted.
+ */
 onMounted(() => {
-  documentStore.fetchDocuments();
+  documentStore.init();
   userStore.init();
 });
 
-// Computed properties
-const progressDocuments = computed(() => {
-  return documentStore.progressDocumentsByClient(userStore.getCurrentUser?.id);
+const props = defineProps({
+  /**
+   * Search query used to filter documents.
+   * @type {String}
+   */
+  searchQuery: String,
 });
 
-// Options for the document menu
+/**
+ * Computes the list of in-progress documents for the current user based on the search query.
+ *
+ * @returns {Array} List of documents that are in progress and match the search criteria.
+ */
+const filteredProgressDocuments = computed(() => {
+  const allProgressDocuments = documentStore.progressDocumentsByClient(
+    userStore.getCurrentUser?.id
+  );
+  return documentStore
+    .filteredDocuments(props.searchQuery, userStore)
+    .filter((doc) =>
+      allProgressDocuments.some((progressDoc) => progressDoc.id === doc.id)
+    );
+});
+
+/**
+ * List of available actions for documents that are being edited.
+ */
 const documentEditingOptions = [
-  { label: "Completar", action: "complete" },
+  { label: "Editar", action: "edit" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
   { label: "Descargar Word", action: "downloadWord" },
 ];
 
 /**
- * Handle click event on document options.
- * @param {object} option - The selected option.
- * @param {object} document - The document related to the option.
+ * Handles user selection of document actions.
+ *
+ * @param {Object} option - The selected option from the menu.
+ * @param {Object} document - The document being acted upon.
  */
 const handleOptionClick = (option, document) => {
   switch (option.action) {
-    case "complete":
-      completeDocument(document);
+    case "edit":
+      openEditModal(document);
       break;
     case "preview":
       openPreviewModal(document);
@@ -130,116 +148,22 @@ const handleOptionClick = (option, document) => {
 };
 
 /**
- * Mark the document as completed.
- * @param {object} document - The document to complete.
+ * Redirects to the document editor page with the selected document.
+ *
+ * @param {Object} document - The document to be edited.
  */
-const completeDocument = async (document) => {
-  try {
-    const updatedData = { ...document, state: "Completed" };
-    await documentStore.updateDocument(document.id, updatedData);
-    await showNotification('Documento marcado como completado.', 'success');
-  } catch (error) {
-    console.error("Error completing document:", error);
-  }
+const openEditModal = (document) => {
+  const encodedTitle = encodeURIComponent(document.title.trim());
+  router.push(
+    `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodedTitle}`
+  );
 };
 
 /**
- * Open the preview modal for the document.
- * @param {object} document - The document to preview.
- */
-const openPreviewModal = (document) => {
-  previewDocumentTitle.value = document.title;
-
-  // Reemplazar las variables en el contenido
-  let processedContent = document.content;
-  document.variables.forEach((variable) => {
-    const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
-    processedContent = processedContent.replace(regex, variable.value || "");
-  });
-
-  // Parsear el contenido HTML
-  const root = parse(processedContent);
-  previewDocumentContent.value = root.toString();
-
-  showPreviewModal.value = true;
-};
-
-/**
- * Close the preview modal.
- */
-const closePreviewModal = () => {
-  showPreviewModal.value = false;
-};
-
-/**
- * Download the document as a PDF.
- * @param {object} doc - The document to download.
- */
-const downloadPDFDocument = (doc) => {
-  try {
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
-
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText;
-
-    const pdf = new jsPDF();
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-    pdf.text(textLines, 10, 10);
-
-    pdf.save(`${doc.title}.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-/**
- * Download the document as a Word file.
- * @param {object} doc - The document to download.
- */
-const downloadWordDocument = (doc) => {
-  try {
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{${variable.name_en}}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
-
-    const parser = new DOMParser();
-    const parsedHtml = parser.parseFromString(processedContent, "text/html");
-    const textContent = parsedHtml.body.innerText;
-
-    const docxDocument = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              children: [new TextRun({ text: textContent, font: "Arial", size: 24 })],
-            }),
-          ],
-        },
-      ],
-    });
-
-    Packer.toBlob(docxDocument).then((blob) => {
-      saveAs(blob, `${doc.title}.docx`);
-    });
-  } catch (error) {
-    console.error("Error generating Word document:", error);
-  }
-};
-
-/**
- * Get the client's name by user ID.
- * @param {number} clientId - The ID of the client.
- * @returns {string} - The client's full name.
+ * Retrieves the client's full name based on their ID.
+ *
+ * @param {Number} clientId - The ID of the client.
+ * @returns {String} The full name of the client or "Desconocido" if not found.
  */
 const getClientName = (clientId) => {
   const client = userStore.userById(clientId);

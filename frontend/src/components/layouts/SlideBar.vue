@@ -148,26 +148,26 @@
                 </ul>
                 <!-- Social Networks Buttons -->
                 <div class="absolute bottom-0 w-full flex gap-0.5 items-center">
-                  <a 
-                    href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0" 
-                    target="_blank" 
+                  <a
+                    href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0"
+                    target="_blank"
                     class="cursor-pointer"
                   >
-                    <img :src="WhatsappIcon">
+                    <img :src="WhatsappIcon" />
                   </a>
-                  <a 
-                    href="https://www.instagram.com/gymconsultoresjuridicos/" 
-                    target="_blank" 
+                  <a
+                    href="https://www.instagram.com/gymconsultoresjuridicos/"
+                    target="_blank"
                     class="cursor-pointer"
                   >
-                    <img :src="InstagramIcon">
+                    <img :src="InstagramIcon" />
                   </a>
-                  <a 
-                    href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL" 
-                    target="_blank" 
+                  <a
+                    href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL"
+                    target="_blank"
                     class="-mt-2 cursor-pointer"
                   >
-                    <img :src="FacebookIcon">
+                    <img :src="FacebookIcon" />
                   </a>
                 </div>
               </nav>
@@ -280,26 +280,26 @@
         </ul>
         <!-- Social Networks Buttons -->
         <div class="absolute bottom-0 w-full flex gap-0.5 items-center">
-          <a 
-            href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0" 
-            target="_blank" 
+          <a
+            href="https://api.whatsapp.com/message/XR7PDKOQS3R6A1?autoload=1&app_absent=0"
+            target="_blank"
             class="cursor-pointer"
           >
-            <img :src="WhatsappIcon">
+            <img :src="WhatsappIcon" />
           </a>
-          <a 
-            href="https://www.instagram.com/gymconsultoresjuridicos/" 
-            target="_blank" 
+          <a
+            href="https://www.instagram.com/gymconsultoresjuridicos/"
+            target="_blank"
             class="cursor-pointer"
           >
-            <img :src="InstagramIcon">
+            <img :src="InstagramIcon" />
           </a>
-          <a 
-            href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL" 
-            target="_blank" 
+          <a
+            href="https://www.facebook.com/profile.php?id=100089865602579&mibextid=ZbWKwL"
+            target="_blank"
             class="-mt-2 cursor-pointer"
           >
-            <img :src="FacebookIcon">
+            <img :src="FacebookIcon" />
           </a>
         </div>
       </nav>
@@ -387,8 +387,8 @@ onMounted(async () => {
   if (currentUser.role == "client") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" && 
-        navItem.name !== "Directorio" && 
+        navItem.name !== "Radicar Proceso" &&
+        navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M"
     );
   } else if (currentUser.role == "lawyer" && !currentUser.is_gym_lawyer) {
@@ -401,13 +401,11 @@ onMounted(async () => {
   // Filter out the "Solicitudes" option if the user role is "lawyer" or is_gym_lawyer
   if (currentUser.role === "lawyer" || currentUser.is_gym_lawyer) {
     navigation.value = navigation.value.filter(
-      (navItem) => 
-        navItem.name !== "Solicitudes" &&
-        navItem.name !== "Agendar Cita"
+      (navItem) =>
+        navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
   }
 });
-
 
 /**
  * Logs out the user by clearing the auth store and logging out from Google.
@@ -544,7 +542,6 @@ const userNavigation = [
     action: logOut,
   },
 ];
-
 
 /**
  * Sets the current navigation item as active.

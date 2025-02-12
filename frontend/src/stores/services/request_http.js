@@ -42,15 +42,21 @@ async function makeRequest(method, url, params = {}) {
         response = await axios.put(`/api/${url}`, params, { headers });
         break;
       case "DELETE":
-          response = await axios.delete(`/api/${url}`, { headers });
-          break;
+        response = await axios.delete(`/api/${url}`, { headers });
+        break;
       default:
         throw new Error(`Unsupported method: ${method}`);
     }
 
     return response;
   } catch (error) {
-    console.error(error);
+    console.error("Error during request:", error);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+      console.error("Status code:", error.response.status);
+    } else {
+      console.error("Request failed without response.");
+    }
     throw error;
   }
 }

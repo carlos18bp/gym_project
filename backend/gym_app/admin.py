@@ -69,7 +69,6 @@ class LegalRequestAdmin(admin.ModelAdmin):
         'request_type', 'discipline', 'created_at'
     )  # Enable filtering by request type and discipline
 
-
 class LegalRequestTypeAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalRequestType model.
@@ -106,7 +105,6 @@ class DocumentVariableInline(admin.StackedInline):
     extra = 1  # Display one empty inline by default
     verbose_name = "Variable"
     verbose_name_plural = "Variables"
-
 
 class DynamicDocumentAdmin(admin.ModelAdmin):
     """

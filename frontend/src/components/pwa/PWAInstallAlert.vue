@@ -28,7 +28,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { usePWAInstall } from "@/composables/usePWAInstall";
-import { InformationCircleIcon } from '@heroicons/vue/20/solid';
+import { InformationCircleIcon } from "@heroicons/vue/20/solid";
 import gsap from "gsap";
 
 // Destructure values from the usePWAInstall composable
@@ -38,19 +38,18 @@ const alert = ref(null); // Reference to the alert element for animation
 onMounted(() => {
   // Opacity animation for the alert using GSAP
   gsap.to(alert.value, {
-    opacity: 1,          // Sets opacity to fully visible
-    duration: 1,         // Duration of fade-in animation
+    opacity: 1, // Sets opacity to fully visible
+    duration: 1, // Duration of fade-in animation
   });
 
   // Fade-out animation after 15 seconds
   gsap.to(alert.value, {
-    opacity: 0,          // Fades out opacity
-    delay: 10,           // Starts fade-out after 10 seconds
-    duration: 1,         // Duration of fade-out animation
+    opacity: 0, // Fades out opacity
+    delay: 10, // Starts fade-out after 10 seconds
+    duration: 1, // Duration of fade-out animation
     onComplete: () => {
       isAppInstalled.value = true; // Hides the alert once the animation completes
     },
   });
 });
 </script>
-
