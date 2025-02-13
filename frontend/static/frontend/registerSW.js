@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/static/frontend/sw.js', { scope: '/static/frontend/' })})}
