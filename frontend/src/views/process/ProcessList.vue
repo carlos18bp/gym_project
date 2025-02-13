@@ -189,8 +189,9 @@
   >
     <CubeTransparentIcon class="mx-auto h-40 w-40"></CubeTransparentIcon>
     <p class="text-center font-semibold pt-4 text-2xl">
-      Parece que no hay<br />nada por aqui.
+      No hay procesos disponibles<br />para mostrar.
     </p>
+    <p class="text-center font-semibold pt-4 text-lg">Contacta a tu abogado para gestionar tus procesos.</p>
   </div>
 </template>
 

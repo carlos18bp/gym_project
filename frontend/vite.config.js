@@ -1,9 +1,8 @@
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import { VitePWA } from 'vite-plugin-pwa';
-import { fileURLToPath, URL } from 'url';
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { VitePWA } from 'vite-plugin-pwa'
+import { fileURLToPath, URL } from 'url'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   server: {
     proxy: {
@@ -18,6 +17,16 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === 'document',
+            handler: 'NetworkFirst',
+          },
+        ],
+      },
       manifest: {
         name: 'G&M',
         short_name: 'G&M',
@@ -38,23 +47,6 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        navigateFallback: '/no_connection',
-        globPatterns: ['**/*.{js,css,png,jpg,svg,webp,woff2,woff}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\/no_connection$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'offline-page',
-              expiration: {
-                maxEntries: 1,
-                maxAgeSeconds: 7 * 24 * 60 * 60,
-              },
-            },
-          },
-        ],
-      }
     })
   ],
   resolve: {
@@ -65,4 +57,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@tinymce/tinymce-vue', 'tinymce'],
   },
-});
+})
