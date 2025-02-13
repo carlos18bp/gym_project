@@ -159,6 +159,7 @@ if (isE2ECoverage) {
 
 export default defineConfig({
   build: {
+    base: '/static/frontend',
     outDir: '../backend/static/frontend',
     rollupOptions: {
       output: {
