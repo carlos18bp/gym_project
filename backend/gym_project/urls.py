@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/', include('gym_app.urls')),
     path('', TemplateView.as_view(template_name='index.html')),
     path('home/', TemplateView.as_view(template_name='index.html')),
+    path('sign_in/', TemplateView.as_view(template_name='index.html')),
     path('sign_on/', TemplateView.as_view(template_name='index.html')),
     path('forget_password/', TemplateView.as_view(template_name='index.html')),
     path('policies/terms_of_use/', TemplateView.as_view(template_name='index.html')),
