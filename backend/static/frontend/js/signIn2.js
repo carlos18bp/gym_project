@@ -1,1 +1,1 @@
-const t="/static/frontend/img/logo2.png",n="/static/frontend/img/signIn.jpg";export{t as _,n as a};
+const o="/img/logo2.png",s="/img/signIn.jpg";export{o as _,s as a};
