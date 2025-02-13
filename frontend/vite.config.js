@@ -4,9 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
-  base: '/static/frontend/',
   build: {
-    outDir: 'static/frontend',
+    outDir: '../backend/static/frontend',
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
@@ -29,6 +28,9 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
+      outDir: '../backend/static/frontend',
+      includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon.png'],
+      strategies: 'generateSW',
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
