@@ -158,20 +158,21 @@ if (isE2ECoverage) {
 }
 
 export default defineConfig({
+  // Esto hace que tus assets se referencien con /static/frontend/ al inicio
+  base: '/static/frontend/',
   build: {
-    base: '/static/frontend',
+    // Coloca los archivos generados físicamente en ../backend/static/frontend
+    // (ojo: es una ruta relativa a donde está tu vite.config.js)
     outDir: '../backend/static/frontend',
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
-          // Organizar las imágenes en subcarpetas según el tipo de archivo
           if (/\.(png|jpg|jpeg|gif|svg)$/.test(assetInfo.name)) {
             return 'img/[name][extname]';
           }
           if (/\.css$/.test(assetInfo.name)) {
             return 'css/[name][extname]';
           }
-          // Para otros tipos de assets (fuentes, etc.), puedes añadir más condiciones si es necesario
           return 'assets/[name][extname]';
         },
         entryFileNames: 'js/[name].js',
@@ -183,7 +184,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
-      outDir: '../backend/static/frontend',
+      // Importante: no pongas outDir aquí, deja que use el de build.outDir
       includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon.png'],
       strategies: 'generateSW',
       workbox: {
@@ -207,20 +208,20 @@ export default defineConfig({
           {
             src: '/static/frontend/img/icons/icon-logo-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
             src: '/static/frontend/img/icons/icon-logo-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+            type: 'image/png',
+          },
+        ],
       },
-    })
+    }),
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   optimizeDeps: {
