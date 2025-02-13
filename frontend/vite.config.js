@@ -5,6 +5,7 @@ import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
   build: {
+    base: '/static/frontend',
     outDir: '../backend/static/frontend',
     rollupOptions: {
       output: {
