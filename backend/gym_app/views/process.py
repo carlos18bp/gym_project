@@ -125,6 +125,11 @@ def update_process(request, pk):
     # Extract main data
     main_data = json.loads(request.data.get('mainData', '{}'))
 
+    # Update client
+    client_id = main_data.get('clientId')
+    if client_id:
+        process.client = User.objects.get(id=client_id)
+
     # Update process main data using the serializer
     serializer = ProcessSerializer(process, data=main_data, partial=True, context={'request': request})
     if serializer.is_valid():
