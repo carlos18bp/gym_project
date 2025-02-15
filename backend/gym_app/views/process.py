@@ -130,6 +130,11 @@ def update_process(request, pk):
     if client_id:
         process.client = User.objects.get(id=client_id)
 
+    # Update Case Type
+    case_type_id = main_data.get('caseTypeId')
+    if case_type_id:
+        process.case = Case.objects.get(id=case_type_id)
+
     # Update process main data using the serializer
     serializer = ProcessSerializer(process, data=main_data, partial=True, context={'request': request})
     if serializer.is_valid():
