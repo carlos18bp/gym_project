@@ -8,6 +8,7 @@ from django.views.generic import TemplateView
 urlpatterns = [
     path('admin/', admin_site.urls),    
     path('api/', include('gym_app.urls')),
+
     path('', TemplateView.as_view(template_name='index.html')),
     path('home/', TemplateView.as_view(template_name='index.html')),
     path('sign_in/', TemplateView.as_view(template_name='index.html')),
@@ -16,6 +17,7 @@ urlpatterns = [
     path('policies/terms_of_use/', TemplateView.as_view(template_name='index.html')),
     path('policies/privacy_policy/', TemplateView.as_view(template_name='index.html')),
     path('no_connection/', TemplateView.as_view(template_name='index.html')),
+
     re_path(r'^process_list(?:/(?P<user_id>\d+))?(?:/(?P<display>\w+))?/$',
         TemplateView.as_view(template_name='index.html')),
     re_path(r'^process_detail/(?P<process_id>\d+)(?:/(?P<display>\w+))?/$', 
@@ -23,6 +25,20 @@ urlpatterns = [
     re_path(r'^process_form/(?P<action>\w+)(?:/(?P<process_id>\d+))?/$', 
         TemplateView.as_view(template_name='index.html')),
     path('directory_list/', TemplateView.as_view(template_name='index.html')),
+
+    path('legal_request/', TemplateView.as_view(template_name='index.html')),
+    path('intranet_g_y_m/', TemplateView.as_view(template_name='index.html')),
+    path('schedule_appointment/', TemplateView.as_view(template_name='index.html')),
+
+    path('dynamic_document_dashboard/', TemplateView.as_view(template_name='index.html')),
+    path('dynamic_document_dashboard/lawyer/editor/create/<str:title>/',
+         TemplateView.as_view(template_name='index.html')),
+    path('dynamic_document_dashboard/lawyer/editor/edit/<int:id>/',
+         TemplateView.as_view(template_name='index.html')),
+    path('dynamic_document_dashboard/document/use/<str:mode>/<int:id>/<str:title>/',
+         TemplateView.as_view(template_name='index.html')),
+    path('dynamic_document_dashboard/lawyer/variables-config/',
+         TemplateView.as_view(template_name='index.html')),
 ]
 
 if settings.DEBUG:
