@@ -133,7 +133,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async fetchDocuments() {
       try {
-        const response = await get_request("/dynamic-documents/");
+        const response = await get_request("dynamic-documents/");
         this.documents = response.data;
         this.dataLoaded = true;
         console.log("Documents fetched successfully:", this.documents);
@@ -149,7 +149,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     async createDocument(documentData) {
       try {
         const response = await create_request(
-          "/dynamic-documents/create/",
+          "dynamic-documents/create/",
           documentData
         );
         this.documents.push(response.data);
@@ -171,7 +171,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     async updateDocument(documentId, documentData) {
       try {
         const response = await update_request(
-          `/dynamic-documents/${documentId}/update/`,
+          `dynamic-documents/${documentId}/update/`,
           documentData
         );
         console.log("Document updated successfully:", response.data);
@@ -189,7 +189,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async deleteDocument(documentId) {
       try {
-        await delete_request(`/dynamic-documents/${documentId}/delete/`);
+        await delete_request(`dynamic-documents/${documentId}/delete/`);
         console.log(`Document with ID ${documentId} deleted successfully.`);
 
         this.dataLoaded = false;
