@@ -80,6 +80,7 @@
                     Descargar PDF
                   </button>
                 </MenuItem>
+                <!-- 
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
@@ -88,6 +89,7 @@
                     Descargar Word
                   </button>
                 </MenuItem>
+                -->
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
@@ -161,8 +163,6 @@ import {
   showPreviewModal,
   previewDocumentData,
   openPreviewModal,
-  downloadPDFDocument,
-  downloadWordDocument,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
@@ -193,6 +193,22 @@ const filteredDocuments = computed(() => {
       )
     );
 });
+
+/**
+ * Download the document as PDF.
+ * @param {Object} doc - The document to download.
+ */
+const downloadPDFDocument = (doc) => {
+  documentStore.downloadPDF(doc.id, doc.title);
+};
+
+/**
+ * Download the document as Word.
+ * @param {Object} doc - The document to download.
+ */
+const downloadWordDocument = (doc) => {
+  documentStore.downloadWord(doc.id, doc.title);
+};
 
 /**
  * Delete the document.

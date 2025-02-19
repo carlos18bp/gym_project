@@ -1,8 +1,5 @@
 import { ref } from "vue";
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { saveAs } from "file-saver";
+import { get_request } from "@/stores/services/request_http";
 
 // Reactive state for document preview modal
 export const showPreviewModal = ref(false);
@@ -26,67 +23,40 @@ export const openPreviewModal = (document) => {
   showPreviewModal.value = true;
 };
 
-/**
- * Downloads the document as a PDF.
- * @param {Object} doc - The document to download.
- */
-export const downloadPDFDocument = (doc) => {
-  try {
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\s*${variable.name_en}\s*}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
 
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText;
-    const pdf = new jsPDF();
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-    pdf.text(textLines, 10, 10);
-    pdf.save(`${doc.title}.pdf`);
+/**
+ * Utility function to trigger a file download using the API service.
+ * 
+ * This function makes a GET request to retrieve a file as a blob and 
+ * then triggers a download action in the browser.
+ *
+ * @param {string} url - The API endpoint for the file.
+ * @param {string} filename - The filename for the downloaded file.
+ * @throws {Error} Throws an error if the request fails or no data is received.
+ */
+export const downloadFile = async (url, filename) => {
+  try {
+
+    // Make a GET request with responseType: "blob"
+    const response = await get_request(url, "blob");
+
+    if (!response || !response.data) {
+      throw new Error("[ERROR] No response data received.");
+    }
+
+    // Convert the response into a Blob
+    const blob = new Blob([response.data], { type: "application/pdf" });
+
+    // Create a download link
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    console.error("[ERROR] Error downloading file:", error);
   }
 };
 
-/**
- * Downloads the document as a Word file.
- * @param {Object} doc - The document to download.
- */
-export const downloadWordDocument = (doc) => {
-  try {
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{${variable.name_en}}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
-
-    const parser = new DOMParser();
-    const parsedHtml = parser.parseFromString(processedContent, "text/html");
-    const textContent = parsedHtml.body.innerText;
-
-    const docxDocument = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({ text: textContent, font: "Arial", size: 24 }),
-              ],
-            }),
-          ],
-        },
-      ],
-    });
-
-    Packer.toBlob(docxDocument).then((blob) => {
-      saveAs(blob, `${doc.title}.docx`);
-    });
-  } catch (error) {
-    console.error("Error generating Word document:", error);
-  }
-};

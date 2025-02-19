@@ -548,10 +548,8 @@ watch(
   () => {
     // Comparamos formData con originalFormData
     if (!deepEqual(formData, originalFormData)) {
-      console.log("Detected changes in formData");
       isFormModified.value = true;
     } else {
-      console.log("No changes detected in formData");
       isFormModified.value = false;
     }
   },

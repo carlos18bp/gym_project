@@ -71,8 +71,6 @@ import {
   showPreviewModal,
   previewDocumentData,
   openPreviewModal,
-  downloadPDFDocument,
-  downloadWordDocument,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
@@ -119,7 +117,7 @@ const documentEditingOptions = [
   { label: "Editar", action: "edit" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
-  { label: "Descargar Word", action: "downloadWord" },
+  //{ label: "Descargar Word", action: "downloadWord" },
 ];
 
 /**
@@ -168,5 +166,21 @@ const openEditModal = (document) => {
 const getClientName = (clientId) => {
   const client = userStore.userById(clientId);
   return client ? `${client.first_name} ${client.last_name}` : "Desconocido";
+};
+
+/**
+ * Download the document as PDF.
+ * @param {Object} doc - The document to download.
+ */
+ const downloadPDFDocument = (doc) => {
+  documentStore.downloadPDF(doc.id, doc.title);
+};
+
+/**
+ * Download the document as Word.
+ * @param {Object} doc - The document to download.
+ */
+const downloadWordDocument = (doc) => {
+  documentStore.downloadWord(doc.id, doc.title);
 };
 </script>

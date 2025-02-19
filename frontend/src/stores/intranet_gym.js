@@ -26,7 +26,7 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
      */
     async fetchLegalLinks() {
       try {
-        const response = await get_request(`/legal_intranet_links/`);
+        const response = await get_request(`legal_intranet_links/`);
         this.legalLinks = response.data;
         this.dataLoaded = true;
       } catch (error) {
@@ -67,7 +67,6 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
         );
 
         if (response.status === 201) {
-          console.log("Report request created successfully!");
           this.dataLoaded = false; // Reset dataLoaded to force refresh if necessary
           return response.status; // Return success status code
         } else {

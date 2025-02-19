@@ -20,9 +20,10 @@ function getCookie(name) {
  * @param {string} method - Type request.
  * @param {string} url - Endpoint
  * @param {object} params - Params.
+ * @param {object} config - Additional Axios config.
  * @returns {object} - Data and status from endpoint.
  */
-async function makeRequest(method, url, params = {}) {
+async function makeRequest(method, url, params = {}, config = {}) {
   const csrfToken = getCookie("csrftoken");
   const headers = {
     "X-CSRFToken": csrfToken,
@@ -33,16 +34,16 @@ async function makeRequest(method, url, params = {}) {
 
     switch (method) {
       case "GET":
-        response = await axios.get(`/api/${url}`, { headers });
+        response = await axios.get(`/api/${url}`, { headers, ...config });
         break;
       case "POST":
-        response = await axios.post(`/api/${url}`, params, { headers });
+        response = await axios.post(`/api/${url}`, params, { headers, ...config });
         break;
       case "PUT":
-        response = await axios.put(`/api/${url}`, params, { headers });
+        response = await axios.put(`/api/${url}`, params, { headers, ...config });
         break;
       case "DELETE":
-        response = await axios.delete(`/api/${url}`, { headers });
+        response = await axios.delete(`/api/${url}`, { headers, ...config });
         break;
       default:
         throw new Error(`Unsupported method: ${method}`);
@@ -62,12 +63,13 @@ async function makeRequest(method, url, params = {}) {
 }
 
 /**
- * Get request.
+ * Get request with optional responseType.
  * @param {string} url - Endpoint.
+ * @param {string} responseType - Axios response type (default: json).
  * @returns {object} - Data and status from endpoint.
  */
-export async function get_request(url) {
-  return await makeRequest("GET", url);
+export async function get_request(url, responseType = "json") {
+  return await makeRequest("GET", url, {}, { responseType });
 }
 
 /**
