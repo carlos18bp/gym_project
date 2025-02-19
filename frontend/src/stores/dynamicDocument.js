@@ -5,6 +5,7 @@ import {
   update_request,
   delete_request,
 } from "./services/request_http";
+import { downloadFile } from "@/shared/document_utils";
 
 export const useDynamicDocumentStore = defineStore("dynamicDocument", {
   state: () => ({
@@ -136,7 +137,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         const response = await get_request("dynamic-documents/");
         this.documents = response.data;
         this.dataLoaded = true;
-        console.log("Documents fetched successfully:", this.documents);
       } catch (error) {
         console.error("Error fetching documents:", error);
       }
@@ -154,7 +154,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         );
         this.documents.push(response.data);
         this.selectedDocument = response.data;
-        console.log("Document created successfully:", response.data);
 
         this.dataLoaded = false;
         await this.fetchDocuments();
@@ -174,7 +173,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
           `dynamic-documents/${documentId}/update/`,
           documentData
         );
-        console.log("Document updated successfully:", response.data);
 
         this.dataLoaded = false;
         await this.fetchDocuments();
@@ -190,7 +188,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     async deleteDocument(documentId) {
       try {
         await delete_request(`dynamic-documents/${documentId}/delete/`);
-        console.log(`Document with ID ${documentId} deleted successfully.`);
 
         this.dataLoaded = false;
         await this.fetchDocuments();
@@ -200,11 +197,28 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     },
 
     /**
+     * Request the backend to generate and download a PDF version of the document.
+     * @param {number} documentId - The ID of the document.
+     * @param {string} documentTitle - The title of the document for naming the file.
+     */
+    async downloadPDF(documentId, documentTitle) {
+      await downloadFile(`dynamic-documents/${documentId}/download-pdf/`, `${documentTitle}.pdf`);
+    },
+
+    /**
+     * Request the backend to generate and download a Word (.docx) version of the document.
+     * @param {number} documentId - The ID of the document.
+     * @param {string} documentTitle - The title of the document for naming the file.
+     */
+    async downloadWord(documentId, documentTitle) {
+      await downloadFile(`dynamic-documents/${documentId}/download-word/`, `${documentTitle}.docx`);
+    },
+
+    /**
      * Clear the currently selected document from the state.
      */
     clearSelectedDocument() {
       this.selectedDocument = null;
-      console.log("Selected document cleared.");
     },
   },
 });

@@ -34,7 +34,7 @@ const initializeApp = () => {
       updateSW(true);
     },
     onOfflineReady() {
-      console.log('Aplicación lista para usarse sin conexión');
+      console.log('Application ready for offline use');
     },
   });
 };

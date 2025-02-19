@@ -42,7 +42,9 @@ dynamic_document_urls = [
     path('dynamic-documents/create/', dynamic_document.create_dynamic_document, name='create_dynamic_document'),
     path('dynamic-documents/<int:pk>/update/', dynamic_document.update_dynamic_document, name='update_dynamic_document'),
     path('dynamic-documents/<int:pk>/delete/', dynamic_document.delete_dynamic_document, name='delete_dynamic_document'),
-    path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments')
+    path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments'),
+    path('dynamic-documents/<int:pk>/download-pdf/', dynamic_document.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
+    path('dynamic-documents/<int:pk>/download-word/', dynamic_document.download_dynamic_document_word, name='download_dynamic_document_word'),
 ]
 
 urlpatterns = (

@@ -2,7 +2,7 @@
 
 ## Overview
 
-G&M Internal Management Tool is a custom-built application designed for managing legal processes within the company. This tool helps streamline the interactions between **lawyers** and **clients**, allowing both roles to manage and track the progression of legal cases, files, and other related tasks in a more efficient and structured manner. 
+G&M Internal Management Tool is a custom-built application designed for managing legal processes within the company. This tool helps streamline the interactions between **lawyers** and **clients**, allowing both roles to manage and track the progression of legal cases, files, and other related tasks in a more efficient and structured manner.
 
 The application is built with a **role-based system** where users are either clients or lawyers. Clients can view and track the progress of their cases, while lawyers can manage the legal processes, update case statuses, and upload case files.
 
@@ -56,78 +56,86 @@ The application is built with a **role-based system** where users are either cli
    - **Description**: A brief description of the contents of the file.
    - **Date Uploaded**: When the file was uploaded.
 
-
 ## How to Run the Project
 
-## Clone the repository:
+### Install required dependencies:
+```bash
+sudo apt install python3-pip
+sudo apt install python3-virtualenv
+sudo apt install npm
+sudo apt install silversearcher-ag
+sudo apt install libpangocairo-1.0-0 libpangoft2-1.0-0 libffi-dev libcairo2
+```
+
+### Clone the repository:
 ```bash
 git clone git@github.com:carlos18bp/gym_project.git
 cd gym_project
 ```
 
-## Install virtualenv:
+### Install virtualenv:
 ```bash
 pip install virtualenv
 ```
 
-## Create virtual env:
+### Create virtual env:
 ```bash
 virtualenv gym_project_env
 ```
 
-## Activate virtual env:
+### Activate virtual env:
 ```bash
 source gym_project_env/bin/activate
 ```
 
-## Install dependencies:
+### Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Desactivate virtual env:
+### Deactivate virtual env:
 ```bash
 deactivate
 ```
 
-## Run makemigrations:
+### Run makemigrations:
 ```bash
 python3 manage.py makemigrations
 ```
 
-## Run migrations:
+### Run migrations:
 ```bash
 python3 manage.py migrate
 ```
 
-## Create superuser:
+### Create superuser:
 ```bash
 python3 manage.py createsuperuser
 ```
 
-## Create fake data:
+### Create fake data:
 ```bash
 python3 manage.py create_fake_data
 ```
 
-## Start the server:
+### Start the server:
 ```bash
 python3 manage.py runserver
 ```
 
-## Delete fake data:
+### Delete fake data:
 ```bash
 python3 manage.py delete_fake_data
 ```
 
-## Frontend setup:
+### Frontend setup:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## Run test:
+### Run test:
 ```bash
 cd frontend
 npm install

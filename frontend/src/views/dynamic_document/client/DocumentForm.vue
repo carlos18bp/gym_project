@@ -63,7 +63,7 @@
           class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
           @click="saveDocument('Progress')"
         >
-          {{ isEditMode ? "Guardar Cambios" : "Guardar" }}
+          {{ isEditMode ? "Guardar Cambios como borrador" : "Guardar" }}
         </button>
         <button
           type="button"

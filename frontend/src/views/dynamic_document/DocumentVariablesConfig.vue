@@ -76,7 +76,7 @@
           @click="saveDocument('Draft')"
           class="p-2.5 text-sm font-medium rounded-md bg-secondary text-white"
         >
-          Guardar
+          Guardar como borrador
         </button>
         <button
           @click="saveDocument('Published')"
