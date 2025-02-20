@@ -124,9 +124,6 @@ import { showNotification } from "@/shared/notification_message.js";
 import { useSendEmail } from "@/composables/useSendEmail";
 import { get_request } from "@/stores/services/request_http";
 
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
-
 // Define Emits
 const emit = defineEmits(["closeEmailModal"]);
 
