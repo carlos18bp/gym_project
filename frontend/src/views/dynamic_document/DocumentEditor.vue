@@ -122,7 +122,7 @@ const editorConfig = {
   language: "es", // Set editor language to Spanish
   plugins: "lists",
   menubar: "",
-  toolbar: "save continue return | undo redo| formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontfamily fontsize lineheight | forecolor backcolor | removeformat | hr",
+  toolbar: "save continue return | undo redo| formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontfamily fontsize lineheight | forecolor | removeformat | hr",
   setup: (editor) => {
     editor.ui.registry.addButton("save", {
       text: "Guardar como borrador",

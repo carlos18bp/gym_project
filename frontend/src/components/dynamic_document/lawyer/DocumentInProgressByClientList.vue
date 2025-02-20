@@ -117,7 +117,7 @@ const documentEditingOptions = [
   { label: "Editar", action: "edit" },
   { label: "Previsualización", action: "preview" },
   { label: "Descargar PDF", action: "downloadPDF" },
-  //{ label: "Descargar Word", action: "downloadWord" },
+  { label: "Descargar Word", action: "downloadWord" },
 ];
 
 /**

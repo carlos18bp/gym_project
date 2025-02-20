@@ -63,7 +63,7 @@
           class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
           @click="saveDocument('Progress')"
         >
-          {{ isEditMode ? "Guardar Cambios como borrador" : "Guardar" }}
+          {{ isEditMode ? "Guardar cambios como Borrador" : "Guardar progreso" }}
         </button>
         <button
           type="button"
@@ -76,7 +76,7 @@
           :disabled="!allFieldsComplete"
           @click="saveDocument('Completed')"
         >
-          {{ isEditMode ? "Completar" : "Generar" }}
+          {{ isEditMode ? "Completar y Generar" : "Generar" }}
         </button>
         <button
           @click="handleBack()"

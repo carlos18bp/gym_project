@@ -19,7 +19,7 @@
           <!-- Display name in Spanish input -->
           <div class="col-span-4">
             <label
-              for="name_es"
+              :for="'name_es_' + index"
               class="block text-sm font-medium leading-6 text-primary"
             >
               Nombre en pantalla <span class="text-red-500">*</span>
@@ -27,10 +27,13 @@
             <input
               type="text"
               v-model="variable.name_es"
-              id="name_es"
+              :id="'name_es_' + index"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
               required
             />
+            <p v-if="validationErrors[index]" class="text-red-500 text-sm mt-1">
+              {{ validationErrors[index] }}
+            </p>
           </div>
 
           <!-- Display tooltip input -->
@@ -39,14 +42,14 @@
               for="tooltip"
               class="block text-sm font-medium leading-6 text-primary"
             >
-              Tooltip <span class="text-red-500">*</span>
+              Tooltip
             </label>
             <input
               type="text"
               v-model="variable.tooltip"
               id="tooltip"
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
-              required
+              placeholder="Opcional"
             />
           </div>
 
@@ -73,13 +76,13 @@
       <!-- Action Buttons -->
       <div class="mt-6 flex space-x-4">
         <button
-          @click="saveDocument('Draft')"
+          @click="validateAndSave('Draft')"
           class="p-2.5 text-sm font-medium rounded-md bg-secondary text-white"
         >
           Guardar como borrador
         </button>
         <button
-          @click="saveDocument('Published')"
+          @click="validateAndSave('Published')"
           class="p-2.5 text-sm font-medium rounded-md bg-gray-200 text-secondary border-2"
         >
           Publicar
@@ -97,14 +100,16 @@
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { showNotification } from "@/shared/notification_message";
+import Swal from "sweetalert2";
 
 // Access route parameters and document store
 const router = useRouter();
 const store = useDynamicDocumentStore();
+const validationErrors = ref([]);
 
 // Initialize form data on mount
 onMounted(() => {
@@ -112,6 +117,42 @@ onMounted(() => {
     console.error("No selected document found");
   }
 });
+
+/**
+ * Validate form fields before saving.
+ * @returns {boolean} - Returns true if all validations pass, false otherwise.
+ */
+const validateForm = () => {
+  validationErrors.value = [];
+
+  let isValid = true;
+  store.selectedDocument?.variables.forEach((variable, index) => {
+    if (!variable.name_es || variable.name_es.trim() === "") {
+      validationErrors.value[index] = "Este campo es obligatorio.";
+      isValid = false;
+    }
+  });
+
+  if (!isValid) {
+    Swal.fire({
+      title: "Campos incompletos",
+      text: "Por favor, completa todos los campos obligatorios.",
+      icon: "warning",
+    });
+  }
+
+  return isValid;
+};
+
+/**
+ * Validate and save the document.
+ * @param {string} state - The state of the document ('Draft' or 'Published').
+ */
+const validateAndSave = (state) => {
+  if (validateForm()) {
+    saveDocument(state);
+  }
+};
 
 /**
  * Save or publish the document.
@@ -126,7 +167,7 @@ const saveDocument = async (state) => {
       variables: store.selectedDocument.variables.map((variable) => ({
         name_en: variable.name_en,
         name_es: variable.name_es,
-        tooltip: variable.tooltip,
+        tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
       })),
