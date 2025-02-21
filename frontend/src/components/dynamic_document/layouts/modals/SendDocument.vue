@@ -122,8 +122,7 @@ import {
 import { ref, reactive, computed, watch } from "vue";
 import { showNotification } from "@/shared/notification_message.js";
 import { useSendEmail } from "@/composables/useSendEmail";
-import { jsPDF } from "jspdf";
-import { parse } from "node-html-parser";
+import { get_request } from "@/stores/services/request_http";
 
 // Define Emits
 const emit = defineEmits(["closeEmailModal"]);
@@ -265,41 +264,23 @@ const isEmailValid = computed(() => isValidEmail(formData.email));
 const isSaveButtonEnabled = computed(() => isEmailValid.value);
 
 /**
- * Generates a PDF from the document and stores it as an attachment.
- * @param {Object} doc - The document to convert to PDF.
+ * Downloads the PDF document from the backend using Axios.
+ * @param {number} documentId - The ID of the document.
+ * @returns {Promise<File|null>} The downloaded PDF file or null if failed.
  */
-const generatePDFDocument = (doc) => {
+const generatePDFDocument = async (documentId) => {
   try {
-    // Replace variables in the document content
-    let processedContent = doc.content;
-    doc.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
-    });
+    const response = await get_request(`dynamic-documents/${documentId}/download-pdf/`, "blob");
 
-    // Parse the HTML content
-    const root = parse(processedContent);
-    const plainTextContent = root.innerText; // Convert HTML to plain text
+    if (!response || !response.data) {
+      throw new Error("Invalid response from server");
+    }
 
-    // Create the PDF
-    const pdf = new jsPDF();
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-
-    // Adjust content width to fit the PDF page
-    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
-    const textLines = pdf.splitTextToSize(plainTextContent, pageWidth);
-
-    // Add text to the PDF
-    pdf.text(textLines, 10, 10);
-
-    // Convert the PDF to a Blob and store it
-    const pdfBlob = pdf.output("blob");
-    pdfAttachment.value = new File([pdfBlob], `${doc.title}.pdf`, {
-      type: "application/pdf",
-    });
+    return new File([response.data], `document_${documentId}.pdf`, { type: "application/pdf" });
   } catch (error) {
-    console.error("Error generating the PDF:", error);
+    console.error("Error downloading PDF:", error);
+    showNotification("No se pudo descargar el documento PDF.", "error");
+    return null;
   }
 };
 
@@ -308,7 +289,7 @@ watch(
   () => props.emailDocument,
   (newDoc) => {
     if (newDoc && Object.keys(newDoc).length > 0 && newDoc.id) {
-      generatePDFDocument(newDoc);
+      generatePDFDocument(newDoc.id);
     }
   },
   { immediate: true }
@@ -317,26 +298,29 @@ watch(
 /**
  * Handles form submission and sends the email.
  */
-const handleSubmit = async () => {
+ const handleSubmit = async () => {
   try {
-    // Add the generated PDF to attachments if it exists
-    if (pdfAttachment.value) {
-      files.value.push({
-        name: pdfAttachment.value.name,
-        file: pdfAttachment.value,
-        icon: DocumentIcon,
-        style: {
-          general: "border-blue-600/20 text-blue-600/60",
-          xMark: "bg-blue-600/60",
-        },
-        hover: false,
-      });
+    // Download the PDF from the backend.
+    if (props.emailDocument.id) {
+      const pdfFile = await generatePDFDocument(props.emailDocument.id);
+      if (pdfFile) {
+        files.value.push({
+          name: pdfFile.name,
+          file: pdfFile,
+          icon: DocumentIcon,
+          style: {
+            general: "border-blue-600/20 text-blue-600/60",
+            xMark: "bg-blue-600/60",
+          },
+          hover: false,
+        });
+      }
     }
 
-    // Extract the actual files from the list
+    // Extract the attached files
     const attachmentFiles = files.value.map((file) => file.file);
 
-    // Call the composable function to send the email
+    // Send the email with the PDF and other attachments
     await sendEmail(
       EMAIL_ENDPOINT,
       formData.email,

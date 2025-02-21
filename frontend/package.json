@@ -22,8 +22,6 @@
     "gsap": "^3.12.7",
     "headlessui": "^0.0.0",
     "heroicons": "^2.1.5",
-    "jspdf": "^2.5.2",
-    "node-html-parser": "^7.0.1",
     "pinia": "^2.1.7",
     "sweetalert2": "^11.14.0",
     "vite-plugin-pwa": "^0.20.5",

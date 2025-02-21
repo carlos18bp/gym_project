@@ -51,7 +51,7 @@
               </MenuItem>
 
               <!-- Preview option -->
-              <MenuItem>
+              <MenuItem v-if="document.state === 'Completed'">
                 <button
                   class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
                   @click="openPreviewModal(document)"
@@ -80,7 +80,6 @@
                     Descargar PDF
                   </button>
                 </MenuItem>
-                <!-- 
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
@@ -89,7 +88,6 @@
                     Descargar Word
                   </button>
                 </MenuItem>
-                -->
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
