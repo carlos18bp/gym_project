@@ -43,7 +43,6 @@
             v-model="variable.value"
             :id="'field-' + index"
             class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
-            :placeholder="variable.tooltip || 'Ingrese un valor'"
           />
 
           <textarea
@@ -51,7 +50,6 @@
             v-model="variable.value"
             :id="'field-' + index"
             class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
-            :placeholder="variable.tooltip || 'Ingrese un texto largo'"
           ></textarea>
         </div>
       </div>
