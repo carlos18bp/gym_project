@@ -146,6 +146,7 @@ def download_dynamic_document_pdf(request, pk):
     except Exception as e:
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_dynamic_document_word(request, pk):
@@ -192,6 +193,8 @@ def download_dynamic_document_word(request, pk):
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
                 elif "text-align: left" in style:
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                elif "text-align: justify" in style:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
 
                 if "padding-left" in style:
                     padding_value = int(style.split("padding-left:")[1].split("px")[0].strip())
@@ -212,20 +215,19 @@ def download_dynamic_document_word(request, pk):
                         run.bold = True
                     if content.name == "em":
                         run.italic = True
-
                     if content.name == "span":
+                        if "text-decoration: underline" in content.get("style", ""):
+                            run.underline = True
                         if "font-size" in content.get("style", ""):
                             try:
                                 font_size = int(content["style"].split("font-size:")[1].split("pt")[0].strip())
                                 run.font.size = Pt(font_size)
                             except ValueError:
                                 pass
-
                         if "color" in content.get("style", ""):
                             color_code = content["style"].split("color:")[1].split(";")[0].strip()
                             color_code = color_code.replace("rgb(", "").replace(")", "").split(",")
                             run.font.color.rgb = RGBColor(int(color_code[0]), int(color_code[1]), int(color_code[2]))
-
                         if "font-family" in content.get("style", ""):
                             font_family = content["style"].split("font-family:")[1].split(";")[0].strip().lower()
                             if font_family in SUPPORTED_FONTS:
