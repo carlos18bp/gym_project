@@ -34,7 +34,7 @@ export const openPreviewModal = (document) => {
  * @param {string} filename - The filename for the downloaded file.
  * @throws {Error} Throws an error if the request fails or no data is received.
  */
-export const downloadFile = async (url, filename) => {
+export const downloadFile = async (url, filename, mimeType = "application/pdf") => {
   try {
 
     // Make a GET request with responseType: "blob"
@@ -45,7 +45,7 @@ export const downloadFile = async (url, filename) => {
     }
 
     // Convert the response into a Blob
-    const blob = new Blob([response.data], { type: "application/pdf" });
+    const blob = new Blob([response.data], { type: mimeType });
 
     // Create a download link
     const link = document.createElement("a");

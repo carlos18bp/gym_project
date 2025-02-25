@@ -202,7 +202,10 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      * @param {string} documentTitle - The title of the document for naming the file.
      */
     async downloadPDF(documentId, documentTitle) {
-      await downloadFile(`dynamic-documents/${documentId}/download-pdf/`, `${documentTitle}.pdf`);
+      await downloadFile(
+        `dynamic-documents/${documentId}/download-pdf/`,
+        `${documentTitle}.pdf`
+      );
     },
 
     /**
@@ -211,7 +214,11 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      * @param {string} documentTitle - The title of the document for naming the file.
      */
     async downloadWord(documentId, documentTitle) {
-      await downloadFile(`dynamic-documents/${documentId}/download-word/`, `${documentTitle}.docx`);
+      await downloadFile(
+        `dynamic-documents/${documentId}/download-word/`,
+        `${documentTitle}.docx`,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
     },
 
     /**
