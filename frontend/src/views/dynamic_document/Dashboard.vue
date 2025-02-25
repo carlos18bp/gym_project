@@ -1,9 +1,11 @@
 <template>
   <!-- Search bar and filter -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event" />
+  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
+    <slot></slot>
+  </SearchBarAndFilterBy>
 
   <!-- Main content -->
-  <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
+  <div class="p-10 px-4 sm:px-6 lg:px-8">
     <DocumentsNavigation
       @openNewDocument="showCreateDocumentModal = true"
       @updateCurrentSection="handleSection"
@@ -28,10 +30,9 @@
       <!-- No documents message -->
       <div
         v-if="currentSection === 'default' && filteredDocuments.length === 0"
-        class="mt-6 text-center text-gray-500"
+        class="mt-6 text-center text-gray-400 font-regular"
       >
-        <p>No documents available to display.</p>
-        <p>Use the "New" button to create a document.</p>
+        <p>No hay documentos disponibles para mostrar.</p>
       </div>
     </div>
 
