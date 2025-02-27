@@ -115,33 +115,176 @@ const handleContinue = async () => {
   }
 };
 
+// Global reference for the editor (ensure it is available throughout the scope)
+let tinyMCEEditor = null;
+let isProcessingContent = false;
+
+/**
+ * Ensures that the Carlito font is applied to the given content without removing other styles.
+ * 
+ * @param {string} content - The HTML content to process.
+ * @returns {string} - The modified content with Carlito font enforced.
+ */
+function enforceCarlito(content) {
+  if (!content || typeof content !== 'string') return content;
+  
+  try {
+    return content.replace(
+      /(font-family\s*:\s*)([^;!]*)([;!])/gi,
+      "font-family: 'Carlito', sans-serif$3"
+    ).replace(
+      /<([a-z][a-z0-9]*)\b([^>]*)(?!\bstyle=)([^>]*)>/gi,
+      function(match, tag, attrs, closeTag) {
+        if (!/style=/i.test(attrs)) {
+          return `<${tag}${attrs} style="font-family: 'Carlito', sans-serif;"${closeTag}>`;
+        }
+        return match;
+      }
+    );
+  } catch (error) {
+    console.error("[ERROR] Failed to apply Carlito font:", error);
+    return content;
+  }
+}
+
 /**
  * Configuration object for the TinyMCE editor.
  */
 const editorConfig = {
-  language: "es", // Set editor language to Spanish
-  plugins: "lists",
+  language: "es",
+  plugins: "lists link image table code wordcount autolink searchreplace textpattern", 
   menubar: "",
-  toolbar: "save continue return | undo redo| formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
-  setup: (editor) => {
+  toolbar:
+    "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+  height: "100vh",
+  width: "100%",
+
+  content_style: `
+    @import url('https://fonts.googleapis.com/css2?family=Carlito&display=swap');
+    body, p, span, div, strong, em, u, i, b {
+      font-family: 'Carlito', sans-serif !important;
+    }
+  `,
+
+  font_formats: "Carlito=Carlito, sans-serif;",
+  
+  paste_webkit_styles: "all",
+  paste_remove_styles_if_webkit: false,
+  paste_merge_formats: true,
+  paste_as_text: false,
+  
+  keep_styles: true,
+  
+  forced_root_block: 'p',
+  forced_root_block_attrs: { 
+    style: "font-family: 'Carlito', sans-serif;" 
+  },
+
+  /**
+   * Sets up the TinyMCE editor with custom configurations and event listeners.
+   * 
+   * @param {object} editor - The TinyMCE editor instance.
+   */
+  setup: (editor) => {    
+    tinyMCEEditor = editor;
+
     editor.ui.registry.addButton("save", {
       text: "Guardar como borrador",
       icon: "save",
-      onAction: saveDocumentDraft,
+      onAction: () => {
+        saveDocumentDraft();
+      },
     });
+
     editor.ui.registry.addButton("continue", {
       text: "Continuar",
       icon: "chevron-right",
-      onAction: handleContinue,
+      onAction: () => {
+        handleContinue();
+      },
     });
+
     editor.ui.registry.addButton("return", {
       text: "Regresar",
       icon: "chevron-left",
-      onAction: handleBack,
+      onAction: () => {
+        handleBack();
+      },
+    });
+
+    editor.on("init", () => {      
+      try {        
+        setTimeout(() => {
+          try {
+            const currentContent = editor.getContent();
+            const updatedContent = enforceCarlito(currentContent);
+            if (currentContent !== updatedContent) {
+              isProcessingContent = true;
+              editor.setContent(updatedContent);
+              isProcessingContent = false;
+            }
+          } catch (error) {
+            console.error("[ERROR] Failed to initialize content:", error);
+          }
+        }, 100);
+      } catch (error) {
+        console.error("[ERROR] Initialization failed:", error);
+      }
+    });
+
+    editor.on("BeforeSetContent", (e) => {
+      if (e.content) {
+        e.content = e.content.replace(
+          /<([a-z][a-z0-9]*)\b([^>]*)(style=["'])([^"']*)["']([^>]*)>/gi,
+          function(match, tag, beforeStyle, styleAttr, styleValue, afterStyle) {
+            if (!styleValue.includes('font-family')) {
+              return `<${tag}${beforeStyle}${styleAttr}font-family: 'Carlito', sans-serif; ${styleValue}"${afterStyle}>`;
+            }
+            return match.replace(
+              /(font-family\s*:\s*)([^;"]*)([;"])/gi,
+              "font-family: 'Carlito', sans-serif$3"
+            );
+          }
+        );
+      }
+    });
+
+    editor.on("SetContent", (e) => {
+      if (isProcessingContent) return;
+      
+      try {
+        if (e.source_view || e.paste || e.setup) {
+          isProcessingContent = true;
+          
+          setTimeout(() => {
+            try {
+              const currentContent = editor.getContent();
+              const updatedContent = enforceCarlito(currentContent);
+              
+              if (currentContent !== updatedContent) {
+                editor.setContent(updatedContent, { format: "raw", no_events: true });
+              }
+            } catch (innerError) {
+              console.error("[ERROR] Failed to process SetContent:", innerError);
+            } finally {
+              isProcessingContent = false;
+            }
+          }, 50);
+        }
+      } catch (error) {
+        console.error("[ERROR] SetContent event error:", error);
+        isProcessingContent = false;
+      }
+    });
+
+    let lastInputTime = 0;
+    editor.on("input", () => {
+      const now = Date.now();
+      if (now - lastInputTime > 1000) {
+        lastInputTime = now;
+      }
     });
   },
-  height: "100vh", // Set editor height to full viewport height
-  width: "100%", // Set editor width to full container width
 };
 
 /**

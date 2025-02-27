@@ -1,16 +1,20 @@
 import io
 import re
+import os
+from django.conf import settings
 from django.http import FileResponse
-from bs4 import BeautifulSoup, NavigableString
-from docx import Document
-from xhtml2pdf import pisa
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from django.template.loader import get_template
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from bs4 import BeautifulSoup, NavigableString
+from xhtml2pdf import pisa
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from gym_app.models.dynamic_document import DynamicDocument
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
 
@@ -98,42 +102,131 @@ def delete_dynamic_document(request, pk):
 @permission_classes([IsAuthenticated])
 def download_dynamic_document_pdf(request, pk):
     """
-    Generates and returns a PDF file for the given document using ReportLab.
+    Generates and returns a PDF file for a given document using ReportLab and xhtml2pdf.
+
+    This function retrieves a document from the database, replaces dynamic variables within 
+    its content, applies a predefined font style, and converts the content into a properly 
+    formatted PDF file. The generated PDF is then returned as a downloadable response.
+
+    Parameters:
+        request (HttpRequest): The request object.
+        pk (int): The primary key of the document to be retrieved.
+
+    Returns:
+        FileResponse: A downloadable PDF file response.
+        Response: A JSON response with an error message if an exception occurs.
+
+    Raises:
+        FileNotFoundError: If any of the required font files are missing.
+        Exception: If there is an error during the HTML-to-PDF conversion or any other 
+                   unexpected issue.
     """
     try:
+        # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
 
-        # Replace variables in the content
+        # Replace variables within the content
         processed_content = document.content
         for variable in document.variables.all():
             processed_content = processed_content.replace(f"{{{{{variable.name_en}}}}}", variable.value or "")
 
-        # Convert HTML to XHTML for proper parsing
+        # Convert HTML to XHTML using BeautifulSoup
         soup = BeautifulSoup(processed_content, 'html.parser')
-        
-        # Generate PDF using ReportLab and xhtml2pdf
+
+        # Create the PDF buffer
         pdf_buffer = io.BytesIO()
-        
-        # Define the CSS styles
-        styles = """
+
+        # Define font file paths
+        font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
+        font_paths = {
+            "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
+            "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
+            "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
+            "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
+        }
+
+        # Verify that all font files exist
+        for name, path in font_paths.items():
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"Font file not found: {path}")
+
+        # Register fonts in ReportLab
+        try:
+            pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
+            pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
+            pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
+            pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
+        except Exception as e:
+            print(f"Error registering fonts: {e}")
+            raise
+
+        # Define CSS styles for PDF
+        styles = f"""
         <style>
-        @page {
+        @page {{
             margin: 2cm;
-        }
-        body {
-            font-family: Helvetica, Arial, sans-serif;
+        }}
+
+        @font-face {{
+            font-family: 'Carlito';
+            src: url('{font_paths["Carlito-Regular"]}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'Carlito';
+            src: url('{font_paths["Carlito-Bold"]}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }}
+
+        @font-face {{
+            font-family: 'Carlito';
+            src: url('{font_paths["Carlito-Italic"]}') format('truetype');
+            font-weight: normal;
+            font-style: italic;
+        }}
+
+        @font-face {{
+            font-family: 'Carlito';
+            src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
+            font-weight: bold;
+            font-style: italic;
+        }}
+
+        body {{
+            font-family: 'Carlito', sans-serif !important;
             font-size: 12pt;
-        }
-        p {
-            margin-bottom: 10px;
-        }
-        em {
+        }}
+
+        p, span {{
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        strong {{
+            font-weight: bold !important;
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        em {{
             font-style: italic !important;
-        }
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        strong em {{
+            font-weight: bold !important;
+            font-style: italic !important;
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        u {{
+            text-decoration: underline !important;
+        }}
         </style>
         """
-        
-        # Create the HTML with proper styling
+
+        # Construct the final HTML for the PDF
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -147,38 +240,66 @@ def download_dynamic_document_pdf(request, pk):
         </body>
         </html>
         """
-        
-        # Convert HTML to PDF
-        pisa.CreatePDF(html_content, dest=pdf_buffer)
+
+        # Generate the PDF with xhtml2pdf
+        pisa_status = pisa.CreatePDF(
+            html_content.encode('utf-8'),
+            dest=pdf_buffer
+        )
+
+        # Check for errors in PDF generation
+        if pisa_status.err:
+            raise Exception("HTML to PDF conversion failed")
+
+        # Return the generated PDF as a response
         pdf_buffer.seek(0)
 
         return FileResponse(
-            pdf_buffer, 
-            as_attachment=True, 
-            filename=f"{document.title}.pdf", 
+            pdf_buffer,
+            as_attachment=True,
+            filename=f"{document.title}.pdf",
             content_type='application/pdf'
         )
-    except DynamicDocument.DoesNotExist:
-        return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 
+    except DynamicDocument.DoesNotExist:
+        print("Error: Document not found in the database")
+        return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_dynamic_document_word(request, pk):
     """
     Generates and returns a Word (.docx) file for the given document using python-docx.
+    The document content is retrieved from the database, and its variables are dynamically replaced.
+    The content is then parsed from HTML using BeautifulSoup and converted into a Word document,
+    applying appropriate formatting, including headings, paragraphs, and styles.
+    
+    Parameters:
+        request (HttpRequest): The HTTP request object.
+        pk (int): The primary key of the document to be retrieved.
+    
+    Returns:
+        FileResponse: A response containing the generated Word document.
     """
     try:
+
+        # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
 
         # Replace variables dynamically
         def replace_variables(text):
+            processed_text = text
             for variable in document.variables.all():
                 pattern = re.compile(rf"{{{{{variable.name_en}}}}}")
-                text = pattern.sub(variable.value or "", text)
-            return text
+                processed_text = pattern.sub(variable.value or "", processed_text)
+            return processed_text
 
         processed_content = replace_variables(document.content)
         
@@ -192,12 +313,26 @@ def download_dynamic_document_word(request, pk):
         # Create Word document
         doc = Document()
         
-        print("Starting document processing...")
+        # Configure default font for the document to Calibri
+        font_name = 'Calibri'
+        
+        # Set default font for the document
+        style = doc.styles['Normal']
+        style.font.name = font_name
+        
+        # Configure other default styles to use Calibri
+        for style_name in ['Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6']:
+            if style_name in doc.styles:
+                doc.styles[style_name].font.name = font_name
 
         for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
-                doc.add_heading(tag.get_text().strip(), level=level)
+                heading = doc.add_heading(tag.get_text().strip(), level=level)
+                
+                # Ensure heading uses Calibri
+                for run in heading.runs:
+                    run.font.name = font_name
 
             elif tag.name == "p":
                 if tag.get_text().strip() == "":
@@ -238,6 +373,8 @@ def download_dynamic_document_word(request, pk):
                         element_name = element.name if hasattr(element, 'name') else None
                         element_style = element.get("style", "") if hasattr(element, 'get') else ""
                         
+                        # Always apply Calibri font
+                        run.font.name = font_name
                         
                         # Apply styles based on element type
                         if element_name == "strong" or element_name == "b":
@@ -269,20 +406,66 @@ def download_dynamic_document_word(request, pk):
                                 except (ValueError, IndexError) as e:
                                     print(f"    Error parsing font-size: {str(e)}")
                                     
-                            if "color" in element_style:
+                            if "color:" in element_style or "color :" in element_style:
+                                COLOR_MAP = {
+                                    "red": (255, 0, 0),
+                                    "green": (0, 128, 0),
+                                    "blue": (0, 0, 255),
+                                    "black": (0, 0, 0),
+                                    "white": (255, 255, 255),
+                                    "yellow": (255, 255, 0),
+                                    "purple": (128, 0, 128),
+                                    "orange": (255, 165, 0),
+                                    "gray": (128, 128, 128),
+                                    "pink": (255, 192, 203),
+                                    "brown": (165, 42, 42),
+                                    "cyan": (0, 255, 255),
+                                    "magenta": (255, 0, 255),
+                                    "lime": (0, 255, 0),
+                                    "navy": (0, 0, 128),
+                                    "teal": (0, 128, 128),
+                                    "olive": (128, 128, 0),
+                                    "maroon": (128, 0, 0),
+                                    "silver": (192, 192, 192),
+                                    "gold": (255, 215, 0)
+                                }
+
                                 try:
-                                    color_part = element_style.split("color:")[1].split(";")[0].strip()
+                                    normalized_style = element_style.replace(" :", ":")
+                                    
+                                    # Search color
+                                    if "color:" in normalized_style:
+                                        color_part = normalized_style.split("color:")[1].split(";")[0].strip()
+                                    else:
+                                        return  # No se encontró color
+                                    
+                                    # Handler RGB colors
                                     if color_part.startswith("rgb("):
                                         color_values = color_part.replace("rgb(", "").replace(")", "").split(",")
                                         r = int(color_values[0].strip())
                                         g = int(color_values[1].strip())
                                         b = int(color_values[2].strip())
                                         run.font.color.rgb = RGBColor(r, g, b)
+                                    
+                                    # Handler color with name (red, blue, etc.)
+                                    elif color_part in COLOR_MAP:
+                                        r, g, b = COLOR_MAP[color_part]
+                                        run.font.color.rgb = RGBColor(r, g, b)
+                                    
+                                    # Handler hexadecimales colors (#FF0000, etc.)
+                                    elif color_part.startswith("#"):
+                                        hex_color = color_part.lstrip("#")
+                                        r = int(hex_color[0:2], 16)
+                                        g = int(hex_color[2:4], 16)
+                                        b = int(hex_color[4:6], 16)
+                                        run.font.color.rgb = RGBColor(r, g, b)
+                                        
                                 except (ValueError, IndexError) as e:
-                                    print(f"    Error applying color: {str(e)}")
+                                    print(f"Error applying color: {str(e)}")
                         
                         return run
                     except Exception as e:
+                        print(f"    Error applying styles to run: {str(e)}")
                         return run
 
                 # Improved recursive function to flatten the HTML structure
@@ -313,6 +496,10 @@ def download_dynamic_document_word(request, pk):
                         for style_element in current_styles:
                             run = apply_styles_to_run(run, style_element)
                             
+                        # Ensure Calibri is applied even if no styles were applied
+                        if not current_styles:
+                            run.font.name = font_name
+                            
                         return
                     
                     # If it's a tag element, add it to current styles and process children
@@ -329,15 +516,22 @@ def download_dynamic_document_word(request, pk):
                     process_element_flat(child)
 
             elif tag.name == "hr":
-                doc.add_paragraph("_" * 100)
-
-        print("Document processing completed")
+                hr_paragraph = doc.add_paragraph("_" * 71)
+                # Ensure Calibri is applied to the horizontal rule
+                for run in hr_paragraph.runs:
+                    run.font.name = font_name
         
+        # Save the document to a buffer
         docx_buffer = io.BytesIO()
         doc.save(docx_buffer)
         docx_buffer.seek(0)
 
-        return FileResponse(docx_buffer, as_attachment=True, filename=f"{document.title}.docx", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        return FileResponse(
+            docx_buffer, 
+            as_attachment=True, 
+            filename=f"{document.title}.docx", 
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
     except DynamicDocument.DoesNotExist:
         print("Error: Document not found")
         return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
