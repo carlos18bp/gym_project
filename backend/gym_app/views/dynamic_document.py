@@ -1,11 +1,10 @@
 import io
 import re
 from django.http import FileResponse
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from docx import Document
+from xhtml2pdf import pisa
 from docx.shared import Pt, RGBColor
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from django.template.loader import get_template
 from rest_framework.decorators import api_view, permission_classes
@@ -14,7 +13,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
-from weasyprint import HTML
 
 
 @api_view(['POST'])
@@ -96,32 +94,11 @@ def delete_dynamic_document(request, pk):
     return Response({'detail': 'Dynamic document deleted successfully.'}, status=status.HTTP_200_OK)
 
 
-# Mapping of supported fonts
-SUPPORTED_FONTS = {
-    "andale mono": "Andale Mono",
-    "arial": "Arial",
-    "arial black": "Arial Black",
-    "book antiqua": "Book Antiqua",
-    "comic sans ms": "Comic Sans MS",
-    "courier new": "Courier New",
-    "georgia": "Georgia",
-    "helvetica": "Helvetica",
-    "impact": "Impact",
-    "símbolo": "Symbol",
-    "tahoma": "Tahoma",
-    "terminal": "Terminal",
-    "times new roman": "Times New Roman",
-    "trebuchet ms": "Trebuchet MS",
-    "verdana": "Verdana",
-    "webdings": "Webdings",
-    "wingdings": "Wingdings"
-}
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_dynamic_document_pdf(request, pk):
     """
-    Generates and returns a PDF file for the given document.
+    Generates and returns a PDF file for the given document using ReportLab.
     """
     try:
         document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
@@ -131,21 +108,61 @@ def download_dynamic_document_pdf(request, pk):
         for variable in document.variables.all():
             processed_content = processed_content.replace(f"{{{{{variable.name_en}}}}}", variable.value or "")
 
-        # Render HTML
-        template = get_template("pdf_template.html")
-        html_content = template.render({"content": processed_content})
-
-        # Generate PDF using BytesIO
+        # Convert HTML to XHTML for proper parsing
+        soup = BeautifulSoup(processed_content, 'html.parser')
+        
+        # Generate PDF using ReportLab and xhtml2pdf
         pdf_buffer = io.BytesIO()
-        HTML(string=html_content).write_pdf(pdf_buffer)
+        
+        # Define the CSS styles
+        styles = """
+        <style>
+        @page {
+            margin: 2cm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12pt;
+        }
+        p {
+            margin-bottom: 10px;
+        }
+        em {
+            font-style: italic !important;
+        }
+        </style>
+        """
+        
+        # Create the HTML with proper styling
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>{document.title}</title>
+            {styles}
+        </head>
+        <body>
+            {soup.prettify()}
+        </body>
+        </html>
+        """
+        
+        # Convert HTML to PDF
+        pisa.CreatePDF(html_content, dest=pdf_buffer)
         pdf_buffer.seek(0)
 
-        return FileResponse(pdf_buffer, as_attachment=True, filename=f"{document.title}.pdf", content_type='application/pdf')
+        return FileResponse(
+            pdf_buffer, 
+            as_attachment=True, 
+            filename=f"{document.title}.pdf", 
+            content_type='application/pdf'
+        )
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -174,8 +191,10 @@ def download_dynamic_document_word(request, pk):
 
         # Create Word document
         doc = Document()
+        
+        print("Starting document processing...")
 
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "strong", "em", "span", "hr"]):
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 doc.add_heading(tag.get_text().strip(), level=level)
@@ -185,6 +204,8 @@ def download_dynamic_document_word(request, pk):
                     continue
 
                 paragraph = doc.add_paragraph()
+                
+                # Apply paragraph style attributes
                 style = tag.get("style", "")
 
                 if "text-align: center" in style:
@@ -197,55 +218,129 @@ def download_dynamic_document_word(request, pk):
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
 
                 if "padding-left" in style:
-                    padding_value = int(style.split("padding-left:")[1].split("px")[0].strip())
-                    paragraph.paragraph_format.left_indent = Pt(padding_value)
+                    try:
+                        padding_value = int(style.split("padding-left:")[1].split("px")[0].strip())
+                        paragraph.paragraph_format.left_indent = Pt(padding_value)
+                    except (ValueError, IndexError) as e:
+                        print(f"  Error parsing padding-left: {str(e)}")
 
                 if "line-height" in style:
                     try:
                         line_height = float(style.split("line-height:")[1].split(";")[0].strip())
                         paragraph.paragraph_format.line_spacing = line_height
-                    except ValueError:
-                        pass
+                    except (ValueError, IndexError) as e:
+                        print(f"  Error parsing line-height: {str(e)}")
 
-                for content in tag.contents:
-                    text_content = content.get_text() if hasattr(content, "get_text") else str(content)
-                    run = paragraph.add_run(text_content)
-
-                    if content.name == "strong":
-                        run.bold = True
-                    if content.name == "em":
-                        run.italic = True
-                    if content.name == "span":
-                        if "text-decoration: underline" in content.get("style", ""):
+                # Define a helper function to apply styles to runs
+                def apply_styles_to_run(run, element):
+                    """Apply appropriate styles to a run based on the element and its style attributes"""
+                    try:
+                        element_name = element.name if hasattr(element, 'name') else None
+                        element_style = element.get("style", "") if hasattr(element, 'get') else ""
+                        
+                        
+                        # Apply styles based on element type
+                        if element_name == "strong" or element_name == "b":
+                            run.bold = True
+                        
+                        if element_name == "em" or element_name == "i":
+                            run.italic = True
+                        
+                        if element_name == "s" or "text-decoration: line-through" in element_style:
+                            run.font.strike = True
+                        
+                        if element_name == "u" or "text-decoration: underline" in element_style:
                             run.underline = True
-                        if "font-size" in content.get("style", ""):
-                            try:
-                                font_size = int(content["style"].split("font-size:")[1].split("pt")[0].strip())
-                                run.font.size = Pt(font_size)
-                            except ValueError:
-                                pass
-                        if "color" in content.get("style", ""):
-                            color_code = content["style"].split("color:")[1].split(";")[0].strip()
-                            color_code = color_code.replace("rgb(", "").replace(")", "").split(",")
-                            run.font.color.rgb = RGBColor(int(color_code[0]), int(color_code[1]), int(color_code[2]))
-                        if "font-family" in content.get("style", ""):
-                            font_family = content["style"].split("font-family:")[1].split(";")[0].strip().lower()
-                            if font_family in SUPPORTED_FONTS:
-                                rPr = run._element.find(qn("w:rPr"))
-                                rFonts = OxmlElement("w:rFonts")
-                                rFonts.set(qn("w:ascii"), SUPPORTED_FONTS[font_family])
-                                rFonts.set(qn("w:hAnsi"), SUPPORTED_FONTS[font_family])
-                                rPr.append(rFonts)
+                        
+                        # Apply span-specific styles
+                        if element_name == "span":
+                            if "text-decoration: underline" in element_style:
+                                run.underline = True
+                                
+                            if "text-decoration: line-through" in element_style:
+                                run.font.strike = True
+                                
+                            if "font-size" in element_style:
+                                try:
+                                    font_size_part = element_style.split("font-size:")[1].split(";")[0].strip()
+                                    if "pt" in font_size_part:
+                                        font_size = int(font_size_part.split("pt")[0].strip())
+                                        run.font.size = Pt(font_size)
+                                except (ValueError, IndexError) as e:
+                                    print(f"    Error parsing font-size: {str(e)}")
+                                    
+                            if "color" in element_style:
+                                try:
+                                    color_part = element_style.split("color:")[1].split(";")[0].strip()
+                                    if color_part.startswith("rgb("):
+                                        color_values = color_part.replace("rgb(", "").replace(")", "").split(",")
+                                        r = int(color_values[0].strip())
+                                        g = int(color_values[1].strip())
+                                        b = int(color_values[2].strip())
+                                        run.font.color.rgb = RGBColor(r, g, b)
+                                except (ValueError, IndexError) as e:
+                                    print(f"    Error applying color: {str(e)}")
+                        
+                        return run
+                    except Exception as e:
+                        return run
+
+                # Improved recursive function to flatten the HTML structure
+                def process_element_flat(element, current_styles=None):
+                    """
+                    Process elements by flattening the structure and tracking styles
+                    This approach creates separate runs for each text node but applies all parent styles
+                    """
+                    if current_styles is None:
+                        current_styles = []
+                    
+                    # Skip None elements
+                    if element is None:
+                        return
+                        
+                    # For text nodes, create a run with all accumulated styles
+                    if isinstance(element, NavigableString) and str(element).strip():
+                        # Skip empty strings
+                        if not str(element).strip():
+                            return
+                            
+                        text = str(element)
+                        
+                        # Create a new run for this text
+                        run = paragraph.add_run(text)
+                        
+                        # Apply all parent styles to this run
+                        for style_element in current_styles:
+                            run = apply_styles_to_run(run, style_element)
+                            
+                        return
+                    
+                    # If it's a tag element, add it to current styles and process children
+                    if hasattr(element, 'name') and element.name:
+                        # Add this element to the current style context
+                        new_styles = current_styles + [element]
+                        
+                        # Process all children with updated styles
+                        for child in element.children:
+                            process_element_flat(child, new_styles)
+                
+                # Process paragraph using the flat approach
+                for child in tag.children:
+                    process_element_flat(child)
 
             elif tag.name == "hr":
                 doc.add_paragraph("_" * 100)
 
+        print("Document processing completed")
+        
         docx_buffer = io.BytesIO()
         doc.save(docx_buffer)
         docx_buffer.seek(0)
 
         return FileResponse(docx_buffer, as_attachment=True, filename=f"{document.title}.docx", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     except DynamicDocument.DoesNotExist:
+        print("Error: Document not found")
         return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"Error generating Word document: {str(e)}")
         return Response({'detail': f'Error generating Word document: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
