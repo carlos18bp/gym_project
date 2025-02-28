@@ -46,18 +46,18 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     /**
      * Get documents with state 'Progress' and assigned to a client.
      */
-    progressDocumentsByClient: (state) => (clientId) => {
+    progressDocumentsByClient: (state) => {
       return state.documents.filter(
-        (doc) => doc.state === "Progress" && doc.assigned_to === clientId
+        (doc) => doc.state === "Progress"
       );
     },
 
     /**
      * Get documents with state 'Completed' and assigned to a client.
      */
-    completedDocumentsByClient: (state) => (clientId) => {
+    completedDocumentsByClient: (state) => {
       return state.documents.filter(
-        (doc) => doc.state === "Completed" && doc.assigned_to === clientId
+        (doc) => doc.state === "Completed"
       );
     },
 
