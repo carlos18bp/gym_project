@@ -100,9 +100,7 @@ const props = defineProps({
  * @returns {Array} List of documents that are in progress and match the search criteria.
  */
 const filteredProgressDocuments = computed(() => {
-  const allProgressDocuments = documentStore.progressDocumentsByClient(
-    userStore.getCurrentUser?.id
-  );
+  const allProgressDocuments = documentStore.progressDocumentsByClient;
   return documentStore
     .filteredDocuments(props.searchQuery, userStore)
     .filter((doc) =>

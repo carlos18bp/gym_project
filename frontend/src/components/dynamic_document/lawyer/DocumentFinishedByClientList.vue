@@ -103,7 +103,13 @@ const props = defineProps({
  * @returns {Array} List of completed documents.
  */
 const filteredCompletedDocuments = computed(() => {
-  return documentStore.completedDocumentsByClient(userStore.getCurrentUser?.id);
+  const allCompletedDocuments = documentStore.completedDocumentsByClient;
+
+  return documentStore
+    .filteredDocuments(props.searchQuery, userStore)
+    .filter((doc) =>
+      allCompletedDocuments.some((progressDoc) => progressDoc.id === doc.id)
+    );
 });
 
 /**
@@ -168,7 +174,7 @@ const getClientName = (clientId) => {
  * Download the document as PDF.
  * @param {Object} doc - The document to download.
  */
- const downloadPDFDocument = (doc) => {
+const downloadPDFDocument = (doc) => {
   documentStore.downloadPDF(doc.id, doc.title);
 };
 
