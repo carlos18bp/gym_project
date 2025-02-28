@@ -1,8 +1,19 @@
 <template>
   <div class="relative p-4">
-    <router-link :to="{ name: 'sign_in' }">
-      <img class="w-20 xl:w-auto" src="@/assets/images/logo/logo1.png" />
-    </router-link>
+    <!-- Header with logo on right and back button on left -->
+    <div class="flex justify-between items-center w-full">
+      <!-- Logo on right -->
+      <router-link :to="{ name: 'sign_in' }">
+        <img class="w-20 xl:w-auto" src="@/assets/images/logo/logo1.png" />
+      </router-link>
+
+      <!-- Back Button with X icon on left -->
+      <div>
+        <router-link :to="{ name: 'sign_in' }" class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+          <XMarkIcon class="w-6 h-6 text-gray-700" />
+        </router-link>
+      </div>
+    </div>
   </div>
 
   <div class="max-w-3xl mx-auto mt-6 px-5">
@@ -183,4 +194,5 @@
 </template>
 
 <script setup>
+import { XMarkIcon } from '@heroicons/vue/24/outline';
 </script>
