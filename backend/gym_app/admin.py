@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalLink, DynamicDocument, DocumentVariable
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -14,14 +14,14 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
     list_filter = ('role', 'document_type', 'created_at')
 
-class LegalLinkAdmin(admin.ModelAdmin):
+class LegalDocumentAdmin(admin.ModelAdmin):
     """
-    Custom admin configuration for the LegalLinks model.
+    Custom admin configuration for the LegalDocument model.
     Display relevant fields for the admin interface.
     """
-    list_display = ('name', 'url')  # Display the name and link in the admin list view
-    search_fields = ('name', 'url')  # Enable search by name or link
-    list_filter = ('name',)  # Filter links by name
+    list_display = ('name', 'file')  # Display the document name and file field in the admin list view
+    search_fields = ('name',)        # Enable search by document name
+    list_filter = ('name',)          # Enable filtering by document name
 
 class ProcessAdmin(admin.ModelAdmin):
     """
@@ -148,11 +148,11 @@ class GyMAdminSite(admin.AdminSite):
                 ]
             },
             {
-                'name': _('Legal User Links Management'),
+                'name': _('Intranet Documents Management'),
                 'app_label': 'legal_user_link_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['LegalLink']
+                    if model['object_name'] in ['LegalDocument']
                 ]
             },
             {
@@ -196,5 +196,5 @@ admin_site.register(LegalRequest, LegalRequestAdmin)
 admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
-admin_site.register(LegalLink, LegalLinkAdmin)
+admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)

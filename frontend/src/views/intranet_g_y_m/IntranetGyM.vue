@@ -1,352 +1,362 @@
 <template>
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
-    <!--Company's content-->
-    <div
-      class="w-full p-5 rounded-lg border-2 border-yellow-300 bg-yellow-300/30 space-y-3"
-    >
-      <!--Fundamental principles-->
-      <div class="space-y-3">
-        <!-- Title -->
-        <div>
-          <h1 class="text-primary text-xl font-semibold">
-            Nuestros Principios Fundamentales
-          </h1>
-        </div>
-        <!-- Content -->
-        <div class="space-y-3">
-          <!-- First principle -->
-          <div class="space-y-1.5">
-            <div
-              class="flex items-center gap-1.5 text-primary text-lg font-semibold"
-            >
-              <TrophyIcon class="size-4"></TrophyIcon>
-              <h2>Tranquilidad</h2>
-            </div>
-            <p class="text-primary text-md font-regular">
-              La tranquilidad es un pilar fundamental en nuestra firma. Nos
-              esforzamos por garantizar a nuestros clientes y colaboradores un
-              ambiente donde puedan tomar decisiones con calma y claridad,
-              siempre respaldados por el conocimiento jurídico y nuestra
-              experiencia. Con cada caso y en cada interacción, trabajamos para
-              que todos sientan la certeza de estar en manos confiables y
-              competentes.
-            </p>
-          </div>
-          <!-- Second principle -->
-          <div class="space-y-1.5">
-            <div
-              class="flex items-center gap-1.5 text-primary text-lg font-semibold"
-            >
-              <TrophyIcon class="size-4"></TrophyIcon>
-              <h2>Seguridad</h2>
-            </div>
-            <p class="text-primary text-md font-regular">
-              En nuestra empresa, la seguridad no solo se trata de proteger la
-              información y los datos de nuestros clientes, sino también de
-              brindarles confianza absoluta en nuestros procesos. Cada
-              estrategia legal que diseñamos y cada acción que ejecutamos están
-              pensadas para ofrecer soluciones sólidas, garantizando que los
-              intereses de quienes confían en nosotros estén siempre protegidos.
-            </p>
-          </div>
-          <!-- Third principle -->
-          <div class="space-y-1.5">
-            <div
-              class="flex items-center gap-1.5 text-primary text-lg font-semibold"
-            >
-              <TrophyIcon class="size-4"></TrophyIcon>
-              <h2>Confianza</h2>
-            </div>
-            <p class="text-primary text-md font-regular">
-              La confianza es el lazo que une a nuestra firma con sus clientes y
-              colaboradores. Se construye día a día mediante un trabajo
-              transparente, ético y profesional. Es nuestro compromiso mantener
-              relaciones basadas en el respeto y la integridad, donde cada
-              persona sienta que puede contar con nosotros como un aliado en sus
-              objetivos legales y personales.
-            </p>
-          </div>
-        </div>
-      </div>
-      <!-- Resources and tools of G&M -->
-      <div class="space-y-3">
-        <!-- Title -->
-        <div>
-          <h1 class="text-primary text-xl font-semibold">
-            Recursos y Herramientas de G&M Consultores Jurídicos
-          </h1>
-        </div>
-        <!-- Content -->
-        <div class="space-y-1.5">
-          <!-- Text -->
-          <div>
-            <p class="text-primary text-md font-regular">
-              Accede a los siguientes recursos para conocer los avances,
-              procesos y herramientas clave que respaldan nuestro crecimiento y
-              compromiso continuo:
-            </p>
-          </div>
-          <!-- Links -->
-          <div class="flex flex-wrap">
-            <div class="grid grid-rows-4 grid-flow-col gap-y-1.5 gap-x-4">
-              <div
-                v-for="link in legalLinks"
-                class="row-span-1 flex items-center gap-0.5 text-primary hover:text-yellow-400"
-              >
-                <CheckBadgeIcon class="size-4"></CheckBadgeIcon>
-                <a
-                  :href="link.url"
-                  target="_blank"
-                  class="text-md font-regular hover:font-italic hover:underline hover:decoration-2"
-                >
-                  {{ link.name }}
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Atributes company -->
+    <div class="grid grid-cols-3 w-full text-center font-semibold overflow-hidden rounded-lg">
+      <!-- Seguridad -->
+      <span class="bg-secondary text-white py-3">
+        Seguridad
+      </span>
+      <!-- Confianza -->
+      <span class="bg-terciary text-primary py-3">
+        Confianza
+      </span>
+      <span class="bg-purple-brand text-white py-3">
+        Tranquilidad
+      </span>
     </div>
   </div>
-  <!-- Facturation form -->
-  <div class="px-4 pb-10 sm:px-6 lg:px-8">
-    <!--Company's content-->
-    <div
-      class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary space-y-3"
-    >
-      <!-- Title -->
-      <div>
-        <h1 class="text-primary text-xl font-semibold">Presentar Informe</h1>
+  <!-- Main container in 3 columns -->
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-3 sm:px-6 lg:px-8">
+    <!-- 1. Organization Chart (Organigrama) -->
+    <div class="bg-green-100 p-6 rounded-xl shadow-md">
+      <div class="mb-4 flex items-center space-x-2">
+        <!-- Icon (if you have one imported) -->
+        <!-- <BuildingOfficeIcon class="h-5 w-5 text-primary" /> -->
+        <h2 class="text-lg font-semibold text-primary">Organigrama</h2>
       </div>
-      <!-- Form -->
-      <form @submit.prevent="submitHandler()">
-        <div class="mt-4 space-y-3">
-          <!-- First row -->
-          <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <!-- Document's number form -->
-            <div>
-              <label
-                for="document-number"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                No. Contrato
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.document"
-                  type="text"
-                  name="document-number"
-                  id="document-number"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!-- Period Report Initial Date Form -->
-            <div>
-              <label
-                for="initial-report-period"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Fecha Inicial
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.initialDate"
-                  type="date"
-                  name="initial-report-period"
-                  id="initial-report-period"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!-- Period Report Final Date Form -->
-            <div>
-              <label
-                for="final-report-period"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Fecha Final
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.endDate"
-                  type="date"
-                  name="final-report-period"
-                  id="final-report-period"
-                  placeholder="Fecha inicial"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!-- Payment concept -->
-            <div>
-              <label
-                for="payment-concept"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Concepto de Pago
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.paymentConcept"
-                  type="text"
-                  name="payment-concept"
-                  id="payment-concept"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!-- Value to charge -->
-            <div>
-              <label
-                for="payment-concept"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Valor a Cobrar y/o Facturar
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <div
-                  class="flex items-center rounded-md bg-white px-3 outline outline-1 -outline-offset-1 outline-gray-300 focus-within:outline focus-within:outline-2 focus-within:outline-secondary"
+      <img 
+      @click="showOrganizationChart = true" 
+      class="cursor-pointer transition-all duration-200 ease-in-out transform hover:bg-green-200 hover:rounded-xl hover:shadow-lg hover:-translate-x-1 hover:-translate-y-1" 
+      src="@/assets/images/charts/organization_chart.png" 
+      alt="Organigrama G&M"
+      >
+    </div>
+
+    <!-- 2. Processes and Subprocesses (with search bar) -->
+    <div class="bg-blue-100 p-6 rounded-xl shadow-md flex flex-col max-h-[550px]">
+      <!-- Header: Icon and Title -->
+      <div class="mb-4 flex items-center space-x-2">
+        <!-- <FolderIcon class="h-5 w-5 text-primary" /> -->
+        <h2 class="text-lg font-semibold text-primary">
+          Procesos y Subprocesos
+        </h2>
+      </div>
+
+      <!-- Search bar -->
+      <div class="w-full mb-4">
+        <label for="search" class="sr-only">Buscar</label>
+        <div class="relative">
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+          </div>
+          <input
+            id="search"
+            name="search"
+            v-model="searchTerm"
+            class="block w-full rounded-xl border-0 bg-white py-1.5 pl-10 pr-3
+                  text-gray-900 ring-1 ring-inset ring-gray-300
+                  placeholder:text-gray-400
+                  focus:ring-2 focus:ring-inset focus:ring-secondary
+                  sm:text-sm sm:leading-6"
+            placeholder="Buscar"
+            type="search"
+          />
+        </div>
+      </div>
+
+      <!-- List of legal documents -->
+      <ul class="flex-grow space-y-2 text-sm rounded-xl font-regular bg-white px-3 pt-1 pb-3 overflow-auto">
+        <!-- Loop through filteredProcess and display each document's name with a link -->
+        <li v-for="(process, index) in filteredProcess" :key="index" class="cursor-pointer hover:bg-blue-100 rounded-lg">
+          <a :href="process.file_url" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-1 text-primary font-regular">
+            <DocumentTextIcon class="size-4" />
+            <HighlightText :text="process.name" :query="searchTerm" highlightClass="bg-blue-200" />
+          </a>
+        </li>
+      </ul>
+    </div>
+    <!-- 3. Billing / File a Report -->
+    <div class="bg-purple-100 p-6 rounded-xl shadow-md">
+      <div class="mb-4 flex items-center space-x-2">
+        <!-- Icon (if you have one imported) -->
+        <!-- <DocumentTextIcon class="h-5 w-5 text-primary" /> -->
+        <h2 class="text-lg font-semibold text-primary">Radicar Informe</h2>
+      </div>
+      <p class="text-lg font-regular text-gray-700 mb-4 leading-relaxed">
+        En esta sección, los empleados deben enviar sus informes y facturación
+        al cierre de cada mes para garantizar el proceso de pago de manera
+        oportuna. Asegúrate de adjuntar los documentos requeridos y cumplir con
+        los plazos establecidos.
+      </p>
+      <button
+        type="button"
+        @click="showFacturationModal = true"
+        class="inline-flex items-center px-4 py-2 bg-purple-500 text-white
+              rounded-md hover:bg-purple-600 focus:outline-none"
+      >
+        Enviar Informe
+      </button>
+    </div>
+  </div>
+
+  <!-- Facturation Modal -->
+  <ModalTransition v-show="showFacturationModal">
+    <!-- Facturation form -->
+    <div class="px-4 pb-10 sm:px-6 lg:px-8">
+      <!--Company's content-->
+      <div
+        class="w-full p-5 rounded-lg border-2 border-stroke bg-terciary space-y-3"
+      >
+        <!-- Title -->
+        <div class="flex items-center justify-between">
+          <h1 class="text-primary text-xl font-semibold">Presentar Informe</h1>
+          <XMarkIcon class="size-6 text-primary cursor-pointer" @click="showFacturationModal = false"></XMarkIcon>
+        </div>
+        <!-- Form -->
+        <form @submit.prevent="submitHandler()">
+          <div class="mt-4 space-y-3">
+            <!-- First row -->
+            <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+              <!-- Document's number form -->
+              <div>
+                <label
+                  for="document-number"
+                  class="block text-base font-medium leading-6 text-primary"
                 >
-                  <div
-                    class="shrink-0 select-none text-base text-gray-500 sm:text-sm"
-                  >
-                    $
-                  </div>
+                  No. Contrato
+                  <span class="text-red-500">*</span>
+                </label>
+                <div class="mt-2">
                   <input
-                    v-model="formData.paymentAmount"
+                    v-model="formData.document"
+                    type="text"
+                    name="document-number"
+                    id="document-number"
+                    class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                    required
+                  />
+                </div>
+              </div>
+              <!-- Period Report Initial Date Form -->
+              <div>
+                <label
+                  for="initial-report-period"
+                  class="block text-base font-medium leading-6 text-primary"
+                >
+                  Fecha Inicial
+                  <span class="text-red-500">*</span>
+                </label>
+                <div class="mt-2">
+                  <input
+                    v-model="formData.initialDate"
+                    type="date"
+                    name="initial-report-period"
+                    id="initial-report-period"
+                    class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                    required
+                  />
+                </div>
+              </div>
+              <!-- Period Report Final Date Form -->
+              <div>
+                <label
+                  for="final-report-period"
+                  class="block text-base font-medium leading-6 text-primary"
+                >
+                  Fecha Final
+                  <span class="text-red-500">*</span>
+                </label>
+                <div class="mt-2">
+                  <input
+                    v-model="formData.endDate"
+                    type="date"
+                    name="final-report-period"
+                    id="final-report-period"
+                    placeholder="Fecha inicial"
+                    class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                    required
+                  />
+                </div>
+              </div>
+              <!-- Payment concept -->
+              <div>
+                <label
+                  for="payment-concept"
+                  class="block text-base font-medium leading-6 text-primary"
+                >
+                  Concepto de Pago
+                  <span class="text-red-500">*</span>
+                </label>
+                <div class="mt-2">
+                  <input
+                    v-model="formData.paymentConcept"
                     type="text"
                     name="payment-concept"
                     id="payment-concept"
-                    class="block min-w-0 grow py-1.5 pl-1 pr-3 text-base text-primary border-none placeholder:text-gray-400 focus-within:outline-none focus-within:border-none focus-within:ring-0 sm:text-sm"
-                    placeholder="0.00"
-                    aria-describedby="payment-currency"
+                    class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                     required
                   />
-                  <div
-                    id="payment-currency"
-                    class="shrink-0 select-none text-base text-gray-500 sm:text-sm"
-                  >
-                    COP
-                  </div>
                 </div>
               </div>
-            </div>
-            <!-- Files Form -->
-            <div class="col-span-full">
-              <label
-                for="files"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Anexos
-              </label>
-              <div
-                class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-6 py-10"
-                @dragover.prevent
-                @drop.prevent="handleDrop"
-              >
-                <!-- Drag and drop -->
-                <div v-if="files.length < 1" class="text-center">
-                  <CloudArrowUpIcon
-                    class="mx-auto size-12 text-gray-300"
-                    aria-hidden="true"
-                  />
-                  <div class="mt-4 flex text-sm/6 text-gray-600">
-                    <label
-                      for="file-upload"
-                      class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
-                    >
-                      <span>Sube un archivo</span>
-                      <input
-                        id="file-upload"
-                        name="file-upload"
-                        type="file"
-                        class="sr-only"
-                        @change="handleFileChange"
-                      />
-                    </label>
-                    <p class="pl-1">o arrastra y suelta</p>
-                  </div>
-                  <p class="text-xs/5 text-gray-600">
-                    PNG, JPG, PDF, DOCX de hasta 20MB
-                  </p>
-                </div>
-                <!-- list of files -->
-                <div v-else class="w-full flex flex-wrap gap-3">
+              <!-- Value to charge -->
+              <div>
+                <label
+                  for="payment-concept"
+                  class="block text-base font-medium leading-6 text-primary"
+                >
+                  Valor a Cobrar y/o Facturar
+                  <span class="text-red-500">*</span>
+                </label>
+                <div class="mt-2">
                   <div
-                    v-for="(file, index) in files"
-                    :key="index"
-                    class="relative p-4 grid rounded-md bg-white border-2"
-                    :class="file.style.general"
-                    @mouseenter="file.hover = true"
-                    @mouseleave="file.hover = false"
+                    class="flex items-center rounded-md bg-white px-3 outline outline-1 -outline-offset-1 outline-gray-300 focus-within:outline focus-within:outline-2 focus-within:outline-secondary"
                   >
                     <div
-                      v-show="file.hover"
-                      class="absolute p-0.5 mt-2 ml-2 rounded-full"
-                      :class="file.style.xMark"
-                      @click="removeFile(index)"
+                      class="shrink-0 select-none text-base text-gray-500 sm:text-sm"
                     >
-                      <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      $
                     </div>
-                    <component
-                      :is="file.icon"
-                      class="size-12 mx-auto"
-                    ></component>
-                    <span class="text-center text-xs truncate w-20">
-                      {{ file.name }}
-                    </span>
+                    <input
+                      v-model="formData.paymentAmount"
+                      type="text"
+                      name="payment-concept"
+                      id="payment-concept"
+                      class="block min-w-0 grow py-1.5 pl-1 pr-3 text-base text-primary border-none placeholder:text-gray-400 focus-within:outline-none focus-within:border-none focus-within:ring-0 sm:text-sm"
+                      placeholder="0.00"
+                      aria-describedby="payment-currency"
+                      required
+                    />
+                    <div
+                      id="payment-currency"
+                      class="shrink-0 select-none text-base text-gray-500 sm:text-sm"
+                    >
+                      COP
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <!-- Action buttons -->
-            <div class="flex gap-3 span-col-full">
-              <!-- Save Button -->
-              <button
-                type="submit"
-                class="p-2.5 text-sm font-medium rounded-md flex gap-2"
-                :class="
-                  !isSaveButtonEnabled
-                    ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-                    : 'bg-secondary text-white'
-                "
-                :disabled="!isSaveButtonEnabled"
-              >
-                <span>Guardar</span>
-              </button>
+              <!-- Files Form -->
+              <div class="col-span-full">
+                <label
+                  for="files"
+                  class="block text-base font-medium leading-6 text-primary"
+                >
+                  Anexos
+                </label>
+                <div
+                  class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-6 py-10"
+                  @dragover.prevent
+                  @drop.prevent="handleDrop"
+                >
+                  <!-- Drag and drop -->
+                  <div v-if="files.length < 1" class="text-center">
+                    <CloudArrowUpIcon
+                      class="mx-auto size-12 text-gray-300"
+                      aria-hidden="true"
+                    />
+                    <div class="mt-4 flex text-sm/6 text-gray-600">
+                      <label
+                        for="file-upload"
+                        class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
+                      >
+                        <span>Sube un archivo</span>
+                        <input
+                          id="file-upload"
+                          name="file-upload"
+                          type="file"
+                          class="sr-only"
+                          @change="handleFileChange"
+                        />
+                      </label>
+                      <p class="pl-1">o arrastra y suelta</p>
+                    </div>
+                    <p class="text-xs/5 text-gray-600">
+                      PNG, JPG, PDF, DOCX de hasta 20MB
+                    </p>
+                  </div>
+                  <!-- list of files -->
+                  <div v-else class="w-full flex flex-wrap gap-3">
+                    <div
+                      v-for="(file, index) in files"
+                      :key="index"
+                      class="relative p-4 grid rounded-md bg-white border-2"
+                      :class="file.style.general"
+                      @mouseenter="file.hover = true"
+                      @mouseleave="file.hover = false"
+                    >
+                      <div
+                        v-show="file.hover"
+                        class="absolute p-0.5 mt-2 ml-2 rounded-full"
+                        :class="file.style.xMark"
+                        @click="removeFile(index)"
+                      >
+                        <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      </div>
+                      <component
+                        :is="file.icon"
+                        class="size-12 mx-auto"
+                      ></component>
+                      <span class="text-center text-xs truncate w-20">
+                        {{ file.name }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Action buttons -->
+              <div class="flex gap-3 span-col-full">
+                <!-- Save Button -->
+                <button
+                  type="submit"
+                  class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+                  :class="
+                    !isSaveButtonEnabled
+                      ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
+                      : 'bg-secondary text-white'
+                  "
+                  :disabled="!isSaveButtonEnabled"
+                >
+                  <span>Guardar</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
+  </ModalTransition>
+  <ModalTransition v-show="showOrganizationChart">
+      <div class="relative bg-white rounded-xl p-3">
+        <div class="absolute right-0 top-0 pt-6 pe-6">
+          <XMarkIcon class="cursor-pointer size-6 text-primary" @click="showOrganizationChart = false"></XMarkIcon>
+        </div>
+        <img src="@/assets/images/charts/organigram_chart.png" alt="Organigrama y organización de G&M">
+      </div>
+  </ModalTransition>
 </template>
 
 <script setup>
 import {
-  TrophyIcon,
-  CheckBadgeIcon,
+  MagnifyingGlassIcon,
   PhotoIcon,
   DocumentIcon,
   XMarkIcon,
   CloudArrowUpIcon,
+  DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
 import { useIntranetGymStore } from "@/stores/intranet_gym";
 import { onMounted, ref, computed, reactive } from "vue";
 import { showNotification } from "@/shared/notification_message.js";
 import { showLoading, hideLoading } from "@/shared/loading_message.js";
 import { useRouter } from "vue-router";
+import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import { useSearch } from '@/composables/useSearch.js'
+import HighlightText from '@/components/utils/HighlightText.vue';
+
+// Handlers for modals
+const showFacturationModal = ref(false);
+const showOrganizationChart = ref(false);
 
 /**
  * Router of app used for redirect the user.
@@ -355,12 +365,15 @@ const router = useRouter();
 
 // import the store
 const intranetGymStore = useIntranetGymStore();
-const legalLinks = ref([]);
+const legalDocuments = ref([]);
 
-// Call to init function for fetch the links
+// Use the composable, passing the array and the fields to search
+const { searchTerm, filteredProcess } = useSearch(legalDocuments, ['name'])
+
+// Call to init function to fetch the legal documents
 onMounted(async () => {
   await intranetGymStore.init();
-  legalLinks.value = intranetGymStore.legalLinks;
+  legalDocuments.value = intranetGymStore.legalDocuments;
 });
 
 /**
