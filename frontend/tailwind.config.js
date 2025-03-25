@@ -18,6 +18,7 @@ export default {
         'terciary': '#F0F7FF',
         'selected-background': '#E0EDFF',
         'stroke': '#CCE0FF',
+        'purple-brand': '#A69BFF'
       }
     },
   },

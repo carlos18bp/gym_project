@@ -1,18 +1,19 @@
 from django.db import models
 
-class LegalLink(models.Model):
+class LegalDocument(models.Model):
     """
-    Model representing a legal link with a name and URL.
+    Modelo que representa un documento legal con un nombre y un archivo.
     """
-    name = models.CharField(max_length=255, verbose_name="Nombre")
-    url = models.URLField(verbose_name="Hipervínculo")
+    name = models.CharField(max_length=255, verbose_name="Nombre del Documento")
+    file = models.FileField(upload_to='documents/', verbose_name="Archivo del Documento")
 
     def __str__(self):
         """
-        Returns the string representation of the legal link, which is its name.
+        Devuelve la representación en cadena del documento legal (su nombre).
         """
         return self.name
 
     class Meta:
-        verbose_name = "Legal Link"
-        verbose_name_plural = "Legal Links"
+        verbose_name = "Legal Document"
+        verbose_name_plural = "Legal Documents"
+

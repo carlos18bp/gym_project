@@ -33,7 +33,7 @@ legal_request_urls = [
 ]
 
 intranet_gym_urls = [
-    path('legal_intranet_links/', intranet_gym.list_legal_intranet_links, name='list-legal-intranet-links'),
+    path('list_legal_intranet_documents/', intranet_gym.list_legal_intranet_documents, name='list-legal-intranet-documents'),
     path('create_report_request/', intranet_gym.create_report, name='create-report-request'),
 ]
 

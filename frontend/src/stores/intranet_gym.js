@@ -6,8 +6,8 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
    * Store state.
    */
   state: () => ({
-    legalLinks: [], // Array to store legal links
-    dataLoaded: false, // Flag to check if data has been loaded
+    legalDocuments: [], // Array to store legal documents
+    dataLoaded: false,  // Flag to check if data has been loaded
   }),
 
   /**
@@ -18,20 +18,20 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
      * Initialize the store by fetching data if not already loaded.
      */
     async init() {
-      if (!this.dataLoaded) await this.fetchLegalLinks();
+      if (!this.dataLoaded) await this.fetchLegalDocuments();
     },
 
     /**
-     * Fetch legal links from the backend.
+     * Fetch legal documents from the backend.
      */
-    async fetchLegalLinks() {
+    async fetchLegalDocuments() {
       try {
-        const response = await get_request(`legal_intranet_links/`);
-        this.legalLinks = response.data;
+        const response = await get_request(`list_legal_intranet_documents/`);
+        this.legalDocuments = response.data;
         this.dataLoaded = true;
       } catch (error) {
-        console.error("Error fetching legal links:", error);
-        this.legalLinks = [];
+        console.error("Error fetching legal documents:", error);
+        this.legalDocuments = [];
         this.dataLoaded = false;
       }
     },
@@ -61,14 +61,11 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
 
       try {
         // Send the form data to the backend
-        const response = await create_request(
-          "create_report_request/",
-          formDataObject
-        );
+        const response = await create_request("create_report_request/", formDataObject);
 
         if (response.status === 201) {
           this.dataLoaded = false; // Reset dataLoaded to force refresh if necessary
-          return response.status; // Return success status code
+          return response.status;  // Return success status code
         } else {
           console.error("Failed to create report request:", response.status);
           return null;

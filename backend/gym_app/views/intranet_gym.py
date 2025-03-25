@@ -5,32 +5,22 @@ from django.core.files.storage import default_storage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models import LegalLink
-from gym_app.serializers import LegalLinkSerializer
+from gym_app.models import LegalDocument
+from gym_app.serializers import LegalDocumentSerializer
 from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def list_legal_intranet_links(request):
-    """
-    Retrieves a list of all legal intranet links.
-
-    This view fetches all instances of the `LegalLink` model, serializes 
-    the data, and returns it in the response. Only authenticated users 
-    are allowed to access this endpoint.
-
-    Returns:
-    - HTTP 200 OK: A list of serialized `LegalLink` objects.
-    - HTTP 401 Unauthorized: If the user is not authenticated.
-    """
-    # Fetch all legal intranet links from the database
-    legal_intranet_links = LegalLink.objects.all()
-    
-    # Serialize the retrieved data
-    serializer = LegalLinkSerializer(legal_intranet_links, many=True)
-    
-    # Return the serialized data with an HTTP 200 status
+def list_legal_intranet_documents(request):
+    legal_intranet_documents = LegalDocument.objects.all()
+    serializer = LegalDocumentSerializer(
+        legal_intranet_documents, 
+        many=True, 
+        context={'request': request}  # Pass request here
+    )
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
