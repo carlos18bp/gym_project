@@ -2,7 +2,7 @@
   <div
     v-if="!isAppInstalled"
     ref="alert"
-    class="fixed w-full bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-blue-50 p-4 rounded-md shadow-lg opacity-0 md:w-auto"
+    class="fixed w-full top-4 xl:bottom-4 xl:top-auto left-1/2 transform -translate-x-1/2 z-50 bg-blue-50 p-4 rounded-md shadow-lg opacity-0 md:w-auto"
   >
     <div class="flex items-center">
       <InformationCircleIcon
@@ -45,7 +45,7 @@ onMounted(() => {
   // Fade-out animation after 15 seconds
   gsap.to(alert.value, {
     opacity: 0, // Fades out opacity
-    delay: 10, // Starts fade-out after 10 seconds
+    delay: 3.5, // Starts fade-out after 10 seconds
     duration: 1, // Duration of fade-out animation
     onComplete: () => {
       isAppInstalled.value = true; // Hides the alert once the animation completes

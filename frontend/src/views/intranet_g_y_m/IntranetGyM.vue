@@ -1,4 +1,10 @@
 <template>
+  <!-- Menu button -->
+  <div
+    class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 lg:hidden"
+  >
+    <slot></slot>
+  </div>
   <!-- Main content -->
   <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
     <!-- Atributes company -->
@@ -11,7 +17,7 @@
       <span class="bg-terciary text-primary py-3">
         Confianza
       </span>
-      <span class="bg-purple-brand text-white py-3">
+      <span class="bg-secondary text-white py-3">
         Tranquilidad
       </span>
     </div>
@@ -19,7 +25,7 @@
   <!-- Main container in 3 columns -->
   <div class="grid grid-cols-1 gap-6 md:grid-cols-3 sm:px-6 lg:px-8">
     <!-- 1. Organization Chart (Organigrama) -->
-    <div class="bg-green-100 p-6 rounded-xl shadow-md">
+    <div class="bg-gray-100 p-6 rounded-xl shadow-md">
       <div class="mb-4 flex items-center space-x-2">
         <!-- Icon (if you have one imported) -->
         <!-- <BuildingOfficeIcon class="h-5 w-5 text-primary" /> -->
@@ -27,7 +33,7 @@
       </div>
       <img 
       @click="showOrganizationChart = true" 
-      class="cursor-pointer transition-all duration-200 ease-in-out transform hover:bg-green-200 hover:rounded-xl hover:shadow-lg hover:-translate-x-1 hover:-translate-y-1" 
+      class="cursor-pointer transition-all duration-200 ease-in-out transform hover:bg-gray-200 hover:rounded-xl hover:shadow-lg hover:-translate-x-1 hover:-translate-y-1" 
       src="@/assets/images/charts/organization_chart.png" 
       alt="Organigrama G&M"
       >
@@ -77,23 +83,20 @@
       </ul>
     </div>
     <!-- 3. Billing / File a Report -->
-    <div class="bg-purple-100 p-6 rounded-xl shadow-md">
+    <div class="bg-gray-100 p-6 rounded-xl shadow-md">
       <div class="mb-4 flex items-center space-x-2">
         <!-- Icon (if you have one imported) -->
         <!-- <DocumentTextIcon class="h-5 w-5 text-primary" /> -->
         <h2 class="text-lg font-semibold text-primary">Radicar Informe</h2>
       </div>
-      <p class="text-lg font-regular text-gray-700 mb-4 leading-relaxed">
-        En esta sección, los empleados deben enviar sus informes y facturación
-        al cierre de cada mes para garantizar el proceso de pago de manera
-        oportuna. Asegúrate de adjuntar los documentos requeridos y cumplir con
-        los plazos establecidos.
+      <p class="text-lg font-regular text-gray-700 mb-4 leading-relaxed text-justify">
+        Por favor, radique su Informe de Actividades y su Cuenta de Cobro o Factura en este espacio. Recuerde presentar únicamente los documentos debidamente aprobados y firmados por el Supervisor, incluyendo los anexos correspondientes según los términos establecidos.
       </p>
       <button
         type="button"
         @click="showFacturationModal = true"
-        class="inline-flex items-center px-4 py-2 bg-purple-500 text-white
-              rounded-md hover:bg-purple-600 focus:outline-none"
+        class="inline-flex items-center px-4 py-2 bg-secondary text-white
+              rounded-md"
       >
         Enviar Informe
       </button>
@@ -351,7 +354,7 @@ import { showNotification } from "@/shared/notification_message.js";
 import { showLoading, hideLoading } from "@/shared/loading_message.js";
 import { useRouter } from "vue-router";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
-import { useSearch } from '@/composables/useSearch.js'
+import { useSearch } from '@/composables/useSearch.js';
 import HighlightText from '@/components/utils/HighlightText.vue';
 
 // Handlers for modals
