@@ -131,14 +131,12 @@ const isTitleChanged = computed(() =>
  * Updates only the document title without redirecting to editor.
  */
 async function updateDocumentName() {
-  console.log("DEBUG-LAWYER-CREATE: Starting updateDocumentName");
   if (isEditMode.value && isTitleChanged.value) {
     try {
       // Create an object with just the title field
       const documentData = {
         title: documentTitle.value.trim()
       };
-      console.log("DEBUG-LAWYER-CREATE: Updating document title for ID:", store.selectedDocument.id);
       
       // Update the document
       await store.updateDocument(store.selectedDocument.id, documentData);
@@ -150,7 +148,6 @@ async function updateDocumentName() {
       store.selectedDocument.title = documentTitle.value.trim();
       
       // Set the lastUpdatedDocumentId to highlight it in the list
-      console.log("DEBUG-LAWYER-CREATE: Setting lastUpdatedDocumentId to:", store.selectedDocument.id);
       store.lastUpdatedDocumentId = store.selectedDocument.id;
       localStorage.setItem('lastUpdatedDocumentId', store.selectedDocument.id);
       
@@ -158,7 +155,6 @@ async function updateDocumentName() {
       const updatedDocId = store.selectedDocument.id;
       
       // Close the modal
-      console.log("DEBUG-LAWYER-CREATE: Emitting close with updatedDocId:", updatedDocId);
       emit('close', { updatedDocId });
       
       // Check if we're already on the dashboard page
@@ -168,12 +164,10 @@ async function updateDocumentName() {
       
       if (!isDashboard) {
         // Only redirect if we're not already on the dashboard
-        console.log("DEBUG-LAWYER-CREATE: Not on dashboard, redirecting");
         setTimeout(() => {
           window.location.href = '/dynamic_document_dashboard';
         }, 1000);
       } else {
-        console.log("DEBUG-LAWYER-CREATE: Already on dashboard, skipping redirect");
         // No need to redirect, just force a highlight
         setTimeout(() => {
           // Trigger a highlight effect using parent's forceHighlight function

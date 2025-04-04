@@ -212,11 +212,11 @@ const handleOption = async (action, document) => {
       break;
     case "publish":
       await publishDocument(document);
-      // La notificación se omite porque se hará redirección automática
+      // The notification is omitted because an automatic redirection will take place.
       break;
     case "draft":
       await moveToDraft(document);
-      // La notificación se omite porque se hará redirección automática
+      // The notification is omitted because an automatic redirection will take place.
       break;
     case "preview":
       openPreviewModal(document);

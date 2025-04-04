@@ -320,7 +320,7 @@
           </div>
         </div>
         <!-- Button edit -->
-        <div class="mt-4">
+        <div class="mt-4 flex justify-between items-center">
           <button
             type="button"
             class="p-2.5 text-sm text-white font-medium bg-secondary rounded-md flex gap-2"
@@ -328,6 +328,15 @@
           >
             <span class="block">Guardar</span>
           </button>
+          
+          <!-- Privacy Policy Link -->
+          <a 
+            href="https://gymconsultoresjuridicos.com/politicas-de-privacidad-y-manejo-de-datos-personales/" 
+            target="_blank"
+            class="text-sm text-secondary hover:underline"
+          >
+            Políticas de privacidad
+          </a>
         </div>
       </div>
     </div>
