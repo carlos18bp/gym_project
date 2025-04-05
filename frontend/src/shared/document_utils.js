@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { get_request } from "@/stores/services/request_http";
+import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 
 // Reactive state for document preview modal
 export const showPreviewModal = ref(false);
@@ -21,8 +22,27 @@ export const openPreviewModal = (document) => {
     content: document.assigned_to ? processedContent : document.content,
   };
   showPreviewModal.value = true;
+  
+  // Set this document as the last viewed for visual feedback
+  const store = useDynamicDocumentStore();
+  if (document && document.id) {
+    store.lastUpdatedDocumentId = document.id;
+    localStorage.setItem('lastUpdatedDocumentId', document.id.toString());
+  }
 };
 
+export async function previewDocument(document, store) {
+  try {
+    // Set last updated document ID to highlight it in the list when returning
+    localStorage.setItem('lastUpdatedDocumentId', document.id.toString());
+    store.lastUpdatedDocumentId = document.id;
+    
+    // Navigate to the preview page
+    window.location.href = `/dynamic_document/preview/${document.id}`;
+  } catch (error) {
+    console.error('Error previewing document:', error);
+  }
+}
 
 /**
  * Utility function to trigger a file download using the API service.

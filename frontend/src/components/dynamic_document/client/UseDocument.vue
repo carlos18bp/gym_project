@@ -68,10 +68,39 @@ function openModal(documentId) {
 }
 
 /**
- * Closes the modal and resets the selected document ID.
+ * Close the modal and clear the selected document.
+ * Also handles visual highlighting of updated documents if necessary.
+ * 
+ * @param {Object} data - Data received from the modal, may contain updatedDocId
  */
-function closeModal() {
+const closeModal = (data) => {
   showUseDocumentModal.value = false;
   selectedDocumentId.value = null;
-}
+  
+  // If we receive an updated document ID, update lastUpdatedDocumentId
+  if (data && data.updatedDocId) {
+    documentStore.lastUpdatedDocumentId = data.updatedDocId;
+    localStorage.setItem('lastUpdatedDocumentId', data.updatedDocId);
+    
+    // Check if we're already on the dashboard page
+    const currentPath = window.location.pathname;
+    const isDashboard = currentPath === '/dynamic_document_dashboard' || 
+                        currentPath === '/dynamic_document_dashboard/';
+    
+    if (!isDashboard) {
+      // Only redirect if we're not already on the dashboard
+      setTimeout(() => {
+        window.location.href = '/dynamic_document_dashboard';
+      }, 500);
+    } else {
+      // No need to redirect, just force a highlight
+      setTimeout(() => {
+        // Trigger a highlight effect using the global function
+        if (window.forceDocumentHighlight) {
+          window.forceDocumentHighlight(data.updatedDocId);
+        }
+      }, 100);
+    }
+  }
+};
 </script>

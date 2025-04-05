@@ -76,18 +76,55 @@ const saveDocumentDraft = async () => {
     };
   }
   try {
+    let documentId;
+    let response;
+    
     if (store.selectedDocument?.id) {
-      await store.updateDocument(
-        store.selectedDocument.id,
+      documentId = store.selectedDocument.id;
+      response = await store.updateDocument(
+        documentId,
         store.selectedDocument
       );
     } else {
-      await store.createDocument(store.selectedDocument);
+      response = await store.createDocument(store.selectedDocument);
+      if (response && response.id) {
+        documentId = response.id;
+      }
     }
+    
+    // Save the current store
+    const currentSelectedDoc = store.selectedDocument;
+    
+    // Refresh documents to get the updated list
     store.selectedDocument = null;
     await store.init();
+    
+    // If we couldn't get an ID from the response, try to find the document by title
+    if (!documentId && currentSelectedDoc && currentSelectedDoc.title) {
+      const foundDoc = store.documents.find(doc => 
+        doc.title === currentSelectedDoc.title &&
+        doc.content === currentSelectedDoc.content &&
+        doc.state === 'Draft'
+      );
+      
+      if (foundDoc) {
+        documentId = foundDoc.id;
+      }
+    }
+    
+    // Ensure lastUpdatedDocumentId is updated with explicit assignment
+    if (documentId) {
+      // Set the ID in localStorage for persistence across redirects
+      localStorage.setItem('lastUpdatedDocumentId', documentId.toString());
+      store.lastUpdatedDocumentId = documentId;
+    }
+    
     await showNotification("¡Borrador guardado exitosamente!", "success");
-    router.push("/dynamic_document_dashboard");
+    
+    // Use a longer delay before redirect to ensure store state is properly saved
+    setTimeout(() => {
+      window.location.href = '/dynamic_document_dashboard';
+    }, 500);
   } catch (error) {
     console.error("Error saving draft:", error);
   }
@@ -111,7 +148,8 @@ const handleContinue = async () => {
     syncVariables(variables);
     router.push("/dynamic_document_dashboard/lawyer/variables-config");
   } else {
-    saveDocumentDraft();
+    // If there are no variables, save as draft and update lastUpdatedDocumentId
+    await saveDocumentDraft();
   }
 };
 
