@@ -359,6 +359,8 @@ import {
   InboxArrowDownIcon,
   UsersIcon,
   DocumentTextIcon,
+  RectangleStackIcon,
+  Square2StackIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter } from "vue-router";
@@ -438,13 +440,10 @@ const goProfile = () => {
  */
 const navigation = ref([
   {
-    name: "Procesos",
+    name: "Inicio",
     action: (item) => {
       setCurrent(item);
-      router.push({
-        name: "process_list",
-        params: { user_id: "", display: "" },
-      });
+      router.push({ name: "dashboard" });
     },
     icon: HomeIcon,
     current: true,
@@ -456,6 +455,29 @@ const navigation = ref([
       router.push({ name: "directory_list" });
     },
     icon: UsersIcon,
+    current: false,
+  },
+  {
+    name: "Procesos",
+    action: (item) => {
+      setCurrent(item);
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "" },
+      });
+    },
+    icon: RectangleStackIcon,
+    current: false,
+  },
+  {
+    name: "Documentos Juridicos",
+    action: (item) => {
+      setCurrent(item);
+      router.push({
+        name: "dynamic_document_dashboard",
+      });
+    },
+    icon: DocumentTextIcon,
     current: false,
   },
   {
@@ -477,18 +499,6 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Radicar Proceso",
-    action: (item) => {
-      setCurrent(item);
-      router.push({
-        name: "process_form",
-        params: { action: "add", process_id: "" },
-      });
-    },
-    icon: PencilSquareIcon,
-    current: false,
-  },
-  {
     name: "Intranet G&M",
     action: (item) => {
       setCurrent(item);
@@ -498,7 +508,7 @@ const navigation = ref([
     current: false,
   },
   {
-    name: "Archivados",
+    name: "Procesos Archivados",
     action: (item) => {
       setCurrent(item);
       router.push({
@@ -506,18 +516,7 @@ const navigation = ref([
         params: { user_id: "", display: "history" },
       });
     },
-    icon: ClockIcon,
-    current: false,
-  },
-  {
-    name: "Documentos Juridicos",
-    action: (item) => {
-      setCurrent(item);
-      router.push({
-        name: "dynamic_document_dashboard",
-      });
-    },
-    icon: DocumentTextIcon,
+    icon: Square2StackIcon,
     current: false,
   },
 ]);

@@ -24,6 +24,7 @@
     "heroicons": "^2.1.5",
     "pinia": "^2.1.7",
     "sweetalert2": "^11.14.0",
+    "swiper": "^11.2.6",
     "tinymce": "^7.7.0",
     "vite-plugin-pwa": "^0.20.5",
     "vue": "^3.4.21",

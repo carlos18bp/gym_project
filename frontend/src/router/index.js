@@ -48,6 +48,18 @@ const router = createRouter({
       meta: { requiresAuth: false },
     },
     {
+      path: "/dashboard",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "dashboard",
+          component: () => import("@/views/dashboard/dashboard.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
       path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [
@@ -193,7 +205,7 @@ router.beforeEach(async (to, from, next) => {
     if (!resolvedRoute.matched.length) {
       console.warn("Route not found. Redirecting...");
       if (await authStore.isAuthenticated()) {
-        next({ name: "process_list" }); // Redirect to process_list if authenticated
+        next({ name: "dashboard" }); // Redirect to dashboard if authenticated
       } else {
         next({ name: "sign_in" }); // Redirect to sign_in if not authenticated
       }

@@ -181,12 +181,12 @@ const emailUsedToSentPasscode = ref("");
 onMounted(async () => {
   if (await authStore.isAuthenticated()) {
     router.push({
-      name: "process_list",
+      name: "dashboard",
       params: {
         user_id: userId,
         display: "",
       },
-    }); // Redirect to process_list if already authenticated
+    }); // Redirect to dashboard if already authenticated
   }
 });
 
@@ -253,12 +253,12 @@ const signOnUser = async () => {
 
     showNotification("¡Inicio de sesión exitoso!", "success");
     router.push({
-      name: "process_list",
+      name: "dashboard",
       params: {
         user_id: "",
         display: "",
       },
-    }); // Redirect to process_list
+    }); // Redirect to dashboard
   } else {
     showNotification("El código no es válido", "warning");
   }
