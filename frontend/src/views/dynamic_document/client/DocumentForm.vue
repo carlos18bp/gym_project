@@ -148,48 +148,85 @@ const allFieldsComplete = computed(() => {
  *
  * @param {String} state - The state of the document (e.g., "Completed", "Draft").
  */
-const saveDocument = async (state) => {
+const saveDocument = async (state = 'Draft') => {
   try {
     document.value.state = state;
-    document.value.assigned_to = store.currentUser?.id;
-
-    if (isEditMode.value) {
-      document.value.variables = document.value.variables.map((variable) => ({
-        id: variable.id,
-        name_en: variable.name_en,
-        name_es: variable.name_es,
-        field_type: variable.field_type,
-        value: variable.value,
-      }));
-
+    
+    let documentId = null;
+    
+    // Update existing document
+    if (isEditMode.value && document.value.id) {
       await store.updateDocument(document.value.id, document.value);
+      documentId = document.value.id;
+    } 
+    // Create new document
+    else {
+      // Before creating, ensure client is set
+      if (store.currentUser?.id && !document.value.client_id) {
+        document.value.created_by = store.currentUser.id;
+      }
+      
+      if (document.value.variables) {
+        document.value.variables = document.value.variables.map(variable => ({
+          name_en: variable.name_en,
+          name_es: variable.name_es,
+          field_type: variable.field_type,
+          value: variable.value,
+          tooltip: variable.tooltip
+        }));
+      }
+      
+      // Get current document count for comparison later
+      const currentDocCount = store.documents.length;
+      
+      // Create document and get result
+      const createdDoc = await store.createDocument(document.value);
+      
+      // If we got an ID directly from the response
+      if (createdDoc && createdDoc.id) {
+        documentId = createdDoc.id;
+      } 
+      // Need to find the document ID
+      else {
+        // Refresh the documents list to get the new one
+        await store.init();
+        
+        // Find most likely match by filtering criteria
+        const newDocs = store.documents.filter(doc => 
+          doc.title === document.value.title &&
+          doc.content === document.value.content
+        );
 
-      await showNotification(
-        state === "Completed"
-          ? "Document successfully completed"
-          : "Document updated.",
-        "success"
-      );
-    } else {
-      document.value.variables = document.value.variables.map((variable) => ({
-        name_en: variable.name_en,
-        name_es: variable.name_es,
-        field_type: variable.field_type,
-        value: variable.value,
-      }));
-      await store.createDocument(document.value);
-
-      await showNotification(
-        state === "Completed"
-          ? "Document successfully generated"
-          : "Document saved as draft",
-        "success"
-      );
+        if (newDocs.length > 0) {
+          // Use the newest document with matching criteria
+          documentId = newDocs[newDocs.length - 1].id;
+        } else {
+          // Fallback to the newest document
+          documentId = store.documents[store.documents.length - 1]?.id;
+          
+          if (!documentId) {
+            // Last resort
+            documentId = store.lastUpdatedDocumentId;
+          }
+        }
+      }
     }
-
-    router.push("/dynamic_document_dashboard");
+    
+    // Set lastUpdatedDocumentId to highlight the document in the list
+    if (documentId) {
+      localStorage.setItem('lastUpdatedDocumentId', documentId.toString());
+      store.lastUpdatedDocumentId = documentId;
+    }
+    
+    await showNotification('Documento guardado exitosamente', 'success');
+    
+    // Redirect to dashboard after a short delay
+    setTimeout(() => {
+      router.push('/dynamic_document_dashboard');
+    }, 500);
   } catch (error) {
-    console.error("Error saving document:", error);
+    console.error('Error saving document:', error);
+    await showNotification('Error al guardar documento', 'error');
   }
 };
 

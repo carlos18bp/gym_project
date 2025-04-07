@@ -86,11 +86,31 @@
         </div>
       </div>
 
+      <div class="flex items-center mb-4">
+        <input 
+          id="privacy-policy" 
+          type="checkbox" 
+          v-model="privacyAccepted"
+          class="w-4 h-4 text-secondary bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+        >
+        <label for="privacy-policy" class="ml-2 text-sm font-medium text-gray-900">
+          He leído y acepto las 
+          <a 
+            href="https://gymconsultoresjuridicos.com/politicas-de-privacidad-y-manejo-de-datos-personales/" 
+            target="_blank"
+            class="text-secondary hover:underline"
+          >
+            políticas de privacidad y manejo de datos personales
+          </a>
+        </label>
+      </div>
+
       <button
         v-if="!passcodeSent"
         @click.prevent="sendVerificationPasscode"
         type="submit"
-        class="text-white bg-secondary hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center"
+        :disabled="!privacyAccepted"
+        class="text-white bg-secondary hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Registrarse
       </button>
@@ -166,6 +186,8 @@ import { showNotification } from "@/shared/notification_message";
 
 const authStore = useAuthStore(); // Get the authentication store instance
 
+const privacyAccepted = ref(false);
+
 const userForm = reactive({
   email: "",
   firstName: "",
@@ -207,6 +229,10 @@ onMounted(async () => {
  */
 const sendVerificationPasscode = async () => {
   checkInputs();
+  if (!privacyAccepted.value) {
+    showNotification("Debes aceptar las políticas de privacidad", "warning");
+    return;
+  }
   showNotification(
     "Se ha enviado un código de acceso a tu correo electrónico",
     "info"

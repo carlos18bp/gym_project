@@ -56,7 +56,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed, ref } from "vue";
+import { onMounted, computed, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 
@@ -108,9 +108,26 @@ const filteredDocuments = computed(() => {
 
 // Load data when the component is mounted
 onMounted(async () => {
+  // Initialize store data
   await userStore.setCurrentUser();
   await documentStore.init();
+  
   documentStore.selectedDocument = null;
+  
+  // Make sure we are in the default section when loading
+  currentSection.value = "default";
+  
+  // Check localStorage for saved document ID to highlight
+  const savedId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  if (savedId) {
+    // Only set the ID if that document exists in our store
+    const docExists = documentStore.documents.some(doc => doc.id.toString() === savedId);
+    
+    if (docExists) {
+      documentStore.lastUpdatedDocumentId = parseInt(savedId);
+    }
+  }
 });
 
 /**
@@ -127,5 +144,15 @@ const handleSection = (message) => {
  */
 const closeModal = () => {
   showCreateDocumentModal.value = false;
+  // Ensure we're showing the default section
+  currentSection.value = "default";
 };
+
+// Reactive effect to ensure document list is shown when there's a lastUpdatedDocumentId
+watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
+  if (newId) {
+    // Switch to default section to show the document list
+    currentSection.value = "default";
+  }
+});
 </script>

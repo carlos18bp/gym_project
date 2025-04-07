@@ -3,12 +3,15 @@
     <div
       v-for="document in filteredDocuments"
       :key="document.id"
+      :data-document-id="document.id"
       :class="[
         'flex items-center gap-2 py-2 px-4 border rounded-md cursor-pointer transition',
         document.state === 'Published'
           ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
           : 'border-stroke bg-white hover:bg-gray-100',
+        highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
       ]"
+      :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 3px solid #3b82f6 !important;' : ''"
     >
       <component
         :is="document.state === 'Published' ? CheckCircleIcon : PencilIcon"
@@ -78,7 +81,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import {
   EllipsisVerticalIcon,
@@ -104,6 +107,7 @@ const documentStore = useDynamicDocumentStore();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
+const lastUpdatedDocId = ref(null);
 
 const props = defineProps({
   searchQuery: String,
@@ -113,13 +117,35 @@ const props = defineProps({
 const filteredDocuments = computed(() => {
   const allDraftAndPublishedDocs =
     documentStore.draftAndPublishedDocumentsUnassigned;
-  return documentStore
+  
+  const filtered = documentStore
     .filteredDocuments(props.searchQuery, "")
     .filter((doc) =>
       allDraftAndPublishedDocs.some(
         (draftAndPublishedDoc) => draftAndPublishedDoc.id === doc.id
       )
     );
+  
+  return filtered;
+});
+
+// Computed property to determine which document should be highlighted
+const highlightedDocId = computed(() => {
+  const storeId = documentStore.lastUpdatedDocumentId;
+  const localId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  // Verify if storeId exists in filtered documents
+  const docExists = storeId && filteredDocuments.value.some(doc => String(doc.id) === String(storeId));
+  
+  if (docExists) {
+    return storeId;
+  } else if (localId) {
+    // Verify if localStorage ID exists in filtered documents
+    const localDocExists = filteredDocuments.value.some(doc => String(doc.id) === String(localId));
+    return localDocExists ? localId : null;
+  }
+  
+  return null;
 });
 
 /**
@@ -186,11 +212,11 @@ const handleOption = async (action, document) => {
       break;
     case "publish":
       await publishDocument(document);
-      await showNotification("Documento publicado correctamente.", "success");
+      // The notification is omitted because an automatic redirection will take place.
       break;
     case "draft":
       await moveToDraft(document);
-      await showNotification("Documento movido a borrador.", "info");
+      // The notification is omitted because an automatic redirection will take place.
       break;
     case "preview":
       openPreviewModal(document);
@@ -209,7 +235,26 @@ const publishDocument = async (document) => {
     ...document,
     state: "Published",
   };
-  await documentStore.updateDocument(document.id, updatedData);
+  const response = await documentStore.updateDocument(document.id, updatedData);
+  
+  // Set this document as the last updated to highlight it
+  documentStore.lastUpdatedDocumentId = document.id;
+  localStorage.setItem('lastUpdatedDocumentId', document.id);
+  
+  // Try to force highlight first
+  forceHighlight(document.id);
+  
+  // Check if we're already on the dashboard
+  const currentPath = window.location.pathname;
+  const isDashboard = currentPath === '/dynamic_document_dashboard' || 
+                      currentPath === '/dynamic_document_dashboard/';
+  
+  if (!isDashboard) {
+    // Only redirect if not already on dashboard
+    setTimeout(() => {
+      window.location.href = '/dynamic_document_dashboard';
+    }, 800);
+  }
 };
 
 /**
@@ -221,14 +266,159 @@ const moveToDraft = async (document) => {
     ...document,
     state: "Draft",
   };
-  await documentStore.updateDocument(document.id, updatedData);
+  const response = await documentStore.updateDocument(document.id, updatedData);
+  
+  // Set this document as the last updated to highlight it
+  documentStore.lastUpdatedDocumentId = document.id;
+  localStorage.setItem('lastUpdatedDocumentId', document.id);
+  
+  // Try to force highlight first
+  forceHighlight(document.id);
+  
+  // Check if we're already on the dashboard
+  const currentPath = window.location.pathname;
+  const isDashboard = currentPath === '/dynamic_document_dashboard' || 
+                      currentPath === '/dynamic_document_dashboard/';
+  
+  if (!isDashboard) {
+    // Only redirect if not already on dashboard
+    setTimeout(() => {
+      window.location.href = '/dynamic_document_dashboard';
+    }, 800);
+  }
 };
 
 /**
  * Close the edit modal and clear the document reference.
+ * Can receive an object with the ID of the updated document to highlight it.
  */
-const closeEditModal = () => {
+const closeEditModal = (eventData) => {
   showEditDocumentModal.value = false;
   documentStore.selectedDocument = null;
+  
+  // Check if we received data about which document was updated
+  if (eventData && eventData.updatedDocId) {
+    // Set the ID for visual highlight
+    documentStore.lastUpdatedDocumentId = eventData.updatedDocId;
+    localStorage.setItem('lastUpdatedDocumentId', eventData.updatedDocId);
+    
+    // Try to force highlight first
+    forceHighlight(eventData.updatedDocId);
+    
+    // Check if we're already on the dashboard
+    const currentPath = window.location.pathname;
+    const isDashboard = currentPath === '/dynamic_document_dashboard' || 
+                        currentPath === '/dynamic_document_dashboard/';
+    
+    if (!isDashboard) {
+      // Only redirect if not already on dashboard
+      setTimeout(() => {
+        window.location.href = '/dynamic_document_dashboard';
+      }, 800);
+    }
+  }
 };
+
+// Make sure highlighted document ID is updated when filtered documents change
+watch(filteredDocuments, (newDocs) => {
+  // If we have a lastUpdatedDocumentId, verify it exists in the list
+  if (documentStore.lastUpdatedDocumentId) {
+    const exists = newDocs.some(doc => String(doc.id) === String(documentStore.lastUpdatedDocumentId));
+    
+    // If not found but we have documents, use the newest one
+    if (!exists && newDocs.length > 0) {
+      // Sort by ID to get newest document
+      const sortedDocs = [...newDocs].sort((a, b) => b.id - a.id);
+      const newId = sortedDocs[0].id;
+      
+      documentStore.lastUpdatedDocumentId = newId;
+      localStorage.setItem('lastUpdatedDocumentId', newId);
+    }
+  }
+});
+
+/**
+ * Forces highlight on a specific document by directly manipulating DOM
+ * @param {string|number} documentId - ID of the document to highlight
+ */
+const forceHighlight = (documentId) => {
+  if (!documentId) return;
+  
+  // Find the actual DOM element
+  setTimeout(() => {
+    try {
+      // Find element by attribute selector
+      const documentElements = document.querySelectorAll(`[data-document-id="${documentId}"]`);
+      
+      if (documentElements.length > 0) {
+        const element = documentElements[0];
+        
+        // Apply styles directly
+        element.style.border = "2px solid #3b82f6";
+        
+        // Remove and re-add classes to restart animation
+        element.classList.remove("animate-pulse-highlight");
+        
+        // Force a reflow before adding the class again
+        void element.offsetWidth;
+        
+        // Add the classes again
+        element.classList.add("animate-pulse-highlight");
+        
+        // Ensure visibility
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } catch (error) {
+      console.error("Error forcing highlight:", error);
+    }
+  }, 100);
+};
+
+// Expose the forceHighlight function globally for use by other components
+window.forceDocumentHighlight = forceHighlight;
+
+// Initialize data when component mounts
+onMounted(async () => {
+  // Ensure documents are loaded
+  await documentStore.init();
+  
+  const savedId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  if (savedId) {
+    documentStore.lastUpdatedDocumentId = savedId;
+    
+    // Force detection of changes in Vue
+    setTimeout(() => {
+      const docExists = filteredDocuments.value.some(doc => String(doc.id) === String(savedId));
+      
+      // If document exists, force a highlight
+      if (docExists) {
+        forceHighlight(savedId);
+      }
+    }, 500);
+  }
+});
 </script>
+
+<style scoped>
+@keyframes pulse-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+    border-color: rgba(59, 130, 246, 0.8);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
+    border-color: rgba(59, 130, 246, 0.8);
+    background-color: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-highlight {
+  animation: pulse-highlight 1s ease-in-out 3;
+  border-width: 2px !important;
+  position: relative;
+  z-index: 10;
+}
+</style>

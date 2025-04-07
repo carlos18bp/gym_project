@@ -173,21 +173,58 @@ const saveDocument = async (state) => {
       })),
     };
 
+    // Save current document data for reference
+    const originalTitle = store.selectedDocument.title;
+    const originalContent = store.selectedDocument.content;
+    
+    let documentId;
+    let response;
+    
     if (store.selectedDocument.id) {
-      await store.updateDocument(store.selectedDocument.id, documentData);
+      documentId = store.selectedDocument.id;
+      response = await store.updateDocument(documentId, documentData);
     } else {
-      await store.createDocument(documentData);
+      response = await store.createDocument(documentData);
+      if (response && response.id) {
+        documentId = response.id;
+      }
     }
-
+    
+    // Refresh documents to get the updated list
     store.selectedDocument = null;
     await store.init();
+    
+    // If we couldn't get an ID from the response, try to find the document by attributes
+    if (!documentId) {
+      const foundDoc = store.documents.find(doc => 
+        doc.title === originalTitle &&
+        doc.content === originalContent &&
+        doc.state === state
+      );
+      
+      if (foundDoc) {
+        documentId = foundDoc.id;
+      }
+    }
+    
+    // Set lastUpdatedDocumentId explicitly to ensure the highlight effect works
+    if (documentId) {
+      // Set the ID in localStorage for persistence across redirects
+      window.localStorage.setItem('lastUpdatedDocumentId', documentId.toString());
+      store.lastUpdatedDocumentId = documentId;
+    }
+    
     await showNotification(
       state === "Draft"
         ? "Documento guardado como borrador"
         : "Documento publicado exitosamente",
       "success"
     );
-    router.push("/dynamic_document_dashboard");
+    
+    // Use a longer delay before redirect to ensure store state is properly saved
+    setTimeout(() => {
+      router.push("/dynamic_document_dashboard");
+    }, 300);
   } catch (error) {
     console.error("Error saving document:", error);
   }

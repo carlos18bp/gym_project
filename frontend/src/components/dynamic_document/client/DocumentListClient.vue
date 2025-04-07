@@ -4,10 +4,12 @@
     <div
       v-for="document in filteredDocuments"
       :key="document.id"
+      :data-document-id="document.id"
       class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer"
       :class="{
         'border-green-400 bg-green-300/30': document.state === 'Completed',
         'border-stroke bg-white': document.state === 'Progress',
+        'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
       }"
     >
       <component
@@ -151,7 +153,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
 import { showNotification } from "@/shared/notification_message";
@@ -175,21 +177,72 @@ const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 
+// Computed property that determines which document should be highlighted
+// It first checks if the store's lastUpdatedDocumentId exists in filtered documents
+// If not, tries to use the localStorage's lastUpdatedDocumentId
+const highlightedDocId = computed(() => {
+  const storeId = documentStore.lastUpdatedDocumentId;
+  const localId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  // Verify if storeId exists in filtered documents
+  const docExists = storeId && filteredDocuments.value.some(doc => String(doc.id) === String(storeId));
+  
+  if (docExists) {
+    return storeId;
+  } else if (localId) {
+    // Verify if localStorage ID exists in filtered documents
+    const localDocExists = filteredDocuments.value.some(doc => String(doc.id) === String(localId));
+    return localDocExists ? localId : null;
+  }
+  
+  return null;
+});
+
 const props = defineProps({
   searchQuery: String,
 });
 
+// Initialize data when component mounts
+onMounted(async () => {
+  // Ensure documents are loaded
+  await documentStore.init();
+  
+  const savedId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  if (savedId && !documentStore.lastUpdatedDocumentId) {
+    documentStore.lastUpdatedDocumentId = savedId;
+  }
+  
+  // Check if the ID exists in our document list
+  if (documentStore.lastUpdatedDocumentId) {
+    const exists = filteredDocuments.value.some(doc => String(doc.id) === String(documentStore.lastUpdatedDocumentId));
+  }
+});
+
+// Watch for changes in lastUpdatedDocumentId
+watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
+  if (newId) {
+    localStorage.setItem('lastUpdatedDocumentId', newId);
+  }
+});
+
 // Retrieve documents in progress and completed from the store, applying the search filter.
-const filteredDocuments = computed(() => {
+const filteredDocuments = computed(() => {  
+  // First, get all progress and completed documents for this client
   const allProgressAndCompletedDocs =
-    documentStore.progressAndCompletedDocumentsByClient(currentUser.value.id);
-  return documentStore
-    .filteredDocuments(props.searchQuery, userStore)
-    .filter((doc) =>
-      allProgressAndCompletedDocs.some(
-        (progressOrCompletedDoc) => progressOrCompletedDoc.id === doc.id
-      )
-    );
+    documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);
+  
+  // Then apply search filter if it exists
+  const searchFiltered = documentStore.filteredDocuments(props.searchQuery, userStore);
+  
+  // Finally, find intersection between both sets
+  const result = searchFiltered.filter((doc) =>
+    allProgressAndCompletedDocs.some(
+      (progressOrCompletedDoc) => String(progressOrCompletedDoc.id) === String(doc.id)
+    )
+  );
+  
+  return result;
 });
 
 /**
@@ -237,9 +290,17 @@ const openEditModal = (document) => {
 
 /**
  * Close the edit modal and clear the selected document.
+ * @param {Object} data - Data received from the modal, may contain updatedDocId
  */
-const closeEditModal = () => {
+const closeEditModal = (data) => {
   showEditDocumentModal.value = false;
+  
+  // Check if we have received updatedDocId from the modal
+  if (data && data.updatedDocId) {
+    // Apply highlighting using our function
+    forceHighlight(data.updatedDocId);
+  }
+  
   documentStore.clearSelectedDocument();
 };
 
@@ -260,4 +321,94 @@ const closeEmailModal = () => {
   emailDocument.value = {};
   showSendDocumentViaEmailModal.value = false;
 };
+
+// Make sure highlighted document ID is updated when filtered documents change
+watch(filteredDocuments, (newDocs) => {
+  // If we have a lastUpdatedDocumentId, verify it exists in the list
+  if (documentStore.lastUpdatedDocumentId) {
+    const exists = newDocs.some(doc => String(doc.id) === String(documentStore.lastUpdatedDocumentId));
+    
+    // If not found but we have documents, use the newest one
+    if (!exists && newDocs.length > 0) {
+      // Sort by ID to get newest document
+      const sortedDocs = [...newDocs].sort((a, b) => b.id - a.id);
+      const newId = sortedDocs[0].id;
+      
+      documentStore.lastUpdatedDocumentId = newId;
+      localStorage.setItem('lastUpdatedDocumentId', newId);
+    }
+  }
+});
+
+/**
+ * Function to force highlight a specific document
+ * Directly manipulates DOM to apply visual effects
+ * @param {string|number} documentId - ID of the document to highlight
+ */
+const forceHighlight = (documentId) => {
+  if (!documentId) return;
+  
+  // Update lastUpdatedDocumentId in the store
+  documentStore.lastUpdatedDocumentId = documentId;
+  localStorage.setItem('lastUpdatedDocumentId', documentId);
+  
+  // Find the actual DOM element using data-document-id
+  setTimeout(() => {
+    try {
+      // Find the element by attribute selector
+      const documentElements = document.querySelectorAll(`[data-document-id="${documentId}"]`);
+      
+      if (documentElements.length > 0) {
+        const element = documentElements[0];
+        
+        // Apply styles directly
+        element.style.border = "3px solid #3b82f6";
+        
+        // Remove and re-add classes to restart animation
+        element.classList.remove("animate-pulse-highlight");
+        element.classList.remove("border-secondary");
+        element.classList.remove("shadow-md");
+        
+        // Force a reflow before adding the class again
+        void element.offsetWidth;
+        
+        // Add the classes again
+        element.classList.add("animate-pulse-highlight");
+        element.classList.add("border-secondary");
+        element.classList.add("shadow-md");
+        
+        // Ensure visibility
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } catch (error) {
+      console.error("Error forcing highlight:", error);
+    }
+  }, 100);
+};
+
+// Expose the forceHighlight function globally for use by other components
+window.forceDocumentHighlight = forceHighlight;
 </script>
+
+<style scoped>
+@keyframes pulse-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+    border-color: rgba(59, 130, 246, 0.8);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
+    border-color: rgba(59, 130, 246, 0.8);
+    background-color: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-highlight {
+  animation: pulse-highlight 1s ease-in-out 3;
+  border-width: 2px !important;
+  position: relative;
+  z-index: 10;
+}
+</style>

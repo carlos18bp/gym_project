@@ -12,6 +12,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     documents: [], // List of dynamic documents
     selectedDocument: null, // Currently selected document
     dataLoaded: false, // Flag to indicate if documents have been fetched
+    lastUpdatedDocumentId: null, // Track the last updated document ID
   }),
 
   getters: {
@@ -67,11 +68,23 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      * @returns {function} - Function that takes a client ID and returns filtered documents.
      */
     progressAndCompletedDocumentsByClient: (state) => (clientId) => {
-      return state.documents.filter(
-        (doc) =>
-          doc.assigned_to === clientId &&
-          (doc.state === "Progress" || doc.state === "Completed")
+      if (!clientId) {
+        return [];
+      }
+
+      const filteredDocs = state.documents.filter(
+        (doc) => {
+          const docClientId = doc.assigned_to ? String(doc.assigned_to) : null;
+          const queryClientId = String(clientId);
+          
+          const matches = docClientId === queryClientId && 
+                        (doc.state === "Progress" || doc.state === "Completed");
+          
+          return matches;
+        }
       );
+      
+      return filteredDocs;
     },
 
     /**
@@ -119,6 +132,16 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         );
       });
     },
+
+    documentsByClient: (state) => (clientId) => {
+      if (clientId) {
+        const filteredDocs = state.documents.filter((doc) => {
+          return doc.client_id === parseInt(clientId);
+        });
+        return filteredDocs;
+      }
+      return [];
+    },
   },
 
   actions: {
@@ -126,7 +149,14 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      * Initialize the store by fetching data if not already loaded.
      */
     async init() {
-      if (!this.dataLoaded) await this.fetchDocuments();
+      // Initialize data
+      await this.fetchDocuments();
+      
+      // Check localStorage for saved ID to highlight
+      const savedId = localStorage.getItem('lastUpdatedDocumentId');
+      if (savedId) {
+        this.lastUpdatedDocumentId = parseInt(savedId);
+      }
     },
 
     /**
@@ -137,6 +167,10 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         const response = await get_request("dynamic-documents/");
         this.documents = response.data;
         this.dataLoaded = true;
+        // Check if lastUpdatedDocumentId exists in the fetched documents
+        if (this.lastUpdatedDocumentId) {
+          const exists = this.documents.some(doc => doc.id === this.lastUpdatedDocumentId);
+        }
       } catch (error) {
         console.error("Error fetching documents:", error);
       }
@@ -145,20 +179,74 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     /**
      * Create a new dynamic document by sending a POST request to the backend.
      * @param {Object} documentData - The data for the new document to be created.
+     * @returns {Object} The created document data
      */
     async createDocument(documentData) {
       try {
+        const initialDocCount = this.documents.length;
+        
+        // Create the document through API
         const response = await create_request(
           "dynamic-documents/create/",
           documentData
         );
-        this.documents.push(response.data);
-        this.selectedDocument = response.data;
-
-        this.dataLoaded = false;
+        
+        // Try to get the created document ID
+        let createdDocId = null;
+        if (response && response.data && response.data.id) {
+          createdDocId = response.data.id;
+        }
+        
+        // Refresh documents to get the updated list
         await this.fetchDocuments();
+        
+        // Return the document ID if we have it
+        if (createdDocId) {
+          this.lastUpdatedDocumentId = createdDocId;
+          localStorage.setItem('lastUpdatedDocumentId', createdDocId.toString());
+          return { id: createdDocId };
+        }
+        
+        // If we didn't get an ID from the response, try to find the document
+        // by comparing before/after document counts and matching attributes
+        if (this.documents.length > initialDocCount) {
+          // Get the new documents that weren't in the initial list
+          const newDocuments = this.documents.filter((_, index) => index >= initialDocCount);
+          
+          // First try: exact match by title and content
+          let possibleDoc = newDocuments.find(
+            doc => doc.title === documentData.title && 
+                   doc.content === documentData.content
+          );
+          
+          if (possibleDoc) {
+            this.lastUpdatedDocumentId = possibleDoc.id;
+            localStorage.setItem('lastUpdatedDocumentId', possibleDoc.id.toString());
+            return possibleDoc;
+          }
+          
+          // Second try: just match by title
+          possibleDoc = newDocuments.find(doc => doc.title === documentData.title);
+          if (possibleDoc) {
+            this.lastUpdatedDocumentId = possibleDoc.id;
+            localStorage.setItem('lastUpdatedDocumentId', possibleDoc.id.toString());
+            return possibleDoc;
+          }
+          
+          // Last resort: just take the newest document
+          possibleDoc = newDocuments[newDocuments.length - 1];
+          if (possibleDoc) {
+            this.lastUpdatedDocumentId = possibleDoc.id;
+            localStorage.setItem('lastUpdatedDocumentId', possibleDoc.id.toString());
+            return possibleDoc;
+          }
+        }
+        
+        // If all else fails, return the original response
+        return response.data;
       } catch (error) {
-        console.error("Error creating document:", error);
+        console.error('Error creating document:', error);
+        throw error;
       }
     },
 
@@ -166,6 +254,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      * Update an existing document by sending a PUT or PATCH request to the backend.
      * @param {number} documentId - The ID of the document to be updated.
      * @param {Object} documentData - The updated data for the document.
+     * @returns {Object} The response data
      */
     async updateDocument(documentId, documentData) {
       try {
@@ -173,11 +262,18 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
           `dynamic-documents/${documentId}/update/`,
           documentData
         );
-
-        this.dataLoaded = false;
+        
+        // Update the lastUpdatedDocumentId
+        this.lastUpdatedDocumentId = documentId;
+        localStorage.setItem('lastUpdatedDocumentId', documentId.toString());
+        
+        // Refresh the documents list
         await this.fetchDocuments();
+        
+        return response.data;
       } catch (error) {
-        console.error("Error updating document:", error);
+        console.error('Error updating document:', error);
+        throw error;
       }
     },
 
