@@ -314,10 +314,18 @@ export const useProcessStore = defineStore("process", {
           
           // Register activity using the appropriate action type based on the process status
           if (isFinished) {
-            await registerUserActivity(
-              ACTION_TYPES.FINISH, 
-              `Finalizaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
-            );
+            // If specifically archiving (vs just finishing with "Fallo")
+            if (formData.isArchiving) {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Archivaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            } else {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Finalizaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            }
           } else {
             await registerUserActivity(
               ACTION_TYPES.EDIT, 
