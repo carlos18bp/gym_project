@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { useAuthStore } from "./auth";
 import { get_request, update_request } from "./services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useUserStore = defineStore("user", {
   /**
@@ -150,8 +151,30 @@ export const useUserStore = defineStore("user", {
           `update_profile/${formData.id}/`,
           formDataObject
         );
+        
         this.dataLoaded = false; // Reload the data after update
         await this.fetchUsersData();
+        
+        // Get the current user after update
+        const updatedUser = this.userById(formData.id);
+        
+        // Check if this is the first profile completion or just an update
+        if (updatedUser && updatedUser.is_profile_completed) {
+          // If this is the first time completing the profile
+          if (!this.currentUser.is_profile_completed) {
+            await registerUserActivity(
+              ACTION_TYPES.CREATE,
+              `¡Bienvenido a GYM! Has completado tu perfil exitosamente.`
+            );
+          } else {
+            // Regular profile update
+            await registerUserActivity(
+              ACTION_TYPES.UPDATE,
+              `Actualizaste tu información de perfil.`
+            );
+          }
+        }
+        
         return response.status;
       } catch (error) {
         console.error("Error updating user:", error.message);

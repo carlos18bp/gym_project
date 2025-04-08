@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { get_request, create_request } from "./services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useLegalRequestStore = defineStore("legalRequest", {
   /**
@@ -96,6 +97,16 @@ export const useLegalRequestStore = defineStore("legalRequest", {
               );
             }
           }
+
+          // Get the request type name for the activity description
+          const requestTypeName = formData.requestTypeId.name || "legal";
+          const disciplineName = formData.disciplineId.name || "";
+          
+          // Register activity for legal request creation
+          await registerUserActivity(
+            ACTION_TYPES.CREATE,
+            `Radicaste una solicitud de ${requestTypeName}${disciplineName ? ` en ${disciplineName}` : ''}.`
+          );
 
           this.dataLoaded = false; // Reset dataLoaded to force refresh if necessary
           return response.status; // Return success status code

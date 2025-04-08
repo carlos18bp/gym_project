@@ -122,3 +122,55 @@ class User(AbstractUser):
         """
         return f"{self.email} ({self.last_name} {self.first_name})"
 
+
+class ActivityFeed(models.Model):
+    """
+    Activity Feed model to track user actions.
+    
+    Maintains a maximum of 20 entries per user, with the oldest entry being deleted
+    when a new one is added beyond the limit.
+    
+    Attributes:
+        user (ForeignKey): The user who performed the action.
+        action_type (CharField): The type of action (create, edit, finish, etc).
+        description (TextField): Description of the action that was performed.
+        created_at (DateTimeField): When the action was performed.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    
+    ACTION_TYPE_CHOICES = [
+        ('create', 'Create'),
+        ('edit', 'Edit'),
+        ('finish', 'Finish'),
+        ('delete', 'Delete'),
+        ('update', 'Update'),
+        ('other', 'Other'),
+    ]
+    action_type = models.CharField(max_length=10, choices=ACTION_TYPE_CHOICES, default='other')
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Activity'
+        verbose_name_plural = 'Activities'
+    
+    def __str__(self):
+        """String representation of an activity."""
+        return f"{self.user.email} - {self.action_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save method to maintain a maximum of 20 activity entries per user.
+        When a new entry is added beyond the limit, the oldest one is deleted.
+        """
+        super().save(*args, **kwargs)
+        
+        # Check if this user has more than 20 activities
+        activities_count = ActivityFeed.objects.filter(user=self.user).count()
+        if activities_count > 20:
+            # Get the oldest activity and delete it
+            oldest_activity = ActivityFeed.objects.filter(user=self.user).order_by('created_at').first()
+            if oldest_activity:
+                oldest_activity.delete()
+

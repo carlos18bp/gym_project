@@ -1,7 +1,8 @@
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models import User
-from gym_app.serializers.user import UserSerializer
+from gym_app.models.user import ActivityFeed
+from gym_app.serializers.user import UserSerializer, ActivityFeedSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.core.files.storage import default_storage
@@ -84,4 +85,39 @@ def update_profile(request, pk):
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
 
     # Return any validation errors that occurred
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_activities(request):
+    """
+    API view to retrieve the activities of the authenticated user.
+    
+    Returns a list of activities in chronological order (newest first).
+    """
+    activities = ActivityFeed.objects.filter(user=request.user)
+    serializer = ActivityFeedSerializer(activities, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_activity(request):
+    """
+    API view to create a new activity for a user.
+    
+    The request must include:
+    - action_type: one of 'create', 'edit', 'finish', 'delete', 'update', 'other'
+    - description: text describing the action
+    
+    The user is automatically set to the authenticated user.
+    """
+    # Create a copy of request data to make it mutable
+    data = request.data.copy()
+    # Set the user to the authenticated user
+    data['user'] = request.user.id
+    
+    serializer = ActivityFeedSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

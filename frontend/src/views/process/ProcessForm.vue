@@ -592,7 +592,8 @@ const isSaveButtonEnabled = computed(() => {
  * @param {object} process - The process data to be assigned to formData.
  */
 function assignProcessToFormData(process) {
-  formData.processIdParam = process.id;
+  console.log("Process ID being assigned:", process.id);
+  formData.processIdParam = process.id || "";
   formData.plaintiff = process.plaintiff || "";
   formData.defendant = process.defendant || "";
   selectedCaseType.value = process.case || "";
@@ -697,6 +698,12 @@ const onSubmit = async () => {
   formData.caseTypeId = selectedCaseType.value?.id || "";
   formData.clientId = selectedClient.value?.id || "";
   formData.lawyerId = authStore.userAuth?.id || "";
+  
+  // Ensure process ID is set for updates
+  if (actionParam.value === 'edit' && programIdParam.value) {
+    console.log("Submitting with process ID:", programIdParam.value);
+    formData.processIdParam = programIdParam.value;
+  }
 
   if (validateFormData()) {
     await submitHandler(

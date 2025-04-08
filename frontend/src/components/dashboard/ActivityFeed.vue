@@ -32,30 +32,43 @@
 
     <!-- Feed content -->
     <div v-if="activeTab === 'feed'" class="mt-4 overflow-y-auto max-h-[170px] scrollbar-thin">
-      <div class="timeline">
+      <div v-if="activityFeedStore.loading" class="text-center py-4">
+        <div class="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-blue-500 border-r-2 border-gray-200 mr-2"></div>
+        Cargando actividades...
+      </div>
+      <div v-else-if="activityFeedStore.error" class="text-center text-red-500 py-4">
+        Error al cargar las actividades
+      </div>
+      <div v-else-if="!activityFeedStore.activities.length" class="text-center text-gray-500 py-4">
+        No hay actividades registradas
+      </div>
+      <div v-else class="timeline">
         <div 
-          v-for="(activity, index) in activities" 
-          :key="index" 
+          v-for="(activity, index) in activityFeedStore.activities" 
+          :key="activity.id || index" 
           class="timeline-item pb-6"
-          :class="{'last-item': index === activities.length - 1}"
+          :class="{'last-item': index === activityFeedStore.activities.length - 1}"
         >
           <div class="flex">
             <!-- Timeline icon with connector -->
             <div class="timeline-icon relative flex-shrink-0 mr-3" style="width: 40px;">
               <div 
-                class="w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white relative z-10"
+                class="w-10 h-10 rounded-full flex items-center justify-center border-2 relative z-10"
                 :class="[
                   getActivityIconClass(activity.type),
-                  `border-${getActivityBorderColor(activity.type)}`
+                  getBorderColorClass(activity.type)
                 ]"
               >
-                <ArrowUpIcon v-if="activity.type === 'edit'" class="h-5 w-5 text-white" />
-                <PlusIcon v-else-if="activity.type === 'create'" class="h-5 w-5 text-white" />
-                <ArrowDownIcon v-else-if="activity.type === 'finish'" class="h-5 w-5 text-white" />
+                <PlusIcon v-if="activity.type === 'create'" class="h-5 w-5 text-green-500" />
+                <PencilIcon v-else-if="activity.type === 'edit'" class="h-5 w-5 text-blue-500" />
+                <ArrowDownIcon v-else-if="activity.type === 'finish'" class="h-5 w-5 text-indigo-500" />
+                <TrashIcon v-else-if="activity.type === 'delete'" class="h-5 w-5 text-red-500" />
+                <ArrowUpIcon v-else-if="activity.type === 'update'" class="h-5 w-5 text-yellow-500" />
+                <QuestionMarkCircleIcon v-else class="h-5 w-5 text-gray-500" />
               </div>
               <!-- Timeline connector line -->
               <div 
-                v-if="index < activities.length - 1" 
+                v-if="index < activityFeedStore.activities.length - 1" 
                 class="timeline-connector w-0.5 top-10 h-full"
                 :class="getActivityLineClass(activity.type)"
               ></div>
@@ -110,8 +123,16 @@
  * If the user is a client, they'll see "Lawyers" with gray dots.
  */
 import { ref, computed, onMounted, watch } from 'vue';
-import { ArrowUpIcon, ArrowDownIcon, PlusIcon } from '@heroicons/vue/24/outline';
+import { 
+  ArrowUpIcon, 
+  ArrowDownIcon, 
+  PlusIcon, 
+  TrashIcon, 
+  PencilIcon, 
+  QuestionMarkCircleIcon 
+} from '@heroicons/vue/24/outline';
 import { useUserStore } from '@/stores/user';
+import { useActivityFeedStore } from '@/stores/activity_feed';
 
 const props = defineProps({
   /**
@@ -126,36 +147,65 @@ const props = defineProps({
 // Component state
 const activeTab = ref('feed');
 const userStore = useUserStore();
-const activities = ref([]);
+const activityFeedStore = useActivityFeedStore();
 const contacts = ref([]);
 const isDataLoaded = ref(false);
 
 // Check if user is a lawyer
 const isLawyer = computed(() => props.user?.role === 'lawyer');
 
-// Function to get activity icon CSS class based on type
-const getActivityIconClass = (type) => {
+// Function to get activity border color class
+const getBorderColorClass = (type) => {
   switch (type) {
-    case 'edit':
-      return 'bg-blue-500';
     case 'create':
-      return 'bg-green-500';
+      return 'border-green-500';
+    case 'edit':
+      return 'border-blue-500';
     case 'finish':
-      return 'bg-blue-500';
+      return 'border-indigo-500';
+    case 'delete':
+      return 'border-red-500';
+    case 'update':
+      return 'border-yellow-500';
+    case 'other':
     default:
-      return 'bg-gray-500';
+      return 'border-gray-500';
   }
 };
 
-// Function to get activity border color based on type
+// Function to get activity icon CSS class based on type
+const getActivityIconClass = (type) => {
+  switch (type) {
+    case 'create':
+      return 'bg-green-200';
+    case 'edit':
+      return 'bg-blue-200';
+    case 'finish':
+      return 'bg-indigo-200';
+    case 'delete':
+      return 'bg-red-200';
+    case 'update':
+      return 'bg-yellow-200';
+    case 'other':
+    default:
+      return 'bg-gray-200';
+  }
+};
+
+// Function that returns the border color value, not used for classes
 const getActivityBorderColor = (type) => {
   switch (type) {
-    case 'edit':
-      return 'blue-500';
     case 'create':
       return 'green-500';
-    case 'finish':
+    case 'edit':
       return 'blue-500';
+    case 'finish':
+      return 'indigo-500';
+    case 'delete':
+      return 'red-500';
+    case 'update':
+      return 'yellow-500';
+    case 'other':
     default:
       return 'gray-500';
   }
@@ -164,12 +214,17 @@ const getActivityBorderColor = (type) => {
 // Function to get timeline connector line color
 const getActivityLineClass = (type) => {
   switch (type) {
-    case 'edit':
-      return 'bg-blue-300';
     case 'create':
       return 'bg-green-300';
-    case 'finish':
+    case 'edit':
       return 'bg-blue-300';
+    case 'finish':
+      return 'bg-indigo-300';
+    case 'delete':
+      return 'bg-red-300';
+    case 'update':
+      return 'bg-yellow-300';
+    case 'other':
     default:
       return 'bg-gray-300';
   }
@@ -213,36 +268,26 @@ watch(() => props.user, (newUser) => {
 
 // Initialize component data
 onMounted(async () => {
+  console.log('ActivityFeed mounted, user:', props.user);
+  
   await userStore.init();
   isDataLoaded.value = true;
   
-  // Example activity data
-  activities.value = [
-    {
-      type: 'edit',
-      description: 'Editaste el proceso de alimentos de Jhonnatan Carmona.',
-      time: 'Hace 13 horas'
-    },
-    {
-      type: 'create',
-      description: 'Creaste el nuevo contrato Arriendo 2025',
-      time: 'Hace 1 día'
-    },
-    {
-      type: 'finish',
-      description: 'Finalizaste el proceso Laboral de Andrea Paez.',
-      time: 'Hace 1 semana'
-    },
-    {
-      type: 'finish',
-      description: 'Finalizaste el proceso Laboral de Andrea Paez.',
-      time: 'Hace 1 semana'
-    }
-  ];
-  
   // Load contacts after data is loaded
   loadContacts();
+  
+  // Fetch user activities - try to fetch even if no user ID
+  console.log('Fetching activities, user ID:', props.user?.id);
+  await activityFeedStore.fetchUserActivities();
+  
+  // Log the result after fetching
+  console.log('Activities loaded:', activityFeedStore.activities.length, activityFeedStore.activities);
 });
+
+// Add a watcher to debug activities changes
+watch(() => activityFeedStore.activities, (newActivities) => {
+  console.log('Activities updated:', newActivities.length, newActivities);
+}, { deep: true });
 </script>
 
 <style scoped>
