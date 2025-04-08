@@ -220,7 +220,6 @@ const props = defineProps({
 onMounted(async () => {
   // If we have prompt documents, don't initialize highlights
   if (props.promptDocuments) {
-    console.log('Prompt documents:', props.promptDocuments);
     return;
   }
 
@@ -253,9 +252,38 @@ watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
 
 // Retrieve documents in progress and completed from the store, applying the search filter.
 const filteredDocuments = computed(() => {  
-  // Si hay documentos del prompt, usarlos
+  // Si hay documentos del prompt, aplicar el mismo filtro que se usa con documentos normales
   if (props.promptDocuments) {
-    return props.promptDocuments;
+    // Apply the same filtering logic to promptDocuments
+    const clientId = currentUser.value?.id;
+    
+    // Filter prompt documents to only include progress and completed for this client
+    let filteredPromptDocs = props.promptDocuments.filter(doc => {
+      const docClientId = doc.assigned_to ? String(doc.assigned_to) : null;
+      const queryClientId = String(clientId);
+      
+      return docClientId === queryClientId && 
+             (doc.state === "Progress" || doc.state === "Completed");
+    });
+    
+    // Apply search filter if it exists
+    if (props.searchQuery) {
+      const lowerQuery = props.searchQuery.toLowerCase();
+      filteredPromptDocs = filteredPromptDocs.filter(doc => {
+        return (
+          doc.title.toLowerCase().includes(lowerQuery) ||
+          doc.state.toLowerCase().includes(lowerQuery) ||
+          (doc.assigned_to &&
+            userStore &&
+            (userStore.userById(doc.assigned_to)?.first_name?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.last_name?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.email?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.identification?.toLowerCase().includes(lowerQuery)))
+        );
+      });
+    }
+    
+    return filteredPromptDocs;
   }
 
   // Si no hay prompt, usar la lógica normal

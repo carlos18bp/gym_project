@@ -45,7 +45,7 @@
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
-      <div class="grid grid-cols-4 gap-4">
+      <div class="mt-8 grid grid-cols-4 gap-4">
         <DocumentListClient
           v-if="currentSection === 'default'"
           :searchQuery="searchQuery"
