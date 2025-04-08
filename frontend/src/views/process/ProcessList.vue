@@ -3,6 +3,13 @@
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
     <slot></slot>    
     <template v-if="currentUser?.role == 'lawyer'" #auxiliary_button>
+      <router-link 
+        :to="{ name: 'process_form', params: { action: 'create' } }"  
+        class="flex items-center gap-2 rounded-lg bg-secondary text-white px-4 py-2"
+      >
+        <PlusIcon class="size-5" aria-hidden="true" />
+        <span class="text-sm font-medium">Nuevo</span>
+      </router-link>
       <Menu as="div" class="relative inline-block text-left">
         <div>
           <MenuButton
@@ -197,9 +204,8 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { AdjustmentsVerticalIcon } from "@heroicons/vue/20/solid";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
-import { ChevronUpIcon, CubeTransparentIcon } from "@heroicons/vue/20/solid";
+import { AdjustmentsVerticalIcon, ChevronUpIcon, CubeTransparentIcon, PlusIcon } from "@heroicons/vue/20/solid";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";

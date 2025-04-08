@@ -1,4 +1,4 @@
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document, legal_update
 from .views.layouts import sendEmail
 from django.urls import path
 
@@ -45,6 +45,19 @@ dynamic_document_urls = [
     path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments'),
     path('dynamic-documents/<int:pk>/download-pdf/', dynamic_document.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
     path('dynamic-documents/<int:pk>/download-word/', dynamic_document.download_dynamic_document_word, name='download_dynamic_document_word'),
+    path('dynamic-documents/recent/', dynamic_document.get_recent_documents, name='get-recent-documents'),
+    path('dynamic-documents/<int:document_id>/update-recent/', dynamic_document.update_recent_document, name='update-recent-document'),
+]
+
+legal_update_urls = [
+    path('legal-updates/', legal_update.LegalUpdateViewSet.as_view({'get': 'list', 'post': 'create'}), name='legal-updates-list'),
+    path('legal-updates/<int:pk>/', legal_update.LegalUpdateViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='legal-updates-detail'),
+    path('legal-updates/active/', legal_update.LegalUpdateViewSet.as_view({'get': 'active_updates'}), name='legal-updates-active'),
+]
+
+recent_process_urls = [
+    path('recent-processes/', process.get_recent_processes, name='recent-processes'),
+    path('update-recent-process/<int:process_id>/', process.update_recent_process, name='update-recent-process'),
 ]
 
 urlpatterns = (
@@ -53,5 +66,7 @@ urlpatterns = (
     process_urls +
     legal_request_urls +
     intranet_gym_urls +
-    dynamic_document_urls
+    dynamic_document_urls +
+    legal_update_urls +
+    recent_process_urls
 )

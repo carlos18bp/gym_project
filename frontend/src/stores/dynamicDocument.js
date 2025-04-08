@@ -142,6 +142,19 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
       }
       return [];
     },
+
+    /**
+     * Get documents assigned to a specific lawyer.
+     * @param {object} state - Store state.
+     * @returns {function} - Function that takes a lawyer ID and returns filtered documents.
+     */
+    getDocumentsByLawyerId: (state) => (lawyerId) => {
+      if (!lawyerId) return [];
+      return state.documents.filter(doc => 
+        doc.created_by === parseInt(lawyerId) && 
+        (doc.state === "Draft" || doc.state === "Published")
+      );
+    },
   },
 
   actions: {

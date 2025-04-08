@@ -1,6 +1,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { createRouter, createWebHistory } from "vue-router";
 import SlideBar from "@/components/layouts/SlideBar.vue";
+import { useRecentViews } from "@/composables/useRecentViews";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -212,6 +213,31 @@ router.beforeEach(async (to, from, next) => {
     } else {
       next(); // Proceed to the defined route
     }
+  }
+});
+
+// Registrar vistas después de cada navegación exitosa
+router.afterEach((to) => {
+  const { registerView } = useRecentViews();
+
+  // Registrar vista de proceso
+  if (to.name === 'process_detail' && to.params.process_id) {
+    registerView('process', to.params.process_id);
+  }
+
+  // Registrar vista de documento para el editor del abogado
+  if (to.path.includes('/dynamic_document_dashboard/lawyer/editor/edit/') && to.params.id) {
+    registerView('document', to.params.id);
+  }
+
+  // Registrar vista de documento para el cliente
+  if (to.path.includes('/dynamic_document_dashboard/document/use/') && to.params.id) {
+    registerView('document', to.params.id);
+  }
+
+  // Registrar vista de documento para la configuración de variables
+  if (to.path.includes('/dynamic_document_dashboard/lawyer/variables-config') && to.query.documentId) {
+    registerView('document', to.query.documentId);
   }
 });
 

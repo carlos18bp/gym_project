@@ -4,6 +4,7 @@ import {
   create_request,
   update_request,
 } from "./services/request_http";
+import { useUserStore } from "./user";
 
 export const useProcessStore = defineStore("process", {
   /**
@@ -46,6 +47,31 @@ export const useProcessStore = defineStore("process", {
       return state.processes.filter((process) => {
         const lastStage = process.stages[process.stages.length - 1];
         return lastStage && lastStage.status !== "Fallo";
+      });
+    },
+
+    /**
+     * Get active processes for the current user.
+     * @param {object} state - State.
+     * @returns {array} - List of active processes for the current user.
+     */
+    activeProcessesForCurrentUser: (state) => {
+      const userStore = useUserStore();
+      const currentUser = userStore.getCurrentUser;
+      
+      if (!currentUser) return [];
+
+      return state.processes.filter((process) => {
+        const lastStage = process.stages[process.stages.length - 1];
+        const isActive = lastStage && lastStage.status !== "Fallo";
+        
+        if (currentUser.role === "client") {
+          return isActive && process.client.id === currentUser.id;
+        } else if (currentUser.role === "lawyer") {
+          return isActive && process.lawyer.id === currentUser.id;
+        }
+        
+        return false;
       });
     },
   },

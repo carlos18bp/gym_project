@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable
+from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument
 
 User = get_user_model()
 
@@ -100,3 +100,11 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             var_to_delete.delete()
 
         return instance
+
+
+class RecentDocumentSerializer(serializers.ModelSerializer):
+    document = DynamicDocumentSerializer(read_only=True)
+    
+    class Meta:
+        model = RecentDocument
+        fields = ['id', 'document', 'last_visited']

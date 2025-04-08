@@ -31,7 +31,7 @@
     </div>
 
     <!-- Feed content -->
-    <div v-if="activeTab === 'feed'" class="mt-4 overflow-y-auto max-h-[170px]">
+    <div v-if="activeTab === 'feed'" class="mt-4 overflow-y-auto max-h-[170px] scrollbar-thin">
       <div class="timeline">
         <div 
           v-for="(activity, index) in activities" 
@@ -74,7 +74,7 @@
     </div>
 
     <!-- Contacts/Lawyers content -->
-    <div v-else class="mt-4 overflow-y-auto max-h-[170px]">
+    <div v-else class="mt-4 overflow-y-auto max-h-[170px] scrollbar-thin">
       <div v-if="!contacts.length" class="text-center text-gray-500 py-4">
         Cargando contactos...
       </div>
@@ -268,5 +268,24 @@ onMounted(async () => {
 
 .last-item .timeline-connector {
   display: none;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 </style>

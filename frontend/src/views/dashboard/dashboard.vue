@@ -4,6 +4,12 @@
         <ActivityFeed :user="currentUser"></ActivityFeed>
         <QuickActionButtons :user="currentUser" class="col-span-2"></QuickActionButtons>
         <LegalUpdatesCard class="col-span-2"></LegalUpdatesCard>
+        <keep-alive>
+            <RecentProcessList class="col-span-1"></RecentProcessList>
+        </keep-alive>
+        <keep-alive>
+            <RecentDocumentsList class="col-span-1"></RecentDocumentsList>
+        </keep-alive>
     </section>
 </template>
 <script setup>
@@ -12,6 +18,8 @@ import UserWelcomeCard from '@/components/dashboard/UserWelcomeCard.vue';
 import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
 import QuickActionButtons from '@/components/dashboard/QuickActionButtons.vue';
+import RecentProcessList from '@/components/dashboard/RecentProcessList.vue';
+import RecentDocumentsList from '@/components/dashboard/RecentDocumentsList.vue';
 import { useUserStore } from '@/stores/user';
 import { useAuthStore } from '@/stores/auth';
 

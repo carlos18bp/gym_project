@@ -61,8 +61,9 @@
  * The background features a horizontal linear gradient from #639CFF to #BEB3FF.
  * Uses Heroicons Outline: calendar-days for membership date and rectangle-stack for active processes.
  */
-import { defineProps, computed } from 'vue';
+import { defineProps, computed, onMounted } from 'vue';
 import { RectangleStackIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
+import { useProcessStore } from '@/stores/process';
 
 // Props for customization
 const props = defineProps({
@@ -72,15 +73,10 @@ const props = defineProps({
   user: {
     type: Object,
     default: () => ({})
-  },
-  /**
-   * Number of active processes for the user
-   */
-  activeProcesses: {
-    type: Number,
-    default: 0
   }
 });
+
+const processStore = useProcessStore();
 
 // Format date for display
 const formattedDate = computed(() => {
@@ -92,5 +88,15 @@ const formattedDate = computed(() => {
   const year = date.getFullYear();
   
   return `${month} ${day}, ${year}`;
+});
+
+// Initialize process store when component mounts
+onMounted(async () => {
+  await processStore.init();
+});
+
+// Get active processes count
+const activeProcesses = computed(() => {
+  return processStore.activeProcessesForCurrentUser.length;
 });
 </script>

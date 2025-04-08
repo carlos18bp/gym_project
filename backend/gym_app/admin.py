@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -129,6 +129,25 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('created_at', 'updated_at')  # Make timestamps read-only
 
+class LegalUpdateAdmin(admin.ModelAdmin):
+    list_display = ('title', 'content', 'link_text', 'link_url', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'content', 'link_text')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'content', 'image', 'link_text', 'link_url', 'is_active')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    class Meta:
+        verbose_name = 'Legal Update'
+        verbose_name_plural = 'Legal Updates'
+
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
     site_header = 'G&M App Administration'
@@ -139,6 +158,14 @@ class GyMAdminSite(admin.AdminSite):
         app_dict = self._build_app_dict(request)
         # Custom structure for the admin index
         custom_app_list = [
+            {
+                'name': _('Dashboard'),
+                'app_label': 'dashboard',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['LegalUpdate']
+                ]
+            },
             {
                 'name': _('User Management'),
                 'app_label': 'user_management',
@@ -198,3 +225,4 @@ admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
+admin_site.register(LegalUpdate, LegalUpdateAdmin)
