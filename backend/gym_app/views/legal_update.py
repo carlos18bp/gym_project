@@ -13,11 +13,11 @@ def legal_update_list(request):
     """
     if request.method == 'GET':
         updates = LegalUpdate.objects.filter(is_active=True).order_by('-created_at')
-        serializer = LegalUpdateSerializer(updates, many=True)
+        serializer = LegalUpdateSerializer(updates, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     elif request.method == 'POST':
-        serializer = LegalUpdateSerializer(data=request.data)
+        serializer = LegalUpdateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -35,11 +35,11 @@ def legal_update_detail(request, pk):
         return Response(status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        serializer = LegalUpdateSerializer(update)
+        serializer = LegalUpdateSerializer(update, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     elif request.method == 'PUT':
-        serializer = LegalUpdateSerializer(update, data=request.data)
+        serializer = LegalUpdateSerializer(update, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -57,5 +57,5 @@ def active_legal_updates(request):
     Get a list of all active legal updates.
     """
     updates = LegalUpdate.objects.filter(is_active=True).order_by('-created_at')
-    serializer = LegalUpdateSerializer(updates, many=True)
+    serializer = LegalUpdateSerializer(updates, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK) 
