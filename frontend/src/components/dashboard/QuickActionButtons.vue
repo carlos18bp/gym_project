@@ -2,7 +2,7 @@
 <template>
   <div class="w-full">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Botones para abogados -->
+      <!-- Buttons for lawyers -->
       <template v-if="user?.role === 'lawyer'">
         <router-link 
           :to="{ name: 'process_form', params: { action: 'create' } }" 
@@ -47,7 +47,7 @@
         </router-link>
       </template>
       
-      <!-- Botones para clientes -->
+      <!-- Buttons for clients -->
       <template v-else-if="user?.role === 'client'">
         <router-link 
           :to="{ name: 'process_list' }" 
@@ -97,11 +97,11 @@
 
 <script setup>
 /**
- * Componente de botones de acceso rápido
+ * Quick action buttons component
  * 
- * Muestra diferentes botones de acción rápida según el rol del usuario.
- * Para abogados: Radicar Proceso, Nuevo Documento, Radicar Informe
- * Para clientes: Mis Procesos, Agendar Cita, Radicar Solicitud
+ * Displays different quick action buttons based on the user's role.
+ * For lawyers: File Process, New Document, File Report
+ * For clients: My Processes, Schedule Appointment, File Request
  */
 import { defineProps } from 'vue';
 import { 
@@ -112,10 +112,10 @@ import {
   ChevronRightIcon
 } from '@heroicons/vue/24/outline';
 
-// Props para personalización
+// Props for customization
 const props = defineProps({
   /**
-   * Objeto de usuario que contiene la información del usuario
+   * User object containing user information
    */
   user: {
     type: Object,

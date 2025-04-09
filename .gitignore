@@ -7,3 +7,4 @@ backend/media/
 backend/gym_project_env/
 backend/staticfiles/
 gym_project_env/
+frontend/.cursor/

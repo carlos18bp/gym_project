@@ -252,7 +252,7 @@ watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
 
 // Retrieve documents in progress and completed from the store, applying the search filter.
 const filteredDocuments = computed(() => {  
-  // Si hay documentos del prompt, aplicar el mismo filtro que se usa con documentos normales
+  // If there are documents from the prompt, apply the same filter used with normal documents
   if (props.promptDocuments) {
     // Apply the same filtering logic to promptDocuments
     const clientId = currentUser.value?.id;
@@ -286,7 +286,7 @@ const filteredDocuments = computed(() => {
     return filteredPromptDocs;
   }
 
-  // Si no hay prompt, usar la lógica normal
+  // If there's no prompt, use normal logic
   // First, get all progress and completed documents for this client
   const allProgressAndCompletedDocs =
     documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);

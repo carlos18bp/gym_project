@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -148,6 +148,24 @@ class LegalUpdateAdmin(admin.ModelAdmin):
         verbose_name = 'Legal Update'
         verbose_name_plural = 'Legal Updates'
 
+class RecentDocumentAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the RecentDocument model.
+    """
+    list_display = ('user', 'document', 'last_visited')
+    list_filter = ('last_visited', 'user')
+    search_fields = ('user__email', 'document__title')
+    readonly_fields = ('last_visited',)
+
+class RecentProcessAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the RecentProcess model.
+    """
+    list_display = ('user', 'process', 'last_viewed')
+    list_filter = ('last_viewed', 'user')
+    search_fields = ('user__email', 'process__ref')
+    readonly_fields = ('last_viewed',)
+
 # Custom AdminSite to organize models by sections
 class GyMAdminSite(admin.AdminSite):
     site_header = 'G&M App Administration'
@@ -226,3 +244,5 @@ admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(LegalUpdate, LegalUpdateAdmin)
+admin_site.register(RecentDocument, RecentDocumentAdmin)
+admin_site.register(RecentProcess, RecentProcessAdmin)

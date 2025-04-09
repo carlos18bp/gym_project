@@ -52,9 +52,9 @@ dynamic_document_urls = [
 ]
 
 legal_update_urls = [
-    path('legal-updates/', legal_update.LegalUpdateViewSet.as_view({'get': 'list', 'post': 'create'}), name='legal-updates-list'),
-    path('legal-updates/<int:pk>/', legal_update.LegalUpdateViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='legal-updates-detail'),
-    path('legal-updates/active/', legal_update.LegalUpdateViewSet.as_view({'get': 'active_updates'}), name='legal-updates-active'),
+    path('legal-updates/', legal_update.legal_update_list, name='legal-updates-list'),
+    path('legal-updates/<int:pk>/', legal_update.legal_update_detail, name='legal-updates-detail'),
+    path('legal-updates/active/', legal_update.active_legal_updates, name='legal-updates-active'),
 ]
 
 recent_process_urls = [

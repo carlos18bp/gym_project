@@ -4,27 +4,27 @@
           :pagination="{ clickable: true }"
           :space-between="30"
           class="w-full">
-    <!-- Slides dinámicos -->
+    <!-- Dynamic slides -->
     <swiper-slide v-for="update in legalUpdates" :key="update.id" class="shadow-md p-1">
       <div class="relative rounded-lg overflow-hidden flex max-h-60" style="background-color: #DCF2FF;">
         <div class="flex-grow p-8 pr-16 overflow-hidden">
-          <!-- Comillas negras más grandes -->
+          <!-- Larger black quotation mark -->
           <div class="absolute top-6 left-8 text-black text-7xl">❝</div>
           
-          <!-- Contenido principal -->
+          <!-- Main content -->
           <div class="mt-10 mb-4 pl-2">
             <p class="text-lg text-gray-800 mb-6 line-clamp-4 font-normal">
               {{ update.content }}
             </p>
             
-            <!-- Hipervínculo con subrayado e itálica -->
+            <!-- Hyperlink with underline and italic style -->
             <a :href="update.link_url" class="text-sm text-blue-600 hover:text-blue-800 font-medium italic border-b border-blue-600 hover:border-blue-800">
               {{ update.link_text }}
             </a>
           </div>
         </div>
         
-        <!-- Imagen con relación de aspecto 5:4 -->
+        <!-- Image with 5:4 aspect ratio -->
         <div class="flex-shrink-0 self-stretch" style="width: 36%;">
           <div class="w-full h-full bg-black overflow-hidden" 
                style="border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem;">
@@ -49,22 +49,22 @@ import { useLegalUpdateStore } from '@/stores/legalUpdate';
 import 'swiper/css';
 import 'swiper/css/pagination';
 
-// Renombramos los módulos para que coincidan con el template
+// Rename modules to match the template
 const SwiperAutoplay = Autoplay;
 const SwiperPagination = Pagination;
 
-// Inicializamos el store
+// Initialize the store
 const legalUpdateStore = useLegalUpdateStore();
 
-// Computed para obtener las actualizaciones activas
+// Computed property to get active updates
 const legalUpdates = computed(() => legalUpdateStore.activeUpdates);
 
-// Función para manejar errores de carga de imagen
+// Function to handle image loading errors
 const handleImageError = (e) => {
   e.target.src = 'https://via.placeholder.com/250x200';
 };
 
-// Cargamos las actualizaciones al montar el componente
+// Load updates when component is mounted
 onMounted(async () => {
   await legalUpdateStore.fetchActiveUpdates();
 });
@@ -86,7 +86,7 @@ onMounted(async () => {
   margin-top: 15px;
 }
 
-/* Estilo adicional para mejorar la sombra */
+/* Additional style to improve shadow */
 :deep(.swiper-slide) {
   filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.05));
 }

@@ -544,28 +544,35 @@ def download_dynamic_document_word(request, pk):
 @permission_classes([IsAuthenticated])
 def get_recent_documents(request):
     """
-    Get the 10 most recently visited documents for the current user.
+    Get the 10 most recently visited documents for the authenticated user.
     """
-    recent_docs = RecentDocument.objects.filter(user=request.user)[:10]
-    serializer = RecentDocumentSerializer(recent_docs, many=True)
-    return Response(serializer.data)
+    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')[:10]
+    serializer = RecentDocumentSerializer(recent_documents, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def update_recent_document(request, document_id):
     """
-    Update or create a recent document entry for the current user.
+    Track a document visit by creating or updating a RecentDocument entry.
     """
     try:
-        document = DynamicDocument.objects.get(id=document_id)
+        document = DynamicDocument.objects.get(pk=document_id)
+        recent_doc, created = RecentDocument.objects.get_or_create(
+            user=request.user,
+            document=document,
+            defaults={'last_visited': timezone.now()}
+        )
+        
+        if not created:
+            recent_doc.last_visited = timezone.now()
+            recent_doc.save()
+            
+        serializer = RecentDocumentSerializer(recent_doc)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
     except DynamicDocument.DoesNotExist:
-        return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
-    
-    # Update or create the recent document entry
-    recent_doc, created = RecentDocument.objects.update_or_create(
-        user=request.user,
-        document=document,
-        defaults={'last_visited': timezone.now()}
-    )
-    
-    return Response(RecentDocumentSerializer(recent_doc).data)
+        return Response(
+            {'detail': 'Document not found.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

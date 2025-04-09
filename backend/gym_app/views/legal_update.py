@@ -1,18 +1,61 @@
-from rest_framework import viewsets, status
+from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from ..models import LegalUpdate
-from ..serializers import LegalUpdateSerializer
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from gym_app.models import LegalUpdate
+from gym_app.serializers import LegalUpdateSerializer
 
-class LegalUpdateViewSet(viewsets.ModelViewSet):
-    queryset = LegalUpdate.objects.filter(is_active=True)
-    serializer_class = LegalUpdateSerializer
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def legal_update_list(request):
+    """
+    List all active legal updates or create a new legal update.
+    """
+    if request.method == 'GET':
+        updates = LegalUpdate.objects.filter(is_active=True).order_by('-created_at')
+        serializer = LegalUpdateSerializer(updates, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    elif request.method == 'POST':
+        serializer = LegalUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_queryset(self):
-        return LegalUpdate.objects.filter(is_active=True).order_by('-created_at')
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def legal_update_detail(request, pk):
+    """
+    Retrieve, update or delete a legal update.
+    """
+    try:
+        update = LegalUpdate.objects.get(pk=pk, is_active=True)
+    except LegalUpdate.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['get'])
-    def active_updates(self, request):
-        updates = self.get_queryset()
-        serializer = self.get_serializer(updates, many=True)
-        return Response(serializer.data) 
+    if request.method == 'GET':
+        serializer = LegalUpdateSerializer(update)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    elif request.method == 'PUT':
+        serializer = LegalUpdateSerializer(update, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        update.is_active = False
+        update.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def active_legal_updates(request):
+    """
+    Get a list of all active legal updates.
+    """
+    updates = LegalUpdate.objects.filter(is_active=True).order_by('-created_at')
+    serializer = LegalUpdateSerializer(updates, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK) 

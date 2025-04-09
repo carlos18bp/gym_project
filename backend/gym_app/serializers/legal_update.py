@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import LegalUpdate
+from gym_app.models import LegalUpdate
 
 class LegalUpdateSerializer(serializers.ModelSerializer):
     class Meta:
