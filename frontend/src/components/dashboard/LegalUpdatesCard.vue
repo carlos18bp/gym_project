@@ -18,7 +18,10 @@
             </p>
             
             <!-- Hyperlink with underline and italic style -->
-            <a :href="update.link_url" class="text-sm text-blue-600 hover:text-blue-800 font-medium italic border-b border-blue-600 hover:border-blue-800">
+            <a :href="update.link_url" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="text-sm text-blue-600 hover:text-blue-800 font-medium italic border-b border-blue-600 hover:border-blue-800">
               {{ update.link_text }}
             </a>
           </div>
