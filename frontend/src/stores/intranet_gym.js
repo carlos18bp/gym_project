@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { get_request, create_request } from "./services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useIntranetGymStore = defineStore("intranetGymStore", {
   /**
@@ -64,6 +65,12 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
         const response = await create_request("create_report_request/", formDataObject);
 
         if (response.status === 201) {
+          // Register activity for report creation
+          await registerUserActivity(
+            ACTION_TYPES.CREATE, 
+            `Enviaste un informe de facturación por ${formData.paymentAmount} - ${formData.paymentConcept}.`
+          );
+          
           this.dataLoaded = false; // Reset dataLoaded to force refresh if necessary
           return response.status;  // Return success status code
         } else {

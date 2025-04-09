@@ -15,8 +15,9 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from gym_app.models.dynamic_document import DynamicDocument
-from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
+from gym_app.models.dynamic_document import DynamicDocument, RecentDocument
+from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, RecentDocumentSerializer
+from django.utils import timezone
 
 
 @api_view(['POST'])
@@ -538,3 +539,40 @@ def download_dynamic_document_word(request, pk):
     except Exception as e:
         print(f"Error generating Word document: {str(e)}")
         return Response({'detail': f'Error generating Word document: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recent_documents(request):
+    """
+    Get the 10 most recently visited documents for the authenticated user.
+    """
+    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')[:10]
+    serializer = RecentDocumentSerializer(recent_documents, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_recent_document(request, document_id):
+    """
+    Track a document visit by creating or updating a RecentDocument entry.
+    """
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+        recent_doc, created = RecentDocument.objects.get_or_create(
+            user=request.user,
+            document=document,
+            defaults={'last_visited': timezone.now()}
+        )
+        
+        if not created:
+            recent_doc.last_visited = timezone.now()
+            recent_doc.save()
+            
+        serializer = RecentDocumentSerializer(recent_doc)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Document not found.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

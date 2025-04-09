@@ -19,11 +19,11 @@ onBeforeMount(async () => {
   if ((await authStore.isAuthenticated())) {
     await userStore.init();
 
-    // If the user role is "client" and is on restricted routes, redirect to "process_list"
+    // If the user role is "client" and is on restricted routes, redirect to "dashboard"
     if (userStore.currentUser?.role === "client" && 
         (route.name === "process_form" || route.name === "directory_list")) {
       router.push({
-        name: "process_list",
+        name: "dashboard",
         params: {
           user_id: "",
           display: "",

@@ -335,7 +335,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import Profile from "@/components/user/Profile.vue";
 import PWAInstallButton from "@/components/pwa/PWAInstallButton.vue";
 import {
@@ -350,18 +350,18 @@ import {
 } from "@headlessui/vue";
 import {
   CalendarDaysIcon,
-  PencilSquareIcon,
   ScaleIcon,
   HomeIcon,
   XMarkIcon,
-  ClockIcon,
   Bars3Icon,
   InboxArrowDownIcon,
   UsersIcon,
   DocumentTextIcon,
+  RectangleStackIcon,
+  Square2StackIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 import { googleLogout } from "vue3-google-login";
@@ -371,6 +371,7 @@ import FacebookIcon from "@/assets/icons/social_network/facebook.svg";
 import InstagramIcon from "@/assets/icons/social_network/instagram.svg";
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
 const currentUser = reactive({});
@@ -405,6 +406,8 @@ onMounted(async () => {
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
   }
+
+  updateActiveNavItem();
 });
 
 /**
@@ -433,21 +436,20 @@ const goProfile = () => {
  * - `action` {function|null}: The function to execute when the item is clicked. If `null`, no action is taken.
  * - `icon` {Component}: The icon component to display next to the navigation item name.
  * - `current` {boolean}: Indicates if the navigation item is currently active (true) or not (false).
+ * - `routes` {Array<string>}: Array of route paths that should trigger this navigation item to be highlighted.
  *
  * @constant {Array<Object>}
  */
 const navigation = ref([
   {
-    name: "Procesos",
+    name: "Inicio",
     action: (item) => {
       setCurrent(item);
-      router.push({
-        name: "process_list",
-        params: { user_id: "", display: "" },
-      });
+      router.push({ name: "dashboard" });
     },
     icon: HomeIcon,
-    current: true,
+    current: false,
+    routes: ['/dashboard']
   },
   {
     name: "Directorio",
@@ -457,57 +459,20 @@ const navigation = ref([
     },
     icon: UsersIcon,
     current: false,
+    routes: ['/directory_list']
   },
   {
-    name: "Solicitudes",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "legal_request" });
-    },
-    icon: InboxArrowDownIcon,
-    current: false,
-  },
-  {
-    name: "Agendar Cita",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "schedule_appointment" });
-    },
-    icon: CalendarDaysIcon,
-    current: false,
-  },
-  {
-    name: "Radicar Proceso",
-    action: (item) => {
-      setCurrent(item);
-      router.push({
-        name: "process_form",
-        params: { action: "add", process_id: "" },
-      });
-    },
-    icon: PencilSquareIcon,
-    current: false,
-  },
-  {
-    name: "Intranet G&M",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "intranet_g_y_m" });
-    },
-    icon: ScaleIcon,
-    current: false,
-  },
-  {
-    name: "Archivados",
+    name: "Procesos",
     action: (item) => {
       setCurrent(item);
       router.push({
         name: "process_list",
-        params: { user_id: "", display: "history" },
+        params: { user_id: "", display: "" },
       });
     },
-    icon: ClockIcon,
+    icon: RectangleStackIcon,
     current: false,
+    routes: ['/process_list', '/process_detail', '/process_form']
   },
   {
     name: "Documentos Juridicos",
@@ -519,6 +484,50 @@ const navigation = ref([
     },
     icon: DocumentTextIcon,
     current: false,
+    routes: ['/dynamic_document_dashboard']
+  },
+  {
+    name: "Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "legal_request" });
+    },
+    icon: InboxArrowDownIcon,
+    current: false,
+    routes: ['/legal_request']
+  },
+  {
+    name: "Agendar Cita",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "schedule_appointment" });
+    },
+    icon: CalendarDaysIcon,
+    current: false,
+    routes: ['/schedule_appointment']
+  },
+  {
+    name: "Intranet G&M",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "intranet_g_y_m" });
+    },
+    icon: ScaleIcon,
+    current: false,
+    routes: ['/intranet_g_y_m']
+  },
+  {
+    name: "Procesos Archivados",
+    action: (item) => {
+      setCurrent(item);
+      router.push({
+        name: "process_list",
+        params: { user_id: "", display: "history" },
+      });
+    },
+    icon: Square2StackIcon,
+    current: false,
+    routes: ['/process_list']
   },
 ]);
 
@@ -542,6 +551,65 @@ const userNavigation = [
     action: logOut,
   },
 ];
+
+/**
+ * Updates the active navigation item based on the current route path.
+ * 
+ * @function updateActiveNavItem
+ * @returns {void}
+ */
+const updateActiveNavItem = () => {
+  let foundMatch = false;
+  const currentPath = route.path;
+  
+  navigation.value.forEach((navItem) => {
+    // Special case for Procesos Archivados
+    if (navItem.name === "Procesos Archivados" && 
+        currentPath.startsWith('/process_list') && 
+        route.params.display === "history") {
+      navItem.current = true;
+      foundMatch = true;
+    }
+    // Special case for regular Procesos (not archived)
+    else if (navItem.name === "Procesos" && 
+            (currentPath.startsWith('/process_list') && route.params.display !== "history" ||
+             currentPath.startsWith('/process_detail') || 
+             currentPath.startsWith('/process_form'))) {
+      navItem.current = true;
+      foundMatch = true;
+    }
+    // For other navigation items
+    else if (navItem.routes && navItem.routes.some(routePath => currentPath.startsWith(routePath)) && 
+            !(navItem.name === "Procesos" && route.params.display === "history") &&
+            !(navItem.name === "Procesos Archivados" && route.params.display !== "history")) {
+      navItem.current = true;
+      foundMatch = true;
+    }
+    else {
+      navItem.current = false;
+    }
+  });
+  
+  // If no match is found, no button should be highlighted
+  if (!foundMatch) {
+    navigation.value.forEach(navItem => {
+      navItem.current = false;
+    });
+  }
+};
+
+// Call updateActiveNavItem on component mount and route change
+onMounted(() => {
+  updateActiveNavItem();
+});
+
+// Watch for route changes
+watch(
+  () => route.fullPath,
+  () => {
+    updateActiveNavItem();
+  }
+);
 
 /**
  * Sets the current navigation item as active.

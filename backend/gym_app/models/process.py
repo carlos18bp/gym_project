@@ -97,3 +97,23 @@ class Process(models.Model):
 
     def __str__(self):
         return self.ref
+
+class RecentProcess(models.Model):
+    """
+    Model representing the recently viewed processes by a user.
+    
+    Attributes:
+        user (ForeignKey): The user who viewed the process.
+        process (ForeignKey): The process that was viewed.
+        last_viewed (DateTimeField): The timestamp of when the process was last viewed.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    last_viewed = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-last_viewed']
+        unique_together = ['user', 'process']
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.process.ref} - {self.last_viewed}"

@@ -23,7 +23,7 @@ export const loginWithGoogle = async (response, router, authStore) => {
     // Log in the user and save the authentication data
     authStore.login(res.data);
     showNotification("¡Registro exitoso!", "success");
-    router.push({ name: "process_list" }); // Redirect to the process_list page
+    router.push({ name: "dashboard" }); // Redirect to the dashboard page
   } catch (error) {
     handleLoginError(error);
   }

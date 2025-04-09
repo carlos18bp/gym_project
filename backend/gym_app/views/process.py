@@ -4,9 +4,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-from gym_app.models import Process, Stage, CaseFile, Case, User
-from gym_app.serializers.process import ProcessSerializer
+from gym_app.models import Process, Stage, CaseFile, Case, User, RecentProcess
+from gym_app.serializers.process import ProcessSerializer, RecentProcessSerializer
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -208,4 +209,39 @@ def update_case_file(request):
         # Log the exception for debugging purposes
         print("Error uploading file:", str(e))
         return Response({'detail': 'Internal error uploading file.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_recent_processes(request):
+    """
+    Get the 10 most recently viewed processes by the authenticated user.
+    """
+    recent_processes = RecentProcess.objects.filter(user=request.user).order_by('-last_viewed')[:10]
+    serializer = RecentProcessSerializer(recent_processes, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_recent_process(request, process_id):
+    """
+    Update or create a recent process entry when a user views a process.
+    """
+    try:
+        process = Process.objects.get(id=process_id)
+    except Process.DoesNotExist:
+        return Response({'error': 'Process not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get or create the recent process entry
+    recent_process, created = RecentProcess.objects.get_or_create(
+        user=request.user,
+        process=process,
+        defaults={'last_viewed': timezone.now()}
+    )
+    
+    if not created:
+        recent_process.last_viewed = timezone.now()
+        recent_process.save()
+    
+    return Response({'status': 'success'}, status=status.HTTP_200_OK)
 

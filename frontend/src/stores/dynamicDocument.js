@@ -6,6 +6,7 @@ import {
   delete_request,
 } from "./services/request_http";
 import { downloadFile } from "@/shared/document_utils";
+import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useDynamicDocumentStore = defineStore("dynamicDocument", {
   state: () => ({
@@ -142,6 +143,19 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
       }
       return [];
     },
+
+    /**
+     * Get documents assigned to a specific lawyer.
+     * @param {object} state - Store state.
+     * @returns {function} - Function that takes a lawyer ID and returns filtered documents.
+     */
+    getDocumentsByLawyerId: (state) => (lawyerId) => {
+      if (!lawyerId) return [];
+      return state.documents.filter(doc => 
+        doc.created_by === parseInt(lawyerId) && 
+        (doc.state === "Draft" || doc.state === "Published")
+      );
+    },
   },
 
   actions: {
@@ -200,6 +214,12 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         // Refresh documents to get the updated list
         await this.fetchDocuments();
         
+        // Register activity for document creation
+        await registerUserActivity(
+          ACTION_TYPES.CREATE,
+          `Creaste el nuevo documento ${documentData.title || 'sin título'}`
+        );
+        
         // Return the document ID if we have it
         if (createdDocId) {
           this.lastUpdatedDocumentId = createdDocId;
@@ -245,16 +265,16 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         // If all else fails, return the original response
         return response.data;
       } catch (error) {
-        console.error('Error creating document:', error);
+        console.error("Error creating document:", error);
         throw error;
       }
     },
 
     /**
-     * Update an existing document by sending a PUT or PATCH request to the backend.
-     * @param {number} documentId - The ID of the document to be updated.
-     * @param {Object} documentData - The updated data for the document.
-     * @returns {Object} The response data
+     * Update an existing document by sending a PUT request to the backend.
+     * @param {number} documentId - The ID of the document to update.
+     * @param {Object} documentData - The updated document data.
+     * @returns {Object} The updated document data
      */
     async updateDocument(documentId, documentData) {
       try {
@@ -263,32 +283,51 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
           documentData
         );
         
-        // Update the lastUpdatedDocumentId
+        // Update last updated document ID
         this.lastUpdatedDocumentId = documentId;
         localStorage.setItem('lastUpdatedDocumentId', documentId.toString());
         
-        // Refresh the documents list
+        // Refresh documents to get the updated list
         await this.fetchDocuments();
+        
+        // Register activity for document update
+        await registerUserActivity(
+          ACTION_TYPES.UPDATE,
+          `Actualizaste el documento ${documentData.title || 'sin título'}`
+        );
         
         return response.data;
       } catch (error) {
-        console.error('Error updating document:', error);
+        console.error("Error updating document:", error);
         throw error;
       }
     },
 
     /**
      * Delete a document by sending a DELETE request to the backend.
-     * @param {number} documentId - The ID of the document to be deleted.
+     * @param {number} documentId - The ID of the document to delete.
      */
     async deleteDocument(documentId) {
       try {
-        await delete_request(`dynamic-documents/${documentId}/delete/`);
-
-        this.dataLoaded = false;
+        // Get document info before deletion for the activity message
+        const documentToDelete = this.documentById(documentId);
+        const documentTitle = documentToDelete ? documentToDelete.title : 'sin título';
+        
+        const response = await delete_request(`dynamic-documents/${documentId}/delete/`);
+        
+        // Refresh documents to get the updated list
         await this.fetchDocuments();
+        
+        // Register activity for document deletion
+        await registerUserActivity(
+          ACTION_TYPES.DELETE,
+          `Eliminaste el documento ${documentTitle}`
+        );
+        
+        return response;
       } catch (error) {
         console.error("Error deleting document:", error);
+        throw error;
       }
     },
 

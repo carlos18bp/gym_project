@@ -172,12 +172,12 @@ onMounted(async () => {
 
   if (await authStore.isAuthenticated()) {
     router.push({
-      name: "process_list",
+      name: "dashboard",
       params: {
         user_id: "",
         display: "",
       },
-    }); // Redirect to process_list if already authenticated
+    }); // Redirect to dashboard if already authenticated
   }
 });
 
@@ -204,7 +204,7 @@ const signInUser = async () => {
 
       showNotification("Sign In successful!", "success");
       // Reload the page to ensure a clean state
-      window.location.href = "/process_list";
+      window.location.href = "/dashboard";
     } catch (error) {
       if (error.response && error.response.status === 401) {
         showNotification("Invalid credentials!", "warning");

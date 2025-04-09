@@ -1,5 +1,4 @@
 <template>
-  <div class="mt-8 flex flex-wrap gap-6">
     <!-- Document Item -->
     <div
       v-for="document in filteredDocuments"
@@ -20,90 +19,94 @@
           'text-secondary': document.state === 'Progress',
         }"
       />
-      <div class="grid gap-1">
-        <span class="text-base font-medium">{{ document.title }}</span>
-        <span class="text-sm font-regular text-gray-400">{{
-          document.description
-        }}</span>
-      </div>
-      <Menu as="div" class="relative inline-block text-left">
-        <MenuButton class="flex items-center text-gray-400">
-          <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-        </MenuButton>
-        <transition
-          enter-active-class="transition ease-out duration-100"
-          enter-from-class="transform opacity-0 scale-95"
-          enter-to-class="transform opacity-100 scale-100"
-          leave-active-class="transition ease-in duration-75"
-          leave-from-class="transform opacity-100 scale-100"
-          leave-to-class="transform opacity-0 scale-95"
-        >
-          <MenuItems
-            class="absolute left-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+      <div class="flex justify-between items-center w-full">
+        <div class="grid gap-1">
+          <span class="text-base font-medium">{{ document.title }}</span>
+          <span class="text-sm font-regular text-gray-400">{{
+            document.description
+          }}</span>
+        </div>
+        <Menu as="div" class="relative inline-block text-left">
+          <MenuButton class="flex items-center text-gray-400">
+            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+          </MenuButton>
+          <transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="transform opacity-0 scale-95"
+            enter-to-class="transform opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="transform opacity-100 scale-100"
+            leave-to-class="transform opacity-0 scale-95"
           >
-            <div class="py-1">
-              <!-- Edit/Complete option -->
-              <MenuItem>
-                <button
-                  class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                  @click="openEditModal(document)"
-                >
-                  {{ document.state === "Completed" ? "Editar" : "Completar" }}
-                </button>
-              </MenuItem>
-
-              <!-- Preview option -->
-              <MenuItem v-if="document.state === 'Completed'">
-                <button
-                  class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                  @click="openPreviewModal(document)"
-                >
-                  Previsualizar
-                </button>
-              </MenuItem>
-
-              <!-- Delete option -->
-              <MenuItem>
-                <button
-                  class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                  @click="deleteDocument(document)"
-                >
-                  Eliminar
-                </button>
-              </MenuItem>
-
-              <!-- Options only for Completed state -->
-              <template v-if="document.state === 'Completed'">
+            <MenuItems
+              class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+              :class="[
+                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+              ]"
+            >
+              <div class="py-1">
+                <!-- Edit/Complete option -->
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="downloadPDFDocument(document)"
+                    @click="openEditModal(document)"
                   >
-                    Descargar PDF
+                    {{ document.state === "Completed" ? "Editar" : "Completar" }}
                   </button>
                 </MenuItem>
+  
+                <!-- Preview option -->
+                <MenuItem v-if="document.state === 'Completed'">
+                  <button
+                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                    @click="handlePreviewDocument(document)"
+                  >
+                    Previsualizar
+                  </button>
+                </MenuItem>
+  
+                <!-- Delete option -->
                 <MenuItem>
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="downloadWordDocument(document)"
+                    @click="deleteDocument(document)"
                   >
-                    Descargar Word
+                    Eliminar
                   </button>
                 </MenuItem>
-                <MenuItem>
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="openEmailModal(document)"
-                  >
-                    Enviar
-                  </button>
-                </MenuItem>
-              </template>
-            </div>
-          </MenuItems>
-        </transition>
-      </Menu>
-    </div>
+  
+                <!-- Options only for Completed state -->
+                <template v-if="document.state === 'Completed'">
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="downloadPDFDocument(document)"
+                    >
+                      Descargar PDF
+                    </button>
+                  </MenuItem>
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="downloadWordDocument(document)"
+                    >
+                      Descargar Word
+                    </button>
+                  </MenuItem>
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="openEmailModal(document)"
+                    >
+                      Enviar
+                    </button>
+                  </MenuItem>
+                </template>
+              </div>
+            </MenuItems>
+          </transition>
+        </Menu>
+      </div>
 
     <!-- No documents message -->
     <div
@@ -165,10 +168,12 @@ import {
   openPreviewModal,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { useRecentViews } from '@/composables/useRecentViews';
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const { registerView } = useRecentViews();
 
 // Reactive state
 const currentUser = computed(() => userStore.getCurrentUser);
@@ -181,6 +186,11 @@ const emailDocument = ref({});
 // It first checks if the store's lastUpdatedDocumentId exists in filtered documents
 // If not, tries to use the localStorage's lastUpdatedDocumentId
 const highlightedDocId = computed(() => {
+  // If we have prompt documents, don't show any highlight
+  if (props.promptDocuments) {
+    return null;
+  }
+
   const storeId = documentStore.lastUpdatedDocumentId;
   const localId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -200,10 +210,19 @@ const highlightedDocId = computed(() => {
 
 const props = defineProps({
   searchQuery: String,
+  promptDocuments: {
+    type: Array,
+    default: null
+  }
 });
 
 // Initialize data when component mounts
 onMounted(async () => {
+  // If we have prompt documents, don't initialize highlights
+  if (props.promptDocuments) {
+    return;
+  }
+
   // Ensure documents are loaded
   await documentStore.init();
   
@@ -221,6 +240,11 @@ onMounted(async () => {
 
 // Watch for changes in lastUpdatedDocumentId
 watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
+  // If we have prompt documents, don't update highlights
+  if (props.promptDocuments) {
+    return;
+  }
+
   if (newId) {
     localStorage.setItem('lastUpdatedDocumentId', newId);
   }
@@ -228,6 +252,41 @@ watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
 
 // Retrieve documents in progress and completed from the store, applying the search filter.
 const filteredDocuments = computed(() => {  
+  // If there are documents from the prompt, apply the same filter used with normal documents
+  if (props.promptDocuments) {
+    // Apply the same filtering logic to promptDocuments
+    const clientId = currentUser.value?.id;
+    
+    // Filter prompt documents to only include progress and completed for this client
+    let filteredPromptDocs = props.promptDocuments.filter(doc => {
+      const docClientId = doc.assigned_to ? String(doc.assigned_to) : null;
+      const queryClientId = String(clientId);
+      
+      return docClientId === queryClientId && 
+             (doc.state === "Progress" || doc.state === "Completed");
+    });
+    
+    // Apply search filter if it exists
+    if (props.searchQuery) {
+      const lowerQuery = props.searchQuery.toLowerCase();
+      filteredPromptDocs = filteredPromptDocs.filter(doc => {
+        return (
+          doc.title.toLowerCase().includes(lowerQuery) ||
+          doc.state.toLowerCase().includes(lowerQuery) ||
+          (doc.assigned_to &&
+            userStore &&
+            (userStore.userById(doc.assigned_to)?.first_name?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.last_name?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.email?.toLowerCase().includes(lowerQuery) ||
+             userStore.userById(doc.assigned_to)?.identification?.toLowerCase().includes(lowerQuery)))
+        );
+      });
+    }
+    
+    return filteredPromptDocs;
+  }
+
+  // If there's no prompt, use normal logic
   // First, get all progress and completed documents for this client
   const allProgressAndCompletedDocs =
     documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);
@@ -324,6 +383,11 @@ const closeEmailModal = () => {
 
 // Make sure highlighted document ID is updated when filtered documents change
 watch(filteredDocuments, (newDocs) => {
+  // If we have prompt documents, don't update highlights
+  if (props.promptDocuments) {
+    return;
+  }
+
   // If we have a lastUpdatedDocumentId, verify it exists in the list
   if (documentStore.lastUpdatedDocumentId) {
     const exists = newDocs.some(doc => String(doc.id) === String(documentStore.lastUpdatedDocumentId));
@@ -388,6 +452,15 @@ const forceHighlight = (documentId) => {
 
 // Expose the forceHighlight function globally for use by other components
 window.forceDocumentHighlight = forceHighlight;
+
+/**
+ * Opens the preview modal and registers the document view
+ * @param {Object} doc - The document to preview
+ */
+const handlePreviewDocument = async (document) => {
+  await registerView('document', document.id);
+  openPreviewModal(document);
+};
 </script>
 
 <style scoped>

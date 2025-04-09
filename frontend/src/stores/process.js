@@ -4,6 +4,8 @@ import {
   create_request,
   update_request,
 } from "./services/request_http";
+import { useUserStore } from "./user";
+import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useProcessStore = defineStore("process", {
   /**
@@ -46,6 +48,31 @@ export const useProcessStore = defineStore("process", {
       return state.processes.filter((process) => {
         const lastStage = process.stages[process.stages.length - 1];
         return lastStage && lastStage.status !== "Fallo";
+      });
+    },
+
+    /**
+     * Get active processes for the current user.
+     * @param {object} state - State.
+     * @returns {array} - List of active processes for the current user.
+     */
+    activeProcessesForCurrentUser: (state) => {
+      const userStore = useUserStore();
+      const currentUser = userStore.getCurrentUser;
+      
+      if (!currentUser) return [];
+
+      return state.processes.filter((process) => {
+        const lastStage = process.stages[process.stages.length - 1];
+        const isActive = lastStage && lastStage.status !== "Fallo";
+        
+        if (currentUser.role === "client") {
+          return isActive && process.client.id === currentUser.id;
+        } else if (currentUser.role === "lawyer") {
+          return isActive && process.lawyer.id === currentUser.id;
+        }
+        
+        return false;
       });
     },
   },
@@ -212,6 +239,12 @@ export const useProcessStore = defineStore("process", {
 
           this.dataLoaded = false;
           await this.fetchProcessesData();
+          
+          // Register activity after successful process creation using the correct action type
+          await registerUserActivity(
+            ACTION_TYPES.CREATE, 
+            `Creaste el proceso ${formData.subcase || 'legal'} para ${formData.plaintiff}.`
+          );
 
           return response.status; // Return success status code
         } else {
@@ -235,6 +268,7 @@ export const useProcessStore = defineStore("process", {
      */
     async updateProcess(formData) {
       const mainData = {
+        id: formData.processIdParam,
         plaintiff: formData.plaintiff,
         defendant: formData.defendant,
         caseTypeId: formData.caseTypeId,
@@ -244,33 +278,23 @@ export const useProcessStore = defineStore("process", {
         clientId: formData.clientId,
         lawyerId: formData.lawyerId,
         stages: formData.stages,
-        caseFileIds: formData.caseFiles
-          .filter((caseFile) => caseFile.id) // Include only existing files by ID
-          .map((caseFile) => caseFile.id), // Map to an array of IDs
       };
 
-      const formDataObject = new FormData();
-      formDataObject.append("mainData", JSON.stringify(mainData)); // Attach main process data as JSON
-
       try {
-        // Step 1: Send updated process data to the backend
         const response = await update_request(
           `update_process/${formData.processIdParam}/`,
-          formDataObject
+          mainData
         );
 
-        if (response.status === 200) {
-          // Step 2: Upload new files (files without an existing ID)
-          const newFiles = formData.caseFiles.filter(
-            (file) => file.file && !file.id
-          );
-          if (newFiles.length > 0) {
+        if (response.status === 200 || response.status === 201) {
+          // Handle file uploads if there are any new files
+          if (formData.caseFiles && formData.caseFiles.length > 0) {
             const uploadResults = await this.uploadFiles(
               formData.processIdParam,
-              newFiles
+              formData.caseFiles
             );
 
-            // Check upload results
+            // Check if all files were uploaded successfully
             const allUploaded = uploadResults.every((result) => result.success);
             if (!allUploaded) {
               console.warn(
@@ -280,16 +304,42 @@ export const useProcessStore = defineStore("process", {
             }
           }
 
+          // Refresh data after update
           this.dataLoaded = false;
           await this.fetchProcessesData();
+          
+          // Check if the last stage is a "Fallo" to determine if it's a finish
+          const lastStage = formData.stages[formData.stages.length - 1];
+          const isFinished = lastStage && lastStage.status === "Fallo";
+          
+          // Register activity using the appropriate action type based on the process status
+          if (isFinished) {
+            // If specifically archiving (vs just finishing with "Fallo")
+            if (formData.isArchiving) {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Archivaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            } else {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Finalizaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            }
+          } else {
+            await registerUserActivity(
+              ACTION_TYPES.EDIT, 
+              `Editaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+            );
+          }
 
-          return response.status; // Return success status code
+          return response.status;
         } else {
-          console.error("Failed to update process:", response.status);
+          console.error("Failed to update process:", response);
           return null;
         }
       } catch (error) {
-        console.error("Error updating process:", error.message);
+        console.error("Error updating process:", error);
         return null;
       }
     },

@@ -14,18 +14,21 @@
 
     <!-- Documents for lawyers -->
     <div v-if="currentUser?.role === 'lawyer'">
-      <DocumentFinishedByClientList
-        v-if="currentSection === 'documentFinished'"
-        :searchQuery="searchQuery"
-      />
-      <DocumentInProgressByClientList
-        v-if="currentSection === 'documentInProgress'"
-        :searchQuery="searchQuery"
-      />
-      <DocumentListLawyer
-        v-if="currentSection === 'default'"
-        :searchQuery="searchQuery"
-      />
+      <div v-if="currentSection === 'documentFinished'" class="grid grid-cols-4 gap-4">
+        <DocumentFinishedByClientList
+          :searchQuery="searchQuery"
+        />
+      </div>
+      <div v-if="currentSection === 'documentInProgress'" class="grid grid-cols-4 gap-4">
+        <DocumentInProgressByClientList
+          :searchQuery="searchQuery"
+        />
+      </div>
+      <div v-if="currentSection === 'default'" class="grid grid-cols-4 gap-4">
+        <DocumentListLawyer
+          :searchQuery="searchQuery"
+        />
+      </div>
 
       <!-- No documents message -->
       <div
@@ -42,10 +45,12 @@
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
-      <DocumentListClient
-        v-if="currentSection === 'default'"
-        :searchQuery="searchQuery"
-      ></DocumentListClient>
+      <div class="mt-8 grid grid-cols-4 gap-4">
+        <DocumentListClient
+          v-if="currentSection === 'default'"
+          :searchQuery="searchQuery"
+        ></DocumentListClient>
+      </div>
     </div>
   </div>
 
@@ -109,14 +114,13 @@ const filteredDocuments = computed(() => {
 // Load data when the component is mounted
 onMounted(async () => {
   // Initialize store data
-  await userStore.setCurrentUser();
+  await userStore.init();
   await documentStore.init();
   
   documentStore.selectedDocument = null;
   
   // Make sure we are in the default section when loading
   currentSection.value = "default";
-  
   // Check localStorage for saved document ID to highlight
   const savedId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -137,6 +141,8 @@ onMounted(async () => {
  */
 const handleSection = (message) => {
   currentSection.value = message;
+  // Clear any selected document when changing sections
+  documentStore.selectedDocument = null;
 };
 
 /**
@@ -146,13 +152,26 @@ const closeModal = () => {
   showCreateDocumentModal.value = false;
   // Ensure we're showing the default section
   currentSection.value = "default";
+  // Clear any selected document
+  documentStore.selectedDocument = null;
 };
 
-// Reactive effect to ensure document list is shown when there's a lastUpdatedDocumentId
-watch(() => documentStore.lastUpdatedDocumentId, (newId) => {
-  if (newId) {
-    // Switch to default section to show the document list
-    currentSection.value = "default";
-  }
-});
+/**
+ * Watch for changes in lastUpdatedDocumentId to show document list
+ * Only triggers when currentSection is 'default' to avoid UI bugs
+ */
+watch(
+  () => documentStore.lastUpdatedDocumentId,
+  (newId, oldId) => {
+    if (newId && newId !== oldId && currentSection.value === 'default') {
+      // Prevent multiple executions using timestamp check
+      const lastExecutionTime = Date.now();
+      if (!watch.lastExecutionTime || lastExecutionTime - watch.lastExecutionTime > 100) {
+        watch.lastExecutionTime = lastExecutionTime;
+        currentSection.value = "default";
+      }
+    }
+  },
+  { immediate: false }
+);
 </script>

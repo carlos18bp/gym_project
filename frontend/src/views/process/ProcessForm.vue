@@ -446,6 +446,15 @@
           >
             <span>Guardar</span>
           </button>
+          <!-- Archive button - only visible when editing -->
+          <button
+            v-if="actionParam === 'edit' && programIdParam"
+            @click="archiveProcess"
+            type="button"
+            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-blue-500 text-white"
+          >
+            <span>Archivar Proceso</span>
+          </button>
           <button
             @click="cancelAction"
             type="button"
@@ -592,7 +601,8 @@ const isSaveButtonEnabled = computed(() => {
  * @param {object} process - The process data to be assigned to formData.
  */
 function assignProcessToFormData(process) {
-  formData.processIdParam = process.id;
+  console.log("Process ID being assigned:", process.id);
+  formData.processIdParam = process.id || "";
   formData.plaintiff = process.plaintiff || "";
   formData.defendant = process.defendant || "";
   selectedCaseType.value = process.case || "";
@@ -697,6 +707,12 @@ const onSubmit = async () => {
   formData.caseTypeId = selectedCaseType.value?.id || "";
   formData.clientId = selectedClient.value?.id || "";
   formData.lawyerId = authStore.userAuth?.id || "";
+  
+  // Ensure process ID is set for updates
+  if (actionParam.value === 'edit' && programIdParam.value) {
+    console.log("Submitting with process ID:", programIdParam.value);
+    formData.processIdParam = programIdParam.value;
+  }
 
   if (validateFormData()) {
     await submitHandler(
@@ -710,6 +726,51 @@ const onSubmit = async () => {
         params: { user_id: "", display: "" },
       });
     } else {
+      router.back();
+    }
+  }
+};
+
+/**
+ * Archives the current process by adding a "Fallo" stage and marking it as complete.
+ * This function shows a confirmation dialog before proceeding with the archiving.
+ * 
+ * @async
+ * @function archiveProcess
+ * @returns {void}
+ */
+const archiveProcess = async () => {
+  // Ask for confirmation before archiving
+  const result = await Swal.fire({
+    title: "¿Archivar este proceso?",
+    text: "Esta acción marcará el proceso como archivado. ¿Desea continuar?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#BD93F9",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, archivar proceso",
+    cancelButtonText: "Cancelar"
+  });
+
+  if (result.isConfirmed) {
+    // Add a "Fallo" stage to indicate the process is closed/archived
+    formData.stages.push({ status: "Fallo" });
+    
+    // Set the process ID for the update
+    formData.processIdParam = programIdParam.value;
+    formData.caseTypeId = selectedCaseType.value?.id || "";
+    formData.clientId = selectedClient.value?.id || "";
+    formData.lawyerId = authStore.userAuth?.id || "";
+    
+    // Use the archive flag to differentiate this from regular updates
+    formData.isArchiving = true;
+
+    if (validateFormData()) {
+      await submitHandler(
+        formData,
+        "El proceso ha sido archivado exitosamente!",
+        true // This is an update, not a new creation
+      );
       router.back();
     }
   }

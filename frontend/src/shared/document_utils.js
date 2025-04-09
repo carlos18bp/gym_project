@@ -1,10 +1,12 @@
 import { ref } from "vue";
 import { get_request } from "@/stores/services/request_http";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useRecentViews } from '@/composables/useRecentViews';
 
 // Reactive state for document preview modal
 export const showPreviewModal = ref(false);
 export const previewDocumentData = ref({ title: "", content: "" });
+const { registerView } = useRecentViews();
 
 /**
  * Opens the preview modal with processed document content.
@@ -56,7 +58,6 @@ export async function previewDocument(document, store) {
  */
 export const downloadFile = async (url, filename, mimeType = "application/pdf") => {
   try {
-
     // Make a GET request with responseType: "blob"
     const response = await get_request(url, "blob");
 

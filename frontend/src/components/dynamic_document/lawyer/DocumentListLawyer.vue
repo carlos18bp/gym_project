@@ -1,71 +1,80 @@
 <template>
-  <div class="mt-8 flex flex-wrap gap-6">
+
     <div
       v-for="document in filteredDocuments"
       :key="document.id"
       :data-document-id="document.id"
       :class="[
-        'flex items-center gap-2 py-2 px-4 border rounded-md cursor-pointer transition',
+        'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
         document.state === 'Published'
           ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
           : 'border-stroke bg-white hover:bg-gray-100',
         highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
       ]"
-      :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 3px solid #3b82f6 !important;' : ''"
+      :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
     >
       <component
         :is="document.state === 'Published' ? CheckCircleIcon : PencilIcon"
         :class="
           document.state === 'Published'
-            ? 'size-6 text-green-500'
-            : 'size-6 text-secondary'
+            ? 'size-8 text-green-500'
+            : 'size-8 text-secondary'
         "
       />
-      <span class="text-base font-medium">{{ document.title }}</span>
-
-      <Menu as="div" class="relative inline-block text-left">
-        <MenuButton class="flex items-center text-gray-400">
-          <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-        </MenuButton>
-        <transition
-          enter-active-class="transition ease-out duration-100"
-          enter-from-class="transform opacity-0 scale-95"
-          enter-to-class="transform opacity-100 scale-100"
-          leave-active-class="transition ease-in duration-75"
-          leave-from-class="transform opacity-100 scale-100"
-          leave-to-class="transform opacity-0 scale-95"
-        >
-          <MenuItems
-            class="absolute left-0 z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+      <div class="flex justify-between items-center w-full">
+        <div class="grid gap-1">
+          <span class="text-base font-medium">{{ document.title }}</span>
+          <span class="text-sm font-regular text-gray-400">
+            {{ document.state === 'Published' ? 'Publicado' : 'Borrador' }}
+          </span>
+        </div>
+  
+        <Menu as="div" class="relative inline-block text-left">
+          <MenuButton class="flex items-center text-gray-400">
+            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+          </MenuButton>
+          <transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="transform opacity-0 scale-95"
+            enter-to-class="transform opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="transform opacity-100 scale-100"
+            leave-to-class="transform opacity-0 scale-95"
           >
-            <MenuItem
-              v-for="option in getDocumentOptions(document)"
-              :key="option.label"
+            <MenuItems
+              class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+              :class="[
+                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+              ]"
             >
-              <button
-                class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
-                :disabled="option.disabled"
-                @click="
-                  !option.disabled && handleOption(option.action, document)
-                "
-                :class="{
-                  'opacity-50 cursor-not-allowed': option.disabled,
-                  'cursor-pointer': !option.disabled,
-                }"
+              <MenuItem
+                v-for="option in getDocumentOptions(document)"
+                :key="option.label"
               >
-                <NoSymbolIcon
-                  v-if="option.disabled"
-                  class="size-5 text-gray-400"
-                  aria-hidden="true"
-                />
-                {{ option.label }}
-              </button>
-            </MenuItem>
-          </MenuItems>
-        </transition>
-      </Menu>
+                <button
+                  class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
+                  :disabled="option.disabled"
+                  @click="
+                    !option.disabled && handleOption(option.action, document)
+                  "
+                  :class="{
+                    'opacity-50 cursor-not-allowed': option.disabled,
+                    'cursor-pointer': !option.disabled,
+                  }"
+                >
+                  <NoSymbolIcon
+                    v-if="option.disabled"
+                    class="size-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                  {{ option.label }}
+                </button>
+              </MenuItem>
+            </MenuItems>
+          </transition>
+        </Menu>
+      </div>
     </div>
-  </div>
 
   <!-- Edit Document Modal -->
   <ModalTransition v-show="showEditDocumentModal">
@@ -90,6 +99,7 @@ import {
   NoSymbolIcon,
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useUserStore } from "@/stores/user";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import { showNotification } from "@/shared/notification_message";
@@ -104,6 +114,7 @@ import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentP
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
+const userStore = useUserStore();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
@@ -111,26 +122,31 @@ const lastUpdatedDocId = ref(null);
 
 const props = defineProps({
   searchQuery: String,
+  promptDocuments: {
+    type: Array,
+    default: null
+  }
 });
 
 // Retrieve documents in drafted and published from the store, applying the search filter.
 const filteredDocuments = computed(() => {
-  const allDraftAndPublishedDocs =
-    documentStore.draftAndPublishedDocumentsUnassigned;
+  if (props.promptDocuments) {
+    return props.promptDocuments;
+  }
   
-  const filtered = documentStore
-    .filteredDocuments(props.searchQuery, "")
-    .filter((doc) =>
-      allDraftAndPublishedDocs.some(
-        (draftAndPublishedDoc) => draftAndPublishedDoc.id === doc.id
-      )
-    );
-  
-  return filtered;
+  const documents = documentStore.getDocumentsByLawyerId(userStore.currentUser.id);
+  return documents.filter(doc => 
+    doc.title.toLowerCase().includes(props.searchQuery.toLowerCase())
+  );
 });
 
 // Computed property to determine which document should be highlighted
 const highlightedDocId = computed(() => {
+  // If we have prompt documents, don't show any highlight
+  if (props.promptDocuments) {
+    return null;
+  }
+
   const storeId = documentStore.lastUpdatedDocumentId;
   const localId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -321,6 +337,11 @@ const closeEditModal = (eventData) => {
 
 // Make sure highlighted document ID is updated when filtered documents change
 watch(filteredDocuments, (newDocs) => {
+  // If we have prompt documents, don't update highlights
+  if (props.promptDocuments) {
+    return;
+  }
+
   // If we have a lastUpdatedDocumentId, verify it exists in the list
   if (documentStore.lastUpdatedDocumentId) {
     const exists = newDocs.some(doc => String(doc.id) === String(documentStore.lastUpdatedDocumentId));
@@ -379,6 +400,11 @@ window.forceDocumentHighlight = forceHighlight;
 
 // Initialize data when component mounts
 onMounted(async () => {
+  // If we have prompt documents, don't initialize highlights
+  if (props.promptDocuments) {
+    return;
+  }
+
   // Ensure documents are loaded
   await documentStore.init();
   
@@ -402,7 +428,7 @@ onMounted(async () => {
 
 <style scoped>
 @keyframes pulse-highlight {
-  0%, 100% {
+  0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
     border-color: rgba(59, 130, 246, 0.8);
     transform: scale(1);
@@ -410,13 +436,16 @@ onMounted(async () => {
   50% {
     box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
     border-color: rgba(59, 130, 246, 0.8);
-    background-color: rgba(59, 130, 246, 0.1);
     transform: scale(1.02);
+  }
+  100% {
+    border-color: var(--border-stroke);
+    transform: scale(1);
   }
 }
 
 .animate-pulse-highlight {
-  animation: pulse-highlight 1s ease-in-out 3;
+  animation: pulse-highlight 0.5s ease-in-out 1;
   border-width: 2px !important;
   position: relative;
   z-index: 10;

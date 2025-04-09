@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from gym_app.models import Case, CaseFile, Stage, Process
+from gym_app.models import Case, CaseFile, Stage, Process, RecentProcess
 from gym_app.serializers import UserSerializer
 
 class CaseSerializer(serializers.ModelSerializer):
@@ -102,3 +102,14 @@ class ProcessSerializer(serializers.ModelSerializer):
         # Save the updated instance without handling case_files here
         instance.save()
         return instance
+
+class RecentProcessSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the RecentProcess model.
+    Includes the nested ProcessSerializer to show process details.
+    """
+    process = ProcessSerializer(read_only=True)
+    
+    class Meta:
+        model = RecentProcess
+        fields = ['id', 'process', 'last_viewed']

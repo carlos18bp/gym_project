@@ -93,3 +93,13 @@ class DocumentVariable(models.Model):
         Returns the string representation of the variable, which is its English name.
         """
         return self.name_en
+
+
+class RecentDocument(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    document = models.ForeignKey(DynamicDocument, on_delete=models.CASCADE)
+    last_visited = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'document')
+        ordering = ['-last_visited']
