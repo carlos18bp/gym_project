@@ -38,6 +38,8 @@ urlpatterns = [
          TemplateView.as_view(template_name='index.html')),
     path('dynamic_document_dashboard/lawyer/variables-config/',
          TemplateView.as_view(template_name='index.html')),
+
+    path('dashboard/', TemplateView.as_view(template_name='index.html')),
 ]
 
 if settings.DEBUG:
