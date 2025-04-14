@@ -10,43 +10,43 @@ const router = createRouter({
       path: "/sign_in",
       name: "sign_in",
       component: () => import("@/views/auth/SignIn.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Iniciar Sesión" },
     },
     {
       path: "/home",
       name: "home",
       component: () => import("@/views/policies/Home.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Políticas de Privacidad" },
     },
     {
       path: "/sign_on",
       name: "sign_on",
       component: () => import("@/views/auth/SignOn.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Registrarse" },
     },
     {
       path: "/forget_password",
       name: "forget_password",
       component: () => import("@/views/auth/ForgetPassword.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Recuperar Contraseña" },
     },
     {
       path: "/policies/privacy_policy",
       name: "privacy_policy",
       component: () => import("@/views/policies/PrivacyPolicy.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Política de Privacidad" },
     },
     {
       path: "/policies/terms_of_use",
       name: "terms_of_use",
       component: () => import("@/views/policies/TermsOfUse.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Términos de Uso" },
     },
     {
       path: "/no_connection",
       name: "no_connection",
       component: () => import("@/views/offline/NoConnection.vue"),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, title: "Sin Conexión" },
     },
     {
       path: "/dashboard",
@@ -56,7 +56,7 @@ const router = createRouter({
           path: "",
           name: "dashboard",
           component: () => import("@/views/dashboard/dashboard.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Panel Principal" },
         },
       ],
     },
@@ -68,7 +68,7 @@ const router = createRouter({
           path: "",
           name: "process_list",
           component: () => import("@/views/process/ProcessList.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Lista de Procesos" },
         },
       ],
     },
@@ -80,7 +80,7 @@ const router = createRouter({
           path: "",
           name: "process_detail",
           component: () => import("@/views/process/ProcessDetail.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Detalle de Proceso" },
         },
       ],
     },
@@ -92,7 +92,7 @@ const router = createRouter({
           path: "",
           name: "process_form",
           component: () => import("@/views/process/ProcessForm.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Formulario de Proceso" },
         },
       ],
     },
@@ -104,7 +104,7 @@ const router = createRouter({
           path: "",
           name: "directory_list",
           component: () => import("@/views/directory/DirectoryList.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Directorio" },
         },
       ],
     },
@@ -116,7 +116,7 @@ const router = createRouter({
           path: "",
           name: "legal_request",
           component: () => import("@/views/legal_request/LegalRequest.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Solicitud Legal" },
         },
       ],
     },
@@ -128,7 +128,7 @@ const router = createRouter({
           path: "",
           name: "intranet_g_y_m",
           component: () => import("@/views/intranet_g_y_m/IntranetGyM.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Intranet G y M" },
         },
       ],
     },
@@ -141,7 +141,7 @@ const router = createRouter({
           name: "schedule_appointment",
           component: () =>
             import("@/views/schedule_appointment/ScheduleAppointment.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Agendar Cita" },
         },
       ],
     },
@@ -153,34 +153,34 @@ const router = createRouter({
           path: "",
           name: "dynamic_document_dashboard",
           component: () => import("@/views/dynamic_document/Dashboard.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Documentos Dinámicos" },
         },
         {
           path: "lawyer/editor/create/:title",
           component: () =>
             import("@/views/dynamic_document/DocumentEditor.vue"),
           props: true,
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Crear Documento" },
         },
         {
           path: "lawyer/editor/edit/:id",
           component: () =>
             import("@/views/dynamic_document/DocumentEditor.vue"),
           props: true,
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Editar Documento" },
         },
         {
           path: "document/use/:mode/:id/:title",
           component: () =>
             import("@/views/dynamic_document/client/DocumentForm.vue"),
           props: true,
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Completar Documento" },
         },
         {
           path: "lawyer/variables-config",
           component: () =>
             import("@/views/dynamic_document/DocumentVariablesConfig.vue"),
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true, title: "Configurar Variables" },
         },
       ],
     },
@@ -216,9 +216,16 @@ router.beforeEach(async (to, from, next) => {
   }
 });
 
-// Registrar vistas después de cada navegación exitosa
+// Actualizar el título de la página y registrar vistas después de cada navegación exitosa
 router.afterEach((to) => {
   const { registerView } = useRecentViews();
+  
+  // Actualizar el título de la página
+  if (to.meta.title) {
+    document.title = `${to.meta.title} | G&M Abogados`;
+  } else {
+    document.title = 'G&M Abogados';
+  }
 
   // Registrar vista de proceso
   if (to.name === 'process_detail' && to.params.process_id) {
