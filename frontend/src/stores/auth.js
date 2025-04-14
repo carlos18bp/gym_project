@@ -106,7 +106,6 @@ export const useAuthStore = defineStore("auth", {
       this.signInSecondsRemaining = 0;
 
       // Remove from localStorage
-
       localStorage.setItem("signInTries", 0);
       localStorage.setItem("signInSecondsAcumulated", 0);
       localStorage.setItem("signInSecondsRemaining", 0);
@@ -120,7 +119,7 @@ export const useAuthStore = defineStore("auth", {
       delete axios.defaults.headers.common["Authorization"];
     },
     /**
-     * Saves the Sign In Attemps and Second Remaining to localStorage
+     * Saves the Sign In Attempts and Remaining Seconds to localStorage
      */
     saveToLocalStorageSignIn() {
       localStorage.setItem("signInTries", this.signInTries);
@@ -134,7 +133,8 @@ export const useAuthStore = defineStore("auth", {
       );
     },
     /**
-     * Verficate the attemps to Sign In and incrementate the seconds for wait the next 3 attemps
+     * Verify the login attempts and increase waiting time after consecutive failures
+     * @param {string} action - Action to take ("initial" or other values for counting attempts)
      */
     attempsSignIn(action) {
       if (action != "initial") {
