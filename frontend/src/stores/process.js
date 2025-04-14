@@ -15,15 +15,6 @@ export const useProcessStore = defineStore("process", {
   state: () => ({
     processes: [],
     dataLoaded: false,
-    pagination: {
-      currentPage: 1,
-      totalItems: 0,
-      totalPages: 0,
-      itemsPerPage: 20,
-      hasMore: false
-    },
-    isFetching: false,
-    lastFetchTime: null
   }),
 
   getters: {
@@ -88,152 +79,35 @@ export const useProcessStore = defineStore("process", {
 
   actions: {
     /**
-     * Initialize store by fetching data if not already loaded or if data is stale.
+     * Initialize store by fetching data if not already loaded.
      */
     async init() {
-      // Only load data if not loaded or if it's stale (older than 5 minutes)
-      const shouldFetch = !this.dataLoaded || 
-                          !this.lastFetchTime || 
-                          (Date.now() - this.lastFetchTime > 5 * 60 * 1000);
-      
-      if (shouldFetch) {
-        await this.fetchProcessesData();
-      }
+      if (!this.dataLoaded) await this.fetchProcessesData();
     },
 
     /**
-     * Fetch processes data from backend with pagination support.
-     * 
-     * @param {Object} options - Options for fetching data
-     * @param {number} options.page - Page number to fetch (default: 1)
-     * @param {number} options.limit - Number of items per page (default: from state)
-     * @param {string} options.filter - Optional filter string 
-     * @param {boolean} options.append - Whether to append results to existing data (default: false)
-     * @param {boolean} options.forceRefresh - Whether to force refresh even if data was recently loaded
-     * @returns {Promise<Object>} Pagination data including totalItems, totalPages, etc.
+     * Fetch processes data from backend.
      */
-    async fetchProcessesData(options = {}) {
-      const { 
-        page = 1, 
-        limit = this.pagination.itemsPerPage, 
-        filter = '',
-        append = false,
-        forceRefresh = false
-      } = options;
-      
-      // Prevent multiple simultaneous fetches
-      if (this.isFetching) return;
-      
-      // Skip if data was loaded recently (within last 30 seconds) unless forced
-      const recentlyLoaded = this.lastFetchTime && (Date.now() - this.lastFetchTime < 30 * 1000);
-      if (recentlyLoaded && !forceRefresh && this.dataLoaded) return;
-      
-      this.isFetching = true;
-      
+    async fetchProcessesData() {
       try {
-        // Build query parameters for the request
-        const params = new URLSearchParams();
-        params.append('page', page);
-        params.append('limit', limit);
-        if (filter) params.append('filter', filter);
-        
-        const endpoint = `processes/?${params.toString()}`;
-        let response = await get_request(endpoint);
+        let response = await get_request("processes/");
         let jsonData = response.data;
 
-        // Ensure jsonData is an object with items array
         if (jsonData && typeof jsonData === "string") {
           try {
             jsonData = JSON.parse(jsonData);
           } catch (error) {
             console.error("JSON parse error:", error.message);
-            jsonData = { items: [], totalItems: 0, totalPages: 0 };
+            jsonData = [];
           }
         }
-        
-        // Handle backend not returning in expected format
-        if (!jsonData.items && Array.isArray(jsonData)) {
-          jsonData = { 
-            items: jsonData, 
-            totalItems: jsonData.length, 
-            totalPages: 1,
-            currentPage: 1
-          };
-        }
-        
-        // Update pagination state
-        this.pagination = {
-          currentPage: page,
-          totalItems: jsonData.totalItems || jsonData.items.length,
-          totalPages: jsonData.totalPages || 1,
-          itemsPerPage: limit,
-          hasMore: (jsonData.totalPages && page < jsonData.totalPages) || false
-        };
 
-        // Update processes data
-        if (append && page > 1) {
-          // Append new items to existing array
-          this.processes = [...this.processes, ...jsonData.items];
-        } else {
-          // Replace with new data
-          this.processes = jsonData.items || [];
-        }
-        
+        this.processes = jsonData ?? [];
         this.dataLoaded = true;
-        this.lastFetchTime = Date.now();
-        
-        return this.pagination;
       } catch (error) {
         console.error("Error fetching processes data:", error.message);
-        if (page === 1) {
-          this.processes = [];
-        }
+        this.processes = [];
         this.dataLoaded = false;
-        throw error;
-      } finally {
-        this.isFetching = false;
-      }
-    },
-
-    /**
-     * Load the next page of processes
-     * @returns {Promise<Object>} Pagination data
-     */
-    async loadMoreProcesses() {
-      if (!this.pagination.hasMore || this.isFetching) return;
-      
-      const nextPage = this.pagination.currentPage + 1;
-      return this.fetchProcessesData({
-        page: nextPage,
-        append: true
-      });
-    },
-
-    /**
-     * Fetch a single process by ID.
-     * This conserves bandwidth by only getting one process instead of all.
-     * 
-     * @param {number|string} processId - ID of the process to fetch
-     * @returns {Promise<Object>} The process object
-     */
-    async fetchProcessById(processId) {
-      try {
-        const response = await get_request(`processes/${processId}/`);
-        const processData = response.data;
-        
-        // Update the process in the local store if it exists
-        const existingIndex = this.processes.findIndex(p => p.id == processId);
-        if (existingIndex >= 0) {
-          this.processes[existingIndex] = processData;
-        } else {
-          // Add to the processes array if it doesn't exist
-          this.processes.push(processData);
-        }
-        
-        return processData;
-      } catch (error) {
-        console.error(`Error fetching process ID ${processId}:`, error.message);
-        throw error;
       }
     },
 
@@ -251,6 +125,7 @@ export const useProcessStore = defineStore("process", {
      *    - Stages: Searches within each `status` in the `stages` array.
      *
      * @param {string} searchQuery - The search string used to filter the processes.
+     * @param {boolean} isClient - Whether the user is a client or not.
      * @param {number} userIdParam - The user ID used to filter processes based on the user's role (client or lawyer).
      * @param {string} displayParam - A parameter to determine if processes should be filtered by status ("history" for closed cases, other values for open cases).
      * @returns {Array} - A list of filtered processes matching the search criteria.
@@ -324,44 +199,61 @@ export const useProcessStore = defineStore("process", {
       const mainData = {
         plaintiff: formData.plaintiff,
         defendant: formData.defendant,
-        authority: formData.authority,
-        ref: formData.ref,
+        caseTypeId: formData.caseTypeId,
         subcase: formData.subcase,
-        case: formData.case,
-        client: formData.client,
-        lawyer: formData.lawyer,
-        stage: formData.stage,
+        ref: formData.ref,
+        authority: formData.authority,
+        clientId: formData.clientId,
+        lawyerId: formData.lawyerId,
+        stages: formData.stages,
       };
 
+      const formDataObject = new FormData();
+      formDataObject.append("mainData", JSON.stringify(mainData)); // Attach main process data as JSON
+
       try {
-        // Create the process
-        const response = await create_request("processes/", mainData);
-        
+        // Step 1: Send main process data to the backend
+        const response = await create_request(
+          "create_process/",
+          formDataObject
+        );
+
         if (response.status === 201) {
-          const processId = response.data.id;
-          
-          // Track activity
-          await registerUserActivity(
-            ACTION_TYPES.CREATE,
-            `Created process for ${formData.plaintiff} vs ${formData.defendant}`
-          );
-          
-          // Upload files if available
-          if (formData.files && formData.files.length > 0) {
-            await this.uploadFiles(processId, formData.files);
+          const processId = response.data.id; // Retrieve the created process ID
+
+          // Step 2: Upload associated files (if any)
+          if (formData.caseFiles.length > 0) {
+            const uploadResults = await this.uploadFiles(
+              processId,
+              formData.caseFiles
+            );
+
+            // Check if all files were uploaded successfully
+            const allUploaded = uploadResults.every((result) => result.success);
+            if (!allUploaded) {
+              console.warn(
+                "Some files failed to upload:",
+                uploadResults.filter((r) => !r.success)
+              );
+            }
           }
-          
-          // Reload processes to ensure data is up-to-date
+
           this.dataLoaded = false;
-          await this.init();
+          await this.fetchProcessesData();
           
-          return response.status;
+          // Register activity after successful process creation using the correct action type
+          await registerUserActivity(
+            ACTION_TYPES.CREATE, 
+            `Creaste el proceso ${formData.subcase || 'legal'} para ${formData.plaintiff}.`
+          );
+
+          return response.status; // Return success status code
         } else {
-          console.error("Failed to create process:", response);
+          console.error("Failed to create process:", response.status);
           return null;
         }
       } catch (error) {
-        console.error("Error in createProcess:", error);
+        console.error("Error creating process:", error.message);
         return null;
       }
     },
@@ -369,108 +261,153 @@ export const useProcessStore = defineStore("process", {
     /**
      * Update an existing process and optionally upload new files.
      *
-     * This function sends the updated process data to the backend.
-     * If new files are provided, it also uploads them and associates them with the process.
+     * This function updates the main process data on the backend and uploads any new files
+     * associated with the process that do not already exist in the system.
      *
-     * @param {object} formData - The form data containing updated process details and new files.
+     * @param {object} formData - The form data containing process details and files.
      * @returns {number|null} - HTTP status code (200 for success) or null in case of error.
      */
     async updateProcess(formData) {
-      const processId = formData.processId;
-      const updateData = {
+      const mainData = {
+        id: formData.processIdParam,
         plaintiff: formData.plaintiff,
         defendant: formData.defendant,
-        authority: formData.authority,
-        ref: formData.ref,
+        caseTypeId: formData.caseTypeId,
         subcase: formData.subcase,
-        case: formData.case,
-        client: formData.client,
-        lawyer: formData.lawyer,
+        ref: formData.ref,
+        authority: formData.authority,
+        clientId: formData.clientId,
+        lawyerId: formData.lawyerId,
+        stages: formData.stages,
       };
 
-      // Add new stage if provided
-      if (formData.stage && formData.stage.status) {
-        updateData.stage = {
-          status: formData.stage.status,
-          date: formData.stage.date,
-          description: formData.stage.description,
-        };
-      }
-
       try {
-        // Update the process
-        const response = await update_request(`processes/${processId}/`, updateData);
-        
-        if (response.status === 200) {
-          // Track activity
-          await registerUserActivity(
-            ACTION_TYPES.UPDATE,
-            `Updated process for ${formData.plaintiff} vs ${formData.defendant}`
-          );
-          
-          // Upload new files if available
-          if (formData.files && formData.files.length > 0) {
-            await this.uploadFiles(processId, formData.files);
+        const response = await update_request(
+          `update_process/${formData.processIdParam}/`,
+          mainData
+        );
+
+        if (response.status === 200 || response.status === 201) {
+          // Handle file uploads if there are any new files
+          if (formData.caseFiles && formData.caseFiles.length > 0) {
+            const uploadResults = await this.uploadFiles(
+              formData.processIdParam,
+              formData.caseFiles
+            );
+
+            // Check if all files were uploaded successfully
+            const allUploaded = uploadResults.every((result) => result.success);
+            if (!allUploaded) {
+              console.warn(
+                "Some files failed to upload:",
+                uploadResults.filter((r) => !r.success)
+              );
+            }
           }
-          
-          // Reload processes to ensure data is up-to-date
+
+          // Refresh data after update
           this.dataLoaded = false;
-          await this.init();
+          await this.fetchProcessesData();
           
+          // Check if the last stage is a "Fallo" to determine if it's a finish
+          const lastStage = formData.stages[formData.stages.length - 1];
+          const isFinished = lastStage && lastStage.status === "Fallo";
+          
+          // Register activity using the appropriate action type based on the process status
+          if (isFinished) {
+            // If specifically archiving (vs just finishing with "Fallo")
+            if (formData.isArchiving) {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Archivaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            } else {
+              await registerUserActivity(
+                ACTION_TYPES.FINISH, 
+                `Finalizaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+              );
+            }
+          } else {
+            await registerUserActivity(
+              ACTION_TYPES.EDIT, 
+              `Editaste el proceso ${formData.subcase || 'legal'} de ${formData.plaintiff}.`
+            );
+          }
+
           return response.status;
         } else {
           console.error("Failed to update process:", response);
           return null;
         }
       } catch (error) {
-        console.error("Error in updateProcess:", error);
+        console.error("Error updating process:", error);
         return null;
       }
     },
 
     /**
-     * Upload files for a specific process.
+     * Upload multiple files for a specific process.
      *
-     * This function uploads multiple files one by one, associating each with the specified process ID.
+     * This function iterates over a list of files and uploads each file individually
+     * to the backend, associating it with the given process ID.
      *
-     * @param {number|string} processId - The ID of the process to associate files with.
-     * @param {FileList|Array} files - The list of files to upload.
-     * @returns {Promise<boolean>} - True if all uploads were successful, false otherwise.
+     * @param {number} processId - The ID of the process to associate the files with.
+     * @param {Array} files - List of files to be uploaded.
+     * @returns {Array} - List of results for each file, containing the file name and success status.
      */
     async uploadFiles(processId, files) {
-      try {
-        for (const file of files) {
+      const results = [];
+
+      for (const file of files) {
+        try {
           const formData = new FormData();
-          formData.append("file", file);
-          formData.append("process", processId);
+          formData.append("file", file.file); // Attach the file
+          formData.append("processId", processId); // Associate with the process
 
-          const uploadResponse = await create_request(
-            "process-files/",
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            }
+          const response = await create_request("update_case_file/", formData);
+
+          results.push({
+            file: file.file.name,
+            success: response.status === 201, // Check if the upload was successful
+          });
+        } catch (error) {
+          console.error(
+            `Error uploading file ${file.file.name}:`,
+            error.message
           );
+          results.push({
+            file: file.file.name,
+            success: false,
+          });
+        }
+      }
 
-          if (uploadResponse.status !== 201) {
-            console.error("Failed to upload file:", file.name);
-          }
+      return results; // Return a list of upload results
+    },
+    
+    /**
+     * Fetch a single process by ID.
+     * @param {number|string} processId - ID of the process to fetch
+     * @returns {Promise<Object>} The process object
+     */
+    async fetchProcessById(processId) {
+      try {
+        const response = await get_request(`processes/${processId}/`);
+        const processData = response.data;
+        
+        // Update the process in the local store if it exists
+        const existingIndex = this.processes.findIndex(p => p.id == processId);
+        if (existingIndex >= 0) {
+          this.processes[existingIndex] = processData;
+        } else {
+          // Add to the processes array if it doesn't exist
+          this.processes.push(processData);
         }
         
-        // Track activity for file uploads
-        if (files.length > 0) {
-          await registerUserActivity(
-            ACTION_TYPES.UPLOAD,
-            `Uploaded ${files.length} file(s) to process #${processId}`
-          );
-        }
-        
-        return true;
+        return processData;
       } catch (error) {
-        console.error("Error uploading files:", error);
-        return false;
+        console.error(`Error fetching process ID ${processId}:`, error.message);
+        throw error;
       }
     },
   },

@@ -542,7 +542,7 @@ const submitHandler = async () => {
     if (status === 201) {
       showNotification("¡Solicitud creada exitosamente!", "success");
       resetForm(); // Reset the form after successful submission
-      router.push({ name: "process_list" });
+      router.push({ name: "dashboard" });
     } else {
       showNotification(
         "Error al crear la solicitud. Intenta nuevamente.",

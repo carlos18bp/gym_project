@@ -342,7 +342,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async createDocument(documentData) {
       try {
-        const response = await create_request("dynamic-documents/", documentData);
+        const response = await create_request("dynamic-documents/create/", documentData);
         
         // Add to the local data
         this.documents.unshift(response.data);
@@ -357,7 +357,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         // Register user activity
         await registerUserActivity(
           ACTION_TYPES.CREATE,
-          `Created document "${response.data.title}"`
+          `Creaste el nuevo documento ${documentData.title || 'sin título'}`
         );
         
         return response.data;
@@ -375,7 +375,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async updateDocument(documentId, documentData) {
       try {
-        const response = await update_request(`dynamic-documents/${documentId}/`, documentData);
+        const response = await update_request(`dynamic-documents/${documentId}/update/`, documentData);
         
         // Update the cached document
         this.documentCache[documentId] = response.data;
@@ -393,7 +393,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         // Register user activity
         await registerUserActivity(
           ACTION_TYPES.UPDATE,
-          `Updated document "${response.data.title}"`
+          `Actualizaste el documento ${documentData.title || 'sin título'}`
         );
         
         return response.data;
@@ -417,7 +417,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
           documentTitle = existingDoc.title;
         }
         
-        const response = await delete_request(`dynamic-documents/${documentId}/`);
+        const response = await delete_request(`dynamic-documents/${documentId}/delete/`);
         
         if (response.status === 204) {
           // Remove from cache
@@ -429,7 +429,7 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
           // Register user activity
           await registerUserActivity(
             ACTION_TYPES.DELETE,
-            `Deleted document "${documentTitle}"`
+            `Eliminaste el documento ${documentTitle}`
           );
           
           return true;
@@ -448,12 +448,12 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async downloadPDF(documentId, documentTitle) {
       try {
-        await downloadFile(`dynamic-documents/${documentId}/download/pdf/`, `${documentTitle}.pdf`);
+        await downloadFile(`dynamic-documents/${documentId}/download-pdf/`, `${documentTitle}.pdf`);
         
         // Register user activity
         await registerUserActivity(
           ACTION_TYPES.DOWNLOAD,
-          `Downloaded PDF for "${documentTitle}"`
+          `Descargaste en PDF "${documentTitle}"`
         );
       } catch (error) {
         console.error(`Error downloading PDF for document ID ${documentId}:`, error);
@@ -468,12 +468,12 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     async downloadWord(documentId, documentTitle) {
       try {
-        await downloadFile(`dynamic-documents/${documentId}/download/word/`, `${documentTitle}.docx`);
+        await downloadFile(`dynamic-documents/${documentId}/download-word/`, `${documentTitle}.docx`);
         
         // Register user activity
         await registerUserActivity(
           ACTION_TYPES.DOWNLOAD,
-          `Downloaded Word document for "${documentTitle}"`
+          `Descargaste en Word "${documentTitle}"`
         );
       } catch (error) {
         console.error(`Error downloading Word document for document ID ${documentId}:`, error);
