@@ -5,7 +5,7 @@
   </SearchBarAndFilterBy>
 
   <!-- Main content -->
-  <div class="p-10 px-4 sm:px-6 lg:px-8">
+  <div class="p-4 sm:p-6 lg:p-10 lg:px-8">
     <DocumentsNavigation
       @openNewDocument="showCreateDocumentModal = true"
       @updateCurrentSection="handleSection"
@@ -13,18 +13,18 @@
     />
 
     <!-- Documents for lawyers -->
-    <div v-if="currentUser?.role === 'lawyer'">
-      <div v-if="currentSection === 'documentFinished'" class="grid grid-cols-4 gap-4">
+    <div v-if="currentUser?.role === 'lawyer'" class="mt-6">
+      <div v-if="currentSection === 'documentFinished'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         <DocumentFinishedByClientList
           :searchQuery="searchQuery"
         />
       </div>
-      <div v-if="currentSection === 'documentInProgress'" class="grid grid-cols-4 gap-4">
+      <div v-if="currentSection === 'documentInProgress'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         <DocumentInProgressByClientList
           :searchQuery="searchQuery"
         />
       </div>
-      <div v-if="currentSection === 'default'" class="grid grid-cols-4 gap-4">
+      <div v-if="currentSection === 'default'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         <DocumentListLawyer
           :searchQuery="searchQuery"
         />
@@ -40,12 +40,12 @@
     </div>
 
     <!-- Documents for clients -->
-    <div v-if="currentUser?.role === 'client'">
+    <div v-if="currentUser?.role === 'client'" class="mt-6">
       <UseDocument
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
-      <div class="mt-8 grid grid-cols-4 gap-4">
+      <div class="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         <DocumentListClient
           v-if="currentSection === 'default'"
           :searchQuery="searchQuery"

@@ -8,10 +8,10 @@
         Bienvenido/a, {{ user?.first_name || 'Usuario' }}!
       </div>
 
-      <!-- Second row: Avatar + Stats cards - stacked on mobile, horizontal on larger screens -->
-      <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+      <!-- Second row: Avatar + Stats cards - stacked until 1450px, horizontal from there -->
+      <div class="flex flex-col 2xl:flex-row gap-4 sm:gap-6 2xl:items-center">
         <!-- Avatar - centered on mobile -->
-        <div class="flex-shrink-0 w-full sm:w-auto flex justify-center sm:block">
+        <div class="flex-shrink-0 w-full 2xl:w-auto flex justify-center 2xl:justify-start">
           <img 
             :src="user?.photo_profile || '/default-avatar.jpg'" 
             :alt="user?.first_name"
@@ -19,30 +19,30 @@
           />
         </div>
 
-        <!-- Stats cards - stacked on mobile, horizontal on sm+ screens -->
-        <div class="flex flex-col sm:flex-row gap-4 w-full justify-center sm:justify-start">
+        <!-- Stats cards - stacked below avatar until 1450px, then horizontal -->
+        <div class="flex flex-row justify-center 2xl:justify-start gap-4 w-full 2xl:ml-4">
           <!-- Membership date -->
-          <div class="bg-white rounded-lg p-3 sm:p-4 flex flex-col items-center w-full sm:w-32 md:w-40 h-auto sm:h-32 md:h-40">
+          <div class="bg-white rounded-lg p-3 sm:p-4 flex flex-col items-center w-1/2 2xl:w-40 h-auto sm:h-32 md:h-40">
             <div class="text-blue-500 mb-1 sm:mb-2">
               <CalendarDaysIcon class="w-8 h-8 sm:w-10 sm:h-10 mx-auto" />
             </div>
             <div class="text-blue-500 text-xl sm:text-2xl font-bold text-center">
               {{ formattedDate }}
             </div>
-            <div class="text-gray-500 text-xs sm:text-sm text-center mt-auto">
+            <div class="text-gray-500 text-xs sm:text-sm text-center mt-auto truncate w-full">
               Miembro desde
             </div>
           </div>
       
           <!-- Active processes -->
-          <div class="bg-white rounded-lg p-3 sm:p-4 flex flex-col items-center w-full sm:w-32 md:w-40 h-auto sm:h-32 md:h-40">
+          <div class="bg-white rounded-lg p-3 sm:p-4 flex flex-col items-center w-1/2 2xl:w-40 h-auto sm:h-32 md:h-40">
             <div class="text-blue-500 mb-1 sm:mb-2">
               <RectangleStackIcon class="w-8 h-8 sm:w-10 sm:h-10 mx-auto" />
             </div>
             <div class="text-blue-500 text-4xl sm:text-5xl font-bold text-center">
               {{ activeProcesses }}
             </div>
-            <div class="text-gray-500 text-xs sm:text-sm text-center mt-auto">
+            <div class="text-gray-500 text-xs sm:text-sm text-center mt-auto truncate w-full">
               Procesos activos
             </div>
           </div>

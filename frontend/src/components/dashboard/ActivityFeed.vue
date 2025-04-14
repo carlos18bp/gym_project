@@ -94,9 +94,10 @@
       <div v-for="(contact, index) in contacts" :key="index" class="flex items-center gap-4 pb-3 mb-3 border-b border-gray-100 last:border-b-0 last:mb-0">
         <div class="flex-shrink-0">
           <img 
-            :src="contact.photo || '/default-avatar.jpg'" 
+            :src="contact.photo || '@/assets/images/user_avatar.jpg'" 
             :alt="contact.name"
             class="w-10 h-10 rounded-full object-cover"
+            @error="handleImageError"
           />
         </div>
         <div class="flex-grow">
@@ -153,6 +154,11 @@ const isDataLoaded = ref(false);
 
 // Check if user is a lawyer
 const isLawyer = computed(() => props.user?.role === 'lawyer');
+
+// Function to handle image loading errors
+const handleImageError = (e) => {
+  e.target.src = '/user_avatar.jpg';
+};
 
 // Function to get activity border color class
 const getBorderColorClass = (type) => {

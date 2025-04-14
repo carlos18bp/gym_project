@@ -9,8 +9,8 @@
     <section class="pb-6 pt-4 px-4 sm:px-6 lg:px-8 lg:pt-10 lg:pb-10">
         <!-- Grid layout with improved responsive behavior -->
         <div class="grid grid-cols-1 gap-4 sm:gap-6">
-            <!-- User welcome and activity feed: stacked on mobile, side by side on larger screens -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <!-- User welcome and activity feed: stacked on all screens up to xl, side by side only on 2xl -->
+            <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-6">
                 <UserWelcomeCard :user="currentUser" :activeProcesses="activeProcesses" class="h-full"></UserWelcomeCard>
                 <ActivityFeed :user="currentUser" class="h-full"></ActivityFeed>
             </div>
