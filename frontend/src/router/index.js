@@ -29,6 +29,13 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SignIn.vue"),
       meta: { requiresAuth: false, title: "Iniciar Sesión" },
     },
+    // Special route for Google OAuth callback
+    {
+      path: "/auth/google/callback",
+      name: "google_oauth_callback",
+      component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SignIn.vue"),
+      meta: { requiresAuth: false, title: "Autenticación con Google", isCallback: true },
+    },
     {
       path: "/home",
       name: "home",

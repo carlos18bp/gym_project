@@ -148,7 +148,12 @@
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
         <div class="flex justify-center">
-          <GoogleLogin class="mt-6" :callback="handleLoginWithGoogle" prompt />
+          <GoogleLogin 
+            class="mt-6" 
+            :callback="handleLoginWithGoogle" 
+            prompt="select_account"
+            auto-login="false"
+          />
         </div>
       </div>
 

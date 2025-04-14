@@ -119,7 +119,12 @@
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
 
-        <GoogleLogin class="mt-6" :callback="handleLoginWithGoogle" prompt />
+        <GoogleLogin 
+          class="mt-6" 
+          :callback="handleLoginWithGoogle" 
+          prompt="select_account"
+          auto-login="false"
+        />
       </div>
 
       <!--Terms and conditions and Privacy Policy -->

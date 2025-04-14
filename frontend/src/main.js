@@ -32,9 +32,17 @@ if (authStore.token) {
   axios.defaults.headers.common['Authorization'] = `Bearer ${authStore.token}`;
 }
 
-// Register Google Login
+// Get the current domain for Google Login redirect
+const isDevelopment = process.env.NODE_ENV === 'development';
+const domain = isDevelopment 
+  ? 'http://localhost:3000' 
+  : 'https://www.gmconsultoresjuridicos.com';
+
+// Register Google Login with explicit redirect configuration
 app.use(vue3GoogleLogin, {
-  clientId: '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com'
+  clientId: '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com',
+  prompt: 'select_account',
+  redirect_uri: `${domain}/auth/google/callback`
 });
 
 // Register service worker for PWA
