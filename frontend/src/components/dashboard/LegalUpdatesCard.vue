@@ -6,7 +6,7 @@
           class="w-full">
     <!-- Dynamic slides -->
     <swiper-slide v-for="update in legalUpdates" :key="update.id" class="shadow-md p-1">
-      <div class="relative rounded-lg overflow-hidden flex max-h-60" style="background-color: #DCF2FF;">
+      <div class="relative rounded-lg overflow-hidden flex max-h-64" style="background-color: #DCF2FF;">
         <div class="flex-grow p-8 pr-16 overflow-hidden">
           <!-- Larger black quotation mark -->
           <div class="absolute top-6 left-8 text-black text-7xl">❝</div>

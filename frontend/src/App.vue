@@ -4,32 +4,34 @@
 </template>
 
 <script setup>
-import router from "@/router";
-import { onBeforeMount } from "vue";
-import { RouterView, useRoute } from "vue-router";
+import { onMounted, ref, watch } from "vue";
+import { RouterView } from "vue-router";
+import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
-import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 
-const route = useRoute();
-const authStore = useAuthStore(); // Get the authentication store instance
+// Estado para controlar si el setup inicial ya se ejecutó
+const setupComplete = ref(false);
+
+// Inicialización de stores - estas referencias se inicializarán cuando Pinia esté lista
+const authStore = useAuthStore();
 const userStore = useUserStore();
 
-onBeforeMount(async () => {
-  if ((await authStore.isAuthenticated())) {
-    await userStore.init();
-
-    // If the user role is "client" and is on restricted routes, redirect to "dashboard"
-    if (userStore.currentUser?.role === "client" && 
-        (route.name === "process_form" || route.name === "directory_list")) {
-      router.push({
-        name: "dashboard",
-        params: {
-          user_id: "",
-          display: "",
-        },
-      });
+// Realizar la inicialización después de que el componente esté montado
+onMounted(async () => {
+  // Evitar inicialización repetida
+  if (setupComplete.value) return;
+  
+  try {
+    // Verificar si el usuario está autenticado
+    if (await authStore.isAuthenticated()) {
+      await userStore.init();
+      
+      // El resto de la lógica de redirección se moverá al router
+      setupComplete.value = true;
     }
+  } catch (error) {
+    console.error("Error during App initialization:", error);
   }
 });
 </script>
