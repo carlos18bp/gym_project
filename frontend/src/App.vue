@@ -10,24 +10,24 @@ import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useUserStore } from "@/stores/user";
 
-// Estado para controlar si el setup inicial ya se ejecutó
+// State to control if initial setup was already executed
 const setupComplete = ref(false);
 
-// Inicialización de stores - estas referencias se inicializarán cuando Pinia esté lista
+// Store initialization - these references will be initialized when Pinia is ready
 const authStore = useAuthStore();
 const userStore = useUserStore();
 
-// Realizar la inicialización después de que el componente esté montado
+// Perform initialization after component is mounted
 onMounted(async () => {
-  // Evitar inicialización repetida
+  // Avoid repeated initialization
   if (setupComplete.value) return;
   
   try {
-    // Verificar si el usuario está autenticado
+    // Verify if user is authenticated
     if (await authStore.isAuthenticated()) {
       await userStore.init();
       
-      // El resto de la lógica de redirección se moverá al router
+      // The rest of redirection logic will be moved to the router
       setupComplete.value = true;
     }
   } catch (error) {

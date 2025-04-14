@@ -29,7 +29,7 @@
       </div>
       <!-- Row for relevant information and timeline of process status -->
       <div class="grid xl:grid-cols-2">
-        <!-- First colum for relevant information -->
+        <!-- First column for relevant information -->
         <div class="font-medium mt-4 space-y-1">
           <!-- User information -->
           <div class="flex gap-2">
@@ -45,22 +45,22 @@
               {{ process.authority }}
             </p>
           </div>
-          <!-- Accionant information -->
+          <!-- Plaintiff information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Dte./Accionante:</h3>
             <p class="text-gray-500">{{ process.plaintiff }}</p>
           </div>
-          <!-- plaintiff information -->
+          <!-- Defendant information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Dte./Accionado:</h3>
             <p class="text-gray-500">{{ process.defendant }}</p>
           </div>
-          <!-- Ref information -->
+          <!-- Reference number information -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Radicado:</h3>
             <p class="text-gray-500">{{ process.ref }}</p>
           </div>
-          <!-- Last stage -->
+          <!-- Last procedural stage -->
           <div class="flex gap-2">
             <h3 class="text-base text-primary">Etapa Procesal:</h3>
             <p class="text-gray-500">
@@ -69,7 +69,7 @@
           </div>
         </div>
 
-        <!-- Second colum timeline of process status -->
+        <!-- Second column timeline of process status -->
         <div class="hidden md:block relative mt-16">
           <!-- Line -->
           <div class="relative">
@@ -97,7 +97,7 @@
         </div>
       </div>
 
-      <!-- Process archive -->
+      <!-- Process record/archive -->
       <div class="mt-14">
         <!-- Title and searchbar container -->
         <div
@@ -128,7 +128,7 @@
             </div>
           </div>
         </div>
-        <!-- Archive table -->
+        <!-- Archive/document table -->
         <div class="flow-root overflow-y-auto max-h-[400px] whitespace-nowrap">
           <div class="-my-2 sm:-mx-6 lg:-mx-8">
             <div
@@ -144,7 +144,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                   <tr v-for="caseFile in paginatedCaseFiles" :key="caseFile.id">
-                    <!-- File descripction -->
+                    <!-- File description -->
                     <td
                       class="w-2/5 py-4 pr-3 text-sm font-medium text-stone-700 sm:pl-0 break-words"
                     >
@@ -167,7 +167,7 @@
                           aria-hidden="true"
                         ></ArrowDownTrayIcon>
                       </button>
-                      <!-- See file in another pad -->
+                      <!-- View file in another tab -->
                       <button @click="openFile(caseFile.file)">
                         <EyeIcon class="h-5 w-5" aria-hidden="true"></EyeIcon>
                       </button>
