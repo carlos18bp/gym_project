@@ -119,42 +119,90 @@ def update_process(request, pk):
     This view will:
     - Update the process data using the provided main data.
     - Retain only the specified case files by 'caseFileIds'.
+    - REPLACE ALL existing stages with the ones from frontend.
     """
     process = get_object_or_404(Process, pk=pk)
     print("Received request.data:", request.data)
 
-    # Extract main data
-    main_data = json.loads(request.data.get('mainData', '{}'))
-
+    # Check if the request data is already a dict or if it's a string
+    if isinstance(request.data, dict):
+        main_data = request.data
+    else:
+        try:
+            # Try to parse mainData as JSON
+            main_data = json.loads(request.data.get('mainData', '{}'))
+        except (TypeError, json.JSONDecodeError):
+            # If that fails, use request.data directly
+            main_data = request.data
+    
+    print("Processed main_data:", main_data)
+    
+    # Update basic fields directly
+    if 'plaintiff' in main_data:
+        process.plaintiff = main_data['plaintiff']
+    if 'defendant' in main_data:
+        process.defendant = main_data['defendant']
+    if 'ref' in main_data:
+        process.ref = main_data['ref']
+    if 'authority' in main_data:
+        process.authority = main_data['authority']
+    if 'subcase' in main_data:
+        process.subcase = main_data['subcase']
+    
     # Update client
     client_id = main_data.get('clientId')
     if client_id:
-        process.client = User.objects.get(id=client_id)
+        try:
+            process.client = User.objects.get(id=client_id)
+        except User.DoesNotExist:
+            pass
+    
+    # Update lawyer
+    lawyer_id = main_data.get('lawyerId')
+    if lawyer_id:
+        try:
+            process.lawyer = User.objects.get(id=lawyer_id)
+        except User.DoesNotExist:
+            pass
 
     # Update Case Type
     case_type_id = main_data.get('caseTypeId')
     if case_type_id:
-        process.case = Case.objects.get(id=case_type_id)
-
-    # Update process main data using the serializer
-    serializer = ProcessSerializer(process, data=main_data, partial=True, context={'request': request})
-    if serializer.is_valid():
-        process = serializer.save()
-
-        # Retain only the specified case files by 'caseFileIds'
-        case_file_ids_to_retain = set(main_data.get('caseFileIds', []))
-        print("Case File IDs to retain:", case_file_ids_to_retain)
-
-        # Remove any case files not in the list of 'caseFileIds'
-        process.case_files.set(process.case_files.filter(id__in=case_file_ids_to_retain))
-
-        # Save the process with updated case files
-        process.save()
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        print("Serializer Errors:", serializer.errors)  # Print any errors in the serializer validation
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            process.case = Case.objects.get(id=case_type_id)
+        except Case.DoesNotExist:
+            pass
+    
+    # Save the process to ensure it has an ID
+    process.save()
+    
+    # SIMPLIFIED STAGE HANDLING: Replace all existing stages with new ones
+    stages_data = main_data.get('stages', [])
+    print(f"New stages data from frontend: {stages_data}")
+    
+    # Remove all existing stages
+    process.stages.clear()
+    print("Cleared all existing stages")
+    
+    # Create and add new stages from frontend data
+    for stage_data in stages_data:
+        if 'status' in stage_data and stage_data['status']:
+            stage_status = stage_data['status']
+            print(f"Creating new stage with status: {stage_status}")
+            new_stage = Stage.objects.create(status=stage_status)
+            process.stages.add(new_stage)
+    
+    # Handle case files
+    case_file_ids = main_data.get('caseFileIds', [])
+    if case_file_ids:
+        process.case_files.set(CaseFile.objects.filter(id__in=case_file_ids))
+    
+    # Save again with all updates
+    process.save()
+    
+    # Return the updated process
+    serializer = ProcessSerializer(process, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
