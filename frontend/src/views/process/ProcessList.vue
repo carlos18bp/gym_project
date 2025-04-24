@@ -234,6 +234,11 @@ onMounted(async () => {
   await processStore.init();
   userIdParam.value = route.params.user_id;
   displayParam.value = route.params.display;
+  
+  // Check if group query parameter exists and set processGroup accordingly
+  if (route.query.group === 'general') {
+    processGroup.value = 'general';
+  }
 
   await userStore.init();
   user.value = userIdParam.value
@@ -255,6 +260,18 @@ watch(
   async (newDisplay) => {
     userIdParam.value = route.params.user_id;
     displayParam.value = newDisplay;
+  }
+);
+
+// Add a watch for query parameters
+watch(
+  () => route.query,
+  (query) => {
+    if (query.group === 'general') {
+      processGroup.value = 'general';
+    } else if (query.group === 'default') {
+      processGroup.value = 'default';
+    }
   }
 );
 

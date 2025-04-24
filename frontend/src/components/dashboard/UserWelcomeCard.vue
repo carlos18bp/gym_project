@@ -5,7 +5,7 @@
     <div class="flex flex-col gap-4 sm:gap-6">
       <!-- First row: welcome title -->
       <div class="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-        Bienvenido/a, {{ user?.first_name || 'Usuario' }}!
+        {{ welcomeMessage }}, {{ user?.first_name || 'Usuario' }}!
       </div>
 
       <!-- Second row: Avatar + Stats cards - stacked until 1450px, horizontal from there -->
@@ -65,7 +65,7 @@
  * - On mobile: Elements stack vertically with centered alignment
  * - On tablets and up: Horizontal layout with properly sized elements
  */
-import { defineProps, computed, onMounted } from 'vue';
+import { defineProps, computed, onMounted, ref } from 'vue';
 import { RectangleStackIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 import { useProcessStore } from '@/stores/process';
 
@@ -88,6 +88,47 @@ const props = defineProps({
 });
 
 const processStore = useProcessStore();
+
+// Gender-neutral welcome messages
+const welcomeMessages = [
+  "De vuelta al trabajo",
+  "Hola de nuevo",
+  "Un placer verte",
+  "¡Qué bueno tenerte aquí",
+  "Excelente día",
+  "¡Buen momento para avanzar",
+  "Listo para continuar",
+  "Proyecto en marcha",
+  "Sesión iniciada",
+  "Espacio de trabajo listo"
+];
+
+// Randomly select a welcome message
+const getRandomMessage = () => {
+  const randomIndex = Math.floor(Math.random() * welcomeMessages.length);
+  return welcomeMessages[randomIndex];
+};
+
+// Set the welcome message
+const welcomeMessage = computed(() => {
+  // With a 60% chance, use time-based greetings
+  if (Math.random() < 0.6) {
+    // Get the hour of the day
+    const hour = new Date().getHours();
+    
+    // Time-specific greetings
+    if (hour >= 5 && hour < 12) {
+      return "Buenos días";
+    } else if (hour >= 12 && hour < 19) {
+      return "Buenas tardes";
+    } else if ((hour >= 19 && hour <= 23) || (hour >= 0 && hour < 5)) {
+      return "Buenas noches";
+    }
+  }
+  
+  // 40% chance to show a random project-themed message
+  return getRandomMessage();
+});
 
 // Format date for display
 const formattedDate = computed(() => {

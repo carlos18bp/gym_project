@@ -6,18 +6,20 @@
           class="w-full">
     <!-- Dynamic slides -->
     <swiper-slide v-for="update in legalUpdates" :key="update.id" class="shadow-md p-1">
-      <div class="relative rounded-lg overflow-hidden flex max-h-64" style="background-color: #DCF2FF;">
-        <div class="flex-grow p-8 pr-16 overflow-hidden">
+      <div class="relative rounded-lg overflow-hidden flex flex-col sm:flex-row" style="background-color: #DCF2FF;">
+        <div class="flex-grow p-8 overflow-hidden flex flex-col sm:w-[60%]">
           <!-- Larger black quotation mark -->
           <div class="absolute top-6 left-8 text-black text-7xl">❝</div>
           
           <!-- Main content -->
-          <div class="mt-10 mb-4 pl-2">
-            <p class="text-lg text-gray-800 mb-6 line-clamp-4 font-normal">
+          <div class="mt-10 pl-2 flex-grow">
+            <p class="text-lg text-gray-800 mb-8 sm:line-clamp-4 line-clamp-5 font-normal">
               {{ update.content }}
             </p>
-            
-            <!-- Hyperlink with underline and italic style -->
+          </div>
+          
+          <!-- Hyperlink with underline and italic style - moved to bottom with more space -->
+          <div class="pl-2 pb-6">
             <a :href="update.link_url" 
                target="_blank" 
                rel="noopener noreferrer"
@@ -27,8 +29,8 @@
           </div>
         </div>
         
-        <!-- Image with 5:4 aspect ratio -->
-        <div class="flex-shrink-0 self-stretch" style="width: 36%;">
+        <!-- Image with 5:4 aspect ratio - hidden on mobile -->
+        <div class="hidden sm:block sm:w-[40%]">
           <div class="w-full h-full bg-black overflow-hidden" 
                style="border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem;">
             <img 
