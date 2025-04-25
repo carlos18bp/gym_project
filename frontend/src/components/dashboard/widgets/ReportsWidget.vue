@@ -3,7 +3,7 @@
   <div class="overflow-y-auto max-h-[170px] scrollbar-thin">
     <div class="py-3">
       <div class="flex flex-col space-y-4">
-        <!-- Tipo de Reporte -->
+        <!-- Report Type -->
         <div>
           <label for="reportType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Reporte</label>
           <select 
@@ -18,7 +18,7 @@
           </select>
         </div>
         
-        <!-- Rango de Fechas -->
+        <!-- Date Range -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicial</label>
@@ -40,7 +40,7 @@
           </div>
         </div>
         
-        <!-- Botones de Acción -->
+        <!-- Action Buttons -->
         <div class="flex space-x-3 pt-2">
           <button 
             @click="generateReport" 
@@ -133,23 +133,23 @@ const generateReport = async () => {
   isGenerating.value = true;
   
   try {
-    console.log('Generando reporte:', {
-      tipo: selectedReportType.value,
-      fechaInicio: startDate.value,
-      fechaFin: endDate.value,
-      usuario: props.user?.id
+    console.log('Generating report:', {
+      type: selectedReportType.value,
+      startDate: startDate.value,
+      endDate: endDate.value,
+      userId: props.user?.id
     });
     
-    // Aquí iría la llamada a la API para generar el reporte
-    // Por ahora solo simulamos el proceso
+    // Here would go the API call to generate the report
+    // For now, we're just simulating the process
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Simular descarga
-    alert('Reporte generado con éxito. Inicia descarga...');
+    // Simulate download
+    alert('Report generated successfully. Starting download...');
     
   } catch (error) {
-    console.error('Error al generar el reporte:', error);
-    alert('Error al generar el reporte');
+    console.error('Error generating report:', error);
+    alert('Error generating report');
   } finally {
     isGenerating.value = false;
   }
@@ -159,15 +159,15 @@ const generateReport = async () => {
 const previewReport = () => {
   if (!isFormValid.value) return;
   
-  console.log('Previsualizando reporte:', {
-    tipo: selectedReportType.value,
-    fechaInicio: startDate.value,
-    fechaFin: endDate.value,
-    usuario: props.user?.id
+  console.log('Previewing report:', {
+    type: selectedReportType.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    userId: props.user?.id
   });
   
-  // Aquí se implementaría la funcionalidad para previsualizar el reporte
-  alert('Funcionalidad de previsualización en desarrollo');
+  // Here we would implement the functionality to preview the report
+  alert('Preview functionality in development');
 };
 
 // Initialize component data

@@ -1,10 +1,10 @@
 <!-- ActivityFeed.vue -->
 <!-- 
-  Este componente ha sido refactorizado para separarlo en sub-componentes más pequeños
-  que se ubican en src/components/dashboard/widgets/
-  - FeedWidget.vue - Para la sección de actividad 
-  - ContactsWidget.vue - Para la sección de contactos/abogados
-  - ReportsWidget.vue - Para una nueva sección de reportes (solo visible para abogados)
+  This component has been refactored to separate it into smaller sub-components
+  located in src/components/dashboard/widgets/
+  - FeedWidget.vue - For the activity section
+  - ContactsWidget.vue - For the contacts/lawyers section
+  - ReportsWidget.vue - For a new reports section (only visible to lawyers)
 -->
 <template>
   <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4 h-full flex flex-col">
@@ -35,7 +35,7 @@
           <div v-if="activeTab === 'contacts'" class="h-0.5 bg-blue-500 w-20 mx-auto mt-2"></div>
         </div>
 
-        <!-- Reports tab - solo visible para abogados -->
+        <!-- Reports tab - only visible to lawyers -->
         <div v-if="isLawyer" class="text-center">
           <button 
             class="inline-block pb-2 font-medium"
@@ -57,7 +57,7 @@
       <!-- Contacts widget -->
       <ContactsWidget v-if="activeTab === 'contacts'" :user="user" />
       
-      <!-- Reports widget - solo visible para abogados -->
+      <!-- Reports widget - only visible to lawyers -->
       <ReportsWidget v-if="activeTab === 'reports' && isLawyer" :user="user" />
     </div>
   </div>
