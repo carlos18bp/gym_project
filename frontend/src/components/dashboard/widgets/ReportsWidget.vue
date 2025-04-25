@@ -40,24 +40,6 @@
           </div>
         </div>
         
-        <!-- Formato de exportación -->
-        <div>
-          <label for="exportFormat" class="block text-sm font-medium text-gray-700 mb-1">Formato de Exportación</label>
-          <div class="flex space-x-2">
-            <button 
-              v-for="format in exportFormats" 
-              :key="format.value"
-              @click="selectedFormat = format.value"
-              class="px-3 py-1.5 text-xs font-medium rounded-md transition duration-150"
-              :class="selectedFormat === format.value 
-                ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-                : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'"
-            >
-              {{ format.label }}
-            </button>
-          </div>
-        </div>
-        
         <!-- Botones de Acción -->
         <div class="flex space-x-3 pt-2">
           <button 
@@ -87,8 +69,7 @@
  * This component allows users to:
  * 1. Select a report type from a predefined list
  * 2. Define a date range (start date and end date)
- * 3. Choose an export format (Excel, PDF, CSV)
- * 4. Generate or preview the report
+ * 3. Generate or preview the report
  */
 import { ref, computed, onMounted } from 'vue';
 
@@ -107,7 +88,6 @@ const selectedReportType = ref('');
 const startDate = ref('');
 const endDate = ref('');
 const isGenerating = ref(false);
-const selectedFormat = ref('xlsx');
 
 // Available report types
 const reportTypes = [
@@ -116,13 +96,6 @@ const reportTypes = [
   { value: 'billing', label: 'Facturación' },
   { value: 'clients', label: 'Clientes' },
   { value: 'cases', label: 'Casos' }
-];
-
-// Available export formats
-const exportFormats = [
-  { value: 'xlsx', label: 'Excel' },
-  { value: 'pdf', label: 'PDF' },
-  { value: 'csv', label: 'CSV' }
 ];
 
 // Form validation
@@ -164,7 +137,6 @@ const generateReport = async () => {
       tipo: selectedReportType.value,
       fechaInicio: startDate.value,
       fechaFin: endDate.value,
-      formato: selectedFormat.value,
       usuario: props.user?.id
     });
     
@@ -173,7 +145,7 @@ const generateReport = async () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Simular descarga
-    alert(`Reporte generado con éxito en formato ${getFormatLabel(selectedFormat.value)}. Inicia descarga...`);
+    alert('Reporte generado con éxito. Inicia descarga...');
     
   } catch (error) {
     console.error('Error al generar el reporte:', error);
@@ -181,12 +153,6 @@ const generateReport = async () => {
   } finally {
     isGenerating.value = false;
   }
-};
-
-// Get format label from value
-const getFormatLabel = (formatValue) => {
-  const format = exportFormats.find(f => f.value === formatValue);
-  return format ? format.label : formatValue.toUpperCase();
 };
 
 // Preview the report
@@ -197,12 +163,11 @@ const previewReport = () => {
     tipo: selectedReportType.value,
     fechaInicio: startDate.value,
     fechaFin: endDate.value,
-    formato: selectedFormat.value,
     usuario: props.user?.id
   });
   
   // Aquí se implementaría la funcionalidad para previsualizar el reporte
-  alert(`Funcionalidad de previsualización en desarrollo para formato ${getFormatLabel(selectedFormat.value)}`);
+  alert('Funcionalidad de previsualización en desarrollo');
 };
 
 // Initialize component data
