@@ -222,7 +222,8 @@ def google_login(request):
             return Response({
                 'refresh': tokens['refresh'],
                 'access': tokens['access'],
-                'user': serializer.data
+                'user': serializer.data,
+                'created': created
             }, status=status.HTTP_200_OK)
 
         except Exception as e:

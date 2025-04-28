@@ -138,7 +138,7 @@ onMounted(async () => {
       // Get number of active processes (example)
       // Ideally this should come from a specific endpoint, not by loading all processes
       const processStore = await import('@/stores/process').then(m => m.useProcessStore());
-      processStore.fetchProcessById(authStore.userAuth.id)
+      processStore.fetchProcessesData()
         .then(() => {
           activeProcesses.value = processStore.activeProcessesForCurrentUser.length;
         })

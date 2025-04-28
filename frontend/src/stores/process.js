@@ -392,19 +392,20 @@ export const useProcessStore = defineStore("process", {
      */
     async fetchProcessById(processId) {
       try {
-        const response = await get_request(`processes/${processId}/`);
-        const processData = response.data;
+        // First try to find the process in the local store
+        let process = this.processById(processId);
         
-        // Update the process in the local store if it exists
-        const existingIndex = this.processes.findIndex(p => p.id == processId);
-        if (existingIndex >= 0) {
-          this.processes[existingIndex] = processData;
-        } else {
-          // Add to the processes array if it doesn't exist
-          this.processes.push(processData);
+        // If not found or data is not loaded, fetch all processes first
+        if (!process || !this.dataLoaded) {
+          await this.fetchProcessesData();
+          process = this.processById(processId);
         }
         
-        return processData;
+        if (process) {
+          return process;
+        } else {
+          throw new Error(`Process with ID ${processId} not found`);
+        }
       } catch (error) {
         console.error(`Error fetching process ID ${processId}:`, error.message);
         throw error;
