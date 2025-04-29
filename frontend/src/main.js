@@ -52,7 +52,7 @@ const domain = isDevelopment
 
 // Register Google Login with explicit redirect configuration
 app.use(vue3GoogleLogin, {
-  clientId: '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com',
+  clientId: '911084961992-qosfj4blhr31olteguo4enmkfgs8tfo7.apps.googleusercontent.com',
   prompt: 'select_account',
   redirect_uri: `${domain}/auth/google/callback`
 });
