@@ -122,7 +122,7 @@
  * For lawyers: File Process, New Document, File Report
  * For clients: My Processes, Schedule Appointment, File Request
  */
-import { defineProps, ref } from 'vue';
+import { ref } from 'vue';
 import { 
   DocumentIcon, 
   CalendarDaysIcon,

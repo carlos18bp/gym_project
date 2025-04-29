@@ -428,7 +428,7 @@ onMounted(async () => {
 
 <style scoped>
 @keyframes pulse-highlight {
-  0% {
+  0%, 100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
     border-color: rgba(59, 130, 246, 0.8);
     transform: scale(1);
@@ -436,16 +436,13 @@ onMounted(async () => {
   50% {
     box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
     border-color: rgba(59, 130, 246, 0.8);
+    background-color: rgba(59, 130, 246, 0.1);
     transform: scale(1.02);
-  }
-  100% {
-    border-color: var(--border-stroke);
-    transform: scale(1);
   }
 }
 
 .animate-pulse-highlight {
-  animation: pulse-highlight 0.5s ease-in-out 1;
+  animation: pulse-highlight 1s ease-in-out 3;
   border-width: 2px !important;
   position: relative;
   z-index: 10;

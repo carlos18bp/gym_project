@@ -76,28 +76,34 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         """
         # Extract variables sent in the request
         variables_data = validated_data.pop('variables', [])
-        existing_variables = {var.id: var for var in instance.variables.all()}
+        
+        # Only process variables if explicitly included in the update data
+        # This prevents losing variables during partial updates
+        should_update_variables = 'variables' in self.initial_data
+        
+        if should_update_variables:
+            existing_variables = {var.id: var for var in instance.variables.all()}
+
+            # Handle document variables
+            for var_data in variables_data:
+                if 'id' in var_data and var_data['id'] in existing_variables:
+                    # Update existing variable
+                    variable_instance = existing_variables.pop(var_data['id'])
+                    for attr, value in var_data.items():
+                        setattr(variable_instance, attr, value)
+                    variable_instance.save()
+                else:
+                    # Create a new variable if it has no ID
+                    DocumentVariable.objects.create(document=instance, **var_data)
+
+            # Delete variables that were not included in the request
+            for var_to_delete in existing_variables.values():
+                var_to_delete.delete()
 
         # Update main document fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-
-        # Handle document variables
-        for var_data in variables_data:
-            if 'id' in var_data and var_data['id'] in existing_variables:
-                # Update existing variable
-                variable_instance = existing_variables.pop(var_data['id'])
-                for attr, value in var_data.items():
-                    setattr(variable_instance, attr, value)
-                variable_instance.save()
-            else:
-                # Create a new variable if it has no ID
-                DocumentVariable.objects.create(document=instance, **var_data)
-
-        # Delete variables that were not included in the request
-        for var_to_delete in existing_variables.values():
-            var_to_delete.delete()
 
         return instance
 

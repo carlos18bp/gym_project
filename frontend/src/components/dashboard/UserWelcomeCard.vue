@@ -65,7 +65,7 @@
  * - On mobile: Elements stack vertically with centered alignment
  * - On tablets and up: Horizontal layout with properly sized elements
  */
-import { defineProps, computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RectangleStackIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 import { useProcessStore } from '@/stores/process';
 import defaultAvatarUrl from "@/assets/images/user_avatar.jpg";

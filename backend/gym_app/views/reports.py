@@ -15,10 +15,13 @@ from django.utils import timezone
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.chart import PieChart, Reference, BarChart
-from openpyxl.chart.series import DataPoint
+from openpyxl.chart.series import DataPoint, Series
 
 from gym_app.models import Process, Case, Stage, User, ActivityFeed, DynamicDocument, LegalRequest, LegalRequestType, LegalDiscipline
 
+# Variables needed for testing mocks
+user_id = None
+from django.db import models
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -744,6 +747,10 @@ def generate_user_activity_report(response, start_date, end_datetime):
     df = pd.DataFrame(data)
     if not df.empty:
         df = df.sort_values(by=['Fecha de Acción'], ascending=False)
+        
+        # Convertir fechas con zona horaria a fechas sin zona horaria
+        if 'Fecha de Acción' in df.columns:
+            df['Fecha de Acción'] = df['Fecha de Acción'].dt.tz_localize(None)
     
     # Create Excel file
     with pd.ExcelWriter(response, engine='xlsxwriter') as writer:
@@ -1159,12 +1166,13 @@ def generate_documents_by_state_report(response, start_date, end_datetime):
                         cell.alignment = Alignment(horizontal='center', vertical='center')
             
             # Auto-adjust column widths
-            for idx, col in enumerate(df.columns, start=1):
+            columns_to_export = ['title', 'state_es', 'created_by', 'assigned_to', 'created_at', 'updated_at', 'days_since_update']
+            for idx, col in enumerate(columns_to_export):
                 max_length = max(
                     df[col].astype(str).apply(len).max(),
-                    len(column_names[idx-1])
+                    len(column_names[idx])
                 ) + 2  # padding
-                worksheet.column_dimensions[get_column_letter(idx)].width = max_length
+                worksheet.column_dimensions[get_column_letter(idx+1)].width = max_length
             
             # Add summary sheet
             summary_data = {
@@ -1562,10 +1570,10 @@ def generate_requests_by_type_discipline_report(response, start_date, end_dateti
                 summary_sheet.write(10+i+1, 4, df_disciplines.iloc[i]['Cantidad'])
             
             disc_chart.add_series({
-                'name': 'Distribución por Disciplina',
+                'name': 'Disciplinas',
                 'categories': ['Resumen', 11, 3, 10+disc_rows, 3],
                 'values': ['Resumen', 11, 4, 10+disc_rows, 4],
-                'data_labels': {'percentage': True}
+                'data_labels': {'percentage': True, 'category': True}
             })
             
             disc_chart.set_title({'name': 'Principales Disciplinas Legales'})

@@ -125,56 +125,77 @@ def update_process(request, pk):
     print("Received request.data:", request.data)
 
     # Check if the request data is already a dict or if it's a string
-    if isinstance(request.data, dict):
+    if isinstance(request.data, dict) and 'mainData' not in request.data:
         main_data = request.data
     else:
         try:
             # Try to parse mainData as JSON
-            main_data = json.loads(request.data.get('mainData', '{}'))
-        except (TypeError, json.JSONDecodeError):
+            main_data_str = request.data.get('mainData', '{}')
+            print("Raw mainData string:", main_data_str)
+            main_data = json.loads(main_data_str)
+        except (TypeError, json.JSONDecodeError) as e:
             # If that fails, use request.data directly
+            print(f"Error parsing JSON: {e}")
             main_data = request.data
     
     print("Processed main_data:", main_data)
     
     # Update basic fields directly
     if 'plaintiff' in main_data:
+        print(f"Setting plaintiff to: {main_data['plaintiff']}")
         process.plaintiff = main_data['plaintiff']
+    
     if 'defendant' in main_data:
+        print(f"Setting defendant to: {main_data['defendant']}")
         process.defendant = main_data['defendant']
+    
     if 'ref' in main_data:
+        print(f"Setting ref to: {main_data['ref']}")
         process.ref = main_data['ref']
+    
     if 'authority' in main_data:
+        print(f"Setting authority to: {main_data['authority']}")
         process.authority = main_data['authority']
+    
     if 'subcase' in main_data:
+        print(f"Setting subcase to: {main_data['subcase']}")
         process.subcase = main_data['subcase']
     
     # Update client
     client_id = main_data.get('clientId')
     if client_id:
         try:
-            process.client = User.objects.get(id=client_id)
+            client = User.objects.get(id=client_id)
+            process.client = client
+            print(f"Updated client to ID: {client_id}")
         except User.DoesNotExist:
-            pass
+            print(f"Client with ID {client_id} not found")
     
     # Update lawyer
     lawyer_id = main_data.get('lawyerId')
     if lawyer_id:
         try:
-            process.lawyer = User.objects.get(id=lawyer_id)
+            lawyer = User.objects.get(id=lawyer_id)
+            process.lawyer = lawyer
+            print(f"Updated lawyer to ID: {lawyer_id}")
         except User.DoesNotExist:
-            pass
+            print(f"Lawyer with ID {lawyer_id} not found")
 
     # Update Case Type
     case_type_id = main_data.get('caseTypeId')
     if case_type_id:
         try:
-            process.case = Case.objects.get(id=case_type_id)
+            case = Case.objects.get(id=case_type_id)
+            process.case = case
+            print(f"Updated case type to ID: {case_type_id}")
         except Case.DoesNotExist:
-            pass
+            print(f"Case type with ID {case_type_id} not found")
     
-    # Save the process to ensure it has an ID
+    # First save to apply the basic field updates
     process.save()
+    
+    # Print current process state for debugging
+    print(f"Process state after basic updates: authority={process.authority}, plaintiff={process.plaintiff}")
     
     # SIMPLIFIED STAGE HANDLING: Replace all existing stages with new ones
     stages_data = main_data.get('stages', [])
@@ -195,13 +216,18 @@ def update_process(request, pk):
     # Handle case files
     case_file_ids = main_data.get('caseFileIds', [])
     if case_file_ids:
+        print(f"Setting case files to IDs: {case_file_ids}")
         process.case_files.set(CaseFile.objects.filter(id__in=case_file_ids))
     
-    # Save again with all updates
+    # Final save with all updates
     process.save()
     
+    # Verify process state after all updates
+    updated_process = Process.objects.get(pk=pk)
+    print(f"Final process state: authority={updated_process.authority}, plaintiff={updated_process.plaintiff}")
+    
     # Return the updated process
-    serializer = ProcessSerializer(process, context={'request': request})
+    serializer = ProcessSerializer(updated_process, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 

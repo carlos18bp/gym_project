@@ -62,20 +62,35 @@ const syncVariables = (variables) => {
  * Save the document as a draft.
  */
 const saveDocumentDraft = async () => {
-  if (store.selectedDocument) {
-    store.selectedDocument.content = editorContent.value;
-    store.selectedDocument.state = "Draft";
-  } else {
-    store.selectedDocument = {
-      title:
-        store.selectedDocument?.title ||
-        route.params.title ||
-        "Untitled Document",
-      content: editorContent.value,
-      state: "Draft",
-    };
-  }
   try {
+    // Extract variables from editor content
+    const variables = extractVariables();
+    
+    if (store.selectedDocument) {
+      store.selectedDocument.content = editorContent.value;
+      store.selectedDocument.state = "Draft";
+      
+      // Sync variables if there are any
+      if (variables.length > 0) {
+        syncVariables(variables);
+      }
+    } else {
+      store.selectedDocument = {
+        title:
+          store.selectedDocument?.title ||
+          route.params.title ||
+          "Untitled Document",
+        content: editorContent.value,
+        state: "Draft",
+        variables: [],
+      };
+      
+      // Sync variables if there are any
+      if (variables.length > 0) {
+        syncVariables(variables);
+      }
+    }
+    
     let documentId;
     let response;
     
@@ -127,6 +142,7 @@ const saveDocumentDraft = async () => {
     }, 500);
   } catch (error) {
     console.error("Error saving draft:", error);
+    await showNotification("Error al guardar el borrador.", "error");
   }
 };
 
