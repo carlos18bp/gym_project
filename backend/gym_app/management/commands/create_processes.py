@@ -37,13 +37,63 @@ class Command(BaseCommand):
         clients = User.objects.filter(role='client')
         lawyers = User.objects.filter(role='lawyer')
 
-        # Create 10 case types
+        # Create case types with more details
+        case_types = [
+            'Juicio Ejecutivo Mercantil',
+            'Juicio Ordinario Civil',
+            'Juicio Laboral',
+            'Amparo Directo',
+            'Amparo Indirecto',
+            'Proceso Penal Acusatorio',
+            'Juicio de Nulidad',
+            'Sucesión Testamentaria',
+            'Sucesión Intestamentaria',
+            'Divorcio Contencioso',
+            'Divorcio por Mutuo Consentimiento',
+            'Juicio de Alimentos',
+            'Juicio de Usucapión',
+            'Mediación Familiar',
+            'Conciliación Mercantil'
+        ]
+        
+        # Create or get case types
         cases = []
-        for i in range(1, 11):
-            case = Case.objects.create(
-                type=f'Case Type {i}'
-            )
+        for case_type in case_types:
+            case, created = Case.objects.get_or_create(type=case_type)
             cases.append(case)
+
+        # Possible stages for different process types
+        possible_stages = {
+            'general': [
+                'Presentación de Demanda',
+                'Admisión',
+                'Emplazamiento',
+                'Contestación',
+                'Ofrecimiento de Pruebas',
+                'Desahogo de Pruebas',
+                'Alegatos',
+                'Sentencia',
+                'Apelación',
+                'Ejecución'
+            ],
+            'penal': [
+                'Investigación Inicial',
+                'Investigación Complementaria',
+                'Etapa Intermedia',
+                'Juicio Oral',
+                'Sentencia',
+                'Impugnación',
+                'Ejecución'
+            ],
+            'familiar': [
+                'Solicitud',
+                'Conciliación',
+                'Audiencia Preliminar',
+                'Audiencia Principal',
+                'Resolución',
+                'Ejecución'
+            ]
+        }
 
         # Directory containing example PDF files
         case_files_directory = 'media/example_files/'
@@ -77,29 +127,48 @@ class Command(BaseCommand):
                 subcase=fake.bs(),
             )
 
+            # Determine which stage set to use based on case type
+            if any(term in case.type.lower() for term in ['penal', 'acusatorio']):
+                stage_set = possible_stages['penal']
+            elif any(term in case.type.lower() for term in ['familiar', 'divorcio', 'alimentos']):
+                stage_set = possible_stages['familiar']
+            else:
+                stage_set = possible_stages['general']
+            
             # Create a random number of stages for the process
-            num_stages = random.randint(1, 6)
+            # Make more processes have more stages to create richer reports
+            num_stages = random.choices(
+                [1, 2, 3, 4, 5, 6, 7],
+                weights=[0.05, 0.10, 0.15, 0.25, 0.20, 0.15, 0.10],
+                k=1
+            )[0]
+            
+            # Use sequential stages from the appropriate set
             stages = []
-            for i in range(num_stages):
+            for i in range(min(num_stages, len(stage_set))):
+                # Create dates with more variation
+                days_ago = random.randint(30, 365)
+                stage_date = fake.date_time_between(start_date=f'-{days_ago}d', end_date='now')
+                
                 stage = Stage.objects.create(
-                    status=f'Stage {i+1}',
-                    created_at=fake.date_this_year(),
+                    status=stage_set[i],
+                    created_at=stage_date,
                 )
                 stages.append(stage)
 
-            # For the last 10 processes, add a final stage with status "Fallo"
-            if index >= number_of_processes - 10:
-                stage_fallo = Stage.objects.create(
-                    status='Fallo',
-                    created_at=fake.date_this_year(),
+            # For some recent processes (last 20%), add a "Completed" stage to indicate completion
+            if index >= number_of_processes - int(number_of_processes * 0.2):
+                stage_concluido = Stage.objects.create(
+                    status='Concluido',
+                    created_at=fake.date_time_between(start_date='-30d', end_date='now'),
                 )
-                stages.append(stage_fallo)
+                stages.append(stage_concluido)
 
             # Add all created stages to the process
             process.stages.add(*stages)
 
-            # Create a random number of case files
-            num_files = random.randint(1, 16)
+            # Create a random number of case files - more variation in number
+            num_files = random.randint(2, 10)
             case_files = []
             for i in range(num_files):
                 # Choose a random file from the available files
