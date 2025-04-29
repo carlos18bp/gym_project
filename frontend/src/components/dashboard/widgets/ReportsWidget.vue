@@ -18,43 +18,50 @@
           </select>
         </div>
         
-        <!-- Date Range -->
+        <!-- Date Range (Optional) -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicial</label>
+            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicial (Opcional)</label>
             <input 
               type="date" 
               id="startDate" 
               v-model="startDate" 
+              placeholder="dd/mm/yyyy"
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha Final</label>
+            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha Final (Opcional)</label>
             <input 
               type="date" 
               id="endDate" 
               v-model="endDate" 
+              placeholder="dd/mm/yyyy"
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
         
-        <!-- Action Buttons -->
-        <div class="flex space-x-3 pt-2">
+        <!-- Date Required Message -->
+        <div v-if="startDate && !endDate || !startDate && endDate" class="text-red-500 text-xs">
+          Si proporcionas una fecha, debes proporcionar ambas fechas.
+        </div>
+        
+        <!-- Loading indicator -->
+        <div v-if="isGenerating" class="flex justify-center">
+          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
+          <span class="ml-2 text-sm text-gray-600">Generando reporte...</span>
+        </div>
+        
+        <!-- Action Button -->
+        <div class="flex pt-2">
           <button 
             @click="generateReport" 
-            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md py-2 text-sm font-medium transition duration-150"
-            :disabled="!isFormValid"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-md py-2 text-sm font-medium transition duration-150"
+            :disabled="!isFormValid || isGenerating"
           >
-            Generar Reporte
-          </button>
-          <button 
-            @click="previewReport"
-            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md py-2 text-sm font-medium transition duration-150"
-            :disabled="!isFormValid"
-          >
-            Previsualizar
+            <span v-if="!isGenerating">Generar y Descargar Reporte</span>
+            <span v-else>Procesando...</span>
           </button>
         </div>
       </div>
@@ -68,10 +75,11 @@
  * 
  * This component allows users to:
  * 1. Select a report type from a predefined list
- * 2. Define a date range (start date and end date)
- * 3. Generate or preview the report
+ * 2. Optionally define a date range (start date and end date)
+ * 3. Generate and download the report in Excel format
  */
 import { ref, computed, onMounted } from 'vue';
+import { useReportsStore } from '@/stores/reports';
 
 const props = defineProps({
   /**
@@ -83,6 +91,9 @@ const props = defineProps({
   }
 });
 
+// Get reports store
+const reportsStore = useReportsStore();
+
 // State variables
 const selectedReportType = ref('');
 const startDate = ref('');
@@ -91,32 +102,33 @@ const isGenerating = ref(false);
 
 // Available report types
 const reportTypes = [
-  { value: 'activity', label: 'Actividad Semanal' },
-  { value: 'performance', label: 'Rendimiento' },
-  { value: 'billing', label: 'Facturación' },
-  { value: 'clients', label: 'Clientes' },
-  { value: 'cases', label: 'Casos' }
+  { value: 'active_processes', label: 'Procesos Activos' },
+  { value: 'processes_by_lawyer', label: 'Procesos por Abogado' },
+  { value: 'processes_by_client', label: 'Procesos por Cliente' },
+  { value: 'process_stages', label: 'Etapas de Procesos' },
+  { value: 'registered_users', label: 'Usuarios Registrados' },
+  { value: 'user_activity', label: 'Actividad de Usuarios' },
+  { value: 'lawyers_workload', label: 'Carga de Trabajo de Abogados' },
+  { value: 'documents_by_state', label: 'Documentos por Estado' },
+  { value: 'legal_requests', label: 'Solicitudes Recibidas' },
+  { value: 'requests_by_type', label: 'Solicitudes por Tipo y Disciplina' }
 ];
 
-// Form validation
+// Form validation - only report type is required 
+// But if one date is provided, both must be provided and valid
 const isFormValid = computed(() => {
-  return (
-    selectedReportType.value && 
-    startDate.value && 
-    endDate.value && 
-    new Date(startDate.value) <= new Date(endDate.value)
-  );
-});
-
-// Set default dates (current month)
-const setDefaultDates = () => {
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  // Report type is always required
+  if (!selectedReportType.value) return false;
   
-  startDate.value = formatDate(firstDay);
-  endDate.value = formatDate(lastDay);
-};
+  // If both dates are empty, that's fine (use all data)
+  if (!startDate.value && !endDate.value) return true;
+  
+  // If one date is provided but not the other, form is invalid
+  if ((startDate.value && !endDate.value) || (!startDate.value && endDate.value)) return false;
+  
+  // If both dates are provided, ensure start date is before or equal to end date
+  return new Date(startDate.value) <= new Date(endDate.value);
+});
 
 // Helper to format date as YYYY-MM-DD
 const formatDate = (date) => {
@@ -126,55 +138,28 @@ const formatDate = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-// Generate the report
+// Generate and download the Excel report
 const generateReport = async () => {
   if (!isFormValid.value) return;
   
   isGenerating.value = true;
   
   try {
-    console.log('Generating report:', {
-      type: selectedReportType.value,
+    const reportData = {
+      reportType: selectedReportType.value,
       startDate: startDate.value,
-      endDate: endDate.value,
-      userId: props.user?.id
-    });
+      endDate: endDate.value
+    };
     
-    // Here would go the API call to generate the report
-    // For now, we're just simulating the process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simulate download
-    alert('Report generated successfully. Starting download...');
+    await reportsStore.generateExcelReport(reportData);
     
   } catch (error) {
     console.error('Error generating report:', error);
-    alert('Error generating report');
+    alert('Error al generar el reporte');
   } finally {
     isGenerating.value = false;
   }
 };
-
-// Preview the report
-const previewReport = () => {
-  if (!isFormValid.value) return;
-  
-  console.log('Previewing report:', {
-    type: selectedReportType.value,
-    startDate: startDate.value,
-    endDate: endDate.value,
-    userId: props.user?.id
-  });
-  
-  // Here we would implement the functionality to preview the report
-  alert('Preview functionality in development');
-};
-
-// Initialize component data
-onMounted(() => {
-  console.log('ReportsWidget mounted, user:', props.user);
-  setDefaultDates();
-});
 </script>
 
 <style scoped>

@@ -35,15 +35,35 @@ class Command(BaseCommand):
 
         # Create random LegalRequestTypes if they do not already exist
         request_types = [
-            'Consultation', 'Representation', 'Documentation', 'Legal Advice'
+            'Consulta Legal', 
+            'Representación', 
+            'Documentación', 
+            'Asesoría Legal',
+            'Mediación',
+            'Arbitraje',
+            'Negociación',
+            'Dictamen Jurídico',
+            'Resolución de Disputas',
+            'Auditoría Legal'
         ]
         for request_type in request_types:
             LegalRequestType.objects.get_or_create(name=request_type)
 
         # Create random LegalDisciplines if they do not already exist
         disciplines = [
-            'Criminal Law', 'Civil Law', 'Family Law', 'Corporate Law', 
-            'Labor Law', 'Tax Law', 'Intellectual Property'
+            'Derecho Penal', 
+            'Derecho Civil', 
+            'Derecho Familiar', 
+            'Derecho Corporativo', 
+            'Derecho Laboral', 
+            'Derecho Fiscal', 
+            'Propiedad Intelectual',
+            'Derecho Mercantil',
+            'Derecho Administrativo',
+            'Derecho Ambiental',
+            'Derecho Internacional',
+            'Derecho Migratorio',
+            'Derecho Inmobiliario'
         ]
         for discipline in disciplines:
             LegalDiscipline.objects.get_or_create(name=discipline)

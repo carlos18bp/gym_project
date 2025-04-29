@@ -122,8 +122,8 @@
         <GoogleLogin 
           class="mt-6" 
           :callback="handleLoginWithGoogle" 
-          prompt="select_account"
-          auto-login="false"
+          select-account
+          :auto-login="false"
         />
       </div>
 

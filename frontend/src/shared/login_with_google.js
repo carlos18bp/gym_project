@@ -22,7 +22,14 @@ export const loginWithGoogle = async (response, router, authStore) => {
 
     // Log in the user and save the authentication data
     authStore.login(res.data);
-    showNotification("¡Registro exitoso!", "success");
+    
+    // Check if the user was created or just logged in
+    if (res.data.created) {
+      showNotification("¡Registro exitoso!", "success");
+    } else {
+      showNotification("¡Inicio de sesión exitoso!", "success");
+    }
+    
     router.push({ name: "dashboard" }); // Redirect to the dashboard page
   } catch (error) {
     handleLoginError(error);
@@ -35,5 +42,5 @@ export const loginWithGoogle = async (response, router, authStore) => {
  */
 const handleLoginError = (error) => {
   console.error("Error during login:", error);
-  showNotification("Error durante el registro: ", "error"); // Show error notification
+  showNotification("Error durante el inicio de sesión", "error"); // Show error notification
 };

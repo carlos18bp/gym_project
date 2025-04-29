@@ -13,7 +13,7 @@
         <!-- Avatar - centered on mobile -->
         <div class="flex-shrink-0 w-full 2xl:w-auto flex justify-center 2xl:justify-start">
           <img 
-            :src="user?.photo_profile || '/default-avatar.jpg'" 
+            :src="user?.photo_profile || defaultAvatarUrl" 
             :alt="user?.first_name"
             class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white"
           />
@@ -68,6 +68,7 @@
 import { defineProps, computed, onMounted, ref } from 'vue';
 import { RectangleStackIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 import { useProcessStore } from '@/stores/process';
+import defaultAvatarUrl from "@/assets/images/user_avatar.jpg";
 
 // Props for customization
 const props = defineProps({

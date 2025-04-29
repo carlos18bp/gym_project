@@ -1,4 +1,4 @@
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document, legal_update
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document, legal_update, reports
 from .views.layouts import sendEmail
 from django.urls import path
 
@@ -62,6 +62,10 @@ recent_process_urls = [
     path('update-recent-process/<int:process_id>/', process.update_recent_process, name='update-recent-process'),
 ]
 
+reports_urls = [
+    path('reports/generate-excel/', reports.generate_excel_report, name='generate-excel-report'),
+]
+
 urlpatterns = (
     sign_in_sign_on_urls +
     user_urls +
@@ -70,5 +74,6 @@ urlpatterns = (
     intranet_gym_urls +
     dynamic_document_urls +
     legal_update_urls +
-    recent_process_urls
+    recent_process_urls +
+    reports_urls
 )

@@ -143,21 +143,9 @@ const getActivityLineClass = (type) => {
 };
 
 // Initialize component data
-onMounted(async () => {
-  console.log('FeedWidget mounted, user:', props.user);
-  
-  // Fetch user activities
-  console.log('Fetching activities, user ID:', props.user?.id);
+onMounted(async () => { 
   await activityFeedStore.fetchUserActivities();
-  
-  // Log the result after fetching
-  console.log('Activities loaded:', activityFeedStore.activities.length, activityFeedStore.activities);
 });
-
-// Add a watcher to debug activities changes
-watch(() => activityFeedStore.activities, (newActivities) => {
-  console.log('Activities updated:', newActivities.length, newActivities);
-}, { deep: true });
 </script>
 
 <style scoped>

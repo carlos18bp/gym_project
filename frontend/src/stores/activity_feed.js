@@ -45,9 +45,7 @@ export const useActivityFeedStore = defineStore('activityFeed', {
       this.error = null;
       
       try {
-        console.log('Requesting user activities from API');
         const response = await get_request('user-activities/');
-        console.log('Received response:', response);
         
         if (!response.data || !Array.isArray(response.data)) {
           console.error('Invalid response format:', response);
@@ -61,8 +59,6 @@ export const useActivityFeedStore = defineStore('activityFeed', {
           description: activity.description,
           time: formatTimeAgo(new Date(activity.created_at))
         }));
-        
-        console.log('Processed activities:', this.activities.length, this.activities);
       } catch (error) {
         console.error('Error fetching activity feed:', error);
         this.error = error.response?.data?.detail || 'Error fetching activity feed';
