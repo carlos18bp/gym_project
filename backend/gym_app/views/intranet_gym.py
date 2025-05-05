@@ -39,6 +39,8 @@ def create_report(request):
     - endDate (string): End date of the report period.
     - paymentConcept (string): Concept of payment.
     - paymentAmount (string): Payment amount.
+    - userName (string): User's first name.
+    - userLastName (string): User's last name.
     - files (file[]): List of files attached as part of the request.
 
     Returns:
@@ -52,6 +54,11 @@ def create_report(request):
         end_date = request.data.get("endDate", "")
         payment_concept = request.data.get("paymentConcept", "")
         payment_amount = request.data.get("paymentAmount", "")
+        
+        # Extract user information
+        user_name = request.data.get("userName", "")
+        user_last_name = request.data.get("userLastName", "")
+        full_name = f"{user_name} {user_last_name}".strip()
 
         # Retrieve attached files from the request.FILES object
         files = []
@@ -69,15 +76,16 @@ def create_report(request):
             })
 
         # Compose the email
-        email_subject = "New Report Request"
+        email_subject = f"Cta Cobro y/o Factura - {full_name}"
         email_body = (
-            f"A new report request has been received with the following details:\n\n"
-            f"Contract Number: {contract}\n"
-            f"Start Date: {initial_date}\n"
-            f"End Date: {end_date}\n"
-            f"Payment Concept: {payment_concept}\n"
-            f"Payment Amount: {payment_amount}\n\n"
-            f"Please review the attached files for more information."
+            f"Se ha recibido una nueva solicitud de informe con los siguientes detalles:\n\n"
+            f"Nombre: {full_name}\n"
+            f"No. Contrato: {contract}\n"
+            f"Fecha Inicial: {initial_date}\n"
+            f"Fecha Final: {end_date}\n"
+            f"Concepto de Pago: {payment_concept}\n"
+            f"Valor a Cobrar y/o Facturar: {payment_amount}\n\n"
+            f"Por favor, revise los archivos adjuntos para más información."
         )
         recipient_email = "facturacion@gymconsultoresjuridicos.com"  # Update this email address as needed
 
@@ -102,13 +110,13 @@ def create_report(request):
 
         # Return a success response
         return Response(
-            {"message": "Report successfully created and sent."},
+            {"message": "Informe creado y enviado con éxito."},
             status=status.HTTP_201_CREATED,
         )
 
     except Exception as e:
         # Handle errors and return a bad request response
         return Response(
-            {"error": f"An error occurred while processing the request: {str(e)}"},
+            {"error": f"Ha ocurrido un error al procesar la solicitud: {str(e)}"},
             status=status.HTTP_400_BAD_REQUEST,
         )

@@ -47,11 +47,15 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
       const formDataObject = new FormData();
 
       // Append main text fields
-      formDataObject.append("document", formData.document); // Document number
+      formDataObject.append("contract", formData.document); // Document number
       formDataObject.append("initialDate", formData.initialDate); // Start date
       formDataObject.append("endDate", formData.endDate); // End date
       formDataObject.append("paymentConcept", formData.paymentConcept); // Payment concept
       formDataObject.append("paymentAmount", formData.paymentAmount); // Payment amount
+      
+      // Append user name and last name
+      formDataObject.append("userName", formData.userName); // User's first name
+      formDataObject.append("userLastName", formData.userLastName); // User's last name
 
       // Append files
       if (formData.files && formData.files.length > 0) {

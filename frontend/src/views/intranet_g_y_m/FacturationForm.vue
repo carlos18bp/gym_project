@@ -232,7 +232,8 @@ import {
   DocumentIcon,
 } from "@heroicons/vue/24/outline";
 import { useIntranetGymStore } from "@/stores/intranet_gym";
-import { ref, computed, reactive } from "vue";
+import { useUserStore } from "@/stores/user";
+import { ref, computed, reactive, onMounted } from "vue";
 import { showNotification } from "@/shared/notification_message.js";
 import { showLoading, hideLoading } from "@/shared/loading_message.js";
 import { useRouter } from "vue-router";
@@ -244,8 +245,9 @@ const emit = defineEmits(['close']);
  */
 const router = useRouter();
 
-// import the store
+// import the stores
 const intranetGymStore = useIntranetGymStore();
+const userStore = useUserStore();
 
 /**
  * Reactive reference for managing uploaded files.
@@ -259,6 +261,18 @@ const formData = reactive({
   paymentConcept: "",
   paymentAmount: null,
   files: [],
+  userName: "",
+  userLastName: ""
+});
+
+// Obtener la información del usuario al montar el componente
+onMounted(async () => {
+  await userStore.init();
+  const currentUser = userStore.getCurrentUser;
+  if (currentUser) {
+    formData.userName = currentUser.first_name || "";
+    formData.userLastName = currentUser.last_name || "";
+  }
 });
 
 /**
