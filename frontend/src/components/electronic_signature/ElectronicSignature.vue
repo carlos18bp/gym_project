@@ -1,0 +1,242 @@
+<template>
+  <div>
+    <!-- If no signature exists or we're in modal mode, show signature options directly -->
+    <div v-if="!savedSignature || forceShowOptions">
+      <!-- Signature type selection modal without ModalTransition -->
+      <SignatureModal 
+        v-if="isModalOpen"
+        @close="closeModal" 
+        @selectType="selectSignatureType" 
+      />
+      
+      <!-- Image upload signature component -->
+      <div v-if="currentSignatureType === 'upload'" class="my-4">
+        <ImageUploadSignature
+          :is-submitting="isSubmitting"
+          @save="saveSignature"
+          @cancel="closeSignatureMode"
+        />
+      </div>
+      
+      <!-- Draw signature component -->
+      <div v-if="currentSignatureType === 'draw'" class="my-4">
+        <DrawSignature
+          :is-submitting="isSubmitting"
+          @save="saveSignature"
+          @cancel="closeSignatureMode"
+        />
+      </div>
+      
+      <!-- Direct signature options if no type selected yet -->
+      <div v-if="!currentSignatureType && !isModalOpen" class="my-4">
+        <div class="p-6 bg-white rounded-lg border border-stroke">
+          <div class="text-center mb-8">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-terciary mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-secondary">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-primary">
+              Añadir firma electrónica
+            </h3>
+            <p class="text-sm text-gray-500 mt-2">
+              Selecciona el método para añadir tu firma electrónica. Puedes subir una imagen o dibujarla directamente.
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              class="inline-flex justify-center w-full rounded-md border border-stroke shadow-sm px-4 py-2 bg-white text-base font-medium text-primary hover:bg-terciary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary sm:text-sm"
+              @click="selectSignatureType('upload')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              Subir imagen
+            </button>
+            <button
+              type="button"
+              class="inline-flex justify-center w-full rounded-md border border-stroke shadow-sm px-4 py-2 bg-white text-base font-medium text-primary hover:bg-terciary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary sm:text-sm"
+              @click="selectSignatureType('draw')"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33" />
+              </svg>
+              Dibujar firma
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Saved signature preview (only show if not forcing options) -->
+    <div v-if="savedSignature && !forceShowOptions && !currentSignatureType" class="mt-4">
+      <div class="bg-white p-4 border border-stroke rounded-lg">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-sm font-medium text-primary">Tu firma guardada</h3>
+          <div class="flex space-x-2">
+            <button 
+              @click="forceShowOptions = true"
+              class="inline-flex items-center text-xs text-secondary hover:text-blue-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Cambiar
+            </button>
+          </div>
+        </div>
+        
+        <div class="relative">
+          <img 
+            :src="savedSignature.signatureImage" 
+            alt="Firma guardada" 
+            class="max-h-24 mx-auto bg-white p-1 border border-gray-200 rounded"
+          />
+          <div class="mt-2 text-xs text-gray-500 flex justify-between">
+            <span>Creada: {{ formatDate(savedSignature.traceabilityData.date) }}</span>
+            <span>Método: {{ savedSignature.traceabilityData.method === 'upload' ? 'Subida' : 'Dibujada' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, defineEmits, defineProps } from 'vue';
+import SignatureModal from './SignatureModal.vue';
+import ImageUploadSignature from './ImageUploadSignature.vue';
+import DrawSignature from './DrawSignature.vue';
+import { useUserStore } from '@/stores/user';
+
+/**
+ * Main electronic signature component
+ * Manages signature creation, storage and display
+ * @emits {signatureSaved} - When a signature is saved
+ * @emits {cancel} - When the operation is cancelled
+ */
+const emit = defineEmits(['signatureSaved', 'cancel']);
+
+const props = defineProps({
+  /** 
+   * Whether to force showing options even if signature exists
+   * @type {Boolean}
+   */
+  initialShowOptions: {
+    type: Boolean,
+    default: false
+  },
+  /**
+   * User ID for signature update
+   * @type {String|Number}
+   */
+  userId: {
+    type: [String, Number],
+    required: true
+  }
+});
+
+const userStore = useUserStore();
+const isModalOpen = ref(false);
+const currentSignatureType = ref(null);
+const savedSignature = ref(null);
+const forceShowOptions = ref(props.initialShowOptions);
+const isSubmitting = ref(false);
+
+// Load saved signature from localStorage if exists
+const storedSignature = localStorage.getItem('userSignature');
+if (storedSignature) {
+  savedSignature.value = JSON.parse(storedSignature);
+}
+
+// Auto-open modal if no signature exists
+onMounted(() => {
+  if (!savedSignature.value || forceShowOptions.value) {
+    // Skip the modal and directly show options
+    isModalOpen.value = false;
+  }
+});
+
+/**
+ * Open signature selection modal
+ */
+const openModal = () => {
+  isModalOpen.value = true;
+};
+
+/**
+ * Close signature selection modal
+ */
+const closeModal = () => {
+  isModalOpen.value = false;
+};
+
+/**
+ * Handle signature type selection
+ * @param {String} type - Selected signature type ('upload' or 'draw')
+ */
+const selectSignatureType = (type) => {
+  currentSignatureType.value = type;
+  closeModal();
+};
+
+/**
+ * Close signature creation mode
+ */
+const closeSignatureMode = () => {
+  currentSignatureType.value = null;
+  forceShowOptions.value = false;
+  emit('cancel');
+};
+
+/**
+ * Save signature data and store in localStorage
+ * @param {Object} data - Signature data including image and traceability info
+ */
+const saveSignature = async (data) => {
+  isSubmitting.value = true;
+  
+  try {
+    // Prepare data for the API
+    const signatureData = {
+      signatureImage: data.signatureImage,
+      method: data.traceabilityData.method,
+      userId: props.userId
+    };
+    
+    // Send to the backend using the store action
+    const success = await userStore.updateUserSignature(signatureData);
+    
+    if (success) {
+      // Save locally for component use
+      savedSignature.value = data;
+      localStorage.setItem('userSignature', JSON.stringify(data));
+      
+      // Emit event to notify parent component
+      emit('signatureSaved', data);
+      
+      // Reset UI state
+      currentSignatureType.value = null;
+      forceShowOptions.value = false;
+    } else {
+      console.error('Error saving signature to server');
+    }
+  } catch (error) {
+    console.error('Error processing signature:', error);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+/**
+ * Format date for display
+ * @param {String} dateString - ISO date string
+ * @returns {String} Formatted date string
+ */
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleString();
+};
+</script> 

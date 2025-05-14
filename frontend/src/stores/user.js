@@ -181,5 +181,89 @@ export const useUserStore = defineStore("user", {
         return null;
       }
     },
+
+    /**
+     * Updates user's electronic signature with traceability data.
+     *
+     * @param {Object} signatureData - The signature data and traceability information.
+     * @param {string} signatureData.signatureImage - Base64 encoded signature image.
+     * @param {string} signatureData.method - Method used to create the signature ('upload' or 'draw').
+     * @param {string} signatureData.userId - The ID of the user whose signature is being updated.
+     * @returns {Promise<boolean>} - Returns true if successful, false otherwise.
+     */
+    async updateUserSignature(signatureData) {
+      try {
+        // Create the payload with signature and traceability data
+        const payload = {
+          signature_image: signatureData.signatureImage,
+          signature_method: signatureData.method,
+          // Traceability data is automatically captured on the server,
+          // but we'll include the client-side timestamp for reference
+          signature_timestamp: new Date().toISOString()
+        };
+
+        // Call the API endpoint to update the signature
+        const response = await update_request(
+          `users/update_signature/${signatureData.userId}/`,
+          payload
+        );
+
+        if (response.status === 200 || response.status === 201) {
+          // Refresh user data to get updated signature status
+          this.dataLoaded = false;
+          await this.fetchUsersData();
+          
+          // Register the activity
+          await registerUserActivity(
+            ACTION_TYPES.UPDATE,
+            `You have ${signatureData.method === 'upload' ? 'uploaded' : 'drawn'} your electronic signature.`
+          );
+          
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error("Error updating user signature:", error.message);
+        return false;
+      }
+    },
+
+    /**
+     * Get current user info with updated data from backend.
+     * @returns {Promise<object|null>} - Updated user object or null if error.
+     */
+    async getUserInfo() {
+      try {
+        // If current user isn't set, we can't fetch specific info
+        if (!this.currentUser || !this.currentUser.id) {
+          return null;
+        }
+        
+        // Get fresh user data from backend
+        const response = await get_request(`users/${this.currentUser.id}/`);
+        
+        if (response.status === 200) {
+          // Update store with fresh data
+          const userData = response.data;
+          
+          // Find and update the user in the users array
+          const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+          if (userIndex >= 0) {
+            this.users[userIndex] = userData;
+          }
+          
+          // Update current user
+          this.currentUser = userData;
+          
+          return userData;
+        }
+        
+        return null;
+      } catch (error) {
+        console.error("Error fetching user info:", error.message);
+        return null;
+      }
+    }
   },
 });
