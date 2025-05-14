@@ -123,6 +123,37 @@ class User(AbstractUser):
         return f"{self.email} ({self.last_name} {self.first_name})"
 
 
+class UserSignature(models.Model):
+    """
+    Model to store electronic signatures for users.
+    
+    A user can have only one signature. The signature can be either uploaded or drawn.
+    
+    Attributes:
+        user (ForeignKey): The user who owns this signature.
+        signature_image (ImageField): The image of the electronic signature.
+        method (CharField): The method used to create the signature (upload or draw).
+        created_at (DateTimeField): When the signature was created.
+        ip_address (GenericIPAddressField): The IP address from which the signature was submitted.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='signature')
+    
+    signature_image = models.ImageField(upload_to='signatures/', help_text="The image of the electronic signature.")
+    
+    METHOD_CHOICES = [
+        ('upload', 'Upload'),
+        ('draw', 'Draw'),
+    ]
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, help_text="Method used to create the signature.")
+    
+    created_at = models.DateTimeField(auto_now_add=True, help_text="When the signature was created.")
+    ip_address = models.GenericIPAddressField(help_text="IP address from which the signature was submitted.")
+    
+    def __str__(self):
+        """String representation of the signature."""
+        return f"Signature for {self.user.email} ({self.method})"
+
+
 class ActivityFeed(models.Model):
     """
     Activity Feed model to track user actions.

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from gym_app.models.user import User, ActivityFeed
+from gym_app.models.user import User, ActivityFeed, UserSignature
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -14,6 +14,22 @@ class UserSerializer(serializers.ModelSerializer):
         model = User  # The model that is being serialized
         fields = fields = '__all__'
         extra_kwargs = {'password': {'write_only': True}}  # Additional kwargs, setting 'password' as write-only
+
+
+class UserSignatureSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the UserSignature model.
+    
+    This serializer handles the conversion of UserSignature model instances to/from JSON.
+    
+    Attributes:
+        model (UserSignature): The model that is being serialized.
+        fields (list): List of fields to be included in the serialized output.
+    """
+    class Meta:
+        model = UserSignature
+        fields = ['id', 'user', 'signature_image', 'method', 'created_at', 'ip_address']
+        read_only_fields = ['created_at', 'ip_address']  # These fields are set by the backend
 
 
 class ActivityFeedSerializer(serializers.ModelSerializer):

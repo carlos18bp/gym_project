@@ -16,6 +16,7 @@ sign_in_sign_on_urls = [
 user_urls = [
     path('users/', user.user_list, name='user-list'),
     path('update_profile/<int:pk>/', user.update_profile, name='update_profile'),
+    path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
 ]

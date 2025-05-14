@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess
+from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
     """
@@ -13,6 +14,16 @@ class UserAdmin(admin.ModelAdmin):
     )
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
     list_filter = ('role', 'document_type', 'created_at')
+
+class UserSignatureAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the UserSignature model.
+    Display relevant fields for the admin interface.
+    """
+    list_display = ('user', 'method', 'created_at', 'ip_address')
+    search_fields = ('user__email', 'method', 'ip_address')
+    list_filter = ('method', 'created_at')
+    readonly_fields = ('created_at', 'ip_address')
 
 class LegalDocumentAdmin(admin.ModelAdmin):
     """
@@ -189,7 +200,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'user_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['User']
+                    if model['object_name'] in ['User', 'UserSignature']
                 ]
             },
             {
@@ -233,6 +244,7 @@ admin_site = GyMAdminSite(name='myadmin')
 
 # Register models with the custom AdminSite
 admin_site.register(User, UserAdmin)
+admin_site.register(UserSignature, UserSignatureAdmin)
 admin_site.register(Process, ProcessAdmin)
 admin_site.register(Case, CaseAdmin)  # Register Case with CaseAdmin
 admin_site.register(Stage)
