@@ -110,6 +110,7 @@
       </div>
       <ElectronicSignature 
         :initialShowOptions="true"
+        :user-id="authStore.userAuth.id"
         @signatureSaved="handleSignatureSaved" 
         @cancel="showElectronicSignatureModal = false"
       />
@@ -118,10 +119,23 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { FolderIcon, PlusIcon, FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
+import { useUserStore } from "@/stores/user";
+import { useAuthStore } from "@/stores/auth";
+import { showNotification } from "@/shared/notification_message";
+
+// Get user store to access the current user's ID
+const userStore = useUserStore();
+// Get auth store to access the authenticated user information
+const authStore = useAuthStore();
+
+// Ensure user data is loaded
+onMounted(async () => {
+  // No need to make additional API calls since the user data is already in the auth store
+});
 
 // Define events that the component can emit
 const emit = defineEmits(["updateCurrentSection", "openNewDocument"]);
@@ -154,11 +168,23 @@ const handleSection = (sectionName) => {
  *
  * @param {Object} signatureData - The signature data.
  */
-const handleSignatureSaved = (signatureData) => {
-  console.log('Signature saved:', signatureData);
-  // In a real implementation, this would interact with your API/store
-  
-  // Close the modal after saving the signature
-  showElectronicSignatureModal.value = false;
+const handleSignatureSaved = async (signatureData) => {
+  try {
+    // Update auth store user data with has_signature = true
+    if (authStore.userAuth) {
+      authStore.userAuth.has_signature = true;
+      // Save updated user auth data to localStorage
+      authStore.saveToLocalStorageAuth();
+    }
+    
+    // Show success notification
+    showNotification('Firma electrónica guardada correctamente', 'success');
+    
+    // Close the modal
+    showElectronicSignatureModal.value = false;
+  } catch (error) {
+    console.error('Error updating signature information:', error);
+    showNotification('Hubo un problema al guardar la firma', 'error');
+  }
 };
 </script>

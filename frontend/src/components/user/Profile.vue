@@ -99,20 +99,14 @@
             <!-- Electronic Signature button with fingerprint icon -->
             <button
               type="button"
-              class="p-2.5 text-sm text-white font-medium bg-purple-200 text-purple-800 border-2 border-purple-300 rounded-md flex gap-2 items-center relative group"
+              class="p-2.5 text-sm font-medium bg-white border-2 border-purple-300 hover:bg-purple-200 rounded-md flex gap-2 items-center"
               @click="openSignatureModal"
               title="Configurar firma electrónica"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33" />
-              </svg>
+              <FingerPrintIcon class="size-5 text-purple-500 font-semibold"></FingerPrintIcon>
               <span class="block">Firma electrónica</span>
               <!-- Indicador de firma configurada -->
-              <div v-if="currentUser.has_signature" class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              <!-- Tooltip -->
-              <div class="absolute z-10 invisible group-hover:visible bg-gray-800 text-white text-xs rounded py-1 px-2 -bottom-8 left-1/2 transform -translate-x-1/2 w-48 text-center">
-                {{ currentUser.has_signature ? 'Firma electrónica configurada' : 'Configurar firma electrónica (opcional)' }}
-              </div>
+              <div v-if="currentUser.has_signature" class="ml-1 w-2.5 h-2.5 bg-green-500 rounded-full"></div>
             </button>
             <!-- Sign out button -->
             <button
@@ -394,6 +388,7 @@ import {
   DocumentArrowUpIcon,
   XMarkIcon,
   ChevronLeftIcon,
+  FingerPrintIcon,
 } from "@heroicons/vue/24/outline";
 import { EnvelopeIcon } from "@heroicons/vue/24/solid";
 import { gsap } from "gsap";
@@ -610,11 +605,8 @@ const handleSignatureSaved = async (signatureData) => {
   // Get updated user information from backend
   const updatedUser = await userStore.getUserInfo();
   
-  if (updatedUser) {
-    // Update the has_signature property in the current user
-    props.currentUser.has_signature = updatedUser.has_signature || true;
-  } else {
-    // If there's an error getting updated information, assume signature was saved correctly
+  // Update has_signature property immediately in the current user object
+  if (props.currentUser) {
     props.currentUser.has_signature = true;
   }
   

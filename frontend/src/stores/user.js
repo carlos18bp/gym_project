@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { useAuthStore } from "./auth";
-import { get_request, update_request } from "./services/request_http";
+import { get_request, update_request, create_request, upload_file_request } from "./services/request_http";
 import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useUserStore = defineStore("user", {
@@ -185,46 +185,55 @@ export const useUserStore = defineStore("user", {
     /**
      * Updates user's electronic signature with traceability data.
      *
-     * @param {Object} signatureData - The signature data and traceability information.
-     * @param {string} signatureData.signatureImage - Base64 encoded signature image.
-     * @param {string} signatureData.method - Method used to create the signature ('upload' or 'draw').
-     * @param {string} signatureData.userId - The ID of the user whose signature is being updated.
+     * @param {Object} params - The parameters for signature update.
+     * @param {FormData} params.formData - FormData object containing the signature image and method.
+     * @param {string|number} params.userId - The ID of the user whose signature is being updated.
      * @returns {Promise<boolean>} - Returns true if successful, false otherwise.
      */
-    async updateUserSignature(signatureData) {
+    async updateUserSignature(params) {
       try {
-        // Create the payload with signature and traceability data
-        const payload = {
-          signature_image: signatureData.signatureImage,
-          signature_method: signatureData.method,
-          // Traceability data is automatically captured on the server,
-          // but we'll include the client-side timestamp for reference
-          signature_timestamp: new Date().toISOString()
-        };
-
-        // Call the API endpoint to update the signature
-        const response = await update_request(
-          `users/update_signature/${signatureData.userId}/`,
-          payload
-        );
+        // Extract parameters
+        const { formData, userId } = params;
+        
+        if (!userId) {
+          console.error("No user ID available for signature update");
+          return false;
+        }
+        
+        if (!formData || !(formData instanceof FormData)) {
+          console.error("Invalid FormData object provided");
+          return false;
+        }
+        
+        // Use the specialized upload_file_request function
+        const response = await upload_file_request(`users/update_signature/${userId}/`, formData);
 
         if (response.status === 200 || response.status === 201) {
-          // Refresh user data to get updated signature status
-          this.dataLoaded = false;
-          await this.fetchUsersData();
+          // If this is the current user, update the has_signature property
+          if (this.currentUser && this.currentUser.id == userId) {
+            this.currentUser.has_signature = true;
+          }
+          
+          // Get the method from formData
+          const method = formData.get('method');
           
           // Register the activity
           await registerUserActivity(
             ACTION_TYPES.UPDATE,
-            `You have ${signatureData.method === 'upload' ? 'uploaded' : 'drawn'} your electronic signature.`
+            `You have ${method === 'upload' ? 'uploaded' : 'drawn'} your electronic signature.`
           );
           
           return true;
+        } else {
+          console.error("Signature update failed with status:", response.status);
+          return false;
         }
-        
-        return false;
       } catch (error) {
         console.error("Error updating user signature:", error.message);
+        if (error.response) {
+          console.error("Response data:", error.response.data);
+          console.error("Response status:", error.response.status);
+        }
         return false;
       }
     },

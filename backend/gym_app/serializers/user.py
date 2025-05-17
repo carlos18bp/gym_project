@@ -29,7 +29,7 @@ class UserSignatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserSignature
         fields = ['id', 'user', 'signature_image', 'method', 'created_at', 'ip_address']
-        read_only_fields = ['created_at', 'ip_address']  # These fields are set by the backend
+        read_only_fields = ['created_at']  # Solo created_at es de solo lectura
 
 
 class ActivityFeedSerializer(serializers.ModelSerializer):

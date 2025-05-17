@@ -190,19 +190,41 @@ const clearCanvas = () => {
 const saveSignature = () => {
   if (!hasDrawn.value) return;
   
+  // Get the canvas data as a PNG image
   const signatureImage = signatureCanvas.value.toDataURL('image/png');
   
-  // Record traceability data
-  const traceabilityData = {
-    date: new Date().toISOString(),
-    ip: '0.0.0.0', // In a real implementation, this would come from backend
-    method: 'draw'
-  };
+  if (!signatureImage) {
+    console.error("No signature image data available");
+    return;
+  }
   
-  emit('save', {
-    signatureImage,
-    traceabilityData
-  });
+  // Convert canvas to blob for better file handling
+  signatureCanvas.value.toBlob((blob) => {
+    if (!blob) {
+      console.error("Failed to convert canvas to blob");
+      return;
+    }
+    
+    // Create a File object from the blob
+    const filename = `drawn_signature_${Date.now()}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+    
+    console.log("Created signature file from canvas:", file.name, file.size, "bytes");
+    
+    // Record traceability data
+    const traceabilityData = {
+      date: new Date().toISOString(),
+      ip: '0.0.0.0', // In a real implementation, this would come from backend
+      method: 'draw'
+    };
+    
+    // Emit save event with both the data URL and the File object
+    emit('save', {
+      signatureImage, // For preview and localStorage
+      originalFile: file, // Original file for upload
+      traceabilityData
+    });
+  }, 'image/png');
 };
 
 /**

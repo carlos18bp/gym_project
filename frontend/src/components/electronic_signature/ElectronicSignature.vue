@@ -110,6 +110,7 @@ import SignatureModal from './SignatureModal.vue';
 import ImageUploadSignature from './ImageUploadSignature.vue';
 import DrawSignature from './DrawSignature.vue';
 import { useUserStore } from '@/stores/user';
+import { useAuthStore } from '@/stores/auth';
 
 /**
  * Main electronic signature component
@@ -134,11 +135,12 @@ const props = defineProps({
    */
   userId: {
     type: [String, Number],
-    required: true
+    required: false
   }
 });
 
 const userStore = useUserStore();
+const authStore = useAuthStore();
 const isModalOpen = ref(false);
 const currentSignatureType = ref(null);
 const savedSignature = ref(null);
@@ -199,15 +201,62 @@ const saveSignature = async (data) => {
   isSubmitting.value = true;
   
   try {
-    // Prepare data for the API
-    const signatureData = {
-      signatureImage: data.signatureImage,
-      method: data.traceabilityData.method,
-      userId: props.userId
-    };
+    // Get the user ID
+    const userId = props.userId || authStore.userAuth.id;
+    if (!userId) {
+      throw new Error("No user ID available");
+    }
     
-    // Send to the backend using the store action
-    const success = await userStore.updateUserSignature(signatureData);
+    // Create FormData object for the API request
+    const formData = new FormData();
+    
+    // Add method to FormData
+    formData.append('method', data.traceabilityData.method);
+    
+    // Handle file upload - check if we have an original file from the upload component
+    if (data.originalFile && data.originalFile instanceof File) {
+      formData.append('signature_image', data.originalFile);
+    } 
+    // Otherwise, if we have a base64 image (e.g., from drawing)
+    else if (data.signatureImage && typeof data.signatureImage === 'string') {
+      // Check if the image is a data URL (starts with "data:")
+      const isDataUrl = data.signatureImage.startsWith('data:');
+      
+      if (isDataUrl) {
+        // Extract the base64 part from data URL
+        const parts = data.signatureImage.split(';base64,');
+        if (parts.length !== 2) {
+          throw new Error("Invalid data URL format");
+        }
+        
+        const contentType = parts[0].replace('data:', '');
+        const base64Data = parts[1];
+        
+        // Convert base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create blob and file
+        const blob = new Blob([bytes], { type: contentType });
+        const filename = `signature_${userId}_${Date.now()}.png`;
+        const file = new File([blob], filename, { type: contentType });
+        
+        formData.append('signature_image', file);
+      } else {
+        throw new Error("Image data is not in expected format (should be data URL)");
+      }
+    } else {
+      throw new Error("No valid signature image data available");
+    }
+    
+    // Send to the backend
+    const success = await userStore.updateUserSignature({
+      formData: formData,
+      userId: userId
+    });
     
     if (success) {
       // Save locally for component use
@@ -220,11 +269,9 @@ const saveSignature = async (data) => {
       // Reset UI state
       currentSignatureType.value = null;
       forceShowOptions.value = false;
-    } else {
-      console.error('Error saving signature to server');
     }
   } catch (error) {
-    console.error('Error processing signature:', error);
+    console.error('ElectronicSignature: Error processing signature:', error);
   } finally {
     isSubmitting.value = false;
   }

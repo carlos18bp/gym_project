@@ -83,6 +83,7 @@ const props = defineProps({
 
 const fileInput = ref(null);
 const previewUrl = ref(null);
+const selectedFile = ref(null);
 
 /**
  * Trigger file input click to open file dialog
@@ -112,6 +113,11 @@ const handleFileChange = (event) => {
     return;
   }
   
+  // Store the file reference
+  selectedFile.value = file;
+  console.log("Selected file:", file.name, file.type, file.size);
+  
+  // Create preview URL
   const reader = new FileReader();
   reader.onload = (e) => {
     previewUrl.value = e.target.result;
@@ -124,6 +130,7 @@ const handleFileChange = (event) => {
  */
 const clearImage = () => {
   previewUrl.value = null;
+  selectedFile.value = null;
   fileInput.value.value = '';
 };
 
@@ -131,19 +138,23 @@ const clearImage = () => {
  * Save signature and emit save event with signature data
  */
 const saveSignature = () => {
-  if (previewUrl.value) {
-    // Record traceability data
-    const traceabilityData = {
-      date: new Date().toISOString(),
-      ip: '0.0.0.0', // In a real implementation, this would come from backend
-      method: 'upload'
-    };
-    
-    emit('save', {
-      signatureImage: previewUrl.value,
-      traceabilityData
-    });
+  if (!previewUrl.value) {
+    console.error("No preview URL available");
+    return;
   }
+  
+  // Record traceability data
+  const traceabilityData = {
+    date: new Date().toISOString(),
+    ip: '0.0.0.0', // In a real implementation, this would come from backend
+    method: 'upload'
+  };
+  
+  emit('save', {
+    signatureImage: previewUrl.value,
+    originalFile: selectedFile.value,
+    traceabilityData
+  });
 };
 
 /**

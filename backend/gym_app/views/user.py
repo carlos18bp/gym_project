@@ -6,6 +6,10 @@ from gym_app.serializers.user import UserSerializer, ActivityFeedSerializer, Use
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.core.files.storage import default_storage
+import logging
+
+# Configurar el logger
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -141,6 +145,7 @@ def update_signature(request, user_id):
     """
     # Ensure the authenticated user is updating their own signature
     if request.user.id != user_id:
+        logger.warning(f"Permiso denegado: Usuario {request.user.id} intentando actualizar firma del usuario {user_id}")
         return Response({'error': 'You do not have permission to update this signature'}, 
                         status=status.HTTP_403_FORBIDDEN)
     
@@ -148,6 +153,7 @@ def update_signature(request, user_id):
         # Get the user by ID
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
+        logger.error(f"Usuario con id {user_id} no encontrado")
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     
     # Get the client's IP address
@@ -163,40 +169,37 @@ def update_signature(request, user_id):
     except UserSignature.DoesNotExist:
         signature = None
     
-    # Prepare data for serializer
+    # Handle the signature image
+    if 'signature_image' not in request.FILES:
+        logger.error("No se proporcionó imagen de firma en la solicitud")
+        return Response({'error': 'No signature image provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Prepare data for serializer including the file
     data = {
         'user': user_id,
         'method': request.data.get('method'),
-        'ip_address': ip_address
+        'ip_address': ip_address,
+        'signature_image': request.FILES['signature_image']
     }
     
-    # Handle the signature image
-    if 'signature_image' in request.FILES:
-        if signature:
-            # If updating existing signature, delete the old image first
-            if signature.signature_image:
-                if default_storage.exists(signature.signature_image.name):
-                    default_storage.delete(signature.signature_image.name)
-            
-            # Update with new data
-            serializer = UserSignatureSerializer(instance=signature, data=data, partial=True)
-            if serializer.is_valid():
-                # Save the signature image separately after validation
-                signature_obj = serializer.save()
-                signature_obj.signature_image = request.FILES['signature_image']
-                signature_obj.save()
-                return Response({'message': 'Signature updated successfully'}, status=status.HTTP_200_OK)
-        else:
-            # Create new signature
-            serializer = UserSignatureSerializer(data=data)
-            if serializer.is_valid():
-                # Save the signature image separately after validation
-                signature_obj = serializer.save()
-                signature_obj.signature_image = request.FILES['signature_image']
-                signature_obj.save()
-                return Response({'message': 'Signature created successfully'}, status=status.HTTP_201_CREATED)
+    if signature:
+        # If updating existing signature, delete the old image first
+        if signature.signature_image:
+            if default_storage.exists(signature.signature_image.name):
+                default_storage.delete(signature.signature_image.name)
+        
+        # Update with new data
+        serializer = UserSignatureSerializer(instance=signature, data=data, partial=True)
     else:
-        return Response({'error': 'No signature image provided'}, status=status.HTTP_400_BAD_REQUEST)
+        # Create new signature
+        serializer = UserSignatureSerializer(data=data)
     
-    # If we get here, there was a validation error in the serializer
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {'message': f'Signature {"updated" if signature else "created"} successfully'}, 
+            status=status.HTTP_200_OK if signature else status.HTTP_201_CREATED
+        )
+    else:
+        logger.error(f"Error de validación del serializador: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

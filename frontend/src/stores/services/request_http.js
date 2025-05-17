@@ -100,3 +100,46 @@ export async function update_request(url, params) {
 export async function delete_request(url) {
   return await makeRequest("DELETE", url);
 }
+
+/**
+ * Upload file with FormData.
+ * Specifically designed for uploading files using FormData.
+ * 
+ * @param {string} url - Endpoint.
+ * @param {FormData} formData - FormData object containing files and other form fields.
+ * @returns {object} - Data and status from endpoint.
+ */
+export async function upload_file_request(url, formData) {
+  const csrfToken = getCookie("csrftoken");
+  const token = localStorage.getItem("token");
+  
+  const headers = {
+    "X-CSRFToken": csrfToken,
+    "Authorization": token ? `Bearer ${token}` : ""
+    // Do not set Content-Type header, it will be automatically set with boundary by the browser
+  };
+  
+  try {
+    console.log("Uploading file to:", url);
+    
+    const response = await axios.post(`/api/${url}`, formData, {
+      headers,
+      // Important for properly handling files in FormData
+      transformRequest: [function (data) {
+        // Return FormData as is - don't let axios transform it
+        return data;
+      }]
+    });
+    
+    return response;
+  } catch (error) {
+    console.error("Error during file upload:", error);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+      console.error("Status code:", error.response.status);
+    } else {
+      console.error("Upload request failed without response.");
+    }
+    throw error;
+  }
+}
