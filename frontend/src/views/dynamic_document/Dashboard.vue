@@ -45,7 +45,11 @@
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
-      <div class="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <PendingSignaturesList 
+          v-if="currentSection === 'pendingSignatures'"
+          @refresh="handleRefresh"
+        />
         <DocumentListClient
           v-if="currentSection === 'default'"
           :searchQuery="searchQuery"
@@ -79,6 +83,7 @@ import DocumentListLawyer from "@/components/dynamic_document/lawyer/DocumentLis
 import DocumentFinishedByClientList from "@/components/dynamic_document/lawyer/DocumentFinishedByClientList.vue";
 import DocumentInProgressByClientList from "@/components/dynamic_document/lawyer/DocumentInProgressByClientList.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
+import PendingSignaturesList from "@/components/dynamic_document/client/PendingSignaturesList.vue";
 
 // Store instances
 const userStore = useUserStore();
@@ -154,6 +159,14 @@ const closeModal = () => {
   currentSection.value = "default";
   // Clear any selected document
   documentStore.selectedDocument = null;
+};
+
+/**
+ * Handles refresh events from child components.
+ */
+const handleRefresh = async () => {
+  console.log('Refrescando datos en Dashboard');
+  await documentStore.init(true);
 };
 
 /**

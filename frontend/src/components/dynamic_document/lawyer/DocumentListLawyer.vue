@@ -23,7 +23,77 @@
       />
       <div class="flex justify-between items-center w-full">
         <div class="grid gap-1">
-          <span class="text-base font-medium">{{ document.title }}</span>
+          <div class="flex items-center">
+            <span class="text-base font-medium">{{ document.title }}</span>
+            
+            <!-- Signature icon with tooltip -->
+            <div 
+              v-if="document.requires_signature" 
+              class="relative group ml-2"
+            >
+              <!-- Check icon for fully signed/formalized documents -->
+              <svg 
+                v-if="document.fully_signed"
+                class="h-4 w-4 text-green-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <!-- Check icon for documents the current user has signed but others haven't -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)?.signed"
+                class="h-4 w-4 text-blue-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+              
+              <!-- Pen icon for documents requiring the user's signature -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)"
+                class="h-4 w-4 text-yellow-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <!-- Regular pen icon for documents requiring signatures from others -->
+              <svg 
+                v-else
+                class="h-4 w-4 text-blue-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <!-- Tooltip -->
+              <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
+                {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
+              </div>
+            </div>
+          </div>
           <span class="text-sm font-regular text-gray-400">
             {{ document.state === 'Published' ? 'Publicado' : 'Borrador' }}
           </span>
@@ -87,6 +157,21 @@
     :documentData="previewDocumentData"
     @close="showPreviewModal = false"
   />
+  
+  <!-- Signatures Modal -->
+  <DocumentSignaturesModal 
+    :isVisible="showSignaturesModal"
+    :documentId="selectedDocumentId"
+    @close="closeSignaturesModal"
+    @refresh="handleRefresh"
+  />
+  
+  <!-- Versions Modal -->
+  <DocumentVersionsModal 
+    :isVisible="showVersionsModal"
+    :documentId="selectedDocumentId"
+    @close="closeVersionsModal"
+  />
 </template>
 
 <script setup>
@@ -104,6 +189,7 @@ import ModalTransition from "@/components/layouts/animations/ModalTransition.vue
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import { showNotification } from "@/shared/notification_message";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { get_request, create_request, delete_request } from "@/stores/services/request_http";
 
 import {
   showPreviewModal,
@@ -111,6 +197,8 @@ import {
   openPreviewModal,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
+import DocumentVersionsModal from "@/components/dynamic_document/common/DocumentVersionsModal.vue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -118,6 +206,9 @@ const userStore = useUserStore();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
+const showSignaturesModal = ref(false);
+const showVersionsModal = ref(false);
+const selectedDocumentId = ref(null);
 const lastUpdatedDocId = ref(null);
 
 const props = defineProps({
@@ -177,6 +268,29 @@ const getDocumentOptions = (document) => {
     { label: "Previsualización", action: "preview" },
   ];
 
+  // Log for debugging
+  console.log('Document ID:', document.id, 'Title:', document.title);
+  console.log('Document state:', document.state);
+  console.log('Document requires signature:', document.requires_signature);
+  console.log('Document signatures:', document.signatures);
+  
+  // Get current user signature status FIRST - before any other logic
+  let currentUserNeedsToSign = false;
+  
+  if (document.requires_signature && document.signatures && document.signatures.length > 0) {
+    const currentUserId = String(userStore.currentUser.id);
+    console.log('Current user ID:', currentUserId);
+    
+    // Find if current user needs to sign
+    const userSignature = document.signatures.find(sig => 
+      String(sig.signer_id) === currentUserId && !sig.signed
+    );
+    
+    currentUserNeedsToSign = !!userSignature;
+    console.log('User signature found:', userSignature);
+    console.log('Current user needs to sign:', currentUserNeedsToSign);
+  }
+
   // Add state-based options with validations
   if (document.state === "Draft") {
     baseOptions.push({
@@ -188,6 +302,32 @@ const getDocumentOptions = (document) => {
     baseOptions.push({
       label: "Mover a Borrador",
       action: "draft",
+      disabled: false,
+    });
+    
+    // Add signature-related options for published documents that require signatures
+    if (document.requires_signature) {
+      baseOptions.push({
+        label: "Ver firmas",
+        action: "view_signatures",
+        disabled: false,
+      });
+      
+      baseOptions.push({
+        label: "Ver versiones",
+        action: "view_versions",
+        disabled: false,
+      });
+    }
+  }
+  
+  // Add sign option if document requires signatures, is published, and the user needs to sign
+  // This is now independent of document state and other options
+  if (document.state === "Published" && document.requires_signature && currentUserNeedsToSign) {
+    console.log('ADDING SIGN DOCUMENT OPTION');
+    baseOptions.push({
+      label: "Firmar documento",
+      action: "sign_document",
       disabled: false,
     });
   }
@@ -207,9 +347,72 @@ const canPublishDocument = (document) => {
 };
 
 /**
- * Handle document option actions.
+ * Check if the current user is a signer for the document and get their signature record
+ * @param {object} document - The document to check
+ * @returns {object|null} - The signature record for the current user or null
+ */
+const getCurrentUserSignature = (document) => {
+  // First, verify document has signatures and requires them
+  if (!document.signatures || !document.requires_signature) {
+    console.log(`Document ${document.id} has no signatures or doesn't require them`);
+    return null;
+  }
+  
+  // Get current user ID as string for comparison
+  const currentUserId = String(userStore.currentUser.id);
+  
+  // Find signature for current user
+  const signature = document.signatures.find(sig => String(sig.signer_id) === currentUserId);
+  
+  // Log for debugging
+  if (signature) {
+    console.log(`Found signature for user ${currentUserId} in document ${document.id}:`, signature);
+  } else {
+    console.log(`No signature found for user ${currentUserId} in document ${document.id}`);
+  }
+  
+  return signature;
+};
+
+/**
+ * Gets the signature status display text for a document
+ * @param {Object} document - The document object
+ * @returns {String} - Status text for display
+ */
+const getSignatureStatus = (document) => {
+  if (!document.requires_signature) {
+    return '';
+  }
+  
+  if (document.fully_signed) {
+    return 'Documento formalizado';
+  }
+  
+  // Check if current user has already signed
+  const currentUserSignature = getCurrentUserSignature(document);
+  
+  if (document.signatures && document.signatures.length > 0) {
+    const totalSignatures = document.signatures.length;
+    const signedCount = document.signatures.filter(sig => sig.signed).length;
+    
+    if (currentUserSignature && currentUserSignature.signed) {
+      if (signedCount === 1 && totalSignatures > 1) {
+        return `Has firmado. Faltan ${totalSignatures - signedCount} firmas más`;
+      } else if (signedCount < totalSignatures) {
+        return `Has firmado. Faltan ${totalSignatures - signedCount} firmas más`;
+      }
+    }
+    
+    return `Firmas: ${signedCount}/${totalSignatures}`;
+  }
+  
+  return currentUserSignature ? 'Requiere tu firma' : 'Requiere firmas';
+};
+
+/**
+ * Handle the selected option for a document.
  * @param {string} action - The action to perform.
- * @param {object} document - The document to apply the action on.
+ * @param {object} document - The target document.
  */
 const handleOption = async (action, document) => {
   switch (action) {
@@ -236,6 +439,15 @@ const handleOption = async (action, document) => {
       break;
     case "preview":
       openPreviewModal(document);
+      break;
+    case "view_signatures":
+      viewDocumentSignatures(document);
+      break;
+    case "view_versions":
+      viewDocumentVersions(document);
+      break;
+    case "sign_document":
+      signDocument(document);
       break;
     default:
       console.warn(`Acción desconocida: ${action}`);
@@ -424,6 +636,113 @@ onMounted(async () => {
     }, 500);
   }
 });
+
+// New functions to handle signature-related actions
+
+/**
+ * Navigate to signature view for a document.
+ * @param {object} document - The document to view signatures for.
+ */
+const viewDocumentSignatures = (document) => {
+  selectedDocumentId.value = document.id;
+  showSignaturesModal.value = true;
+};
+
+/**
+ * Navigate to versions view for a document.
+ * @param {object} document - The document to view versions for.
+ */
+const viewDocumentVersions = (document) => {
+  selectedDocumentId.value = document.id;
+  showVersionsModal.value = true;
+};
+
+/**
+ * Sign the document.
+ * @param {object} document - The document to sign.
+ */
+const signDocument = async (document) => {
+  try {
+    console.log('Intentando firmar documento:', document.id);
+    
+    // First check if the user has a signature
+    if (!userStore.currentUser.has_signature) {
+      // Show warning and redirect to create signature page
+      const createSignature = await showConfirmationAlert(
+        "No tienes una firma registrada. ¿Deseas crear una firma ahora?",
+        "Necesitas una firma",
+        "Crear firma",
+        "Cancelar"
+      );
+      
+      if (createSignature) {
+        // Redirect to the signature creation page
+        window.location.href = '/user/signature';
+      }
+      return;
+    }
+
+    // Show confirmation dialog before signing
+    const confirmed = await showConfirmationAlert(
+      `¿Estás seguro de que deseas firmar el documento "${document.title}"?`,
+      "Confirmar firma",
+      "Firmar",
+      "Cancelar"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    console.log('Enviando solicitud para firmar documento', document.id);
+    
+    // Call the API to sign the document using create_request
+    const response = await create_request(`dynamic-documents/${document.id}/sign/`, {});
+    console.log('Respuesta del servidor:', response);
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Error al firmar: ${response.statusText}`);
+    }
+
+    // Show success notification
+    await showNotification("Documento firmado correctamente", "success");
+    
+    // Allow time for the backend to process the signature
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Refresh the document data
+    await documentStore.init(true); // Force a complete refresh
+    
+    // Highlight the document
+    if (document.id) {
+      documentStore.lastUpdatedDocumentId = document.id;
+      localStorage.setItem('lastUpdatedDocumentId', document.id);
+      forceHighlight(document.id);
+    }
+    
+    // Refresh the page to ensure all data is up to date
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } catch (error) {
+    console.error('Error al firmar el documento:', error);
+    await showNotification(`Error al firmar el documento: ${error.message}`, "error");
+  }
+};
+
+// New functions to handle modal closing
+const closeSignaturesModal = () => {
+  showSignaturesModal.value = false;
+};
+
+const closeVersionsModal = () => {
+  showVersionsModal.value = false;
+};
+
+const handleRefresh = async () => {
+  // Refresh the document list
+  await documentStore.init();
+};
 </script>
 
 <style scoped>
@@ -446,5 +765,19 @@ onMounted(async () => {
   border-width: 2px !important;
   position: relative;
   z-index: 10;
+}
+
+/* Tooltip arrow styles */
+.tooltip-with-arrow:after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 10px;
+  margin-left: -5px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1f2937; /* Match tooltip background color */
 }
 </style>

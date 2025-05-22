@@ -1,124 +1,255 @@
 <template>
-    <!-- Document Item -->
-    <div
-      v-for="document in filteredDocuments"
-      :key="document.id"
-      :data-document-id="document.id"
-      class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer"
-      :class="{
-        'border-green-400 bg-green-300/30': document.state === 'Completed',
-        'border-stroke bg-white': document.state === 'Progress',
-        'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
-      }"
-    >
-      <component
-        :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
-        class="size-6"
+  <div>
+    <!-- Documentos en progreso y completados -->
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Mis documentos</h2>
+      
+      <!-- Document Item -->
+      <div
+        v-for="document in filteredDocuments"
+        :key="document.id"
+        :data-document-id="document.id"
+        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3"
         :class="{
-          'text-green-500': document.state === 'Completed',
-          'text-secondary': document.state === 'Progress',
+          'border-green-400 bg-green-300/30': document.state === 'Completed',
+          'border-stroke bg-white': document.state === 'Progress',
+          'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
         }"
-      />
-      <div class="flex justify-between items-center w-full">
-        <div class="grid gap-1">
-          <span class="text-base font-medium">{{ document.title }}</span>
-          <span class="text-sm font-regular text-gray-400">{{
-            document.description
-          }}</span>
-        </div>
-        <Menu as="div" class="relative inline-block text-left">
-          <MenuButton class="flex items-center text-gray-400">
-            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-          </MenuButton>
-          <transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="transform opacity-0 scale-95"
-            enter-to-class="transform opacity-100 scale-100"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="transform opacity-100 scale-100"
-            leave-to-class="transform opacity-0 scale-95"
-          >
-            <MenuItems
-              class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
-              :class="[
-                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
-              ]"
+      >
+        <component
+          :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
+          class="size-6"
+          :class="{
+            'text-green-500': document.state === 'Completed',
+            'text-secondary': document.state === 'Progress',
+          }"
+        />
+        <div class="flex justify-between items-center w-full">
+          <div class="grid gap-1">
+            <span class="text-base font-medium">{{ document.title }}</span>
+            <span class="text-sm font-regular text-gray-400">{{
+              document.description
+            }}</span>
+          </div>
+          <Menu as="div" class="relative inline-block text-left">
+            <MenuButton class="flex items-center text-gray-400">
+              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            </MenuButton>
+            <transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95"
+              enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95"
             >
-              <div class="py-1">
-                <!-- Edit/Complete option -->
-                <MenuItem>
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="openEditModal(document)"
-                  >
-                    {{ document.state === "Completed" ? "Editar" : "Completar" }}
-                  </button>
-                </MenuItem>
-  
-                <!-- Preview option -->
-                <MenuItem v-if="document.state === 'Completed'">
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="handlePreviewDocument(document)"
-                  >
-                    Previsualizar
-                  </button>
-                </MenuItem>
-  
-                <!-- Delete option -->
-                <MenuItem>
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="deleteDocument(document)"
-                  >
-                    Eliminar
-                  </button>
-                </MenuItem>
-  
-                <!-- Options only for Completed state -->
-                <template v-if="document.state === 'Completed'">
+              <MenuItems
+                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+                :class="[
+                  props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+                ]"
+              >
+                <div class="py-1">
+                  <!-- Edit/Complete option -->
                   <MenuItem>
                     <button
                       class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="downloadPDFDocument(document)"
+                      @click="openEditModal(document)"
                     >
-                      Descargar PDF
+                      {{ document.state === "Completed" ? "Editar" : "Completar" }}
                     </button>
                   </MenuItem>
+    
+                  <!-- Preview option -->
+                  <MenuItem v-if="document.state === 'Completed'">
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="handlePreviewDocument(document)"
+                    >
+                      Previsualizar
+                    </button>
+                  </MenuItem>
+    
+                  <!-- Delete option -->
                   <MenuItem>
                     <button
                       class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="downloadWordDocument(document)"
+                      @click="deleteDocument(document)"
                     >
-                      Descargar Word
+                      Eliminar
                     </button>
                   </MenuItem>
-                  <MenuItem>
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="openEmailModal(document)"
-                    >
-                      Enviar
-                    </button>
-                  </MenuItem>
-                </template>
-              </div>
-            </MenuItems>
-          </transition>
-        </Menu>
+    
+                  <!-- Options only for Completed state -->
+                  <template v-if="document.state === 'Completed'">
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="downloadPDFDocument(document)"
+                      >
+                        Descargar PDF
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="downloadWordDocument(document)"
+                      >
+                        Descargar Word
+                      </button>
+                    </MenuItem>
+                    
+                    <!-- Options for documents that require signatures -->
+                    <template v-if="document.requires_signature">
+                      <MenuItem>
+                        <button
+                          class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                          @click="viewDocumentSignatures(document)"
+                        >
+                          Ver firmas
+                        </button>
+                      </MenuItem>
+                      <MenuItem>
+                        <button
+                          class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                          @click="viewDocumentVersions(document)"
+                        >
+                          Ver versiones
+                        </button>
+                      </MenuItem>
+                    </template>
+                    
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="openEmailModal(document)"
+                      >
+                        Enviar
+                      </button>
+                    </MenuItem>
+                  </template>
+                </div>
+              </MenuItems>
+            </transition>
+          </Menu>
+        </div>
       </div>
 
-    <!-- No documents message -->
-    <div
-      v-if="filteredDocuments.length === 0"
-      class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
-    >
-      <p class="text-lg font-semibold">
-        No hay documentos disponibles para mostrar.
-      </p>
-      <p class="text-sm">
-        Contacta a tu abogado para gestionar tus documentos.
-      </p>
+      <!-- No documents message -->
+      <div
+        v-if="filteredDocuments.length === 0"
+        class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
+      >
+        <p class="text-lg font-semibold">
+          No hay documentos disponibles para mostrar.
+        </p>
+        <p class="text-sm">
+          Contacta a tu abogado para gestionar tus documentos.
+        </p>
+      </div>
+    </div>
+    
+    <!-- Documentos firmados por el usuario -->
+    <div class="mb-6" v-if="signedDocuments.length > 0">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Documentos firmados por ti</h2>
+      
+      <!-- Documents signed by user -->
+      <div
+        v-for="document in signedDocuments"
+        :key="document.id"
+        :data-document-id="document.id"
+        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3 border-green-400 bg-green-300/10"
+        @click="handlePreviewDocument(document)"
+      >
+        <svg 
+          class="h-6 w-6 text-green-500" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          stroke-width="2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"
+        >
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        
+        <div class="flex justify-between items-center w-full">
+          <div class="grid gap-1">
+            <div class="flex items-center">
+              <span class="text-base font-medium">{{ document.title }}</span>
+              <span v-if="document.pending_signatures > 0" class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded ml-2">
+                Pendiente: {{ document.pending_signatures }}/{{ document.total_signatures }}
+              </span>
+              <span v-else class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded ml-2">
+                Completado
+              </span>
+            </div>
+            <span class="text-sm font-regular text-gray-400">
+              Firmado el {{ formatDate(document.user_signed_at) }}
+            </span>
+          </div>
+          <Menu as="div" class="relative inline-block text-left">
+            <MenuButton class="flex items-center text-gray-400">
+              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            </MenuButton>
+            <transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95"
+              enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95"
+            >
+              <MenuItems
+                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none right-0 left-auto"
+              >
+                <div class="py-1">
+                  <!-- Preview option -->
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="handlePreviewDocument(document)"
+                    >
+                      Previsualizar
+                    </button>
+                  </MenuItem>
+                  
+                  <!-- View signatures option -->
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="viewDocumentSignatures(document)"
+                    >
+                      Ver firmas
+                    </button>
+                  </MenuItem>
+                  
+                  <!-- View versions option -->
+                  <MenuItem>
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="viewDocumentVersions(document)"
+                    >
+                      Ver versiones
+                    </button>
+                  </MenuItem>
+                  
+                  <!-- Download latest version -->
+                  <MenuItem v-if="document.versions && document.versions.length > 0">
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="downloadLatestVersion(document)"
+                    >
+                      Descargar PDF firmado
+                    </button>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </transition>
+          </Menu>
+        </div>
+      </div>
     </div>
 
     <!-- Edit Document Modal -->
@@ -144,6 +275,21 @@
       :emailDocument="emailDocument"
     />
   </ModalTransition>
+  
+  <!-- Signatures Modal -->
+  <DocumentSignaturesModal 
+    :isVisible="showSignaturesModal"
+    :documentId="selectedDocumentId"
+    @close="closeSignaturesModal"
+    @refresh="handleRefresh"
+  />
+  
+  <!-- Versions Modal -->
+  <DocumentVersionsModal 
+    :isVisible="showVersionsModal"
+    :documentId="selectedDocumentId"
+    @close="closeVersionsModal"
+  />
 </template>
 
 <script setup>
@@ -166,9 +312,13 @@ import {
   showPreviewModal,
   previewDocumentData,
   openPreviewModal,
+  downloadFile,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { useRecentViews } from '@/composables/useRecentViews';
+import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
+import DocumentVersionsModal from "@/components/dynamic_document/common/DocumentVersionsModal.vue";
+import { get_request } from "@/stores/services/request_http";
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
@@ -181,6 +331,10 @@ const showEditDocumentModal = ref(false);
 const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
+const showSignaturesModal = ref(false);
+const showVersionsModal = ref(false);
+const signedDocuments = ref([]);
+const isLoadingSignedDocs = ref(false);
 
 // Computed property that determines which document should be highlighted
 // It first checks if the store's lastUpdatedDocumentId exists in filtered documents
@@ -225,6 +379,9 @@ onMounted(async () => {
 
   // Ensure documents are loaded
   await documentStore.init();
+  
+  // Cargar documentos firmados
+  await fetchSignedDocuments();
   
   const savedId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -460,6 +617,148 @@ window.forceDocumentHighlight = forceHighlight;
 const handlePreviewDocument = async (document) => {
   await registerView('document', document.id);
   openPreviewModal(document);
+};
+
+/**
+ * Navigate to signature view for a document.
+ * @param {object} document - The document to view signatures for.
+ */
+const viewDocumentSignatures = (document) => {
+  console.log('Abriendo modal de firmas para documento:', document.id);
+  selectedDocumentId.value = document.id;
+  showSignaturesModal.value = true;
+};
+
+/**
+ * Navigate to versions view for a document.
+ * @param {object} document - The document to view versions for.
+ */
+const viewDocumentVersions = (document) => {
+  console.log('Abriendo modal de versiones para documento:', document.id);
+  selectedDocumentId.value = document.id;
+  showVersionsModal.value = true;
+};
+
+/**
+ * Closes the signatures modal and resets the selected document.
+ */
+const closeSignaturesModal = () => {
+  showSignaturesModal.value = false;
+};
+
+/**
+ * Closes the versions modal and resets the selected document.
+ */
+const closeVersionsModal = () => {
+  showVersionsModal.value = false;
+};
+
+/**
+ * Refreshes the document data after an action (like signing).
+ */
+const handleRefresh = async () => {
+  console.log('Refrescando datos...');
+  // Recargar los documentos usando el store
+  await documentStore.init(true);
+  // Recargar documentos firmados
+  await fetchSignedDocuments();
+  
+  // Si estamos en un componente que muestra datos basados en el store, 
+  // asegurarse de que los datos se actualicen
+  const docExists = filteredDocuments.value.some(doc => 
+    String(doc.id) === String(selectedDocumentId.value)
+  );
+  
+  if (docExists) {
+    documentStore.lastUpdatedDocumentId = selectedDocumentId.value;
+    localStorage.setItem('lastUpdatedDocumentId', selectedDocumentId.value);
+    forceHighlight(selectedDocumentId.value);
+  }
+};
+
+/**
+ * Función para formatear fechas
+ */
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+};
+
+/**
+ * Fetch documentos firmados por el usuario
+ */
+const fetchSignedDocuments = async () => {
+  isLoadingSignedDocs.value = true;
+  try {
+    console.log('==== OBTENIENDO DOCUMENTOS FIRMADOS ====');
+    
+    // Usando el endpoint para documentos firmados
+    const userId = userStore.currentUser.id;
+    console.log('ID de usuario actual:', userId);
+    
+    const response = await get_request(`dynamic-documents/user/${userId}/signed-documents/`);
+    
+    if (response && response.data) {
+      console.log('Cantidad de documentos firmados recibidos:', response.data.length);
+      signedDocuments.value = response.data;
+      
+      if (signedDocuments.value.length > 0) {
+        console.log('Documentos firmados encontrados:', signedDocuments.value.length);
+      } else {
+        console.log('No se encontraron documentos firmados');
+      }
+    } else {
+      console.warn('La respuesta no contiene datos o formato esperado');
+      signedDocuments.value = [];
+    }
+  } catch (error) {
+    console.error('Error fetching signed documents:', error);
+    if (error.response) {
+      console.error('Detalles del error:', error.response.data);
+    }
+    signedDocuments.value = [];
+  } finally {
+    isLoadingSignedDocs.value = false;
+  }
+};
+
+/**
+ * Función para descargar la última versión firmada
+ */
+const downloadLatestVersion = async (document) => {
+  try {
+    if (!document.versions || document.versions.length === 0) {
+      await showNotification("No hay versiones disponibles para este documento", "error");
+      return;
+    }
+    
+    // Ordenar versiones por fecha de creación (más reciente primero)
+    const sortedVersions = [...document.versions].sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+    
+    // Buscar la última versión firmada
+    const signedVersion = sortedVersions.find(v => v.version_type === 'signed');
+    
+    if (signedVersion) {
+      await showNotification("Descargando documento firmado...", "info");
+      await downloadFile(signedVersion.file_url, `${document.title}_firmado.pdf`);
+    } else {
+      // Si no hay versión firmada, descargar la original
+      const originalVersion = sortedVersions[0];
+      await showNotification("Descargando documento original...", "info");
+      await downloadFile(originalVersion.file_url, `${document.title}.pdf`);
+    }
+  } catch (error) {
+    console.error('Error al descargar el documento:', error);
+    await showNotification("Error al descargar el documento", "error");
+  }
 };
 </script>
 

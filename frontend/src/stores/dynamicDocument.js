@@ -180,15 +180,16 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
   actions: {
     /**
      * Initialize the store by fetching data if not already loaded or if data is stale
+     * @param {boolean} forceRefresh - Whether to force a refresh of the data
      */
-    async init() {
+    async init(forceRefresh = false) {
       // Check if data is stale (older than 5 minutes)
       const isDataStale = !this.lastFetchTime || 
                          (Date.now() - this.lastFetchTime > 5 * 60 * 1000);
       
-      // Only load data if it's not loaded or it's stale
-      if (!this.dataLoaded || isDataStale) {
-        await this.fetchDocuments();
+      // Load data if it's not loaded, it's stale, or a refresh is forced
+      if (!this.dataLoaded || isDataStale || forceRefresh) {
+        await this.fetchDocuments({ forceRefresh });
       }
       
       // Check localStorage for saved ID to highlight

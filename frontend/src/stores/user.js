@@ -273,6 +273,39 @@ export const useUserStore = defineStore("user", {
         console.error("Error fetching user info:", error.message);
         return null;
       }
+    },
+
+    /**
+     * Fetch all users from the backend
+     * @returns {Promise<Array>} - Array of user objects
+     */
+    async fetchUsers() {
+      try {
+        const response = await get_request("users/");
+        if (response.status === 200) {
+          this.users = response.data;
+          return this.users;
+        }
+        return [];
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        return [];
+      }
+    },
+
+    /**
+     * Get users by specific IDs
+     * @param {Array<number>} userIds - Array of user IDs to retrieve
+     * @returns {Promise<Array>} - Array of matching user objects
+     */
+    async getUsersByIds(userIds) {
+      // If we don't have the complete users list, fetch it first
+      if (!this.users || this.users.length === 0) {
+        await this.fetchUsers();
+      }
+      
+      // Filter the users by the provided IDs
+      return this.users.filter(user => userIds.includes(user.id));
     }
   },
 });

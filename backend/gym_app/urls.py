@@ -1,5 +1,17 @@
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document, legal_update, reports
+"""
+URL configuration for the gym app.
+
+This module defines all the URL patterns for the gym application, organized into groups by functionality:
+- Authentication (sign in, sign on)
+- User management
+- Process and case management
+- Legal requests and documents
+- Dynamic documents with signatures
+- Reports
+"""
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports
 from .views.layouts import sendEmail
+from .views.dynamic_documents import document_views, signature_views
 from django.urls import path
 
 sign_in_sign_on_urls = [
@@ -41,15 +53,26 @@ intranet_gym_urls = [
 ]
 
 dynamic_document_urls = [
-    path('dynamic-documents/', dynamic_document.list_dynamic_documents, name='list_dynamic_documents'),
-    path('dynamic-documents/create/', dynamic_document.create_dynamic_document, name='create_dynamic_document'),
-    path('dynamic-documents/<int:pk>/update/', dynamic_document.update_dynamic_document, name='update_dynamic_document'),
-    path('dynamic-documents/<int:pk>/delete/', dynamic_document.delete_dynamic_document, name='delete_dynamic_document'),
+    path('dynamic-documents/', document_views.list_dynamic_documents, name='list_dynamic_documents'),
+    path('dynamic-documents/create/', document_views.create_dynamic_document, name='create_dynamic_document'),
+    path('dynamic-documents/<int:pk>/update/', document_views.update_dynamic_document, name='update_dynamic_document'),
+    path('dynamic-documents/<int:pk>/delete/', document_views.delete_dynamic_document, name='delete_dynamic_document'),
     path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments'),
-    path('dynamic-documents/<int:pk>/download-pdf/', dynamic_document.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
-    path('dynamic-documents/<int:pk>/download-word/', dynamic_document.download_dynamic_document_word, name='download_dynamic_document_word'),
-    path('dynamic-documents/recent/', dynamic_document.get_recent_documents, name='get-recent-documents'),
-    path('dynamic-documents/<int:document_id>/update-recent/', dynamic_document.update_recent_document, name='update-recent-document'),
+    path('dynamic-documents/<int:pk>/download-pdf/', document_views.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
+    path('dynamic-documents/<int:pk>/download-word/', document_views.download_dynamic_document_word, name='download_dynamic_document_word'),
+    path('dynamic-documents/recent/', document_views.get_recent_documents, name='get-recent-documents'),
+    path('dynamic-documents/<int:document_id>/update-recent/', document_views.update_recent_document, name='update-recent-document'),
+    # Signature-related URLs
+    path('dynamic-documents/<int:document_id>/signatures/', signature_views.get_document_signatures, name='get-document-signatures'),
+    path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
+    path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
+    path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
+    # Complete information about documents pending signature for a specific user
+    path('dynamic-documents/user/<int:user_id>/pending-documents-full/', signature_views.get_user_pending_documents_full, name='get-user-pending-documents-full'),
+    # Documents already signed by a specific user
+    path('dynamic-documents/user/<int:user_id>/signed-documents/', signature_views.get_user_signed_documents, name='get-user-signed-documents'),
+    # Document versions
+    path('dynamic-documents/<int:document_id>/versions/', signature_views.get_document_versions, name='get-document-versions'),
 ]
 
 legal_update_urls = [
