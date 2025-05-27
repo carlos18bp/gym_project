@@ -41,19 +41,43 @@
 
     <!-- Documents for clients -->
     <div v-if="currentUser?.role === 'client'" class="mt-6">
+      <!-- Navigation tabs -->
+      <div class="mb-6 border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            v-for="tab in navigationTabs"
+            :key="tab.name"
+            @click="activeTab = tab.name"
+            :class="[
+              activeTab === tab.name
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            {{ tab.label }}
+          </button>
+        </nav>
+      </div>
+
+      <!-- Tab content -->
       <UseDocument
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         <PendingSignaturesList 
-          v-if="currentSection === 'pendingSignatures'"
+          v-if="activeTab === 'pending-signatures'"
           @refresh="handleRefresh"
         />
         <DocumentListClient
-          v-if="currentSection === 'default'"
+          v-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
         ></DocumentListClient>
+        <SignedDocumentsList
+          v-if="activeTab === 'signed-documents'"
+          :searchQuery="searchQuery"
+        />
       </div>
     </div>
   </div>
@@ -84,6 +108,7 @@ import DocumentFinishedByClientList from "@/components/dynamic_document/lawyer/D
 import DocumentInProgressByClientList from "@/components/dynamic_document/lawyer/DocumentInProgressByClientList.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import PendingSignaturesList from "@/components/dynamic_document/client/PendingSignaturesList.vue";
+import SignedDocumentsList from '@/components/dynamic_document/client/SignedDocumentsList.vue';
 
 // Store instances
 const userStore = useUserStore();
@@ -93,6 +118,7 @@ const documentStore = useDynamicDocumentStore();
 const searchQuery = ref("");
 const currentSection = ref("default");
 const showCreateDocumentModal = ref(false);
+const activeTab = ref('my-documents');
 
 // Get the current user
 const currentUser = computed(() => userStore.getCurrentUser);
@@ -187,4 +213,11 @@ watch(
   },
   { immediate: false }
 );
+
+// Navigation tabs for client users
+const navigationTabs = [
+  { name: 'my-documents', label: 'Mis Documentos' },
+  { name: 'pending-signatures', label: 'Firmas Pendientes' },
+  { name: 'signed-documents', label: 'Documentos Firmados' }
+];
 </script>

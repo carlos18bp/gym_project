@@ -2,7 +2,7 @@
   <div>
     <!-- Documentos en progreso y completados -->
     <div class="mb-6">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">Mis documentos</h2>
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Mis Documentos</h2>
       
       <!-- Document Item -->
       <div
@@ -155,114 +155,6 @@
       </div>
     </div>
     
-    <!-- Documentos firmados por el usuario -->
-    <div class="mb-6" v-if="signedDocuments.length > 0">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">Documentos firmados por ti</h2>
-      
-      <!-- Documents signed by user -->
-      <div
-        v-for="document in signedDocuments"
-        :key="document.id"
-        :data-document-id="document.id"
-        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3 border-green-400 bg-green-300/10"
-        @click="(e) => {
-          // Only trigger preview if click was not on the menu
-          if (!e.target.closest('.menu-container')) {
-            handlePreviewDocument(document);
-          }
-        }"
-      >
-        <svg 
-          class="h-6 w-6 text-green-500" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          stroke-width="2" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-        >
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        
-        <div class="flex justify-between items-center w-full">
-          <div class="grid gap-1">
-            <div class="flex items-center">
-              <span class="text-base font-medium">{{ document.title }}</span>
-              <span v-if="document.pending_signatures > 0" class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded ml-2">
-                Pendiente: {{ document.pending_signatures }}/{{ document.total_signatures }}
-              </span>
-              <span v-else class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded ml-2">
-                Completado
-              </span>
-            </div>
-            <span class="text-sm font-regular text-gray-400">
-              Firmado el {{ formatDate(document.user_signed_at) }}
-            </span>
-          </div>
-          <Menu as="div" class="relative inline-block text-left menu-container">
-            <MenuButton class="flex items-center text-gray-400">
-              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-            </MenuButton>
-            <transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="transform opacity-0 scale-95"
-              enter-to-class="transform opacity-100 scale-100"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="transform opacity-100 scale-100"
-              leave-to-class="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none right-0 left-auto"
-              >
-                <div class="py-1">
-                  <!-- Preview option -->
-                  <MenuItem>
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="handlePreviewDocument(document)"
-                    >
-                      Previsualizar
-                    </button>
-                  </MenuItem>
-                  
-                  <!-- View signatures option -->
-                  <MenuItem>
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="viewDocumentSignatures(document)"
-                    >
-                      Ver firmas
-                    </button>
-                  </MenuItem>
-                  
-                  <!-- View versions option -->
-                  <MenuItem>
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="viewDocumentVersions(document)"
-                    >
-                      Ver versiones
-                    </button>
-                  </MenuItem>
-                  
-                  <!-- Download latest version -->
-                  <MenuItem v-if="document.versions && document.versions.length > 0">
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="downloadLatestVersion(document)"
-                    >
-                      Descargar PDF firmado
-                    </button>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </transition>
-          </Menu>
-        </div>
-      </div>
-    </div>
-
     <!-- Edit Document Modal -->
     <ModalTransition v-show="showEditDocumentModal">
       <UseDocumentByClient
@@ -344,8 +236,8 @@ const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 const showSignaturesModal = ref(false);
 const showVersionsModal = ref(false);
-const signedDocuments = ref([]);
-const isLoadingSignedDocs = ref(false);
+const documents = ref([]);
+const isLoading = ref(false);
 
 // Use userStore to get the signature
 const signature = userStore.userSignature;
@@ -395,7 +287,7 @@ onMounted(async () => {
   await documentStore.init();
   
   // Cargar documentos firmados
-  await fetchSignedDocuments();
+  await fetchDocuments();
   
   const savedId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -474,6 +366,45 @@ const filteredDocuments = computed(() => {
   
   return result;
 });
+
+/**
+ * Fetches documents for the current user
+ */
+const fetchDocuments = async () => {
+  isLoading.value = true;
+  try {
+    console.log('==== GETTING DOCUMENTS ====');
+    
+    // Using the endpoint for user documents
+    const userId = userStore.currentUser.id;
+    console.log('Current user ID:', userId);
+    
+    const response = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
+    
+    if (response && response.data) {
+      console.log('Number of documents received:', response.data.length);
+      documents.value = response.data;
+      
+      if (documents.value.length > 0) {
+        console.log('Documents found:', documents.value.length);
+      } else {
+        console.log('No documents found');
+      }
+    } else {
+      console.warn('Response does not contain expected data or format:', response);
+      documents.value = [];
+    }
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    if (error.response) {
+      console.error('Error details:', error.response.data);
+    }
+    showNotification('Error al cargar documentos', 'error');
+    documents.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 /**
  * Download the document as PDF.
@@ -674,8 +605,6 @@ const handleRefresh = async () => {
   console.log('Refrescando datos...');
   // Recargar los documentos usando el store
   await documentStore.init(true);
-  // Recargar documentos firmados
-  await fetchSignedDocuments();
   
   // Si estamos en un componente que muestra datos basados en el store, 
   // asegurarse de que los datos se actualicen
@@ -702,77 +631,6 @@ const formatDate = (dateString) => {
     month: '2-digit',
     year: 'numeric',
   }).format(date);
-};
-
-/**
- * Fetch documentos firmados por el usuario
- */
-const fetchSignedDocuments = async () => {
-  isLoadingSignedDocs.value = true;
-  try {
-    console.log('==== OBTENIENDO DOCUMENTOS FIRMADOS ====');
-    
-    // Usando el endpoint para documentos firmados
-    const userId = userStore.currentUser.id;
-    console.log('ID de usuario actual:', userId);
-    
-    const response = await get_request(`dynamic-documents/user/${userId}/signed-documents/`);
-    
-    if (response && response.data) {
-      console.log('Cantidad de documentos firmados recibidos:', response.data.length);
-      signedDocuments.value = response.data;
-      
-      if (signedDocuments.value.length > 0) {
-        console.log('Documentos firmados encontrados:', signedDocuments.value.length);
-      } else {
-        console.log('No se encontraron documentos firmados');
-      }
-    } else {
-      console.warn('La respuesta no contiene datos o formato esperado');
-      signedDocuments.value = [];
-    }
-  } catch (error) {
-    console.error('Error fetching signed documents:', error);
-    if (error.response) {
-      console.error('Detalles del error:', error.response.data);
-    }
-    signedDocuments.value = [];
-  } finally {
-    isLoadingSignedDocs.value = false;
-  }
-};
-
-/**
- * Función para descargar la última versión firmada
- */
-const downloadLatestVersion = async (document) => {
-  try {
-    if (!document.versions || document.versions.length === 0) {
-      await showNotification("No hay versiones disponibles para este documento", "error");
-      return;
-    }
-    
-    // Ordenar versiones por fecha de creación (más reciente primero)
-    const sortedVersions = [...document.versions].sort((a, b) => 
-      new Date(b.created_at) - new Date(a.created_at)
-    );
-    
-    // Buscar la última versión firmada
-    const signedVersion = sortedVersions.find(v => v.version_type === 'signed');
-    
-    if (signedVersion) {
-      await showNotification("Descargando documento firmado...", "info");
-      await downloadFile(signedVersion.file_url, `${document.title}_firmado.pdf`);
-    } else {
-      // Si no hay versión firmada, descargar la original
-      const originalVersion = sortedVersions[0];
-      await showNotification("Descargando documento original...", "info");
-      await downloadFile(originalVersion.file_url, `${document.title}.pdf`);
-    }
-  } catch (error) {
-    console.error('Error al descargar el documento:', error);
-    await showNotification("Error al descargar el documento", "error");
-  }
 };
 </script>
 

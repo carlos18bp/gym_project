@@ -191,6 +191,12 @@ const router = createRouter({
           meta: { requiresAuth: true, title: "Documentos Dinámicos" },
         },
         {
+          path: "signed-documents",
+          name: "signed-documents",
+          component: () => import(/* webpackChunkName: "dynamic-document" */ "@/components/dynamic_document/client/SignedDocumentsList.vue"),
+          meta: { requiresAuth: true, title: "Documentos Firmados" },
+        },
+        {
           path: "lawyer/editor/create/:title",
           component: () => import(/* webpackChunkName: "dynamic-document-editor" */ "@/views/dynamic_document/DocumentEditor.vue"),
           props: true,

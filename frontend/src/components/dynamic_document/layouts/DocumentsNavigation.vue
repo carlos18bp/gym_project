@@ -73,17 +73,6 @@
         <span class="font-medium text-base">Mis Documentos</span>
       </div>
     </button>
-    <!--Pending signatures button for client-->
-    <button
-      @click="handleSection('pendingSignatures')"
-      class="flex gap-2 items-center py-2 px-4 rounded-md border-2 border-yellow-300 bg-white text-start"
-      :class="{ 'bg-yellow-300/30': currentSection == 'pendingSignatures' }"
-    >
-      <FingerPrintIcon class="size-6 text-yellow-500 font-semibold"></FingerPrintIcon>
-      <div class="grid">
-        <span class="font-medium text-base">Firmas Pendientes</span>
-      </div>
-    </button>
     <!--Electronic signature button for client-->
     <button
       @click="showElectronicSignatureModal = true"
