@@ -73,6 +73,7 @@ dynamic_document_urls = [
     path('dynamic-documents/user/<int:user_id>/signed-documents/', signature_views.get_user_signed_documents, name='get-user-signed-documents'),
     # Document versions
     path('dynamic-documents/<int:document_id>/versions/', signature_views.get_document_versions, name='get-document-versions'),
+    path('users/<int:user_id>/signature/', signature_views.get_user_signature, name='get-user-signature'),
 ]
 
 legal_update_urls = [

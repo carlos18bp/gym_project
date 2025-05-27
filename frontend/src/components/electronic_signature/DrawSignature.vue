@@ -61,6 +61,7 @@
 
 <script setup>
 import { ref, onMounted, defineEmits, defineProps } from 'vue';
+import { useUserStore } from '@/stores/user';
 
 /**
  * Component for drawing electronic signature
@@ -80,6 +81,8 @@ const signatureCanvas = ref(null);
 const isDrawing = ref(false);
 const hasDrawn = ref(false);
 let context = null;
+
+const userStore = useUserStore();
 
 /**
  * Initialize canvas and drawing context on component mount
@@ -198,33 +201,28 @@ const saveSignature = () => {
     return;
   }
   
-  // Convert canvas to blob for better file handling
-  signatureCanvas.value.toBlob((blob) => {
-    if (!blob) {
-      console.error("Failed to convert canvas to blob");
-      return;
+  // Record traceability data
+  const traceabilityData = {
+    date: new Date().toISOString(),
+    ip: '0.0.0.0', // In a real implementation, this would come from backend
+    method: 'draw'
+  };
+  
+  // Save signature in the user store
+  userStore.userSignature = {
+    has_signature: true,
+    signature: {
+      signature_image: signatureImage,
+      method: traceabilityData.method,
+      created_at: traceabilityData.date,
+      ip_address: traceabilityData.ip
     }
-    
-    // Create a File object from the blob
-    const filename = `drawn_signature_${Date.now()}.png`;
-    const file = new File([blob], filename, { type: 'image/png' });
-    
-    console.log("Created signature file from canvas:", file.name, file.size, "bytes");
-    
-    // Record traceability data
-    const traceabilityData = {
-      date: new Date().toISOString(),
-      ip: '0.0.0.0', // In a real implementation, this would come from backend
-      method: 'draw'
-    };
-    
-    // Emit save event with both the data URL and the File object
-    emit('save', {
-      signatureImage, // For preview and localStorage
-      originalFile: file, // Original file for upload
-      traceabilityData
-    });
-  }, 'image/png');
+  };
+  
+  emit('save', {
+    signatureImage,
+    traceabilityData
+  });
 };
 
 /**

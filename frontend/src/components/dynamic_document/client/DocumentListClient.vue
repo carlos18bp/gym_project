@@ -336,6 +336,9 @@ const showVersionsModal = ref(false);
 const signedDocuments = ref([]);
 const isLoadingSignedDocs = ref(false);
 
+// Use userStore to get the signature
+const signature = userStore.userSignature;
+
 // Computed property that determines which document should be highlighted
 // It first checks if the store's lastUpdatedDocumentId exists in filtered documents
 // If not, tries to use the localStorage's lastUpdatedDocumentId

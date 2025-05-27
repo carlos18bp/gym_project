@@ -462,6 +462,9 @@ const closeSignaturesModal = () => {
 const closeVersionsModal = () => {
   showVersionsModal.value = false;
 };
+
+// Use userStore to get the signature
+const signature = userStore.userSignature;
 </script>
 
 <style scoped>

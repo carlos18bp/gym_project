@@ -66,6 +66,7 @@
 
 <script setup>
 import { ref, defineEmits, defineProps } from 'vue';
+import { useUserStore } from '@/stores/user';
 
 /**
  * Component for uploading signature image
@@ -84,6 +85,7 @@ const props = defineProps({
 const fileInput = ref(null);
 const previewUrl = ref(null);
 const selectedFile = ref(null);
+const userStore = useUserStore();
 
 /**
  * Trigger file input click to open file dialog
@@ -148,6 +150,17 @@ const saveSignature = () => {
     date: new Date().toISOString(),
     ip: '0.0.0.0', // In a real implementation, this would come from backend
     method: 'upload'
+  };
+  
+  // Save signature in the user store
+  userStore.userSignature = {
+    has_signature: true,
+    signature: {
+      signature_image: previewUrl.value,
+      method: traceabilityData.method,
+      created_at: traceabilityData.date,
+      ip_address: traceabilityData.ip
+    }
   };
   
   emit('save', {

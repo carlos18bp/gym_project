@@ -180,4 +180,7 @@ const getClientName = (clientId) => {
 const downloadWordDocument = (doc) => {
   documentStore.downloadWord(doc.id, doc.title);
 };
+
+// Use userStore to get the signature
+const signature = userStore.userSignature;
 </script>

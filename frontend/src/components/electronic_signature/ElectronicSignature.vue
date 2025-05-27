@@ -147,10 +147,10 @@ const savedSignature = ref(null);
 const forceShowOptions = ref(props.initialShowOptions);
 const isSubmitting = ref(false);
 
-// Load saved signature from localStorage if exists
-const storedSignature = localStorage.getItem('userSignature');
+// Load saved signature from user store if exists
+const storedSignature = userStore.userSignature;
 if (storedSignature) {
-  savedSignature.value = JSON.parse(storedSignature);
+  savedSignature.value = storedSignature;
 }
 
 // Auto-open modal if no signature exists
@@ -194,7 +194,7 @@ const closeSignatureMode = () => {
 };
 
 /**
- * Save signature data and store in localStorage
+ * Save signature data and store in user store
  * @param {Object} data - Signature data including image and traceability info
  */
 const saveSignature = async (data) => {
@@ -261,7 +261,6 @@ const saveSignature = async (data) => {
     if (success) {
       // Save locally for component use
       savedSignature.value = data;
-      localStorage.setItem('userSignature', JSON.stringify(data));
       
       // Emit event to notify parent component
       emit('signatureSaved', data);

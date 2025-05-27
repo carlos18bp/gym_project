@@ -367,6 +367,9 @@ watch(() => props.documentId, (newValue) => {
     loadDocumentData();
   }
 });
+
+// Use userStore to get the signature
+const signature = userStore.userSignature;
 </script>
 
 <style scoped>

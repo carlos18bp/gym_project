@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVersion
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer
+from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
@@ -326,101 +327,14 @@ def get_user_pending_documents(request, user_id):
 @permission_classes([IsAuthenticated])
 def get_user_pending_documents_full(request, user_id):
     """
-    Get detailed information about documents that require a signature from a specific user.
-    
-    This endpoint provides complete information about the documents pending signature,
-    including details about all signers (not just the specified user), their signature
-    status, and signature dates.
-    
-    Parameters:
-        request: The HTTP request
-        user_id: The ID of the user to check for pending documents
-        
-    Returns:
-        A list of documents pending signature with complete signer information
+    Obtener información detallada sobre documentos que requieren la firma de un usuario específico.
     """
     try:
-        # Check if the user exists
         user = User.objects.get(pk=user_id)
-        
-        # Search for all pending signatures for this user
-        pending_signatures = DocumentSignature.objects.filter(
-            signer_id=user_id,
-            signed=False
-        ).select_related('document')
-        
-        # Get the IDs of pending documents
-        document_ids = [sig.document_id for sig in pending_signatures]
-        
-        # List to store the final response
-        result = []
-        
-        # Process each document
-        for document_id in document_ids:
-            try:
-                # Get the complete document
-                document = DynamicDocument.objects.get(pk=document_id)
-                
-                # Get all signatures related to this document
-                all_signatures = DocumentSignature.objects.filter(
-                    document_id=document_id
-                ).select_related('signer')
-                
-                # Prepare signer information
-                signers_info = []
-                for signature in all_signatures:
-                    # Get signer information
-                    signer = signature.signer
-                    signer_info = {
-                        'signature_id': signature.id,
-                        'signer_id': signer.id,
-                        'signer_email': signer.email,
-                        'signer_name': f"{signer.first_name or ''} {signer.last_name or ''}".strip() or signer.email,
-                        'signature_position': signature.signature_position,
-                        'signed': signature.signed,
-                        'signed_at': signature.signed_at,
-                        'is_current_user': signer.id == user_id
-                    }
-                    signers_info.append(signer_info)
-                
-                # Sort signers by position
-                signers_info.sort(key=lambda x: x['signature_position'])
-                
-                # Get creator information
-                creator_info = None
-                if document.created_by:
-                    creator = document.created_by
-                    creator_info = {
-                        'id': creator.id,
-                        'email': creator.email,
-                        'name': f"{creator.first_name or ''} {creator.last_name or ''}".strip() or creator.email
-                    }
-                
-                # Build object with complete document information
-                document_info = {
-                    'id': document.id,
-                    'title': document.title,
-                    'state': document.state,
-                    'state_display': document.get_state_display(),
-                    'requires_signature': document.requires_signature,
-                    'fully_signed': document.fully_signed,
-                    'created_at': document.created_at,
-                    'updated_at': document.updated_at,
-                    'creator': creator_info,
-                    'signers': signers_info,
-                    'total_signatures': len(signers_info),
-                    'completed_signatures': sum(1 for s in signers_info if s['signed']),
-                    'pending_signatures': sum(1 for s in signers_info if not s['signed'])
-                }
-                
-                result.append(document_info)
-                
-            except DynamicDocument.DoesNotExist:
-                # If the document doesn't exist, skip it
-                continue
-        
-        return Response(result, status=status.HTTP_200_OK)
-        
+        pending_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=False).select_related('document')
+        documents = [signature.document for signature in pending_signatures]
+        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
@@ -431,117 +345,35 @@ def get_user_pending_documents_full(request, user_id):
 @permission_classes([IsAuthenticated])
 def get_user_signed_documents(request, user_id):
     """
-    Get detailed information about documents that have been signed by a specific user.
-    
-    This endpoint provides complete information about the documents already signed by the user,
-    including details about all signers, their signature status, and signature dates.
-    
-    Parameters:
-        request: The HTTP request
-        user_id: The ID of the user to check for signed documents
-        
-    Returns:
-        A list of documents signed by the user with complete signer information
+    Obtener información detallada sobre documentos que han sido firmados por un usuario específico.
     """
     try:
-        # Check if the user exists
         user = User.objects.get(pk=user_id)
-        
-        # Search for all completed signatures by this user
-        signed_signatures = DocumentSignature.objects.filter(
-            signer_id=user_id,
-            signed=True
-        ).select_related('document')
-        
-        # Get the IDs of signed documents
-        document_ids = [sig.document_id for sig in signed_signatures]
-        
-        # List to store the final response
-        result = []
-        
-        # Process each document
-        for document_id in document_ids:
-            try:
-                # Get the complete document
-                document = DynamicDocument.objects.get(pk=document_id)
-                
-                # Get all signatures related to this document
-                all_signatures = DocumentSignature.objects.filter(
-                    document_id=document_id
-                ).select_related('signer')
-                
-                # Prepare signer information
-                signers_info = []
-                for signature in all_signatures:
-                    # Get signer information
-                    signer = signature.signer
-                    signer_info = {
-                        'signature_id': signature.id,
-                        'signer_id': signer.id,
-                        'signer_email': signer.email,
-                        'signer_name': f"{signer.first_name or ''} {signer.last_name or ''}".strip() or signer.email,
-                        'signature_position': signature.signature_position,
-                        'signed': signature.signed,
-                        'signed_at': signature.signed_at,
-                        'is_current_user': signer.id == user_id
-                    }
-                    signers_info.append(signer_info)
-                
-                # Sort signers by position
-                signers_info.sort(key=lambda x: x['signature_position'])
-                
-                # Get creator information
-                creator_info = None
-                if document.created_by:
-                    creator = document.created_by
-                    creator_info = {
-                        'id': creator.id,
-                        'email': creator.email,
-                        'name': f"{creator.first_name or ''} {creator.last_name or ''}".strip() or creator.email
-                    }
-                
-                # Get document versions
-                versions = []
-                for version in document.versions.all():
-                    version_info = {
-                        'id': version.id,
-                        'version_type': version.version_type,
-                        'version_display': version.get_version_type_display(),
-                        'version_number': version.version_number,
-                        'created_at': version.created_at,
-                        'file_url': request.build_absolute_uri(version.file.url) if version.file else None,
-                        'signed_by': version.signed_by.email if version.signed_by else None
-                    }
-                    versions.append(version_info)
-                
-                # Build object with complete document information
-                document_info = {
-                    'id': document.id,
-                    'title': document.title,
-                    'state': document.state,
-                    'state_display': document.get_state_display(),
-                    'requires_signature': document.requires_signature,
-                    'fully_signed': document.fully_signed,
-                    'created_at': document.created_at,
-                    'updated_at': document.updated_at,
-                    'creator': creator_info,
-                    'signers': signers_info,
-                    'total_signatures': len(signers_info),
-                    'completed_signatures': sum(1 for s in signers_info if s['signed']),
-                    'pending_signatures': sum(1 for s in signers_info if not s['signed']),
-                    'user_signed_at': next((s['signed_at'] for s in signers_info if s['is_current_user'] and s['signed']), None),
-                    'versions': versions
-                }
-                
-                result.append(document_info)
-                
-            except DynamicDocument.DoesNotExist:
-                # If the document doesn't exist, skip it
-                continue
-        
-        return Response(result, status=status.HTTP_200_OK)
-        
+        signed_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=True).select_related('document')
+        documents = [signature.document for signature in signed_signatures]
+        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+        return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_signature(request, user_id):
+    """
+    Obtener la firma del usuario especificado por su ID.
+    """
+    try:
+        user = User.objects.get(pk=user_id)
+        if hasattr(user, 'signature'):
+            serializer = UserSignatureSerializer(user.signature)
+            return Response({
+                'has_signature': True,
+                'signature': serializer.data
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'has_signature': False}, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND) 

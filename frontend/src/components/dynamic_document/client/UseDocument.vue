@@ -36,8 +36,10 @@ import ModalTransition from "@/components/layouts/animations/ModalTransition.vue
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useUserStore } from '@/stores/user';
 
 const documentStore = useDynamicDocumentStore();
+const userStore = useUserStore();
 const showUseDocumentModal = ref(false);
 const selectedDocumentId = ref(null);
 
@@ -54,6 +56,9 @@ const filteredavailableDocuments = computed(() => {
       allPublishedDocs.some((publishedDoc) => publishedDoc.id === doc.id)
     );
 });
+
+// Use userStore to get the signature
+const signature = userStore.userSignature;
 
 /**
  * Opens the modal and sets the selected document ID.

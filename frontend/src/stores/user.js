@@ -12,6 +12,7 @@ export const useUserStore = defineStore("user", {
     users: [],
     dataLoaded: false,
     currentUser: null,
+    userSignature: null,
   }),
 
   getters: {
@@ -57,7 +58,10 @@ export const useUserStore = defineStore("user", {
      * Initialize store by fetching data if not already loaded.
      */
     async init() {
-      if (!this.dataLoaded) await this.fetchUsersData();
+      if (!this.dataLoaded) {
+        await this.fetchUsersData();
+        await this.fetchUserSignature();
+      }
     },
 
     /**
@@ -306,6 +310,28 @@ export const useUserStore = defineStore("user", {
       
       // Filter the users by the provided IDs
       return this.users.filter(user => userIds.includes(user.id));
+    },
+
+    /**
+     * Fetch user's signature data from backend.
+     */
+    async fetchUserSignature() {
+      if (!this.currentUser || !this.currentUser.id) {
+        return;
+      }
+
+      try {
+        const response = await get_request(`users/${this.currentUser.id}/signature/`);
+
+        if (response.status === 200) {
+          this.userSignature = response.data;
+        } else {
+          this.userSignature = { has_signature: false };
+        }
+      } catch (error) {
+        console.error("Error fetching user signature:", error.message);
+        this.userSignature = { has_signature: false };
+      }
     }
   },
 });

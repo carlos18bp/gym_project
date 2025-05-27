@@ -29,7 +29,14 @@ class UserSignatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserSignature
         fields = ['id', 'user', 'signature_image', 'method', 'created_at', 'ip_address']
-        read_only_fields = ['created_at']  # Solo created_at es de solo lectura
+        read_only_fields = ['created_at']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.signature_image and request:
+            representation['signature_image'] = request.build_absolute_uri(instance.signature_image.url)
+        return representation
 
 
 class ActivityFeedSerializer(serializers.ModelSerializer):
