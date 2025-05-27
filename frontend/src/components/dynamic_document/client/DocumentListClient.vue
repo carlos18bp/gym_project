@@ -15,6 +15,12 @@
           'border-stroke bg-white': document.state === 'Progress',
           'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
         }"
+        @click="(e) => {
+          // Only trigger preview if click was not on the menu
+          if (!e.target.closest('.menu-container')) {
+            handlePreviewDocument(document);
+          }
+        }"
       >
         <component
           :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
@@ -31,7 +37,7 @@
               document.description
             }}</span>
           </div>
-          <Menu as="div" class="relative inline-block text-left">
+          <Menu as="div" class="relative inline-block text-left menu-container">
             <MenuButton class="flex items-center text-gray-400">
               <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
             </MenuButton>
@@ -159,7 +165,12 @@
         :key="document.id"
         :data-document-id="document.id"
         class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3 border-green-400 bg-green-300/10"
-        @click="handlePreviewDocument(document)"
+        @click="(e) => {
+          // Only trigger preview if click was not on the menu
+          if (!e.target.closest('.menu-container')) {
+            handlePreviewDocument(document);
+          }
+        }"
       >
         <svg 
           class="h-6 w-6 text-green-500" 
@@ -189,7 +200,7 @@
               Firmado el {{ formatDate(document.user_signed_at) }}
             </span>
           </div>
-          <Menu as="div" class="relative inline-block text-left">
+          <Menu as="div" class="relative inline-block text-left menu-container">
             <MenuButton class="flex items-center text-gray-400">
               <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
             </MenuButton>

@@ -13,7 +13,12 @@
           'border-yellow-400 bg-yellow-300/10': !document.fully_signed,
           'border-stroke shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
         }"
-        @click="handlePreviewDocument(document)"
+        @click="(e) => {
+          // Only trigger preview if click was not on the menu
+          if (!e.target.closest('.menu-container')) {
+            handlePreviewDocument(document);
+          }
+        }"
       >
         <svg 
           class="h-6 w-6 text-yellow-500" 
@@ -38,7 +43,7 @@
             </div>
           </div>
           
-          <Menu as="div" class="relative inline-block text-left">
+          <Menu as="div" class="relative inline-block text-left menu-container">
             <MenuButton class="flex items-center text-gray-400">
               <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
             </MenuButton>
