@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 import uuid
 import os
 
@@ -90,65 +91,54 @@ class DynamicDocument(models.Model):
         return self.fully_signed
 
 
-class DocumentVersion(models.Model):
+class DocumentSignature(models.Model):
     """
-    Model to store different versions of a document including original and signed versions.
+    Model to track signatures required for a document and their status.
     """
-    VERSION_TYPES = [
-        ('original', 'Original Document'),
-        ('signed', 'Signed Version'),
-    ]
-    
     document = models.ForeignKey(
-        DynamicDocument,
-        on_delete=models.CASCADE,
-        related_name='versions',
-        help_text="The document this version belongs to"
+        DynamicDocument, 
+        on_delete=models.CASCADE, 
+        related_name='signatures',
+        help_text="The document that requires signature"
     )
-    version_type = models.CharField(
-        max_length=20,
-        choices=VERSION_TYPES,
-        default='original',
-        help_text="Type of document version"
+    signer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='pending_signatures',
+        help_text="The user who needs to sign the document"
+    )
+    signed = models.BooleanField(
+        default=False,
+        help_text="Whether the document has been signed by this user"
+    )
+    signed_at = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="When the document was signed"
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True, 
+        blank=True, 
+        help_text="IP address from which the signature was submitted"
     )
     created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When this version was created"
-    )
-    file = models.FileField(
-        upload_to=document_version_path,
-        help_text="The document file in PDF or Word format"
-    )
-    content_type = models.CharField(
-        max_length=100,
-        help_text="The MIME type of the file"
-    )
-    version_number = models.PositiveIntegerField(
-        default=1,
-        help_text="Version number, incremented with each signature"
-    )
-    signed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='signed_document_versions',
-        help_text="The user who added their signature in this version"
+        default=timezone.now,
+        help_text="When the signature record was created"
     )
     
     class Meta:
-        ordering = ['-created_at']
-        unique_together = ('document', 'version_number', 'version_type')
-        
-    def __str__(self):
-        signer_info = f" (signed by {self.signed_by.email})" if self.signed_by else ""
-        return f"{self.document.title} - {self.get_version_type_display()} v{self.version_number}{signer_info}"
+        unique_together = ('document', 'signer')
+        ordering = ['signer__email']
     
-    def filename(self):
-        """Returns a filename for this version when downloading"""
-        doc_title = self.document.title.replace(' ', '_')
-        version_type = "original" if self.version_type == 'original' else "signed"
-        return f"{doc_title}_{version_type}_v{self.version_number}.{self.file.name.split('.')[-1]}"
+    def __str__(self):
+        status = "Signed" if self.signed else "Pending"
+        return f"{self.document.title} - {self.signer.email} ({status})"
+
+    def save(self, *args, **kwargs):
+        """Override save to check document signature status after signature changes"""
+        super().save(*args, **kwargs)
+        # Check if the document is now fully signed
+        self.document.check_fully_signed()
 
 
 class DocumentVariable(models.Model):
@@ -224,53 +214,3 @@ class RecentDocument(models.Model):
         Returns a string representation of the recent document record.
         """
         return f"{self.user.email} - {self.document.title} - {self.last_visited}"
-
-
-class DocumentSignature(models.Model):
-    """
-    Model to track signatures required for a document and their status.
-    """
-    document = models.ForeignKey(
-        DynamicDocument, 
-        on_delete=models.CASCADE, 
-        related_name='signatures',
-        help_text="The document that requires signature"
-    )
-    signer = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE,
-        related_name='pending_signatures',
-        help_text="The user who needs to sign the document"
-    )
-    signed = models.BooleanField(
-        default=False,
-        help_text="Whether the document has been signed by this user"
-    )
-    signed_at = models.DateTimeField(
-        null=True, 
-        blank=True,
-        help_text="When the document was signed"
-    )
-    ip_address = models.GenericIPAddressField(
-        null=True, 
-        blank=True, 
-        help_text="IP address from which the signature was submitted"
-    )
-    signature_position = models.PositiveIntegerField(
-        default=0,
-        help_text="Position in the signing sequence (0 means no specific order)"
-    )
-    
-    class Meta:
-        unique_together = ('document', 'signer')
-        ordering = ['signature_position', 'signer__email']
-    
-    def __str__(self):
-        status = "Signed" if self.signed else "Pending"
-        return f"{self.document.title} - {self.signer.email} ({status})"
-
-    def save(self, *args, **kwargs):
-        """Override save to check document signature status after signature changes"""
-        super().save(*args, **kwargs)
-        # Check if the document is now fully signed
-        self.document.check_fully_signed()

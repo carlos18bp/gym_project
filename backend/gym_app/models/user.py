@@ -147,7 +147,7 @@ class UserSignature(models.Model):
     method = models.CharField(max_length=10, choices=METHOD_CHOICES, help_text="Method used to create the signature.")
     
     created_at = models.DateTimeField(auto_now_add=True, help_text="When the signature was created.")
-    ip_address = models.GenericIPAddressField(help_text="IP address from which the signature was submitted.")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, help_text="IP address from which the signature was submitted.")
     
     def __str__(self):
         """String representation of the signature."""

@@ -78,6 +78,26 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     },
 
     /**
+     * Get all documents pending signature
+     * @returns {Array} - List of documents pending signature
+     */
+    pendingSignatureDocuments: (state) => {
+      return state.documents.filter(
+        (doc) => doc.state === "PendingSignatures"
+      );
+    },
+
+    /**
+     * Get all fully signed documents
+     * @returns {Array} - List of fully signed documents
+     */
+    fullySignedDocuments: (state) => {
+      return state.documents.filter(
+        (doc) => doc.state === "FullySigned"
+      );
+    },
+
+    /**
      * Get all completed documents
      * @returns {Array} - List of completed documents
      */

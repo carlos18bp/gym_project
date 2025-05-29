@@ -51,7 +51,6 @@
                   <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
                   <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                   <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de firma</th>
-                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -83,16 +82,6 @@
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ signer.signed_at ? formatDate(signer.signed_at) : '—' }}
                   </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <button 
-                      v-if="canRemoveSignature(signer)"
-                      @click="removeSignature(signer)"
-                      class="text-red-600 hover:text-red-900"
-                    >
-                      Eliminar
-                    </button>
-                    <span v-else class="text-gray-400">—</span>
-                  </td>
                 </tr>
                 
                 <!-- Compatibilidad con el formato antiguo -->
@@ -122,16 +111,6 @@
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                     {{ signature.signed_at ? formatDate(signature.signed_at) : '—' }}
                   </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                    <button 
-                      v-if="canRemoveSignature(signature)"
-                      @click="removeSignature(signature)"
-                      class="text-red-600 hover:text-red-900"
-                    >
-                      Eliminar
-                    </button>
-                    <span v-else class="text-gray-400">—</span>
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -156,15 +135,13 @@
 import { ref, watch } from 'vue';
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
-import { showConfirmationAlert } from "@/shared/confirmation_alert";
 import { showNotification } from "@/shared/notification_message";
-import { get_request, delete_request } from "@/stores/services/request_http";
+import { get_request } from "@/stores/services/request_http";
 
 /**
  * DocumentSignaturesModal Component
  * 
  * This component displays a modal with signature information for a document.
- * It allows viewing all signers and, for document creators, removing pending signatures.
  */
 
 const props = defineProps({
@@ -208,95 +185,6 @@ const formatDate = (dateString) => {
 };
 
 /**
- * Check if current user can remove this signature
- * @param {Object} signature - The signature record (old or new format)
- * @returns {boolean} - True if can remove
- */
-const canRemoveSignature = (signature) => {
-  // Only the document creator can remove signatures
-  if (!document.value || !userStore.currentUser) return false;
-  
-  // Check if the document has creator information
-  if (document.value.creator) {
-    // New format: verify if the current user is the creator
-    if (String(document.value.creator.id) !== String(userStore.currentUser.id)) {
-      return false;
-    }
-  } else {
-    // Old format: verify if the current user is the creator
-    if (document.value.created_by !== userStore.currentUser.id) {
-      return false;
-    }
-  }
-  
-  // Cannot remove signatures that are already signed
-  // New format: signature has signed field
-  if ('signed' in signature) {
-    return !signature.signed;
-  }
-  
-  return false;
-};
-
-/**
- * Remove a signature request
- * @param {Object} signature - The signature to remove (old or new format)
- */
-const removeSignature = async (signature) => {
-  if (!canRemoveSignature(signature)) return;
-  
-  // Get the signer ID
-  let signerId;
-  
-  if ('signer_id' in signature) {
-    // New format
-    signerId = signature.signer_id;
-  } else if ('id' in signature) {
-    // Old format
-    signerId = signature.id;
-  } else {
-    console.error('Unknown signature format:', signature);
-    await showNotification("Error al identificar al firmante", "error");
-    return;
-  }
-  
-  const signerName = signature.signer_name || signature.signer_email || 'este firmante';
-  
-  const confirmed = await showConfirmationAlert(
-    `¿Estás seguro de que deseas eliminar esta solicitud de firma para ${signerName}?`,
-    "Eliminar solicitud de firma",
-    "Eliminar",
-    "Cancelar"
-  );
-  
-  if (!confirmed) return;
-  
-  try {
-    console.log(`Removing signature for document ${document.value.id} and user ${signerId}`);
-    const response = await delete_request(`dynamic-documents/${document.value.id}/remove-signature/${signerId}/`);
-    console.log('Signature removal response:', response);
-    
-    if (response.status === 200) {
-      await showNotification("Solicitud de firma eliminada correctamente", "success");
-      
-      // Refresh document data
-      loadDocumentData();
-      
-      // Notify parent to refresh document list
-      emit('refresh');
-    } else {
-      throw new Error(`Error removing signature request: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Error removing signature request:", error);
-    if (error.response) {
-      console.error("Error response data:", error.response.data);
-    }
-    await showNotification("Error al eliminar la solicitud de firma", "error");
-  }
-};
-
-/**
  * Load document data with signatures
  */
 const loadDocumentData = async () => {
@@ -306,15 +194,11 @@ const loadDocumentData = async () => {
   }
   
   try {
-    console.log(`Loading document with ID: ${props.documentId}`);
-    
     // Get current user ID
     const userId = userStore.currentUser.id;
-    console.log('Current user ID:', userId);
     
     // Use the endpoint that returns all document data
     const response = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
-    console.log('Response from pending-documents-full endpoint:', response);
     
     if (response.status !== 200) {
       throw new Error(`Error loading documents: ${response.status}`);
@@ -324,10 +208,8 @@ const loadDocumentData = async () => {
     const documentData = response.data.find(doc => doc.id === props.documentId);
     
     if (!documentData) {
-      console.log('Document not found in response, trying direct API lookup');
       // If not found, try to find directly
       const docResponse = await get_request(`dynamic-documents/${props.documentId}/`);
-      console.log('Direct document response:', docResponse);
       
       if (docResponse.status !== 200) {
         throw new Error(`Error loading document: ${docResponse.status}`);
@@ -338,11 +220,8 @@ const loadDocumentData = async () => {
       document.value = docResponse.data;
     } else {
       // Use the document found in the new endpoint response
-      console.log('Document found in response:', documentData);
       document.value = documentData;
     }
-    
-    console.log('Document loaded with signatures:', document.value);
   } catch (error) {
     console.error("Error loading document data:", error);
     if (error.response) {
@@ -353,23 +232,19 @@ const loadDocumentData = async () => {
   }
 };
 
-// Watch for changes in visibility and documentId
+// Watch for changes in visibility
 watch(() => props.isVisible, (newValue) => {
-  if (newValue && props.documentId) {
+  if (newValue) {
     loadDocumentData();
-  } else {
-    document.value = null;
   }
 });
 
+// Watch for changes in documentId
 watch(() => props.documentId, (newValue) => {
-  if (props.isVisible && newValue) {
+  if (newValue && props.isVisible) {
     loadDocumentData();
   }
 });
-
-// Use userStore to get the signature
-const signature = userStore.userSignature;
 </script>
 
 <style scoped>

@@ -6,7 +6,7 @@
       :key="document.id"
       :data-document-id="document.id"
       :class="[
-        'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
+        'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
         (document.state === 'Published' || document.state === 'FullySigned')
           ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
           : 'border-stroke bg-white hover:bg-gray-100',
@@ -22,7 +22,7 @@
             : 'size-8 text-secondary'
         "
       />
-      <div class="flex justify-between items-center w-full">
+      <div class="flex-1 flex justify-between items-center">
         <div class="grid gap-1">
           <div class="flex items-center">
             <span class="text-base font-medium">{{ document.title }}</span>
@@ -159,173 +159,14 @@
   <!-- Regular Document Lists (if no promptDocuments) -->
   <template v-else-if="!props.promptDocuments">
     <!-- Sección Documentos Jurídicos (sin firmas) -->
-    <div class="mb-10 block w-full">
-      <h2 v-if="lawyerManagedNonFullySignedDocuments.filter(doc => !doc.requires_signature).length > 0" class="text-lg font-medium text-gray-800 mt-8 mb-4 pb-2 border-b border-gray-300">Documentos Jurídicos</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
       <div
         v-for="document in lawyerManagedNonFullySignedDocuments.filter(doc => !doc.requires_signature)"
-      :key="document.id"
-      :data-document-id="document.id"
-      :class="[
-        'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
-          (document.state === 'Published' || document.state === 'FullySigned') 
-          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
-          : 'border-stroke bg-white hover:bg-gray-100',
-        highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
-      ]"
-      :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
-    >
-      <component
-          :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
-        :class="
-            (document.state === 'Published' || document.state === 'FullySigned')
-            ? 'size-8 text-green-500'
-            : 'size-8 text-secondary'
-        "
-      />
-      <div class="flex justify-between items-center w-full">
-        <div class="grid gap-1">
-          <div class="flex items-center">
-            <span class="text-base font-medium">{{ document.title }}</span>
-            
-            <!-- Signature icon with tooltip -->
-            <div 
-              v-if="document.requires_signature" 
-              class="relative group ml-2"
-            >
-              <!-- Check icon for fully signed/formalized documents -->
-              <svg 
-                v-if="document.fully_signed"
-                class="h-4 w-4 text-green-500" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-              
-              <!-- Check icon for documents the current user has signed but others haven't -->
-              <svg 
-                v-else-if="getCurrentUserSignature(document)?.signed"
-                class="h-4 w-4 text-blue-500" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-              >
-                <path d="M20 6L9 17l-5-5"></path>
-              </svg>
-              
-              <!-- Pen icon for documents requiring the user's signature -->
-              <svg 
-                v-else-if="getCurrentUserSignature(document)"
-                class="h-4 w-4 text-yellow-500" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-              >
-                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-              </svg>
-              
-              <!-- Regular pen icon for documents requiring signatures from others -->
-              <svg 
-                v-else
-                class="h-4 w-4 text-blue-500" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-              >
-                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-              </svg>
-              
-              <!-- Tooltip -->
-              <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
-                {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
-              </div>
-            </div>
-          </div>
-          <span class="text-sm font-regular text-gray-400">
-              {{
-                document.state === 'Published' ? 'Publicado' :
-                document.state === 'Draft' ? 'Borrador' :
-                document.state === 'Progress' ? 'En progreso' :
-                document.state === 'Completed' ? 'Completado' :
-                document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
-                document.state === 'FullySigned' ? 'Completamente firmado' :
-                'Desconocido'
-              }}
-          </span>
-        </div>
-  
-        <Menu as="div" class="relative inline-block text-left">
-          <MenuButton class="flex items-center text-gray-400">
-            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-          </MenuButton>
-          <transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="transform opacity-0 scale-95"
-            enter-to-class="transform opacity-100 scale-100"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="transform opacity-100 scale-100"
-            leave-to-class="transform opacity-0 scale-95"
-          >
-            <MenuItems
-              class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
-              :class="[
-                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
-              ]"
-            >
-              <MenuItem
-                v-for="option in getDocumentOptions(document)"
-                :key="option.label"
-              >
-                <button
-                  class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
-                  :disabled="option.disabled"
-                  @click="
-                    !option.disabled && handleOption(option.action, document)
-                  "
-                  :class="{
-                    'opacity-50 cursor-not-allowed': option.disabled,
-                    'cursor-pointer': !option.disabled,
-                  }"
-                >
-                  <NoSymbolIcon
-                    v-if="option.disabled"
-                    class="size-5 text-gray-400"
-                    aria-hidden="true"
-                  />
-                  {{ option.label }}
-                </button>
-              </MenuItem>
-            </MenuItems>
-          </transition>
-        </Menu>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sección Documentos para Firmar (con firmas) -->
-    <div class="mb-10 block w-full">
-      <h2 v-if="lawyerManagedNonFullySignedDocuments.filter(doc => doc.requires_signature).length > 0" class="text-lg font-medium text-gray-800 mt-8 mb-4 pb-2 border-b border-gray-300">Documentos para Firmar</h2>
-      <div
-        v-for="document in lawyerManagedNonFullySignedDocuments.filter(doc => doc.requires_signature)"
         :key="document.id"
         :data-document-id="document.id"
         :class="[
-          'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
-          (document.state === 'Published' || document.state === 'FullySigned') 
+          'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
+            (document.state === 'Published' || document.state === 'FullySigned') 
             ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
             : 'border-stroke bg-white hover:bg-gray-100',
           highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
@@ -333,96 +174,28 @@
         :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
       >
         <component
-          :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
+            :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
           :class="
-            (document.state === 'Published' || document.state === 'FullySigned')
+              (document.state === 'Published' || document.state === 'FullySigned')
               ? 'size-8 text-green-500'
               : 'size-8 text-secondary'
           "
         />
-        <div class="flex justify-between items-center w-full">
+        <div class="flex-1 flex justify-between items-center">
           <div class="grid gap-1">
             <div class="flex items-center">
               <span class="text-base font-medium">{{ document.title }}</span>
-              
-              <!-- Signature icon with tooltip -->
-              <div 
-                v-if="document.requires_signature" 
-                class="relative group ml-2"
-              >
-                <!-- Check icon for fully signed/formalized documents -->
-                <svg 
-                  v-if="document.fully_signed"
-                  class="h-4 w-4 text-green-500" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round"
-                >
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                
-                <!-- Check icon for documents the current user has signed but others haven't -->
-                <svg 
-                  v-else-if="getCurrentUserSignature(document)?.signed"
-                  class="h-4 w-4 text-blue-500" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round"
-                >
-                  <path d="M20 6L9 17l-5-5"></path>
-                </svg>
-                
-                <!-- Pen icon for documents requiring the user's signature -->
-                <svg 
-                  v-else-if="getCurrentUserSignature(document)"
-                  class="h-4 w-4 text-yellow-500" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round"
-                >
-                  <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                </svg>
-                
-                <!-- Regular pen icon for documents requiring signatures from others -->
-                <svg 
-                  v-else
-                  class="h-4 w-4 text-blue-500" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  stroke-width="2" 
-                  stroke-linecap="round" 
-                  stroke-linejoin="round"
-                >
-                  <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                </svg>
-                
-                <!-- Tooltip -->
-                <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
-                  {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
-                </div>
-              </div>
             </div>
             <span class="text-sm font-regular text-gray-400">
-              {{
-                document.state === 'Published' ? 'Publicado' :
-                document.state === 'Draft' ? 'Borrador' :
-                document.state === 'Progress' ? 'En progreso' :
-                document.state === 'Completed' ? 'Completado' :
-                document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
-                document.state === 'FullySigned' ? 'Completamente firmado' :
-                'Desconocido'
-              }}
+                {{
+                  document.state === 'Published' ? 'Publicado' :
+                  document.state === 'Draft' ? 'Borrador' :
+                  document.state === 'Progress' ? 'En progreso' :
+                  document.state === 'Completed' ? 'Completado' :
+                  document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
+                  document.state === 'FullySigned' ? 'Completamente firmado' :
+                  'Desconocido'
+                }}
             </span>
           </div>
     
@@ -473,70 +246,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Sección Documentos Firmados -->
-    <div class="mb-10 block w-full">
-      <h2 v-if="lawyerFullySignedDocuments.length > 0" class="text-lg font-medium text-gray-800 mt-8 mb-4 pb-2 border-b border-gray-300">Documentos Firmados</h2>
-      <div
-        v-for="document in lawyerFullySignedDocuments"
-        :key="document.id"
-        :data-document-id="document.id"
-        :class="[
-          'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
-          (document.state === 'Published' || document.state === 'FullySigned') 
-            ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
-            : 'border-stroke bg-white hover:bg-gray-100',
-          highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
-        ]"
-        :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
-      >
-        <component
-          :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
-          :class="
-            (document.state === 'Published' || document.state === 'FullySigned')
-              ? 'size-8 text-green-500'
-              : 'size-8 text-secondary'
-          "
-        />
-        <div class="flex justify-between items-center w-full">
-          <div class="grid gap-1">
-            <div class="flex items-center">
-              <span class="text-base font-medium">{{ document.title }}</span>
-              <div v-if="document.requires_signature" class="relative group ml-2">
-                <svg v-if="document.fully_signed" class="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                <svg v-else-if="getCurrentUserSignature(document)?.signed" class="h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
-                <svg v-else-if="getCurrentUserSignature(document)" class="h-4 w-4 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                <svg v-else class="h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
-                  {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
-                </div>
-              </div>
-            </div>
-            <span class="text-sm font-regular text-gray-400">
-             {{ document.state === 'Published' ? 'Publicado' : document.state === 'Draft' ? 'Borrador' : document.state === 'Progress' ? 'En progreso' : document.state === 'Completed' ? 'Completado' : document.state === 'PendingSignatures' ? 'Pendiente de firmas' : document.state === 'FullySigned' ? 'Completamente firmado' : 'Desconocido' }}
-            </span>
-          </div>
-          <Menu as="div" class="relative inline-block text-left">
-            <MenuButton class="flex items-center text-gray-400"><EllipsisVerticalIcon class="size-6" aria-hidden="true" /></MenuButton>
-            <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-              <MenuItems class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5" :class="[ props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto' ]">
-                <MenuItem v-for="option in getDocumentOptions(document)" :key="option.label">
-                  <button class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2" :disabled="option.disabled" @click="!option.disabled && handleOption(option.action, document)" :class="{ 'opacity-50 cursor-not-allowed': option.disabled, 'cursor-pointer': !option.disabled, }">
-                    <NoSymbolIcon v-if="option.disabled" class="size-5 text-gray-400" aria-hidden="true" />{{ option.label }}
-                  </button>
-                </MenuItem>
-              </MenuItems>
-            </transition>
-          </Menu>
-        </div>
-      </div>
-    </div>
   </template>
-
-  <!-- "No documents" message -->
-  <div v-if="showNoDocumentsMessage" class="text-center text-gray-500 py-8">
-    No hay documentos disponibles para mostrar.
-    </div>
 
   <!-- Edit Document Modal -->
   <ModalTransition v-show="showEditDocumentModal">
@@ -556,13 +266,6 @@
     :documentId="selectedDocumentId"
     @close="closeSignaturesModal"
     @refresh="handleRefresh"
-  />
-  
-  <!-- Versions Modal -->
-  <DocumentVersionsModal 
-    :isVisible="showVersionsModal"
-    :documentId="selectedDocumentId"
-    @close="closeVersionsModal"
   />
 
   <!-- Electronic Signature Modal -->
@@ -589,6 +292,7 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import {
   EllipsisVerticalIcon,
@@ -596,6 +300,7 @@ import {
   CheckCircleIcon,
   NoSymbolIcon,
   XMarkIcon,
+  DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
@@ -612,19 +317,17 @@ import {
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
-import DocumentVersionsModal from "@/components/dynamic_document/common/DocumentVersionsModal.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const router = useRouter();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
 const showSignaturesModal = ref(false);
-const showVersionsModal = ref(false);
 const selectedDocumentId = ref(null);
-const lastUpdatedDocId = ref(null);
 
 // Reactive state for pending and signed documents
 const pendingSignatureDocuments = ref([]);
@@ -739,6 +442,7 @@ const highlightedDocId = computed(() => {
 const fetchLawyerDocuments = async () => {
   try {
     const userId = userStore.currentUser.id;
+
     const pendingResponse = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
     const signedResponse = await get_request(`dynamic-documents/user/${userId}/signed-documents/`);
 
@@ -751,12 +455,16 @@ const fetchLawyerDocuments = async () => {
     }
   } catch (error) {
     console.error('Error fetching lawyer documents:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error status:', error.response.status);
+    }
   }
 };
 
 /**
  * Get the available options for a document based on its state.
- * If the document has undefined variables, the "Publicar" option is disabled.
+ * If the document has undefined variables, the "Publish" option is disabled.
  * @param {object} document - The document to evaluate.
  * @returns {Array} - List of options.
  */
@@ -766,19 +474,12 @@ const getDocumentOptions = (document) => {
     { label: "Eliminar", action: "delete" },
     { label: "Previsualización", action: "preview" },
   ];
-
-  // Log for debugging
-  console.log('Document ID:', document.id, 'Title:', document.title);
-  console.log('Document state:', document.state);
-  console.log('Document requires signature:', document.requires_signature);
-  console.log('Document signatures:', document.signatures);
   
   // Get current user signature status FIRST - before any other logic
   let currentUserNeedsToSign = false;
   
   if (document.requires_signature && document.signatures && document.signatures.length > 0) {
     const currentUserId = String(userStore.currentUser.id);
-    console.log('Current user ID:', currentUserId);
     
     // Find if current user needs to sign
     const userSignature = document.signatures.find(sig => 
@@ -786,8 +487,6 @@ const getDocumentOptions = (document) => {
     );
     
     currentUserNeedsToSign = !!userSignature;
-    console.log('User signature found:', userSignature);
-    console.log('Current user needs to sign:', currentUserNeedsToSign);
   }
 
   // Add state-based options with validations
@@ -797,27 +496,25 @@ const getDocumentOptions = (document) => {
       action: "publish",
       disabled: !canPublishDocument(document),
     });
-  } else if (document.state === "Published" || document.state === "FullySigned") {
+  } else if (document.state === "Published") {
     baseOptions.push({
       label: "Mover a Borrador",
       action: "draft",
       disabled: false,
     });
     
-    // Add signature-related options for published or fully signed documents
-    if (document.requires_signature || document.state === "FullySigned") {
-      baseOptions.push({
-        label: "Ver firmas",
-        action: "view_signatures",
-        disabled: false,
-      });
-      
-      baseOptions.push({
-        label: "Ver versiones",
-        action: "view_versions",
-        disabled: false,
-      });
-    }
+    // Add option to formalize document and add signatures
+    baseOptions.push({
+      label: "Formalizar y Agregar Firmas",
+      action: "formalize",
+      disabled: false,
+    });
+  
+    baseOptions.push({
+      label: "Mover a Borrador",
+      action: "draft",
+      disabled: false,
+    });
   }
   
   // Add sign option if the lawyer needs to sign
@@ -852,7 +549,6 @@ const canPublishDocument = (document) => {
 const getCurrentUserSignature = (document) => {
   // First, verify document has signatures and requires them
   if (!document.signatures || !document.requires_signature) {
-    console.log(`Document ${document.id} has no signatures or doesn't require them`);
     return null;
   }
   
@@ -860,16 +556,7 @@ const getCurrentUserSignature = (document) => {
   const currentUserId = String(userStore.currentUser.id);
   
   // Find signature for current user
-  const signature = document.signatures.find(sig => String(sig.signer_id) === currentUserId);
-  
-  // Log for debugging
-  if (signature) {
-    console.log(`Found signature for user ${currentUserId} in document ${document.id}:`, signature);
-  } else {
-    console.log(`No signature found for user ${currentUserId} in document ${document.id}`);
-  }
-  
-  return signature;
+  return document.signatures.find(sig => String(sig.signer_id) === currentUserId);
 };
 
 /**
@@ -929,23 +616,18 @@ const handleOption = async (action, document) => {
       break;
     case "publish":
       await publishDocument(document);
-      // The notification is omitted because an automatic redirection will take place.
       break;
     case "draft":
       await moveToDraft(document);
-      // The notification is omitted because an automatic redirection will take place.
       break;
     case "preview":
       openPreviewModal(document);
       break;
-    case "view_signatures":
-      viewDocumentSignatures(document);
-      break;
-    case "view_versions":
-      viewDocumentVersions(document);
-      break;
     case "sign_document":
       signDocument(document);
+      break;
+    case "formalize":
+      formalizeDocument(document);
       break;
     default:
       console.warn(`Acción desconocida: ${action}`);
@@ -1138,8 +820,6 @@ onMounted(async () => {
   fetchLawyerDocuments();
 });
 
-// New functions to handle signature-related actions
-
 /**
  * Navigate to signature view for a document.
  * @param {object} document - The document to view signatures for.
@@ -1150,22 +830,11 @@ const viewDocumentSignatures = (document) => {
 };
 
 /**
- * Navigate to versions view for a document.
- * @param {object} document - The document to view versions for.
- */
-const viewDocumentVersions = (document) => {
-  selectedDocumentId.value = document.id;
-  showVersionsModal.value = true;
-};
-
-/**
  * Sign the document.
  * @param {object} document - The document to sign.
  */
 const signDocument = async (document) => {
   try {
-    console.log('Intentando firmar documento:', document.id);
-    
     // First check if the user has a signature
     if (!userStore.currentUser.has_signature) {
       // Show warning and open the signature modal
@@ -1194,12 +863,9 @@ const signDocument = async (document) => {
     if (!confirmed) {
       return;
     }
-
-    console.log('Enviando solicitud para firmar documento', document.id);
     
     // Call the API to sign the document using create_request
     const response = await create_request(`dynamic-documents/${document.id}/sign/${userStore.currentUser.id}/`, {});
-    console.log('Respuesta del servidor:', response);
 
     if (response.status !== 200 && response.status !== 201) {
       throw new Error(`Error al firmar: ${response.statusText}`);
@@ -1212,22 +878,26 @@ const signDocument = async (document) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Refresh the document data
-    await fetchLawyerDocuments(); // Asegurar que la lista de documentos se actualice
+    await fetchLawyerDocuments(); 
     
-    // Highlight the document
-    if (document.id) {
-      documentStore.lastUpdatedDocumentId = document.id;
-      localStorage.setItem('lastUpdatedDocumentId', document.id);
-      forceHighlight(document.id);
-    }
+    // Update the last updated document ID
+    documentStore.lastUpdatedDocumentId = document.id;
+    localStorage.setItem('lastUpdatedDocumentId', document.id);
+    
+    // Force highlight the signed document
+    forceHighlight(document.id);
     
     // Refresh the page to ensure all data is up to date
     setTimeout(() => {
       window.location.reload();
     }, 1500);
   } catch (error) {
-    console.error('Error al firmar el documento:', error);
-    await showNotification(`Error al firmar el documento: ${error.message}`, "error");
+    console.error('Error signing document:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error status:', error.response.status);
+    }
+    await showNotification(`Error signing document: ${error.message}`, "error");
   }
 };
 
@@ -1236,13 +906,25 @@ const closeSignaturesModal = () => {
   showSignaturesModal.value = false;
 };
 
-const closeVersionsModal = () => {
-  showVersionsModal.value = false;
-};
-
 const handleRefresh = async () => {
   // Refresh the document list
   await documentStore.init();
+};
+
+/**
+ * Formalize document and add signatures
+ * @param {object} document - The document to formalize
+ */
+const formalizeDocument = async (document) => {
+  try {
+    // Navigate to the document form with formalize mode
+    router.push({
+      path: `/dynamic_document_dashboard/document/use/formalize/${document.id}/${document.title}`,
+    });
+  } catch (error) {
+    console.error('Error al formalizar el documento:', error);
+    await showNotification('Error al formalizar el documento', 'error');
+  }
 };
 </script>
 

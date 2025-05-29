@@ -17,7 +17,6 @@ def create_legal_request(request):
     try:
         # Parse the main data from the request
         main_data = json.loads(request.data.get('mainData', '{}'))
-        print("Received Main Data:", main_data)  # Debugging
 
         # Validate request type
         try:

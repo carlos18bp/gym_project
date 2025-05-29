@@ -1,9 +1,7 @@
 <template>
   <div>
     <!-- Documentos en progreso y completados -->
-    <div class="mb-6">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">Mis Documentos</h2>
-      
+    <div class="mb-6">      
       <!-- Document Item -->
       <div
         v-for="document in filteredDocuments"
@@ -103,28 +101,7 @@
                       >
                         Descargar Word
                       </button>
-                    </MenuItem>
-                    
-                    <!-- Options for documents that require signatures -->
-                    <template v-if="document.requires_signature">
-                      <MenuItem>
-                        <button
-                          class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                          @click="viewDocumentSignatures(document)"
-                        >
-                          Ver firmas
-                        </button>
-                      </MenuItem>
-                      <MenuItem>
-                        <button
-                          class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                          @click="viewDocumentVersions(document)"
-                        >
-                          Ver versiones
-                        </button>
-                      </MenuItem>
-                    </template>
-                    
+                    </MenuItem>                    
                     <MenuItem>
                       <button
                         class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
@@ -140,21 +117,21 @@
           </Menu>
         </div>
       </div>
-
-      <!-- No documents message -->
-      <div
-        v-if="filteredDocuments.length === 0"
-        class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
-      >
-        <p class="text-lg font-semibold">
-          No hay documentos disponibles para mostrar.
-        </p>
-        <p class="text-sm">
-          Contacta a tu abogado para gestionar tus documentos.
-        </p>
-      </div>
     </div>
     
+    <!-- No documents message -->
+    <div
+      v-if="filteredDocuments.length === 0"
+      class="col-span-full mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-8 rounded-xl"
+    >
+      <p class="text-lg font-semibold mb-2">
+        No hay documentos disponibles para mostrar.
+      </p>
+      <p class="text-sm">
+        Contacta a tu abogado para gestionar tus documentos.
+      </p>
+    </div>
+
     <!-- Edit Document Modal -->
     <ModalTransition v-show="showEditDocumentModal">
       <UseDocumentByClient
@@ -186,13 +163,6 @@
     @close="closeSignaturesModal"
     @refresh="handleRefresh"
   />
-  
-  <!-- Versions Modal -->
-  <DocumentVersionsModal 
-    :isVisible="showVersionsModal"
-    :documentId="selectedDocumentId"
-    @close="closeVersionsModal"
-  />
 </template>
 
 <script setup>
@@ -220,7 +190,6 @@ import {
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { useRecentViews } from '@/composables/useRecentViews';
 import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
-import DocumentVersionsModal from "@/components/dynamic_document/common/DocumentVersionsModal.vue";
 import { get_request } from "@/stores/services/request_http";
 
 // Store instances
@@ -235,7 +204,6 @@ const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 const showSignaturesModal = ref(false);
-const showVersionsModal = ref(false);
 const documents = ref([]);
 const isLoading = ref(false);
 
@@ -569,19 +537,8 @@ const handlePreviewDocument = async (document) => {
  * @param {object} document - The document to view signatures for.
  */
 const viewDocumentSignatures = (document) => {
-  console.log('Abriendo modal de firmas para documento:', document.id);
   selectedDocumentId.value = document.id;
   showSignaturesModal.value = true;
-};
-
-/**
- * Navigate to versions view for a document.
- * @param {object} document - The document to view versions for.
- */
-const viewDocumentVersions = (document) => {
-  console.log('Abriendo modal de versiones para documento:', document.id);
-  selectedDocumentId.value = document.id;
-  showVersionsModal.value = true;
 };
 
 /**
@@ -592,22 +549,14 @@ const closeSignaturesModal = () => {
 };
 
 /**
- * Closes the versions modal and resets the selected document.
- */
-const closeVersionsModal = () => {
-  showVersionsModal.value = false;
-};
-
-/**
  * Refreshes the document data after an action (like signing).
  */
 const handleRefresh = async () => {
-  console.log('Refrescando datos...');
-  // Recargar los documentos usando el store
+  // Reload documents using the store
   await documentStore.init(true);
   
-  // Si estamos en un componente que muestra datos basados en el store, 
-  // asegurarse de que los datos se actualicen
+  // If we're in a component that displays store-based data,
+  // ensure the data is updated
   const docExists = filteredDocuments.value.some(doc => 
     String(doc.id) === String(selectedDocumentId.value)
   );
@@ -620,7 +569,7 @@ const handleRefresh = async () => {
 };
 
 /**
- * Función para formatear fechas
+ * Function to format dates
  */
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';

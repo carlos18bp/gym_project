@@ -16,28 +16,6 @@
       </div>
     </button>
     <button
-      @click="handleSection('documentFinished')"
-      class="flex gap-2 items-center py-2 px-4 rounded-xl border-2 border-yellow-300 bg-white text-start"
-      :class="{ 'bg-yellow-300/30': currentSection == 'documentFinished' }"
-    >
-      <FolderIcon class="size-6 text-yellow-500 font-semibold"></FolderIcon>
-      <div class="grid">
-        <span class="font-medium text-base">Documentos Finalizados</span>
-        <span class="text-gray-400 font-regular text-sm">Clientes</span>
-      </div>
-    </button>
-    <button
-      @click="handleSection('documentInProgress')"
-      class="flex gap-2 items-center py-2 px-4 rounded-xl border-2 border-yellow-300 bg-white text-start"
-      :class="{ 'bg-yellow-300/30': currentSection == 'documentInProgress' }"
-    >
-      <FolderIcon class="size-6 text-yellow-500 font-semibold"></FolderIcon>
-      <div class="grid">
-        <span class="font-medium text-base">Documentos en Progreso</span>
-        <span class="text-gray-400 font-regular text-sm">Clientes</span>
-      </div>
-    </button>
-    <button
       @click="showElectronicSignatureModal = true"
       class="flex gap-2 items-center py-2 px-4 rounded-xl border-2 border-purple-300 bg-white text-start hover:bg-purple-200"
     >

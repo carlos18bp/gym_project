@@ -204,7 +204,6 @@ const saveSignature = () => {
   // Record traceability data
   const traceabilityData = {
     date: new Date().toISOString(),
-    ip: '0.0.0.0', // In a real implementation, this would come from backend
     method: 'draw'
   };
   
@@ -214,8 +213,7 @@ const saveSignature = () => {
     signature: {
       signature_image: signatureImage,
       method: traceabilityData.method,
-      created_at: traceabilityData.date,
-      ip_address: traceabilityData.ip
+      created_at: traceabilityData.date
     }
   };
   

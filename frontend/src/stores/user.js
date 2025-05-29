@@ -213,7 +213,13 @@ export const useUserStore = defineStore("user", {
         const response = await upload_file_request(`users/update_signature/${userId}/`, formData);
 
         if (response.status === 200 || response.status === 201) {
-          // If this is the current user, update the has_signature property
+          // Update the user signature data
+          this.userSignature = {
+            has_signature: true,
+            signature: response.data
+          };
+          
+          // Update has_signature in currentUser
           if (this.currentUser && this.currentUser.id == userId) {
             this.currentUser.has_signature = true;
           }
@@ -325,12 +331,22 @@ export const useUserStore = defineStore("user", {
 
         if (response.status === 200) {
           this.userSignature = response.data;
+          // Update has_signature in currentUser
+          if (this.currentUser) {
+            this.currentUser.has_signature = response.data.has_signature;
+          }
         } else {
           this.userSignature = { has_signature: false };
+          if (this.currentUser) {
+            this.currentUser.has_signature = false;
+          }
         }
       } catch (error) {
         console.error("Error fetching user signature:", error.message);
         this.userSignature = { has_signature: false };
+        if (this.currentUser) {
+          this.currentUser.has_signature = false;
+        }
       }
     }
   },

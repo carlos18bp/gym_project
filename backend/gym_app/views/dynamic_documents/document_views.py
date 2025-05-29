@@ -18,7 +18,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 from gym_app.models.dynamic_document import DynamicDocument, RecentDocument
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, RecentDocumentSerializer
 from django.utils import timezone
-from .signature_utils import add_signatures_to_pdf_context, add_signatures_to_word_document
 
 
 @api_view(['POST'])
@@ -256,9 +255,6 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         </body>
         </html>
         """
-
-        # Add signatures to the document if applicable
-        html_content = add_signatures_to_pdf_context(document, html_content)
 
         # Generate the PDF with xhtml2pdf
         pisa_status = pisa.CreatePDF(
@@ -543,9 +539,6 @@ def download_dynamic_document_word(request, pk):
                 # Ensure Calibri is applied to the horizontal rule
                 for run in hr_paragraph.runs:
                     run.font.name = font_name
-        
-        # Add signatures to the document if applicable
-        doc = add_signatures_to_word_document(document, doc)
         
         # Save the document to a buffer
         docx_buffer = io.BytesIO()

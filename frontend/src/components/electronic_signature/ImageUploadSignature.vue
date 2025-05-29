@@ -117,7 +117,6 @@ const handleFileChange = (event) => {
   
   // Store the file reference
   selectedFile.value = file;
-  console.log("Selected file:", file.name, file.type, file.size);
   
   // Create preview URL
   const reader = new FileReader();
@@ -148,7 +147,6 @@ const saveSignature = () => {
   // Record traceability data
   const traceabilityData = {
     date: new Date().toISOString(),
-    ip: '0.0.0.0', // In a real implementation, this would come from backend
     method: 'upload'
   };
   
@@ -158,8 +156,7 @@ const saveSignature = () => {
     signature: {
       signature_image: previewUrl.value,
       method: traceabilityData.method,
-      created_at: traceabilityData.date,
-      ip_address: traceabilityData.ip
+      created_at: traceabilityData.date
     }
   };
   

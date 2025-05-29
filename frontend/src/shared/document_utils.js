@@ -14,14 +14,19 @@ const { registerView } = useRecentViews();
  */
 export const openPreviewModal = (document) => {
   let processedContent = document.content;
-  document.variables.forEach((variable) => {
-    const regex = new RegExp(`{{\s*${variable.name_en}\s*}}`, "g");
-    processedContent = processedContent.replace(regex, variable.value) || "";
-  });
+  
+  // Only process variables for specific states
+  const statesToProcess = ['Completed', 'PendingSignatures', 'FullySigned'];
+  if (statesToProcess.includes(document.state) && document.variables && Array.isArray(document.variables)) {
+    document.variables.forEach((variable) => {
+      const regex = new RegExp(`{{\s*${variable.name_en}\s*}}`, "g");
+      processedContent = processedContent.replace(regex, variable.value || "");
+    });
+  }
 
   previewDocumentData.value = {
     title: document.title,
-    content: document.assigned_to ? processedContent : document.content,
+    content: processedContent,
   };
   showPreviewModal.value = true;
   
@@ -54,9 +59,11 @@ export async function previewDocument(document, store) {
  *
  * @param {string} url - The API endpoint for the file.
  * @param {string} filename - The filename for the downloaded file.
+ * @param {string} mimeType - The MIME type of the file (default: "application/pdf").
  * @throws {Error} Throws an error if the request fails or no data is received.
  */
 export const downloadFile = async (url, filename, mimeType = "application/pdf") => {
+  let objectUrl = null;
   try {
     // Make a GET request with responseType: "blob"
     const response = await get_request(url, "blob");
@@ -65,19 +72,37 @@ export const downloadFile = async (url, filename, mimeType = "application/pdf") 
       throw new Error("[ERROR] No response data received.");
     }
 
+    // Check if the response is an error message
+    if (response.data instanceof Blob && response.data.size < 1000) {
+      const text = await response.data.text();
+      if (text.includes("error") || text.includes("Error")) {
+        throw new Error(`[ERROR] Server returned error: ${text}`);
+      }
+    }
+
     // Convert the response into a Blob
     const blob = new Blob([response.data], { type: mimeType });
 
     // Create a download link
     const link = document.createElement("a");
-    link.href = window.URL.createObjectURL(blob);
+    objectUrl = window.URL.createObjectURL(blob);
+    link.href = objectUrl;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
 
   } catch (error) {
     console.error("[ERROR] Error downloading file:", error);
+    throw error; // Re-throw the error to be handled by the caller
+  } finally {
+    // Clean up
+    if (objectUrl) {
+      window.URL.revokeObjectURL(objectUrl);
+    }
+    const link = document.querySelector('a[download]');
+    if (link) {
+      document.body.removeChild(link);
+    }
   }
 };
 
