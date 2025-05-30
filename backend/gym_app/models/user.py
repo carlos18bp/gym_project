@@ -98,8 +98,10 @@ class User(AbstractUser):
     ROLE_CHOICES = [
         ('client', 'Client'),
         ('lawyer', 'Lawyer'),
+        ('corporate_client', 'Corporate Client'),
+        ('basic', 'Basic'),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
 
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
