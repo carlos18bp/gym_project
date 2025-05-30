@@ -29,6 +29,7 @@ from xhtml2pdf import pisa
 from reportlab.pdfgen import canvas
 from rest_framework.views import APIView
 from gym_app.serializers.dynamic_document import DocumentVariableSerializer
+from gym_app.views.layouts.sendEmail import EmailMessage
 
 User = get_user_model()
 
@@ -176,7 +177,41 @@ def sign_document(request, document_id, user_id):
             saved_signature = DocumentSignature.objects.get(id=signature_record.id)
             if not saved_signature.signed:
                 raise Exception("Signature was not saved correctly")
-                
+            
+            # === Enviar correo a todos los firmantes ===
+            all_signatures = document.signatures.all()
+            signed_signatures = all_signatures.filter(signed=True)
+            unsigned_signatures = all_signatures.filter(signed=False)
+            
+            # Correos de todos los firmantes
+            all_emails = [sig.signer.email for sig in all_signatures]
+            
+            # Nombres de firmantes
+            nombre_firmante = signing_user.get_full_name() or signing_user.email
+            nombres_ya_firmaron = [sig.signer.get_full_name() or sig.signer.email for sig in signed_signatures]
+            nombres_faltan = [sig.signer.get_full_name() or sig.signer.email for sig in unsigned_signatures]
+            
+            subject = f"[Firmas] Progreso en la firma del documento '{document.title}'"
+            body = (
+                f"El usuario {nombre_firmante} ha firmado el documento '{document.title}'.\n\n"
+                f"Firmantes que ya han firmado:\n- " + "\n- ".join(nombres_ya_firmaron) + "\n\n"
+                f"Firmantes que faltan por firmar:\n- " + ("\n- ".join(nombres_faltan) if nombres_faltan else "Ninguno. El documento está completamente firmado.")
+            )
+            
+            # Enviar correo a cada firmante
+            for email in all_emails:
+                try:
+                    email_message = EmailMessage(
+                        subject=subject,
+                        body=body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[email]
+                    )
+                    email_message.send()
+                except Exception as e:
+                    print(f"Error enviando correo a {email}: {e}")
+            # === Fin envío de correo ===
+            
         except Exception as e:
             print(f"\nError saving signature record: {str(e)}")
             return Response(
