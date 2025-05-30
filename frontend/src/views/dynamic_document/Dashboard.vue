@@ -39,12 +39,18 @@
       </div>
 
       <!-- Pending Signatures Tab -->
-      <div v-if="activeLawyerTab === 'pending-signatures'">
+      <div 
+        v-if="activeLawyerTab === 'pending-signatures'"
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
+        >
         <SignaturesList state="PendingSignatures" :searchQuery="searchQuery" />
       </div>
 
       <!-- Signed Documents Tab -->
-      <div v-if="activeLawyerTab === 'signed-documents'">
+      <div 
+        v-if="activeLawyerTab === 'signed-documents'"
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
+        >
         <SignaturesList state="FullySigned" :searchQuery="searchQuery" />
       </div>
 
@@ -70,7 +76,9 @@
     <!-- Documents for clients -->
     <div v-if="userRole === 'client'" class="mt-6">
       <!-- Navigation tabs -->
-      <div class="mb-6 border-b border-gray-200">
+      <div 
+        v-if="currentSection !== 'useDocument'"
+        class="mb-6 border-b border-gray-200">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
@@ -93,7 +101,7 @@
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
       ></UseDocument>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
         <SignaturesList 
           v-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"

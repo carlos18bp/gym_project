@@ -1,6 +1,4 @@
 <template>
-  <div>
-    <div class="mb-6">   
       <!-- Documents list -->
       <div
         v-for="document in filteredDocuments"
@@ -131,7 +129,7 @@
           {{ emptyMessage }}
         </p>
       </div>
-    </div>
+
 
     <!-- Loading indicator -->
     <div v-if="isLoading" class="mt-6 flex justify-center">
@@ -178,7 +176,7 @@
         </div>
       </div>
     </ModalTransition>
-  </div>
+
 </template>
 
 <script setup>
