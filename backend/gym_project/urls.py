@@ -26,6 +26,8 @@ urlpatterns = [
         TemplateView.as_view(template_name='index.html')),
     path('directory_list/', TemplateView.as_view(template_name='index.html')),
 
+
+    path('dashboard/', TemplateView.as_view(template_name='index.html')),
     path('legal_request/', TemplateView.as_view(template_name='index.html')),
     path('intranet_g_y_m/', TemplateView.as_view(template_name='index.html')),
     path('schedule_appointment/', TemplateView.as_view(template_name='index.html')),
