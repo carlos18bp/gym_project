@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { showNotification } from "@/shared/notification_message";
@@ -170,7 +170,7 @@ const saveDocument = async (state) => {
         tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
-      })),
+      }))
     };
 
     // Save current document data for reference
@@ -230,6 +230,9 @@ const saveDocument = async (state) => {
   }
 };
 
+/**
+ * Navigate back to the document dashboard
+ */
 const handleBack = () => {
   router.push("/dynamic_document_dashboard");
 };

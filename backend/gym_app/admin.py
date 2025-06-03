@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature
+from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the User model.
-    Display all fields of the User model.
+    Displays and manages user information in the admin interface.
     """
     list_display = (
         'first_name', 'last_name', 'document_type', 'identification',
@@ -14,110 +15,121 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
     list_filter = ('role', 'document_type', 'created_at')
 
+class UserSignatureAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the UserSignature model.
+    Manages user signatures and their associated metadata.
+    """
+    list_display = ('user', 'method', 'created_at', 'ip_address')
+    search_fields = ('user__email', 'method', 'ip_address')
+    list_filter = ('method', 'created_at')
+    readonly_fields = ('created_at', 'ip_address')
+
 class LegalDocumentAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalDocument model.
-    Display relevant fields for the admin interface.
+    Manages legal documents and their metadata.
     """
-    list_display = ('name', 'file')  # Display the document name and file field in the admin list view
-    search_fields = ('name',)        # Enable search by document name
-    list_filter = ('name',)          # Enable filtering by document name
+    list_display = ('name', 'file')
+    search_fields = ('name',)
+    list_filter = ('name',)
 
 class ProcessAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the Process model.
-    Display all fields of the Process model.
+    Provides comprehensive management of legal processes.
     """
     list_display = (
         'ref', 'authority', 'plaintiff', 'defendant', 
         'client', 'lawyer', 'case', 'subcase', 'created_at'
     )
-    filter_horizontal = ('stages', 'case_files')  # This adds a better UI for ManyToMany fields
+    filter_horizontal = ('stages', 'case_files')
     search_fields = (
         'ref', 'authority', 'plaintiff', 'defendant', 
         'client__email', 'lawyer__email', 'case__type', 'subcase', 'created_at'
-    )  # Enables searching by these fields
+    )
     list_filter = (
         'ref', 'authority', 'plaintiff', 'defendant', 
         'client', 'lawyer', 'case', 'subcase', 'created_at'
-    )  # Enables filtering by these fields
+    )
 
 class CaseAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the Case model.
-    Display all fields of the Case model.
+    Manages case types and their metadata.
     """
-    list_display = ('type',)  # Display the type of the case
-    search_fields = ('type',)  # Enable searching by the type of the case
-    list_filter = ('type',)  # Enable filtering by the type of the case
+    list_display = ('type',)
+    search_fields = ('type',)
+    list_filter = ('type',)
 
 class LegalRequestAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalRequest model.
-    Display relevant fields for the admin interface.
+    Manages legal requests and their associated data.
     """
     list_display = (
         'first_name', 'last_name', 'email', 'request_type', 
         'discipline', 'description', 'created_at'
     )
-    filter_horizontal = ('files',)  # Better UI for ManyToMany fields
+    filter_horizontal = ('files',)
     search_fields = (
         'first_name', 'last_name', 'email', 
         'request_type__name', 'discipline__name', 'description', 'created_at'
-    )  # Enable searching by these fields
+    )
     list_filter = (
         'request_type', 'discipline', 'created_at'
-    )  # Enable filtering by request type and discipline
+    )
 
 class LegalRequestTypeAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalRequestType model.
-    Display the name field.
+    Manages types of legal requests.
     """
     list_display = ('name',)
-    search_fields = ('name',)  # Enable searching by name
-    list_filter = ('name',)  # Enable filtering by name
+    search_fields = ('name',)
+    list_filter = ('name',)
 
 class LegalDisciplineAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalDiscipline model.
-    Display the name field.
+    Manages legal disciplines and their metadata.
     """
     list_display = ('name',)
-    search_fields = ('name',)  # Enable searching by name
-    list_filter = ('name',)  # Enable filtering by name
-
+    search_fields = ('name',)
+    list_filter = ('name',)
 
 class LegalRequestFilesAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the LegalRequestFiles model.
-    Display the file and creation date.
+    Manages files associated with legal requests.
     """
     list_display = ('file', 'created_at')
-    search_fields = ('file',)  # Enable searching by file name
-    list_filter = ('created_at',)  # Enable filtering by creation date
+    search_fields = ('file',)
+    list_filter = ('created_at',)
 
 class DocumentVariableInline(admin.StackedInline):
     """
-    Inline configuration to manage document variables within the DynamicDocument admin.
+    Inline configuration for managing document variables within the DynamicDocument admin.
+    Allows adding and editing variables directly in the document form.
     """
     model = DocumentVariable
-    extra = 1  # Display one empty inline by default
+    extra = 1
     verbose_name = "Variable"
     verbose_name_plural = "Variables"
 
 class DynamicDocumentAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the DynamicDocument model.
+    Provides comprehensive management of dynamic documents with variable support.
     """
-    list_display = ('title', 'created_by', 'assigned_to', 'created_at', 'updated_at')
+    list_display = ('title', 'created_by', 'assigned_to', 'created_at', 'updated_at', 'requires_signature')
     search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email')
-    list_filter = ('created_at', 'updated_at', 'state')
-    inlines = [DocumentVariableInline]  # Add inline for managing document variables
+    list_filter = ('created_at', 'updated_at', 'state', 'requires_signature')
+    inlines = [DocumentVariableInline]
 
     fieldsets = (
         (None, {
-            'fields': ('title', 'content', 'state')
+            'fields': ('title', 'content', 'state', 'requires_signature')
         }),
         ('User Management', {
             'fields': ('created_by', 'assigned_to')
@@ -127,9 +139,13 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    readonly_fields = ('created_at', 'updated_at')  # Make timestamps read-only
+    readonly_fields = ('created_at', 'updated_at')
 
 class LegalUpdateAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalUpdate model.
+    Manages legal updates and notifications.
+    """
     list_display = ('title', 'content', 'link_text', 'link_url', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('title', 'content', 'link_text')
@@ -151,6 +167,7 @@ class LegalUpdateAdmin(admin.ModelAdmin):
 class RecentDocumentAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the RecentDocument model.
+    Manages recently accessed documents.
     """
     list_display = ('user', 'document', 'last_visited')
     list_filter = ('last_visited', 'user')
@@ -160,14 +177,29 @@ class RecentDocumentAdmin(admin.ModelAdmin):
 class RecentProcessAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the RecentProcess model.
+    Manages recently accessed processes.
     """
     list_display = ('user', 'process', 'last_viewed')
     list_filter = ('last_viewed', 'user')
     search_fields = ('user__email', 'process__ref')
     readonly_fields = ('last_viewed',)
 
-# Custom AdminSite to organize models by sections
+@admin.register(DocumentSignature)
+class DocumentSignatureAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the DocumentSignature model.
+    Manages document signatures and their metadata.
+    """
+    list_display = ['document', 'signer', 'signed', 'signed_at']
+    list_filter = ['signed', 'signed_at']
+    search_fields = ['document__title', 'signer__email', 'signer__first_name', 'signer__last_name']
+    ordering = ['signed_at']
+
 class GyMAdminSite(admin.AdminSite):
+    """
+    Custom AdminSite to organize models by functional sections.
+    Provides a structured and intuitive admin interface.
+    """
     site_header = 'G&M App Administration'
     site_title = 'G&M Admin'
     index_title = 'Welcome to G&M App Control Panel'
@@ -189,7 +221,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'user_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['User']
+                    if model['object_name'] in ['User', 'UserSignature']
                 ]
             },
             {
@@ -221,20 +253,20 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'dynamic_document',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['DynamicDocument']
+                    if model['object_name'] in ['DynamicDocument', 'DocumentSignature', 'DocumentVariable']
                 ]
             },
         ]
         return custom_app_list
-
 
 # Create an instance of the custom AdminSite
 admin_site = GyMAdminSite(name='myadmin')
 
 # Register models with the custom AdminSite
 admin_site.register(User, UserAdmin)
+admin_site.register(UserSignature, UserSignatureAdmin)
 admin_site.register(Process, ProcessAdmin)
-admin_site.register(Case, CaseAdmin)  # Register Case with CaseAdmin
+admin_site.register(Case, CaseAdmin)
 admin_site.register(Stage)
 admin_site.register(CaseFile)
 admin_site.register(LegalRequest, LegalRequestAdmin)
@@ -243,6 +275,7 @@ admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
+admin_site.register(DocumentSignature, DocumentSignatureAdmin)
 admin_site.register(LegalUpdate, LegalUpdateAdmin)
 admin_site.register(RecentDocument, RecentDocumentAdmin)
 admin_site.register(RecentProcess, RecentProcessAdmin)

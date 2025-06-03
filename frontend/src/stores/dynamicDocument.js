@@ -78,6 +78,26 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     },
 
     /**
+     * Get all documents pending signature
+     * @returns {Array} - List of documents pending signature
+     */
+    pendingSignatureDocuments: (state) => {
+      return state.documents.filter(
+        (doc) => doc.state === "PendingSignatures"
+      );
+    },
+
+    /**
+     * Get all fully signed documents
+     * @returns {Array} - List of fully signed documents
+     */
+    fullySignedDocuments: (state) => {
+      return state.documents.filter(
+        (doc) => doc.state === "FullySigned"
+      );
+    },
+
+    /**
      * Get all completed documents
      * @returns {Array} - List of completed documents
      */
@@ -180,15 +200,16 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
   actions: {
     /**
      * Initialize the store by fetching data if not already loaded or if data is stale
+     * @param {boolean} forceRefresh - Whether to force a refresh of the data
      */
-    async init() {
+    async init(forceRefresh = false) {
       // Check if data is stale (older than 5 minutes)
       const isDataStale = !this.lastFetchTime || 
                          (Date.now() - this.lastFetchTime > 5 * 60 * 1000);
       
-      // Only load data if it's not loaded or it's stale
-      if (!this.dataLoaded || isDataStale) {
-        await this.fetchDocuments();
+      // Load data if it's not loaded, it's stale, or a refresh is forced
+      if (!this.dataLoaded || isDataStale || forceRefresh) {
+        await this.fetchDocuments({ forceRefresh });
       }
       
       // Check localStorage for saved ID to highlight

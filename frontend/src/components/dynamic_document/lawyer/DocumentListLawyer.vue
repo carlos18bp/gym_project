@@ -1,12 +1,13 @@
 <template>
-
+  <!-- Prompt Documents (if any) -->
+  <template v-if="props.promptDocuments && displayablePromptDocuments.length > 0">
     <div
-      v-for="document in filteredDocuments"
+      v-for="document in displayablePromptDocuments"
       :key="document.id"
       :data-document-id="document.id"
       :class="[
-        'flex items-center gap-2 py-2 px-4 border rounded-lg cursor-pointer transition',
-        document.state === 'Published'
+        'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
+        (document.state === 'Published' || document.state === 'FullySigned')
           ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
           : 'border-stroke bg-white hover:bg-gray-100',
         highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
@@ -14,18 +15,96 @@
       :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
     >
       <component
-        :is="document.state === 'Published' ? CheckCircleIcon : PencilIcon"
+        :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
         :class="
-          document.state === 'Published'
+          (document.state === 'Published' || document.state === 'FullySigned')
             ? 'size-8 text-green-500'
             : 'size-8 text-secondary'
         "
       />
-      <div class="flex justify-between items-center w-full">
+      <div class="flex-1 flex justify-between items-center">
         <div class="grid gap-1">
-          <span class="text-base font-medium">{{ document.title }}</span>
+          <div class="flex items-center">
+            <span class="text-base font-medium">{{ document.title }}</span>
+            
+            <!-- Signature icon with tooltip -->
+            <div 
+              v-if="document.requires_signature" 
+              class="relative group ml-2"
+            >
+              <!-- Check icon for fully signed/formalized documents -->
+              <svg 
+                v-if="document.fully_signed"
+                class="h-4 w-4 text-green-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <!-- Check icon for documents the current user has signed but others haven't -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)?.signed"
+                class="h-4 w-4 text-blue-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+              
+              <!-- Pen icon for documents requiring the user's signature -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)"
+                class="h-4 w-4 text-yellow-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <!-- Regular pen icon for documents requiring signatures from others -->
+              <svg 
+                v-else
+                class="h-4 w-4 text-blue-500" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <!-- Tooltip -->
+              <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
+                {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
+              </div>
+            </div>
+          </div>
           <span class="text-sm font-regular text-gray-400">
-            {{ document.state === 'Published' ? 'Publicado' : 'Borrador' }}
+            {{
+              document.state === 'Published' ? 'Publicado' :
+              document.state === 'Draft' ? 'Borrador' :
+              document.state === 'Progress' ? 'En progreso' :
+              document.state === 'Completed' ? 'Completado' :
+              document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
+              document.state === 'FullySigned' ? 'Completamente firmado' :
+              'Desconocido'
+            }}
           </span>
         </div>
   
@@ -75,6 +154,99 @@
         </Menu>
       </div>
     </div>
+  </template>
+
+  <!-- Regular Document Lists (if no promptDocuments) -->
+  <template v-else-if="!props.promptDocuments">
+    <!-- Sección Documentos Jurídicos (sin firmas) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div
+        v-for="document in lawyerManagedNonFullySignedDocuments.filter(doc => !doc.requires_signature)"
+        :key="document.id"
+        :data-document-id="document.id"
+        :class="[
+          'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
+            (document.state === 'Published' || document.state === 'FullySigned') 
+            ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
+            : 'border-stroke bg-white hover:bg-gray-100',
+          highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
+        ]"
+        :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
+      >
+        <component
+            :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
+          :class="
+              (document.state === 'Published' || document.state === 'FullySigned')
+              ? 'size-8 text-green-500'
+              : 'size-8 text-secondary'
+          "
+        />
+        <div class="flex-1 flex justify-between items-center">
+          <div class="grid gap-1">
+            <div class="flex items-center">
+              <span class="text-base font-medium">{{ document.title }}</span>
+            </div>
+            <span class="text-sm font-regular text-gray-400">
+                {{
+                  document.state === 'Published' ? 'Publicado' :
+                  document.state === 'Draft' ? 'Borrador' :
+                  document.state === 'Progress' ? 'En progreso' :
+                  document.state === 'Completed' ? 'Completado' :
+                  document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
+                  document.state === 'FullySigned' ? 'Completamente firmado' :
+                  'Desconocido'
+                }}
+            </span>
+          </div>
+    
+          <Menu as="div" class="relative inline-block text-left">
+            <MenuButton class="flex items-center text-gray-400">
+              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            </MenuButton>
+            <transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95"
+              enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95"
+            >
+              <MenuItems
+                class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+                :class="[
+                  props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+                ]"
+              >
+                <MenuItem
+                  v-for="option in getDocumentOptions(document)"
+                  :key="option.label"
+                >
+                  <button
+                    class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
+                    :disabled="option.disabled"
+                    @click="
+                      !option.disabled && handleOption(option.action, document)
+                    "
+                    :class="{
+                      'opacity-50 cursor-not-allowed': option.disabled,
+                      'cursor-pointer': !option.disabled,
+                    }"
+                  >
+                    <NoSymbolIcon
+                      v-if="option.disabled"
+                      class="size-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    {{ option.label }}
+                  </button>
+                </MenuItem>
+              </MenuItems>
+            </transition>
+          </Menu>
+        </div>
+      </div>
+    </div>
+  </template>
 
   <!-- Edit Document Modal -->
   <ModalTransition v-show="showEditDocumentModal">
@@ -87,16 +259,48 @@
     :documentData="previewDocumentData"
     @close="showPreviewModal = false"
   />
+  
+  <!-- Signatures Modal -->
+  <DocumentSignaturesModal 
+    :isVisible="showSignaturesModal"
+    :documentId="selectedDocumentId"
+    @close="closeSignaturesModal"
+    @refresh="handleRefresh"
+  />
+
+  <!-- Electronic Signature Modal -->
+  <ModalTransition v-if="showElectronicSignatureModal">
+    <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-medium text-primary">Firma Electrónica</h2>
+        <button 
+          @click="showElectronicSignatureModal = false" 
+          class="text-gray-400 hover:text-gray-500"
+        >
+          <XMarkIcon class="h-6 w-6" />
+        </button>
+      </div>
+      <ElectronicSignature 
+        :initialShowOptions="true"
+        :user-id="userStore.currentUser.id"
+        @signatureSaved="handleSignatureSaved" 
+        @cancel="showElectronicSignatureModal = false"
+      />
+    </div>
+  </ModalTransition>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import {
   EllipsisVerticalIcon,
   PencilIcon,
   CheckCircleIcon,
   NoSymbolIcon,
+  XMarkIcon,
+  DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
@@ -104,6 +308,7 @@ import ModalTransition from "@/components/layouts/animations/ModalTransition.vue
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import { showNotification } from "@/shared/notification_message";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { get_request, create_request, delete_request } from "@/stores/services/request_http";
 
 import {
   showPreviewModal,
@@ -111,14 +316,25 @@ import {
   openPreviewModal,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
+import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
+const router = useRouter();
 
 // Reactive state
 const showEditDocumentModal = ref(false);
-const lastUpdatedDocId = ref(null);
+const showSignaturesModal = ref(false);
+const selectedDocumentId = ref(null);
+
+// Reactive state for pending and signed documents
+const pendingSignatureDocuments = ref([]);
+const signedDocuments = ref([]);
+
+// Reactive state for showing the electronic signature modal
+const showElectronicSignatureModal = ref(false);
 
 const props = defineProps({
   searchQuery: String,
@@ -128,21 +344,76 @@ const props = defineProps({
   }
 });
 
+// --- Start of new computed properties for separate lists ---
+
+// Documents managed by the lawyer (e.g., Draft, Published), EXCLUDING FullySigned
+const lawyerManagedNonFullySignedDocuments = computed(() => {
+  if (props.promptDocuments) return []; // Not used if promptDocuments are active
+
+  const docs = documentStore.getDocumentsByLawyerId(userStore.currentUser.id) || [];
+  return docs
+    .filter(doc => doc.state !== 'FullySigned') // Exclude FullySigned
+    .filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+});
+
+// Fully Signed documents
+const lawyerFullySignedDocuments = computed(() => {
+  if (props.promptDocuments) return []; // Not used if promptDocuments are active
+
+  const documentsFromStore = documentStore.getDocumentsByLawyerId(userStore.currentUser.id) || [];
+  const signedByUserDocs = signedDocuments.value || []; // signedDocuments is already populated by fetchLawyerDocuments
+
+  const combinedFullySigned = new Map();
+
+  // Add FullySigned documents from the main store list
+  documentsFromStore
+    .filter(doc => doc.state === 'FullySigned')
+    .forEach(doc => combinedFullySigned.set(doc.id, doc));
+  
+  // Add FullySigned documents from the user's signed list (could be overlapping, Map handles deduplication)
+  signedByUserDocs
+    .filter(doc => doc.state === 'FullySigned')
+    .forEach(doc => combinedFullySigned.set(doc.id, doc));
+    
+  return Array.from(combinedFullySigned.values())
+    .filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+});
+
+// Filtered prompt documents (if provided)
+const displayablePromptDocuments = computed(() => {
+    if (props.promptDocuments && props.promptDocuments.length > 0) {
+        return (props.promptDocuments || []).filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+    }
+    return [];
+});
+
+// Condition for showing the "No documents available" message
+const showNoDocumentsMessage = computed(() => {
+  if (props.promptDocuments) {
+    return displayablePromptDocuments.value.length === 0;
+  }
+  return lawyerManagedNonFullySignedDocuments.value.length === 0 && lawyerFullySignedDocuments.value.length === 0;
+});
+
+// --- End of new computed properties ---
+
 // Retrieve documents in drafted and published from the store, applying the search filter.
+// This 'filteredDocuments' is now for the main list (not fully signed) if not using promptDocuments.
+// If promptDocuments is active, it takes precedence.
 const filteredDocuments = computed(() => {
   if (props.promptDocuments) {
-    return props.promptDocuments;
+    return displayablePromptDocuments.value;
   }
-  
-  const documents = documentStore.getDocumentsByLawyerId(userStore.currentUser.id);
-  return documents.filter(doc => 
-    doc.title.toLowerCase().includes(props.searchQuery.toLowerCase())
-  );
+  // This computed is somewhat redundant now if the template directly uses lawyerManagedNonFullySignedDocuments and lawyerFullySignedDocuments.
+  // However, other parts of the script might still use `filteredDocuments` (e.g., highlightedDocId).
+  // For safety, let's make it reflect the primary list of non-fully-signed documents.
+  return lawyerManagedNonFullySignedDocuments.value;
 });
 
 // Computed property to determine which document should be highlighted
+// This should ideally check across all displayed documents.
 const highlightedDocId = computed(() => {
-  // If we have prompt documents, don't show any highlight
+  // If we have prompt documents, don't show any highlight from store/localStorage
   if (props.promptDocuments) {
     return null;
   }
@@ -150,23 +421,50 @@ const highlightedDocId = computed(() => {
   const storeId = documentStore.lastUpdatedDocumentId;
   const localId = localStorage.getItem('lastUpdatedDocumentId');
   
-  // Verify if storeId exists in filtered documents
-  const docExists = storeId && filteredDocuments.value.some(doc => String(doc.id) === String(storeId));
+  const allDisplayedDocs = [...lawyerManagedNonFullySignedDocuments.value, ...lawyerFullySignedDocuments.value];
   
-  if (docExists) {
+  const docExistsInStoreId = storeId && allDisplayedDocs.some(doc => String(doc.id) === String(storeId));
+  if (docExistsInStoreId) {
     return storeId;
-  } else if (localId) {
-    // Verify if localStorage ID exists in filtered documents
-    const localDocExists = filteredDocuments.value.some(doc => String(doc.id) === String(localId));
-    return localDocExists ? localId : null;
+  }
+  
+  const docExistsInLocalId = localId && allDisplayedDocs.some(doc => String(doc.id) === String(localId));
+  if (docExistsInLocalId) {
+    return localId;
   }
   
   return null;
 });
 
 /**
+ * Fetch pending and signed documents for the current lawyer
+ */
+const fetchLawyerDocuments = async () => {
+  try {
+    const userId = userStore.currentUser.id;
+
+    const pendingResponse = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
+    const signedResponse = await get_request(`dynamic-documents/user/${userId}/signed-documents/`);
+
+    if (pendingResponse.status === 200) {
+      pendingSignatureDocuments.value = pendingResponse.data;
+    }
+
+    if (signedResponse.status === 200) {
+      signedDocuments.value = signedResponse.data;
+    }
+  } catch (error) {
+    console.error('Error fetching lawyer documents:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error status:', error.response.status);
+    }
+  }
+};
+
+/**
  * Get the available options for a document based on its state.
- * If the document has undefined variables, the "Publicar" option is disabled.
+ * If the document has undefined variables, the "Publish" option is disabled.
  * @param {object} document - The document to evaluate.
  * @returns {Array} - List of options.
  */
@@ -176,6 +474,20 @@ const getDocumentOptions = (document) => {
     { label: "Eliminar", action: "delete" },
     { label: "Previsualización", action: "preview" },
   ];
+  
+  // Get current user signature status FIRST - before any other logic
+  let currentUserNeedsToSign = false;
+  
+  if (document.requires_signature && document.signatures && document.signatures.length > 0) {
+    const currentUserId = String(userStore.currentUser.id);
+    
+    // Find if current user needs to sign
+    const userSignature = document.signatures.find(sig => 
+      String(sig.signer_id) === currentUserId && !sig.signed
+    );
+    
+    currentUserNeedsToSign = !!userSignature;
+  }
 
   // Add state-based options with validations
   if (document.state === "Draft") {
@@ -188,6 +500,29 @@ const getDocumentOptions = (document) => {
     baseOptions.push({
       label: "Mover a Borrador",
       action: "draft",
+      disabled: false,
+    });
+    
+    // Add option to formalize document and add signatures
+    baseOptions.push({
+      label: "Formalizar y Agregar Firmas",
+      action: "formalize",
+      disabled: false,
+    });
+  
+    baseOptions.push({
+      label: "Mover a Borrador",
+      action: "draft",
+      disabled: false,
+    });
+  }
+  
+  // Add sign option if the lawyer needs to sign
+  const needsToSign = pendingSignatureDocuments.value.some(doc => doc.id === document.id);
+  if (needsToSign) {
+    baseOptions.push({
+      label: "Firmar documento",
+      action: "sign_document",
       disabled: false,
     });
   }
@@ -207,9 +542,62 @@ const canPublishDocument = (document) => {
 };
 
 /**
- * Handle document option actions.
+ * Check if the current user is a signer for the document and get their signature record
+ * @param {object} document - The document to check
+ * @returns {object|null} - The signature record for the current user or null
+ */
+const getCurrentUserSignature = (document) => {
+  // First, verify document has signatures and requires them
+  if (!document.signatures || !document.requires_signature) {
+    return null;
+  }
+  
+  // Get current user ID as string for comparison
+  const currentUserId = String(userStore.currentUser.id);
+  
+  // Find signature for current user
+  return document.signatures.find(sig => String(sig.signer_id) === currentUserId);
+};
+
+/**
+ * Gets the signature status display text for a document
+ * @param {Object} document - The document object
+ * @returns {String} - Status text for display
+ */
+const getSignatureStatus = (document) => {
+  if (!document.requires_signature) {
+    return '';
+  }
+  
+  if (document.fully_signed) {
+    return 'Documento formalizado';
+  }
+  
+  // Check if current user has already signed
+  const currentUserSignature = getCurrentUserSignature(document);
+  
+  if (document.signatures && document.signatures.length > 0) {
+    const totalSignatures = document.signatures.length;
+    const signedCount = document.signatures.filter(sig => sig.signed).length;
+    
+    if (currentUserSignature && currentUserSignature.signed) {
+      if (signedCount === 1 && totalSignatures > 1) {
+        return `Has firmado. Faltan ${totalSignatures - signedCount} firmas más`;
+      } else if (signedCount < totalSignatures) {
+        return `Has firmado. Faltan ${totalSignatures - signedCount} firmas más`;
+      }
+    }
+    
+    return `Firmas: ${signedCount}/${totalSignatures}`;
+  }
+  
+  return currentUserSignature ? 'Requiere tu firma' : 'Requiere firmas';
+};
+
+/**
+ * Handle the selected option for a document.
  * @param {string} action - The action to perform.
- * @param {object} document - The document to apply the action on.
+ * @param {object} document - The target document.
  */
 const handleOption = async (action, document) => {
   switch (action) {
@@ -228,14 +616,18 @@ const handleOption = async (action, document) => {
       break;
     case "publish":
       await publishDocument(document);
-      // The notification is omitted because an automatic redirection will take place.
       break;
     case "draft":
       await moveToDraft(document);
-      // The notification is omitted because an automatic redirection will take place.
       break;
     case "preview":
       openPreviewModal(document);
+      break;
+    case "sign_document":
+      signDocument(document);
+      break;
+    case "formalize":
+      formalizeDocument(document);
       break;
     default:
       console.warn(`Acción desconocida: ${action}`);
@@ -423,7 +815,117 @@ onMounted(async () => {
       }
     }, 500);
   }
+
+  // Fetch pending and signed documents
+  fetchLawyerDocuments();
 });
+
+/**
+ * Navigate to signature view for a document.
+ * @param {object} document - The document to view signatures for.
+ */
+const viewDocumentSignatures = (document) => {
+  selectedDocumentId.value = document.id;
+  showSignaturesModal.value = true;
+};
+
+/**
+ * Sign the document.
+ * @param {object} document - The document to sign.
+ */
+const signDocument = async (document) => {
+  try {
+    // First check if the user has a signature
+    if (!userStore.currentUser.has_signature) {
+      // Show warning and open the signature modal
+      const createSignature = await showConfirmationAlert(
+        "No tienes una firma registrada. ¿Deseas crear una firma ahora?",
+        "Necesitas una firma",
+        "Crear firma",
+        "Cancelar"
+      );
+      
+      if (createSignature) {
+        // Open the electronic signature modal
+        showElectronicSignatureModal.value = true;
+      }
+      return;
+    }
+
+    // Show confirmation dialog before signing
+    const confirmed = await showConfirmationAlert(
+      `¿Estás seguro de que deseas firmar el documento "${document.title}"?`,
+      "Confirmar firma",
+      "Firmar",
+      "Cancelar"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+    
+    // Call the API to sign the document using create_request
+    const response = await create_request(`dynamic-documents/${document.id}/sign/${userStore.currentUser.id}/`, {});
+
+    if (response.status !== 200 && response.status !== 201) {
+      throw new Error(`Error al firmar: ${response.statusText}`);
+    }
+
+    // Show success notification
+    await showNotification("Documento firmado correctamente", "success");
+    
+    // Allow time for the backend to process the signature
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Refresh the document data
+    await fetchLawyerDocuments(); 
+    
+    // Update the last updated document ID
+    documentStore.lastUpdatedDocumentId = document.id;
+    localStorage.setItem('lastUpdatedDocumentId', document.id);
+    
+    // Force highlight the signed document
+    forceHighlight(document.id);
+    
+    // Refresh the page to ensure all data is up to date
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } catch (error) {
+    console.error('Error signing document:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error status:', error.response.status);
+    }
+    await showNotification(`Error signing document: ${error.message}`, "error");
+  }
+};
+
+// New functions to handle modal closing
+const closeSignaturesModal = () => {
+  showSignaturesModal.value = false;
+};
+
+const handleRefresh = async () => {
+  // Refresh the document list
+  await documentStore.init();
+};
+
+/**
+ * Formalize document and add signatures
+ * @param {object} document - The document to formalize
+ */
+const formalizeDocument = async (document) => {
+  try {
+    // Navigate to the document form with formalize mode
+    router.push({
+      path: `/dynamic_document_dashboard/document/use/formalize/${document.id}/${document.title}`,
+    });
+  } catch (error) {
+    console.error('Error al formalizar el documento:', error);
+    await showNotification('Error al formalizar el documento', 'error');
+  }
+};
 </script>
 
 <style scoped>
@@ -446,5 +948,19 @@ onMounted(async () => {
   border-width: 2px !important;
   position: relative;
   z-index: 10;
+}
+
+/* Tooltip arrow styles */
+.tooltip-with-arrow:after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 10px;
+  margin-left: -5px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1f2937; /* Match tooltip background color */
 }
 </style>

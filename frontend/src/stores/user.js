@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { useAuthStore } from "./auth";
-import { get_request, update_request } from "./services/request_http";
+import { get_request, update_request, create_request, upload_file_request } from "./services/request_http";
 import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
 
 export const useUserStore = defineStore("user", {
@@ -12,6 +12,7 @@ export const useUserStore = defineStore("user", {
     users: [],
     dataLoaded: false,
     currentUser: null,
+    userSignature: null,
   }),
 
   getters: {
@@ -57,7 +58,10 @@ export const useUserStore = defineStore("user", {
      * Initialize store by fetching data if not already loaded.
      */
     async init() {
-      if (!this.dataLoaded) await this.fetchUsersData();
+      if (!this.dataLoaded) {
+        await this.fetchUsersData();
+        await this.fetchUserSignature();
+      }
     },
 
     /**
@@ -181,5 +185,169 @@ export const useUserStore = defineStore("user", {
         return null;
       }
     },
+
+    /**
+     * Updates user's electronic signature with traceability data.
+     *
+     * @param {Object} params - The parameters for signature update.
+     * @param {FormData} params.formData - FormData object containing the signature image and method.
+     * @param {string|number} params.userId - The ID of the user whose signature is being updated.
+     * @returns {Promise<boolean>} - Returns true if successful, false otherwise.
+     */
+    async updateUserSignature(params) {
+      try {
+        // Extract parameters
+        const { formData, userId } = params;
+        
+        if (!userId) {
+          console.error("No user ID available for signature update");
+          return false;
+        }
+        
+        if (!formData || !(formData instanceof FormData)) {
+          console.error("Invalid FormData object provided");
+          return false;
+        }
+        
+        // Use the specialized upload_file_request function
+        const response = await upload_file_request(`users/update_signature/${userId}/`, formData);
+
+        if (response.status === 200 || response.status === 201) {
+          // Update the user signature data
+          this.userSignature = {
+            has_signature: true,
+            signature: response.data
+          };
+          
+          // Update has_signature in currentUser
+          if (this.currentUser && this.currentUser.id == userId) {
+            this.currentUser.has_signature = true;
+          }
+          
+          // Get the method from formData
+          const method = formData.get('method');
+          
+          // Register the activity
+          await registerUserActivity(
+            ACTION_TYPES.UPDATE,
+            `You have ${method === 'upload' ? 'uploaded' : 'drawn'} your electronic signature.`
+          );
+          
+          return true;
+        } else {
+          console.error("Signature update failed with status:", response.status);
+          return false;
+        }
+      } catch (error) {
+        console.error("Error updating user signature:", error.message);
+        if (error.response) {
+          console.error("Response data:", error.response.data);
+          console.error("Response status:", error.response.status);
+        }
+        return false;
+      }
+    },
+
+    /**
+     * Get current user info with updated data from backend.
+     * @returns {Promise<object|null>} - Updated user object or null if error.
+     */
+    async getUserInfo() {
+      try {
+        // If current user isn't set, we can't fetch specific info
+        if (!this.currentUser || !this.currentUser.id) {
+          return null;
+        }
+        
+        // Get fresh user data from backend
+        const response = await get_request(`users/${this.currentUser.id}/`);
+        
+        if (response.status === 200) {
+          // Update store with fresh data
+          const userData = response.data;
+          
+          // Find and update the user in the users array
+          const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+          if (userIndex >= 0) {
+            this.users[userIndex] = userData;
+          }
+          
+          // Update current user
+          this.currentUser = userData;
+          
+          return userData;
+        }
+        
+        return null;
+      } catch (error) {
+        console.error("Error fetching user info:", error.message);
+        return null;
+      }
+    },
+
+    /**
+     * Fetch all users from the backend
+     * @returns {Promise<Array>} - Array of user objects
+     */
+    async fetchUsers() {
+      try {
+        const response = await get_request("users/");
+        if (response.status === 200) {
+          this.users = response.data;
+          return this.users;
+        }
+        return [];
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        return [];
+      }
+    },
+
+    /**
+     * Get users by specific IDs
+     * @param {Array<number>} userIds - Array of user IDs to retrieve
+     * @returns {Promise<Array>} - Array of matching user objects
+     */
+    async getUsersByIds(userIds) {
+      // If we don't have the complete users list, fetch it first
+      if (!this.users || this.users.length === 0) {
+        await this.fetchUsers();
+      }
+      
+      // Filter the users by the provided IDs
+      return this.users.filter(user => userIds.includes(user.id));
+    },
+
+    /**
+     * Fetch user's signature data from backend.
+     */
+    async fetchUserSignature() {
+      if (!this.currentUser || !this.currentUser.id) {
+        return;
+      }
+
+      try {
+        const response = await get_request(`users/${this.currentUser.id}/signature/`);
+
+        if (response.status === 200) {
+          this.userSignature = response.data;
+          // Update has_signature in currentUser
+          if (this.currentUser) {
+            this.currentUser.has_signature = response.data.has_signature;
+          }
+        } else {
+          this.userSignature = { has_signature: false };
+          if (this.currentUser) {
+            this.currentUser.has_signature = false;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user signature:", error.message);
+        this.userSignature = { has_signature: false };
+        if (this.currentUser) {
+          this.currentUser.has_signature = false;
+        }
+      }
+    }
   },
 });

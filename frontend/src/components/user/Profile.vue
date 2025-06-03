@@ -96,6 +96,18 @@
               >
               <span v-else class="block">Completa tu perfil</span>
             </button>
+            <!-- Electronic Signature button with fingerprint icon -->
+            <button
+              type="button"
+              class="p-2.5 text-sm font-medium bg-white border-2 border-purple-300 hover:bg-purple-200 rounded-md flex gap-2 items-center"
+              @click="openSignatureModal"
+              title="Configurar firma electrónica"
+            >
+              <FingerPrintIcon class="size-5 text-purple-500 font-semibold"></FingerPrintIcon>
+              <span class="block">Firma electrónica</span>
+              <!-- Indicador de firma configurada -->
+              <div v-if="currentUser.has_signature" class="ml-1 w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+            </button>
             <!-- Sign out button -->
             <button
               type="button"
@@ -341,6 +353,28 @@
       </div>
     </div>
   </div>
+  
+  <!-- Electronic Signature Modal -->
+  <ModalTransition v-if="showSignatureModal">
+    <div class="p-4 sm:p-6">
+      <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
+        <div class="flex justify-between items-center p-4 border-b">
+          <h2 class="text-lg font-medium text-primary">Firma Electrónica</h2>
+          <button @click="showSignatureModal = false" class="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+        <div class="p-4 sm:p-6">
+          <ElectronicSignature 
+            :user-id="currentUser.id"
+            :initial-show-options="!currentUser.has_signature"
+            @signatureSaved="handleSignatureSaved"
+            @cancel="showSignatureModal = false"
+          />
+        </div>
+      </div>
+    </div>
+  </ModalTransition>
 </template>
 
 <script setup>
@@ -354,6 +388,7 @@ import {
   DocumentArrowUpIcon,
   XMarkIcon,
   ChevronLeftIcon,
+  FingerPrintIcon,
 } from "@heroicons/vue/24/outline";
 import { EnvelopeIcon } from "@heroicons/vue/24/solid";
 import { gsap } from "gsap";
@@ -364,6 +399,8 @@ import { useAuthStore } from "@/stores/auth";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import { showNotification } from "@/shared/notification_message";
+import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
+import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 
 const userStore = useUserStore();
 const authStore = useAuthStore(); // Get the authentication store instance
@@ -385,6 +422,11 @@ const props = defineProps({
   },
 });
 
+// Asegurarse de que has_signature esté inicializado
+if (props.currentUser && typeof props.currentUser.has_signature === 'undefined') {
+  props.currentUser.has_signature = false;
+}
+
 /**
  * Emits:
  * @event update:visible - Emitted to change the modal's visibility state.
@@ -397,6 +439,7 @@ const emit = defineEmits(["update:visible"]);
  */
 const modalContent = ref(null);
 const fileInput = ref(null);
+const showSignatureModal = ref(false);
 
 /**
  * Triggers the file input selection dialog.
@@ -533,4 +576,52 @@ const goToProfile = () => {
     duration: 0.5,
   });
 };
+
+/**
+ * Opens the signature modal.
+ * First checks if the user already has a configured electronic signature.
+ */
+const openSignatureModal = () => {
+  // If we don't have information about the signature status locally
+  if (typeof props.currentUser.has_signature === 'undefined') {
+    // Verify with the backend if the user already has an electronic signature
+    userStore.getUserInfo().then(updatedUser => {
+      if (updatedUser) {
+        props.currentUser.has_signature = !!updatedUser.has_signature;
+      }
+      showSignatureModal.value = true;
+    });
+  } else {
+    // Use the information we already have
+    showSignatureModal.value = true;
+  }
+};
+
+/**
+ * Handles when a signature is saved by the user.
+ * @param {Object} signatureData - The saved signature data
+ */
+const handleSignatureSaved = async (signatureData) => {
+  // Get updated user information from backend
+  const updatedUser = await userStore.getUserInfo();
+  
+  // Update has_signature property immediately in the current user object
+  if (props.currentUser) {
+    props.currentUser.has_signature = true;
+  }
+  
+  showNotification("Firma electrónica guardada correctamente", "success");
+  
+  // Close the modal after a small delay to allow the notification to be visible
+  setTimeout(() => {
+    showSignatureModal.value = false;
+  }, 500);
+};
+
+// We no longer need this complex watch because we have specific handlers
+watch(showSignatureModal, (newVal) => {
+  if (!newVal) {
+    // The modal has been closed
+  }
+});
 </script>

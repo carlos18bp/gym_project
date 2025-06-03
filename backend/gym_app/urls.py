@@ -1,7 +1,23 @@
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, dynamic_document, legal_update, reports
+"""
+URL configuration for the gym app.
+
+This module defines all the URL patterns for the gym application, organized into functional groups:
+- Authentication (sign in, sign on, password management)
+- User management (profiles, activities, signatures)
+- Process and case management (cases, processes, files)
+- Legal requests and documents (requests, files, options)
+- Intranet documents (legal documents, reports)
+- Dynamic documents (documents, signatures, downloads)
+- Legal updates (notifications and updates)
+- Recent processes (tracking and updates)
+- Reports (Excel report generation)
+"""
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports
 from .views.layouts import sendEmail
+from .views.dynamic_documents import document_views, signature_views
 from django.urls import path
 
+# Authentication URLs
 sign_in_sign_on_urls = [
     path('sign_on/', userAuth.sign_on, name='sign_on'),
     path('sign_on/send_verification_code/', userAuth.send_verification_code, name='send_verification_code'),
@@ -13,13 +29,16 @@ sign_in_sign_on_urls = [
     path('validate_token/', userAuth.validate_token, name='validate_token'),
 ]
 
+# User management URLs
 user_urls = [
     path('users/', user.user_list, name='user-list'),
     path('update_profile/<int:pk>/', user.update_profile, name='update_profile'),
+    path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
 ]
 
+# Process and case management URLs
 process_urls = [
     path('case_types/', case_type.case_list, name='case-list'),
     path('processes/', process.process_list, name='process-list'),
@@ -28,44 +47,71 @@ process_urls = [
     path('update_case_file/', process.update_case_file, name="update-file"),
 ]
 
+# Legal request management URLs
 legal_request_urls = [
     path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
     path('upload_legal_request_file/', legal_request.upload_legal_request_file, name='upload-legal-request-file'),
     path('dropdown_options_legal_request/', legal_request.get_dropdown_options, name='get-dropdown-options'),
 ]
 
+# Intranet document management URLs
 intranet_gym_urls = [
     path('list_legal_intranet_documents/', intranet_gym.list_legal_intranet_documents, name='list-legal-intranet-documents'),
     path('create_report_request/', intranet_gym.create_report, name='create-report-request'),
 ]
 
+# Dynamic document management URLs
 dynamic_document_urls = [
-    path('dynamic-documents/', dynamic_document.list_dynamic_documents, name='list_dynamic_documents'),
-    path('dynamic-documents/create/', dynamic_document.create_dynamic_document, name='create_dynamic_document'),
-    path('dynamic-documents/<int:pk>/update/', dynamic_document.update_dynamic_document, name='update_dynamic_document'),
-    path('dynamic-documents/<int:pk>/delete/', dynamic_document.delete_dynamic_document, name='delete_dynamic_document'),
+    # Document CRUD operations
+    path('dynamic-documents/', document_views.list_dynamic_documents, name='list_dynamic_documents'),
+    path('dynamic-documents/<int:pk>/', document_views.get_dynamic_document, name='get_dynamic_document'),
+    path('dynamic-documents/create/', document_views.create_dynamic_document, name='create_dynamic_document'),
+    path('dynamic-documents/<int:pk>/update/', document_views.update_dynamic_document, name='update_dynamic_document'),
+    path('dynamic-documents/<int:pk>/delete/', document_views.delete_dynamic_document, name='delete_dynamic_document'),
+    
+    # Document operations
     path('dynamic-documents/send_email_with_attachments/', sendEmail.send_email_with_attachments, name='send_email_with_attachments'),
-    path('dynamic-documents/<int:pk>/download-pdf/', dynamic_document.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
-    path('dynamic-documents/<int:pk>/download-word/', dynamic_document.download_dynamic_document_word, name='download_dynamic_document_word'),
-    path('dynamic-documents/recent/', dynamic_document.get_recent_documents, name='get-recent-documents'),
-    path('dynamic-documents/<int:document_id>/update-recent/', dynamic_document.update_recent_document, name='update-recent-document'),
+    path('dynamic-documents/<int:pk>/download-pdf/', document_views.download_dynamic_document_pdf, name='download_dynamic_document_pdf'),
+    path('dynamic-documents/<int:pk>/download-word/', document_views.download_dynamic_document_word, name='download_dynamic_document_word'),
+    
+    # Recent documents
+    path('dynamic-documents/recent/', document_views.get_recent_documents, name='get-recent-documents'),
+    path('dynamic-documents/<int:document_id>/update-recent/', document_views.update_recent_document, name='update-recent-document'),
+    
+    # Signature management
+    path('dynamic-documents/<int:document_id>/signatures/', signature_views.get_document_signatures, name='get-document-signatures'),
+    path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
+    path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
+    path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
+    
+    # User signature management
+    path('dynamic-documents/user/<int:user_id>/pending-documents-full/', signature_views.get_user_pending_documents_full, name='get-user-pending-documents-full'),
+    path('dynamic-documents/user/<int:user_id>/signed-documents/', signature_views.get_user_signed_documents, name='get-user-signed-documents'),
+    path('users/<int:user_id>/signature/', signature_views.get_user_signature, name='get-user-signature'),
+    
+    # Signature PDF generation
+    path('dynamic-documents/<int:pk>/generate-signatures-pdf/', signature_views.generate_signatures_pdf, name='generate-signatures-pdf'),
 ]
 
+# Legal update management URLs
 legal_update_urls = [
     path('legal-updates/', legal_update.legal_update_list, name='legal-updates-list'),
     path('legal-updates/<int:pk>/', legal_update.legal_update_detail, name='legal-updates-detail'),
     path('legal-updates/active/', legal_update.active_legal_updates, name='legal-updates-active'),
 ]
 
+# Recent process management URLs
 recent_process_urls = [
     path('recent-processes/', process.get_recent_processes, name='recent-processes'),
     path('update-recent-process/<int:process_id>/', process.update_recent_process, name='update-recent-process'),
 ]
 
+# Report generation URLs
 reports_urls = [
     path('reports/generate-excel/', reports.generate_excel_report, name='generate-excel-report'),
 ]
 
+# Combine all URL patterns
 urlpatterns = (
     sign_in_sign_on_urls +
     user_urls +

@@ -70,7 +70,6 @@ export const useAuthStore = defineStore("auth", {
      * Logs out the user by clearing the token and user details.
      */
     logout() {
-      console.log("Executing logout...");
       this.token = null;
       this.userAuth = {};
       this.clearAuthorizationHeader();

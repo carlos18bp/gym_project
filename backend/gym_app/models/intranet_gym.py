@@ -2,14 +2,14 @@ from django.db import models
 
 class LegalDocument(models.Model):
     """
-    Modelo que representa un documento legal con un nombre y un archivo.
+    Model that represents a legal document with a name and a file.
     """
-    name = models.CharField(max_length=255, verbose_name="Nombre del Documento")
-    file = models.FileField(upload_to='documents/', verbose_name="Archivo del Documento")
+    name = models.CharField(max_length=255, verbose_name="Document Name")
+    file = models.FileField(upload_to='documents/', verbose_name="Document File")
 
     def __str__(self):
         """
-        Devuelve la representación en cadena del documento legal (su nombre).
+        Returns the string representation of the legal document (its name).
         """
         return self.name
 

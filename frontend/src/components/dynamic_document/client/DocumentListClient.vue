@@ -1,119 +1,130 @@
 <template>
-    <!-- Document Item -->
-    <div
-      v-for="document in filteredDocuments"
-      :key="document.id"
-      :data-document-id="document.id"
-      class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer"
-      :class="{
-        'border-green-400 bg-green-300/30': document.state === 'Completed',
-        'border-stroke bg-white': document.state === 'Progress',
-        'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
-      }"
-    >
-      <component
-        :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
-        class="size-6"
+  <div>
+    <!-- Documentos en progreso y completados -->
+    <div class="mb-6">      
+      <!-- Document Item -->
+      <div
+        v-for="document in filteredDocuments"
+        :key="document.id"
+        :data-document-id="document.id"
+        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3"
         :class="{
-          'text-green-500': document.state === 'Completed',
-          'text-secondary': document.state === 'Progress',
+          'border-green-400 bg-green-300/30': document.state === 'Completed',
+          'border-stroke bg-white': document.state === 'Progress',
+          'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
         }"
-      />
-      <div class="flex justify-between items-center w-full">
-        <div class="grid gap-1">
-          <span class="text-base font-medium">{{ document.title }}</span>
-          <span class="text-sm font-regular text-gray-400">{{
-            document.description
-          }}</span>
-        </div>
-        <Menu as="div" class="relative inline-block text-left">
-          <MenuButton class="flex items-center text-gray-400">
-            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-          </MenuButton>
-          <transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="transform opacity-0 scale-95"
-            enter-to-class="transform opacity-100 scale-100"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="transform opacity-100 scale-100"
-            leave-to-class="transform opacity-0 scale-95"
-          >
-            <MenuItems
-              class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
-              :class="[
-                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
-              ]"
+        @click="(e) => {
+          // Only trigger preview if click was not on the menu
+          if (!e.target.closest('.menu-container')) {
+            handlePreviewDocument(document);
+          }
+        }"
+      >
+        <component
+          :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
+          class="size-6"
+          :class="{
+            'text-green-500': document.state === 'Completed',
+            'text-secondary': document.state === 'Progress',
+          }"
+        />
+        <div class="flex justify-between items-center w-full">
+          <div class="grid gap-1">
+            <span class="text-base font-medium">{{ document.title }}</span>
+            <span class="text-sm font-regular text-gray-400">{{
+              document.description
+            }}</span>
+          </div>
+          <Menu as="div" class="relative inline-block text-left menu-container">
+            <MenuButton class="flex items-center text-gray-400">
+              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            </MenuButton>
+            <transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95"
+              enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95"
             >
-              <div class="py-1">
-                <!-- Edit/Complete option -->
-                <MenuItem>
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="openEditModal(document)"
-                  >
-                    {{ document.state === "Completed" ? "Editar" : "Completar" }}
-                  </button>
-                </MenuItem>
-  
-                <!-- Preview option -->
-                <MenuItem v-if="document.state === 'Completed'">
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="handlePreviewDocument(document)"
-                  >
-                    Previsualizar
-                  </button>
-                </MenuItem>
-  
-                <!-- Delete option -->
-                <MenuItem>
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                    @click="deleteDocument(document)"
-                  >
-                    Eliminar
-                  </button>
-                </MenuItem>
-  
-                <!-- Options only for Completed state -->
-                <template v-if="document.state === 'Completed'">
+              <MenuItems
+                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+                :class="[
+                  props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+                ]"
+              >
+                <div class="py-1">
+                  <!-- Edit/Complete option -->
                   <MenuItem>
                     <button
                       class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="downloadPDFDocument(document)"
+                      @click="openEditModal(document)"
                     >
-                      Descargar PDF
+                      {{ document.state === "Completed" ? "Editar" : "Completar" }}
                     </button>
                   </MenuItem>
+    
+                  <!-- Preview option -->
+                  <MenuItem v-if="document.state === 'Completed'">
+                    <button
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      @click="handlePreviewDocument(document)"
+                    >
+                      Previsualizar
+                    </button>
+                  </MenuItem>
+    
+                  <!-- Delete option -->
                   <MenuItem>
                     <button
                       class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="downloadWordDocument(document)"
+                      @click="deleteDocument(document)"
                     >
-                      Descargar Word
+                      Eliminar
                     </button>
                   </MenuItem>
-                  <MenuItem>
-                    <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
-                      @click="openEmailModal(document)"
-                    >
-                      Enviar
-                    </button>
-                  </MenuItem>
-                </template>
-              </div>
-            </MenuItems>
-          </transition>
-        </Menu>
+    
+                  <!-- Options only for Completed state -->
+                  <template v-if="document.state === 'Completed'">
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="downloadPDFDocument(document)"
+                      >
+                        Descargar PDF
+                      </button>
+                    </MenuItem>
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="downloadWordDocument(document)"
+                      >
+                        Descargar Word
+                      </button>
+                    </MenuItem>                    
+                    <MenuItem>
+                      <button
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        @click="openEmailModal(document)"
+                      >
+                        Enviar
+                      </button>
+                    </MenuItem>
+                  </template>
+                </div>
+              </MenuItems>
+            </transition>
+          </Menu>
+        </div>
       </div>
-
+    </div>
+    
     <!-- No documents message -->
     <div
       v-if="filteredDocuments.length === 0"
-      class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full"
+      class="col-span-full mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-8 rounded-xl"
     >
-      <p class="text-lg font-semibold">
+      <p class="text-lg font-semibold mb-2">
         No hay documentos disponibles para mostrar.
       </p>
       <p class="text-sm">
@@ -144,6 +155,14 @@
       :emailDocument="emailDocument"
     />
   </ModalTransition>
+  
+  <!-- Signatures Modal -->
+  <DocumentSignaturesModal 
+    :isVisible="showSignaturesModal"
+    :documentId="selectedDocumentId"
+    @close="closeSignaturesModal"
+    @refresh="handleRefresh"
+  />
 </template>
 
 <script setup>
@@ -166,9 +185,12 @@ import {
   showPreviewModal,
   previewDocumentData,
   openPreviewModal,
+  downloadFile,
 } from "@/shared/document_utils";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { useRecentViews } from '@/composables/useRecentViews';
+import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
+import { get_request } from "@/stores/services/request_http";
 
 // Store instances
 const documentStore = useDynamicDocumentStore();
@@ -181,6 +203,12 @@ const showEditDocumentModal = ref(false);
 const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
+const showSignaturesModal = ref(false);
+const documents = ref([]);
+const isLoading = ref(false);
+
+// Use userStore to get the signature
+const signature = userStore.userSignature;
 
 // Computed property that determines which document should be highlighted
 // It first checks if the store's lastUpdatedDocumentId exists in filtered documents
@@ -225,6 +253,9 @@ onMounted(async () => {
 
   // Ensure documents are loaded
   await documentStore.init();
+  
+  // Cargar documentos firmados
+  await fetchDocuments();
   
   const savedId = localStorage.getItem('lastUpdatedDocumentId');
   
@@ -303,6 +334,45 @@ const filteredDocuments = computed(() => {
   
   return result;
 });
+
+/**
+ * Fetches documents for the current user
+ */
+const fetchDocuments = async () => {
+  isLoading.value = true;
+  try {
+    console.log('==== GETTING DOCUMENTS ====');
+    
+    // Using the endpoint for user documents
+    const userId = userStore.currentUser.id;
+    console.log('Current user ID:', userId);
+    
+    const response = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
+    
+    if (response && response.data) {
+      console.log('Number of documents received:', response.data.length);
+      documents.value = response.data;
+      
+      if (documents.value.length > 0) {
+        console.log('Documents found:', documents.value.length);
+      } else {
+        console.log('No documents found');
+      }
+    } else {
+      console.warn('Response does not contain expected data or format:', response);
+      documents.value = [];
+    }
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    if (error.response) {
+      console.error('Error details:', error.response.data);
+    }
+    showNotification('Error al cargar documentos', 'error');
+    documents.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 /**
  * Download the document as PDF.
@@ -460,6 +530,56 @@ window.forceDocumentHighlight = forceHighlight;
 const handlePreviewDocument = async (document) => {
   await registerView('document', document.id);
   openPreviewModal(document);
+};
+
+/**
+ * Navigate to signature view for a document.
+ * @param {object} document - The document to view signatures for.
+ */
+const viewDocumentSignatures = (document) => {
+  selectedDocumentId.value = document.id;
+  showSignaturesModal.value = true;
+};
+
+/**
+ * Closes the signatures modal and resets the selected document.
+ */
+const closeSignaturesModal = () => {
+  showSignaturesModal.value = false;
+};
+
+/**
+ * Refreshes the document data after an action (like signing).
+ */
+const handleRefresh = async () => {
+  // Reload documents using the store
+  await documentStore.init(true);
+  
+  // If we're in a component that displays store-based data,
+  // ensure the data is updated
+  const docExists = filteredDocuments.value.some(doc => 
+    String(doc.id) === String(selectedDocumentId.value)
+  );
+  
+  if (docExists) {
+    documentStore.lastUpdatedDocumentId = selectedDocumentId.value;
+    localStorage.setItem('lastUpdatedDocumentId', selectedDocumentId.value);
+    forceHighlight(selectedDocumentId.value);
+  }
+};
+
+/**
+ * Function to format dates
+ */
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 };
 </script>
 

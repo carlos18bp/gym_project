@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 
-from gym_app.models import User, DynamicDocument, DocumentVariable
+from gym_app.models import User, DynamicDocument, DocumentVariable, DocumentSignature
 
 class Command(BaseCommand):
     help = 'Create fake dynamic documents for testing the documents report functionality'
@@ -19,17 +19,17 @@ class Command(BaseCommand):
     
     def handle(self, *args, **options):
         fake = Faker()
-        num_documents = options['num_documents']
-        
-        # Get users for assignment
-        lawyers = list(User.objects.filter(role='lawyer'))
-        clients = list(User.objects.filter(role='client'))
-        all_users = lawyers + clients
-        
-        if not all_users:
-            self.stdout.write(self.style.ERROR('No users found. Please run create_clients_lawyers first.'))
+        num_documents = options.get('num_documents', 10)
+        self.stdout.write(f'Creating {num_documents} dynamic documents...')
+
+        # Get all lawyers and clients
+        lawyers = User.objects.filter(role='lawyer')
+        clients = User.objects.filter(role='client')
+
+        if not lawyers.exists() or not clients.exists():
+            self.stdout.write(self.style.ERROR('No lawyers or clients found. Please create users first.'))
             return
-        
+
         # Document state choices
         states = ['Draft', 'Published', 'Progress', 'Completed', 'Rejected', 'Pending Review']
         
@@ -109,83 +109,62 @@ class Command(BaseCommand):
         # self.stdout.write(self.style.SUCCESS('Cleared existing documents'))
         
         # Create documents
-        documents_created = 0
-        variables_created = 0
-        
         for i in range(num_documents):
-            # Select random template
-            template = random.choice(document_templates)
-            
-            # Select random users
-            created_by = random.choice(lawyers)  # Only lawyers create documents
-            assigned_to = random.choice(all_users) if random.random() > 0.2 else None  # 20% chance of no assignment
-            
-            # Generate random dates (within last 120 days)
-            days_ago = random.randint(0, 180)
+            # Randomly select a lawyer and client
+            lawyer = random.choice(lawyers)
+            client = random.choice(clients)
+
+            # Generate random dates within the last year
+            days_ago = random.randint(0, 365)  # Random day in the last year
             created_at = timezone.now() - timedelta(days=days_ago)
             
-            # For updated_at, either same as created_at or more recent
-            if random.random() > 0.5:  # 50% chance of having been updated
-                updated_at = created_at + timedelta(days=random.randint(1, min(days_ago, 60)))
+            # Ensure updated_at is after created_at
+            days_since_creation = min(days_ago, 60)  # Limit to 60 days or less
+            if days_since_creation > 0:
+                update_days = random.randint(1, days_since_creation)
+                updated_at = created_at + timedelta(days=update_days)
             else:
                 updated_at = created_at
-            
-            # Select random state with more balanced distribution
-            # Draft: 25%, Published: 20%, Progress: 25%, Completed: 15%, Rejected: 10%, Pending Review: 5%
-            state_weights = [0.25, 0.20, 0.25, 0.15, 0.10, 0.05]
-            state = random.choices(states, weights=state_weights, k=1)[0]
-            
-            # Create a unique title
-            title = f"{template['title_prefix']} - {fake.company()} ({i+1})"
-            
+
             # Create the document
             document = DynamicDocument.objects.create(
-                title=title,
-                content=template['content'],
-                state=state,
-                created_by=created_by,
-                assigned_to=assigned_to,
+                title=f'Document {i+1}',
+                content=f'This is the content of document {i+1}',
+                state=random.choice(['Draft', 'Published', 'Progress', 'Completed']),
+                created_by=lawyer,
+                assigned_to=client,
                 created_at=created_at,
-                updated_at=updated_at
+                updated_at=updated_at,
+                requires_signature=random.choice([True, False])
             )
-            documents_created += 1
-            
-            # Add 3-7 variables to the document (more variables for better reports)
-            num_variables = random.randint(3, 7)
-            var_templates = random.sample(variable_templates, num_variables)
-            
-            for var_template in var_templates:
-                # Generate random value depending on field type
-                if var_template['field_type'] == 'input':
-                    if 'name' in var_template['name_en']:
-                        value = fake.name()
-                    elif 'date' in var_template['name_en']:
-                        value = fake.date()
-                    elif 'amount' in var_template['name_en'] or 'fee' in var_template['name_en'] or 'price' in var_template['name_en']:
-                        value = f"${fake.random_int(min=1000, max=100000)}"
-                    elif 'number' in var_template['name_en']:
-                        value = fake.random_int(min=1000, max=9999)
-                    elif 'address' in var_template['name_en']:
-                        value = fake.address()
-                    elif 'court' in var_template['name_en'] or 'tribunal' in var_template['name_en']:
-                        value = f"Tribunal {fake.city()} de {fake.random_element(['Civil', 'Penal', 'Familiar', 'Mercantil'])}"
-                    else:
-                        value = fake.word()
-                else:  # text_area
-                    value = fake.paragraph()
-                
+
+            # Create some variables for the document
+            num_variables = random.randint(1, 5)
+            for j in range(num_variables):
                 DocumentVariable.objects.create(
                     document=document,
-                    name_en=var_template['name_en'],
-                    name_es=var_template['name_es'],
-                    tooltip=var_template['tooltip'],
-                    field_type=var_template['field_type'],
-                    value=value
+                    name_en=f'variable_{j+1}',
+                    name_es=f'variable_{j+1}',
+                    tooltip=f'Tooltip for variable {j+1}',
+                    field_type=random.choice(['input', 'text_area']),
+                    value=f'Value for variable {j+1}'
                 )
-                variables_created += 1
-        
-        self.stdout.write(
-            self.style.SUCCESS(
-                f'Successfully created {documents_created} documents with {variables_created} variables'
-            )
-        ) 
+
+            # If document requires signature, create signature records
+            if document.requires_signature:
+                # Randomly select 1-3 signers
+                num_signers = random.randint(1, 3)
+                signers = random.sample(list(clients), min(num_signers, clients.count()))
+                
+                for signer in signers:
+                    DocumentSignature.objects.create(
+                        document=document,
+                        signer=signer,
+                        signed=random.choice([True, False]),
+                        signed_at=timezone.now() if random.choice([True, False]) else None,
+                        ip_address=f'192.168.1.{random.randint(1, 255)}' if random.choice([True, False]) else None
+                    )
+
+            self.stdout.write(self.style.SUCCESS(f'Successfully created document "{document.title}"'))
+
+        self.stdout.write(self.style.SUCCESS(f'Successfully created {num_documents} dynamic documents')) 

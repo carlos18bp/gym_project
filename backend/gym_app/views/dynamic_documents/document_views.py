@@ -32,7 +32,7 @@ def create_dynamic_document(request):
     if request.data.get('state') in ['Progress', 'Completed'] and not request.data.get('assigned_to'):
         request.data['assigned_to'] = request.user.id
 
-    # Validar y guardar el documento
+    # Validate and save the document
     serializer = DynamicDocumentSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         print("Serializer is valid. Saving document...")
@@ -53,6 +53,18 @@ def list_dynamic_documents(request):
     serializer = DynamicDocumentSerializer(documents, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_dynamic_document(request, pk):
+    """
+    Get a specific dynamic document by ID.
+    """
+    try:
+        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
+        serializer = DynamicDocumentSerializer(document)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except DynamicDocument.DoesNotExist:
+        return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
@@ -62,16 +74,16 @@ def update_dynamic_document(request, pk):
     """
     print(request.data)
     try:
-        # Obtener el documento y cargar sus variables relacionadas
+        # Get the document and load its related variables
         document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Evitar modificar el campo `created_by`
+    # Prevent modifying the `created_by` field
     if 'created_by' in request.data:
         request.data.pop('created_by')
 
-    # Validar y actualizar el documento
+    # Validate and update the document
     serializer = DynamicDocumentSerializer(document, data=request.data, partial=True, context={'request': request})
     if serializer.is_valid():
         print("Serializer is valid. Updating document...")
@@ -101,7 +113,7 @@ def delete_dynamic_document(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def download_dynamic_document_pdf(request, pk):
+def download_dynamic_document_pdf(request, pk, for_version=False):
     """
     Generates and returns a PDF file for a given document using ReportLab and xhtml2pdf.
 
@@ -112,9 +124,11 @@ def download_dynamic_document_pdf(request, pk):
     Parameters:
         request (HttpRequest): The request object.
         pk (int): The primary key of the document to be retrieved.
+        for_version (bool): If True, returns the PDF buffer instead of a FileResponse (for version creation).
 
     Returns:
         FileResponse: A downloadable PDF file response.
+        BytesIO: PDF buffer if for_version is True.
         Response: A JSON response with an error message if an exception occurs.
 
     Raises:
@@ -124,7 +138,7 @@ def download_dynamic_document_pdf(request, pk):
     """
     try:
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
 
         # Replace variables within the content
         processed_content = document.content
@@ -255,6 +269,10 @@ def download_dynamic_document_pdf(request, pk):
         # Return the generated PDF as a response
         pdf_buffer.seek(0)
 
+        # If this is for a version, return the buffer
+        if for_version:
+            return pdf_buffer
+
         return FileResponse(
             pdf_buffer,
             as_attachment=True,
@@ -292,7 +310,7 @@ def download_dynamic_document_word(request, pk):
     try:
 
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
 
         # Replace variables dynamically
         def replace_variables(text):
