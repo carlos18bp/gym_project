@@ -2,6 +2,7 @@ import datetime
 import io
 import os
 from django.utils import timezone
+from django.db import transaction
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -129,6 +130,7 @@ def get_pending_signatures(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_document_visibility_by_id
+@transaction.atomic
 def sign_document(request, document_id, user_id):
     """
     Sign a document using the user's signature.
