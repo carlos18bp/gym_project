@@ -2,6 +2,7 @@ import datetime
 import io
 import os
 from django.utils import timezone
+from django.db import transaction
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -29,7 +30,7 @@ from xhtml2pdf import pisa
 from reportlab.pdfgen import canvas
 from rest_framework.views import APIView
 from gym_app.serializers.dynamic_document import DocumentVariableSerializer
-from gym_app.views.layouts.sendEmail import EmailMessage
+from django.core.mail import EmailMessage
 
 User = get_user_model()
 
@@ -77,6 +78,7 @@ def get_pending_signatures(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def sign_document(request, document_id, user_id):
     """
     Sign a document using the user's signature.

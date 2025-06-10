@@ -11,7 +11,7 @@ SECRET_KEY = 'django-insecure-6kg(nl718cb!8ltn3m%t2ol-he+0y5=bgsto756*2@ue!vb29s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['gmconsultoresjuridicos.com', 'www.gmconsultoresjuridicos.com']
+ALLOWED_HOSTS = ['gmconsultoresjuridicos.com', 'www.gmconsultoresjuridicos.com', '145.223.120.121']
 
 # Application definition
 
@@ -155,3 +155,4 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'intranetgym@gmail.com'
 EMAIL_HOST_PASSWORD = 'qwyouwgbqslbwvrw'
+DEFAULT_FROM_EMAIL = 'intranetgym@gmail.com'
