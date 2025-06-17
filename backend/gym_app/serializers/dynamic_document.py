@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature
+from django.core.validators import EmailValidator
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -17,6 +19,40 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentVariable
         fields = ['id', 'name_en', 'name_es', 'tooltip', 'field_type', 'value']
+
+    def validate(self, data):
+        """
+        Validate the data based on field type and requirements.
+        """
+        field_type = data.get('field_type')
+        value = data.get('value')
+
+        if value:
+            if field_type == 'number':
+                try:
+                    float(value)
+                except ValueError:
+                    raise serializers.ValidationError({
+                        'value': 'El valor debe ser un número válido.'
+                    })
+            elif field_type == 'date':
+                try:
+                    from datetime import datetime
+                    datetime.strptime(value, '%Y-%m-%d')
+                except ValueError:
+                    raise serializers.ValidationError({
+                        'value': 'El valor debe ser una fecha válida en formato YYYY-MM-DD.'
+                    })
+            elif field_type == 'email':
+                validator = EmailValidator()
+                try:
+                    validator(value)
+                except ValidationError:
+                    raise serializers.ValidationError({
+                        'value': 'El valor debe ser un correo electrónico válido.'
+                    })
+
+        return data
 
 
 class DocumentSignatureSerializer(serializers.ModelSerializer):

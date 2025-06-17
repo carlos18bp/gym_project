@@ -3,6 +3,8 @@ from django.conf import settings
 from django.utils import timezone
 import uuid
 import os
+from django.core.exceptions import ValidationError
+from django.core.validators import EmailValidator
 
 def document_version_path(instance, filename):
     """Generate unique path for document version files"""
@@ -148,6 +150,9 @@ class DocumentVariable(models.Model):
     FIELD_TYPE_CHOICES = [
         ('input', 'Input'),
         ('text_area', 'Text Area'),
+        ('number', 'Number'),
+        ('date', 'Date'),
+        ('email', 'Email'),
     ]
 
     document = models.ForeignKey(
@@ -183,6 +188,36 @@ class DocumentVariable(models.Model):
         help_text="Field type for the variable."
     )
     value = models.TextField(blank=True, null=True, help_text="Value filled by the user.")
+
+    def clean(self):
+        """
+        Validate the field value based on its type.
+        """
+        if self.value:
+            if self.field_type == 'number':
+                try:
+                    float(self.value)
+                except ValueError:
+                    raise ValidationError({'value': 'El valor debe ser un número válido.'})
+            elif self.field_type == 'date':
+                try:
+                    from datetime import datetime
+                    datetime.strptime(self.value, '%Y-%m-%d')
+                except ValueError:
+                    raise ValidationError({'value': 'El valor debe ser una fecha válida en formato YYYY-MM-DD.'})
+            elif self.field_type == 'email':
+                validator = EmailValidator()
+                try:
+                    validator(self.value)
+                except ValidationError:
+                    raise ValidationError({'value': 'El valor debe ser un correo electrónico válido.'})
+
+    def save(self, *args, **kwargs):
+        """
+        Clean and validate the data before saving.
+        """
+        self.clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         """

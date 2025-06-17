@@ -68,6 +68,9 @@
             >
               <option value="input">Texto simple</option>
               <option value="text_area">Texto largo</option>
+              <option value="number">Número</option>
+              <option value="date">Fecha</option>
+              <option value="email">Correo electrónico</option>
             </select>
           </div>
         </div>
@@ -118,6 +121,25 @@ onMounted(() => {
   }
 });
 
+// Validation rules for different field types
+const validationRules = {
+  input: (value) => value && value.trim().length > 0,
+  text_area: (value) => value && value.trim().length > 0,
+  number: (value) => !isNaN(parseFloat(value)) && isFinite(value),
+  date: (value) => {
+    if (!value) return false;
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(value)) return false;
+    const date = new Date(value);
+    return date instanceof Date && !isNaN(date);
+  },
+  email: (value) => {
+    if (!value) return false;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(value);
+  }
+};
+
 /**
  * Validate form fields before saving.
  * @returns {boolean} - Returns true if all validations pass, false otherwise.
@@ -127,8 +149,30 @@ const validateForm = () => {
 
   let isValid = true;
   store.selectedDocument?.variables.forEach((variable, index) => {
-    if (!variable.name_es || variable.name_es.trim() === "") {
-      validationErrors.value[index] = "Este campo es obligatorio.";
+    const errors = [];
+    
+    // Validate field type specific rules
+    if (variable.value && variable.value.trim() !== "") {
+      const validateField = validationRules[variable.field_type];
+      if (validateField && !validateField(variable.value)) {
+        switch (variable.field_type) {
+          case 'number':
+            errors.push("El valor debe ser un número válido.");
+            break;
+          case 'date':
+            errors.push("El valor debe ser una fecha válida en formato YYYY-MM-DD.");
+            break;
+          case 'email':
+            errors.push("El valor debe ser un correo electrónico válido.");
+            break;
+          default:
+            errors.push("El valor no es válido para este tipo de campo.");
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      validationErrors.value[index] = errors.join(" ");
       isValid = false;
     }
   });
@@ -136,7 +180,7 @@ const validateForm = () => {
   if (!isValid) {
     Swal.fire({
       title: "Campos incompletos",
-      text: "Por favor, completa todos los campos obligatorios.",
+      text: "Por favor, verifica los formatos de los campos.",
       icon: "warning",
     });
   }
