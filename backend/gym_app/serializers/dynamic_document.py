@@ -15,10 +15,11 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
     including their name in English and Spanish, tooltip, field type, and value.
     """
     id = serializers.IntegerField(required=False)
+    select_options = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = DocumentVariable
-        fields = ['id', 'name_en', 'name_es', 'tooltip', 'field_type', 'value']
+        fields = ['id', 'name_en', 'name_es', 'tooltip', 'field_type', 'value', 'select_options']
 
     def validate(self, data):
         """
@@ -26,6 +27,11 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
         """
         field_type = data.get('field_type')
         value = data.get('value')
+        select_options = data.get('select_options')
+
+        # Initialize select_options as empty array if field type is select and no options provided
+        if field_type == 'select' and not select_options:
+            data['select_options'] = []
 
         if value:
             if field_type == 'number':
@@ -51,6 +57,13 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'value': 'El valor debe ser un correo electrónico válido.'
                     })
+
+        # Validate select options if field type is select
+        if field_type == 'select':
+            if not select_options or not isinstance(select_options, list) or len(select_options) == 0:
+                raise serializers.ValidationError({
+                    'select_options': 'Debe proporcionar al menos una opción para el selector.'
+                })
 
         return data
 

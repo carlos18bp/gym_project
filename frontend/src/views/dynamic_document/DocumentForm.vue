@@ -93,6 +93,25 @@
             @input="validateField(variable, index)"
           />
 
+          <!-- Select input -->
+          <select
+            v-if="variable.field_type === 'select'"
+            v-model="variable.value"
+            :id="'field-' + index"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @change="validateField(variable, index)"
+          >
+            <option value="">Seleccione una opción</option>
+            <option
+              v-for="option in variable.select_options"
+              :key="option"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+
           <!-- Validation error message -->
           <p v-if="validationErrors[index]" class="text-red-500 text-sm mt-1 flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -239,7 +258,8 @@ const validationRules = {
     if (!value) return false;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(value);
-  }
+  },
+  select: (value) => value && value.trim().length > 0
 };
 
 /**
@@ -392,12 +412,12 @@ onMounted(async () => {
     document.value = documentBase.value;
     document.value.title = route.params.title;
     
-    // Si estamos en modo formalize, actualizamos el estado y cargamos firmantes
+    // If we're in formalize mode, update state and load signers
     if (route.params.mode === "formalize") {
       document.value.state = "Published";
       document.value.requires_signature = true;
       
-      // Si el documento ya tiene firmantes, los cargamos
+      // If document already has signers, load them
       if (document.value.signer_ids && document.value.signer_ids.length > 0) {
         const users = await userStore.getUsersByIds(document.value.signer_ids);
         selectedSigners.value = users;
@@ -439,6 +459,7 @@ const saveDocument = async (state = 'Draft') => {
         tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
+        select_options: variable.field_type === 'select' ? variable.select_options : null
       })),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',

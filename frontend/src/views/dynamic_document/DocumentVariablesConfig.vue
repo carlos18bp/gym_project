@@ -71,7 +71,22 @@
               <option value="number">Número</option>
               <option value="date">Fecha</option>
               <option value="email">Correo electrónico</option>
+              <option value="select">Selector</option>
             </select>
+          </div>
+
+          <!-- Select options configuration -->
+          <div v-if="variable.field_type === 'select'" class="col-span-12 mt-2">
+            <label class="block text-sm font-medium leading-6 text-primary">
+              Opciones del selector (separadas por coma) <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              v-model="variable.select_options_text"
+              @input="handleSelectOptionsInput($event, variable)"
+              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+              placeholder="Opción 1, Opción 2, Opción 3"
+            />
           </div>
         </div>
       </div>
@@ -119,6 +134,19 @@ onMounted(() => {
   if (!store.selectedDocument) {
     console.error("No selected document found");
   }
+
+  // Initialize select_options for select type fields
+  if (store.selectedDocument?.variables) {
+    store.selectedDocument.variables.forEach(variable => {
+      if (variable.field_type === 'select') {
+        if (!variable.select_options) {
+          variable.select_options = [];
+        }
+        // Initialize the text representation
+        variable.select_options_text = variable.select_options.join(', ');
+      }
+    });
+  }
 });
 
 // Validation rules for different field types
@@ -141,6 +169,27 @@ const validationRules = {
 };
 
 /**
+ * Get the text representation of select options
+ */
+const getSelectOptionsText = (variable) => {
+  if (!variable.select_options) {
+    return '';
+  }
+  return Array.isArray(variable.select_options) ? variable.select_options.join(', ') : '';
+};
+
+/**
+ * Handles the input of select options, converting comma-separated string to array
+ */
+const handleSelectOptionsInput = (event, variable) => {
+  const value = event.target.value;
+  // Update the text representation
+  variable.select_options_text = value;
+  // Convert text to array for select_options
+  variable.select_options = value ? value.split(',').map(option => option.trim()).filter(option => option !== '') : [];
+};
+
+/**
  * Validate form fields before saving.
  * @returns {boolean} - Returns true if all validations pass, false otherwise.
  */
@@ -150,6 +199,11 @@ const validateForm = () => {
   let isValid = true;
   store.selectedDocument?.variables.forEach((variable, index) => {
     const errors = [];
+    
+    // Validate name_es is required
+    if (!variable.name_es || variable.name_es.trim() === '') {
+      errors.push("El nombre en pantalla es obligatorio.");
+    }
     
     // Validate field type specific rules
     if (variable.value && variable.value.trim() !== "") {
@@ -171,6 +225,11 @@ const validateForm = () => {
       }
     }
 
+    // Validate select options if field type is select
+    if (variable.field_type === 'select' && (!variable.select_options || variable.select_options.length === 0)) {
+      errors.push("Debe ingresar al menos una opción para el selector.");
+    }
+
     if (errors.length > 0) {
       validationErrors.value[index] = errors.join(" ");
       isValid = false;
@@ -180,7 +239,7 @@ const validateForm = () => {
   if (!isValid) {
     Swal.fire({
       title: "Campos incompletos",
-      text: "Por favor, verifica los formatos de los campos.",
+      text: "Por favor, verifica los campos obligatorios y sus formatos.",
       icon: "warning",
     });
   }
@@ -214,6 +273,7 @@ const saveDocument = async (state) => {
         tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
+        select_options: variable.field_type === 'select' ? variable.select_options : null
       }))
     };
 

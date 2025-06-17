@@ -153,6 +153,7 @@ class DocumentVariable(models.Model):
         ('number', 'Number'),
         ('date', 'Date'),
         ('email', 'Email'),
+        ('select', 'Select'),
     ]
 
     document = models.ForeignKey(
@@ -186,6 +187,11 @@ class DocumentVariable(models.Model):
         choices=FIELD_TYPE_CHOICES,
         default='input',
         help_text="Field type for the variable."
+    )
+    select_options = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Options for select type fields."
     )
     value = models.TextField(blank=True, null=True, help_text="Value filled by the user.")
 
