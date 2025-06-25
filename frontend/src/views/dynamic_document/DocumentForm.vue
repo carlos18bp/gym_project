@@ -14,10 +14,10 @@
           :key="index"
           :class="{
             'col-span-3': variable.field_type === 'text_area',
-            'col-span-1': variable.field_type === 'input',
+            'col-span-1': variable.field_type !== 'text_area',
           }"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 mb-2">
             <label
               :for="'field-' + index"
               class="text-base font-medium text-primary"
@@ -37,20 +37,88 @@
             </div>
           </div>
 
+          <!-- Text input -->
           <input
             v-if="variable.field_type === 'input'"
             type="text"
             v-model="variable.value"
             :id="'field-' + index"
-            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @input="validateField(variable, index)"
           />
 
+          <!-- Text area -->
           <textarea
             v-if="variable.field_type === 'text_area'"
             v-model="variable.value"
             :id="'field-' + index"
-            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @input="validateField(variable, index)"
+            rows="4"
           ></textarea>
+
+          <!-- Number input -->
+          <input
+            v-if="variable.field_type === 'number'"
+            type="number"
+            v-model="variable.value"
+            :id="'field-' + index"
+            step="any"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @input="validateField(variable, index)"
+          />
+
+          <!-- Date input -->
+          <input
+            v-if="variable.field_type === 'date'"
+            type="date"
+            v-model="variable.value"
+            :id="'field-' + index"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @input="validateField(variable, index)"
+          />
+
+          <!-- Email input -->
+          <input
+            v-if="variable.field_type === 'email'"
+            type="email"
+            v-model="variable.value"
+            :id="'field-' + index"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @input="validateField(variable, index)"
+          />
+
+          <!-- Select input -->
+          <select
+            v-if="variable.field_type === 'select'"
+            v-model="variable.value"
+            :id="'field-' + index"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
+            :class="{ 'ring-red-300': validationErrors[index] }"
+            @change="validateField(variable, index)"
+          >
+            <option value="">Seleccione una opción</option>
+            <option
+              v-for="option in variable.select_options"
+              :key="option"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+
+          <!-- Validation error message -->
+          <p v-if="validationErrors[index]" class="text-red-500 text-sm mt-1 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            {{ validationErrors[index] }}
+          </p>
         </div>
       </div>
 
@@ -174,6 +242,26 @@ const validationErrors = ref([]);
 // Detect edit mode based on the presence of a document ID
 const isEditMode = ref(false);
 
+// Validation rules for different field types
+const validationRules = {
+  input: (value) => value && value.trim().length > 0,
+  text_area: (value) => value && value.trim().length > 0,
+  number: (value) => !isNaN(parseFloat(value)) && isFinite(value),
+  date: (value) => {
+    if (!value) return false;
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(value)) return false;
+    const date = new Date(value);
+    return date instanceof Date && !isNaN(date);
+  },
+  email: (value) => {
+    if (!value) return false;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(value);
+  },
+  select: (value) => value && value.trim().length > 0
+};
+
 /**
  * Searches for users based on the search query
  */
@@ -226,6 +314,42 @@ watch(userSearchQuery, (newValue) => {
 });
 
 /**
+ * Validate a single field
+ * @param {Object} variable - The variable to validate
+ * @param {number} index - The index of the variable
+ */
+const validateField = (variable, index) => {
+  const errors = [];
+  
+  if (variable.value !== null && variable.value !== undefined) {
+    const validateField = validationRules[variable.field_type];
+    if (validateField && !validateField(variable.value)) {
+      switch (variable.field_type) {
+        case 'number':
+          errors.push("El valor debe ser un número válido.");
+          break;
+        case 'date':
+          errors.push("El valor debe ser una fecha válida en formato YYYY-MM-DD.");
+          break;
+        case 'email':
+          errors.push("El valor debe ser un correo electrónico válido.");
+          break;
+        default:
+          if (String(variable.value).trim().length === 0) {
+            errors.push("El valor no puede estar vacío.");
+          }
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    validationErrors.value[index] = errors.join(" ");
+  } else {
+    validationErrors.value[index] = null;
+  }
+};
+
+/**
  * Validate form fields before saving.
  * @returns {boolean} - Returns true if all validations pass, false otherwise.
  */
@@ -234,8 +358,8 @@ const validateForm = () => {
 
   let isValid = true;
   document.value?.variables.forEach((variable, index) => {
-    if (!variable.value || variable.value.trim() === "") {
-      validationErrors.value[index] = "Este campo es obligatorio.";
+    validateField(variable, index);
+    if (validationErrors.value[index]) {
       isValid = false;
     }
   });
@@ -253,7 +377,7 @@ const validateForm = () => {
   if (!isValid) {
     Swal.fire({
       title: "Campos incompletos",
-      text: "Por favor, completa todos los campos obligatorios.",
+      text: "Por favor, verifica los formatos de los campos.",
       icon: "warning",
     });
   }
@@ -288,12 +412,12 @@ onMounted(async () => {
     document.value = documentBase.value;
     document.value.title = route.params.title;
     
-    // Si estamos en modo formalize, actualizamos el estado y cargamos firmantes
+    // If we're in formalize mode, update state and load signers
     if (route.params.mode === "formalize") {
       document.value.state = "Published";
       document.value.requires_signature = true;
       
-      // Si el documento ya tiene firmantes, los cargamos
+      // If document already has signers, load them
       if (document.value.signer_ids && document.value.signer_ids.length > 0) {
         const users = await userStore.getUsersByIds(document.value.signer_ids);
         selectedSigners.value = users;
@@ -309,7 +433,7 @@ onMounted(async () => {
  */
 const allFieldsComplete = computed(() => {
   return document.value?.variables.every(
-    (variable) => variable.value && variable.value.trim().length > 0
+    (variable) => variable.value !== null && variable.value !== undefined && String(variable.value).trim().length > 0
   );
 });
 
@@ -327,7 +451,7 @@ const saveDocument = async (state = 'Draft') => {
     const documentData = {
       title: document.value.title,
       content: document.value.content,
-      // Si estamos en modo formalize, establecemos el estado como PendingSignatures
+      // If we're in formalize mode, set state as PendingSignatures
       state: route.params.mode === 'formalize' ? 'PendingSignatures' : state,
       variables: document.value.variables.map((variable) => ({
         name_en: variable.name_en,
@@ -335,6 +459,7 @@ const saveDocument = async (state = 'Draft') => {
         tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
+        select_options: variable.field_type === 'select' ? variable.select_options : null
       })),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',
@@ -343,14 +468,14 @@ const saveDocument = async (state = 'Draft') => {
 
     let documentId = null;
     
-    // Si estamos en modo formalize, siempre creamos un nuevo documento
+    // In formalize mode, always create a new document
     if (route.params.mode === 'formalize') {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
         documentId = response.id;
       }
     }
-    // Para otros modos, actualizamos o creamos según corresponda
+    // For other modes, update or create as needed
     else if (isEditMode.value && document.value.id) {
       await store.updateDocument(document.value.id, documentData);
       documentId = document.value.id;

@@ -341,33 +341,17 @@ const filteredDocuments = computed(() => {
 const fetchDocuments = async () => {
   isLoading.value = true;
   try {
-    console.log('==== GETTING DOCUMENTS ====');
-    
-    // Using the endpoint for user documents
     const userId = userStore.currentUser.id;
-    console.log('Current user ID:', userId);
-    
+    if (!userId) return;
+
     const response = await get_request(`dynamic-documents/user/${userId}/pending-documents-full/`);
-    
-    if (response && response.data) {
-      console.log('Number of documents received:', response.data.length);
-      documents.value = response.data;
-      
-      if (documents.value.length > 0) {
-        console.log('Documents found:', documents.value.length);
-      } else {
-        console.log('No documents found');
-      }
-    } else {
-      console.warn('Response does not contain expected data or format:', response);
-      documents.value = [];
-    }
+    documents.value = response.data;
   } catch (error) {
     console.error('Error fetching documents:', error);
     if (error.response) {
       console.error('Error details:', error.response.data);
     }
-    showNotification('Error al cargar documentos', 'error');
+    await showNotification('Error al cargar documentos', 'error');
     documents.value = [];
   } finally {
     isLoading.value = false;

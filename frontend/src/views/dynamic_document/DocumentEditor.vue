@@ -23,8 +23,19 @@ const store = useDynamicDocumentStore();
 onMounted(async () => {
   const documentId = route.params.id;
   if (documentId) {
-    store.selectedDocument = await store.documentById(documentId);
-    editorContent.value = store.selectedDocument?.content || "";
+    try {
+      // Get updated document using store method
+      const documentData = await store.fetchDocumentById(documentId, true); // true to force refresh
+      
+      // Update document in store
+      store.selectedDocument = documentData;
+      editorContent.value = documentData?.content || "";
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      // If request fails, use store document as fallback
+      store.selectedDocument = await store.documentById(documentId);
+      editorContent.value = store.selectedDocument?.content || "";
+    }
   }
 });
 
@@ -53,6 +64,7 @@ const syncVariables = (variables) => {
       tooltip: existingVariable?.tooltip || "",
       field_type: existingVariable?.field_type || "input",
       value: existingVariable?.value || "",
+      select_options: existingVariable?.field_type === 'select' ? (existingVariable?.select_options || []) : null
     };
   });
   store.selectedDocument.variables = updatedVariables;

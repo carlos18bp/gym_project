@@ -60,8 +60,19 @@ def get_dynamic_document(request, pk):
     Get a specific dynamic document by ID.
     """
     try:
-        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related(
+            'variables',
+            'signatures__signer'
+        ).get(pk=pk)
+        
+        # Ensure variables have select_options initialized
+        for variable in document.variables.all():
+            if variable.field_type == 'select' and not variable.select_options:
+                variable.select_options = []
+                variable.save()
+        
         serializer = DynamicDocumentSerializer(document)
+        print("Serialized data:", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -308,7 +319,6 @@ def download_dynamic_document_word(request, pk):
         FileResponse: A response containing the generated Word document.
     """
     try:
-
         # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
 
@@ -456,9 +466,9 @@ def download_dynamic_document_word(request, pk):
                                     if "color:" in normalized_style:
                                         color_part = normalized_style.split("color:")[1].split(";")[0].strip()
                                     else:
-                                        return  # No se encontró color
+                                        return  # Color not found
                                     
-                                    # Handler RGB colors
+                                    # Handle RGB colors
                                     if color_part.startswith("rgb("):
                                         color_values = color_part.replace("rgb(", "").replace(")", "").split(",")
                                         r = int(color_values[0].strip())
@@ -466,12 +476,12 @@ def download_dynamic_document_word(request, pk):
                                         b = int(color_values[2].strip())
                                         run.font.color.rgb = RGBColor(r, g, b)
                                     
-                                    # Handler color with name (red, blue, etc.)
+                                    # Handle color with name (red, blue, etc.)
                                     elif color_part in COLOR_MAP:
                                         r, g, b = COLOR_MAP[color_part]
                                         run.font.color.rgb = RGBColor(r, g, b)
                                     
-                                    # Handler hexadecimales colors (#FF0000, etc.)
+                                    # Handle hexadecimal colors (#FF0000, etc.)
                                     elif color_part.startswith("#"):
                                         hex_color = color_part.lstrip("#")
                                         r = int(hex_color[0:2], 16)
