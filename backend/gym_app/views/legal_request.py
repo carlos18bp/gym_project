@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404
 from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
 from gym_app.serializers import LegalRequestSerializer, LegalRequestTypeSerializer, LegalDisciplineSerializer
+from gym_app.views.layouts.sendEmail import send_template_email
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -42,6 +43,24 @@ def create_legal_request(request):
 
         # Serialize and return the created request
         serializer = LegalRequestSerializer(legal_request, context={'request': request})
+
+        # === Send confirmation email to the requester ===
+        try:
+            context = {
+                "first_name": legal_request.first_name,
+                "last_name": legal_request.last_name,
+                "description": legal_request.description,
+            }
+            send_template_email(
+                template_name="legal_request",
+                subject="Confirmación de solicitud legal",
+                to_emails=[legal_request.email],
+                context=context,
+            )
+        except Exception as e:
+            # Do not interrupt the flow if the email fails; just log the error
+            print(f"Error enviando correo de confirmación: {e}")
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     except Exception as e:

@@ -1,0 +1,74 @@
+<mjml>
+    <mj-head>
+      <mj-title>Confirmación de Solicitud Legal - GM Consultores Jurídicos</mj-title>
+      <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></mj-font>
+      <mj-attributes>
+        <mj-all font-family="Inter, Arial, sans-serif"></mj-all>
+        <mj-text font-weight="400" font-size="16px" color="#374151" line-height="1.6"></mj-text>
+        <mj-section background-color="#ffffff" padding="0px"></mj-section>
+      </mj-attributes>
+      <mj-style inline="inline">.status-badge {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        }</mj-style>
+    </mj-head>
+    <mj-body background-color="#f8fafc">
+      <mj-raw>
+        <!-- Header -->
+      </mj-raw>
+      <mj-section background-color="#ffffff" padding="0px">
+        <mj-column>
+          <mj-image src="https://www.gmconsultoresjuridicos.com/static/frontend/img/logo1.png" alt="GM Consultores Jurídicos" width="200px" padding="40px 20px 20px 20px"></mj-image>
+        </mj-column>
+      </mj-section>
+      <mj-raw>
+        <!-- Main Content -->
+      </mj-raw>
+      <mj-section background-color="#ffffff" padding="0px 20px">
+        <mj-column>
+          <mj-text padding="20px 0 10px 0" font-size="28px" font-weight="600" color="#1f2937" align="center">Solicitud Legal Recibida</mj-text>
+          <mj-text padding="10px 0 20px 0" font-size="16px" color="#6b7280" align="center"><span class="status-badge">En Proceso</span></mj-text>
+          <mj-text padding="20px 0" font-size="16px" color="#374151">Estimado/a {{first_name}} {{last_name}},</mj-text>
+          <mj-text padding="0 0 20px 0" font-size="16px" color="#374151">Hemos recibido correctamente tu solicitud de consulta legal. Nuestro equipo de expertos revisará tu caso y se pondrá en contacto contigo a la brevedad posible.</mj-text>
+          <mj-raw>
+            <!-- Description Section -->
+          </mj-raw>
+          <mj-text padding="20px 0 10px 0" font-size="18px" font-weight="600" color="#1f2937">Descripción del Caso:</mj-text>
+          <mj-text padding="0 0 20px 0" font-size="15px" color="#4b5563" line-height="1.7" background-color="#f9fafb" border-radius="8px" border="1px solid #e5e7eb">"{{description}}"</mj-text>
+          <mj-text padding="25px 0 15px 0" font-size="16px" color="#374151">Nuestro equipo se pondrá en contacto contigo <strong>lo antes posible</strong> para revisar tu solicitud.</mj-text>
+          <mj-text padding="0 0 20px 0" font-size="16px" color="#374151">Si tienes alguna pregunta urgente o deseas proporcionar información adicional, no dudes en contactarnos directamente.</mj-text>
+          <mj-raw>
+            <!-- Contact Information -->
+          </mj-raw>
+          <mj-text padding="25px 0 10px 0" font-size="18px" font-weight="600" color="#1f2937">Información de Contacto:</mj-text>
+          <mj-text padding="0 0 40px 0" font-size="15px" color="#4b5563">📧 Email: contacto@gmconsultoresjuridicos.com<br>
+            🌐 Web: <a href="https://www.gmconsultoresjuridicos.com" style="color: #2563eb;">www.gmconsultoresjuridicos.com</a><br>
+            📱 Síguenos en nuestras redes sociales para más información legal</mj-text>
+          <mj-text padding="0 0 40px 0" font-size="16px" color="#374151"></mj-text>
+        </mj-column>
+      </mj-section>
+      <mj-raw>
+        <!-- Footer -->
+      </mj-raw>
+      <mj-section background-color="#1f2937" padding="30px 20px">
+        <mj-column>
+          <mj-image src="https://www.gmconsultoresjuridicos.com/static/frontend/img/logo2.png" alt="GM Consultores Jurídicos" width="150px" padding="0 0 20px 0"></mj-image>
+          <mj-text font-size="14px" color="#d1d5db" align="center" padding="10px 0">GM Consultores Jurídicos<br>
+            Expertos en Derecho y Consultoría Legal</mj-text>
+          <mj-text font-size="13px" color="#9ca3af" align="center" padding="15px 0"><strong>Áreas de Especialización:</strong><br>
+            Derecho Civil • Derecho Penal • Derecho Laboral • Derecho Corporativo<br>
+            Derecho Familiar • Derecho Tributario • Consultoría Legal</mj-text>
+          <mj-text font-size="12px" color="#9ca3af" align="center" padding="20px 0 0 0">Este es un correo electrónico automático, por favor no respondas a este mensaje.<br>
+            Para contactar con nosotros, visita: <a href="https://www.gmconsultoresjuridicos.com" style="color: #60a5fa;">www.gmconsultoresjuridicos.com</a></mj-text>
+          <mj-text font-size="11px" color="#6b7280" align="center" padding="15px 0 0 0">© 2025 GM Consultores Jurídicos. Todos los derechos reservados.<br>
+            La información contenida en este correo es confidencial y está dirigida únicamente al destinatario.</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-body>
+  </mjml>
