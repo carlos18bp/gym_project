@@ -1,6 +1,6 @@
 <mjml>
     <mj-head>
-      <mj-title>Envío de Documentos - GM Consultores Jurídicos</mj-title>
+      <mj-title>Envío de Documentos - G&M Consultores Jurídicos</mj-title>
   
       <!-- Fuente -->
       <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
@@ -140,14 +140,14 @@
           </mj-text>
   
           <mj-text font-size="15px" color="#4b5563" line-height="1.5" padding="0 0 25px">
-            📧 Email: contacto@gmconsultoresjuridicos.com<br />
-            🌐 Sitio Web: <a href="https://www.gmconsultoresjuridicos.com" style="color:#2563eb;">www.gmconsultoresjuridicos.com</a><br />
+            📧 Email: contacto@gymconsultoresjuridicos.com<br />
+            🌐 Sitio Web: <a href="https://www.gymconsultoresjuridicos.com" style="color:#2563eb;">www.gymconsultoresjuridicos.com</a><br />
             📱 Para consultas urgentes, puede contactarnos a través de nuestros canales oficiales.
           </mj-text>
   
           <mj-text font-size="15px" color="#374151" line-height="1.5" padding="0 0 30px">
             Cordialmente,<br />
-            <strong>Equipo de GM Consultores Jurídicos</strong><br />
+            <strong>Equipo de G&M Consultores Jurídicos</strong><br />
             <em>"Comprometidos con la excelencia legal"</em>
           </mj-text>
         </mj-column>
@@ -164,7 +164,7 @@
           />
   
           <mj-text font-size="13px" color="#d1d5db" align="center" line-height="1.4" padding="5px 0">
-            GM Consultores Jurídicos<br />
+            G&M Consultores Jurídicos<br />
             Expertos en Derecho y Consultoría Legal
           </mj-text>
   
@@ -176,11 +176,11 @@
   
           <mj-text font-size="11px" color="#9ca3af" align="center" line-height="1.4" padding="15px 0 0">
             Este correo contiene información confidencial y privilegiada.<br />
-            Para consultas: <a href="mailto:contacto@gmconsultoresjuridicos.com" style="color:#60a5fa;">contacto@gmconsultoresjuridicos.com</a>
+            Para consultas: <a href="mailto:contacto@gymconsultoresjuridicos.com" style="color:#60a5fa;">contacto@gymconsultoresjuridicos.com</a>
           </mj-text>
   
           <mj-text font-size="10px" color="#6b7280" align="center" line-height="1.3" padding="10px 0 0">
-            © 2025 GM Consultores Jurídicos. Todos los derechos reservados.<br />
+            © 2025 G&M Consultores Jurídicos. Todos los derechos reservados.<br />
             Los documentos adjuntos son de carácter confidencial y están destinados únicamente al destinatario autorizado.
           </mj-text>
         </mj-column>

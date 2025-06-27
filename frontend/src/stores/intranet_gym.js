@@ -56,6 +56,8 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
       // Append user name and last name
       formDataObject.append("userName", formData.userName); // User's first name
       formDataObject.append("userLastName", formData.userLastName); // User's last name
+      // Append user email
+      formDataObject.append("userEmail", formData.userEmail); // User's email
 
       // Append files
       if (formData.files && formData.files.length > 0) {

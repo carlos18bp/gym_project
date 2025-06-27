@@ -16,7 +16,7 @@
     <div v-if="userRole === 'lawyer'" class="mt-6">
       <!-- Lawyer Navigation Tabs -->
       <div class="mb-6 border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in lawyerNavigationTabs"
             :key="tab.name"
@@ -79,7 +79,7 @@
       <div 
         v-if="currentSection !== 'useDocument'"
         class="mb-6 border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
             :key="tab.name"

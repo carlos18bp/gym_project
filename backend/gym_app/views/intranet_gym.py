@@ -80,6 +80,14 @@ def create_report(request):
         email_subject = f"Cuenta de Cobro/Factura - {full_name}"
         recipient_email = "facturacion@gymconsultoresjuridicos.com"
 
+        # Extract the user email provided by the requester
+        user_email_raw = request.data.get("userEmail")
+        if isinstance(user_email_raw, list):
+            # If the value comes as a list (e.g., ['user@example.com']), grab the first element
+            user_email = user_email_raw[0] if user_email_raw else None
+        else:
+            user_email = user_email_raw
+        
         context = {
             "full_name": full_name,
             "contract": contract,
@@ -98,6 +106,16 @@ def create_report(request):
             context=context,
             attachments=[a["path"] for a in attachments],
         )
+
+        # Send confirmation to the user if an email address was provided
+        if user_email:
+            send_template_email(
+                template_name="facturation_receive_confirmation",
+                subject=email_subject,
+                to_emails=[user_email],
+                context=context,
+                attachments=[a["path"] for a in attachments],
+            )
 
         # Clean up temporary files after the email is sent
         for attachment in attachments:

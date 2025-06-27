@@ -262,7 +262,8 @@ const formData = reactive({
   paymentAmount: null,
   files: [],
   userName: "",
-  userLastName: ""
+  userLastName: "",
+  userEmail: ""
 });
 
 // Obtener la información del usuario al montar el componente
@@ -272,6 +273,7 @@ onMounted(async () => {
   if (currentUser) {
     formData.userName = currentUser.first_name || "";
     formData.userLastName = currentUser.last_name || "";
+    formData.userEmail = currentUser.email || "";
   }
 });
 
@@ -458,5 +460,8 @@ const resetForm = () => {
   formData.paymentConcept = "";
   formData.paymentAmount = null;
   files.value = []; // Clear the file list
+  formData.userName = "";
+  formData.userLastName = "";
+  formData.userEmail = "";
 };
 </script> 

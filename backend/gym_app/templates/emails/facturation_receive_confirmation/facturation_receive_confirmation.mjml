@@ -1,6 +1,6 @@
 <mjml>
     <mj-head>
-      <mj-title>Solicitud de Facturación - G&M Consultores Jurídicos</mj-title>
+      <mj-title>Confirmación de Recibido - G&M Consultores Jurídicos</mj-title>
   
       <!-- Fuente -->
       <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
@@ -104,7 +104,7 @@
         <mj-column>
           <mj-image
             src="https://www.gmconsultoresjuridicos.com/static/frontend/img/logo1.png"
-            alt="GM Consultores Jurídicos"
+            alt="G&M Consultores Jurídicos"
             width="180px"
             padding="30px 15px 15px 15px"
           />
@@ -115,7 +115,7 @@
       <mj-section padding="0px 15px">
         <mj-column padding="0px 5px">
           <mj-text align="center" font-size="24px" font-weight="600" color="#1f2937" padding="15px 0 5px">
-            Solicitud de Facturación
+            Confirmación de Recibido
           </mj-text>
   
           <mj-text align="center" padding="5px 0 15px">
@@ -164,7 +164,7 @@
   
           <!-- Texto explicativo -->
           <mj-text font-size="15px" color="#374151" line-height="1.5" padding="20px 0 15px">
-            Por favor, procese esta solicitud y genere la facturación correspondiente según los procedimientos establecidos.
+            <strong>Nota:</strong> Este correo es apenas informativo, no es una confirmación ni aceptación de la cuenta de cobro y/o factura, la cual está sujeta a revisión junto con sus anexos, si existe un rechazo o requerimiento adicional se lo haremos saber.
           </mj-text>
   
           <mj-text font-size="15px" color="#374151" line-height="1.5" padding="0 0 20px">
@@ -185,7 +185,7 @@
   
           <mj-text font-size="15px" color="#4b5563" line-height="1.5" padding="0 0 30px">
             📧 Facturación: facturacion@gymconsultoresjuridicos.com<br />
-            🌐 Sistema Web: <a href="https://www.gymconsultoresjuridicos.com" style="color:#2563eb;">www.gymconsultoresjuridicos.com</a><br />
+            🌐 Sistema Web: <a href="https://www.gmconsultoresjuridicos.com" style="color:#2563eb;">www.gymconsultoresjuridicos.com</a><br />
             📋 Para consultas sobre el estado de la facturación, contactar al departamento administrativo.
           </mj-text>
   
@@ -201,7 +201,7 @@
         <mj-column>
           <mj-image
             src="https://www.gmconsultoresjuridicos.com/static/frontend/img/logo2.png"
-            alt="GM Consultores Jurídicos"
+            alt="G&M Consultores Jurídicos"
             width="120px"
             padding="0 0 15px"
           />
