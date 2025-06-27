@@ -4,53 +4,157 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.core.mail import EmailMessage
 from django.conf import settings
+from django.template.loader import get_template
+from django.utils.html import strip_tags
+
+def send_template_email(template_name: str,
+                        subject: str,
+                        to_emails: list,
+                        context: dict | None = None,
+                        attachments: list[str] | None = None,
+                        from_email: str | None = None,
+                        cc: list[str] | None = None,
+                        bcc: list[str] | None = None) -> None:
+    """Send an HTML email rendered from a template.
+
+    Parameters
+    ----------
+    template_name : str
+        Name of the template. It must match both the folder and the html file that
+        live in ``gym_app/templates/emails/<template_name>/<template_name>.html``.
+    subject : str
+        Email subject.
+    to_emails : list[str]
+        List of recipient addresses.
+    context : dict | None, optional
+        Context variables injected into the template. Defaults to ``{}``.
+    attachments : list[str] | None, optional
+        Absolute paths of files to attach. Defaults to ``[]``.
+    from_email : str | None, optional
+        Custom sender address. If ``None`` the project setting
+        ``settings.DEFAULT_FROM_EMAIL`` is used.
+    cc : list[str] | None, optional
+        CC recipients.
+    bcc : list[str] | None, optional
+        BCC recipients.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the html template cannot be found.
+    Exception
+        For any other error while sending the email.
+    """
+    context = context or {}
+    attachments = attachments or []
+
+    # Build the template path: emails/<template_name>/<template_name>.html
+    template_path = f"emails/{template_name}/{template_name}.html"
+
+    # Load and render the template
+    try:
+        template = get_template(template_path)
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Template not found: {template_path}. Details: {exc}"
+        )
+
+    html_content = template.render(context)
+    plain_content = strip_tags(html_content)
+
+    email_message = EmailMessage(
+        subject=subject,
+        body=html_content,
+        from_email=from_email or settings.DEFAULT_FROM_EMAIL,
+        to=to_emails,
+        cc=cc,
+        bcc=bcc,
+    )
+    email_message.content_subtype = "html"  # Indicate HTML body
+
+    # Attach files if provided
+    for file_path in attachments:
+        try:
+            email_message.attach_file(file_path)
+        except FileNotFoundError:
+            # Skip non-existent files and continue with the rest
+            continue
+
+    # Send email
+    email_message.send()
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_email_with_attachments(request):
     """
-    API view to send an email with attachments (requires authentication).
-    
-    This endpoint allows an authenticated user to send an email with optional attachments.
-    
-    Request Data:
-    - to_email (str): Recipient's email address (required).
-    - subject (str): Email subject (optional, defaults to 'Sin asunto').
-    - body (str): Email body content (optional, defaults to 'Sin contenido').
-    - FILES (dict): Dictionary of files to be attached to the email.
-    
-    Returns:
-    - 200 OK: If the email is successfully sent.
-    - 400 Bad Request: If 'to_email' is missing.
-    - 500 Internal Server Error: If an unexpected error occurs.
+    API endpoint that sends an email rendered from an HTML template and optional
+    attachments (authentication required).
+
+    Expected ``request.data`` keys
+    -----------------------------
+    to_email : str
+        Recipient email address (required).
+    subject : str
+        Email subject. Defaults to *Sin asunto*.
+    template_name : str
+        Name of the template/folder inside *emails/* (required).
+    context : str | dict, optional
+        JSON string or dict with context variables for the template.
+
+    Any file sent in ``request.FILES`` will be attached to the outgoing email.
     """
     try:
-        # Extract data from the request
         to_email = request.data.get('to_email')
-        subject = request.data.get('subject', 'Sin asunto')
-        body = request.data.get('body', 'Sin contenido')
+        subject = "Envío de documentos solicitados"
+        template_name = "send_files"
+        context_raw = request.data.get('context', {})
 
-        # Validate required fields
+        # Basic validation
         if not to_email:
-            return Response({'error': 'The "to_email" field is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El campo "to_email" es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Configure the email message
-        email = EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[to_email]
-        )
+        # Ensure ``context`` is a dictionary
+        if isinstance(context_raw, str):
+            try:
+                import json
+                context = json.loads(context_raw)
+            except Exception:
+                context = {}
+        elif isinstance(context_raw, dict):
+            context = context_raw
+        else:
+            context = {}
 
-        # Process attached files
+        # Store incoming files temporarily so they can be attached to the email
+        attachments_paths = []
         for file_key in request.FILES:
             file = request.FILES[file_key]
-            email.attach(file.name, file.read(), file.content_type)
+            from django.core.files.storage import default_storage
+            import os
+            file_path = default_storage.save(file.name, file)
+            full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+            attachments_paths.append(full_path)
 
-        # Send the email
-        email.send()
+        # Send the email using the helper function
+        send_template_email(
+            template_name=template_name,
+            subject=subject,
+            to_emails=[to_email],
+            context=context,
+            attachments=attachments_paths
+        )
+
+        # Delete temporary files
+        import os
+        for path in attachments_paths:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
         return Response({'message': 'Email sent successfully.'}, status=status.HTTP_200_OK)
 
+    except FileNotFoundError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

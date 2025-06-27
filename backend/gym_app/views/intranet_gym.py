@@ -1,6 +1,4 @@
 import os
-from django.core.mail import EmailMessage
-from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -8,6 +6,9 @@ from rest_framework import status
 from gym_app.models import LegalDocument
 from gym_app.serializers import LegalDocumentSerializer
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from gym_app.views.layouts.sendEmail import send_template_email
+from django.conf import settings
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -75,34 +76,28 @@ def create_report(request):
                 "name": file.name,  # Original file name
             })
 
-        # Compose the email
-        email_subject = f"Cta Cobro y/o Factura - {full_name}"
-        email_body = (
-            f"Se ha recibido una nueva solicitud de informe con los siguientes detalles:\n\n"
-            f"Nombre: {full_name}\n"
-            f"No. Contrato: {contract}\n"
-            f"Fecha Inicial: {initial_date}\n"
-            f"Fecha Final: {end_date}\n"
-            f"Concepto de Pago: {payment_concept}\n"
-            f"Valor a Cobrar y/o Facturar: {payment_amount}\n\n"
-            f"Por favor, revise los archivos adjuntos para más información."
+        # Prepare email subject and context for the "facturation" template
+        email_subject = f"Cuenta de Cobro/Factura - {full_name}"
+        recipient_email = "facturacion@gymconsultoresjuridicos.com"
+
+        context = {
+            "full_name": full_name,
+            "contract": contract,
+            "initial_date": initial_date,
+            "end_date": end_date,
+            "payment_concept": payment_concept,
+            "payment_amount": payment_amount,
+            "request_date": timezone.now().strftime("%Y-%m-%d %H:%M"),
+        }
+
+        # Send the email using the helper utility
+        send_template_email(
+            template_name="facturation",
+            subject=email_subject,
+            to_emails=[recipient_email],
+            context=context,
+            attachments=[a["path"] for a in attachments],
         )
-        recipient_email = "facturacion@gymconsultoresjuridicos.com"  # Update this email address as needed
-
-        # Create the email object with the provided information
-        email = EmailMessage(
-            email_subject,
-            email_body,
-            settings.EMAIL_HOST_USER,
-            [recipient_email],
-        )
-
-        # Attach each file to the email
-        for attachment in attachments:
-            email.attach_file(attachment["path"])
-
-        # Send the email
-        email.send()
 
         # Clean up temporary files after the email is sent
         for attachment in attachments:

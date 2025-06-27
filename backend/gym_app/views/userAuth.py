@@ -1,6 +1,5 @@
 import secrets
 from rest_framework import status
-from django.core.mail import send_mail
 from gym_app.models import User, PasswordCode
 from rest_framework.response import Response
 from gym_app.utils import generate_auth_tokens
@@ -9,6 +8,7 @@ from gym_app.serializers.user import UserSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
+from gym_app.views.layouts.sendEmail import send_template_email
 
 @api_view(['POST'])
 def sign_on(request):
@@ -86,13 +86,13 @@ def send_verification_code(request):
     # Generate a 6-digit passcode using secrets for better security
     passcode = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
     
-    # Send an email with the passcode
-    send_mail(
-        'Sign-On Code',
-        f'Your sign-on code is: {passcode}',
-        'misfotoscmbp@gmail.com',
-        [email],
-        fail_silently=False,
+    # Send email using HTML template
+    context = {"passcode": passcode}
+    send_template_email(
+        template_name="code_verification",
+        subject="Código de verificación",
+        to_emails=[email],
+        context=context,
     )
 
     # Return the passcode in the response
@@ -309,13 +309,13 @@ def send_passcode(request):
     # Save the passcode to the database
     PasswordCode.objects.create(user=user, code=passcode)
 
-    # Send an email with the passcode
-    send_mail(
-        subject_email,
-        f'Your password reset code is: {passcode}',
-        'misfotoscmbp@gmail.com',
-        [email],
-        fail_silently=False,
+    # Send email using HTML template (reusing code_verification)
+    context = {"passcode": passcode}
+    send_template_email(
+        template_name="code_verification",
+        subject=subject_email,
+        to_emails=[email],
+        context=context,
     )
 
     # Return a success message
