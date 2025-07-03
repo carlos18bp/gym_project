@@ -473,6 +473,7 @@ const getDocumentOptions = (document) => {
     { label: "Editar", action: "edit" },
     { label: "Eliminar", action: "delete" },
     { label: "Previsualización", action: "preview" },
+    { label: "Crear una Copia", action: "copy" },
   ];
   
   // Get current user signature status FIRST - before any other logic
@@ -509,12 +510,6 @@ const getDocumentOptions = (document) => {
       action: "formalize",
       disabled: false,
     });
-  
-    baseOptions.push({
-      label: "Mover a Borrador",
-      action: "draft",
-      disabled: false,
-    });
   }
   
   // Add sign option if the lawyer needs to sign
@@ -531,14 +526,19 @@ const getDocumentOptions = (document) => {
 };
 
 /**
- * Check if a document can be published by verifying all variable values are filled.
+ * Check if a document can be published by verifying all variables are properly configured.
+ * Variables need to have proper configuration (name_es), not values (values are filled by clients).
  * @param {object} document - The document to check.
  * @returns {boolean} - True if the document can be published, false otherwise.
  */
 const canPublishDocument = (document) => {
-  return document.variables.every(
-    (variable) => variable.value && variable.value.trim().length > 0
-  );
+  if (!document.variables || document.variables.length === 0) {
+    return true;
+  }
+  
+  return document.variables.every((variable) => {
+    return variable.name_es && variable.name_es.trim().length > 0;
+  });
 };
 
 /**
@@ -614,6 +614,9 @@ const handleOption = async (action, document) => {
         await showNotification("Documento eliminado correctamente.", "success");
       }
       break;
+    case "copy":
+      await createDocumentCopy(document);
+      break;
     case "publish":
       await publishDocument(document);
       break;
@@ -631,6 +634,61 @@ const handleOption = async (action, document) => {
       break;
     default:
       console.warn(`Acción desconocida: ${action}`);
+  }
+};
+
+/**
+ * Create a copy of the document with current date suffix.
+ * @param {object} document - The document to copy.
+ */
+const createDocumentCopy = async (document) => {
+  try {
+    // Generate current date in ddmmyyyy format
+    const currentDate = new Date();
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const year = currentDate.getFullYear();
+    const dateString = `${day}${month}${year}`;
+    
+    // Create new title with date suffix
+    const newTitle = `${document.title} ${dateString}`;
+    
+    // Prepare document data for copy
+    const copyData = {
+      title: newTitle,
+      content: document.content,
+      state: "Draft", // Always create copy as draft
+      variables: document.variables.map(variable => ({
+        name_en: variable.name_en,
+        name_es: variable.name_es,
+        tooltip: variable.tooltip,
+        field_type: variable.field_type,
+        select_options: variable.select_options,
+        value: "", // Reset values in copy
+      })),
+      requires_signature: false, // Reset signature requirement
+      // Don't copy assigned_to, created_by will be set automatically
+    };
+    
+    // Show confirmation
+    const confirmed = await showConfirmationAlert(
+      `¿Deseas crear una copia del documento '${document.title}'?`,
+      "Crear Copia",
+      "Crear Copia",
+      "Cancelar"
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+    
+    // Create the copy using the document store
+    await documentStore.createDocument(copyData);
+    await showNotification(`Copia creada exitosamente: "${newTitle}"`, "success");
+    
+  } catch (error) {
+    console.error("Error creating document copy:", error);
+    await showNotification("Error al crear la copia del documento", "error");
   }
 };
 
