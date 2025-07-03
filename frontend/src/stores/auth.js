@@ -9,7 +9,7 @@ export const useAuthStore = defineStore("auth", {
   // State properties
   state: () => ({
     token: localStorage.getItem("token") || null, // Get the token from localStorage or set to null
-    userAuth: JSON.parse(localStorage.getItem("userAuth")) || {}, // Get the user authentication details from localStorage or set to an empty object
+    userAuth: localStorage.getItem("userAuth") ? JSON.parse(localStorage.getItem("userAuth")) : {}, // Get the user authentication details from localStorage or set to an empty object
     signInTries: parseInt(localStorage.getItem("signInTries"), 10) || 0, // Get the Sign In attempts
     signInSecondsAcumulated:
       localStorage.getItem("signInSecondsAcumulated") || 0,

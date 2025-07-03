@@ -25,8 +25,11 @@ function getCookie(name) {
  */
 async function makeRequest(method, url, params = {}, config = {}) {
   const csrfToken = getCookie("csrftoken");
+  const token = localStorage.getItem("token");
+  
   const headers = {
     "X-CSRFToken": csrfToken,
+    ...(token && { "Authorization": `Bearer ${token}` })
   };
 
   try {
