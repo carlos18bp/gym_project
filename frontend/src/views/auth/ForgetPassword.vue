@@ -93,6 +93,18 @@
         />
       </div>
 
+      <!-- Google captcha button -->
+      <div>
+        <VueRecaptcha
+          v-if="siteKey"
+          :sitekey="siteKey"
+          @verify="onCaptchaVerified"
+          @expire="onCaptchaExpired"
+          hl="es"
+          class="mx-auto"
+        />
+      </div>
+
       <div class="grid">
         <button
           type="submit"
@@ -142,6 +154,8 @@ import { onMounted, ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 import { showNotification } from "@/shared/notification_message";
+import VueRecaptcha from "vue3-recaptcha2";
+import { useCaptchaStore } from "@/stores/captcha";
 
 const router = useRouter(); // Get the router instance
 const email = ref(""); // A ref to store the email input
@@ -151,7 +165,26 @@ const confirmPassword = ref(""); // A ref to store the confirm password input
 const timer = ref(0); // A ref to manage the countdown timer
 const isButtonDisabled = ref(false); // A ref to manage the button disabled state
 
-onMounted(() => {
+// reCAPTCHA v2 integration
+const captchaStore = useCaptchaStore();
+const siteKey = ref("");
+const captchaToken = ref("");
+const onCaptchaVerified = async (token) => {
+  const ok = await captchaStore.verify(token);
+  if (ok) {
+    captchaToken.value = token;
+  } else {
+    showNotification("Error verificando captcha", "error");
+    captchaToken.value = "";
+  }
+};
+const onCaptchaExpired = () => {
+  captchaToken.value = "";
+};
+
+onMounted(async () => {
+  siteKey.value = await captchaStore.fetchSiteKey();
+  // Restore timer if still running in localStorage
   if (parseInt(localStorage.getItem("forgetPasswordSecondsRemaining"), 10))
     startTimer();
 });
@@ -164,11 +197,16 @@ const handleRequestPasswordReset = async () => {
     showNotification("Email is required!", "warning");
     return;
   }
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
 
   try {
     await axios.post("/api/send_passcode/", {
       email: email.value,
       subject_email: "Password Reset Code",
+      captcha_token: captchaToken.value,
     });
 
     showNotification("Password reset code sent to your email", "info");
@@ -224,11 +262,16 @@ const handleResetPassword = async () => {
     showNotification("Passwords do not match!", "warning");
     return;
   }
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
 
   try {
     await axios.post("/api/verify_passcode_and_reset_password/", {
       passcode: passcode.value,
       new_password: newPassword.value,
+      captcha_token: captchaToken.value,
     });
 
     showNotification("Password reset successful!", "success");

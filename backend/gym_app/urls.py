@@ -12,7 +12,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Recent processes (tracking and updates)
 - Reports (Excel report generation)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports, captcha
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views
 from django.urls import path
@@ -111,6 +111,12 @@ reports_urls = [
     path('reports/generate-excel/', reports.generate_excel_report, name='generate-excel-report'),
 ]
 
+# Google Captcha URLs
+google_captcha_urls = [
+    path('google-captcha/site-key/', captcha.get_site_key, name='google-captcha-site-key'),
+    path('google-captcha/verify/', captcha.verify_recaptcha, name='google-captcha-verify'),
+]
+
 # Combine all URL patterns
 urlpatterns = (
     sign_in_sign_on_urls +
@@ -119,6 +125,7 @@ urlpatterns = (
     legal_request_urls +
     intranet_gym_urls +
     dynamic_document_urls +
+    google_captcha_urls +
     legal_update_urls +
     recent_process_urls +
     reports_urls

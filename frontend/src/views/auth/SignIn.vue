@@ -76,6 +76,17 @@
           </RouterLink>
         </a>
       </div>
+      <!-- Google captcha button -->
+      <div>
+        <VueRecaptcha
+          v-if="siteKey"
+          :sitekey="siteKey"
+          @verify="onCaptchaVerified"
+          @expire="onCaptchaExpired"
+          hl="es"
+          class="mx-auto"
+        />
+      </div>
 
       <div class="flex flex-col space-y-2">
         <div>
@@ -158,10 +169,28 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { showNotification } from "@/shared/notification_message";
+import VueRecaptcha from "vue3-recaptcha2";
+import { useCaptchaStore } from "@/stores/captcha";
 
 const timer = ref(0); // A ref to manage the countdown timer for send a new code
 const router = useRouter(); // Get the router instance
 const authStore = useAuthStore(); // Get the authentication store instance
+const captchaStore = useCaptchaStore();
+const siteKey = ref(""); // will be fetched asynchronously
+
+const captchaToken = ref("");
+const onCaptchaVerified = async (token) => {
+  const ok = await captchaStore.verify(token);
+  if (ok) {
+    captchaToken.value = token;
+  } else {
+    showNotification("Error verificando captcha", "error");
+    captchaToken.value = "";
+  }
+};
+const onCaptchaExpired = () => {
+  captchaToken.value = "";
+};
 const isButtonDisabled = ref(false); // A ref to manage the button disabled state in Send Code
 const signInTries = computed(() => authStore.signInTries); // A ref to count tries of Sign In
 const signInSecondsRemaining = computed(() => authStore.signInSecondsRemaining); // A ref to seconds countdown for try again Sign In
@@ -174,6 +203,7 @@ const userForm = reactive({
 
 onMounted(async () => {
   authStore.attempsSignIn("initial");
+  siteKey.value = await captchaStore.fetchSiteKey();
 
   if (await authStore.isAuthenticated()) {
     router.push({
@@ -194,7 +224,10 @@ const signInUser = async () => {
     showNotification("Email is required!", "warning");
     return;
   }
-
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
   authStore.attempsSignIn();
 
   if (signInTries.value % 3 === 0) {
@@ -204,7 +237,10 @@ const signInUser = async () => {
     );
   } else {
     try {
-      const response = await axios.post("/api/sign_in/", userForm);
+      const response = await axios.post("/api/sign_in/", {
+        ...userForm,
+        captcha_token: captchaToken.value,
+      });
       authStore.login(response.data); // Log in the user
 
       showNotification("Sign In successful!", "success");
@@ -237,12 +273,17 @@ const handleSendPassword = async () => {
     showNotification("Email is required!", "warning");
     return;
   }
-  startTimer(); // Start the countdown timer
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
+  startTimer(); // Start the countdown timer for resend code
 
   try {
     await axios.post("/api/send_passcode/", {
       email: userForm.email,
       subject_email: "Login code",
+      captcha_token: captchaToken.value,
     });
     showNotification("Password code sent to your email", "info");
   } catch (error) {
