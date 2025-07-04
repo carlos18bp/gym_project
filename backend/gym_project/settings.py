@@ -156,6 +156,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'misfotoscmbp@gmail.com'
 EMAIL_HOST_PASSWORD = 'ikdvsyikywczdnkk'
 
+# Google reCAPTCHA configuration
+RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6Lc2AHgrAAAAAIflkJJNbK1c5Ts6pmY5uEQrFCZP')
+RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '6Lc2AHgrAAAAAJzeTQYbL02-PA3TXwS3QSxaTRqV')
+
 # Configuración de Logging
 LOGGING = {
     'version': 1,
