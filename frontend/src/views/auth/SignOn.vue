@@ -105,6 +105,18 @@
         </label>
       </div>
 
+      <!-- Google captcha button -->
+      <div>
+        <VueRecaptcha
+          v-if="siteKey"
+          :sitekey="siteKey"
+          @verify="onCaptchaVerified"
+          @expire="onCaptchaExpired"
+          hl="es"
+          class="mx-auto"
+        />
+      </div>
+
       <button
         v-if="!passcodeSent"
         @click.prevent="sendVerificationPasscode"
@@ -188,8 +200,26 @@ import { onMounted, reactive, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { showNotification } from "@/shared/notification_message";
+import VueRecaptcha from "vue3-recaptcha2";
+import { useCaptchaStore } from "@/stores/captcha";
 
 const authStore = useAuthStore(); // Get the authentication store instance
+const captchaStore = useCaptchaStore();
+const siteKey = ref(""); // will be fetched asynchronously
+
+const captchaToken = ref("");
+const onCaptchaVerified = async (token) => {
+  const ok = await captchaStore.verify(token);
+  if (ok) {
+    captchaToken.value = token;
+  } else {
+    showNotification("Error verificando captcha", "error");
+    captchaToken.value = "";
+  }
+};
+const onCaptchaExpired = () => {
+  captchaToken.value = "";
+};
 
 const privacyAccepted = ref(false);
 
@@ -206,14 +236,12 @@ const passcodeSent = ref("");
 const emailUsedToSentPasscode = ref("");
 
 onMounted(async () => {
+  siteKey.value = await captchaStore.fetchSiteKey();
   if (await authStore.isAuthenticated()) {
     router.push({
       name: "dashboard",
-      params: {
-        user_id: userId,
-        display: "",
-      },
-    }); // Redirect to dashboard if already authenticated
+      params: { user_id: userId, display: "" },
+    });
   }
 });
 
@@ -238,6 +266,10 @@ const sendVerificationPasscode = async () => {
     showNotification("Debes aceptar las políticas de privacidad", "warning");
     return;
   }
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
   showNotification(
     "Se ha enviado un código de acceso a tu correo electrónico",
     "info"
@@ -246,6 +278,7 @@ const sendVerificationPasscode = async () => {
     emailUsedToSentPasscode.value = userForm.email;
     const response = await axios.post("/api/sign_on/send_verification_code/", {
       email: userForm.email,
+      captcha_token: captchaToken.value,
     });
 
     passcodeSent.value = response.data.passcode;
@@ -271,6 +304,10 @@ const signOnUser = async () => {
     );
     return;
   }
+  if (!captchaToken.value) {
+    showNotification("Por favor verifica que no eres un robot", "warning");
+    return;
+  }
 
   if (passcodeSent.value == passcode.value) {
     const response = await axios.post("/api/sign_on/", {
@@ -279,6 +316,7 @@ const signOnUser = async () => {
       first_name: userForm.firstName,
       last_name: userForm.lastName,
       passcode: passcode.value,
+      captcha_token: captchaToken.value,
     });
     authStore.login(response.data); // Log in the user
 
