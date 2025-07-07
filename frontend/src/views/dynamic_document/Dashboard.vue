@@ -298,11 +298,11 @@ const navigationTabs = [
 
 // Navigation tabs for lawyer users
 const lawyerNavigationTabs = [
-  { name: 'legal-documents', label: 'Documentos Jurídicos' },
+  { name: 'legal-documents', label: 'Minutas' },
   { name: 'pending-signatures', label: 'Documentos para Firmar' },
   { name: 'signed-documents', label: 'Documentos Firmados' },
-  { name: 'finished-documents', label: 'Documentos Finalizados' },
-  { name: 'in-progress-documents', label: 'Documentos en Progreso' }
+  { name: 'finished-documents', label: 'Documentos Finalizados (Cliente)' },
+  { name: 'in-progress-documents', label: 'Documentos en Progreso (Cliente)' }
 ];
 
 // Add handler for signature creation completion

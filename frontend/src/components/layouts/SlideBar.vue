@@ -475,7 +475,7 @@ const navigation = ref([
     routes: ['/process_list', '/process_detail', '/process_form']
   },
   {
-    name: "Documentos Juridicos",
+    name: "Archivos Juridicos",
     action: (item) => {
       setCurrent(item);
       router.push({

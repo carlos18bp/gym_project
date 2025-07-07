@@ -11,7 +11,7 @@
     >
       <FolderIcon class="size-6 text-yellow-500 font-semibold"></FolderIcon>
       <div class="grid">
-        <span class="font-medium text-base">Documentos</span>
+        <span class="font-medium text-base">Minutas y Documentos</span>
         <span class="text-gray-400 font-regular text-sm">Mi unidad</span>
       </div>
     </button>
@@ -31,7 +31,7 @@
     >
       <PlusIcon class="size-6 text-secondary font-semibold"></PlusIcon>
       <div class="grid">
-        <span class="font-medium text-base">Nuevo Documento</span>
+        <span class="font-medium text-base">Nueva Minuta</span>
       </div>
     </button>
   </div>
