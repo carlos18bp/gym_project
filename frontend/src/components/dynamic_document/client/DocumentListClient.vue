@@ -1,43 +1,47 @@
 <template>
-  <div>
-    <!-- Documentos en progreso y completados -->
-    <div class="mb-6">      
-      <!-- Document Item -->
-      <div
-        v-for="document in filteredDocuments"
-        :key="document.id"
-        :data-document-id="document.id"
-        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3"
-        :class="{
-          'border-green-400 bg-green-300/30': document.state === 'Completed',
-          'border-stroke bg-white': document.state === 'Progress',
-          'border-secondary shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
-        }"
-        @click="(e) => {
-          // Only trigger preview if click was not on the menu
-          if (!e.target.closest('.menu-container')) {
-            handlePreviewDocument(document);
-          }
-        }"
-      >
-        <component
-          :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
-          class="size-6"
-          :class="{
-            'text-green-500': document.state === 'Completed',
-            'text-secondary': document.state === 'Progress',
-          }"
-        />
-        <div class="flex justify-between items-center w-full">
-          <div class="grid gap-1">
-            <span class="text-base font-medium">{{ document.title }}</span>
-            <span class="text-sm font-regular text-gray-400">{{
-              document.description
-            }}</span>
+  <!-- Document List -->
+  <div v-if="filteredDocuments.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <!-- Document Item -->
+    <div
+      v-for="document in filteredDocuments"
+      :key="document.id"
+      :data-document-id="document.id"
+      class="relative bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 cursor-pointer focus:outline-none focus:ring-0 focus:border-gray-200"
+      :class="{
+        'border-green-400 bg-green-50/50 shadow-green-100': document.state === 'Completed',
+        'border-blue-300 bg-blue-50/30 shadow-blue-100': document.state === 'Progress',
+        'shadow-lg animate-pulse-highlight': String(document.id) === String(highlightedDocId),
+      }"
+      @click="(e) => {
+        // Only trigger preview if click was not on the menu
+        if (!e.target.closest('.menu-container')) {
+          handlePreviewDocument(document);
+        }
+      }"
+    >
+        <!-- Header with status and menu -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <!-- Status Badge -->
+            <div 
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-green-100 text-green-700 border border-green-200': document.state === 'Completed',
+                'bg-blue-100 text-blue-700 border border-blue-200': document.state === 'Progress',
+              }"
+            >
+              <component
+                :is="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
+                class="w-3.5 h-3.5"
+              />
+              <span>{{ document.state === 'Completed' ? 'Completado' : 'En Progreso' }}</span>
+            </div>
           </div>
+          
+          <!-- Menu -->
           <Menu as="div" class="relative inline-block text-left menu-container">
-            <MenuButton class="flex items-center text-gray-400">
-              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0 focus:border-none">
+              <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
             </MenuButton>
             <transition
               enter-active-class="transition ease-out duration-100"
@@ -48,7 +52,7 @@
               leave-to-class="transform opacity-0 scale-95"
             >
               <MenuItems
-                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+                class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none focus:ring-0"
                 :class="[
                   props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
                 ]"
@@ -57,7 +61,7 @@
                   <!-- Edit/Complete option -->
                   <MenuItem>
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                       @click="openEditModal(document)"
                     >
                       {{ document.state === "Completed" ? "Editar" : "Completar" }}
@@ -67,7 +71,7 @@
                   <!-- Preview option -->
                   <MenuItem v-if="document.state === 'Completed'">
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                       @click="handlePreviewDocument(document)"
                     >
                       Previsualizar
@@ -77,7 +81,7 @@
                   <!-- Delete option -->
                   <MenuItem>
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                       @click="deleteDocument(document)"
                     >
                       Eliminar
@@ -88,7 +92,7 @@
                   <template v-if="document.state === 'Completed'">
                     <MenuItem>
                       <button
-                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                         @click="downloadPDFDocument(document)"
                       >
                         Descargar PDF
@@ -96,7 +100,7 @@
                     </MenuItem>
                     <MenuItem>
                       <button
-                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                         @click="downloadWordDocument(document)"
                       >
                         Descargar Word
@@ -104,7 +108,7 @@
                     </MenuItem>                    
                     <MenuItem>
                       <button
-                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                        class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0 focus:border-none"
                         @click="openEmailModal(document)"
                       >
                         Enviar
@@ -116,13 +120,57 @@
             </transition>
           </Menu>
         </div>
+
+        <!-- Document Content -->
+        <div class="space-y-2">
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 leading-tight">
+            {{ document.title }}
+          </h3>
+          
+          <!-- Description -->
+          <p v-if="document.description" class="text-sm text-gray-600 leading-relaxed">
+            {{ document.description }}
+          </p>
+          
+          <!-- Tags Section -->
+          <div v-if="document.tags && document.tags.length > 0" class="pt-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-medium text-gray-500">Etiquetas:</span>
+              <div class="flex items-center gap-1.5">
+                <div 
+                  v-for="tag in document.tags" 
+                  :key="tag.id"
+                  class="group relative"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-offset-1 shadow-sm"
+                    :style="{ 
+                      backgroundColor: getColorById(tag.color_id)?.hex || '#9CA3AF',
+                      boxShadow: `0 0 0 1px ${getColorById(tag.color_id)?.dark || '#6B7280'}40`
+                    }"
+                    :title="tag.name"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-2.5 whitespace-nowrap shadow-lg">
+                      {{ tag.name }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
     <!-- No documents message -->
     <div
       v-if="filteredDocuments.length === 0"
-      class="col-span-full mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-8 rounded-xl"
+      class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-8 rounded-xl"
     >
       <p class="text-lg font-semibold mb-2">
         No hay documentos disponibles para mostrar.
@@ -139,7 +187,6 @@
         @close="closeEditModal"
       />
     </ModalTransition>
-  </div>
 
   <!-- Preview Modal -->
   <DocumentPreviewModal
@@ -180,6 +227,7 @@ import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
 import { showNotification } from "@/shared/notification_message";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { getAllColors, getColorById } from "@/shared/color_palette";
 
 import {
   showPreviewModal,
@@ -238,6 +286,10 @@ const highlightedDocId = computed(() => {
 
 const props = defineProps({
   searchQuery: String,
+  selectedTags: {
+    type: Array,
+    default: () => []
+  },
   promptDocuments: {
     type: Array,
     default: null
@@ -246,6 +298,10 @@ const props = defineProps({
 
 // Initialize data when component mounts
 onMounted(async () => {
+  // Initialize stores
+  await userStore.init();
+  await documentStore.init();
+  
   // If we have prompt documents, don't initialize highlights
   if (props.promptDocuments) {
     return;
@@ -314,6 +370,15 @@ const filteredDocuments = computed(() => {
       });
     }
     
+    // Apply tag filter if tags are selected
+    if (props.selectedTags && props.selectedTags.length > 0) {
+      const selectedTagIds = props.selectedTags.map(tag => tag.id);
+      filteredPromptDocs = filteredPromptDocs.filter(doc => {
+        if (!doc.tags || doc.tags.length === 0) return false;
+        return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+      });
+    }
+    
     return filteredPromptDocs;
   }
 
@@ -322,11 +387,18 @@ const filteredDocuments = computed(() => {
   const allProgressAndCompletedDocs =
     documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);
   
-  // Then apply search filter if it exists
-  const searchFiltered = documentStore.filteredDocuments(props.searchQuery, userStore);
+  // Get selected tag IDs
+  const selectedTagIds = props.selectedTags ? props.selectedTags.map(tag => tag.id) : [];
+  
+  // Then apply both search and tag filters
+  const searchAndTagFiltered = documentStore.filteredDocumentsBySearchAndTags(
+    props.searchQuery, 
+    userStore, 
+    selectedTagIds
+  );
   
   // Finally, find intersection between both sets
-  const result = searchFiltered.filter((doc) =>
+  const result = searchAndTagFiltered.filter((doc) =>
     allProgressAndCompletedDocs.some(
       (progressOrCompletedDoc) => String(progressOrCompletedDoc.id) === String(doc.id)
     )

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature
+from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 
@@ -68,6 +68,21 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
         return data
 
 
+class TagSerializer(serializers.ModelSerializer):
+    """Serializer for Tag model (lawyers only for mutations)."""
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'color_id', 'created_by', 'created_at']
+        read_only_fields = ['id', 'created_by', 'created_at']
+
+    def create(self, validated_data):
+        """Attach the current user (lawyer) as tag creator."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['created_by'] = request.user
+        return super().create(validated_data)
+
+
 class DocumentSignatureSerializer(serializers.ModelSerializer):
     """
     Serializer for the DocumentSignature model.
@@ -110,6 +125,18 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     variables = DocumentVariableSerializer(many=True, required=False)
     signatures = DocumentSignatureSerializer(many=True, required=False, read_only=True)
     
+    # Tags assigned to this document (read-only, nested serialization)
+    tags = TagSerializer(many=True, read_only=True)
+    
+    # Write-only field for assigning tag IDs during creation/update
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        queryset=Tag.objects.all(),
+        required=False,
+        source='tags'
+    )
+    
     # Users who need to sign this document - write only field for creating signature requests
     signers = serializers.PrimaryKeyRelatedField(
         many=True, 
@@ -134,7 +161,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
             'created_at', 'updated_at', 'variables', 'requires_signature',
             'signatures', 'signers', 'signer_ids', 'fully_signed',
-            'completed_signatures', 'total_signatures'
+            'completed_signatures', 'total_signatures', 'tags', 'tag_ids'
         ]
 
     def get_signer_ids(self, obj):
@@ -169,6 +196,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         requires_signature = validated_data.pop('requires_signature', False)
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', [])
+        tags = validated_data.pop('tags', [])  # Extract tags
         
         # Add _firma suffix to title if document requires signatures
         if requires_signature and not validated_data['title'].endswith('_firma'):
@@ -187,6 +215,10 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             **validated_data,
             requires_signature=requires_signature  # Explicitly set requires_signature
         )
+
+        # Assign tags to the document
+        if tags:
+            document.tags.set(tags)
 
         # Create variables
         variables = []
@@ -227,7 +259,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Extract variable data and signers
         variables_data = validated_data.pop('variables', [])
         signers = validated_data.pop('signers', [])
+        tags = validated_data.pop('tags', None)  # Extract tags
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
+
+        # Update tags if provided
+        if tags is not None:
+            instance.tags.set(tags)
 
         # Update variables if provided
         if variables_data:
@@ -272,3 +309,39 @@ class RecentDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecentDocument
         fields = ['id', 'document', 'last_visited']
+
+
+class DocumentFolderSerializer(serializers.ModelSerializer):
+    """Serializer for DocumentFolder model (clients)."""
+    document_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=DynamicDocument.objects.all(),
+        write_only=True,
+        required=False,
+        source='documents'  # direct mapping
+    )
+    documents = DynamicDocumentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DocumentFolder
+        fields = ['id', 'name', 'color_id', 'documents', 'document_ids', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def create(self, validated_data):
+        documents = validated_data.pop('documents', [])
+        request = self.context.get('request')
+        owner = request.user if request else None
+        folder = DocumentFolder.objects.create(owner=owner, **validated_data)
+        if documents:
+            folder.documents.set(documents)
+        return folder
+
+    def update(self, instance, validated_data):
+        # Handle documents update if provided
+        documents = validated_data.pop('documents', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if documents is not None:
+            instance.documents.set(documents)
+        return instance

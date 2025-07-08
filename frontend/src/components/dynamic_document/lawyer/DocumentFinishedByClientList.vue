@@ -1,24 +1,27 @@
 <template>
     <!-- Document Completed -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <div
         v-for="document in filteredCompletedDocuments"
         :key="document.id"
-        class="flex items-center gap-3 py-2 px-4 border rounded-xl border-green-400 bg-green-300/30 cursor-pointer mb-3"
+        class="relative bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 cursor-pointer focus:outline-none focus:ring-0"
       >
-        <CheckCircleIcon class="size-8 text-green-500"></CheckCircleIcon>
-        <div class="flex justify-between items-center w-full">
-          <div class="grid gap-1">
-            <span class="text-base font-medium">{{ document.title }}</span>
-            <span class="text-sm font-regular text-gray-400">
-              {{ getClientName(document.assigned_to) }}
-            </span>
+        <!-- Header with status and menu -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <!-- Status Badge -->
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+              <CheckCircleIcon class="w-3.5 h-3.5" />
+              <span>Completado</span>
+            </div>
           </div>
+          
+          <!-- Menu -->
           <Menu as="div" class="relative inline-block text-left">
             <div>
-              <MenuButton class="flex items-center text-gray-400">
+              <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
                 <span class="sr-only">Open options</span>
-                <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+                <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
               </MenuButton>
             </div>
     
@@ -31,7 +34,7 @@
               leave-to-class="transform opacity-0 scale-95"
             >
               <MenuItems
-                class="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5"
+                class="absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
               >
                 <div class="py-1">
                   <MenuItem
@@ -40,7 +43,7 @@
                   >
                     <button
                       @click="handleOptionClick(option, document)"
-                      class="block w-full text-left px-4 py-2 text-sm font-regular cursor-pointer hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular cursor-pointer hover:bg-gray-100 transition focus:outline-none"
                     >
                       {{ option.label }}
                     </button>
@@ -49,6 +52,50 @@
               </MenuItems>
             </transition>
           </Menu>
+        </div>
+
+        <!-- Document Content -->
+        <div class="space-y-2">
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 leading-tight">
+            {{ document.title }}
+          </h3>
+          
+          <!-- Client Name -->
+          <p class="text-sm text-gray-600 leading-relaxed">
+            Cliente: {{ getClientName(document.assigned_to) }}
+          </p>
+          
+          <!-- Tags Section -->
+          <div v-if="document.tags && document.tags.length > 0" class="pt-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-medium text-gray-500">Etiquetas:</span>
+              <div class="flex items-center gap-1.5">
+                <div 
+                  v-for="tag in document.tags" 
+                  :key="tag.id"
+                  class="group relative"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-offset-1 shadow-sm"
+                    :style="{ 
+                      backgroundColor: getColorById(tag.color_id)?.hex || '#9CA3AF',
+                      boxShadow: `0 0 0 1px ${getColorById(tag.color_id)?.dark || '#6B7280'}40`
+                    }"
+                    :title="tag.name"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-2.5 whitespace-nowrap shadow-lg">
+                      {{ tag.name }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -71,6 +118,7 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
+import { getAllColors, getColorById } from "@/shared/color_palette";
 
 import {
   showPreviewModal,
@@ -97,6 +145,14 @@ const props = defineProps({
    * @type {String}
    */
   searchQuery: String,
+  /**
+   * Selected tags to filter documents.
+   * @type {Array}
+   */
+  selectedTags: {
+    type: Array,
+    default: () => []
+  },
 });
 
 /**
@@ -106,12 +162,21 @@ const props = defineProps({
  */
 const filteredCompletedDocuments = computed(() => {
   const allCompletedDocuments = documentStore.completedDocumentsByClient;
-
-  return documentStore
-    .filteredDocuments(props.searchQuery, userStore)
-    .filter((doc) =>
-      allCompletedDocuments.some((progressDoc) => progressDoc.id === doc.id)
-    );
+  
+  // Get selected tag IDs
+  const selectedTagIds = props.selectedTags ? props.selectedTags.map(tag => tag.id) : [];
+  
+  // Apply search and tag filters
+  const searchAndTagFiltered = documentStore.filteredDocumentsBySearchAndTags(
+    props.searchQuery, 
+    userStore, 
+    selectedTagIds
+  );
+  
+  // Find intersection between completed docs and filtered docs
+  return searchAndTagFiltered.filter((doc) =>
+    allCompletedDocuments.some((progressDoc) => progressDoc.id === doc.id)
+  );
 });
 
 /**

@@ -1,41 +1,66 @@
 <template>
   <!-- Prompt Documents (if any) -->
   <template v-if="props.promptDocuments && displayablePromptDocuments.length > 0">
-    <div
-      v-for="document in displayablePromptDocuments"
-      :key="document.id"
-      :data-document-id="document.id"
-      :class="[
-        'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
-        (document.state === 'Published' || document.state === 'FullySigned')
-          ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
-          : 'border-stroke bg-white hover:bg-gray-100',
-        highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
-      ]"
-      :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
-    >
-      <component
-        :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
-        :class="
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <!-- Document Item -->
+      <div
+        v-for="document in displayablePromptDocuments"
+        :key="document.id"
+        :data-document-id="document.id"
+        class="relative bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 cursor-pointer focus:outline-none focus:ring-0"
+        :class="[
           (document.state === 'Published' || document.state === 'FullySigned')
-            ? 'size-8 text-green-500'
-            : 'size-8 text-secondary'
-        "
-      />
-      <div class="flex-1 flex justify-between items-center">
-        <div class="grid gap-1">
-          <div class="flex items-center">
-            <span class="text-base font-medium">{{ document.title }}</span>
-            
-            <!-- Signature icon with tooltip -->
+            ? 'border-green-400 bg-green-50/50 shadow-green-100'
+            : 'border-blue-300 bg-blue-50/30 shadow-blue-100',
+          highlightedDocId && String(highlightedDocId) === String(document.id) ? 
+            (document.state === 'Published' || document.state === 'FullySigned' ? 'shadow-lg animate-pulse-highlight-green' : 'shadow-lg animate-pulse-highlight-blue') : ''
+        ]"
+      >
+        <!-- Header with status and menu -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <!-- Status Badge -->
+            <div 
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-green-100 text-green-700 border border-green-200': document.state === 'Published' || document.state === 'FullySigned',
+                'bg-blue-100 text-blue-700 border border-blue-200': document.state === 'Draft' || document.state === 'Progress',
+                'bg-yellow-100 text-yellow-700 border border-yellow-200': document.state === 'PendingSignatures',
+                'bg-purple-100 text-purple-700 border border-purple-200': document.state === 'Completed',
+              }"
+            >
+              <component
+                :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
+                class="w-3.5 h-3.5"
+              />
+              <span>
+                {{
+                  document.state === 'Published' ? 'Publicado' :
+                  document.state === 'Draft' ? 'Borrador' :
+                  document.state === 'Progress' ? 'En progreso' :
+                  document.state === 'Completed' ? 'Completado' :
+                  document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
+                  document.state === 'FullySigned' ? 'Completamente firmado' :
+                  'Desconocido'
+                }}
+              </span>
+            </div>
+
+            <!-- Signature Status Badge -->
             <div 
               v-if="document.requires_signature" 
-              class="relative group ml-2"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-green-100 text-green-700 border border-green-200': document.fully_signed,
+                'bg-blue-100 text-blue-700 border border-blue-200': getCurrentUserSignature(document)?.signed && !document.fully_signed,
+                'bg-yellow-100 text-yellow-700 border border-yellow-200': getCurrentUserSignature(document) && !getCurrentUserSignature(document)?.signed,
+                'bg-gray-100 text-gray-700 border border-gray-200': !getCurrentUserSignature(document)
+              }"
             >
               <!-- Check icon for fully signed/formalized documents -->
               <svg 
                 v-if="document.fully_signed"
-                class="h-4 w-4 text-green-500" 
+                class="h-3 w-3" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 stroke="currentColor" 
@@ -50,7 +75,7 @@
               <!-- Check icon for documents the current user has signed but others haven't -->
               <svg 
                 v-else-if="getCurrentUserSignature(document)?.signed"
-                class="h-4 w-4 text-blue-500" 
+                class="h-3 w-3" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 stroke="currentColor" 
@@ -64,7 +89,7 @@
               <!-- Pen icon for documents requiring the user's signature -->
               <svg 
                 v-else-if="getCurrentUserSignature(document)"
-                class="h-4 w-4 text-yellow-500" 
+                class="h-3 w-3" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 stroke="currentColor" 
@@ -78,7 +103,7 @@
               <!-- Regular pen icon for documents requiring signatures from others -->
               <svg 
                 v-else
-                class="h-4 w-4 text-blue-500" 
+                class="h-3 w-3" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 stroke="currentColor" 
@@ -89,119 +114,16 @@
                 <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
               </svg>
               
-              <!-- Tooltip -->
-              <div class="absolute z-10 w-48 px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-150 -top-8 left-0 pointer-events-none tooltip-with-arrow">
-                {{ document.fully_signed ? 'Documento formalizado' : getSignatureStatus(document) }}
-              </div>
+              <span>
+                {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
+              </span>
             </div>
           </div>
-          <span class="text-sm font-regular text-gray-400">
-            {{
-              document.state === 'Published' ? 'Publicado' :
-              document.state === 'Draft' ? 'Borrador' :
-              document.state === 'Progress' ? 'En progreso' :
-              document.state === 'Completed' ? 'Completado' :
-              document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
-              document.state === 'FullySigned' ? 'Completamente firmado' :
-              'Desconocido'
-            }}
-          </span>
-        </div>
-  
-        <Menu as="div" class="relative inline-block text-left">
-          <MenuButton class="flex items-center text-gray-400">
-            <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
-          </MenuButton>
-          <transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="transform opacity-0 scale-95"
-            enter-to-class="transform opacity-100 scale-100"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="transform opacity-100 scale-100"
-            leave-to-class="transform opacity-0 scale-95"
-          >
-            <MenuItems
-              class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
-              :class="[
-                props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
-              ]"
-            >
-              <MenuItem
-                v-for="option in getDocumentOptions(document)"
-                :key="option.label"
-              >
-                <button
-                  class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
-                  :disabled="option.disabled"
-                  @click="
-                    !option.disabled && handleOption(option.action, document)
-                  "
-                  :class="{
-                    'opacity-50 cursor-not-allowed': option.disabled,
-                    'cursor-pointer': !option.disabled,
-                  }"
-                >
-                  <NoSymbolIcon
-                    v-if="option.disabled"
-                    class="size-5 text-gray-400"
-                    aria-hidden="true"
-                  />
-                  {{ option.label }}
-                </button>
-              </MenuItem>
-            </MenuItems>
-          </transition>
-        </Menu>
-      </div>
-    </div>
-  </template>
-
-  <!-- Regular Document Lists (if no promptDocuments) -->
-  <template v-else-if="!props.promptDocuments">
-    <!-- Sección Documentos Jurídicos (sin firmas) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div
-        v-for="document in lawyerManagedNonFullySignedDocuments.filter(doc => !doc.requires_signature)"
-        :key="document.id"
-        :data-document-id="document.id"
-        :class="[
-          'flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer mb-3',
-            (document.state === 'Published' || document.state === 'FullySigned') 
-            ? 'border-green-400 bg-green-300/30 hover:bg-green-300/50'
-            : 'border-stroke bg-white hover:bg-gray-100',
-          highlightedDocId && String(highlightedDocId) === String(document.id) ? 'animate-pulse-highlight' : ''
-        ]"
-        :style="highlightedDocId && String(highlightedDocId) === String(document.id) ? 'border: 1px solid #CCE0FF !important;' : ''"
-      >
-        <component
-            :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
-          :class="
-              (document.state === 'Published' || document.state === 'FullySigned')
-              ? 'size-8 text-green-500'
-              : 'size-8 text-secondary'
-          "
-        />
-        <div class="flex-1 flex justify-between items-center">
-          <div class="grid gap-1">
-            <div class="flex items-center">
-              <span class="text-base font-medium">{{ document.title }}</span>
-            </div>
-            <span class="text-sm font-regular text-gray-400">
-                {{
-                  document.state === 'Published' ? 'Publicado' :
-                  document.state === 'Draft' ? 'Borrador' :
-                  document.state === 'Progress' ? 'En progreso' :
-                  document.state === 'Completed' ? 'Completado' :
-                  document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
-                  document.state === 'FullySigned' ? 'Completamente firmado' :
-                  'Desconocido'
-                }}
-            </span>
-          </div>
-    
+          
+          <!-- Menu -->
           <Menu as="div" class="relative inline-block text-left">
-            <MenuButton class="flex items-center text-gray-400">
-              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
+              <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
             </MenuButton>
             <transition
               enter-active-class="transition ease-out duration-100"
@@ -212,7 +134,7 @@
               leave-to-class="transform opacity-0 scale-95"
             >
               <MenuItems
-                class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5"
+                class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
                 :class="[
                   props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
                 ]"
@@ -222,7 +144,7 @@
                   :key="option.label"
                 >
                   <button
-                    class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2"
+                    class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2 focus:outline-none"
                     :disabled="option.disabled"
                     @click="
                       !option.disabled && handleOption(option.action, document)
@@ -243,6 +165,265 @@
               </MenuItems>
             </transition>
           </Menu>
+        </div>
+
+        <!-- Document Content -->
+        <div class="space-y-2">
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 leading-tight">
+            {{ document.title }}
+          </h3>
+          
+          <!-- Description -->
+          <p v-if="document.description" class="text-sm text-gray-600 leading-relaxed">
+            {{ document.description }}
+          </p>
+          
+          <!-- Tags Section -->
+          <div v-if="document.tags && document.tags.length > 0" class="pt-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-medium text-gray-500">Etiquetas:</span>
+              <div class="flex items-center gap-1.5">
+                <div 
+                  v-for="tag in document.tags" 
+                  :key="tag.id"
+                  class="group relative"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-offset-1 shadow-sm"
+                    :style="{ 
+                      backgroundColor: getColorById(tag.color_id)?.hex || '#9CA3AF',
+                      boxShadow: `0 0 0 1px ${getColorById(tag.color_id)?.dark || '#6B7280'}40`
+                    }"
+                    :title="tag.name"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-2.5 whitespace-nowrap shadow-lg">
+                      {{ tag.name }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Regular Document Lists (if no promptDocuments) -->
+  <template v-else-if="!props.promptDocuments">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <!-- Document Item -->
+      <div
+        v-for="document in filteredDocuments"
+        :key="document.id"
+        :data-document-id="document.id"
+        class="relative bg-white border rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 cursor-pointer"
+        :class="[
+          (document.state === 'Published' || document.state === 'FullySigned')
+            ? 'border-green-400 bg-green-50/50 shadow-green-100'
+            : 'border-blue-300 bg-blue-50/30 shadow-blue-100',
+          highlightedDocId && String(highlightedDocId) === String(document.id) ? 
+            (document.state === 'Published' || document.state === 'FullySigned' ? 'shadow-lg animate-pulse-highlight-green' : 'shadow-lg animate-pulse-highlight-blue') : ''
+        ]"
+      >
+        <!-- Header with status and menu -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <!-- Status Badge -->
+            <div 
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-green-100 text-green-700 border border-green-200': document.state === 'Published' || document.state === 'FullySigned',
+                'bg-blue-100 text-blue-700 border border-blue-200': document.state === 'Draft' || document.state === 'Progress',
+                'bg-yellow-100 text-yellow-700 border border-yellow-200': document.state === 'PendingSignatures',
+                'bg-purple-100 text-purple-700 border border-purple-200': document.state === 'Completed',
+              }"
+            >
+              <component
+                :is="document.state === 'Published' || document.state === 'FullySigned' ? CheckCircleIcon : PencilIcon"
+                class="w-3.5 h-3.5"
+              />
+              <span>
+                {{
+                  document.state === 'Published' ? 'Publicado' :
+                  document.state === 'Draft' ? 'Borrador' :
+                  document.state === 'Progress' ? 'En progreso' :
+                  document.state === 'Completed' ? 'Completado' :
+                  document.state === 'PendingSignatures' ? 'Pendiente de firmas' :
+                  document.state === 'FullySigned' ? 'Completamente firmado' :
+                  'Desconocido'
+                }}
+              </span>
+            </div>
+
+            <!-- Signature Status Badge -->
+            <div 
+              v-if="document.requires_signature" 
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-green-100 text-green-700 border border-green-200': document.fully_signed,
+                'bg-blue-100 text-blue-700 border border-blue-200': getCurrentUserSignature(document)?.signed && !document.fully_signed,
+                'bg-yellow-100 text-yellow-700 border border-yellow-200': getCurrentUserSignature(document) && !getCurrentUserSignature(document)?.signed,
+                'bg-gray-100 text-gray-700 border border-gray-200': !getCurrentUserSignature(document)
+              }"
+            >
+              <!-- Check icon for fully signed/formalized documents -->
+              <svg 
+                v-if="document.fully_signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <!-- Check icon for documents the current user has signed but others haven't -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)?.signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+              
+              <!-- Pen icon for documents requiring the user's signature -->
+              <svg 
+                v-else-if="getCurrentUserSignature(document)"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <!-- Regular pen icon for documents requiring signatures from others -->
+              <svg 
+                v-else
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <span>
+                {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Menu -->
+          <Menu as="div" class="relative inline-block text-left">
+            <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
+              <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
+            </MenuButton>
+            <transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="transform opacity-0 scale-95"
+              enter-to-class="transform opacity-100 scale-100"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="transform opacity-100 scale-100"
+              leave-to-class="transform opacity-0 scale-95"
+            >
+              <MenuItems
+                class="absolute z-20 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+                :class="[
+                  props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'
+                ]"
+              >
+                <MenuItem
+                  v-for="option in getDocumentOptions(document)"
+                  :key="option.label"
+                >
+                  <button
+                    class="w-full text-left px-4 py-2 text-sm font-regular transition flex items-center gap-2 focus:outline-none"
+                    :disabled="option.disabled"
+                    @click="
+                      !option.disabled && handleOption(option.action, document)
+                    "
+                    :class="{
+                      'opacity-50 cursor-not-allowed': option.disabled,
+                      'cursor-pointer': !option.disabled,
+                    }"
+                  >
+                    <NoSymbolIcon
+                      v-if="option.disabled"
+                      class="size-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    {{ option.label }}
+                  </button>
+                </MenuItem>
+              </MenuItems>
+            </transition>
+          </Menu>
+        </div>
+
+        <!-- Document Content -->
+        <div class="space-y-2">
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 leading-tight">
+            {{ document.title }}
+          </h3>
+          
+          <!-- Description -->
+          <p v-if="document.description" class="text-sm text-gray-600 leading-relaxed">
+            {{ document.description }}
+          </p>
+          
+          <!-- Tags Section -->
+          <div v-if="document.tags && document.tags.length > 0" class="pt-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-medium text-gray-500">Etiquetas:</span>
+              <div class="flex items-center gap-1.5">
+                <div 
+                  v-for="tag in document.tags" 
+                  :key="tag.id"
+                  class="group relative"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-offset-1 shadow-sm"
+                    :style="{ 
+                      backgroundColor: getColorById(tag.color_id)?.hex || '#9CA3AF',
+                      boxShadow: `0 0 0 1px ${getColorById(tag.color_id)?.dark || '#6B7280'}40`
+                    }"
+                    :title="tag.name"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-2.5 whitespace-nowrap shadow-lg">
+                      {{ tag.name }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -309,6 +490,7 @@ import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/
 import { showNotification } from "@/shared/notification_message";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
 import { get_request, create_request, delete_request } from "@/stores/services/request_http";
+import { getAllColors, getColorById } from "@/shared/color_palette";
 
 import {
   showPreviewModal,
@@ -338,6 +520,10 @@ const showElectronicSignatureModal = ref(false);
 
 const props = defineProps({
   searchQuery: String,
+  selectedTags: {
+    type: Array,
+    default: () => []
+  },
   promptDocuments: {
     type: Array,
     default: null
@@ -351,9 +537,22 @@ const lawyerManagedNonFullySignedDocuments = computed(() => {
   if (props.promptDocuments) return []; // Not used if promptDocuments are active
 
   const docs = documentStore.getDocumentsByLawyerId(userStore.currentUser.id) || [];
-  return docs
-    .filter(doc => doc.state !== 'FullySigned') // Exclude FullySigned
-    .filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+  const filteredDocs = docs.filter(doc => doc.state !== 'FullySigned');
+  
+  // Get selected tag IDs
+  const selectedTagIds = props.selectedTags ? props.selectedTags.map(tag => tag.id) : [];
+  
+  // Apply search and tag filters
+  const searchAndTagFiltered = documentStore.filteredDocumentsBySearchAndTags(
+    props.searchQuery, 
+    userStore, 
+    selectedTagIds
+  );
+  
+  // Find intersection between lawyer docs and filtered docs
+  return searchAndTagFiltered.filter(doc => 
+    filteredDocs.some(lawyerDoc => lawyerDoc.id === doc.id)
+  );
 });
 
 // Fully Signed documents
@@ -361,7 +560,7 @@ const lawyerFullySignedDocuments = computed(() => {
   if (props.promptDocuments) return []; // Not used if promptDocuments are active
 
   const documentsFromStore = documentStore.getDocumentsByLawyerId(userStore.currentUser.id) || [];
-  const signedByUserDocs = signedDocuments.value || []; // signedDocuments is already populated by fetchLawyerDocuments
+  const signedByUserDocs = signedDocuments.value || [];
 
   const combinedFullySigned = new Map();
 
@@ -370,21 +569,48 @@ const lawyerFullySignedDocuments = computed(() => {
     .filter(doc => doc.state === 'FullySigned')
     .forEach(doc => combinedFullySigned.set(doc.id, doc));
   
-  // Add FullySigned documents from the user's signed list (could be overlapping, Map handles deduplication)
+  // Add FullySigned documents from the user's signed list
   signedByUserDocs
     .filter(doc => doc.state === 'FullySigned')
     .forEach(doc => combinedFullySigned.set(doc.id, doc));
-    
-  return Array.from(combinedFullySigned.values())
-    .filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+  
+  const allDocs = Array.from(combinedFullySigned.values());
+  
+  // Get selected tag IDs
+  const selectedTagIds = props.selectedTags ? props.selectedTags.map(tag => tag.id) : [];
+  
+  // Apply search and tag filters
+  const searchAndTagFiltered = documentStore.filteredDocumentsBySearchAndTags(
+    props.searchQuery, 
+    userStore, 
+    selectedTagIds
+  );
+  
+  // Find intersection between fully signed docs and filtered docs
+  return searchAndTagFiltered.filter(doc => 
+    allDocs.some(fullySignedDoc => fullySignedDoc.id === doc.id)
+  );
 });
 
 // Filtered prompt documents (if provided)
 const displayablePromptDocuments = computed(() => {
-    if (props.promptDocuments && props.promptDocuments.length > 0) {
-        return (props.promptDocuments || []).filter(doc => doc.title && doc.title.toLowerCase().includes(props.searchQuery.toLowerCase()));
+  if (props.promptDocuments && props.promptDocuments.length > 0) {
+    let filteredPromptDocs = props.promptDocuments.filter(doc => 
+      doc.title && doc.title.toLowerCase().includes((props.searchQuery || '').toLowerCase())
+    );
+    
+    // Apply tag filter if tags are selected
+    if (props.selectedTags && props.selectedTags.length > 0) {
+      const selectedTagIds = props.selectedTags.map(tag => tag.id);
+      filteredPromptDocs = filteredPromptDocs.filter(doc => {
+        if (!doc.tags || doc.tags.length === 0) return false;
+        return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+      });
     }
-    return [];
+    
+    return filteredPromptDocs;
+  }
+  return [];
 });
 
 // Condition for showing the "No documents available" message
@@ -824,17 +1050,22 @@ const forceHighlight = (documentId) => {
       if (documentElements.length > 0) {
         const element = documentElements[0];
         
-        // Apply styles directly
-        element.style.border = "2px solid #3b82f6";
-        
         // Remove and re-add classes to restart animation
-        element.classList.remove("animate-pulse-highlight");
+        element.classList.remove("animate-pulse-highlight-green", "animate-pulse-highlight-blue");
         
         // Force a reflow before adding the class again
         void element.offsetWidth;
         
-        // Add the classes again
-        element.classList.add("animate-pulse-highlight");
+        // Determine which animation to use based on document state
+        const documentElement = element.querySelector('[data-document-id]') || element;
+        const isPublished = documentElement.classList.contains('border-green-400');
+        
+        // Add the appropriate animation class
+        if (isPublished) {
+          element.classList.add("animate-pulse-highlight-green");
+        } else {
+          element.classList.add("animate-pulse-highlight-blue");
+        }
         
         // Ensure visibility
         element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -987,23 +1218,60 @@ const formalizeDocument = async (document) => {
 </script>
 
 <style scoped>
-@keyframes pulse-highlight {
-  0%, 100% {
+@keyframes pulse-highlight-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    border-color: rgb(74, 222, 128);
+    background-color: rgba(34, 197, 94, 0.03);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 10px 5px rgba(34, 197, 94, 0.4);
+    border-color: rgb(74, 222, 128);
+    background-color: rgba(34, 197, 94, 0.1);
+    transform: scale(1.02);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    border-color: rgb(74, 222, 128);
+    background-color: rgba(34, 197, 94, 0.03);
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-highlight-blue {
+  0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-    border-color: rgba(59, 130, 246, 0.8);
+    border-color: rgb(147, 197, 253);
+    background-color: rgba(59, 130, 246, 0.019);
     transform: scale(1);
   }
   50% {
     box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
-    border-color: rgba(59, 130, 246, 0.8);
+    border-color: rgb(147, 197, 253);
     background-color: rgba(59, 130, 246, 0.1);
     transform: scale(1.02);
   }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+    border-color: rgb(147, 197, 253);
+    background-color: rgba(59, 130, 246, 0.019);
+    transform: scale(1);
+  }
 }
 
-.animate-pulse-highlight {
-  animation: pulse-highlight 1s ease-in-out 3;
-  border-width: 2px !important;
+.animate-pulse-highlight-green {
+  animation: pulse-highlight-green 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  border-width: 1px !important;
+  position: relative;
+  z-index: 10;
+}
+
+.animate-pulse-highlight-blue {
+  animation: pulse-highlight-blue 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  border-width: 1px !important;
   position: relative;
   z-index: 10;
 }

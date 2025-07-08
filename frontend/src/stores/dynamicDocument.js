@@ -20,6 +20,10 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     isLoading: false, // Track loading state
     lastFetchTime: null, // Last time documents were fetched
     documentCache: {}, // Cache for individual document details
+    // Tag management state
+    tags: [], // List of available tags
+    tagsLoaded: false, // Flag to indicate if tags have been fetched
+    isLoadingTags: false, // Track loading state for tags
     pagination: {
       currentPage: 1,
       itemsPerPage: 20,
@@ -43,6 +47,24 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
         // Otherwise look in the list
         return state.documents.find((doc) => doc.id == documentId) || null;
       }
+    },
+
+    /**
+     * Get tag by its ID
+     * @returns {Function} - Function to get tag by ID
+     */
+    tagById: (state) => {
+      return (tagId) => {
+        return state.tags.find((tag) => tag.id == tagId) || null;
+      }
+    },
+
+    /**
+     * Get all tags sorted by name
+     * @returns {Array} - List of tags sorted alphabetically
+     */
+    sortedTags: (state) => {
+      return [...state.tags].sort((a, b) => a.name.localeCompare(b.name));
     },
 
     /**
@@ -166,6 +188,71 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
                 .includes(lowerQuery)))
         );
       });
+    },
+
+    /**
+     * Filter documents by selected tags
+     * @param {object} state - Store state
+     * @returns {function} - Function that takes an array of tag IDs and returns filtered documents
+     */
+    filteredDocumentsByTags: (state) => (selectedTagIds) => {
+      if (!selectedTagIds || selectedTagIds.length === 0) return state.documents;
+
+      return state.documents.filter((doc) => {
+        // Check if document has tags
+        if (!doc.tags || doc.tags.length === 0) return false;
+
+        // Check if document has any of the selected tags
+        return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+      });
+    },
+
+    /**
+     * Filter documents by both search query and selected tags
+     * @param {object} state - Store state
+     * @returns {function} - Function that takes search query, userStore, and tag IDs
+     */
+    filteredDocumentsBySearchAndTags: (state) => (query, userStore, selectedTagIds) => {
+      let filteredDocs = state.documents;
+
+      // Apply search filter first
+      if (query) {
+        const lowerQuery = query.toLowerCase();
+        filteredDocs = filteredDocs.filter((doc) => {
+          return (
+            doc.title.toLowerCase().includes(lowerQuery) ||
+            doc.state.toLowerCase().includes(lowerQuery) ||
+            (doc.assigned_to &&
+              userStore &&
+              (userStore
+                .userById(doc.assigned_to)
+                ?.first_name?.toLowerCase()
+                .includes(lowerQuery) ||
+                userStore
+                  .userById(doc.assigned_to)
+                  ?.last_name?.toLowerCase()
+                  .includes(lowerQuery) ||
+                userStore
+                  .userById(doc.assigned_to)
+                  ?.email?.toLowerCase()
+                  .includes(lowerQuery) ||
+                userStore
+                  .userById(doc.assigned_to)
+                  ?.identification?.toLowerCase()
+                  .includes(lowerQuery)))
+          );
+        });
+      }
+
+      // Apply tag filter
+      if (selectedTagIds && selectedTagIds.length > 0) {
+        filteredDocs = filteredDocs.filter((doc) => {
+          if (!doc.tags || doc.tags.length === 0) return false;
+          return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+        });
+      }
+
+      return filteredDocs;
     },
 
     /**
@@ -507,6 +594,140 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
      */
     clearSelectedDocument() {
       this.selectedDocument = null;
+    },
+
+    // =============================================
+    // TAG MANAGEMENT ACTIONS
+    // =============================================
+
+    /**
+     * Fetch all tags from the server
+     * @param {boolean} forceRefresh - Whether to bypass cache
+     * @returns {Promise<Array>} List of tags
+     */
+    async fetchTags(forceRefresh = false) {
+      // Prevent multiple simultaneous requests
+      if (this.isLoadingTags) return this.tags;
+      
+      // Return cached tags if available and not forcing refresh
+      if (this.tagsLoaded && !forceRefresh) {
+        return this.tags;
+      }
+      
+      this.isLoadingTags = true;
+      
+      try {
+        const response = await get_request('dynamic-documents/tags/');
+        this.tags = response.data || [];
+        this.tagsLoaded = true;
+        
+        return this.tags;
+      } catch (error) {
+        console.error("Error fetching tags:", error);
+        this.tags = [];
+        throw error;
+      } finally {
+        this.isLoadingTags = false;
+      }
+    },
+
+    /**
+     * Create a new tag
+     * @param {Object} tagData - Tag data (name, color_id)
+     * @returns {Promise<Object>} Created tag
+     */
+    async createTag(tagData) {
+      try {
+        const response = await create_request('dynamic-documents/tags/create/', tagData);
+        
+        // Add to local tags list
+        this.tags.push(response.data);
+        
+        // Register user activity
+        await registerUserActivity(
+          ACTION_TYPES.CREATE,
+          `Creaste la etiqueta "${tagData.name}"`
+        );
+        
+        return response.data;
+      } catch (error) {
+        console.error("Error creating tag:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Update an existing tag
+     * @param {number|string} tagId - ID of the tag to update
+     * @param {Object} tagData - Updated tag data
+     * @returns {Promise<Object>} Updated tag
+     */
+    async updateTag(tagId, tagData) {
+      try {
+        const response = await update_request(`dynamic-documents/tags/${tagId}/update/`, tagData);
+        
+        // Update in local tags list
+        const tagIndex = this.tags.findIndex(tag => tag.id == tagId);
+        if (tagIndex >= 0) {
+          this.tags[tagIndex] = response.data;
+        }
+        
+        // Register user activity
+        await registerUserActivity(
+          ACTION_TYPES.UPDATE,
+          `Actualizaste la etiqueta "${tagData.name || 'sin nombre'}"`
+        );
+        
+        return response.data;
+      } catch (error) {
+        console.error(`Error updating tag ID ${tagId}:`, error);
+        throw error;
+      }
+    },
+
+    /**
+     * Delete a tag
+     * @param {number|string} tagId - ID of the tag to delete
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteTag(tagId) {
+      try {
+        // Get tag name before deletion for activity log
+        let tagName = "etiqueta";
+        const existingTag = this.tagById(tagId);
+        if (existingTag) {
+          tagName = existingTag.name;
+        }
+        
+        const response = await delete_request(`dynamic-documents/tags/${tagId}/delete/`);
+        
+        if (response.status === 204) {
+          // Remove from local tags list
+          this.tags = this.tags.filter(tag => tag.id != tagId);
+          
+          // Register user activity
+          await registerUserActivity(
+            ACTION_TYPES.DELETE,
+            `Eliminaste la etiqueta "${tagName}"`
+          );
+          
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error(`Error deleting tag ID ${tagId}:`, error);
+        return false;
+      }
+    },
+
+    /**
+     * Initialize tags data
+     * @param {boolean} forceRefresh - Whether to force refresh
+     */
+    async initTags(forceRefresh = false) {
+      if (!this.tagsLoaded || forceRefresh) {
+        await this.fetchTags(forceRefresh);
+      }
     },
   },
 });

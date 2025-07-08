@@ -4,11 +4,11 @@
         v-for="document in filteredDocuments"
         :key="document.id"
         :data-document-id="document.id"
-        class="flex items-center gap-3 py-2 px-4 border rounded-xl cursor-pointer hover:bg-gray-50 mb-4"
+        class="relative bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 cursor-pointer mb-4 focus:outline-none focus:ring-0"
         :class="{
-          'border-yellow-400 bg-yellow-300/10': document.state === 'PendingSignatures',
-          'border-green-400 bg-green-50': document.state === 'FullySigned',
-          'border-stroke shadow-md animate-pulse-highlight': String(document.id) === String(highlightedDocId),
+          'border-yellow-400 bg-yellow-50/50 shadow-yellow-100': document.state === 'PendingSignatures',
+          'border-green-400 bg-green-50/50 shadow-green-100': document.state === 'FullySigned',
+          'border-primary shadow-lg ring-2 ring-primary/20 animate-pulse-highlight': String(document.id) === String(highlightedDocId),
         }"
         @click="(e) => {
           // Only trigger preview if click was not on the menu
@@ -17,40 +17,42 @@
           }
         }"
       >
-        <svg 
-          class="h-6 w-6"
-          :class="{
-            'text-yellow-500': document.state === 'PendingSignatures',
-            'text-green-500': document.state === 'FullySigned'
-          }"
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          stroke-width="2" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-        >
-          <path v-if="document.state === 'PendingSignatures'" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-          <path v-else d="M20 6L9 17l-5-5"></path>
-        </svg>
-        
-        <div class="flex justify-between items-center w-full">
-          <div class="grid gap-1">
-            <span class="text-base font-medium">{{ document.title }}</span>
-            <div class="flex items-center gap-2 text-sm text-gray-500">
-              <span>Estado de firmas:</span>
-              <span :class="{
-                'bg-blue-100 text-blue-800': document.state === 'PendingSignatures',
-                'bg-green-100 text-green-800': document.state === 'FullySigned'
-              }" class="text-xs font-medium px-2 py-0.5 rounded">
-                {{ getCompletedSignatures(document) }}/{{ getTotalSignatures(document) }}
-              </span>
+        <!-- Header with status and menu -->
+        <div class="flex justify-between items-start mb-3">
+          <div class="flex items-center gap-2">
+            <!-- Status Badge -->
+            <div 
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+              :class="{
+                'bg-yellow-100 text-yellow-700 border border-yellow-200': document.state === 'PendingSignatures',
+                'bg-green-100 text-green-700 border border-green-200': document.state === 'FullySigned'
+              }"
+            >
+              <svg 
+                class="h-3.5 w-3.5"
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path v-if="document.state === 'PendingSignatures'" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                <path v-else d="M20 6L9 17l-5-5"></path>
+              </svg>
+              <span>{{ document.state === 'PendingSignatures' ? 'Pendiente de firmas' : 'Completamente firmado' }}</span>
+            </div>
+            
+            <!-- Signature Progress Badge -->
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+              <span>{{ getCompletedSignatures(document) }}/{{ getTotalSignatures(document) }}</span>
             </div>
           </div>
           
+          <!-- Menu -->
           <Menu as="div" class="relative inline-block text-left menu-container">
-            <MenuButton class="flex items-center text-gray-400">
-              <EllipsisVerticalIcon class="size-6" aria-hidden="true" />
+            <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
+              <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
             </MenuButton>
             <transition
               enter-active-class="transition ease-out duration-100"
@@ -67,7 +69,7 @@
                   <!-- View signatures option (only if document requires signatures and has correct state) -->
                   <MenuItem v-if="document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')">
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none"
                       @click="viewDocumentSignatures(document)"
                     >
                       Estado de las firmas
@@ -77,7 +79,7 @@
                   <!-- Sign document option -->
                   <MenuItem v-if="canSignDocument(document)">
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none"
                       @click="signDocument(document)"
                     >
                       Firmar documento
@@ -87,7 +89,7 @@
                   <!-- Download signed document option (only for fully signed documents) -->
                   <MenuItem v-if="document.state === 'FullySigned'">
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none"
                       @click="downloadSignedDocument(document)"
                     >
                       Descargar Documento firmado
@@ -97,7 +99,7 @@
                   <!-- Download PDF option -->
                   <MenuItem v-if="document.state === 'PendingSignatures'">
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none"
                       @click="downloadPDFDocument(document)"
                     >
                       Descargar PDF
@@ -107,7 +109,7 @@
                   <!-- Preview option -->
                   <MenuItem>
                     <button
-                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition"
+                      class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none"
                       @click="handlePreviewDocument(document)"
                     >
                       Previsualizar
@@ -117,6 +119,45 @@
               </MenuItems>
             </transition>
           </Menu>
+        </div>
+
+        <!-- Document Content -->
+        <div class="space-y-2">
+          <!-- Title -->
+          <h3 class="text-lg font-semibold text-gray-900 leading-tight">
+            {{ document.title }}
+          </h3>
+          
+          <!-- Tags Section -->
+          <div v-if="document.tags && document.tags.length > 0" class="pt-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-medium text-gray-500">Etiquetas:</span>
+              <div class="flex items-center gap-1.5">
+                <div 
+                  v-for="tag in document.tags" 
+                  :key="tag.id"
+                  class="group relative"
+                >
+                  <div 
+                    class="w-5 h-5 rounded-full cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-offset-1 shadow-sm"
+                    :style="{ 
+                      backgroundColor: getColorById(tag.color_id)?.hex || '#9CA3AF',
+                      boxShadow: `0 0 0 1px ${getColorById(tag.color_id)?.dark || '#6B7280'}40`
+                    }"
+                    :title="tag.name"
+                  ></div>
+                  
+                  <!-- Tooltip -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-1.5 px-2.5 whitespace-nowrap shadow-lg">
+                      {{ tag.name }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -188,6 +229,7 @@ import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { get_request, create_request } from "@/stores/services/request_http";
 import { showNotification } from "@/shared/notification_message";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { getAllColors, getColorById } from "@/shared/color_palette";
 import {
   showPreviewModal,
   previewDocumentData,
@@ -212,6 +254,10 @@ const props = defineProps({
   searchQuery: {
     type: String,
     default: ''
+  },
+  selectedTags: {
+    type: Array,
+    default: () => []
   }
 });
 
@@ -287,10 +333,20 @@ const filteredDocuments = computed(() => {
     }
   }
   
+  // Apply search filter
   if (props.searchQuery) {
     storeDocuments = storeDocuments.filter(doc => 
       doc.title.toLowerCase().includes(props.searchQuery.toLowerCase())
     );
+  }
+  
+  // Apply tag filter if tags are selected
+  if (props.selectedTags && props.selectedTags.length > 0) {
+    const selectedTagIds = props.selectedTags.map(tag => tag.id);
+    storeDocuments = storeDocuments.filter(doc => {
+      if (!doc.tags || doc.tags.length === 0) return false;
+      return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+    });
   }
   
   return storeDocuments;

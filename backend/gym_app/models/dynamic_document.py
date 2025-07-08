@@ -13,6 +13,42 @@ def document_version_path(instance, filename):
     return os.path.join('document_versions', str(instance.document.id), filename)
 
 
+class Tag(models.Model):
+    """
+    Model representing a tag that lawyers can assign to document templates (formats).
+    """
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Nombre de la etiqueta."
+    )
+    color_id = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Identificador del color predefinido en el frontend."
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_tags",
+        help_text="Abogado que creó la etiqueta."
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha de creación de la etiqueta."
+    )
+
+    class Meta:
+        verbose_name = "Etiqueta"
+        verbose_name_plural = "Etiquetas"
+        ordering = ["name"]
+
+    def __str__(self):
+        """Return the tag name."""
+        return self.name
+
+
 class DynamicDocument(models.Model):
     """
     Model representing a dynamic document that can be created, edited, and assigned to users.
@@ -28,6 +64,13 @@ class DynamicDocument(models.Model):
 
     title = models.CharField(max_length=200, help_text="Title of the dynamic document.")
     content = models.TextField(help_text="Content of the document.")
+    # NEW FIELD – manual tags assigned by lawyers
+    tags = models.ManyToManyField(
+        'Tag',
+        related_name='documents',
+        blank=True,
+        help_text="Etiquetas asignadas al documento."
+    )
     state = models.CharField(
         max_length=20,
         choices=STATE_CHOICES,
@@ -255,3 +298,42 @@ class RecentDocument(models.Model):
         Returns a string representation of the recent document record.
         """
         return f"{self.user.email} - {self.document.title} - {self.last_visited}"
+
+
+class DocumentFolder(models.Model):
+    """
+    Model representing a manual folder created by a client to organise documents or templates.
+    """
+    name = models.CharField(
+        max_length=100,
+        help_text="Nombre de la carpeta."
+    )
+    color_id = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Identificador del color predefinido en el frontend."
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='folders',
+        help_text="Cliente propietario de la carpeta."
+    )
+    documents = models.ManyToManyField(
+        'DynamicDocument',
+        related_name='folders',
+        blank=True,
+        help_text="Documentos incluidos en la carpeta."
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha de creación de la carpeta."
+    )
+
+    class Meta:
+        verbose_name = "Carpeta de documentos"
+        verbose_name_plural = "Carpetas de documentos"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        """Return folder name and owner email."""
+        return f"{self.name} ({self.owner.email})"

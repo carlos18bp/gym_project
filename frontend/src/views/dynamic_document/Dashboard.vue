@@ -33,9 +33,14 @@
         </nav>
       </div>
 
+      <!-- Tag Filter -->
+      <div class="mb-6">
+        <TagFilter v-model="selectedTags" />
+      </div>
+
       <!-- Lawyer Tab Content -->
       <div v-if="activeLawyerTab === 'legal-documents'">
-        <DocumentListLawyer :searchQuery="searchQuery" />
+        <DocumentListLawyer :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Pending Signatures Tab -->
@@ -43,7 +48,7 @@
         v-if="activeLawyerTab === 'pending-signatures'"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
         >
-        <SignaturesList state="PendingSignatures" :searchQuery="searchQuery" />
+        <SignaturesList state="PendingSignatures" :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Signed Documents Tab -->
@@ -51,17 +56,17 @@
         v-if="activeLawyerTab === 'signed-documents'"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
         >
-        <SignaturesList state="FullySigned" :searchQuery="searchQuery" />
+        <SignaturesList state="FullySigned" :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Finished Documents Tab -->
       <div v-if="activeLawyerTab === 'finished-documents'">
-        <DocumentFinishedByClientList :searchQuery="searchQuery" />
+        <DocumentFinishedByClientList :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- In Progress Documents Tab -->
       <div v-if="activeLawyerTab === 'in-progress-documents'">
-        <DocumentInProgressByClientList :searchQuery="searchQuery" />
+        <DocumentInProgressByClientList :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- No documents message -->
@@ -96,26 +101,35 @@
         </nav>
       </div>
 
+      <!-- Tag Filter -->
+      <div class="mb-6">
+        <TagFilter v-model="selectedTags" />
+      </div>
+
       <!-- Tab content -->
       <UseDocument
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
+        :selectedTags="selectedTags"
       ></UseDocument>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents'}">
         <SignaturesList 
           v-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
           @refresh="handleRefresh"
         />
         <DocumentListClient
           v-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
         ></DocumentListClient>
         <SignaturesList
           v-if="activeTab === 'signed-documents'"
           state="FullySigned"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
         />
       </div>
     </div>
@@ -160,6 +174,7 @@ import { FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import DocumentsNavigation from "@/components/dynamic_document/layouts/DocumentsNavigation.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import TagFilter from "@/components/dynamic_document/common/TagFilter.vue";
 
 // Client components
 import DocumentListClient from "@/components/dynamic_document/client/DocumentListClient.vue";
@@ -185,6 +200,7 @@ const showCreateDocumentModal = ref(false);
 const activeTab = ref('my-documents');
 const activeLawyerTab = ref('legal-documents');
 const showSignatureModal = ref(false);
+const selectedTags = ref([]);
 
 // Get the current user
 const currentUser = computed(() => userStore.currentUser);
@@ -211,8 +227,11 @@ const filteredDocuments = computed(() => {
     );
   }
 
+  // Get selected tag IDs
+  const selectedTagIds = selectedTags.value.map(tag => tag.id);
+
   return documentStore
-    .filteredDocuments(searchQuery.value, userStore)
+    .filteredDocumentsBySearchAndTags(searchQuery.value, userStore, selectedTagIds)
     .filter((doc) =>
       allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
     );
