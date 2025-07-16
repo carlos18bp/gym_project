@@ -1,0 +1,285 @@
+<template>
+  <ModalTransition v-if="folder">
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-6 border-b">
+          <div class="flex items-center gap-3">
+            <div 
+              class="w-8 h-8 rounded-full"
+              :style="{ backgroundColor: folderColor.hex }"
+            ></div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">{{ folder.name }}</h3>
+              <p class="text-sm text-gray-600">{{ folder.documents.length }} documentos</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="handleAddDocuments"
+              class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm"
+            >
+              <PlusIcon class="w-4 h-4" />
+              Agregar Documentos
+            </button>
+            <button @click="handleClose" class="text-gray-400 hover:text-gray-500">
+              <XMarkIcon class="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Documents Content -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div v-if="folder.documents.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- My Documents -->
+            <template v-for="document in folderDocumentsByType.myDocuments" :key="`doc-${document.id}`">
+              <DocumentCard
+                :document="document"
+                :highlighted-doc-id="null"
+                :show-tags="true"
+                :show-client-name="false"
+                :additional-classes="'relative'"
+                :menu-options="getDocumentMenuOptions(document)"
+                :menu-position="'left-0 right-auto'"
+                @click="handleViewDocument"
+                @menu-action="handleDocumentAction"
+              >
+                <template #additional-actions>
+                  <button
+                    @click.stop="handleRemoveDocument(document.id)"
+                    class="absolute top-2 left-2 w-6 h-6 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors flex items-center justify-center z-10"
+                    title="Quitar de carpeta"
+                  >
+                    <XMarkIcon class="w-4 h-4" />
+                  </button>
+                </template>
+              </DocumentCard>
+            </template>
+
+            <!-- Use Documents (Formatos) -->
+            <template v-for="document in folderDocumentsByType.useDocuments" :key="`use-${document.id}`">
+              <UseDocumentCard
+                :document="document"
+                :show-tags="true"
+                @click="handleUseDocument"
+              >
+                <template #additional-actions>
+                  <button
+                    @click.stop="handleRemoveDocument(document.id)"
+                    class="absolute top-2 left-2 w-6 h-6 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors flex items-center justify-center z-10"
+                    title="Quitar de carpeta"
+                  >
+                    <XMarkIcon class="w-4 h-4" />
+                  </button>
+                </template>
+              </UseDocumentCard>
+            </template>
+
+            <!-- Signature Documents -->
+            <template v-for="document in folderDocumentsByType.signatureDocuments" :key="`sig-${document.id}`">
+              <SignatureDocumentCard
+                :document="document"
+                :highlighted-doc-id="null"
+                :show-tags="true"
+                :menu-options="getSignatureDocumentMenuOptions(document)"
+                :menu-position="'left-0 right-auto'"
+                @click="handleViewDocument"
+                @menu-action="handleDocumentAction"
+              >
+                <template #additional-actions>
+                  <button
+                    @click.stop="handleRemoveDocument(document.id)"
+                    class="absolute top-2 left-2 w-6 h-6 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors flex items-center justify-center z-10"
+                    title="Quitar de carpeta"
+                  >
+                    <XMarkIcon class="w-4 h-4" />
+                  </button>
+                </template>
+              </SignatureDocumentCard>
+            </template>
+          </div>
+
+          <!-- Empty folder state -->
+          <div v-else class="text-center py-12">
+            <DocumentIcon class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h4 class="text-lg font-medium text-gray-900 mb-2">Carpeta vacía</h4>
+            <p class="text-gray-600 mb-4">Agrega documentos a esta carpeta para organizarlos</p>
+            <button
+              @click="handleAddDocuments"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            >
+              <PlusIcon class="w-5 h-5" />
+              Agregar Documentos
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ModalTransition>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { useDocumentFolderStore } from '@/stores/documentFolder';
+import { useUserStore } from '@/stores/user';
+
+// Icons
+import { 
+  PlusIcon, 
+  XMarkIcon, 
+  DocumentIcon 
+} from '@heroicons/vue/24/outline';
+
+// Components
+import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
+import { DocumentCard, UseDocumentCard, SignatureDocumentCard } from '@/components/dynamic_document/cards';
+
+// Props
+const props = defineProps({
+  folder: {
+    type: Object,
+    default: null
+  }
+});
+
+// Emits
+const emit = defineEmits([
+  'close', 
+  'add-documents', 
+  'remove-document', 
+  'view-document', 
+  'use-document', 
+  'document-action'
+]);
+
+// Stores
+const folderStore = useDocumentFolderStore();
+const userStore = useUserStore();
+
+// Computed
+const currentUser = computed(() => userStore.currentUser);
+
+const folderColor = computed(() => {
+  if (!props.folder) return { hex: '#6B7280' };
+  return folderStore.getFolderWithColor(props.folder.id)?.color || { hex: '#6B7280' };
+});
+
+// Get folder documents grouped by type
+const folderDocumentsByType = computed(() => {
+  if (!props.folder) return { myDocuments: [], useDocuments: [], signatureDocuments: [] };
+
+  const documents = props.folder.documents || [];
+  
+  return {
+    myDocuments: documents.filter(doc => 
+      doc.assigned_to === currentUser.value?.id && 
+      (doc.state === 'Progress' || doc.state === 'Completed')
+    ),
+    useDocuments: documents.filter(doc => 
+      doc.state === 'Published' && !doc.assigned_to
+    ),
+    signatureDocuments: documents.filter(doc => 
+      doc.state === 'PendingSignatures' || doc.state === 'FullySigned'
+    )
+  };
+});
+
+// Methods
+const handleClose = () => {
+  emit('close');
+};
+
+const handleAddDocuments = () => {
+  emit('add-documents', props.folder);
+};
+
+const handleRemoveDocument = (documentId) => {
+  emit('remove-document', documentId);
+};
+
+const handleViewDocument = (document) => {
+  emit('view-document', document);
+};
+
+const handleUseDocument = (document) => {
+  emit('use-document', document);
+};
+
+const handleDocumentAction = (action, document) => {
+  emit('document-action', action, document);
+};
+
+// Generate menu options for regular documents
+const getDocumentMenuOptions = (document) => {
+  const options = [];
+
+  // View/Edit options
+  if (document.state === 'Progress' || document.state === 'Draft') {
+    options.push({
+      label: 'Editar',
+      action: 'edit',
+      disabled: false
+    });
+  }
+
+  options.push({
+    label: 'Ver',
+    action: 'view',
+    disabled: false
+  });
+
+  // Download option
+  options.push({
+    label: 'Descargar',
+    action: 'download',
+    disabled: false
+  });
+
+  // Duplicate option
+  if (document.state === 'Completed' || document.state === 'Published') {
+    options.push({
+      label: 'Duplicar',
+      action: 'duplicate',
+      disabled: false
+    });
+  }
+
+  return options;
+};
+
+// Generate menu options for signature documents
+const getSignatureDocumentMenuOptions = (document) => {
+  const options = [];
+
+  // View option
+  options.push({
+    label: 'Ver',
+    action: 'view',
+    disabled: false
+  });
+
+  // Sign option (if pending signatures and user hasn't signed)
+  if (document.state === 'PendingSignatures') {
+    const userSignature = document.signatures?.find(sig => 
+      sig.user_id === currentUser.value?.id
+    );
+    
+    if (userSignature && !userSignature.signed) {
+      options.push({
+        label: 'Firmar',
+        action: 'sign',
+        disabled: false
+      });
+    }
+  }
+
+  // Download option
+  options.push({
+    label: 'Descargar',
+    action: 'download',
+    disabled: false
+  });
+
+  return options;
+};
+</script> 

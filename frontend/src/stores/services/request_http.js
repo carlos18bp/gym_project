@@ -45,6 +45,9 @@ async function makeRequest(method, url, params = {}, config = {}) {
       case "PUT":
         response = await axios.put(`/api/${url}`, params, { headers, ...config });
         break;
+      case "PATCH":
+        response = await axios.patch(`/api/${url}`, params, { headers, ...config });
+        break;
       case "DELETE":
         response = await axios.delete(`/api/${url}`, { headers, ...config });
         break;
@@ -93,6 +96,16 @@ export async function create_request(url, params) {
  */
 export async function update_request(url, params) {
   return await makeRequest("PUT", url, params);
+}
+
+/**
+ * Patch request (partial update).
+ * @param {string} url - Endpoint.
+ * @param {object} params - Params.
+ * @returns {object} - Data and status from endpoint.
+ */
+export async function patch_request(url, params) {
+  return await makeRequest("PATCH", url, params);
 }
 
 /**

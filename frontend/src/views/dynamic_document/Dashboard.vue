@@ -102,7 +102,7 @@
       </div>
 
       <!-- Tag Filter -->
-      <div class="mb-6">
+      <div v-if="activeTab !== 'folders'" class="mb-6">
         <TagFilter v-model="selectedTags" />
       </div>
 
@@ -112,7 +112,7 @@
         :searchQuery="searchQuery"
         :selectedTags="selectedTags"
       ></UseDocument>
-      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents'}">
+      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents' && activeTab != 'folders'}">
         <SignaturesList 
           v-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"
@@ -125,6 +125,13 @@
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
         ></DocumentListClient>
+        <FolderManagement
+          v-if="activeTab === 'folders'"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @navigate-to-main="handleNavigateToMain"
+        />
         <SignaturesList
           v-if="activeTab === 'signed-documents'"
           state="FullySigned"
@@ -167,6 +174,7 @@
 import { onMounted, computed, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDocumentFolderStore } from "@/stores/documentFolder";
 import { useRouter } from "vue-router";
 import { FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 
@@ -175,6 +183,7 @@ import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue"
 import DocumentsNavigation from "@/components/dynamic_document/layouts/DocumentsNavigation.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import TagFilter from "@/components/dynamic_document/common/TagFilter.vue";
+import FolderManagement from "@/components/dynamic_document/common/folders/FolderManagement.vue";
 
 // Client components
 import DocumentListClient from "@/components/dynamic_document/client/DocumentListClient.vue";
@@ -191,6 +200,7 @@ import ElectronicSignature from "@/components/electronic_signature/ElectronicSig
 // Store instances
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
+const folderStore = useDocumentFolderStore();
 const router = useRouter();
 
 // Reactive state
@@ -242,6 +252,7 @@ onMounted(async () => {
   // Initialize store data
   await userStore.init();
   await documentStore.init();
+  await folderStore.init();
   
   documentStore.selectedDocument = null;
   
@@ -290,6 +301,14 @@ const handleRefresh = async () => {
 };
 
 /**
+ * Handles navigation to main view (folders tab without modals).
+ */
+const handleNavigateToMain = () => {
+  // Keep the folders tab active but ensure all modals are closed
+  activeTab.value = 'folders';
+};
+
+/**
  * Watch for changes in lastUpdatedDocumentId to show document list
  * Only triggers when currentSection is 'default' to avoid UI bugs
  */
@@ -311,6 +330,7 @@ watch(
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'my-documents', label: 'Mis Documentos' },
+  { name: 'folders', label: 'Carpetas' },
   { name: 'pending-signatures', label: 'Firmas Pendientes' },
   { name: 'signed-documents', label: 'Documentos Firmados' }
 ];
