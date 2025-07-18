@@ -35,14 +35,20 @@
             <template v-for="document in folderDocumentsByType.myDocuments" :key="`doc-${document.id}`">
               <DocumentCard
                 :document="document"
+                :card-type="'folder'"
+                :card-context="'folder'"
                 :highlighted-doc-id="null"
                 :show-tags="true"
                 :show-client-name="false"
                 :additional-classes="'relative'"
-                :menu-options="getDocumentMenuOptions(document)"
-                :menu-position="'left-0 right-auto'"
+                :document-store="documentStore"
+                :user-store="userStore"
                 @click="handleViewDocument"
-                @menu-action="handleDocumentAction"
+                @preview="handleViewDocument"
+                @edit="handleEditDocument"
+                @refresh="handleRefresh"
+                @copy="handleCopyDocument"
+                @remove-from-folder="handleRemoveDocumentFromCard"
               >
                 <template #additional-actions>
                   <button
@@ -79,12 +85,16 @@
             <template v-for="document in folderDocumentsByType.signatureDocuments" :key="`sig-${document.id}`">
               <SignatureDocumentCard
                 :document="document"
+                :card-type="'signatures'"
+                :card-context="'folder'"
                 :highlighted-doc-id="null"
                 :show-tags="true"
-                :menu-options="getSignatureDocumentMenuOptions(document)"
-                :menu-position="'left-0 right-auto'"
+                :document-store="documentStore"
+                :user-store="userStore"
                 @click="handleViewDocument"
-                @menu-action="handleDocumentAction"
+                @preview="handleViewDocument"
+                @sign="handleSignDocument"
+                @refresh="handleRefresh"
               >
                 <template #additional-actions>
                   <button
@@ -122,6 +132,7 @@
 import { computed } from 'vue';
 import { useDocumentFolderStore } from '@/stores/documentFolder';
 import { useUserStore } from '@/stores/user';
+import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
 
 // Icons
 import { 
@@ -149,12 +160,14 @@ const emit = defineEmits([
   'remove-document', 
   'view-document', 
   'use-document', 
-  'document-action'
+  'document-action',
+  'refresh'
 ]);
 
 // Stores
 const folderStore = useDocumentFolderStore();
 const userStore = useUserStore();
+const documentStore = useDynamicDocumentStore();
 
 // Computed
 const currentUser = computed(() => userStore.currentUser);
@@ -209,77 +222,29 @@ const handleDocumentAction = (action, document) => {
   emit('document-action', action, document);
 };
 
-// Generate menu options for regular documents
-const getDocumentMenuOptions = (document) => {
-  const options = [];
-
-  // View/Edit options
-  if (document.state === 'Progress' || document.state === 'Draft') {
-    options.push({
-      label: 'Editar',
-      action: 'edit',
-      disabled: false
-    });
-  }
-
-  options.push({
-    label: 'Ver',
-    action: 'view',
-    disabled: false
-  });
-
-  // Download option
-  options.push({
-    label: 'Descargar',
-    action: 'download',
-    disabled: false
-  });
-
-  // Duplicate option
-  if (document.state === 'Completed' || document.state === 'Published') {
-    options.push({
-      label: 'Duplicar',
-      action: 'duplicate',
-      disabled: false
-    });
-  }
-
-  return options;
+// Handle document edit
+const handleEditDocument = (document) => {
+  emit('view-document', document); // Reutilizar el mismo evento
 };
 
-// Generate menu options for signature documents
-const getSignatureDocumentMenuOptions = (document) => {
-  const options = [];
+// Handle document sign
+const handleSignDocument = (document) => {
+  emit('document-action', 'sign', document);
+};
 
-  // View option
-  options.push({
-    label: 'Ver',
-    action: 'view',
-    disabled: false
-  });
+// Handle refresh after actions
+const handleRefresh = () => {
+  // Force parent to refresh folder data
+  emit('refresh');
+};
 
-  // Sign option (if pending signatures and user hasn't signed)
-  if (document.state === 'PendingSignatures') {
-    const userSignature = document.signatures?.find(sig => 
-      sig.user_id === currentUser.value?.id
-    );
-    
-    if (userSignature && !userSignature.signed) {
-      options.push({
-        label: 'Firmar',
-        action: 'sign',
-        disabled: false
-      });
-    }
-  }
+// Handle remove document from card action
+const handleRemoveDocumentFromCard = (document) => {
+  handleRemoveDocument(document.id);
+};
 
-  // Download option
-  options.push({
-    label: 'Descargar',
-    action: 'download',
-    disabled: false
-  });
-
-  return options;
+// Handle copy/duplicate document
+const handleCopyDocument = (document) => {
+  emit('document-action', 'copy', document);
 };
 </script> 

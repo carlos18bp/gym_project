@@ -1,16 +1,26 @@
 <template>
   <BaseDocumentCard
     :document="document"
+    :card-type="cardType"
+    :card-context="cardContext"
     :status-icon="statusIcon"
     :status-text="statusText"
     :status-badge-classes="statusBadgeClasses"
-    :menu-options="menuOptions"
-    :menu-position="menuPosition"
     :highlighted-doc-id="highlightedDocId"
     :show-tags="showTags"
     :additional-classes="additionalClasses"
+    :document-store="documentStore"
+    :user-store="userStore"
+    :prompt-documents="promptDocuments"
     @click="handleCardClick"
-    @menu-action="handleMenuAction"
+    @preview="$emit('preview', $event)"
+    @edit="$emit('edit', $event)"
+    @refresh="$emit('refresh')"
+    @email="$emit('email', $event)"
+    @formalize="$emit('formalize', $event)"
+    @view-signatures="$emit('view-signatures', $event)"
+    @sign="$emit('sign', $event)"
+    @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom status badge if needed -->
     <template v-if="customStatusBadge" #status-badge>
@@ -97,24 +107,19 @@
 <script setup>
 import { computed } from 'vue';
 import BaseDocumentCard from './BaseDocumentCard.vue';
-import { 
-  CheckCircleIcon, 
-  PencilIcon,
-  DocumentTextIcon
-} from "@heroicons/vue/24/outline";
 
 const props = defineProps({
   document: {
     type: Object,
     required: true
   },
-  menuOptions: {
-    type: Array,
-    default: () => []
-  },
-  menuPosition: {
+  cardType: {
     type: String,
-    default: 'right-0 left-auto'
+    default: 'default'
+  },
+  cardContext: {
+    type: String,
+    default: 'list'
   },
   highlightedDocId: {
     type: [String, Number],
@@ -140,68 +145,50 @@ const props = defineProps({
     type: [String, Array, Object],
     default: ''
   },
+  // Override props for status (optional)
+  statusIcon: {
+    type: [String, Object, Function],
+    default: null
+  },
+  statusText: {
+    type: String,
+    default: null
+  },
+  statusBadgeClasses: {
+    type: [String, Object, Array],
+    default: null
+  },
+  // Stores
+  documentStore: {
+    type: Object,
+    default: null
+  },
   userStore: {
     type: Object,
     default: null
+  },
+  promptDocuments: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['click', 'menu-action', 'preview']);
+const emit = defineEmits([
+  'click', 
+  'preview',
+  'edit',
+  'refresh',
+  'email',
+  'formalize',
+  'view-signatures',
+  'sign',
+  'remove-from-folder'
+]);
 
-// Status icon based on document state
-const statusIcon = computed(() => {
-  const state = props.document.state;
-  switch (state) {
-    case 'Published':
-    case 'FullySigned':
-    case 'Completed':
-      return CheckCircleIcon;
-    case 'Draft':
-    case 'Progress':
-    case 'PendingSignatures':
-    default:
-      return PencilIcon;
-  }
-});
-
-// Status text based on document state
-const statusText = computed(() => {
-  const state = props.document.state;
-  switch (state) {
-    case 'Published':
-      return 'Publicado';
-    case 'Draft':
-      return 'Borrador';
-    case 'Progress':
-      return 'En progreso';
-    case 'Completed':
-      return 'Completado';
-    case 'PendingSignatures':
-      return 'Pendiente de firmas';
-    case 'FullySigned':
-      return 'Completamente firmado';
-    default:
-      return 'Desconocido';
-  }
-});
-
-// Status badge classes based on document state
-const statusBadgeClasses = computed(() => {
-  const state = props.document.state;
-  switch (state) {
-    case 'Published':
-    case 'FullySigned':
-    case 'Completed':
-      return 'bg-green-100 text-green-700 border border-green-200';
-    case 'Draft':
-    case 'Progress':
-      return 'bg-blue-100 text-blue-700 border border-blue-200';
-    case 'PendingSignatures':
-      return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
-    default:
-      return 'bg-gray-100 text-gray-700 border border-gray-200';
-  }
-});
+// Card click handler
+const handleCardClick = (event) => {
+  emit('click', props.document, event);
+};
 
 // Signature status badge classes
 const signatureStatusClasses = computed(() => {
@@ -291,18 +278,7 @@ const getCompletedSignatures = (document) => {
   return document.signatures.filter(sig => sig.signed).length;
 };
 
-/**
- * Handle card click
- */
-const handleCardClick = (document, event) => {
-  emit('click', document, event);
-  emit('preview', document);
-};
 
-/**
- * Handle menu action
- */
-const handleMenuAction = (action, document) => {
-  emit('menu-action', action, document);
-};
+
+
 </script> 

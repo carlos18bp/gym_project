@@ -18,69 +18,69 @@
       >
         <!-- Additional signature status badge -->
         <template #additional-badges>
-          <div 
-            v-if="document.requires_signature" 
-            class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+            <div 
+              v-if="document.requires_signature" 
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
             :class="getSignatureStatusClasses(document)"
           >
             <!-- Different icons based on signature status -->
-            <svg 
-              v-if="document.fully_signed"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            
-            <svg 
-              v-else-if="getCurrentUserSignature(document)?.signed"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M20 6L9 17l-5-5"></path>
-            </svg>
-            
-            <svg 
-              v-else-if="getCurrentUserSignature(document)"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-            </svg>
-            
-            <svg 
-              v-else
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-            </svg>
-            
-            <span>
-              {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
-            </span>
-          </div>
+              <svg 
+                v-if="document.fully_signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <svg 
+                v-else-if="getCurrentUserSignature(document)?.signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+              
+              <svg 
+                v-else-if="getCurrentUserSignature(document)"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <svg 
+                v-else
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <span>
+                {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
+              </span>
+            </div>
         </template>
       </DocumentCard>
     </div>
@@ -104,69 +104,69 @@
       >
         <!-- Additional signature status badge -->
         <template #additional-badges>
-          <div 
-            v-if="document.requires_signature" 
-            class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+            <div 
+              v-if="document.requires_signature" 
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
             :class="getSignatureStatusClasses(document)"
           >
             <!-- Different icons based on signature status -->
-            <svg 
-              v-if="document.fully_signed"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            
-            <svg 
-              v-else-if="getCurrentUserSignature(document)?.signed"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M20 6L9 17l-5-5"></path>
-            </svg>
-            
-            <svg 
-              v-else-if="getCurrentUserSignature(document)"
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-            </svg>
-            
-            <svg 
-              v-else
-              class="h-3 w-3" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-            </svg>
-            
-            <span>
-              {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
-            </span>
-          </div>
+              <svg 
+                v-if="document.fully_signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              
+              <svg 
+                v-else-if="getCurrentUserSignature(document)?.signed"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+              
+              <svg 
+                v-else-if="getCurrentUserSignature(document)"
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <svg 
+                v-else
+                class="h-3 w-3" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"
+              >
+                <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              
+              <span>
+                {{ document.fully_signed ? 'Formalizado' : getSignatureStatus(document) }}
+              </span>
+            </div>
         </template>
       </DocumentCard>
     </div>

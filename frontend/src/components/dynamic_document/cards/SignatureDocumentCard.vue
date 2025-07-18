@@ -1,17 +1,22 @@
 <template>
   <BaseDocumentCard
     :document="document"
+    :card-type="cardType"
+    :card-context="cardContext"
     :status-icon="null"
     :status-text="statusText"
     :status-badge-classes="statusBadgeClasses"
-    :menu-options="menuOptions"
-    :menu-position="menuPosition"
     :highlighted-doc-id="highlightedDocId"
     :show-tags="showTags"
-    additional-classes="mb-4"
-    custom-status-badge
+    :additional-classes="'mb-4'"
+    :document-store="documentStore"
+    :user-store="userStore"
     @click="handleCardClick"
-    @menu-action="handleMenuAction"
+    @preview="$emit('preview', $event)"
+    @edit="$emit('edit', $event)"
+    @refresh="$emit('refresh')"
+    @sign="$emit('sign', $event)"
+    @view-signatures="$emit('view-signatures', $event)"
   >
     <!-- Custom status badge with SVG icon -->
     <template #status-badge>
@@ -62,13 +67,13 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  menuOptions: {
-    type: Array,
-    default: () => []
-  },
-  menuPosition: {
+  cardType: {
     type: String,
-    default: 'right-0 left-auto'
+    default: 'signatures'
+  },
+  cardContext: {
+    type: String,
+    default: 'list'
   },
   highlightedDocId: {
     type: [String, Number],
@@ -77,10 +82,25 @@ const props = defineProps({
   showTags: {
     type: Boolean,
     default: true
+  },
+  documentStore: {
+    type: Object,
+    default: null
+  },
+  userStore: {
+    type: Object,
+    default: null
   }
 });
 
-const emit = defineEmits(['click', 'menu-action', 'preview']);
+const emit = defineEmits([
+  'click', 
+  'preview', 
+  'edit', 
+  'refresh', 
+  'sign', 
+  'view-signatures'
+]);
 
 // Status icon based on document state
 const statusIcon = computed(() => {
@@ -125,10 +145,5 @@ const handleCardClick = (document, event) => {
   emit('preview', document);
 };
 
-/**
- * Handle menu action
- */
-const handleMenuAction = (action, document) => {
-  emit('menu-action', action, document);
-};
+
 </script> 

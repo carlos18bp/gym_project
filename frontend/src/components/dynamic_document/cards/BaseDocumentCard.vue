@@ -56,7 +56,7 @@
                   <button
                     class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition focus:outline-none focus:ring-0"
                     :disabled="option.disabled"
-                    @click="$emit('menu-action', option.action, document)"
+                    @click="handleMenuAction(option.action, document)"
                     :class="{
                       'opacity-50 cursor-not-allowed': option.disabled,
                       'cursor-pointer': !option.disabled,
@@ -135,33 +135,28 @@
 <script setup>
 import { computed } from 'vue';
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { EllipsisVerticalIcon, NoSymbolIcon } from "@heroicons/vue/24/outline";
+import { 
+  EllipsisVerticalIcon, 
+  NoSymbolIcon, 
+  CheckCircleIcon, 
+  PencilIcon 
+} from "@heroicons/vue/24/outline";
 import { getColorById } from "@/shared/color_palette";
+import { showNotification } from "@/shared/notification_message";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
 
 const props = defineProps({
   document: {
     type: Object,
     required: true
   },
-  statusIcon: {
-    type: [String, Object, Function],
-    default: null
-  },
-  statusText: {
+  cardType: {
     type: String,
-    default: ''
+    default: 'default', // 'client', 'lawyer', 'signatures', 'useDocument', etc.
   },
-  statusBadgeClasses: {
-    type: [String, Object, Array],
-    default: 'bg-gray-100 text-gray-700 border border-gray-200'
-  },
-  menuOptions: {
-    type: Array,
-    default: () => []
-  },
-  menuPosition: {
+  cardContext: {
     type: String,
-    default: 'right-0 left-auto'
+    default: 'list' // 'list', 'folder', 'finished', 'progress'
   },
   highlightedDocId: {
     type: [String, Number],
@@ -174,10 +169,48 @@ const props = defineProps({
   additionalClasses: {
     type: [String, Array, Object],
     default: ''
+  },
+  // Props para override manual de status (opcional)
+  statusIcon: {
+    type: [String, Object, Function],
+    default: null
+  },
+  statusText: {
+    type: String,
+    default: null
+  },
+  statusBadgeClasses: {
+    type: [String, Object, Array],
+    default: null
+  },
+  // Stores para ejecutar acciones
+  documentStore: {
+    type: Object,
+    default: null
+  },
+  userStore: {
+    type: Object,
+    default: null
+  },
+  // Props específicos para contextos especiales
+  promptDocuments: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['click', 'menu-action']);
+const emit = defineEmits([
+  'click', 
+  'preview', 
+  'edit', 
+  'refresh', 
+  'remove-from-folder',
+  'email',
+  'copy',
+  'formalize',
+  'view-signatures',
+  'sign'
+]);
 
 // Computed classes for card styling based on document state
 const cardClasses = computed(() => {
@@ -220,6 +253,423 @@ const handleCardClick = (e) => {
     emit('click', props.document, e);
   }
 };
+
+// ===== CONFIGURACIÓN DE TIPOS DE CARD =====
+const cardConfigs = {
+  client: {
+    getMenuOptions: (document, context) => {
+      const options = [];
+      
+      // Edit/Complete option
+      options.push({
+        label: document.state === "Completed" ? "Editar" : "Completar",
+        action: "edit"
+      });
+
+      // Preview option for completed documents
+      if (document.state === 'Completed') {
+        options.push({
+          label: "Previsualizar",
+          action: "preview"
+        });
+      }
+
+      // Delete option
+      options.push({
+        label: "Eliminar",
+        action: "delete"
+      });
+
+      // Options only for Completed state
+      if (document.state === 'Completed') {
+        options.push(
+          {
+            label: "Descargar PDF",
+            action: "downloadPDF"
+          },
+          {
+            label: "Descargar Word",
+            action: "downloadWord"
+          },
+          {
+            label: "Enviar",
+            action: "email"
+          }
+        );
+      }
+
+      return options;
+    }
+  },
+  
+  lawyer: {
+    getMenuOptions: (document, context) => {
+      const baseOptions = [
+        { label: "Editar", action: "edit" },
+        { label: "Eliminar", action: "delete" },
+        { label: "Previsualización", action: "preview" },
+        { label: "Crear una Copia", action: "copy" },
+      ];
+      
+      // Add state-based options
+      if (document.state === "Draft") {
+        baseOptions.push({
+          label: "Publicar",
+          action: "publish",
+          disabled: !canPublishDocument(document),
+        });
+      } else if (document.state === "Published") {
+        baseOptions.push({
+          label: "Mover a Borrador",
+          action: "draft",
+        });
+        
+        baseOptions.push({
+          label: "Formalizar y Agregar Firmas",
+          action: "formalize",
+        });
+      }
+
+      // Add common actions for completed documents
+      if (document.state === 'Completed' || document.state === 'Published') {
+        baseOptions.push(
+          { label: "Descargar PDF", action: "downloadPDF" },
+          { label: "Descargar Word", action: "downloadWord" },
+          { label: "Enviar por Email", action: "email" }
+        );
+      }
+
+      // Add signature-related options
+      if (document.requires_signature) {
+        baseOptions.push({
+          label: "Ver Firmas",
+          action: "viewSignatures"
+        });
+      }
+
+      return baseOptions;
+    }
+  },
+
+  signatures: {
+    getMenuOptions: (document, context) => {
+      return [
+        { label: "Ver", action: "preview" },
+        { label: "Firmar", action: "sign" },
+        { label: "Descargar PDF", action: "downloadPDF" }
+      ];
+    }
+  },
+
+  folder: {
+    getMenuOptions: (document, context) => {
+      const options = [
+        { label: "Editar", action: "edit" },
+        { label: "Ver", action: "preview" },
+        { label: "Descargar PDF", action: "downloadPDF" },
+        { label: "Duplicar", action: "copy" }
+      ];
+
+      // Add remove from folder option
+      options.push({
+        label: "Quitar de Carpeta",
+        action: "removeFromFolder"
+      });
+
+      if (document.requires_signature) {
+        options.push({
+          label: "Ver Firmas",
+          action: "viewSignatures"
+        });
+      }
+
+      return options;
+    }
+  }
+};
+
+// ===== COMPUTED PROPERTIES =====
+const menuOptions = computed(() => {
+  const config = cardConfigs[props.cardType];
+  if (!config) return [];
+  
+  return config.getMenuOptions(props.document, props.cardContext);
+});
+
+const menuPosition = computed(() => {
+  // Position logic based on context
+  if (props.promptDocuments) {
+    return 'right-auto left-0 -translate-x-[calc(100%-24px)]';
+  }
+  return 'left-0 right-auto';
+});
+
+// Computed status properties - use props if provided, otherwise derive from document
+const statusIcon = computed(() => {
+  if (props.statusIcon) return props.statusIcon;
+  
+  // Default icon logic based on document state
+  const state = props.document.state;
+  switch (state) {
+    case 'Published':
+    case 'FullySigned':
+    case 'Completed':
+      return CheckCircleIcon;
+    case 'Draft':
+    case 'Progress':
+    case 'PendingSignatures':
+    default:
+      return PencilIcon;
+  }
+});
+
+const statusText = computed(() => {
+  if (props.statusText) return props.statusText;
+  
+  // Default text logic based on document state
+  const state = props.document.state;
+  switch (state) {
+    case 'Published':
+      return 'Publicado';
+    case 'Draft':
+      return 'Borrador';
+    case 'Progress':
+      return 'En progreso';
+    case 'Completed':
+      return 'Completado';
+    case 'PendingSignatures':
+      return 'Pendiente de firmas';
+    case 'FullySigned':
+      return 'Completamente firmado';
+    default:
+      return 'Desconocido';
+  }
+});
+
+const statusBadgeClasses = computed(() => {
+  if (props.statusBadgeClasses) return props.statusBadgeClasses;
+  
+  // Default classes logic based on document state
+  const state = props.document.state;
+  switch (state) {
+    case 'Published':
+    case 'FullySigned':
+    case 'Completed':
+      return 'bg-green-100 text-green-700 border border-green-200';
+    case 'Draft':
+    case 'Progress':
+      return 'bg-blue-100 text-blue-700 border border-blue-200';
+    case 'PendingSignatures':
+      return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+    default:
+      return 'bg-gray-100 text-gray-700 border border-gray-200';
+  }
+});
+
+// ===== ACTION HANDLERS =====
+
+/**
+ * Centralized menu action handler
+ */
+const handleMenuAction = async (action, document) => {
+  try {
+    switch (action) {
+      case "edit":
+        emit('edit', document);
+        break;
+        
+      case "preview":
+        emit('preview', document);
+        break;
+        
+      case "delete":
+        await deleteDocument(document);
+        break;
+        
+      case "downloadPDF":
+        await downloadPDFDocument(document);
+        break;
+        
+      case "downloadWord":
+        await downloadWordDocument(document);
+        break;
+        
+      case "email":
+        await sendEmailDocument(document);
+        break;
+        
+      case "copy":
+        await copyDocument(document);
+        break;
+        
+      case "publish":
+        await publishDocument(document);
+        break;
+        
+      case "draft":
+        await moveToDraft(document);
+        break;
+        
+      case "formalize":
+        await formalizeDocument(document);
+        break;
+        
+      case "viewSignatures":
+        await viewSignatures(document);
+        break;
+        
+      case "sign":
+        await signDocument(document);
+        break;
+        
+      case "removeFromFolder":
+        emit('remove-from-folder', document);
+        break;
+        
+      default:
+        console.warn("Unknown action:", action);
+    }
+  } catch (error) {
+    console.error(`Error executing action ${action}:`, error);
+    await showNotification(`Error al ejecutar la acción: ${error.message}`, 'error');
+  }
+};
+
+/**
+ * Delete document
+ */
+const deleteDocument = async (document) => {
+  const confirmed = await showConfirmationAlert(
+    'Confirmar eliminación',
+    `¿Estás seguro de que deseas eliminar el documento "${document.title}"?`,
+    'Eliminar',
+    'Cancelar'
+  );
+
+  if (confirmed && props.documentStore) {
+    try {
+      await props.documentStore.deleteDocument(document.id);
+      await showNotification('Documento eliminado exitosamente', 'success');
+      emit('refresh');
+    } catch (error) {
+      await showNotification('Error al eliminar el documento', 'error');
+      throw error;
+    }
+  }
+};
+
+/**
+ * Download PDF document
+ */
+const downloadPDFDocument = async (document) => {
+  if (!props.documentStore) return;
+  
+  try {
+    await props.documentStore.downloadPDF(document.id, document.title);
+    await showNotification('PDF descargado exitosamente', 'success');
+  } catch (error) {
+    await showNotification('Error al descargar el PDF', 'error');
+    throw error;
+  }
+};
+
+/**
+ * Download Word document
+ */
+const downloadWordDocument = async (document) => {
+  if (!props.documentStore) return;
+  
+  try {
+    await props.documentStore.downloadWord(document.id, document.title);
+    await showNotification('Documento Word descargado exitosamente', 'success');
+  } catch (error) {
+    await showNotification('Error al descargar el documento Word', 'error');
+    throw error;
+  }
+};
+
+/**
+ * Send document via email
+ */
+const sendEmailDocument = async (document) => {
+  // Emit event to parent to handle email modal
+  emit('email', document);
+};
+
+/**
+ * Copy document - emit event since this functionality may not be available in all stores
+ */
+const copyDocument = async (document) => {
+  // Emit event to parent to handle copy/duplicate functionality
+  emit('copy', document);
+};
+
+/**
+ * Publish document
+ */
+const publishDocument = async (document) => {
+  if (!props.documentStore) return;
+  
+  try {
+    await props.documentStore.publishDocument(document.id);
+    await showNotification('Documento publicado exitosamente', 'success');
+    emit('refresh');
+  } catch (error) {
+    await showNotification('Error al publicar el documento', 'error');
+    throw error;
+  }
+};
+
+/**
+ * Move document to draft
+ */
+const moveToDraft = async (document) => {
+  if (!props.documentStore) return;
+  
+  try {
+    await props.documentStore.moveToDraft(document.id);
+    await showNotification('Documento movido a borrador exitosamente', 'success');
+    emit('refresh');
+  } catch (error) {
+    await showNotification('Error al mover el documento a borrador', 'error');
+    throw error;
+  }
+};
+
+/**
+ * Formalize document with signatures
+ */
+const formalizeDocument = async (document) => {
+  // Emit event to parent to handle formalization modal
+  emit('formalize', document);
+};
+
+/**
+ * View document signatures
+ */
+const viewSignatures = async (document) => {
+  // Emit event to parent to handle signatures modal
+  emit('view-signatures', document);
+};
+
+/**
+ * Sign document
+ */
+const signDocument = async (document) => {
+  // Emit event to parent to handle signing
+  emit('sign', document);
+};
+
+/**
+ * Check if document can be published
+ */
+const canPublishDocument = (document) => {
+  // Add your validation logic here
+  return document.title && document.title.trim().length > 0;
+};
+
+
+
 </script>
 
 <style scoped>

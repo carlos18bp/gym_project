@@ -6,14 +6,21 @@
       v-for="document in filteredDocuments"
       :key="document.id"
       :document="document"
-      :menu-options="getDocumentMenuOptions(document)"
+      :card-type="'client'"
+      :card-context="'list'"
       :highlighted-doc-id="highlightedDocId"
       :status-icon="document.state === 'Completed' ? CheckCircleIcon : PencilIcon"
       :status-text="document.state === 'Completed' ? 'Completado' : 'En Progreso'"
       :status-badge-classes="document.state === 'Completed' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-blue-100 text-blue-700 border border-blue-200'"
-      :menu-position="props.promptDocuments ? 'right-auto left-0 -translate-x-[calc(100%-24px)]' : 'right-0 left-auto'"
+      :document-store="documentStore"
+      :user-store="userStore"
+      :prompt-documents="props.promptDocuments"
       @click="handlePreviewDocument"
-      @menu-action="handleMenuAction"
+      @preview="handlePreviewDocument"
+      @edit="openEditModal"
+      @refresh="handleRefresh"
+      @copy="handleCopyDocument"
+      @email="openEmailModal"
     />
   </div>
     
@@ -255,80 +262,7 @@ const filteredDocuments = computed(() => {
   return result;
 });
 
-/**
- * Get menu options for a document based on its state
- */
-const getDocumentMenuOptions = (document) => {
-  const baseOptions = [];
-  
-  // Edit/Complete option
-  baseOptions.push({
-    label: document.state === "Completed" ? "Editar" : "Completar",
-    action: "edit"
-  });
 
-  // Preview option for completed documents
-  if (document.state === 'Completed') {
-    baseOptions.push({
-      label: "Previsualizar",
-      action: "preview"
-    });
-  }
-
-  // Delete option
-  baseOptions.push({
-    label: "Eliminar",
-    action: "delete"
-  });
-
-  // Options only for Completed state
-  if (document.state === 'Completed') {
-    baseOptions.push(
-      {
-        label: "Descargar PDF",
-        action: "downloadPDF"
-      },
-      {
-        label: "Descargar Word",
-        action: "downloadWord"
-      },
-      {
-        label: "Enviar",
-        action: "email"
-      }
-    );
-  }
-
-  return baseOptions;
-};
-
-/**
- * Handle menu actions from DocumentCard
- */
-const handleMenuAction = (action, document) => {
-  switch (action) {
-    case "edit":
-      openEditModal(document);
-      break;
-    case "preview":
-      handlePreviewDocument(document);
-      break;
-    case "delete":
-      deleteDocument(document);
-      break;
-    case "downloadPDF":
-      downloadPDFDocument(document);
-      break;
-    case "downloadWord":
-      downloadWordDocument(document);
-      break;
-    case "email":
-      openEmailModal(document);
-      break;
-    default:
-      console.warn("Unknown action:", action);
-  }
-};
 
 /**
  * Fetches documents for the current user
@@ -545,6 +479,15 @@ const handleRefresh = async () => {
     localStorage.setItem('lastUpdatedDocumentId', selectedDocumentId.value);
     forceHighlight(selectedDocumentId.value);
   }
+};
+
+/**
+ * Handle copy/duplicate document
+ */
+const handleCopyDocument = async (document) => {
+  // For now, emit to parent since copy functionality may need to be implemented
+  console.log('Copy document not implemented yet:', document.title);
+  await showNotification('Funcionalidad de duplicar no implementada aún', 'info');
 };
 
 /**
