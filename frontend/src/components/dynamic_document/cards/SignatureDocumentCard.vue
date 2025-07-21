@@ -17,6 +17,7 @@
     @refresh="$emit('refresh')"
     @sign="$emit('sign', $event)"
     @view-signatures="$emit('view-signatures', $event)"
+    @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom status badge with SVG icon -->
     <template #status-badge>
@@ -99,7 +100,8 @@ const emit = defineEmits([
   'edit', 
   'refresh', 
   'sign', 
-  'view-signatures'
+  'view-signatures',
+  'remove-from-folder'
 ]);
 
 // Status icon based on document state

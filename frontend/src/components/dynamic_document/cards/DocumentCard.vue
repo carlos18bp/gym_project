@@ -12,14 +12,12 @@
     :document-store="documentStore"
     :user-store="userStore"
     :prompt-documents="promptDocuments"
+    :edit-modal-component="editModalComponent"
+    :edit-route="editRoute"
     @click="handleCardClick"
-    @preview="$emit('preview', $event)"
-    @edit="$emit('edit', $event)"
     @refresh="$emit('refresh')"
-    @email="$emit('email', $event)"
-    @formalize="$emit('formalize', $event)"
-    @view-signatures="$emit('view-signatures', $event)"
-    @sign="$emit('sign', $event)"
+    @modal-open="$emit('modal-open', $event)"
+    @navigation="$emit('navigation', $event)"
     @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom status badge if needed -->
@@ -170,18 +168,23 @@ const props = defineProps({
   promptDocuments: {
     type: Boolean,
     default: false
+  },
+  // Configuration props for centralized actions
+  editModalComponent: {
+    type: String,
+    default: 'UseDocumentByClient'
+  },
+  editRoute: {
+    type: String,
+    default: null
   }
 });
 
 const emit = defineEmits([
   'click', 
-  'preview',
-  'edit',
   'refresh',
-  'email',
-  'formalize',
-  'view-signatures',
-  'sign',
+  'modal-open',
+  'navigation',
   'remove-from-folder'
 ]);
 
@@ -277,8 +280,4 @@ const getCompletedSignatures = (document) => {
   if (!document.signatures) return 0;
   return document.signatures.filter(sig => sig.signed).length;
 };
-
-
-
-
 </script> 

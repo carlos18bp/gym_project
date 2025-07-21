@@ -1,17 +1,22 @@
 <template>
   <BaseDocumentCard
     :document="document"
+    :card-type="cardType"
+    :card-context="cardContext"
     :status-icon="DocumentArrowUpIcon"
     status-text="Disponible"
     status-badge-classes="bg-green-100 text-green-700 border border-green-200"
-    :menu-options="[]"
+    :menu-options="cardType === 'folder' ? undefined : []"
     :highlighted-doc-id="null"
     :show-tags="showTags"
+    :document-store="documentStore"
+    :user-store="userStore"
     additional-classes="group"
     @click="handleCardClick"
+    @remove-from-folder="$emit('remove-from-folder', $event)"
   >
-    <!-- Custom right action slot with arrow instead of menu -->
-    <template #right-action>
+    <!-- Custom right action slot with arrow instead of menu (only when NOT in folder context) -->
+    <template v-if="cardType !== 'folder'" #right-action>
       <ChevronRightIcon class="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
     </template>
 
@@ -47,10 +52,26 @@ const props = defineProps({
   showTags: {
     type: Boolean,
     default: true
+  },
+  cardType: {
+    type: String,
+    default: 'default'
+  },
+  cardContext: {
+    type: String,
+    default: 'list'
+  },
+  documentStore: {
+    type: Object,
+    default: null
+  },
+  userStore: {
+    type: Object,
+    default: null
   }
 });
 
-const emit = defineEmits(['click']);
+const emit = defineEmits(['click', 'remove-from-folder']);
 
 /**
  * Handle card click - emit the document for use

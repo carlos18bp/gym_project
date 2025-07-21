@@ -6,21 +6,10 @@
       :document="document"
       @click="openModal"
     />
-
-    <!-- Modal -->
-    <ModalTransition v-show="showUseDocumentModal">
-      <UseDocumentByClient
-        :document-id="selectedDocumentId"
-        v-if="selectedDocumentId !== null"
-        @close="closeModal"
-      />
-    </ModalTransition>
   </div>
 </template>
 
 <script setup>
-import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
-import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from '@/stores/user';
@@ -28,8 +17,6 @@ import { UseDocumentCard } from "@/components/dynamic_document/cards";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
-const showUseDocumentModal = ref(false);
-const selectedDocumentId = ref(null);
 
 const props = defineProps({
   searchQuery: String,
@@ -64,50 +51,10 @@ const signature = userStore.userSignature;
 
 /**
  * Opens the modal and sets the selected document ID.
- *
  * @param {string|number} documentId - The ID of the document to be used.
  */
 function openModal(documentId) {
-  if (documentId) {
-    selectedDocumentId.value = documentId;
-    showUseDocumentModal.value = true;
-  }
+  // UseDocumentCard handles modal opening internally now
+  console.log('Document clicked:', documentId);
 }
-
-/**
- * Close the modal and clear the selected document.
- * Also handles visual highlighting of updated documents if necessary.
- * 
- * @param {Object} data - Data received from the modal, may contain updatedDocId
- */
-const closeModal = (data) => {
-  showUseDocumentModal.value = false;
-  selectedDocumentId.value = null;
-  
-  // If we receive an updated document ID, update lastUpdatedDocumentId
-  if (data && data.updatedDocId) {
-    documentStore.lastUpdatedDocumentId = data.updatedDocId;
-    localStorage.setItem('lastUpdatedDocumentId', data.updatedDocId);
-    
-    // Check if we're already on the dashboard page
-    const currentPath = window.location.pathname;
-    const isDashboard = currentPath === '/dynamic_document_dashboard' || 
-                        currentPath === '/dynamic_document_dashboard/';
-    
-    if (!isDashboard) {
-      // Only redirect if we're not already on the dashboard
-      setTimeout(() => {
-        window.location.href = '/dynamic_document_dashboard';
-      }, 500);
-    } else {
-      // No need to redirect, just force a highlight
-      setTimeout(() => {
-        // Trigger a highlight effect using the global function
-        if (window.forceDocumentHighlight) {
-          window.forceDocumentHighlight(data.updatedDocId);
-        }
-      }, 100);
-    }
-  }
-};
 </script>

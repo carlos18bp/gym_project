@@ -130,10 +130,42 @@
     <!-- Additional actions slot - positioned absolutely on top -->
     <slot name="additional-actions"></slot>
   </div>
+
+  <!-- MODALS - Handled internally -->
+  
+  <!-- Edit Document Modal -->
+  <EditDocumentModal
+    v-if="activeModals.edit.isOpen"
+    :document="activeModals.edit.document"
+    :user-role="getUserRole()"
+    @close="closeModal('edit')"
+  />
+
+  <!-- Send Document Modal -->
+  <SendDocumentModal
+    v-if="activeModals.email.isOpen"
+    :document="activeModals.email.document"
+    @close="closeModal('email')"
+  />
+
+  <!-- Document Signatures Modal -->
+  <DocumentSignaturesModal
+    v-if="activeModals.signatures.isOpen"
+    :document-id="activeModals.signatures.document?.id"
+    @close="closeModal('signatures')"
+    @refresh="handleRefresh"
+  />
+
+  <!-- Electronic Signature Modal -->
+  <ElectronicSignatureModal
+    v-if="activeModals.electronicSignature.isOpen"
+    @close="closeModal('electronicSignature')"
+  />
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { 
   EllipsisVerticalIcon, 
@@ -142,8 +174,21 @@ import {
   PencilIcon 
 } from "@heroicons/vue/24/outline";
 import { getColorById } from "@/shared/color_palette";
-import { showNotification } from "@/shared/notification_message";
-import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { useRecentViews } from '@/composables/useRecentViews';
+
+// Import centralized system from index.js
+import { 
+  useCardModals, 
+  useDocumentActions,
+  EditDocumentModal,
+  SendDocumentModal,
+  DocumentSignaturesModal,
+  ElectronicSignatureModal
+} from './index.js';
+
+// Composables
+const router = useRouter();
+const { registerView } = useRecentViews();
 
 const props = defineProps({
   document: {
@@ -196,62 +241,62 @@ const props = defineProps({
   promptDocuments: {
     type: Boolean,
     default: false
+  },
+  // Configuration props for centralized actions
+  enableModals: {
+    type: Boolean,
+    default: true
+  },
+  editModalComponent: {
+    type: String,
+    default: 'UseDocumentByClient' // 'UseDocumentByClient', 'editor', 'CreateDocumentByLawyer'
+  },
+  editRoute: {
+    type: String,
+    default: null // When set, navigates instead of opening modal
+  },
+  enableSignatures: {
+    type: Boolean,
+    default: true
   }
 });
 
 const emit = defineEmits([
   'click', 
-  'preview', 
-  'edit', 
-  'refresh', 
-  'remove-from-folder',
-  'email',
-  'copy',
-  'formalize',
-  'view-signatures',
-  'sign'
+  'refresh',
+  'remove-from-folder'
 ]);
 
-// Computed classes for card styling based on document state
-const cardClasses = computed(() => {
-  const state = props.document.state;
-  
-  switch (state) {
-    case 'Completed':
-    case 'Published':
-    case 'FullySigned':
-      return 'border-green-400 bg-green-50/50 shadow-green-100';
-    case 'Progress':
-    case 'Draft':
-      return 'border-blue-300 bg-blue-50/30 shadow-blue-100';
-    case 'PendingSignatures':
-      return 'border-yellow-400 bg-yellow-50/50 shadow-yellow-100';
-    default:
-      return 'border-gray-200 bg-white';
-  }
-});
-
-// Computed classes for highlight animation
-const highlightClasses = computed(() => {
-  if (!props.highlightedDocId || String(props.document.id) !== String(props.highlightedDocId)) {
-    return '';
-  }
-  
-  const state = props.document.state;
-  if (state === 'Published' || state === 'FullySigned' || state === 'Completed') {
-    return 'shadow-lg animate-pulse-highlight-green';
-  } else if (state === 'PendingSignatures') {
-    return 'shadow-lg animate-pulse-highlight-yellow';
-  } else {
-    return 'shadow-lg animate-pulse-highlight-blue';
-  }
-});
+// Initialize centralized modal and actions system
+const { activeModals, openModal, closeModal, getUserRole } = useCardModals(props.documentStore, props.userStore);
+const {
+  handlePreviewDocument,
+  deleteDocument,
+  downloadPDFDocument,
+  downloadWordDocument,
+  copyDocument,
+  publishDocument,
+  moveToDraft,
+  formalizeDocument,
+  signDocument,
+  downloadSignedDocument
+} = useDocumentActions(props.documentStore, props.userStore, emit);
 
 // Handle card click, avoiding menu clicks
 const handleCardClick = (e) => {
   if (!e.target.closest('.menu-container')) {
-    emit('click', props.document, e);
+    if (props.cardType === 'signatures') {
+      // For signature cards, clicking opens preview
+      handlePreviewDocument(props.document);
+    } else {
+      emit('click', props.document, e);
+    }
   }
+};
+
+// Handle refresh
+const handleRefresh = () => {
+  emit('refresh');
 };
 
 // ===== CONFIGURACIÓN DE TIPOS DE CARD =====
@@ -345,6 +390,14 @@ const cardConfigs = {
           label: "Ver Firmas",
           action: "viewSignatures"
         });
+
+        // Add sign option if the lawyer needs to sign
+        if (canSignDocument(document)) {
+          baseOptions.push({
+            label: "Firmar documento",
+            action: "sign"
+          });
+        }
       }
 
       return baseOptions;
@@ -353,11 +406,43 @@ const cardConfigs = {
 
   signatures: {
     getMenuOptions: (document, context) => {
-      return [
-        { label: "Ver", action: "preview" },
-        { label: "Firmar", action: "sign" },
-        { label: "Descargar PDF", action: "downloadPDF" }
+      const options = [
+        { label: "Previsualizar", action: "preview" }
       ];
+
+      // Add signature-related options
+      if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
+        options.push({
+          label: "Estado de las firmas",
+          action: "viewSignatures"
+        });
+      }
+
+      // Sign document option
+      if (canSignDocument(document)) {
+        options.push({
+          label: "Firmar documento",
+          action: "sign"
+        });
+      }
+
+      // Download signed document option (only for fully signed documents)
+      if (document.state === 'FullySigned') {
+        options.push({
+          label: "Descargar Documento firmado",
+          action: "downloadSignedDocument"
+        });
+      }
+
+      // Download PDF option
+      if (document.state === 'PendingSignatures') {
+        options.push({
+          label: "Descargar PDF",
+          action: "downloadPDF"
+        });
+      }
+
+      return options;
     }
   },
 
@@ -370,11 +455,13 @@ const cardConfigs = {
         { label: "Duplicar", action: "copy" }
       ];
 
-      // Add remove from folder option
-      options.push({
-        label: "Quitar de Carpeta",
-        action: "removeFromFolder"
-      });
+      // Add remove from folder option ONLY when in folder context
+      if (context === 'folder') {
+        options.push({
+          label: "Quitar de Carpeta",
+          action: "removeFromFolder"
+        });
+      }
 
       if (document.requires_signature) {
         options.push({
@@ -402,6 +489,41 @@ const menuPosition = computed(() => {
     return 'right-auto left-0 -translate-x-[calc(100%-24px)]';
   }
   return 'left-0 right-auto';
+});
+
+// Computed classes for card styling based on document state
+const cardClasses = computed(() => {
+  const state = props.document.state;
+  
+  switch (state) {
+    case 'Completed':
+    case 'Published':
+    case 'FullySigned':
+      return 'border-green-400 bg-green-50/50 shadow-green-100';
+    case 'Progress':
+    case 'Draft':
+      return 'border-blue-300 bg-blue-50/30 shadow-blue-100';
+    case 'PendingSignatures':
+      return 'border-yellow-400 bg-yellow-50/50 shadow-yellow-100';
+    default:
+      return 'border-gray-200 bg-white';
+  }
+});
+
+// Computed classes for highlight animation
+const highlightClasses = computed(() => {
+  if (!props.highlightedDocId || String(props.document.id) !== String(props.highlightedDocId)) {
+    return '';
+  }
+  
+  const state = props.document.state;
+  if (state === 'Published' || state === 'FullySigned' || state === 'Completed') {
+    return 'shadow-lg animate-pulse-highlight-green';
+  } else if (state === 'PendingSignatures') {
+    return 'shadow-lg animate-pulse-highlight-yellow';
+  } else {
+    return 'shadow-lg animate-pulse-highlight-blue';
+  }
 });
 
 // Computed status properties - use props if provided, otherwise derive from document
@@ -475,11 +597,11 @@ const handleMenuAction = async (action, document) => {
   try {
     switch (action) {
       case "edit":
-        emit('edit', document);
+        await handleEditAction(document);
         break;
         
       case "preview":
-        emit('preview', document);
+        await handlePreviewDocument(document);
         break;
         
       case "delete":
@@ -495,7 +617,7 @@ const handleMenuAction = async (action, document) => {
         break;
         
       case "email":
-        await sendEmailDocument(document);
+        openModal('email', document);
         break;
         
       case "copy":
@@ -515,11 +637,15 @@ const handleMenuAction = async (action, document) => {
         break;
         
       case "viewSignatures":
-        await viewSignatures(document);
+        openModal('signatures', document);
         break;
         
       case "sign":
-        await signDocument(document);
+        await signDocument(document, openModal);
+        break;
+        
+      case "downloadSignedDocument":
+        await downloadSignedDocument(document);
         break;
         
       case "removeFromFolder":
@@ -531,145 +657,63 @@ const handleMenuAction = async (action, document) => {
     }
   } catch (error) {
     console.error(`Error executing action ${action}:`, error);
-    await showNotification(`Error al ejecutar la acción: ${error.message}`, 'error');
   }
 };
 
 /**
- * Delete document
+ * Handle edit action - can be modal or navigation
  */
-const deleteDocument = async (document) => {
-  const confirmed = await showConfirmationAlert(
-    'Confirmar eliminación',
-    `¿Estás seguro de que deseas eliminar el documento "${document.title}"?`,
-    'Eliminar',
-    'Cancelar'
-  );
-
-  if (confirmed && props.documentStore) {
-    try {
-      await props.documentStore.deleteDocument(document.id);
-      await showNotification('Documento eliminado exitosamente', 'success');
-      emit('refresh');
-    } catch (error) {
-      await showNotification('Error al eliminar el documento', 'error');
-      throw error;
-    }
+const handleEditAction = async (document) => {
+  if (props.editRoute) {
+    // Navigate to editor route
+    const encodedTitle = encodeURIComponent(document.title.trim());
+    const route = props.editRoute.replace(':id', document.id).replace(':title', encodedTitle);
+    router.push(route);
+  } else {
+    // Open modal
+    openModal('edit', document, { userRole: getUserRole() });
   }
-};
-
-/**
- * Download PDF document
- */
-const downloadPDFDocument = async (document) => {
-  if (!props.documentStore) return;
-  
-  try {
-    await props.documentStore.downloadPDF(document.id, document.title);
-    await showNotification('PDF descargado exitosamente', 'success');
-  } catch (error) {
-    await showNotification('Error al descargar el PDF', 'error');
-    throw error;
-  }
-};
-
-/**
- * Download Word document
- */
-const downloadWordDocument = async (document) => {
-  if (!props.documentStore) return;
-  
-  try {
-    await props.documentStore.downloadWord(document.id, document.title);
-    await showNotification('Documento Word descargado exitosamente', 'success');
-  } catch (error) {
-    await showNotification('Error al descargar el documento Word', 'error');
-    throw error;
-  }
-};
-
-/**
- * Send document via email
- */
-const sendEmailDocument = async (document) => {
-  // Emit event to parent to handle email modal
-  emit('email', document);
-};
-
-/**
- * Copy document - emit event since this functionality may not be available in all stores
- */
-const copyDocument = async (document) => {
-  // Emit event to parent to handle copy/duplicate functionality
-  emit('copy', document);
-};
-
-/**
- * Publish document
- */
-const publishDocument = async (document) => {
-  if (!props.documentStore) return;
-  
-  try {
-    await props.documentStore.publishDocument(document.id);
-    await showNotification('Documento publicado exitosamente', 'success');
-    emit('refresh');
-  } catch (error) {
-    await showNotification('Error al publicar el documento', 'error');
-    throw error;
-  }
-};
-
-/**
- * Move document to draft
- */
-const moveToDraft = async (document) => {
-  if (!props.documentStore) return;
-  
-  try {
-    await props.documentStore.moveToDraft(document.id);
-    await showNotification('Documento movido a borrador exitosamente', 'success');
-    emit('refresh');
-  } catch (error) {
-    await showNotification('Error al mover el documento a borrador', 'error');
-    throw error;
-  }
-};
-
-/**
- * Formalize document with signatures
- */
-const formalizeDocument = async (document) => {
-  // Emit event to parent to handle formalization modal
-  emit('formalize', document);
-};
-
-/**
- * View document signatures
- */
-const viewSignatures = async (document) => {
-  // Emit event to parent to handle signatures modal
-  emit('view-signatures', document);
-};
-
-/**
- * Sign document
- */
-const signDocument = async (document) => {
-  // Emit event to parent to handle signing
-  emit('sign', document);
 };
 
 /**
  * Check if document can be published
  */
 const canPublishDocument = (document) => {
-  // Add your validation logic here
-  return document.title && document.title.trim().length > 0;
+  if (!document.variables || document.variables.length === 0) {
+    return true;
+  }
+  
+  return document.variables.every((variable) => {
+    return variable.name_es && variable.name_es.trim().length > 0;
+  });
 };
 
-
-
+/**
+ * Check if the current user can sign the document
+ */
+const canSignDocument = (document) => {
+  if (!document.requires_signature || document.state !== 'PendingSignatures') {
+    return false;
+  }
+  
+  if (!document.signatures || document.signatures.length === 0) {
+    return false;
+  }
+  
+  const userEmail = props.userStore?.currentUser?.email;
+  
+  const userSignature = document.signatures.find(s => s.signer_email === userEmail);
+  
+  if (!userSignature) {
+    return false;
+  }
+  
+  if (userSignature.signed) {
+    return false;
+  }
+  
+  return true;
+};
 </script>
 
 <style scoped>

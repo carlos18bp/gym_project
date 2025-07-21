@@ -15,12 +15,9 @@
       :document-store="documentStore"
       :user-store="userStore"
       :prompt-documents="props.promptDocuments"
-      @click="handlePreviewDocument"
-      @preview="handlePreviewDocument"
-      @edit="openEditModal"
+      :edit-modal-component="'UseDocumentByClient'"
+      @click="handleDocumentClick"
       @refresh="handleRefresh"
-      @copy="handleCopyDocument"
-      @email="openEmailModal"
     />
   </div>
     
@@ -36,37 +33,6 @@
         Contacta a tu abogado para gestionar tus documentos.
       </p>
     </div>
-
-    <!-- Edit Document Modal -->
-    <ModalTransition v-show="showEditDocumentModal">
-      <UseDocumentByClient
-        :document-id="selectedDocumentId"
-        @close="closeEditModal"
-      />
-    </ModalTransition>
-
-  <!-- Preview Modal -->
-  <DocumentPreviewModal
-    :isVisible="showPreviewModal"
-    :documentData="previewDocumentData"
-    @close="showPreviewModal = false"
-  />
-
-  <!-- Modal Email -->
-  <ModalTransition v-show="showSendDocumentViaEmailModal">
-    <SendDocument
-      @closeEmailModal="closeEmailModal()"
-      :emailDocument="emailDocument"
-    />
-  </ModalTransition>
-  
-  <!-- Signatures Modal -->
-  <DocumentSignaturesModal 
-    :isVisible="showSignaturesModal"
-    :documentId="selectedDocumentId"
-    @close="closeSignaturesModal"
-    @refresh="handleRefresh"
-  />
 </template>
 
 <script setup>
@@ -74,25 +40,18 @@ import {
   CheckCircleIcon,
   PencilIcon,
 } from "@heroicons/vue/24/outline";
-import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
-import SendDocument from "@/components/dynamic_document/layouts/modals/SendDocument.vue";
-import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import { computed, ref, watch, onMounted } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
 import { showNotification } from "@/shared/notification_message";
-import { showConfirmationAlert } from "@/shared/confirmation_alert";
 import { DocumentCard } from "@/components/dynamic_document/cards";
 
 import {
   showPreviewModal,
   previewDocumentData,
   openPreviewModal,
-  downloadFile,
 } from "@/shared/document_utils";
-import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { useRecentViews } from '@/composables/useRecentViews';
-import DocumentSignaturesModal from "@/components/dynamic_document/common/DocumentSignaturesModal.vue";
 import { get_request } from "@/stores/services/request_http";
 
 // Store instances
@@ -102,11 +61,6 @@ const { registerView } = useRecentViews();
 
 // Reactive state
 const currentUser = computed(() => userStore.getCurrentUser);
-const showEditDocumentModal = ref(false);
-const selectedDocumentId = ref(null);
-const showSendDocumentViaEmailModal = ref(false);
-const emailDocument = ref({});
-const showSignaturesModal = ref(false);
 const documents = ref([]);
 const isLoading = ref(false);
 
@@ -262,8 +216,6 @@ const filteredDocuments = computed(() => {
   return result;
 });
 
-
-
 /**
  * Fetches documents for the current user
  */
@@ -288,80 +240,11 @@ const fetchDocuments = async () => {
 };
 
 /**
- * Download the document as PDF.
- * @param {Object} doc - The document to download.
+ * Handle document click - registers view and opens preview
  */
-const downloadPDFDocument = (doc) => {
-  documentStore.downloadPDF(doc.id, doc.title);
-};
-
-/**
- * Download the document as Word.
- * @param {Object} doc - The document to download.
- */
-const downloadWordDocument = (doc) => {
-  documentStore.downloadWord(doc.id, doc.title);
-};
-
-/**
- * Delete the document.
- * @param {object} document - The document to delete.
- */
-const deleteDocument = async (document) => {
-  // Show modal confirmation
-  const confirmed = await showConfirmationAlert(
-    `¿Deseas eliminar el documento "${document.title}"?`
-  );
-
-  // Delete in confirmed case
-  if (confirmed) {
-    await documentStore.deleteDocument(document.id);
-    await showNotification("Documento eliminado exitosamente.", "success");
-  }
-};
-
-/**
- * Open the edit modal for the selected document.
- * @param {object} document - The document to edit or complete.
- */
-const openEditModal = (document) => {
-  documentStore.selectedDocument = document; // Set selected document in the store
-  selectedDocumentId.value = document.id;
-  showEditDocumentModal.value = true;
-};
-
-/**
- * Close the edit modal and clear the selected document.
- * @param {Object} data - Data received from the modal, may contain updatedDocId
- */
-const closeEditModal = (data) => {
-  showEditDocumentModal.value = false;
-  
-  // Check if we have received updatedDocId from the modal
-  if (data && data.updatedDocId) {
-    // Apply highlighting using our function
-    forceHighlight(data.updatedDocId);
-  }
-  
-  documentStore.clearSelectedDocument();
-};
-
-/**
- * Opens the email modal and sets the selected document.
- *
- * @param {Object} doc - The document to be sent via email.
- */
-const openEmailModal = (doc) => {
-  emailDocument.value = doc;
-  showSendDocumentViaEmailModal.value = true;
-};
-
-/**
- * Closes the email modal and resets the selected document.
- */
-const closeEmailModal = () => {
-  emailDocument.value = {};
-  showSendDocumentViaEmailModal.value = false;
+const handleDocumentClick = async (document) => {
+  await registerView('document', document.id);
+  openPreviewModal(document);
 };
 
 // Make sure highlighted document ID is updated when filtered documents change
@@ -437,71 +320,11 @@ const forceHighlight = (documentId) => {
 window.forceDocumentHighlight = forceHighlight;
 
 /**
- * Opens the preview modal and registers the document view
- * @param {Object} doc - The document to preview
- */
-const handlePreviewDocument = async (document) => {
-  await registerView('document', document.id);
-  openPreviewModal(document);
-};
-
-/**
- * Navigate to signature view for a document.
- * @param {object} document - The document to view signatures for.
- */
-const viewDocumentSignatures = (document) => {
-  selectedDocumentId.value = document.id;
-  showSignaturesModal.value = true;
-};
-
-/**
- * Closes the signatures modal and resets the selected document.
- */
-const closeSignaturesModal = () => {
-  showSignaturesModal.value = false;
-};
-
-/**
  * Refreshes the document data after an action (like signing).
  */
 const handleRefresh = async () => {
   // Reload documents using the store
   await documentStore.init(true);
-  
-  // If we're in a component that displays store-based data,
-  // ensure the data is updated
-  const docExists = filteredDocuments.value.some(doc => 
-    String(doc.id) === String(selectedDocumentId.value)
-  );
-  
-  if (docExists) {
-    documentStore.lastUpdatedDocumentId = selectedDocumentId.value;
-    localStorage.setItem('lastUpdatedDocumentId', selectedDocumentId.value);
-    forceHighlight(selectedDocumentId.value);
-  }
-};
-
-/**
- * Handle copy/duplicate document
- */
-const handleCopyDocument = async (document) => {
-  // For now, emit to parent since copy functionality may need to be implemented
-  console.log('Copy document not implemented yet:', document.title);
-  await showNotification('Funcionalidad de duplicar no implementada aún', 'info');
-};
-
-/**
- * Function to format dates
- */
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
-  
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
 };
 </script>
 
