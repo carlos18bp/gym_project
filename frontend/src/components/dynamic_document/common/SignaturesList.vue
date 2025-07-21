@@ -31,6 +31,13 @@
       </svg>
       <span>Cargando documentos...</span>
     </div>
+
+  <!-- Modal de previsualización -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -41,6 +48,8 @@ import { get_request } from "@/stores/services/request_http";
 import { showNotification } from "@/shared/notification_message";
 import { getAllColors, getColorById } from "@/shared/color_palette";
 import { SignatureDocumentCard } from "@/components/dynamic_document/cards";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 
 // Props
 const props = defineProps({

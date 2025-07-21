@@ -4,7 +4,8 @@
       v-for="document in filteredavailableDocuments"
       :key="document.id"
       :document="document"
-      @click="openModal"
+      :show-menu-options="false"
+      @document-created="handleDocumentCreated"
     />
   </div>
 </template>
@@ -50,11 +51,17 @@ const filteredavailableDocuments = computed(() => {
 const signature = userStore.userSignature;
 
 /**
- * Opens the modal and sets the selected document ID.
- * @param {string|number} documentId - The ID of the document to be used.
+ * Handles document creation event from cards
+ * @param {Object} data - Data received from the card, may contain updatedDocId
  */
-function openModal(documentId) {
-  // UseDocumentCard handles modal opening internally now
-  console.log('Document clicked:', documentId);
+function handleDocumentCreated(data) {
+  // Handle document creation if needed (highlighting, navigation, etc.)
+  if (data && data.updatedDocId) {
+    documentStore.lastUpdatedDocumentId = data.updatedDocId;
+    localStorage.setItem('lastUpdatedDocumentId', data.updatedDocId);
+    
+    // The card already handles navigation/highlighting internally
+    // This is just for backup in case we need additional logic
+  }
 }
 </script>

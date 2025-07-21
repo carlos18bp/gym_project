@@ -168,6 +168,13 @@
       </div>
     </div>
   </ModalTransition>
+
+  <!-- Modal de previsualización global -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -196,6 +203,10 @@ import DocumentInProgressByClientList from "@/components/dynamic_document/lawyer
 import SignaturesList from "@/components/dynamic_document/common/SignaturesList.vue";
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
+
+// Modal components  
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 
 // Store instances
 const userStore = useUserStore();
@@ -303,9 +314,19 @@ const handleRefresh = async () => {
 /**
  * Handles navigation to main view (folders tab without modals).
  */
-const handleNavigateToMain = () => {
+const handleNavigateToMain = async () => {
   // Keep the folders tab active but ensure all modals are closed
   activeTab.value = 'folders';
+  
+  // Refresh folder data to ensure UI is up-to-date after adding documents
+  try {
+    // Small delay to ensure backend has processed document additions
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await folderStore.fetchFolders(true); // Force refresh from backend
+    console.log('📂 Dashboard: Refreshed folders after navigate-to-main');
+  } catch (error) {
+    console.warn('Error refreshing folders on navigate-to-main:', error);
+  }
 };
 
 /**

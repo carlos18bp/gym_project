@@ -9,6 +9,8 @@
     :highlighted-doc-id="highlightedDocId"
     :show-tags="showTags"
     :additional-classes="additionalClasses"
+    :menu-options="menuOptions"
+    :disable-internal-actions="disableInternalActions"
     :document-store="documentStore"
     :user-store="userStore"
     :prompt-documents="promptDocuments"
@@ -177,6 +179,14 @@ const props = defineProps({
   editRoute: {
     type: String,
     default: null
+  },
+  menuOptions: {
+    type: Array,
+    default: null
+  },
+  disableInternalActions: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -187,6 +197,17 @@ const emit = defineEmits([
   'navigation',
   'remove-from-folder'
 ]);
+
+// Menu options - use prop if provided, otherwise use BaseDocumentCard's internal logic
+const menuOptions = computed(() => {
+  // If menuOptions prop is explicitly provided, use it
+  if (props.menuOptions !== null) {
+    return props.menuOptions;
+  }
+  
+  // Otherwise, let BaseDocumentCard handle it internally
+  return undefined;
+});
 
 // Card click handler
 const handleCardClick = (event) => {

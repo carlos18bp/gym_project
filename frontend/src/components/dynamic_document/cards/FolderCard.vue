@@ -29,11 +29,11 @@
       </div>
 
       <!-- Action Menu -->
-      <div class="relative">
+      <div class="relative folder-menu-container">
         <button
           @click.stop="toggleMenu"
-          class="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100"
-          :class="{ 'opacity-100': showMenu }"
+          class="opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100"
+          :class="{ 'bg-gray-100': showMenu }"
         >
           <EllipsisVerticalIcon class="w-4 h-4 text-gray-500" />
         </button>
@@ -149,6 +149,7 @@ const userStore = useUserStore();
 
 // Reactive data
 const showMenu = ref(false);
+const menuJustClosed = ref(false);
 
 // Computed properties
 const currentUser = computed(() => userStore.currentUser);
@@ -183,7 +184,19 @@ const documentsByType = computed(() => {
 });
 
 // Methods
-const handleCardClick = () => {
+const handleCardClick = (event) => {
+  // Check if click was on menu button or dropdown
+  if (event.target.closest('.folder-menu-container')) {
+    // If clicked on menu area, don't open folder
+    return;
+  }
+  
+  // If menu was just closed by click outside, don't open folder
+  if (menuJustClosed.value) {
+    return;
+  }
+  
+  // Only open folder if menu is not open and click wasn't on menu
   if (!showMenu.value) {
     emit('click', props.folder);
   }
@@ -193,22 +206,31 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value;
 };
 
-const closeMenu = () => {
+const closeMenu = (fromClickOutside = false) => {
   showMenu.value = false;
+  
+  // If closed from click outside, set flag to prevent folder opening
+  if (fromClickOutside) {
+    menuJustClosed.value = true;
+    // Clear flag after a short delay
+    setTimeout(() => {
+      menuJustClosed.value = false;
+    }, 50);
+  }
 };
 
 const handleEdit = () => {
-  closeMenu();
+  closeMenu(false); // false = not from click outside
   emit('edit', props.folder);
 };
 
 const handleDelete = () => {
-  closeMenu();
+  closeMenu(false); // false = not from click outside
   emit('delete', props.folder);
 };
 
 const handleAddDocuments = () => {
-  closeMenu();
+  closeMenu(false); // false = not from click outside
   emit('add-documents', props.folder);
 };
 
@@ -243,8 +265,8 @@ const formatDate = (dateString) => {
 
 // Handle clicks outside to close menu
 const handleClickOutside = (event) => {
-  if (showMenu.value && !event.target.closest('.relative')) {
-    closeMenu();
+  if (showMenu.value && !event.target.closest('.folder-menu-container')) {
+    closeMenu(true); // true = closed from click outside
   }
 };
 

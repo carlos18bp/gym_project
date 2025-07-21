@@ -47,6 +47,8 @@
                   :highlighted-doc-id="null"
                   :show-tags="true"
                   :show-client-name="false"
+                  :menu-options="[]"
+                  :disable-internal-actions="true"
                   :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
                   @click="toggleDocumentSelection(document.id)"
                 />
@@ -56,16 +58,33 @@
                   v-if="activeDocumentCategory === 'use-documents'"
                   :document="document"
                   :show-tags="true"
+                  :menu-options="[]"
+                  :show-menu-options="false"
+                  :disable-internal-actions="true"
                   :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
                   @click="toggleDocumentSelection(document.id)"
                 />
 
-                <!-- Signature Documents -->
+                <!-- Pending Signatures Documents -->
                 <SignatureDocumentCard
-                  v-if="activeDocumentCategory === 'signature-documents'"
+                  v-if="activeDocumentCategory === 'pending-signatures'"
                   :document="document"
                   :highlighted-doc-id="null"
                   :show-tags="true"
+                  :menu-options="[]"
+                  :disable-internal-actions="true"
+                  :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
+                  @click="toggleDocumentSelection(document.id)"
+                />
+
+                <!-- Signed Documents -->
+                <SignatureDocumentCard
+                  v-if="activeDocumentCategory === 'signed-documents'"
+                  :document="document"
+                  :highlighted-doc-id="null"
+                  :show-tags="true"
+                  :menu-options="[]"
+                  :disable-internal-actions="true"
                   :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
                   @click="toggleDocumentSelection(document.id)"
                 />
@@ -155,11 +174,12 @@ const selectedDocuments = ref([]);
 const activeDocumentCategory = ref('my-documents');
 const isSubmitting = ref(false);
 
-// Document categories for the add documents modal
+// Document categories for the add documents modal - matching Dashboard.vue tabs
 const documentCategories = [
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'use-documents', label: 'Formatos Disponibles' },
-  { name: 'signature-documents', label: 'Documentos para Firmar' }
+  { name: 'pending-signatures', label: 'Firmas Pendientes' },
+  { name: 'signed-documents', label: 'Documentos Firmados' }
 ];
 
 // Computed
@@ -173,7 +193,7 @@ watch(() => props.isVisible, (isVisible) => {
   }
 });
 
-// Methods
+// Methods - Using exact same logic as Dashboard.vue
 const getAvailableDocumentsByCategory = (category) => {
   if (!props.folder) return [];
   
@@ -182,20 +202,37 @@ const getAvailableDocumentsByCategory = (category) => {
   
   switch (category) {
     case 'my-documents':
+      // Same logic as Dashboard.vue DocumentListClient
       availableDocuments = documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);
       break;
+      
     case 'use-documents':
+      // Same logic as Dashboard.vue UseDocument section
       availableDocuments = documentStore.publishedDocumentsUnassigned;
       break;
-    case 'signature-documents':
-      availableDocuments = [
-        ...documentStore.pendingSignatureDocuments,
-        ...documentStore.fullySignedDocuments
-      ].filter(doc => 
-        doc.assigned_to === currentUser.value?.id ||
-        doc.signatures?.some(sig => sig.user_id === currentUser.value?.id)
+      
+    case 'pending-signatures':
+      // Same logic as Dashboard.vue SignaturesList with state="PendingSignatures"
+      availableDocuments = documentStore.documents.filter(doc => 
+        doc.state === 'PendingSignatures' && (
+          doc.assigned_to === currentUser.value?.id ||
+          doc.signatures?.some(sig => sig.signer_email === currentUser.value?.email)
+        )
       );
       break;
+      
+    case 'signed-documents':
+      // Same logic as Dashboard.vue SignaturesList with state="FullySigned"
+      availableDocuments = documentStore.documents.filter(doc => 
+        doc.state === 'FullySigned' && (
+          doc.assigned_to === currentUser.value?.id ||
+          doc.signatures?.some(sig => sig.signer_email === currentUser.value?.email)
+        )
+      );
+      break;
+      
+    default:
+      availableDocuments = [];
   }
   
   return availableDocuments.filter(doc => !folderDocumentIds.includes(doc.id));

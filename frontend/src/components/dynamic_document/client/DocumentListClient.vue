@@ -33,6 +33,13 @@
         Contacta a tu abogado para gestionar tus documentos.
       </p>
     </div>
+
+  <!-- Modal de previsualización -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -45,6 +52,7 @@ import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useUserStore } from "@/stores/user";
 import { showNotification } from "@/shared/notification_message";
 import { DocumentCard } from "@/components/dynamic_document/cards";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 
 import {
   showPreviewModal,

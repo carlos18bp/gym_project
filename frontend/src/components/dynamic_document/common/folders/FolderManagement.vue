@@ -117,6 +117,24 @@ watch(() => props.searchQuery, () => {
   // Could implement real-time search here if needed
 });
 
+// Watch for folder store updates to sync selectedFolder
+watch(() => folderStore.folders, (newFolders) => {
+  // If there's a selectedFolder, update it with fresh data from store
+  if (selectedFolder.value && newFolders && newFolders.length > 0) {
+    const updatedFolder = newFolders.find(folder => folder.id === selectedFolder.value.id);
+    if (updatedFolder) {
+      const oldCount = selectedFolder.value.documents?.length || 0;
+      const newCount = updatedFolder.documents?.length || 0;
+      
+      // Only update if there's actually a change to avoid unnecessary re-renders
+      if (JSON.stringify(selectedFolder.value) !== JSON.stringify(updatedFolder)) {
+        selectedFolder.value = { ...updatedFolder };
+        console.log(`🔄 FolderManagement: Synced selectedFolder "${updatedFolder.name}" with store. Documents: ${oldCount} → ${newCount}`);
+      }
+    }
+  }
+}, { deep: true });
+
 // Create/Edit Folder Modal Handlers
 const handleCreateFolder = () => {
   editingFolder.value = null;
@@ -165,9 +183,42 @@ const handleOpenAddDocumentsModal = (folder) => {
   showAddDocumentsModal.value = true;
 };
 
-const handleCloseAddDocumentsModal = () => {
+const handleCloseAddDocumentsModal = async (documentsAdded = false) => {
   showAddDocumentsModal.value = false;
   folderForDocuments.value = null;
+  
+  // If documents were added, refresh the selected folder
+  if (documentsAdded && selectedFolder.value) {
+    try {
+      await refreshSelectedFolder();
+    } catch (error) {
+      console.warn('Error refreshing folder after adding documents:', error);
+    }
+  }
+};
+
+/**
+ * Refresh the currently selected folder data
+ */
+const refreshSelectedFolder = async () => {
+  if (!selectedFolder.value) return;
+  
+  try {
+    // Fetch fresh data from backend
+    await folderStore.fetchFolderById(selectedFolder.value.id, true);
+    
+    // Get updated folder from store
+    const updatedFolder = folderStore.getFolderById(selectedFolder.value.id);
+    
+    if (updatedFolder) {
+      // Force reactivity by replacing the entire object
+      selectedFolder.value = { ...updatedFolder };
+      console.log('✅ Selected folder refreshed successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error refreshing selected folder:', error);
+    throw error;
+  }
 };
 
 const handleAddSelectedDocumentsToFolder = async (selectedDocumentIds) => {
@@ -204,69 +255,11 @@ const handleAddSelectedDocumentsToFolder = async (selectedDocumentIds) => {
     });
     
     // Close modal and show success message immediately after successful update
-    handleCloseAddDocumentsModal();
+    await handleCloseAddDocumentsModal(true); // true = documents were added
     showNotification(`${validSelectedIds.length} documento(s) agregado(s) a la carpeta`, 'success');
     
     // Emit event to navigate to main view
     emit('navigate-to-main');
-    
-    // Update the UI immediately with optimistic updates
-    try {
-      // First, update the folder store with fresh data
-      await folderStore.fetchFolderById(folderForDocuments.value.id, true);
-      
-      // Get the updated folder from store
-      const updatedFolder = folderStore.getFolderById(folderForDocuments.value.id);
-      
-      if (updatedFolder) {
-        // Update the folderForDocuments to reflect new state
-        folderForDocuments.value = updatedFolder;
-        
-        // Update selected folder if it's the same one that's open
-        if (selectedFolder.value?.id === folderForDocuments.value.id) {
-          selectedFolder.value = updatedFolder;
-        }
-      }
-      
-      console.log('Folder data refreshed successfully');
-    } catch (refreshError) {
-      console.warn('Error refreshing folder data:', refreshError);
-      
-      // If refresh fails, try optimistic update
-      try {
-        // Manually add the selected documents to the current folder display
-        const documentsToAdd = validSelectedIds.map(id => {
-          // Find the document in the available documents
-          const allAvailableDocs = [
-            ...documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id),
-            ...documentStore.publishedDocumentsUnassigned,
-            ...documentStore.pendingSignatureDocuments,
-            ...documentStore.fullySignedDocuments
-          ];
-          return allAvailableDocs.find(doc => doc.id === id);
-        }).filter(doc => doc != null);
-        
-        if (documentsToAdd.length > 0) {
-          // Update folderForDocuments optimistically
-          folderForDocuments.value = {
-            ...folderForDocuments.value,
-            documents: [...folderForDocuments.value.documents, ...documentsToAdd]
-          };
-          
-          // Update selectedFolder if it's open
-          if (selectedFolder.value?.id === folderForDocuments.value.id) {
-            selectedFolder.value = {
-              ...selectedFolder.value,
-              documents: [...selectedFolder.value.documents, ...documentsToAdd]
-            };
-          }
-          
-          console.log('Applied optimistic update with', documentsToAdd.length, 'documents');
-        }
-      } catch (optimisticError) {
-        console.warn('Optimistic update also failed:', optimisticError);
-      }
-    }
     
   } catch (error) {
     console.error('Error adding documents to folder:', error);

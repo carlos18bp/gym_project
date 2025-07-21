@@ -42,7 +42,7 @@
                   v-for="document in folderDocumentsByType.myDocuments"
                   :key="document.id"
                   :document="document"
-                  :card-type="'folder'"
+                  :card-type="'client'"
                   :card-context="'folder'"
                   :highlighted-doc-id="null"
                   :show-tags="true"
@@ -65,8 +65,8 @@
                   v-for="document in folderDocumentsByType.useDocuments"
                   :key="document.id"
                   :document="document"
-                  :card-type="'folder'"
                   :card-context="'folder'"
+                  :show-menu-options="true"
                   :document-store="documentStore"
                   :user-store="userStore"
                   @click="handleUseDocument"
@@ -83,7 +83,6 @@
                   v-for="document in folderDocumentsByType.signatureDocuments"
                   :key="document.id"
                   :document="document"
-                  :card-type="'signatures'"
                   :card-context="'folder'"
                   :highlighted-doc-id="null"
                   :document-store="documentStore"
@@ -117,7 +116,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { XMarkIcon, PlusIcon, DocumentIcon } from '@heroicons/vue/24/outline';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import { DocumentCard, UseDocumentCard, SignatureDocumentCard } from '@/components/dynamic_document/cards';
@@ -168,6 +167,17 @@ const folderDocumentsByType = computed(() => {
     )
   };
 });
+
+// Watch for folder changes (debug)
+watch(() => props.folder, (newFolder, oldFolder) => {
+  if (newFolder && oldFolder && newFolder.id === oldFolder.id) {
+    const oldCount = oldFolder.documents?.length || 0;
+    const newCount = newFolder.documents?.length || 0;
+    if (newCount !== oldCount) {
+      console.log(`📁 FolderDetailsModal: Folder "${newFolder.name}" updated! Documents: ${oldCount} → ${newCount}`);
+    }
+  }
+}, { deep: true });
 
 // Methods
 const handleClose = () => {

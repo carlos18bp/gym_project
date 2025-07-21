@@ -175,6 +175,13 @@
       </DocumentCard>
     </div>
   </template>
+
+  <!-- Modal de previsualización -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -189,6 +196,8 @@ import { useUserStore } from "@/stores/user";
 import { showNotification } from "@/shared/notification_message";
 import { get_request } from "@/stores/services/request_http";
 import { DocumentCard } from "@/components/dynamic_document/cards";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();

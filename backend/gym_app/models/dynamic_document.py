@@ -135,6 +135,26 @@ class DynamicDocument(models.Model):
             
         return self.fully_signed
 
+    def delete(self, *args, **kwargs):
+        """
+        Custom delete method to ensure proper cleanup when a document is deleted.
+        
+        When a document is deleted:
+        - Removes the document from all folders (this happens automatically with M2M relationships)
+        - Can add additional cleanup logic here if needed
+        """
+        # Get folder count before deletion for logging purposes
+        folder_count = self.folders.count()
+        
+        # Django automatically handles M2M relationship cleanup, but we can log it
+        if folder_count > 0:
+            # Optional: Add logging here if you want to track when documents are removed from folders
+            # Example: logger.info(f"Document '{self.title}' removed from {folder_count} folder(s)")
+            pass
+        
+        # Call the parent delete method
+        super().delete(*args, **kwargs)
+
 
 class DocumentSignature(models.Model):
     """

@@ -9,6 +9,8 @@
     :highlighted-doc-id="highlightedDocId"
     :show-tags="showTags"
     :additional-classes="'mb-4'"
+    :menu-options="menuOptions"
+    :disable-internal-actions="disableInternalActions"
     :document-store="documentStore"
     :user-store="userStore"
     @click="handleCardClick"
@@ -91,6 +93,14 @@ const props = defineProps({
   userStore: {
     type: Object,
     default: null
+  },
+  menuOptions: {
+    type: Array,
+    default: null
+  },
+  disableInternalActions: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -123,6 +133,17 @@ const statusBadgeClasses = computed(() => {
     : 'bg-green-100 text-green-700 border border-green-200';
 });
 
+// Menu options - use prop if provided, otherwise use BaseDocumentCard's internal logic
+const menuOptions = computed(() => {
+  // If menuOptions prop is explicitly provided, use it
+  if (props.menuOptions !== null) {
+    return props.menuOptions;
+  }
+  
+  // Otherwise, let BaseDocumentCard handle it internally
+  return undefined;
+});
+
 /**
  * Get total number of signatures
  */
@@ -140,11 +161,15 @@ const getCompletedSignatures = (document) => {
 };
 
 /**
- * Handle card click
+ * Handle card click - emit preview or just click based on disableInternalActions
  */
 const handleCardClick = (document, event) => {
   emit('click', document, event);
-  emit('preview', document);
+  
+  if (!props.disableInternalActions) {
+    // Only emit preview when internal actions are enabled
+    emit('preview', document);
+  }
 };
 
 

@@ -228,6 +228,11 @@ const props = defineProps({
     type: [String, Object, Array],
     default: null
   },
+  // Override for menu options (for selection-only contexts)
+  menuOptions: {
+    type: Array,
+    default: null
+  },
   // Stores para ejecutar acciones
   documentStore: {
     type: Object,
@@ -258,6 +263,14 @@ const props = defineProps({
   enableSignatures: {
     type: Boolean,
     default: true
+  },
+  disableInternalActions: {
+    type: Boolean,
+    default: false
+  },
+  showMenuOptions: {
+    type: Boolean,
+    default: null
   }
 });
 
@@ -285,12 +298,7 @@ const {
 // Handle card click, avoiding menu clicks
 const handleCardClick = (e) => {
   if (!e.target.closest('.menu-container')) {
-    if (props.cardType === 'signatures') {
-      // For signature cards, clicking opens preview
-      handlePreviewDocument(props.document);
-    } else {
-      emit('click', props.document, e);
-    }
+    emit('click', props.document, e);
   }
 };
 
@@ -301,6 +309,25 @@ const handleRefresh = () => {
 
 // ===== CONFIGURACIÓN DE TIPOS DE CARD =====
 const cardConfigs = {
+  default: {
+    getMenuOptions: (document, context) => {
+      const options = [];
+
+      // Always show "Usar Formato" for default card type
+      options.push({ label: "Usar Formato", action: "useDocument" });
+
+      // Add remove from folder option when in folder context
+      if (context === 'folder') {
+        options.push({
+          label: "Quitar de Carpeta",
+          action: "removeFromFolder"
+        });
+      }
+
+      return options;
+    }
+  },
+
   client: {
     getMenuOptions: (document, context) => {
       const options = [];
@@ -341,6 +368,14 @@ const cardConfigs = {
             action: "email"
           }
         );
+      }
+
+      // Add remove from folder option when in folder context
+      if (context === 'folder') {
+        options.push({
+          label: "Quitar de Carpeta",
+          action: "removeFromFolder"
+        });
       }
 
       return options;
@@ -442,20 +477,7 @@ const cardConfigs = {
         });
       }
 
-      return options;
-    }
-  },
-
-  folder: {
-    getMenuOptions: (document, context) => {
-      const options = [
-        { label: "Editar", action: "edit" },
-        { label: "Ver", action: "preview" },
-        { label: "Descargar PDF", action: "downloadPDF" },
-        { label: "Duplicar", action: "copy" }
-      ];
-
-      // Add remove from folder option ONLY when in folder context
+      // Add remove from folder option when in folder context
       if (context === 'folder') {
         options.push({
           label: "Quitar de Carpeta",
@@ -463,20 +485,33 @@ const cardConfigs = {
         });
       }
 
-      if (document.requires_signature) {
-        options.push({
-          label: "Ver Firmas",
-          action: "viewSignatures"
-        });
-      }
-
       return options;
     }
-  }
+  },
+
+
 };
 
 // ===== COMPUTED PROPERTIES =====
 const menuOptions = computed(() => {
+  // If menuOptions prop is provided, use it (allows override for selection-only contexts)
+  if (props.menuOptions !== null) {
+    return props.menuOptions;
+  }
+  
+  // If showMenuOptions is explicitly set, respect it
+  if (props.showMenuOptions === false) {
+    return []; // Force hide menu
+  }
+  
+  if (props.showMenuOptions === true) {
+    // Force show menu - get options from config
+    const config = cardConfigs[props.cardType];
+    if (!config) return [];
+    return config.getMenuOptions(props.document, props.cardContext);
+  }
+  
+  // Auto-detect logic (showMenuOptions is null) - use internal logic based on cardType
   const config = cardConfigs[props.cardType];
   if (!config) return [];
   
@@ -650,6 +685,11 @@ const handleMenuAction = async (action, document) => {
         
       case "removeFromFolder":
         emit('remove-from-folder', document);
+        break;
+
+      case "useDocument":
+        // For UseDocumentCard - emit click to trigger use document modal
+        emit('click', document);
         break;
         
       default:
