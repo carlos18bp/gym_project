@@ -33,9 +33,14 @@
         </nav>
       </div>
 
+      <!-- Tag Filter -->
+      <div class="mb-6">
+        <TagFilter v-model="selectedTags" />
+      </div>
+
       <!-- Lawyer Tab Content -->
       <div v-if="activeLawyerTab === 'legal-documents'">
-        <DocumentListLawyer :searchQuery="searchQuery" />
+        <DocumentListLawyer :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Pending Signatures Tab -->
@@ -43,7 +48,7 @@
         v-if="activeLawyerTab === 'pending-signatures'"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
         >
-        <SignaturesList state="PendingSignatures" :searchQuery="searchQuery" />
+        <SignaturesList state="PendingSignatures" :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Signed Documents Tab -->
@@ -51,17 +56,17 @@
         v-if="activeLawyerTab === 'signed-documents'"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4"
         >
-        <SignaturesList state="FullySigned" :searchQuery="searchQuery" />
+        <SignaturesList state="FullySigned" :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- Finished Documents Tab -->
       <div v-if="activeLawyerTab === 'finished-documents'">
-        <DocumentFinishedByClientList :searchQuery="searchQuery" />
+        <DocumentFinishedByClientList :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- In Progress Documents Tab -->
       <div v-if="activeLawyerTab === 'in-progress-documents'">
-        <DocumentInProgressByClientList :searchQuery="searchQuery" />
+        <DocumentInProgressByClientList :searchQuery="searchQuery" :selectedTags="selectedTags" />
       </div>
 
       <!-- No documents message -->
@@ -96,26 +101,42 @@
         </nav>
       </div>
 
+      <!-- Tag Filter -->
+      <div v-if="activeTab !== 'folders'" class="mb-6">
+        <TagFilter v-model="selectedTags" />
+      </div>
+
       <!-- Tab content -->
       <UseDocument
         v-if="currentSection === 'useDocument'"
         :searchQuery="searchQuery"
+        :selectedTags="selectedTags"
       ></UseDocument>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents' && activeTab != 'folders'}">
         <SignaturesList 
           v-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
           @refresh="handleRefresh"
         />
         <DocumentListClient
           v-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
         ></DocumentListClient>
+        <FolderManagement
+          v-if="activeTab === 'folders'"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @navigate-to-main="handleNavigateToMain"
+        />
         <SignaturesList
           v-if="activeTab === 'signed-documents'"
           state="FullySigned"
           :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
         />
       </div>
     </div>
@@ -147,12 +168,20 @@
       </div>
     </div>
   </ModalTransition>
+
+  <!-- Modal de previsualización global -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
 import { onMounted, computed, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDocumentFolderStore } from "@/stores/documentFolder";
 import { useRouter } from "vue-router";
 import { FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 
@@ -160,6 +189,8 @@ import { FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import DocumentsNavigation from "@/components/dynamic_document/layouts/DocumentsNavigation.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import TagFilter from "@/components/dynamic_document/common/TagFilter.vue";
+import FolderManagement from "@/components/dynamic_document/common/folders/FolderManagement.vue";
 
 // Client components
 import DocumentListClient from "@/components/dynamic_document/client/DocumentListClient.vue";
@@ -173,9 +204,14 @@ import SignaturesList from "@/components/dynamic_document/common/SignaturesList.
 import CreateDocumentByLawyer from "@/components/dynamic_document/lawyer/modals/CreateDocumentByLawyer.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
 
+// Modal components  
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
+
 // Store instances
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
+const folderStore = useDocumentFolderStore();
 const router = useRouter();
 
 // Reactive state
@@ -185,6 +221,7 @@ const showCreateDocumentModal = ref(false);
 const activeTab = ref('my-documents');
 const activeLawyerTab = ref('legal-documents');
 const showSignatureModal = ref(false);
+const selectedTags = ref([]);
 
 // Get the current user
 const currentUser = computed(() => userStore.currentUser);
@@ -211,8 +248,11 @@ const filteredDocuments = computed(() => {
     );
   }
 
+  // Get selected tag IDs
+  const selectedTagIds = selectedTags.value.map(tag => tag.id);
+
   return documentStore
-    .filteredDocuments(searchQuery.value, userStore)
+    .filteredDocumentsBySearchAndTags(searchQuery.value, userStore, selectedTagIds)
     .filter((doc) =>
       allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
     );
@@ -223,6 +263,7 @@ onMounted(async () => {
   // Initialize store data
   await userStore.init();
   await documentStore.init();
+  await folderStore.init();
   
   documentStore.selectedDocument = null;
   
@@ -271,6 +312,24 @@ const handleRefresh = async () => {
 };
 
 /**
+ * Handles navigation to main view (folders tab without modals).
+ */
+const handleNavigateToMain = async () => {
+  // Keep the folders tab active but ensure all modals are closed
+  activeTab.value = 'folders';
+  
+  // Refresh folder data to ensure UI is up-to-date after adding documents
+  try {
+    // Small delay to ensure backend has processed document additions
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await folderStore.fetchFolders(true); // Force refresh from backend
+    console.log('📂 Dashboard: Refreshed folders after navigate-to-main');
+  } catch (error) {
+    console.warn('Error refreshing folders on navigate-to-main:', error);
+  }
+};
+
+/**
  * Watch for changes in lastUpdatedDocumentId to show document list
  * Only triggers when currentSection is 'default' to avoid UI bugs
  */
@@ -292,17 +351,18 @@ watch(
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'my-documents', label: 'Mis Documentos' },
+  { name: 'folders', label: 'Carpetas' },
   { name: 'pending-signatures', label: 'Firmas Pendientes' },
   { name: 'signed-documents', label: 'Documentos Firmados' }
 ];
 
 // Navigation tabs for lawyer users
 const lawyerNavigationTabs = [
-  { name: 'legal-documents', label: 'Documentos Jurídicos' },
+  { name: 'legal-documents', label: 'Minutas' },
   { name: 'pending-signatures', label: 'Documentos para Firmar' },
   { name: 'signed-documents', label: 'Documentos Firmados' },
-  { name: 'finished-documents', label: 'Documentos Finalizados' },
-  { name: 'in-progress-documents', label: 'Documentos en Progreso' }
+  { name: 'finished-documents', label: 'Documentos Finalizados (Cliente)' },
+  { name: 'in-progress-documents', label: 'Documentos en Progreso (Cliente)' }
 ];
 
 // Add handler for signature creation completion

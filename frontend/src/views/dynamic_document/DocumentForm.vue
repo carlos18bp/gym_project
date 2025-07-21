@@ -405,6 +405,8 @@ onMounted(async () => {
       content: documentBase.value.content,
       created_by: documentBase.value.created_by,
       assigned_to: store.currentUser?.id || null,
+      // Copy tags from the original document template
+      tags: documentBase.value.tags || []
     };
   }
 
@@ -463,7 +465,9 @@ const saveDocument = async (state = 'Draft') => {
       })),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',
-      signers: route.params.mode === 'formalize' ? selectedSigners.value.map(user => user.id) : []
+      signers: route.params.mode === 'formalize' ? selectedSigners.value.map(user => user.id) : [],
+      // Include tags if they exist (for client documents created from templates)
+      tag_ids: document.value.tags ? document.value.tags.map(tag => tag.id) : []
     };
 
     let documentId = null;

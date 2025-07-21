@@ -14,7 +14,7 @@ This module defines all the URL patterns for the gym application, organized into
 """
 from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports, captcha
 from .views.layouts import sendEmail
-from .views.dynamic_documents import document_views, signature_views
+from .views.dynamic_documents import document_views, signature_views, tag_folder_views
 from django.urls import path
 
 # Authentication URLs
@@ -91,6 +91,19 @@ dynamic_document_urls = [
     
     # Signature PDF generation
     path('dynamic-documents/<int:pk>/generate-signatures-pdf/', signature_views.generate_signatures_pdf, name='generate-signatures-pdf'),
+
+    # Tag management
+    path('dynamic-documents/tags/', tag_folder_views.list_tags, name='list-tags'),
+    path('dynamic-documents/tags/create/', tag_folder_views.create_tag, name='create-tag'),
+    path('dynamic-documents/tags/<int:pk>/update/', tag_folder_views.update_tag, name='update-tag'),
+    path('dynamic-documents/tags/<int:pk>/delete/', tag_folder_views.delete_tag, name='delete-tag'),
+
+    # Folder management
+    path('dynamic-documents/folders/', tag_folder_views.list_folders, name='list-folders'),
+    path('dynamic-documents/folders/create/', tag_folder_views.create_folder, name='create-folder'),
+    path('dynamic-documents/folders/<int:pk>/', tag_folder_views.get_folder, name='get-folder'),
+    path('dynamic-documents/folders/<int:pk>/update/', tag_folder_views.update_folder, name='update-folder'),
+    path('dynamic-documents/folders/<int:pk>/delete/', tag_folder_views.delete_folder, name='delete-folder'),
 ]
 
 # Legal update management URLs
