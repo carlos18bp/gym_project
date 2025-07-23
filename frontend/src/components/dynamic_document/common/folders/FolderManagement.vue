@@ -1,18 +1,36 @@
 <template>
   <div class="folder-management">
-    <!-- Header with Create Folder Button -->
-    <div class="flex justify-between items-center mb-6">
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900">Mis Carpetas</h2>
-        <p class="text-sm text-gray-600 mt-1">Organiza tus documentos, firmas y formatos en carpetas personalizadas</p>
+    <!-- Header with Create Folder Button - Responsive -->
+    <div class="mb-6">
+      <!-- Desktop Layout -->
+      <div class="hidden sm:flex justify-between items-center">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Mis Carpetas</h2>
+          <p class="text-sm text-gray-600 mt-1">Organiza tus documentos, firmas y formatos en carpetas personalizadas</p>
+        </div>
+        <button
+          @click="handleCreateFolder"
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
+        >
+          <PlusIcon class="w-5 h-5" />
+          Nueva Carpeta
+        </button>
       </div>
-      <button
-        @click="handleCreateFolder"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-      >
-        <PlusIcon class="w-5 h-5" />
-        Nueva Carpeta
-      </button>
+
+      <!-- Mobile Layout -->
+      <div class="sm:hidden">
+        <div class="text-center mb-4">
+          <h2 class="text-xl font-semibold text-gray-900">Mis Carpetas</h2>
+          <p class="text-sm text-gray-600 mt-1 px-2">Organiza tus documentos, firmas y formatos en carpetas personalizadas</p>
+        </div>
+        <button
+          @click="handleCreateFolder"
+          class="w-full flex items-center justify-center gap-3 px-4 py-4 bg-primary text-white rounded-xl hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-base"
+        >
+          <PlusIcon class="w-6 h-6" />
+          Nueva Carpeta
+        </button>
+      </div>
     </div>
 
     <!-- Folders Grid Component -->

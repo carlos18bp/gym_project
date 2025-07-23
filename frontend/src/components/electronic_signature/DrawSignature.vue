@@ -41,12 +41,17 @@
         </button>
       </div>
       
-      <div v-if="hasDrawn" class="flex justify-center">
+      <div class="flex justify-center">
         <button 
           type="button" 
-          class="inline-flex justify-center rounded-md border border-transparent px-4 py-2 bg-secondary text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+          :class="[
+            'inline-flex justify-center rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2',
+            hasDrawn && !isSubmitting
+              ? 'bg-secondary text-white border border-transparent hover:bg-blue-700 focus:ring-secondary'
+              : 'bg-blue-100 text-blue-400 border-2 border-dashed border-blue-300 cursor-not-allowed'
+          ]"
           @click="saveSignature"
-          :disabled="isSubmitting"
+          :disabled="!hasDrawn || isSubmitting"
         >
           <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

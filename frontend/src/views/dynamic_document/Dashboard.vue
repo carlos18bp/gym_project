@@ -14,9 +14,10 @@
 
     <!-- Documents for lawyers -->
     <div v-if="userRole === 'lawyer'" class="mt-6">
-      <!-- Lawyer Navigation Tabs -->
+      <!-- Lawyer Navigation Tabs - Responsive -->
       <div class="mb-6 border-b border-gray-200">
-        <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
+        <!-- Desktop Tabs -->
+        <nav class="-mb-px hidden md:flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in lawyerNavigationTabs"
             :key="tab.name"
@@ -31,6 +32,44 @@
             {{ tab.label }}
           </button>
         </nav>
+
+        <!-- Mobile Dropdown -->
+        <div class="md:hidden relative">
+          <button
+            @click="showLawyerDropdown = !showLawyerDropdown"
+            class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            <span>{{ lawyerNavigationTabs.find(tab => tab.name === activeLawyerTab)?.label || 'Seleccionar sección' }}</span>
+            <svg 
+              :class="['ml-2 h-5 w-5 transition-transform duration-200', showLawyerDropdown ? 'transform rotate-180' : '']"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div 
+            v-show="showLawyerDropdown"
+            class="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+          >
+            <button
+              v-for="tab in lawyerNavigationTabs"
+              :key="tab.name"
+              @click="selectLawyerTab(tab.name)"
+              :class="[
+                'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                activeLawyerTab === tab.name
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 hover:bg-gray-50'
+              ]"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Tag Filter -->
@@ -84,7 +123,9 @@
       <div 
         v-if="currentSection !== 'useDocument'"
         class="mb-6 border-b border-gray-200">
-        <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
+        
+        <!-- Desktop Tabs -->
+        <nav class="-mb-px hidden md:flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
             :key="tab.name"
@@ -99,6 +140,44 @@
             {{ tab.label }}
           </button>
         </nav>
+
+        <!-- Mobile Dropdown -->
+        <div class="md:hidden relative">
+          <button
+            @click="showClientDropdown = !showClientDropdown"
+            class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+          >
+            <span>{{ navigationTabs.find(tab => tab.name === activeTab)?.label || 'Seleccionar sección' }}</span>
+            <svg 
+              :class="['ml-2 h-5 w-5 transition-transform duration-200', showClientDropdown ? 'transform rotate-180' : '']"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div 
+            v-show="showClientDropdown"
+            class="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+          >
+            <button
+              v-for="tab in navigationTabs"
+              :key="tab.name"
+              @click="selectClientTab(tab.name)"
+              :class="[
+                'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                activeTab === tab.name
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 hover:bg-gray-50'
+              ]"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Tag Filter -->
@@ -178,7 +257,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed, ref, watch } from "vue";
+import { onMounted, computed, ref, watch, onUnmounted } from "vue";
 import { useUserStore } from "@/stores/user";
 import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
 import { useDocumentFolderStore } from "@/stores/documentFolder";
@@ -218,7 +297,7 @@ const router = useRouter();
 const searchQuery = ref("");
 const currentSection = ref("default");
 const showCreateDocumentModal = ref(false);
-const activeTab = ref('my-documents');
+const activeTab = ref('folders');
 const activeLawyerTab = ref('legal-documents');
 const showSignatureModal = ref(false);
 const selectedTags = ref([]);
@@ -256,30 +335,6 @@ const filteredDocuments = computed(() => {
     .filter((doc) =>
       allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
     );
-});
-
-// Load data when the component is mounted
-onMounted(async () => {
-  // Initialize store data
-  await userStore.init();
-  await documentStore.init();
-  await folderStore.init();
-  
-  documentStore.selectedDocument = null;
-  
-  // Make sure we are in the default section when loading
-  currentSection.value = "default";
-  // Check localStorage for saved document ID to highlight
-  const savedId = localStorage.getItem('lastUpdatedDocumentId');
-  
-  if (savedId) {
-    // Only set the ID if that document exists in our store
-    const docExists = documentStore.documents.some(doc => doc.id.toString() === savedId);
-    
-    if (docExists) {
-      documentStore.lastUpdatedDocumentId = parseInt(savedId);
-    }
-  }
 });
 
 /**
@@ -350,20 +405,102 @@ watch(
 
 // Navigation tabs for client users
 const navigationTabs = [
-  { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'folders', label: 'Carpetas' },
+  { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Firmas Pendientes' },
-  { name: 'signed-documents', label: 'Documentos Firmados' }
+  { name: 'signed-documents', label: 'Dcs. Firmados' }
 ];
 
 // Navigation tabs for lawyer users
 const lawyerNavigationTabs = [
   { name: 'legal-documents', label: 'Minutas' },
-  { name: 'pending-signatures', label: 'Documentos para Firmar' },
-  { name: 'signed-documents', label: 'Documentos Firmados' },
-  { name: 'finished-documents', label: 'Documentos Finalizados (Cliente)' },
-  { name: 'in-progress-documents', label: 'Documentos en Progreso (Cliente)' }
+  { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
+  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'finished-documents', label: 'Dcs. Clientes' },
+  { name: 'in-progress-documents', label: 'Dcs. Clientes en Progreso' },
 ];
+
+// Reactive state for mobile dropdowns
+const showLawyerDropdown = ref(false);
+const showClientDropdown = ref(false);
+
+/**
+ * Closes all dropdowns when clicking outside
+ */
+const closeDropdowns = () => {
+  showLawyerDropdown.value = false;
+  showClientDropdown.value = false;
+};
+
+/**
+ * Handles click outside dropdown to close them
+ */
+const handleClickOutside = (event) => {
+  const dropdownElements = document.querySelectorAll('.relative');
+  let clickedInside = false;
+  
+  dropdownElements.forEach(element => {
+    if (element.contains(event.target)) {
+      clickedInside = true;
+    }
+  });
+  
+  if (!clickedInside) {
+    closeDropdowns();
+  }
+};
+
+/**
+ * Selects a tab from the lawyer dropdown.
+ *
+ * @param {string} tabName - The name of the tab to select.
+ */
+const selectLawyerTab = (tabName) => {
+  activeLawyerTab.value = tabName;
+  showLawyerDropdown.value = false;
+};
+
+/**
+ * Selects a tab from the client dropdown.
+ *
+ * @param {string} tabName - The name of the tab to select.
+ */
+const selectClientTab = (tabName) => {
+  activeTab.value = tabName;
+  showClientDropdown.value = false;
+};
+
+// Load data when the component is mounted
+onMounted(async () => {
+  // Initialize store data
+  await userStore.init();
+  await documentStore.init();
+  await folderStore.init();
+  
+  documentStore.selectedDocument = null;
+  
+  // Make sure we are in the default section when loading
+  currentSection.value = "default";
+  // Check localStorage for saved document ID to highlight
+  const savedId = localStorage.getItem('lastUpdatedDocumentId');
+  
+  if (savedId) {
+    // Only set the ID if that document exists in our store
+    const docExists = documentStore.documents.some(doc => doc.id.toString() === savedId);
+    
+    if (docExists) {
+      documentStore.lastUpdatedDocumentId = parseInt(savedId);
+    }
+  }
+  
+  // Add event listener for clicks outside dropdowns
+  document.addEventListener('click', handleClickOutside);
+});
+
+// Cleanup event listener when component is unmounted
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 // Add handler for signature creation completion
 const handleSignatureSaved = async (signatureData) => {

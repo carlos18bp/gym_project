@@ -6,6 +6,7 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 from django.template.loader import get_template
 from django.utils.html import strip_tags
+from django.template import Context, Template
 
 def send_template_email(template_name: str,
                         subject: str,
@@ -15,13 +16,14 @@ def send_template_email(template_name: str,
                         from_email: str | None = None,
                         cc: list[str] | None = None,
                         bcc: list[str] | None = None) -> None:
-    """Send an HTML email rendered from a template.
+    """Send an HTML email rendered from a template using the base layout.
 
     Parameters
     ----------
     template_name : str
         Name of the template. It must match both the folder and the html file that
         live in ``gym_app/templates/emails/<template_name>/<template_name>.html``.
+        The template will be injected into the base layout.
     subject : str
         Email subject.
     to_emails : list[str]
@@ -48,18 +50,33 @@ def send_template_email(template_name: str,
     context = context or {}
     attachments = attachments or []
 
-    # Build the template path: emails/<template_name>/<template_name>.html
-    template_path = f"emails/{template_name}/{template_name}.html"
-
-    # Load and render the template
+    # Load the base layout template
     try:
-        template = get_template(template_path)
+        layout_template = get_template("emails/layout/layout.html")
     except Exception as exc:
         raise FileNotFoundError(
-            f"Template not found: {template_path}. Details: {exc}"
+            f"Layout template not found: emails/layout/layout.html. Details: {exc}"
         )
 
-    html_content = template.render(context)
+    # Load the specific content template
+    content_template_path = f"emails/{template_name}/{template_name}.html"
+    try:
+        content_template = get_template(content_template_path)
+    except Exception as exc:
+        raise FileNotFoundError(
+            f"Content template not found: {content_template_path}. Details: {exc}"
+        )
+
+    # Render the content template
+    content_html = content_template.render(context)
+    
+    # Add the rendered content to context for the layout
+    layout_context = context.copy()
+    layout_context['content_html'] = content_html
+    layout_context['email_title'] = subject
+
+    # Render the final email with layout
+    html_content = layout_template.render(layout_context)
     plain_content = strip_tags(html_content)
 
     email_message = EmailMessage(

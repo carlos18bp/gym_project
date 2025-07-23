@@ -2,20 +2,37 @@
   <ModalTransition v-if="isVisible && folder">
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
-        <!-- Header -->
-        <div class="flex justify-between items-center p-6 border-b">
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Agregar Documentos</h3>
-            <p class="text-sm text-gray-600">Selecciona documentos para agregar a "{{ folder.name }}"</p>
+        <!-- Header - Responsive -->
+        <div class="border-b">
+          <!-- Desktop Header -->
+          <div class="hidden sm:flex justify-between items-center p-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Agregar Documentos</h3>
+              <p class="text-sm text-gray-600">Selecciona documentos para agregar a "{{ folder.name }}"</p>
+            </div>
+            <button @click="handleClose" class="text-gray-400 hover:text-gray-500 hover:bg-gray-100 p-2 rounded-lg transition-colors">
+              <XMarkIcon class="w-5 h-5" />
+            </button>
           </div>
-          <button @click="handleClose" class="text-gray-400 hover:text-gray-500">
-            <XMarkIcon class="w-6 h-6" />
-          </button>
+
+          <!-- Mobile Header -->
+          <div class="sm:hidden p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1 min-w-0 mr-3">
+                <h3 class="text-lg font-semibold text-gray-900">Agregar Documentos</h3>
+                <p class="text-sm text-gray-600 truncate">Para "{{ folder.name }}"</p>
+              </div>
+              <button @click="handleClose" class="text-gray-400 hover:text-gray-500 hover:bg-gray-100 p-2 rounded-lg transition-colors flex-shrink-0">
+                <XMarkIcon class="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Document Categories Tabs -->
+        <!-- Document Categories - Responsive -->
         <div class="border-b">
-          <nav class="flex space-x-8 px-6" aria-label="Tabs">
+          <!-- Desktop Tabs -->
+          <nav class="hidden sm:flex space-x-8 px-6" aria-label="Tabs">
             <button
               v-for="category in documentCategories"
               :key="category.name"
@@ -33,11 +50,62 @@
               </span>
             </button>
           </nav>
+
+          <!-- Mobile Dropdown -->
+          <div class="sm:hidden relative px-4 py-3">
+            <button
+              @click="showCategoryDropdown = !showCategoryDropdown"
+              class="w-full flex items-center justify-between py-3 px-4 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              <div class="flex items-center">
+                <span>{{ documentCategories.find(cat => cat.name === activeDocumentCategory)?.label || 'Seleccionar categoría' }}</span>
+                <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
+                  {{ getAvailableDocumentsByCategory(activeDocumentCategory).length }}
+                </span>
+              </div>
+              <svg 
+                :class="['ml-2 h-5 w-5 transition-transform duration-200', showCategoryDropdown ? 'transform rotate-180' : '']"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            
+            <!-- Dropdown Menu -->
+            <div 
+              v-show="showCategoryDropdown"
+              class="absolute top-full left-4 right-4 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+            >
+              <button
+                v-for="category in documentCategories"
+                :key="category.name"
+                @click="selectCategory(category.name)"
+                :class="[
+                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150 flex items-center justify-between',
+                  activeDocumentCategory === category.name
+                    ? 'bg-primary text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                ]"
+              >
+                <span>{{ category.label }}</span>
+                <span :class="[
+                  'py-0.5 px-2 rounded-full text-xs',
+                  activeDocumentCategory === category.name
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                ]">
+                  {{ getAvailableDocumentsByCategory(category.name).length }}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Documents Content -->
-        <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <template v-for="document in getAvailableDocumentsByCategory(activeDocumentCategory)" :key="document.id">
               <div class="relative">
                 <!-- My Documents -->
@@ -92,7 +160,7 @@
                 <!-- Selection indicator -->
                 <div
                   v-if="selectedDocuments.includes(document.id)"
-                  class="absolute top-2 left-2 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center"
+                  class="absolute top-2 left-2 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center shadow-sm"
                 >
                   <CheckIcon class="w-4 h-4" />
                 </div>
@@ -101,32 +169,57 @@
           </div>
 
           <!-- No documents available message -->
-          <div v-if="getAvailableDocumentsByCategory(activeDocumentCategory).length === 0" class="text-center py-12">
-            <DocumentIcon class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <div v-if="getAvailableDocumentsByCategory(activeDocumentCategory).length === 0" class="text-center py-8 sm:py-12">
+            <DocumentIcon class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
             <h4 class="text-lg font-medium text-gray-900 mb-2">No hay documentos disponibles</h4>
-            <p class="text-gray-600">No tienes documentos de esta categoría que no estén ya en la carpeta</p>
+            <p class="text-gray-600 text-sm sm:text-base">No tienes documentos de esta categoría que no estén ya en la carpeta</p>
           </div>
         </div>
 
-        <!-- Footer with actions -->
-        <div class="flex justify-between items-center p-6 border-t bg-gray-50">
-          <div class="text-sm text-gray-600">
-            {{ selectedDocuments.length }} documento(s) seleccionado(s)
+        <!-- Footer with actions - Responsive -->
+        <div class="border-t bg-gray-50">
+          <!-- Desktop Footer -->
+          <div class="hidden sm:flex justify-between items-center p-6">
+            <div class="text-sm text-gray-600">
+              {{ selectedDocuments.length }} documento(s) seleccionado(s)
+            </div>
+            <div class="flex gap-3">
+              <button
+                @click="handleClose"
+                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="handleAddSelectedDocuments"
+                :disabled="selectedDocuments.length === 0 || isSubmitting"
+                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {{ isSubmitting ? 'Agregando...' : `Agregar ${selectedDocuments.length} documento(s)` }}
+              </button>
+            </div>
           </div>
-          <div class="flex gap-3">
-            <button
-              @click="handleClose"
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              @click="handleAddSelectedDocuments"
-              :disabled="selectedDocuments.length === 0 || isSubmitting"
-              class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {{ isSubmitting ? 'Agregando...' : `Agregar ${selectedDocuments.length} documento(s)` }}
-            </button>
+
+          <!-- Mobile Footer -->
+          <div class="sm:hidden p-4 space-y-3">
+            <div class="text-center text-sm text-gray-600">
+              {{ selectedDocuments.length }} documento(s) seleccionado(s)
+            </div>
+            <div class="flex gap-3">
+              <button
+                @click="handleClose"
+                class="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                @click="handleAddSelectedDocuments"
+                :disabled="selectedDocuments.length === 0 || isSubmitting"
+                class="flex-1 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-center font-medium"
+              >
+                {{ isSubmitting ? 'Agregando...' : 'Agregar' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -135,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
 import { useUserStore } from '@/stores/user';
 
@@ -173,6 +266,7 @@ const userStore = useUserStore();
 const selectedDocuments = ref([]);
 const activeDocumentCategory = ref('my-documents');
 const isSubmitting = ref(false);
+const showCategoryDropdown = ref(false);
 
 // Document categories for the add documents modal - matching Dashboard.vue tabs
 const documentCategories = [
@@ -262,4 +356,28 @@ const handleAddSelectedDocuments = async () => {
     isSubmitting.value = false;
   }
 };
+
+// Methods for dropdown
+const selectCategory = (categoryName) => {
+  activeDocumentCategory.value = categoryName;
+  showCategoryDropdown.value = false;
+};
+
+/**
+ * Closes dropdown when clicking outside
+ */
+const handleClickOutside = (event) => {
+  if (!event.target.closest('.relative')) {
+    showCategoryDropdown.value = false;
+  }
+};
+
+// Lifecycle hooks
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script> 
