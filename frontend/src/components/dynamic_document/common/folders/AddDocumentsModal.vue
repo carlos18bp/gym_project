@@ -46,7 +46,7 @@
             >
               {{ category.label }}
               <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                {{ getAvailableDocumentsByCategory(category.name).length }}
+                {{ getFilteredDocumentsByCategory(category.name).length }}
               </span>
             </button>
           </nav>
@@ -60,7 +60,7 @@
               <div class="flex items-center">
                 <span>{{ documentCategories.find(cat => cat.name === activeDocumentCategory)?.label || 'Seleccionar categoría' }}</span>
                 <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {{ getAvailableDocumentsByCategory(activeDocumentCategory).length }}
+                  {{ getFilteredDocumentsByCategory(activeDocumentCategory).length }}
                 </span>
               </div>
               <svg 
@@ -96,17 +96,48 @@
                     ? 'bg-white/20 text-white'
                     : 'bg-gray-100 text-gray-600'
                 ]">
-                  {{ getAvailableDocumentsByCategory(category.name).length }}
+                  {{ getFilteredDocumentsByCategory(category.name).length }}
                 </span>
               </button>
             </div>
           </div>
         </div>
 
+        <!-- Filters Section -->
+        <div class="border-b bg-gray-50 p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <!-- Tag Filter -->
+            <div class="flex-1">
+              <TagFilter 
+                v-model="selectedTags"
+                class="max-w-md"
+              />
+            </div>
+            
+            <!-- Select All Button -->
+            <div v-if="getFilteredDocumentsByCategory(activeDocumentCategory).length > 0" class="flex items-center gap-3">
+              <span class="text-sm text-gray-600">
+                {{ getFilteredDocumentsByCategory(activeDocumentCategory).length }} documento(s) disponible(s)
+              </span>
+              <button
+                @click="toggleSelectAllFiltered"
+                :class="[
+                  'px-4 py-2 rounded-lg border font-medium text-sm transition-colors',
+                  areAllFilteredSelected 
+                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' 
+                    : 'bg-primary text-white border-primary hover:bg-primary-dark'
+                ]"
+              >
+                {{ areAllFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Documents Content -->
-        <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-250px)]">
+        <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-350px)]">
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <template v-for="document in getAvailableDocumentsByCategory(activeDocumentCategory)" :key="document.id">
+            <template v-for="document in getFilteredDocumentsByCategory(activeDocumentCategory)" :key="document.id">
               <div class="relative">
                 <!-- My Documents -->
                 <DocumentCard
@@ -169,10 +200,17 @@
           </div>
 
           <!-- No documents available message -->
-          <div v-if="getAvailableDocumentsByCategory(activeDocumentCategory).length === 0" class="text-center py-8 sm:py-12">
+          <div v-if="getFilteredDocumentsByCategory(activeDocumentCategory).length === 0" class="text-center py-8 sm:py-12">
             <DocumentIcon class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-            <h4 class="text-lg font-medium text-gray-900 mb-2">No hay documentos disponibles</h4>
-            <p class="text-gray-600 text-sm sm:text-base">No tienes documentos de esta categoría que no estén ya en la carpeta</p>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">
+              {{ selectedTags.length > 0 ? 'No hay documentos que coincidan con el filtro' : 'No hay documentos disponibles' }}
+            </h4>
+            <p class="text-gray-600 text-sm sm:text-base">
+              {{ selectedTags.length > 0 
+                ? 'Intenta ajustar los filtros de etiquetas o selecciona otra categoría' 
+                : 'No tienes documentos de esta categoría que no estén ya en la carpeta' 
+              }}
+            </p>
           </div>
         </div>
 
@@ -242,6 +280,7 @@ import {
 // Components
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import { DocumentCard, UseDocumentCard, SignatureDocumentCard } from '@/components/dynamic_document/cards';
+import TagFilter from '@/components/dynamic_document/common/TagFilter.vue';
 
 // Props
 const props = defineProps({
@@ -264,6 +303,7 @@ const userStore = useUserStore();
 
 // Reactive data
 const selectedDocuments = ref([]);
+const selectedTags = ref([]);
 const activeDocumentCategory = ref('my-documents');
 const isSubmitting = ref(false);
 const showCategoryDropdown = ref(false);
@@ -283,11 +323,29 @@ const currentUser = computed(() => userStore.currentUser);
 watch(() => props.isVisible, (isVisible) => {
   if (isVisible) {
     selectedDocuments.value = [];
+    selectedTags.value = [];
     activeDocumentCategory.value = 'my-documents';
   }
 });
 
-// Methods - Using exact same logic as Dashboard.vue
+// Watch for category changes to clear selections
+watch(activeDocumentCategory, () => {
+  selectedDocuments.value = [];
+});
+
+// Watch for tag filter changes to clear selections
+watch(selectedTags, () => {
+  selectedDocuments.value = [];
+}, { deep: true });
+
+// Computed to check if all filtered documents are selected
+const areAllFilteredSelected = computed(() => {
+  const filteredDocs = getFilteredDocumentsByCategory(activeDocumentCategory.value);
+  if (filteredDocs.length === 0) return false;
+  return filteredDocs.every(doc => selectedDocuments.value.includes(doc.id));
+});
+
+// Methods - Base method to get available documents by category (same as before)
 const getAvailableDocumentsByCategory = (category) => {
   if (!props.folder) return [];
   
@@ -332,12 +390,44 @@ const getAvailableDocumentsByCategory = (category) => {
   return availableDocuments.filter(doc => !folderDocumentIds.includes(doc.id));
 };
 
+// New method that applies tag filtering to available documents
+const getFilteredDocumentsByCategory = (category) => {
+  const availableDocuments = getAvailableDocumentsByCategory(category);
+  
+  // If no tags are selected, return all available documents
+  if (!selectedTags.value || selectedTags.value.length === 0) {
+    return availableDocuments;
+  }
+  
+  // Filter by selected tags (same logic as DocumentListClient.vue)
+  const selectedTagIds = selectedTags.value.map(tag => tag.id);
+  return availableDocuments.filter(doc => {
+    if (!doc.tags || doc.tags.length === 0) return false;
+    return doc.tags.some(tag => selectedTagIds.includes(tag.id));
+  });
+};
+
 const toggleDocumentSelection = (documentId) => {
   const index = selectedDocuments.value.indexOf(documentId);
   if (index > -1) {
     selectedDocuments.value.splice(index, 1);
   } else {
     selectedDocuments.value.push(documentId);
+  }
+};
+
+// New method to select/deselect all filtered documents
+const toggleSelectAllFiltered = () => {
+  const filteredDocs = getFilteredDocumentsByCategory(activeDocumentCategory.value);
+  const filteredDocIds = filteredDocs.map(doc => doc.id);
+  
+  if (areAllFilteredSelected.value) {
+    // Deselect all filtered documents
+    selectedDocuments.value = selectedDocuments.value.filter(id => !filteredDocIds.includes(id));
+  } else {
+    // Select all filtered documents (add only those not already selected)
+    const newSelections = filteredDocIds.filter(id => !selectedDocuments.value.includes(id));
+    selectedDocuments.value.push(...newSelections);
   }
 };
 
