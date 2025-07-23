@@ -155,6 +155,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'misfotoscmbp@gmail.com'
 EMAIL_HOST_PASSWORD = 'ikdvsyikywczdnkk'
+DEFAULT_FROM_EMAIL = 'G&M Consultores Jurídicos <misfotoscmbp@gmail.com>'
 
 # Google reCAPTCHA configuration
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6Lc2AHgrAAAAAIflkJJNbK1c5Ts6pmY5uEQrFCZP')

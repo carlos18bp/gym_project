@@ -1,0 +1,95 @@
+<!-- Notification Content -->
+<div style="background:#ffffff;background-color:#ffffff;margin:0px auto;max-width:600px;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;background-color:#ffffff;width:100%;">
+    <tbody>
+      <tr>
+        <td style="direction:ltr;font-size:0px;padding:0px 20px;text-align:center;">
+          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
+            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
+              <tbody>
+                <!-- Title -->
+                <tr>
+                  <td align="center" style="font-size:0px;padding:20px 0 10px;word-break:break-word;">
+                    <div style="font-family:Inter, Arial, sans-serif;font-size:28px;font-weight:600;line-height:1.6;text-align:center;color:#1f2937;">
+                      {{title|default:"Notificación"}}
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Badge -->
+                <tr>
+                  <td align="center" style="font-size:0px;padding:10px 0 20px;word-break:break-word;">
+                    <div style="font-family:Inter, Arial, sans-serif;font-size:16px;font-weight:400;line-height:1.6;text-align:center;color:#6b7280;">
+                      <span style="background-color: #dbeafe; color: #1e40af; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">{{badge_text|default:"Notificación"}}</span>
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Notification Main Content -->
+                <tr>
+                  <td style="font-size:0px;padding:20px 0;word-break:break-word;">
+                    <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 20px 0;">
+                      <div style="text-align: center;">
+                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px; border-radius: 50%; font-size: 24px; display: inline-block; margin-bottom: 15px; width: 50px; height: 50px; line-height: 26px; text-align: center;">{{icon|default:"🔔"}}</div>
+                      </div>
+                      
+                      <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px; font-weight: 600; text-align: center;">
+                        {{notification_title|default:"Nueva Notificación"}}
+                      </h3>
+                      
+                      <p style="margin: 0 0 15px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                        {{message|default:"Ha recibido una nueva notificación del sistema."}}
+                      </p>
+                      
+                      {% if additional_info %}
+                      <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 15px 0; font-size: 14px; color: #4b5563;">
+                        {{additional_info|linebreaks}}
+                      </div>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Action Button -->
+                {% if action_url %}
+                <tr>
+                  <td align="center" style="font-size:0px;padding:20px 0;word-break:break-word;">
+                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;line-height:100%;">
+                      <tr>
+                        <td align="center" bgcolor="#3b82f6" role="presentation" style="border:none;border-radius:8px;cursor:auto;mso-padding-alt:12px 24px;background:#3b82f6;" valign="middle">
+                          <a href="{{action_url}}" style="display:inline-block;background:#3b82f6;color:white;font-family:Inter, Arial, sans-serif;font-size:16px;font-weight:600;line-height:120%;margin:0;text-decoration:none;text-transform:none;padding:12px 24px;mso-padding-alt:0px;border-radius:8px;" target="_blank">
+                            {{action_text|default:"Ver Detalles"}}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                {% endif %}
+                
+                <!-- Additional Text -->
+                <tr>
+                  <td align="left" style="font-size:0px;padding:20px 0 15px;word-break:break-word;">
+                    <div style="font-family:Inter, Arial, sans-serif;font-size:15px;font-weight:400;line-height:1.5;text-align:left;color:#374151;">
+                      Si tiene alguna pregunta o necesita asistencia, no dude en contactarnos.
+                    </div>
+                  </td>
+                </tr>
+                
+                <!-- Footer Notice -->
+                <tr>
+                  <td style="font-size:0px;padding:20px 0;word-break:break-word;">
+                    <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #6b7280; text-align: center;">
+                      Este es un correo automático del sistema de G&M Consultores Jurídicos.<br>
+                      Si recibió este correo por error, por favor ignórelo.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div> 

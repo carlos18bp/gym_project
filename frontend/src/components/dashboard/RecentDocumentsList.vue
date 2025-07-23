@@ -1,39 +1,64 @@
 <template>
-  <div class="bg-white rounded-xl shadow-md border border-gray-200 p-4" v-bind="$attrs">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6" v-bind="$attrs">
     <div class="flex flex-col h-full">
-      <div class="border-b border-gray-200 pb-4">
+      <!-- Header -->
+      <div class="border-b border-gray-100 pb-4 mb-4">
         <h2 class="text-lg font-semibold text-gray-900">Documentos Recientes</h2>
       </div>
       
-      <div class="mt-4">
-        <!-- List components based on user role -->
+      <!-- Content -->
+      <div class="flex-1 min-h-0">
         <template v-if="userStore.currentUser">
-          <template v-if="recentDocumentStore.recentDocuments.length === 0">
-            <div class="flex justify-center items-center py-4">
-              <p class="text-sm text-gray-500">No hay documentos recientes</p>
+          <!-- Documents List -->
+          <template v-if="recentDocumentStore.recentDocuments.length > 0">
+            <div class="max-h-[320px] overflow-y-auto pr-1">
+              <!-- Simple Grid: 1 column by default, 2 columns only on very large screens (1536px+) -->
+              <div class="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+                                 <div 
+                   v-for="recentDoc in recentDocumentStore.recentDocuments"
+                   :key="recentDoc.document.id"
+                   class="relative dashboard-card-container"
+                 >
+                   <DocumentCard
+                     :document="recentDoc.document"
+                     :card-type="getCardType(recentDoc.document)"
+                     :card-context="'dashboard'"
+                     :highlighted-doc-id="null"
+                     :status-icon="getStatusIcon(recentDoc.document)"
+                     :status-text="getStatusText(recentDoc.document)"
+                     :status-badge-classes="getStatusBadgeClasses(recentDoc.document)"
+                     :show-tags="true"
+                     :show-client-name="userStore.currentUser?.role === 'lawyer'"
+                     :additional-classes="'hover:scale-[1.02] transition-transform duration-200 dashboard-document-card'"
+                     :document-store="documentStore"
+                     :user-store="userStore"
+                     :prompt-documents="true"
+                     @click="handleDocumentClick"
+                     @refresh="handleRefresh"
+                   />
+                 </div>
+              </div>
             </div>
           </template>
+          
+          <!-- Empty State -->
           <template v-else>
-            <div 
-              v-if="userStore.currentUser.role === 'lawyer'"
-              class="grid gap-2 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-4">
-              <DocumentListLawyer 
-                :search-query="''"
-                :prompt-documents="recentDocumentStore.recentDocuments.map(doc => doc.document)"
-              />
-            </div>
-            <div 
-              class="grid gap-2 max-h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 pr-4" 
-              v-else-if="userStore.currentUser.role === 'client'" >
-              <DocumentListClient 
-                :search-query="''"
-                :prompt-documents="recentDocumentStore.recentDocuments.map(doc => doc.document)"
-              />
+            <div class="flex flex-col items-center justify-center py-8 text-center">
+              <div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
+                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 class="text-sm font-medium text-gray-900 mb-1">No hay documentos recientes</h3>
+              <p class="text-xs text-gray-500">Los documentos aparecerán aquí cuando los uses</p>
             </div>
           </template>
         </template>
-        <div v-else class="flex justify-center items-center py-4">
-          <p class="text-gray-500">Loading...</p>
+        
+        <!-- Loading State -->
+        <div v-else class="flex flex-col items-center justify-center py-8 text-center">
+          <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3"></div>
+          <p class="text-sm text-gray-500">Cargando documentos...</p>
         </div>
       </div>
     </div>
@@ -71,12 +96,18 @@ import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import SendDocument from '@/components/dynamic_document/layouts/modals/SendDocument.vue';
 import DocumentPreviewModal from '@/components/dynamic_document/common/DocumentPreviewModal.vue';
+import { DocumentCard } from '@/components/dynamic_document/cards';
 import { showNotification } from '@/shared/notification_message';
 import { showConfirmationAlert } from '@/shared/confirmation_alert';
 import { showPreviewModal, previewDocumentData, openPreviewModal } from '@/shared/document_utils';
 import { useRecentViews } from '@/composables/useRecentViews';
-import DocumentListLawyer from '@/components/dynamic_document/lawyer/DocumentListLawyer.vue';
-import DocumentListClient from '@/components/dynamic_document/client/DocumentListClient.vue';
+import { 
+  CheckCircleIcon, 
+  PencilIcon, 
+  ClockIcon,
+  DocumentCheckIcon,
+  ExclamationTriangleIcon 
+} from '@heroicons/vue/24/outline';
 
 const router = useRouter();
 const recentDocumentStore = useRecentDocumentStore();
@@ -90,6 +121,89 @@ const selectedDocumentId = ref(null);
 const showSendDocumentViaEmailModal = ref(false);
 const emailDocument = ref({});
 
+/**
+ * Get card type based on document and user role
+ */
+const getCardType = (document) => {
+  return userStore.currentUser?.role === 'lawyer' ? 'lawyer' : 'client';
+};
+
+/**
+ * Get status icon for document
+ */
+const getStatusIcon = (document) => {
+  switch (document.state) {
+    case 'Completed':
+    case 'FullySigned':
+      return CheckCircleIcon;
+    case 'Published':
+      return DocumentCheckIcon;
+    case 'PendingSignatures':
+      return ClockIcon;
+    case 'Progress':
+    case 'Draft':
+      return PencilIcon;
+    default:
+      return ExclamationTriangleIcon;
+  }
+};
+
+/**
+ * Get status text for document
+ */
+const getStatusText = (document) => {
+  switch (document.state) {
+    case 'Completed':
+      return 'Completado';
+    case 'FullySigned':
+      return 'Firmado';
+    case 'Published':
+      return 'Publicado';
+    case 'PendingSignatures':
+      return 'Pendiente';
+    case 'Progress':
+      return 'En Progreso';
+    case 'Draft':
+      return 'Borrador';
+    default:
+      return document.state;
+  }
+};
+
+/**
+ * Get status badge classes for document
+ */
+const getStatusBadgeClasses = (document) => {
+  switch (document.state) {
+    case 'Completed':
+    case 'FullySigned':
+      return 'bg-green-100 text-green-700 border border-green-200';
+    case 'Published':
+      return 'bg-blue-100 text-blue-700 border border-blue-200';
+    case 'PendingSignatures':
+      return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+    case 'Progress':
+    case 'Draft':
+      return 'bg-gray-100 text-gray-700 border border-gray-200';
+    default:
+      return 'bg-gray-100 text-gray-600 border border-gray-200';
+  }
+};
+
+/**
+ * Handle document click
+ */
+const handleDocumentClick = (document) => {
+  registerView('document', document.id);
+  // Additional click handling if needed
+};
+
+/**
+ * Handle refresh from document cards
+ */
+const handleRefresh = async () => {
+  await recentDocumentStore.fetchRecentDocuments();
+};
 
 /**
  * Close edit modal
@@ -124,23 +238,53 @@ onActivated(async () => {
 });
 </script>
 
-<style>
-/* Custom scrollbar styles */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+<style scoped>
+/* Simplified scrollbar for recent documents */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #d1d5db;
-  border-radius: 3px;
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+/* Dashboard card container z-index fix */
+.dashboard-card-container {
+  z-index: 1;
+  position: relative;
+}
+
+/* Elevate card container on hover to ensure menus appear above other cards */
+.dashboard-card-container:hover {
+  z-index: 999 !important;
+}
+
+/* Target all dropdown menus within dashboard cards */
+.dashboard-card-container :deep(.absolute) {
+  z-index: 9999 !important;
+}
+
+/* Specific targeting for Headless UI MenuItems */
+.dashboard-card-container :deep([role="menu"]) {
+  z-index: 9999 !important;
+}
+
+/* Additional safety for any menu containers */
+.dashboard-card-container :deep(.menu-container) {
+  z-index: 999 !important;
+}
+
+/* Target the dashboard document cards specifically */
+:deep(.dashboard-document-card:hover) {
+  z-index: 999 !important;
 }
 </style>

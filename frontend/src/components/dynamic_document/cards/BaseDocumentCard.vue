@@ -519,11 +519,14 @@ const menuOptions = computed(() => {
 });
 
 const menuPosition = computed(() => {
-  // Position logic based on context
+  // Responsive position logic
   if (props.promptDocuments) {
-    return 'right-auto left-0 -translate-x-[calc(100%-24px)]';
+    // For prompt documents, use responsive positioning
+    return 'right-0 left-auto sm:right-auto sm:left-0 sm:-translate-x-[calc(100%-24px)]';
   }
-  return 'left-0 right-auto';
+  
+  // Default responsive positioning: right-aligned on mobile, left-aligned on desktop
+  return 'right-0 left-auto sm:left-0 sm:right-auto';
 });
 
 // Computed classes for card styling based on document state

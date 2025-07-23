@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from gym_app.views.layouts.sendEmail import send_template_email
 
 User = get_user_model()
 
@@ -247,6 +248,38 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                     )
                 except Exception as e:
                     pass  # Handle error silently
+
+            # === Enviar notificación por email a los firmantes ===
+            if signers:  # Solo si hay firmantes
+                document_creator_name = creator.get_full_name() or creator.email if creator else "Sistema"
+                
+                # Enviar email a cada firmante
+                for signer in signers:
+                    try:
+                        context = {
+                            'title': 'Documento Pendiente de Firma',
+                            'badge_text': 'Pendiente',
+                            'icon': '✍️',
+                            'notification_title': 'Nuevo Documento para Firmar',
+                            'message': f'Se le ha asignado un nuevo documento "{document.title}" que requiere su firma electrónica.',
+                            'additional_info': f'Documento creado por: {document_creator_name}\nFecha de creación: {document.created_at.strftime("%d/%m/%Y %H:%M")}',
+                            'action_url': 'https://www.gmconsultoresjuridicos.com/',
+                            'action_text': 'Acceder al Sistema',
+                            'current_year': document.created_at.year
+                        }
+                        
+                        send_template_email(
+                            template_name="notification",
+                            subject=f"Documento pendiente de firma: {document.title}",
+                            to_emails=[signer.email],
+                            context=context
+                        )
+                        print(f"✅ Email de notificación enviado a {signer.email}")
+                        
+                    except Exception as e:
+                        print(f"❌ Error enviando email de notificación a {signer.email}: {e}")
+                        # Continuar sin interrumpir el flujo
+                        pass
 
         return document
 

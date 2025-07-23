@@ -30,8 +30,44 @@ from reportlab.pdfgen import canvas
 from rest_framework.views import APIView
 from gym_app.serializers.dynamic_document import DocumentVariableSerializer
 from gym_app.views.layouts.sendEmail import EmailMessage
+import hashlib
+import base64
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes, serialization
 
 User = get_user_model()
+
+
+def generate_encrypted_document_id(document_id, created_at):
+    """
+    Generates a unique encrypted identifier for a document combining ID, date and time.
+    Uses SHA256 hash for security and readability.
+    
+    Parameters:
+        document_id (int): The document's database ID
+        created_at (datetime): Document creation timestamp
+    
+    Returns:
+        str: Formatted hash-based identifier
+    """
+    try:
+        # Create a unique string combining ID, date, and time
+        timestamp_str = created_at.strftime("%Y%m%d%H%M%S")
+        unique_string = f"DOC{document_id}_{timestamp_str}"
+        
+        # Create a hash-based identifier
+        hash_object = hashlib.sha256(unique_string.encode())
+        hex_dig = hash_object.hexdigest()
+        
+        # Take first 16 characters and format as document identifier
+        short_hash = hex_dig[:16].upper()
+        formatted_id = f"{short_hash[:4]}-{short_hash[4:8]}-{short_hash[8:12]}-{short_hash[12:16]}"
+        
+        return formatted_id
+    except Exception as e:
+        print(f"Error generating encrypted ID: {e}")
+        # Fallback to simple format
+        return f"DOC-{document_id:04d}-{created_at.strftime('%Y%m%d')}"
 
 
 @api_view(['GET'])
@@ -554,19 +590,20 @@ def generate_original_document_pdf(document):
 def create_signatures_pdf(document, request):
     """
     Creates a PDF containing the signatures information for a document.
+    Optimized for single page layout with new format.
     Returns a BytesIO buffer containing the PDF.
     """
     # Create a buffer for the PDF
     buffer = BytesIO()
     
-    # Create the PDF document with wider margins for formal appearance
+    # Create the PDF document with smaller margins for single page optimization
     doc = SimpleDocTemplate(
         buffer,
         pagesize=letter,
-        rightMargin=90,
-        leftMargin=90,
-        topMargin=90,
-        bottomMargin=90
+        rightMargin=60,
+        leftMargin=60,
+        topMargin=60,
+        bottomMargin=60
     )
     
     # Get and customize styles for left alignment
@@ -575,13 +612,13 @@ def create_signatures_pdf(document, request):
     # Register fonts
     register_carlito_fonts()
     
-    # Create custom styles with left alignment
+    # Create custom styles optimized for single page
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
         alignment=0,  # Left alignment
-        fontSize=18,
-        spaceAfter=24,
+        fontSize=16,
+        spaceAfter=12,
         fontName='Carlito-Bold'
     )
     
@@ -589,8 +626,8 @@ def create_signatures_pdf(document, request):
         'CustomSubtitle',
         parent=styles['Heading2'],
         alignment=0,  # Left alignment
-        fontSize=14,
-        spaceAfter=12,
+        fontSize=12,
+        spaceAfter=8,
         fontName='Carlito-Bold'
     )
     
@@ -598,8 +635,8 @@ def create_signatures_pdf(document, request):
         'CustomNormal',
         parent=styles['Normal'],
         alignment=0,  # Left alignment
-        fontSize=11,
-        spaceAfter=8,
+        fontSize=10,
+        spaceAfter=4,
         fontName='Carlito'
     )
     
@@ -607,115 +644,109 @@ def create_signatures_pdf(document, request):
         'DetailStyle',
         parent=styles['Normal'],
         alignment=0,  # Left alignment
-        fontSize=10,
-        spaceAfter=6,
+        fontSize=9,
+        spaceAfter=3,
         fontName='Carlito',
-        leftIndent=20
+        leftIndent=15
     )
     
     # Build the PDF content
     elements = []
     
-    # Add formal document header
-    elements.append(Paragraph("REGISTRO OFICIAL DE FIRMAS ELECTRÓNICAS", title_style))
-    elements.append(Spacer(1, 4))
-    
-    elements.append(Paragraph("CERTIFICACIÓN DE AUTENTICIDAD DE FIRMAS DIGITALES", subtitle_style))
+    # Add new headers as requested
+    elements.append(Paragraph("REGISTRO DE FIRMAS", title_style))
     elements.append(Spacer(1, 3))
+    
+    elements.append(Paragraph("CONSTANCIA TRAZABILIDAD DE LAS FIRMAS", subtitle_style))
+    elements.append(Spacer(1, 6))
+    
+    # Generate encrypted document identifier
+    encrypted_id = generate_encrypted_document_id(document.pk, document.created_at)
     
     # Add document identification section
     elements.append(Paragraph("I. IDENTIFICACIÓN DEL DOCUMENTO", subtitle_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 6))
     elements.append(Paragraph(f"<b>Título del Documento:</b> {document.title}", normal_style))
     elements.append(Paragraph(f"<b>Fecha de Creación:</b> {document.created_at.strftime('%d de %B de %Y a las %H:%M:%S')}", normal_style))
-    elements.append(Paragraph(f"<b>Identificador Único:</b> {document.pk}", normal_style))
-    if hasattr(document, 'description') and document.description:
-        elements.append(Paragraph(f"<b>Descripción:</b> {document.description}", normal_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"<b>Identificador Único:</b> {encrypted_id}", normal_style))
+    elements.append(Spacer(1, 6))
     
     # Add signature verification section
     total_signatures = document.signatures.count()
     signed_count = document.signatures.filter(signed=True).count()
     
     elements.append(Paragraph("II. RESUMEN DE FIRMAS", subtitle_style))
-    elements.append(Spacer(1, 10))
-    elements.append(Paragraph(f"<b>Total de Firmas Requeridas:</b> {total_signatures}", normal_style))
-    elements.append(Paragraph(f"<b>Total de Firmas Completadas:</b> {signed_count}", normal_style))
-    elements.append(Paragraph(f"<b>Estado de Completitud:</b> {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}", normal_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(f"<b>Firmas Requeridas:</b> {total_signatures} | <b>Firmas Completadas:</b> {signed_count} | <b>Estado:</b> {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}", normal_style))
+    elements.append(Spacer(1, 6))
     
     # Add detailed signatures registry
     elements.append(Paragraph("III. REGISTRO DETALLADO DE FIRMAS", subtitle_style))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 4))
     
     signature_images_added = False
-    for signature in document.signatures.all().order_by('created_at'):
+    for idx, signature in enumerate(document.signatures.all().order_by('created_at'), 1):
         try:
             user = signature.signer
             user_signature = getattr(user, 'signature', None)
             
             if user_signature and user_signature.signature_image:
-                role_mapping = {
-                    "lawyer": "Abogado Responsable",
-                    "client": "Cliente",
-                    "admin": "Administrador",
-                    "staff": "Personal Autorizado"
-                }
-                role = role_mapping.get(user.role, "Usuario Autorizado")
+                # Generate unique identifier for this signature
+                signature_id = f"{idx:02d}{signature.signed_at.strftime('%m%d%H%M') if signature.signed_at else '0000'}"
                 
-                # Add signature details with additional identification information
+                # Add signature details (without role as requested)
                 elements.append(Paragraph(f"<b>Firmante:</b> {user.get_full_name() or user.email}", normal_style))
-                elements.append(Paragraph(f"<b>Rol:</b> {role}", detail_style))
-                elements.append(Paragraph(f"<b>Correo Electrónico:</b> {user.email}", detail_style))
+                elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
                 
-                # Add identification information
+                # Add identification information if available
+                id_info = []
                 if user.document_type:
-                    elements.append(Paragraph(f"<b>Tipo de Identificación:</b> {user.get_document_type_display()}", detail_style))
+                    id_info.append(f"{user.get_document_type_display()}")
                 if user.identification:
-                    elements.append(Paragraph(f"<b>Número de Identificación:</b> {user.identification}", detail_style))
+                    id_info.append(f"{user.identification}")
+                if id_info:
+                    elements.append(Paragraph(f"<b>Identificación:</b> {' - '.join(id_info)}", detail_style))
                 
-                elements.append(Paragraph(f"<b>Fecha y Hora de Firma:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
+                elements.append(Paragraph(f"<b>Fecha y Hora:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
                 elements.append(Paragraph(f"<b>IP de Registro:</b> {signature.ip_address or 'No Registrada'}", detail_style))
-                elements.append(Spacer(1, 8))
                 
-                # Add signature image
+                # Add signature image with smaller size for single page optimization
                 try:
                     img = Image(user_signature.signature_image.path)
-                    img.drawHeight = 60
-                    img.drawWidth = 240
+                    img.drawHeight = 40
+                    img.drawWidth = 160
                     elements.append(img)
-                    elements.append(Spacer(1, 10))
+                    elements.append(Spacer(1, 4))
                     signature_images_added = True
                     print(f"✅ Signature image added for user: {user.email}")
                 except Exception as e:
                     print(f"❌ Error adding signature image for user {user.email}: {str(e)}")
                     elements.append(Paragraph("<b>Error:</b> al cargar la imagen de la firma", detail_style))
-                    elements.append(Spacer(1, 10))
+                    elements.append(Spacer(1, 4))
             
         except Exception as e:
             print(f"❌ Error processing signature image: {str(e)}")
     
     if not signature_images_added:
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 4))
     
-    # Add legal certification footer
-    elements.append(Spacer(1, 15))
-    elements.append(Paragraph("IV. CERTIFICACIÓN LEGAL", subtitle_style))
-    elements.append(Spacer(1, 10))
+    # Add constancia footer
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph("IV. CONSTANCIA", subtitle_style))
+    elements.append(Spacer(1, 4))
     elements.append(Paragraph(
-        "Este documento constituye un registro oficial de las firmas electrónicas aplicadas al documento referenciado. "
-        "Las firmas electrónicas contenidas en este registro han sido verificadas y cumplen con los estándares "
-        "de autenticidad requeridos por la legislación vigente en materia de documentos electrónicos.",
+        "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
+        "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
+        "generador(es) del documento como del(los) destinatario(s) firmante(s).",
         normal_style
     ))
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 6))
     
     # Add generation timestamp
     from datetime import datetime
-    generation_time = datetime.now().strftime('%d de %B de %Y a las %H:%M:%S')
-    elements.append(Paragraph(f"<b>Documento generado el:</b> {generation_time}", detail_style))
-    elements.append(Paragraph(f"<b>Generado por:</b> {request.user.get_full_name() or request.user.email}", detail_style))
+    generation_time = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    elements.append(Paragraph(f"<b>Generado el:</b> {generation_time} | <b>Por:</b> {request.user.get_full_name() or request.user.email}", detail_style))
     
     # Build the PDF
     print("\nBuilding comprehensive PDF...")
@@ -742,11 +773,11 @@ def create_signatures_pdf(document, request):
             self.saveState()
             self.translate(300, 400)  # Move to center of page
             self.rotate(45)  # Rotate 45 degrees
-            self.setFont('Carlito-Bold', 60)
+            self.setFont('Carlito-Bold', 50)
             self.setFillColor(colors.lightgrey)
-            self.setFillAlpha(0.3)  # Set transparency to 30%
-            self.drawCentredString(0, 30, "ESTADO REGISTRO DIGITAL")
-            self.drawCentredString(0, -30, "VERIFICADO")
+            self.setFillAlpha(0.25)  # Set transparency to 25%
+            self.drawCentredString(0, 20, "REGISTRO DE FIRMAS")
+            self.drawCentredString(0, -20, "VERIFICADO")
             self.restoreState()
     
     # Build the PDF with watermark
