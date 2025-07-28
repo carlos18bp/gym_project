@@ -18,10 +18,18 @@ from reportlab.pdfbase.ttfonts import TTFont
 from gym_app.models.dynamic_document import DynamicDocument, RecentDocument
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, RecentDocumentSerializer
 from django.utils import timezone
+from .permissions import (
+    require_document_visibility,
+    require_document_visibility_by_id,
+    require_document_usability,
+    require_lawyer_only,
+    filter_documents_by_visibility
+)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_only
 def create_dynamic_document(request):
     """
     Create a new dynamic document.
@@ -45,6 +53,7 @@ def create_dynamic_document(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@filter_documents_by_visibility
 def list_dynamic_documents(request):
     """
     Get a list of all dynamic documents.
@@ -55,6 +64,7 @@ def list_dynamic_documents(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility
 def get_dynamic_document(request, pk):
     """
     Get a specific dynamic document by ID.
@@ -79,6 +89,7 @@ def get_dynamic_document(request, pk):
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
+@require_document_usability('edit')
 def update_dynamic_document(request, pk):
     """
     Update an existing dynamic document.
@@ -108,6 +119,7 @@ def update_dynamic_document(request, pk):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@require_document_usability('full_access')
 def delete_dynamic_document(request, pk):
     """
     Delete a dynamic document.
@@ -124,6 +136,7 @@ def delete_dynamic_document(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility
 def download_dynamic_document_pdf(request, pk, for_version=False):
     """
     Generates and returns a PDF file for a given document using ReportLab and xhtml2pdf.
@@ -304,6 +317,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
     
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility
 def download_dynamic_document_word(request, pk):
     """
     Generates and returns a Word (.docx) file for the given document using python-docx.
@@ -573,16 +587,28 @@ def download_dynamic_document_word(request, pk):
 def get_recent_documents(request):
     """
     Get the 10 most recently visited documents for the authenticated user.
+    Only returns documents the user has permission to view.
     """
-    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')[:10]
-    serializer = RecentDocumentSerializer(recent_documents, many=True)
+    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')
+    
+    # Filter by visibility permissions
+    filtered_recent = []
+    for recent_doc in recent_documents:
+        if recent_doc.document.can_view(request.user):
+            filtered_recent.append(recent_doc)
+        if len(filtered_recent) >= 10:  # Limit to 10 documents
+            break
+    
+    serializer = RecentDocumentSerializer(filtered_recent, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
 def update_recent_document(request, document_id):
     """
     Track a document visit by creating or updating a RecentDocument entry.
+    Only allows tracking if user has permission to view the document.
     """
     try:
         document = DynamicDocument.objects.get(pk=document_id)

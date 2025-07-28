@@ -11,6 +11,14 @@ from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf
+from .permissions import (
+    require_document_visibility,
+    require_document_visibility_by_id,
+    require_document_usability,
+    require_lawyer_or_owner,
+    require_lawyer_or_owner_by_id,
+    filter_documents_by_visibility
+)
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
 from reportlab.lib.pagesizes import letter
@@ -72,6 +80,7 @@ def generate_encrypted_document_id(document_id, created_at):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
 def get_document_signatures(request, document_id):
     """
     Get all signatures for a specific document.
@@ -94,6 +103,7 @@ def get_pending_signatures(request):
     """
     Get all documents that require a signature from the authenticated user.
     Returns the complete document information along with signature details.
+    Only returns documents the user has permission to view.
     """
     # Get all pending signatures for the user
     pending_signatures = DocumentSignature.objects.filter(
@@ -101,18 +111,25 @@ def get_pending_signatures(request):
         signed=False
     ).select_related('document')
     
-    # Get unique documents that need signatures
+    # Get unique documents that need signatures and filter by visibility
     documents = DynamicDocument.objects.filter(
         signatures__in=pending_signatures
     ).distinct()
     
+    # Filter by visibility permissions
+    visible_documents = []
+    for document in documents:
+        if document.can_view(request.user):
+            visible_documents.append(document)
+    
     # Serialize the documents with their signature information
-    serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+    serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
 def sign_document(request, document_id, user_id):
     """
     Sign a document using the user's signature.
@@ -291,6 +308,7 @@ def sign_document(request, document_id, user_id):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
 def remove_signature_request(request, document_id, user_id):
     """
     Remove a signature request for a specific user on a document.
@@ -347,12 +365,20 @@ def remove_signature_request(request, document_id, user_id):
 def get_user_pending_documents_full(request, user_id):
     """
     Obtener información detallada sobre documentos que requieren la firma de un usuario específico.
+    Only returns documents the requesting user has permission to view.
     """
     try:
         user = User.objects.get(pk=user_id)
         pending_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=False).select_related('document')
-        documents = [signature.document for signature in pending_signatures]
-        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        all_documents = [signature.document for signature in pending_signatures]
+        
+        # Filter documents by visibility permissions
+        visible_documents = []
+        for document in all_documents:
+            if document.can_view(request.user):
+                visible_documents.append(document)
+        
+        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -365,12 +391,20 @@ def get_user_pending_documents_full(request, user_id):
 def get_user_signed_documents(request, user_id):
     """
     Obtener información detallada sobre documentos que han sido firmados por un usuario específico.
+    Only returns documents the requesting user has permission to view.
     """
     try:
         user = User.objects.get(pk=user_id)
         signed_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=True).select_related('document')
-        documents = [signature.document for signature in signed_signatures]
-        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        all_documents = [signature.document for signature in signed_signatures]
+        
+        # Filter documents by visibility permissions
+        visible_documents = []
+        for document in all_documents:
+            if document.can_view(request.user):
+                visible_documents.append(document)
+                
+        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -817,6 +851,7 @@ def combine_pdfs(pdf1_buffer, pdf2_buffer):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility
 def generate_signatures_pdf(request, pk):
     """
     Generates a comprehensive PDF document containing the original document and its signatures information.

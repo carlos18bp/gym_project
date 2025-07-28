@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from gym_app.models.dynamic_document import DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder
+from gym_app.models.dynamic_document import (
+    DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder,
+    DocumentVisibilityPermission, DocumentUsabilityPermission
+)
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 from gym_app.views.layouts.sendEmail import send_template_email
@@ -152,6 +155,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     # Signature count fields
     completed_signatures = serializers.SerializerMethodField(read_only=True)
     total_signatures = serializers.SerializerMethodField(read_only=True)
+    
+    # Permission fields for current user
+    user_permission_level = serializers.SerializerMethodField(read_only=True)
+    can_view = serializers.SerializerMethodField(read_only=True)
+    can_edit = serializers.SerializerMethodField(read_only=True)
+    can_delete = serializers.SerializerMethodField(read_only=True)
 
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
@@ -162,7 +171,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
             'created_at', 'updated_at', 'variables', 'requires_signature',
             'signatures', 'signers', 'signer_ids', 'fully_signed',
-            'completed_signatures', 'total_signatures', 'tags', 'tag_ids'
+            'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
+            'is_public', 'user_permission_level', 'can_view', 'can_edit', 'can_delete'
         ]
 
     def get_signer_ids(self, obj):
@@ -188,6 +198,66 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         if not obj.requires_signature:
             return 0
         return obj.signatures.count()
+    
+    def get_user_permission_level(self, obj):
+        """
+        Get the permission level for the current user on this document.
+        """
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return None
+        return obj.get_user_permission_level(request.user)
+    
+    def get_can_view(self, obj):
+        """
+        Check if the current user can view this document.
+        """
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+        return obj.can_view(request.user)
+    
+    def get_can_edit(self, obj):
+        """
+        Check if the current user can edit this document.
+        """
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+        
+        user_permission = obj.get_user_permission_level(request.user)
+        if not user_permission:
+            return False
+            
+        # Define permission hierarchy (public_access grants edit permissions)
+        permission_hierarchy = ['view_only', 'read_only', 'public_access', 'edit', 'full_access', 'owner', 'lawyer']
+        try:
+            user_level = permission_hierarchy.index(user_permission)
+            edit_level = permission_hierarchy.index('public_access')  # public_access allows editing
+            return user_level >= edit_level
+        except ValueError:
+            return False
+    
+    def get_can_delete(self, obj):
+        """
+        Check if the current user can delete this document.
+        """
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return False
+        
+        user_permission = obj.get_user_permission_level(request.user)
+        if not user_permission:
+            return False
+            
+        # Define permission hierarchy
+        permission_hierarchy = ['view_only', 'read_only', 'public_access', 'edit', 'full_access', 'owner', 'lawyer']
+        try:
+            user_level = permission_hierarchy.index(user_permission)
+            delete_level = permission_hierarchy.index('full_access')
+            return user_level >= delete_level
+        except ValueError:
+            return False
 
     def create(self, validated_data):
         """
@@ -249,51 +319,34 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                 except Exception as e:
                     pass  # Handle error silently
 
-            # === Enviar notificación por email a los firmantes ===
-            if signers:  # Solo si hay firmantes
-                document_creator_name = creator.get_full_name() or creator.email if creator else "Sistema"
-                
-                # Enviar email a cada firmante
-                for signer in signers:
-                    try:
-                        context = {
-                            'title': 'Documento Pendiente de Firma',
-                            'badge_text': 'Pendiente',
-                            'icon': '✍️',
-                            'notification_title': 'Nuevo Documento para Firmar',
-                            'message': f'Se le ha asignado un nuevo documento "{document.title}" que requiere su firma electrónica.',
-                            'additional_info': f'Documento creado por: {document_creator_name}\nFecha de creación: {document.created_at.strftime("%d/%m/%Y %H:%M")}',
-                            'action_url': 'https://www.gmconsultoresjuridicos.com/',
-                            'action_text': 'Acceder al Sistema',
-                            'current_year': document.created_at.year
-                        }
-                        
-                        send_template_email(
-                            template_name="notification",
-                            subject=f"Documento pendiente de firma: {document.title}",
-                            to_emails=[signer.email],
-                            context=context
-                        )
-                        print(f"✅ Email de notificación enviado a {signer.email}")
-                        
-                    except Exception as e:
-                        print(f"❌ Error enviando email de notificación a {signer.email}: {e}")
-                        # Continuar sin interrumpir el flujo
-                        pass
+        # # Send emails to signers if required
+        # if requires_signature and signers:
+        #     for signer in signers:
+        #         try:
+        #             send_template_email(
+        #                 to_email=signer.email,
+        #                 template_path='emails/signature_request.html',
+        #                 context={
+        #                     'signer_name': signer.first_name or signer.email,
+        #                     'document_title': document.title,
+        #                     'document_link': f'link_to_document/{document.id}/'
+        #                 },
+        #                 subject=f'Solicitud de firma para: {document.title}'
+        #             )
+        #         except Exception as e:
+        #             # Log the error but don't fail the document creation
+        #             print(f"Failed to send email to {signer.email}: {e}")
 
         return document
 
     def update(self, instance, validated_data):
         """
-        Updates an existing DynamicDocument instance.
-
-        Handles updating document variables, signature requirements, and main document fields.
+        Update an existing document with new variables and signatures.
         """
-        # Extract variable data and signers
-        variables_data = validated_data.pop('variables', [])
-        signers = validated_data.pop('signers', [])
-        tags = validated_data.pop('tags', None)  # Extract tags
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
+        signers = validated_data.pop('signers', [])
+        variables_data = validated_data.pop('variables', None)
+        tags = validated_data.pop('tags', None)  # Extract tags
 
         # Update tags if provided
         if tags is not None:
@@ -361,20 +414,64 @@ class DocumentFolderSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def create(self, validated_data):
-        documents = validated_data.pop('documents', [])
+        """Attach the current user (client) as folder owner."""
         request = self.context.get('request')
-        owner = request.user if request else None
-        folder = DocumentFolder.objects.create(owner=owner, **validated_data)
-        if documents:
-            folder.documents.set(documents)
-        return folder
+        if request and hasattr(request, 'user'):
+            validated_data['owner'] = request.user
+        return super().create(validated_data)
 
-    def update(self, instance, validated_data):
-        # Handle documents update if provided
-        documents = validated_data.pop('documents', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        if documents is not None:
-            instance.documents.set(documents)
-        return instance
+
+class DocumentVisibilityPermissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DocumentVisibilityPermission model.
+    
+    Used to serialize visibility permissions granted to users for specific documents.
+    """
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_full_name = serializers.SerializerMethodField(read_only=True)
+    granted_by_email = serializers.EmailField(source='granted_by.email', read_only=True)
+    document_title = serializers.CharField(source='document.title', read_only=True)
+
+    class Meta:
+        model = DocumentVisibilityPermission
+        fields = [
+            'id', 'document', 'user', 'user_email', 'user_full_name',
+            'granted_by', 'granted_by_email', 'granted_at', 'document_title'
+        ]
+        read_only_fields = ['id', 'granted_by', 'granted_at']
+
+    def get_user_full_name(self, obj):
+        """Return the full name of the user."""
+        first_name = obj.user.first_name or ""
+        last_name = obj.user.last_name or ""
+        full_name = f"{first_name} {last_name}".strip()
+        return full_name if full_name else obj.user.email
+
+
+class DocumentUsabilityPermissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DocumentUsabilityPermission model.
+    
+    Used to serialize usability permissions granted to users for specific documents.
+    """
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_full_name = serializers.SerializerMethodField(read_only=True)
+    granted_by_email = serializers.EmailField(source='granted_by.email', read_only=True)
+    document_title = serializers.CharField(source='document.title', read_only=True)
+    permission_type_display = serializers.CharField(source='get_permission_type_display', read_only=True)
+
+    class Meta:
+        model = DocumentUsabilityPermission
+        fields = [
+            'id', 'document', 'user', 'user_email', 'user_full_name',
+            'permission_type', 'permission_type_display', 'granted_by', 
+            'granted_by_email', 'granted_at', 'document_title'
+        ]
+        read_only_fields = ['id', 'granted_by', 'granted_at']
+
+    def get_user_full_name(self, obj):
+        """Return the full name of the user."""
+        first_name = obj.user.first_name or ""
+        last_name = obj.user.last_name or ""
+        full_name = f"{first_name} {last_name}".strip()
+        return full_name if full_name else obj.user.email

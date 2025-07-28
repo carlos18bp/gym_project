@@ -14,7 +14,7 @@ This module defines all the URL patterns for the gym application, organized into
 """
 from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports, captcha
 from .views.layouts import sendEmail
-from .views.dynamic_documents import document_views, signature_views, tag_folder_views
+from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views
 from django.urls import path
 
 # Authentication URLs
@@ -104,6 +104,15 @@ dynamic_document_urls = [
     path('dynamic-documents/folders/<int:pk>/', tag_folder_views.get_folder, name='get-folder'),
     path('dynamic-documents/folders/<int:pk>/update/', tag_folder_views.update_folder, name='update-folder'),
     path('dynamic-documents/folders/<int:pk>/delete/', tag_folder_views.delete_folder, name='delete-folder'),
+    
+    # Permission management
+    path('dynamic-documents/<int:pk>/permissions/', permission_views.get_document_permissions, name='get-document-permissions'),
+    path('dynamic-documents/<int:pk>/permissions/public/toggle/', permission_views.toggle_public_access, name='toggle-public-access'),
+    path('dynamic-documents/<int:pk>/permissions/visibility/grant/', permission_views.grant_visibility_permissions, name='grant-visibility-permissions'),
+    path('dynamic-documents/<int:pk>/permissions/usability/grant/', permission_views.grant_usability_permissions, name='grant-usability-permissions'),
+    path('dynamic-documents/<int:pk>/permissions/visibility/revoke/<int:user_id>/', permission_views.revoke_visibility_permission, name='revoke-visibility-permission'),
+    path('dynamic-documents/<int:pk>/permissions/usability/revoke/<int:user_id>/', permission_views.revoke_usability_permission, name='revoke-usability-permission'),
+    path('dynamic-documents/permissions/clients/', permission_views.get_available_clients, name='get-available-clients'),
 ]
 
 # Legal update management URLs
