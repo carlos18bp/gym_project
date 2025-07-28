@@ -68,7 +68,6 @@ def get_document_permissions(request, pk):
                 'user_id': perm.user.id,
                 'email': perm.user.email,
                 'full_name': f"{perm.user.first_name} {perm.user.last_name}".strip(),
-                'permission_type': perm.permission_type,
                 'granted_by': perm.granted_by.email if perm.granted_by else None,
                 'granted_at': perm.granted_at
             })
@@ -214,38 +213,24 @@ def grant_usability_permissions(request, pk):
     Grant usability permissions to multiple users for a document.
     Users must already have visibility permissions (unless document is public).
     
-    Note: If document is public, all users already have edit access.
+    Note: If document is public, all users already have usability access.
     
     Expected payload:
     {
-        "permissions": [
-            {"user_id": 1, "permission_type": "read_only"},
-            {"user_id": 2, "permission_type": "edit"},
-            {"user_id": 3, "permission_type": "full_access"}
-        ]
+        "user_ids": [1, 2, 3, ...]
     }
     """
     try:
         document = DynamicDocument.objects.get(pk=pk)
-        permissions_data = request.data.get('permissions', [])
+        user_ids = request.data.get('user_ids', [])
         
-        if not permissions_data:
+        if not user_ids:
             return Response(
-                {'detail': 'permissions list is required.'}, 
+                {'detail': 'user_ids list is required.'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate permission types
-        valid_types = ['read_only', 'edit', 'full_access']
-        for perm_data in permissions_data:
-            if perm_data.get('permission_type') not in valid_types:
-                return Response(
-                    {'detail': f'Invalid permission_type. Must be one of: {valid_types}'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Get all user IDs and validate they exist
-        user_ids = [perm['user_id'] for perm in permissions_data]
+        # Validate all users exist
         users = User.objects.filter(id__in=user_ids)
         if len(users) != len(user_ids):
             found_ids = [user.id for user in users]
@@ -255,18 +240,11 @@ def grant_usability_permissions(request, pk):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create user lookup
-        user_lookup = {user.id: user for user in users}
-        
         created_permissions = []
         errors = []
         
         with transaction.atomic():
-            for perm_data in permissions_data:
-                user_id = perm_data['user_id']
-                permission_type = perm_data['permission_type']
-                user = user_lookup[user_id]
-                
+            for user in users:
                 # Skip if user is lawyer (they have automatic access)
                 if user.role == 'lawyer' or user.is_gym_lawyer:
                     continue
@@ -279,40 +257,36 @@ def grant_usability_permissions(request, pk):
                     
                     if not has_visibility:
                         errors.append({
-                            'user_id': user_id,
+                            'user_id': user.id,
                             'email': user.email,
                             'error': 'User must have visibility permission first (or document must be public)'
                         })
                         continue
                 
-                # Grant or update usability permission
-                permission, created = DocumentUsabilityPermission.objects.update_or_create(
+                # Grant usability permission
+                permission, created = DocumentUsabilityPermission.objects.get_or_create(
                     document=document,
                     user=user,
-                    defaults={
-                        'permission_type': permission_type,
-                        'granted_by': request.user
-                    }
+                    defaults={'granted_by': request.user}
                 )
                 
-                created_permissions.append({
-                    'user_id': user.id,
-                    'email': user.email,
-                    'full_name': f"{user.first_name} {user.last_name}".strip(),
-                    'permission_type': permission_type,
-                    'created': created
-                })
+                if created:
+                    created_permissions.append({
+                        'user_id': user.id,
+                        'email': user.email,
+                        'full_name': f"{user.first_name} {user.last_name}".strip()
+                    })
         
         warning = None
         if document.is_public:
-            warning = "Note: Document is public, so all users already have edit access regardless of explicit permissions."
+            warning = "Note: Document is public, so all users already have usability access regardless of explicit permissions."
         
         return Response({
             'document_id': document.id,
             'granted_permissions': created_permissions,
             'errors': errors,
             'warning': warning,
-            'message': f'Usability permissions processed for {len(created_permissions)} users.'
+            'message': f'Usability permissions granted to {len(created_permissions)} users.'
         }, status=status.HTTP_200_OK)
         
     except DynamicDocument.DoesNotExist:

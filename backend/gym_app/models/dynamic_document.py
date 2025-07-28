@@ -183,7 +183,7 @@ class DynamicDocument(models.Model):
             user: User instance to check
             
         Returns:
-            str: Permission level ('owner', 'lawyer', 'public_access', 'full_access', 'edit', 'read_only', 'view_only', None)
+            str: Permission level ('owner', 'lawyer', 'public_access', 'usability', 'view_only', None)
         """
         # Lawyers have full access
         if self.is_lawyer(user):
@@ -194,15 +194,14 @@ class DynamicDocument(models.Model):
             return 'owner'
         
         # Check usability permissions (explicit permissions take precedence over public access)
-        usability_perm = self.usability_permissions.filter(user=user).first()
-        if usability_perm:
-            return usability_perm.permission_type
+        if self.usability_permissions.filter(user=user).exists():
+            return 'usability'
         
         # Check visibility permissions (explicit permissions take precedence over public access)
         if self.visibility_permissions.filter(user=user).exists():
             return 'view_only'
         
-        # Public documents grant edit access to all authenticated users
+        # Public documents grant usability access to all authenticated users
         if self.is_public:
             return 'public_access'
         
@@ -306,14 +305,8 @@ class DocumentUsabilityPermission(models.Model):
     Model to manage which users can USE/EDIT a specific document.
     
     Users can only have usability permissions if they already have visibility permissions.
-    Lawyers automatically have full usability access to all documents.
+    Lawyers automatically have usability access to all documents.
     """
-    PERMISSION_TYPES = [
-        ('read_only', 'Read Only'),
-        ('edit', 'Edit'),
-        ('full_access', 'Full Access'),
-    ]
-
     document = models.ForeignKey(
         DynamicDocument,
         on_delete=models.CASCADE,
@@ -324,12 +317,6 @@ class DocumentUsabilityPermission(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         help_text="The user who can use the document"
-    )
-    permission_type = models.CharField(
-        max_length=20,
-        choices=PERMISSION_TYPES,
-        default='read_only',
-        help_text="Level of access the user has"
     )
     granted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -350,7 +337,7 @@ class DocumentUsabilityPermission(models.Model):
         ordering = ['-granted_at']
 
     def __str__(self):
-        return f"{self.user.email} has {self.permission_type} access to '{self.document.title}'"
+        return f"{self.user.email} can use '{self.document.title}'"
 
     def clean(self):
         """

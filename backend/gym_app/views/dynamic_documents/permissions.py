@@ -122,7 +122,7 @@ def require_document_usability(permission_type='read_only'):
     
     Args:
         permission_type (str): Required permission level
-                              ('read_only', 'edit', 'full_access')
+                              ('public_access', 'usability', 'owner', 'lawyer')
         
     Returns:
         Decorator function
@@ -141,7 +141,7 @@ def require_document_usability(permission_type='read_only'):
                     )
                 
                 # Define permission hierarchy (higher index = higher permission)
-                permission_hierarchy = ['view_only', 'read_only', 'public_access', 'edit', 'full_access', 'owner', 'lawyer']
+                permission_hierarchy = ['view_only', 'public_access', 'usability', 'owner', 'lawyer']
                 
                 try:
                     required_level = permission_hierarchy.index(permission_type)
@@ -149,7 +149,7 @@ def require_document_usability(permission_type='read_only'):
                     
                     if user_level < required_level:
                         return Response(
-                            {'detail': f'You need {permission_type} permissions for this action.'}, 
+                            {'detail': f'You need {permission_type} level permissions for this action.'}, 
                             status=status.HTTP_403_FORBIDDEN
                         )
                 except ValueError:

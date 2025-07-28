@@ -32,7 +32,30 @@ from .permissions import (
 @require_lawyer_only
 def create_dynamic_document(request):
     """
-    Create a new dynamic document.
+    Create a new dynamic document with optional permissions.
+    
+    You can now create documents and set permissions in a single API call:
+    
+    Basic fields:
+    - title, content, state, is_public, requires_signature
+    - variables: array of document variables
+    - tags: array of tag IDs
+    - signers: array of user IDs for signatures
+    
+    Permission fields (optional):
+    - visibility_user_ids: array of user IDs who can view the document
+    - usability_user_ids: array of user IDs who can use/edit the document
+    
+    Example payload:
+    {
+        "title": "Contract Template",
+        "content": "Document content...",
+        "is_public": false,
+        "visibility_user_ids": [5, 6, 7, 8],
+        "usability_user_ids": [5, 6],
+        "variables": [...],
+        "tags": [1, 2]
+    }
     """
     print("Request data received:", request.data)
 
@@ -89,10 +112,33 @@ def get_dynamic_document(request, pk):
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
-@require_document_usability('edit')
+@require_document_usability('usability')
 def update_dynamic_document(request, pk):
     """
-    Update an existing dynamic document.
+    Update an existing dynamic document with optional permissions.
+    
+    You can now update documents and modify permissions in a single API call:
+    
+    Basic fields that can be updated:
+    - title, content, state, is_public, requires_signature
+    - variables: array of document variables (replaces existing)
+    - tags: array of tag IDs (replaces existing)
+    - signers: array of user IDs for signatures (adds new ones)
+    
+    Permission fields (optional - replaces existing permissions):
+    - visibility_user_ids: array of user IDs who can view the document
+    - usability_user_ids: array of user IDs who can use/edit the document
+    
+    Example payload:
+    {
+        "title": "Updated Contract Template",
+        "is_public": false,
+        "visibility_user_ids": [5, 6, 8, 9],
+        "usability_user_ids": [5, 6],
+        "variables": [...]
+    }
+    
+    Note: Providing permission fields will REPLACE existing permissions.
     """
     print(request.data)
     try:
@@ -119,7 +165,7 @@ def update_dynamic_document(request, pk):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-@require_document_usability('full_access')
+@require_document_usability('owner')
 def delete_dynamic_document(request, pk):
     """
     Delete a dynamic document.

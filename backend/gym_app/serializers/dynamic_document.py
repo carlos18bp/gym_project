@@ -149,6 +149,23 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         required=False
     )
     
+    # Permission fields for document creation
+    visibility_user_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        queryset=User.objects.all(),
+        required=False,
+        help_text="Users who can view this document"
+    )
+    
+    usability_user_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        queryset=User.objects.all(),
+        required=False,
+        help_text="Users who can use/edit this document"
+    )
+    
     # Read-only field to get the IDs of users who need to sign the document
     signer_ids = serializers.SerializerMethodField(read_only=True)
     
@@ -172,7 +189,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'variables', 'requires_signature',
             'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
-            'is_public', 'user_permission_level', 'can_view', 'can_edit', 'can_delete'
+            'is_public', 'visibility_user_ids', 'usability_user_ids',
+            'user_permission_level', 'can_view', 'can_edit', 'can_delete'
         ]
 
     def get_signer_ids(self, obj):
@@ -198,6 +216,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         if not obj.requires_signature:
             return 0
         return obj.signatures.count()
+    
+
     
     def get_user_permission_level(self, obj):
         """
@@ -229,8 +249,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         if not user_permission:
             return False
             
-        # Define permission hierarchy (public_access grants edit permissions)
-        permission_hierarchy = ['view_only', 'read_only', 'public_access', 'edit', 'full_access', 'owner', 'lawyer']
+        # Define permission hierarchy (public_access and usability grant edit permissions)
+        permission_hierarchy = ['view_only', 'public_access', 'usability', 'owner', 'lawyer']
         try:
             user_level = permission_hierarchy.index(user_permission)
             edit_level = permission_hierarchy.index('public_access')  # public_access allows editing
@@ -251,23 +271,27 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             return False
             
         # Define permission hierarchy
-        permission_hierarchy = ['view_only', 'read_only', 'public_access', 'edit', 'full_access', 'owner', 'lawyer']
+        permission_hierarchy = ['view_only', 'public_access', 'usability', 'owner', 'lawyer']
         try:
             user_level = permission_hierarchy.index(user_permission)
-            delete_level = permission_hierarchy.index('full_access')
+            delete_level = permission_hierarchy.index('owner')  # Only owners and lawyers can delete
             return user_level >= delete_level
         except ValueError:
             return False
 
     def create(self, validated_data):
         """
-        Create a new document with its variables and signatures.
+        Create a new document with its variables, signatures, and permissions.
         """
         # Extract signature-related data
         requires_signature = validated_data.pop('requires_signature', False)
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', [])
         tags = validated_data.pop('tags', [])  # Extract tags
+        
+        # Extract permission-related data
+        visibility_user_ids = validated_data.pop('visibility_user_ids', [])
+        usability_user_ids = validated_data.pop('usability_user_ids', [])
         
         # Add _firma suffix to title if document requires signatures
         if requires_signature and not validated_data['title'].endswith('_firma'):
@@ -319,6 +343,48 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                 except Exception as e:
                     pass  # Handle error silently
 
+        # Create visibility permissions if provided and document is not public
+        if visibility_user_ids and not document.is_public:
+            from gym_app.models.dynamic_document import DocumentVisibilityPermission
+            for user in visibility_user_ids:
+                # Skip lawyers (they have automatic access)
+                if user.role == 'lawyer' or user.is_gym_lawyer:
+                    continue
+                    
+                try:
+                    DocumentVisibilityPermission.objects.get_or_create(
+                        document=document,
+                        user=user,
+                        defaults={'granted_by': creator}
+                    )
+                except Exception as e:
+                    print(f"Error creating visibility permission for {user.email}: {e}")
+
+        # Create usability permissions if provided
+        if usability_user_ids:
+            from gym_app.models.dynamic_document import DocumentUsabilityPermission
+            for user in usability_user_ids:
+                # Skip lawyers (they have automatic access)
+                if user.role == 'lawyer' or user.is_gym_lawyer:
+                    continue
+                
+                # Check if user has visibility permission (unless document is public)
+                if not document.is_public:
+                    has_visibility = user in visibility_user_ids or \
+                                   document.visibility_permissions.filter(user=user).exists()
+                    if not has_visibility:
+                        print(f"Skipping usability permission for {user.email}: no visibility permission")
+                        continue
+                
+                try:
+                    DocumentUsabilityPermission.objects.get_or_create(
+                        document=document,
+                        user=user,
+                        defaults={'granted_by': creator}
+                    )
+                except Exception as e:
+                    print(f"Error creating usability permission for {user.email}: {e}")
+
         # # Send emails to signers if required
         # if requires_signature and signers:
         #     for signer in signers:
@@ -341,12 +407,16 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """
-        Update an existing document with new variables and signatures.
+        Update an existing document with new variables, signatures, and permissions.
         """
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', None)
         tags = validated_data.pop('tags', None)  # Extract tags
+        
+        # Extract permission-related data
+        visibility_user_ids = validated_data.pop('visibility_user_ids', None)
+        usability_user_ids = validated_data.pop('usability_user_ids', None)
 
         # Update tags if provided
         if tags is not None:
@@ -378,6 +448,78 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                         )
                     except Exception as e:
                         pass  # Handle error silently
+
+        # Update permissions if provided
+        request = self.context.get('request')
+        current_user = request.user if request else None
+        
+        # Update visibility permissions if provided
+        if visibility_user_ids is not None:
+            from gym_app.models.dynamic_document import DocumentVisibilityPermission
+            
+            # Remove existing visibility permissions (except for document creator)
+            DocumentVisibilityPermission.objects.filter(
+                document=instance
+            ).exclude(user=instance.created_by).delete()
+            
+            # Add new visibility permissions if document is not public
+            if not instance.is_public and visibility_user_ids:
+                for user in visibility_user_ids:
+                    # Skip lawyers (they have automatic access)
+                    if user.role == 'lawyer' or user.is_gym_lawyer:
+                        continue
+                    
+                    # Skip document creator (they always have access)
+                    if user == instance.created_by:
+                        continue
+                        
+                    try:
+                        DocumentVisibilityPermission.objects.get_or_create(
+                            document=instance,
+                            user=user,
+                            defaults={'granted_by': current_user}
+                        )
+                    except Exception as e:
+                        print(f"Error updating visibility permission for {user.email}: {e}")
+
+        # Update usability permissions if provided
+        if usability_user_ids is not None:
+            from gym_app.models.dynamic_document import DocumentUsabilityPermission
+            
+            # Remove existing usability permissions (except for document creator)
+            DocumentUsabilityPermission.objects.filter(
+                document=instance
+            ).exclude(user=instance.created_by).delete()
+            
+            # Add new usability permissions
+            if usability_user_ids:
+                for user in usability_user_ids:
+                    # Skip lawyers (they have automatic access)
+                    if user.role == 'lawyer' or user.is_gym_lawyer:
+                        continue
+                    
+                    # Skip document creator (they always have access)
+                    if user == instance.created_by:
+                        continue
+                    
+                    # Check if user has visibility permission (unless document is public)
+                    if not instance.is_public:
+                        has_visibility = (
+                            visibility_user_ids and user in visibility_user_ids
+                        ) or instance.visibility_permissions.filter(user=user).exists()
+                        
+                        if not has_visibility:
+                            print(f"Skipping usability permission for {user.email}: no visibility permission")
+                            continue
+                    
+                    try:
+                        DocumentUsabilityPermission.objects.get_or_create(
+                            document=instance,
+                            user=user,
+                            defaults={'granted_by': current_user}
+                        )
+                    except Exception as e:
+                        print(f"Error updating usability permission for {user.email}: {e}")
 
         # Update main document fields
         for attr, value in validated_data.items():
@@ -458,14 +600,13 @@ class DocumentUsabilityPermissionSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField(read_only=True)
     granted_by_email = serializers.EmailField(source='granted_by.email', read_only=True)
     document_title = serializers.CharField(source='document.title', read_only=True)
-    permission_type_display = serializers.CharField(source='get_permission_type_display', read_only=True)
+
 
     class Meta:
         model = DocumentUsabilityPermission
         fields = [
             'id', 'document', 'user', 'user_email', 'user_full_name',
-            'permission_type', 'permission_type_display', 'granted_by', 
-            'granted_by_email', 'granted_at', 'document_title'
+            'granted_by', 'granted_by_email', 'granted_at', 'document_title'
         ]
         read_only_fields = ['id', 'granted_by', 'granted_at']
 
