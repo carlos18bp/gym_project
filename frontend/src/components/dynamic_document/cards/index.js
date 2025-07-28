@@ -11,6 +11,7 @@ export { default as SendDocumentModal } from './modals/SendDocumentModal.vue';
 export { default as DocumentPreviewModal } from './modals/DocumentPreviewModal.vue';
 export { default as DocumentSignaturesModal } from './modals/DocumentSignaturesModal.vue';
 export { default as ElectronicSignatureModal } from './modals/ElectronicSignatureModal.vue';
+export { default as DocumentPermissionsModal } from './modals/DocumentPermissionsModal.vue';
 
 // Modal Manager Composable
 import { ref } from 'vue';
@@ -28,7 +29,8 @@ export function useCardModals(documentStore, userStore) {
     email: { isOpen: false, document: null },
     preview: { isOpen: false, document: null },
     signatures: { isOpen: false, document: null },
-    electronicSignature: { isOpen: false, document: null }
+    electronicSignature: { isOpen: false, document: null },
+    permissions: { isOpen: false, document: null }
   });
 
   /**
@@ -58,6 +60,10 @@ export function useCardModals(documentStore, userStore) {
         
       case 'electronic-signature':
         activeModals.value.electronicSignature = { isOpen: true, document };
+        break;
+        
+      case 'permissions':
+        activeModals.value.permissions = { isOpen: true, document };
         break;
         
       default:

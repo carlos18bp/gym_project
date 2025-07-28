@@ -161,6 +161,15 @@
     v-if="activeModals.electronicSignature.isOpen"
     @close="closeModal('electronicSignature')"
   />
+
+  <!-- Document Permissions Modal -->
+  <DocumentPermissionsModal
+    v-if="activeModals.permissions.isOpen"
+    :is-open="activeModals.permissions.isOpen"
+    :document="activeModals.permissions.document"
+    @close="closeModal('permissions')"
+    @saved="handleRefresh"
+  />
 </template>
 
 <script setup>
@@ -183,7 +192,8 @@ import {
   EditDocumentModal,
   SendDocumentModal,
   DocumentSignaturesModal,
-  ElectronicSignatureModal
+  ElectronicSignatureModal,
+  DocumentPermissionsModal
 } from './index.js';
 
 // Composables
@@ -386,6 +396,7 @@ const cardConfigs = {
     getMenuOptions: (document, context) => {
       const baseOptions = [
         { label: "Editar", action: "edit" },
+        { label: "Permisos", action: "permissions" },
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
@@ -636,6 +647,10 @@ const handleMenuAction = async (action, document) => {
     switch (action) {
       case "edit":
         await handleEditAction(document);
+        break;
+        
+      case "permissions":
+        openModal('permissions', document);
         break;
         
       case "preview":
