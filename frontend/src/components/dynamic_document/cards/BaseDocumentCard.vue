@@ -32,7 +32,16 @@
       
       <!-- Right action slot (menu or arrow) -->
       <slot name="right-action">
-        <Menu as="div" class="relative inline-block text-left menu-container" v-if="menuOptions && menuOptions.length > 0">
+        <!-- Use hierarchical menu if there are many options -->
+        <HierarchicalMenu
+          v-if="shouldUseHierarchicalMenu(menuOptions)"
+          :menu-items="organizedMenuItems"
+          :menu-position="menuPosition"
+          @menu-action="(action) => handleMenuAction(action, document)"
+        />
+        
+        <!-- Use traditional menu for fewer options -->
+        <Menu v-else-if="menuOptions && menuOptions.length > 0" as="div" class="relative inline-block text-left menu-container">
           <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
             <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
           </MenuButton>
@@ -195,6 +204,10 @@ import {
   ElectronicSignatureModal,
   DocumentPermissionsModal
 } from './index.js';
+
+// Import hierarchical menu components
+import HierarchicalMenu from './HierarchicalMenu.vue';
+import { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
 
 // Composables
 const router = useRouter();
@@ -538,6 +551,15 @@ const menuPosition = computed(() => {
   
   // Default responsive positioning: right-aligned on mobile, left-aligned on desktop
   return 'right-0 left-auto sm:left-0 sm:right-auto';
+});
+
+// Organize menu items into hierarchical groups when there are many options
+const organizedMenuItems = computed(() => {
+  if (!menuOptions.value || menuOptions.value.length === 0) {
+    return [];
+  }
+  
+  return organizeMenuIntoGroups(menuOptions.value, props.document);
 });
 
 // Computed classes for card styling based on document state

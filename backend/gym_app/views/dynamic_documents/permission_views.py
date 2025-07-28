@@ -97,31 +97,37 @@ def toggle_public_access(request, pk):
     When is_public=True, all authenticated users can view and edit the document.
     When is_public=False, only users with explicit permissions can access it.
     
-    Expected payload:
-    {
-        "is_public": true/false
-    }
+    Two ways to use this endpoint:
+    
+    1. Automatic toggle (no payload needed):
+       POST /api/dynamic-documents/{id}/permissions/public/toggle/
+       (toggles the current state)
+    
+    2. Set specific value (with payload):
+       POST /api/dynamic-documents/{id}/permissions/public/toggle/
+       {
+           "is_public": true/false
+       }
     """
     try:
         document = DynamicDocument.objects.get(pk=pk)
         is_public = request.data.get('is_public')
         
+        # If no is_public provided, toggle the current state
         if is_public is None:
-            return Response(
-                {'detail': 'is_public field is required.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            is_public = not document.is_public
         
         document.is_public = is_public
         document.save(update_fields=['is_public'])
         
         status_text = "public" if is_public else "private"
+        action_text = "toggled to" if request.data.get('is_public') is None else "changed to"
         
         return Response({
             'document_id': document.id,
             'document_title': document.title,
             'is_public': document.is_public,
-            'message': f'Document access changed to {status_text}.'
+            'message': f'Document access {action_text} {status_text}.'
         }, status=status.HTTP_200_OK)
         
     except DynamicDocument.DoesNotExist:

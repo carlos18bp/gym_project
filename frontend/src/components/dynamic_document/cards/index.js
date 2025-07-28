@@ -4,6 +4,7 @@ export { default as DocumentCard } from './DocumentCard.vue';
 export { default as UseDocumentCard } from './UseDocumentCard.vue';
 export { default as SignatureDocumentCard } from './SignatureDocumentCard.vue';
 export { default as FolderCard } from './FolderCard.vue';
+export { default as HierarchicalMenu } from './HierarchicalMenu.vue';
 
 // Modal Components
 export { default as EditDocumentModal } from './modals/EditDocumentModal.vue';
@@ -12,6 +13,9 @@ export { default as DocumentPreviewModal } from './modals/DocumentPreviewModal.v
 export { default as DocumentSignaturesModal } from './modals/DocumentSignaturesModal.vue';
 export { default as ElectronicSignatureModal } from './modals/ElectronicSignatureModal.vue';
 export { default as DocumentPermissionsModal } from './modals/DocumentPermissionsModal.vue';
+
+// Menu helpers
+export { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
 
 // Modal Manager Composable
 import { ref } from 'vue';
