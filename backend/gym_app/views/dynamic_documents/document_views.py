@@ -402,6 +402,12 @@ def download_dynamic_document_word(request, pk):
         # Create Word document
         doc = Document()
         
+        # Configure page size to Legal (Oficio)
+        from docx.shared import Inches
+        section = doc.sections[0]
+        section.page_width = Inches(8.5)   # 8.5 inches width
+        section.page_height = Inches(14)   # 14 inches height (Legal/Oficio)
+        
         # Configure default font for the document to Calibri
         font_name = 'Calibri'
         
