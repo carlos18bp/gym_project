@@ -4,7 +4,7 @@ import {
   create_request,
   update_request,
 } from "./services/request_http";
-import { useUserStore } from "./user";
+import { useUserStore } from "./auth/user";
 import { registerUserActivity, ACTION_TYPES } from "./dashboard/activity_feed";
 
 export const useProcessStore = defineStore("process", {

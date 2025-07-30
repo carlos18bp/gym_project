@@ -173,8 +173,8 @@ import { ref, onMounted } from "vue";
 import { FolderIcon, PlusIcon, FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
-import { useUserStore } from "@/stores/user";
-import { useAuthStore } from "@/stores/auth";
+import { useUserStore } from "@/stores/auth/user";
+import { useAuthStore } from "@/stores/auth/auth";
 import { showNotification } from "@/shared/notification_message";
 
 // Get user store to access the current user's ID

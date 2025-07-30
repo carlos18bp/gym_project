@@ -155,7 +155,7 @@ import axios from "axios";
 import { useRouter } from "vue-router";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
-import { useCaptchaStore } from "@/stores/captcha";
+import { useCaptchaStore } from "@/stores/auth/captcha";
 
 const router = useRouter(); // Get the router instance
 const email = ref(""); // A ref to store the email input

@@ -91,7 +91,7 @@
 import { onMounted, onActivated, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRecentDocumentStore } from '@/stores/dashboard/recentDocument';
-import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/auth/user';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import SendDocument from '@/components/dynamic_document/layouts/modals/SendDocument.vue';

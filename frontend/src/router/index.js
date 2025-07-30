@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth/auth";
 import { createRouter, createWebHistory } from "vue-router";
 import SlideBar from "@/components/layouts/SlideBar.vue";
 
@@ -281,7 +281,7 @@ export function installRouterGuards(authStore) {
       // If user is authenticated, check role restrictions
       if (isAuthenticated && to.meta.requiresLawyer) {
         // Load user data if not loaded
-        const userStore = await import('@/stores/user').then(m => m.useUserStore());
+        const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
         await userStore.init();
         
         // Check if the user is a client trying to access a lawyer-only route

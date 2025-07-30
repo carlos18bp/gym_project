@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from "pinia";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import usersData from "../data_sample/users.json";
 import AxiosMockAdapter from "axios-mock-adapter";
 import axios from "axios";

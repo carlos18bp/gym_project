@@ -42,7 +42,7 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from "vue";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { get_request } from "@/stores/services/request_http";
 import { showNotification } from "@/shared/notification_message";

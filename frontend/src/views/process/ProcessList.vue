@@ -208,7 +208,7 @@ import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue"
 import { AdjustmentsVerticalIcon, ChevronUpIcon, CubeTransparentIcon, PlusIcon } from "@heroicons/vue/20/solid";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { useProcessStore } from "@/stores/process";
 
 const route = useRoute();

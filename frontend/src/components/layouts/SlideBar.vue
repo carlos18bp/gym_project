@@ -362,8 +362,8 @@ import {
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
-import { useUserStore } from "@/stores/user";
+import { useAuthStore } from "@/stores/auth/auth";
+import { useUserStore } from "@/stores/auth/user";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import WhatsappIcon from "@/assets/icons/social_network/whatsapp.svg";

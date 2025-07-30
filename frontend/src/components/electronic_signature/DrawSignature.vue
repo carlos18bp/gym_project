@@ -66,7 +66,7 @@
 
 <script setup>
 import { ref, onMounted, defineEmits, defineProps } from 'vue';
-import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/auth/user';
 
 /**
  * Component for drawing electronic signature

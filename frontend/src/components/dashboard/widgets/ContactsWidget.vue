@@ -49,7 +49,7 @@
  * If the user is a client, they'll see "Lawyers" with gray dots.
  */
 import { ref, computed, onMounted } from 'vue';
-import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/auth/user';
 import defaultAvatarUrl from "@/assets/images/user_avatar.jpg";
 
 const props = defineProps({

@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
-import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/auth/user';
 import { showNotification } from '@/shared/notification_message';
 
 export function useDocumentPermissions() {

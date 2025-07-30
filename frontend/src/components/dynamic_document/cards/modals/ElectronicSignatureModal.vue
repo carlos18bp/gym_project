@@ -23,7 +23,7 @@
 <script setup>
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
 
 const userStore = useUserStore();

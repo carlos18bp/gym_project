@@ -135,7 +135,7 @@
 import { onMounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 import Swal from "sweetalert2";

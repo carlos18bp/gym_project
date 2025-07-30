@@ -63,7 +63,7 @@
 <script setup>
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { computed, onMounted, ref } from "vue";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { ChevronRightIcon } from "@heroicons/vue/20/solid";
 
 const userStore = useUserStore();

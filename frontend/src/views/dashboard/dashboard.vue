@@ -97,8 +97,8 @@ import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
 import QuickActionButtons from '@/components/dashboard/QuickActionButtons.vue';
 import RecentProcessList from '@/components/dashboard/RecentProcessList.vue';
 import RecentDocumentsList from '@/components/dashboard/RecentDocumentsList.vue';
-import { useUserStore } from '@/stores/user';
-import { useAuthStore } from '@/stores/auth';
+import { useUserStore } from '@/stores/auth/user';
+import { useAuthStore } from '@/stores/auth/auth';
 
 // Stores
 const userStore = useUserStore();

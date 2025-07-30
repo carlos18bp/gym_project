@@ -1,8 +1,8 @@
 import axios from "axios";
 import { defineStore } from "pinia";
 import { useUserStore } from "./user";
-import { useProcessStore } from "./process";
-import { get_request } from "./services/request_http";
+import { useProcessStore } from "../process";
+import { get_request } from "../services/request_http";
 
 // Define the authentication store
 export const useAuthStore = defineStore("auth", {

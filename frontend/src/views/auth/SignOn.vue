@@ -197,11 +197,11 @@
 import axios from "axios";
 import router from "@/router";
 import { onMounted, reactive, ref } from "vue";
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth/auth";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
-import { useCaptchaStore } from "@/stores/captcha";
+import { useCaptchaStore } from "@/stores/auth/captcha";
 
 const authStore = useAuthStore(); // Get the authentication store instance
 const captchaStore = useCaptchaStore();

@@ -20,7 +20,7 @@ export { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHe
 // Modal Manager Composable
 import { ref } from 'vue';
 import { openPreviewModal } from "@/shared/document_utils";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 
 /**
  * Composable for managing card modals centrally

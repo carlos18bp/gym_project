@@ -192,7 +192,7 @@ import {
   CheckCircleIcon,
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
 import { get_request } from "@/stores/services/request_http";
 import { DocumentCard } from "@/components/dynamic_document/cards";

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { useAuthStore } from "./auth";
-import { get_request, update_request, create_request, upload_file_request } from "./services/request_http";
-import { registerUserActivity, ACTION_TYPES } from "./dashboard/activity_feed";
+import { get_request, update_request, create_request, upload_file_request } from "../services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 export const useUserStore = defineStore("user", {
   /**
