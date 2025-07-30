@@ -496,11 +496,28 @@ def generate_original_document_pdf(document):
     # Register fonts
     font_paths = register_carlito_fonts()
 
+    # Define background image style if letterhead exists
+    background_style = ""
+    if document.letterhead_image:
+        try:
+            # Get the absolute path to the letterhead image
+            letterhead_path = os.path.abspath(document.letterhead_image.path)
+            if os.path.exists(letterhead_path):
+                background_style = f"""
+        background-image: url('file://{letterhead_path}');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        background-attachment: fixed;"""
+        except (ValueError, AttributeError):
+            # Image file doesn't exist or path is invalid
+            background_style = ""
+
     # Define CSS styles for PDF
     styles = f"""
     <style>
     @page {{
-        margin: 2cm;
+        margin: 2cm;{background_style}
     }}
 
     @font-face {{

@@ -2,8 +2,9 @@ import io
 import re
 import os
 from django.conf import settings
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 from django.template.loader import get_template
+from PIL import Image
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -245,11 +246,28 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             print(f"Error registering fonts: {e}")
             raise
 
+        # Define background image style if letterhead exists
+        background_style = ""
+        if document.letterhead_image:
+            try:
+                # Get the absolute path to the letterhead image
+                letterhead_path = os.path.abspath(document.letterhead_image.path)
+                if os.path.exists(letterhead_path):
+                    background_style = f"""
+            background-image: url('file://{letterhead_path}');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            background-attachment: fixed;"""
+            except (ValueError, AttributeError):
+                # Image file doesn't exist or path is invalid
+                background_style = ""
+
         # Define CSS styles for PDF
         styles = f"""
         <style>
         @page {{
-            margin: 2cm;
+            margin: 2cm;{background_style}
         }}
 
         @font-face {{
@@ -407,6 +425,61 @@ def download_dynamic_document_word(request, pk):
         section = doc.sections[0]
         section.page_width = Inches(8.5)   # 8.5 inches width
         section.page_height = Inches(14)   # 14 inches height (Legal/Oficio)
+        
+        # Add letterhead image as background if available
+        if document.letterhead_image:
+            try:
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                from docx.oxml.shared import qn
+                from docx.oxml import parse_xml
+                
+                # Add background image using Word's background functionality
+                # This creates a true background image that appears behind all content
+                
+                # Get the document's body element
+                body = doc.element.body
+                
+                # Create background element
+                background_xml = f'''
+                <w:background xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
+                             xmlns:v="urn:schemas-microsoft-com:vml"
+                             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+                             w:color="ffffff">
+                    <v:fill r:id="rId1" type="frame"/>
+                </w:background>
+                '''
+                
+                try:
+                    background_element = parse_xml(background_xml)
+                    body.addprevious(background_element)
+                except:
+                    # Fallback: Add as watermark in header with behind text positioning
+                    header = section.header
+                    header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+                    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    run = header_para.runs[0] if header_para.runs else header_para.add_run()
+                    
+                    # Add image sized to cover most of the page as background
+                    picture = run.add_picture(
+                        document.letterhead_image.path,
+                        width=Inches(6.5),   # Almost full page width
+                        height=Inches(12)    # Almost full page height
+                    )
+                    
+                    # Try to set the image behind text (this may not work in all Word versions)
+                    try:
+                        # Access the drawing element and set it behind text
+                        drawing = picture._element
+                        drawing.set(qn('wp:behindDoc'), '1')
+                    except:
+                        pass
+                    
+                    # Minimize header distance
+                    section.header_distance = Inches(0.1)
+                
+            except Exception as e:
+                print(f"Warning: Could not add letterhead image to Word document: {e}")
         
         # Configure default font for the document to Calibri
         font_name = 'Calibri'
@@ -681,4 +754,219 @@ def update_recent_document(request, document_id):
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_document_usability
+def upload_letterhead_image(request, pk):
+    """
+    Upload a letterhead image for a specific document.
+    
+    Accepts a PNG image file and saves it to the document's letterhead_image field.
+    The image should be in 8.5:14 ratio (612x792 pixels recommended) for best results.
+    
+    Parameters:
+        request (HttpRequest): The request object containing the image file
+        pk (int): The primary key of the document
+    
+    Returns:
+        Response: Success message with image info or error details
+    """
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+        
+        # Check if image file is provided
+        if 'image' not in request.FILES:
+            return Response(
+                {'detail': 'No se proporcionó ninguna imagen. Use el campo "image" para subir el archivo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_file = request.FILES['image']
+        
+        # Validate file extension
+        if not image_file.name.lower().endswith('.png'):
+            return Response(
+                {'detail': 'Solo se permiten archivos PNG para el membrete.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if image_file.size > max_size:
+            return Response(
+                {'detail': 'El archivo es demasiado grande. Tamaño máximo: 10MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate image dimensions and format using PIL
+        try:
+            img = Image.open(image_file)
+            width, height = img.size
+            
+            # Check if it's a valid image
+            img.verify()
+            
+            # Reset file pointer after verification
+            image_file.seek(0)
+            
+            # Recommended dimensions check (warning, not error)
+            recommended_width, recommended_height = 612, 792
+            aspect_ratio = width / height
+            recommended_ratio = recommended_width / recommended_height
+            
+            warnings = []
+            if abs(aspect_ratio - recommended_ratio) > 0.1:  # Allow 10% tolerance
+                warnings.append(f"La proporción de aspecto recomendada es 8.5:14 ({recommended_width}x{recommended_height}). Su imagen es {width}x{height}.")
+            
+        except Exception as e:
+            return Response(
+                {'detail': f'Archivo de imagen inválido: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Delete previous letterhead image if exists
+        if document.letterhead_image:
+            try:
+                if os.path.exists(document.letterhead_image.path):
+                    os.remove(document.letterhead_image.path)
+            except:
+                pass  # Continue even if deletion fails
+        
+        # Save the new image
+        document.letterhead_image = image_file
+        document.save(update_fields=['letterhead_image'])
+        
+        # Prepare response data
+        response_data = {
+            'message': 'Imagen de membrete subida exitosamente.',
+            'document_id': document.id,
+            'image_info': {
+                'filename': image_file.name,
+                'size_bytes': image_file.size,
+                'dimensions': f"{width}x{height}",
+                'format': img.format if hasattr(img, 'format') else 'PNG'
+            }
+        }
+        
+        if warnings:
+            response_data['warnings'] = warnings
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+        
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al subir la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_document_visibility
+def get_letterhead_image(request, pk):
+    """
+    Get the letterhead image for a specific document.
+    
+    Parameters:
+        request (HttpRequest): The request object
+        pk (int): The primary key of the document
+    
+    Returns:
+        FileResponse: The letterhead image file
+        Response: Error message if image not found
+    """
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+        
+        # Check if document has letterhead image
+        if not document.letterhead_image:
+            return Response(
+                {'detail': 'Este documento no tiene imagen de membrete.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if file exists
+        if not os.path.exists(document.letterhead_image.path):
+            return Response(
+                {'detail': 'El archivo de imagen no se encuentra en el servidor.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return the image file
+        return FileResponse(
+            open(document.letterhead_image.path, 'rb'),
+            as_attachment=False,
+            filename=os.path.basename(document.letterhead_image.name),
+            content_type='image/png'
+        )
+        
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al obtener la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@require_document_usability
+def delete_letterhead_image(request, pk):
+    """
+    Delete the letterhead image for a specific document.
+    
+    Parameters:
+        request (HttpRequest): The request object
+        pk (int): The primary key of the document
+    
+    Returns:
+        Response: Success or error message
+    """
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+        
+        # Check if document has letterhead image
+        if not document.letterhead_image:
+            return Response(
+                {'detail': 'Este documento no tiene imagen de membrete para eliminar.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Delete the file from filesystem
+        try:
+            if os.path.exists(document.letterhead_image.path):
+                os.remove(document.letterhead_image.path)
+        except Exception as e:
+            print(f"Warning: Could not delete file {document.letterhead_image.path}: {e}")
+        
+        # Clear the field
+        document.letterhead_image = None
+        document.save(update_fields=['letterhead_image'])
+        
+        return Response(
+            {'message': 'Imagen de membrete eliminada exitosamente.'},
+            status=status.HTTP_200_OK
+        )
+        
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al eliminar la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

@@ -113,6 +113,11 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:pk>/permissions/visibility/revoke/<int:user_id>/', permission_views.revoke_visibility_permission, name='revoke-visibility-permission'),
     path('dynamic-documents/<int:pk>/permissions/usability/revoke/<int:user_id>/', permission_views.revoke_usability_permission, name='revoke-usability-permission'),
     path('dynamic-documents/permissions/clients/', permission_views.get_available_clients, name='get-available-clients'),
+    
+    # Letterhead image management
+    path('dynamic-documents/<int:pk>/letterhead/upload/', document_views.upload_letterhead_image, name='upload-letterhead-image'),
+    path('dynamic-documents/<int:pk>/letterhead/', document_views.get_letterhead_image, name='get-letterhead-image'),
+    path('dynamic-documents/<int:pk>/letterhead/delete/', document_views.delete_letterhead_image, name='delete-letterhead-image'),
 ]
 
 # Legal update management URLs

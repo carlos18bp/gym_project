@@ -12,6 +12,12 @@ def document_version_path(instance, filename):
     filename = f"{uuid.uuid4().hex}.{ext}"
     return os.path.join('document_versions', str(instance.document.id), filename)
 
+def letterhead_image_path(instance, filename):
+    """Generate unique path for letterhead images"""
+    ext = filename.split('.')[-1].lower()
+    filename = f"letterhead_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('letterheads', str(instance.id), filename)
+
 
 class Tag(models.Model):
     """
@@ -99,6 +105,12 @@ class DynamicDocument(models.Model):
     is_public = models.BooleanField(
         default=False, 
         help_text="If True, all users can view and use this document without explicit permissions."
+    )
+    letterhead_image = models.ImageField(
+        upload_to=letterhead_image_path,
+        null=True,
+        blank=True,
+        help_text="Imagen PNG para membrete que se mostrará como fondo centrado en cada página del documento. Recomendado: 612x792 píxeles para tamaño oficio."
     )
 
     def __str__(self):
