@@ -23,14 +23,12 @@ from .permissions import (
     require_document_visibility,
     require_document_visibility_by_id,
     require_document_usability,
-    require_lawyer_only,
     filter_documents_by_visibility
 )
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@require_lawyer_only
 def create_dynamic_document(request):
     """
     Create a new dynamic document with optional permissions.
