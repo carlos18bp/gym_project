@@ -79,7 +79,7 @@ import { ref, computed, watch } from 'vue';
 import { XMarkIcon } from '@heroicons/vue/24/outline';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import DocumentPermissionsManager from '@/components/dynamic_document/lawyer/document-config/DocumentPermissionsManager.vue';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { useDocumentPermissions } from '@/composables/document-variables/useDocumentPermissions';
 import { showNotification } from '@/shared/notification_message';
 

@@ -220,7 +220,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";

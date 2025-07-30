@@ -12,7 +12,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from '@/stores/user';
 import { UseDocumentCard } from "@/components/dynamic_document/cards";
 

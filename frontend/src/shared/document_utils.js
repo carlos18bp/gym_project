@@ -1,6 +1,6 @@
 import { ref } from "vue";
 import { get_request } from "@/stores/services/request_http";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useRecentViews } from '@/composables/useRecentViews';
 
 // Reactive state for document preview modal

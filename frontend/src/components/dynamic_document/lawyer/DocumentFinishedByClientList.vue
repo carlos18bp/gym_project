@@ -22,7 +22,7 @@
 <script setup>
 import { computed, onMounted } from "vue";
 import { CheckCircleIcon } from "@heroicons/vue/24/outline";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/user";
 import { DocumentCard } from "@/components/dynamic_document/cards";
 

@@ -12,7 +12,7 @@
 import Editor from "@tinymce/tinymce-vue";
 import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { showNotification } from "@/shared/notification_message";
 
 const editorContent = ref(""); // Content of the editor

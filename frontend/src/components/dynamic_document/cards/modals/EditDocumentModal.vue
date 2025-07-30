@@ -62,7 +62,7 @@
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref, watchEffect, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { showNotification } from "@/shared/notification_message";
 
 const props = defineProps({

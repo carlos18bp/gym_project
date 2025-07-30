@@ -185,7 +185,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { getColorById } from '@/shared/color_palette';
 import { TagIcon, ChevronDownIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline';
 
