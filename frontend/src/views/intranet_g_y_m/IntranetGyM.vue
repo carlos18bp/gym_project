@@ -123,7 +123,7 @@ import {
   XMarkIcon,
   DocumentTextIcon,
 } from "@heroicons/vue/24/outline";
-import { useIntranetGymStore } from "@/stores/intranet_gym";
+import { useIntranetGymStore } from "@/stores/legal/intranet_gym";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { get_request } from "./services/request_http";
+import { get_request } from "../services/request_http";
 
 export const useCaseTypeStore = defineStore("case_type", {
   /**

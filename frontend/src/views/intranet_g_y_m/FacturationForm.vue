@@ -231,7 +231,7 @@ import {
   PhotoIcon,
   DocumentIcon,
 } from "@heroicons/vue/24/outline";
-import { useIntranetGymStore } from "@/stores/intranet_gym";
+import { useIntranetGymStore } from "@/stores/legal/intranet_gym";
 import { useUserStore } from "@/stores/user";
 import { ref, computed, reactive, onMounted } from "vue";
 import { showNotification } from "@/shared/notification_message.js";
