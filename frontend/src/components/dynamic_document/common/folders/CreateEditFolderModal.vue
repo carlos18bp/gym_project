@@ -76,7 +76,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useDocumentFolderStore } from '@/stores/documentFolder';
+import { useDocumentFolderStore } from '@/stores/dynamic_document/folders';
 import { getAllColors } from '@/shared/color_palette';
 import { showNotification } from '@/shared/notification_message';
 
