@@ -71,7 +71,7 @@ import {
   PencilIcon, 
   QuestionMarkCircleIcon 
 } from '@heroicons/vue/24/outline';
-import { useActivityFeedStore } from '@/stores/activity_feed';
+import { useActivityFeedStore } from '@/stores/dashboard/activity_feed';
 
 const props = defineProps({
   /**

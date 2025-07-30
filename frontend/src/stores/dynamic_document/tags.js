@@ -4,7 +4,7 @@ import {
   update_request,
   delete_request,
 } from "../services/request_http";
-import { registerUserActivity, ACTION_TYPES } from "../activity_feed";
+import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 /**
  * Tag management actions

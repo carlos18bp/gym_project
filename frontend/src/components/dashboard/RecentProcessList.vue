@@ -62,7 +62,7 @@
 import { onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronDownIcon } from '@heroicons/vue/20/solid';
-import { useRecentProcessStore } from '@/stores/recentProcess';
+import { useRecentProcessStore } from '@/stores/dashboard/recentProcess';
 
 const router = useRouter();
 const recentProcessStore = useRecentProcessStore();

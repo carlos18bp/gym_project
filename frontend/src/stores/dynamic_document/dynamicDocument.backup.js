@@ -6,7 +6,7 @@ import {
   delete_request,
 } from "../services/request_http";
 import { downloadFile } from "@/shared/document_utils";
-import { registerUserActivity, ACTION_TYPES } from "../activity_feed";
+import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 export const useDynamicDocumentStore = defineStore("dynamicDocument", {
   /**
