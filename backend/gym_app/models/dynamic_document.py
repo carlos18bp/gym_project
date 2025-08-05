@@ -12,6 +12,12 @@ def document_version_path(instance, filename):
     filename = f"{uuid.uuid4().hex}.{ext}"
     return os.path.join('document_versions', str(instance.document.id), filename)
 
+def letterhead_image_path(instance, filename):
+    """Generate unique path for letterhead images"""
+    ext = filename.split('.')[-1].lower()
+    filename = f"letterhead_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('letterheads', str(instance.id), filename)
+
 
 class Tag(models.Model):
     """
@@ -96,12 +102,122 @@ class DynamicDocument(models.Model):
     updated_at = models.DateTimeField(auto_now=True, help_text="Document last updated timestamp.")
     requires_signature = models.BooleanField(default=False, help_text="Indicates if this document requires signatures.")
     fully_signed = models.BooleanField(default=False, help_text="Indicates if the document has been signed by all required signers.")
+    is_public = models.BooleanField(
+        default=False, 
+        help_text="If True, all users can view and use this document without explicit permissions."
+    )
+    letterhead_image = models.ImageField(
+        upload_to=letterhead_image_path,
+        null=True,
+        blank=True,
+        help_text="Imagen PNG para membrete que se mostrará como fondo centrado en cada página del documento. Recomendado: 612x792 píxeles para tamaño oficio."
+    )
 
     def __str__(self):
         """
         Returns the string representation of the document, which is its title.
         """
         return self.title
+
+    def is_lawyer(self, user):
+        """
+        Check if user is a lawyer (has full access to all documents).
+        
+        Args:
+            user: User instance to check
+            
+        Returns:
+            bool: True if user is a lawyer, False otherwise
+        """
+        return user.role == 'lawyer' or user.is_gym_lawyer
+
+    def can_view(self, user):
+        """
+        Check if user has visibility permissions for this document.
+        
+        Lawyers always have access. Public documents are accessible to all users.
+        For other users, check visibility permissions.
+        
+        Args:
+            user: User instance to check
+            
+        Returns:
+            bool: True if user can view the document, False otherwise
+        """
+        # Lawyers always have access
+        if self.is_lawyer(user):
+            return True
+            
+        # Document creator always has access
+        if self.created_by == user:
+            return True
+            
+        # Public documents are accessible to all authenticated users
+        if self.is_public:
+            return True
+            
+        # Check if user has explicit visibility permission
+        return self.visibility_permissions.filter(user=user).exists()
+
+    def can_use(self, user):
+        """
+        Check if user has usability permissions for this document.
+        
+        Lawyers always have access. Public documents grant edit access to all users.
+        For other users, check usability permissions.
+        
+        Args:
+            user: User instance to check
+            
+        Returns:
+            bool: True if user can use the document, False otherwise
+        """
+        # Lawyers always have access
+        if self.is_lawyer(user):
+            return True
+            
+        # Document creator always has access
+        if self.created_by == user:
+            return True
+            
+        # Public documents grant edit access to all authenticated users
+        if self.is_public:
+            return True
+            
+        # Check if user has explicit usability permission
+        return self.usability_permissions.filter(user=user).exists()
+
+    def get_user_permission_level(self, user):
+        """
+        Get the permission level for a specific user.
+        
+        Args:
+            user: User instance to check
+            
+        Returns:
+            str: Permission level ('owner', 'lawyer', 'public_access', 'usability', 'view_only', None)
+        """
+        # Lawyers have full access
+        if self.is_lawyer(user):
+            return 'lawyer'
+            
+        # Document creator is owner
+        if self.created_by == user:
+            return 'owner'
+        
+        # Check usability permissions (explicit permissions take precedence over public access)
+        if self.usability_permissions.filter(user=user).exists():
+            return 'usability'
+        
+        # Check visibility permissions (explicit permissions take precedence over public access)
+        if self.visibility_permissions.filter(user=user).exists():
+            return 'view_only'
+        
+        # Public documents grant usability access to all authenticated users
+        if self.is_public:
+            return 'public_access'
+        
+        return None
 
     def check_fully_signed(self):
         """
@@ -154,6 +270,107 @@ class DynamicDocument(models.Model):
         
         # Call the parent delete method
         super().delete(*args, **kwargs)
+
+
+class DocumentVisibilityPermission(models.Model):
+    """
+    Model to manage which users can VIEW a specific document.
+    
+    Lawyers automatically have visibility to all documents and don't need explicit permissions.
+    This model is used to grant visibility permissions to clients.
+    """
+    document = models.ForeignKey(
+        DynamicDocument,
+        on_delete=models.CASCADE,
+        related_name='visibility_permissions',
+        help_text="The document this permission applies to"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        help_text="The user who can view the document"
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='granted_visibility_permissions',
+        help_text="The lawyer who granted this permission"
+    )
+    granted_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this permission was granted"
+    )
+
+    class Meta:
+        unique_together = ('document', 'user')
+        verbose_name = "Document Visibility Permission"
+        verbose_name_plural = "Document Visibility Permissions"
+        ordering = ['-granted_at']
+
+    def __str__(self):
+        return f"{self.user.email} can view '{self.document.title}'"
+
+
+class DocumentUsabilityPermission(models.Model):
+    """
+    Model to manage which users can USE/EDIT a specific document.
+    
+    Users can only have usability permissions if they already have visibility permissions.
+    Lawyers automatically have usability access to all documents.
+    """
+    document = models.ForeignKey(
+        DynamicDocument,
+        on_delete=models.CASCADE,
+        related_name='usability_permissions',
+        help_text="The document this permission applies to"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        help_text="The user who can use the document"
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='granted_usability_permissions',
+        help_text="The lawyer who granted this permission"
+    )
+    granted_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this permission was granted"
+    )
+
+    class Meta:
+        unique_together = ('document', 'user')
+        verbose_name = "Document Usability Permission"
+        verbose_name_plural = "Document Usability Permissions"
+        ordering = ['-granted_at']
+
+    def __str__(self):
+        return f"{self.user.email} can use '{self.document.title}'"
+
+    def clean(self):
+        """
+        Validate that user has visibility permission before granting usability permission.
+        """
+        # Skip validation for lawyers as they have automatic access
+        if self.user.role == 'lawyer' or self.user.is_gym_lawyer:
+            return
+
+        # Check if user has visibility permission
+        if not self.document.visibility_permissions.filter(user=self.user).exists():
+            raise ValidationError(
+                "User must have visibility permission before granting usability permission."
+            )
+
+    def save(self, *args, **kwargs):
+        """
+        Validate before saving.
+        """
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class DocumentSignature(models.Model):

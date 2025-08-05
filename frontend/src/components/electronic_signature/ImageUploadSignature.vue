@@ -66,7 +66,7 @@
 
 <script setup>
 import { ref, defineEmits, defineProps } from 'vue';
-import { useUserStore } from '@/stores/user';
+import { useUserStore } from '@/stores/auth/user';
 
 /**
  * Component for uploading signature image

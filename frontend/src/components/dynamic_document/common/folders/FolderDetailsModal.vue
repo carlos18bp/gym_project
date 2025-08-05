@@ -157,8 +157,8 @@ import { computed, watch } from 'vue';
 import { XMarkIcon, PlusIcon, DocumentIcon } from '@heroicons/vue/24/outline';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import { DocumentCard, UseDocumentCard, SignatureDocumentCard } from '@/components/dynamic_document/cards';
-import { useUserStore } from '@/stores/user';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
+import { useUserStore } from '@/stores/auth/user';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { getColorById } from '@/shared/color_palette';
 
 // Props

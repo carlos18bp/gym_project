@@ -12,8 +12,8 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { useUserStore } from '@/stores/user';
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useUserStore } from '@/stores/auth/user';
 import { UseDocumentCard } from "@/components/dynamic_document/cards";
 
 const documentStore = useDynamicDocumentStore();

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { get_request, create_request } from "./services/request_http";
+import { get_request, create_request } from "../services/request_http";
 
 export const useRecentProcessStore = defineStore("recentProcess", {
   state: () => ({

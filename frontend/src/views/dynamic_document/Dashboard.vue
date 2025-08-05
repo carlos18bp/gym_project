@@ -258,9 +258,9 @@
 
 <script setup>
 import { onMounted, computed, ref, watch, onUnmounted } from "vue";
-import { useUserStore } from "@/stores/user";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { useDocumentFolderStore } from "@/stores/documentFolder";
+import { useUserStore } from "@/stores/auth/user";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
 import { useRouter } from "vue-router";
 import { FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
 

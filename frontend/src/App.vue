@@ -7,8 +7,8 @@
 import { onMounted, ref, watch } from "vue";
 import { RouterView } from "vue-router";
 import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
-import { useAuthStore } from "@/stores/auth";
-import { useUserStore } from "@/stores/user";
+import { useAuthStore } from "@/stores/auth/auth";
+import { useUserStore } from "@/stores/auth/user";
 import { useIdleLogout } from "@/composables/useIdleLogout";
 
 // State to control if initial setup was already executed

@@ -48,8 +48,8 @@ import {
   PencilIcon,
 } from "@heroicons/vue/24/outline";
 import { computed, ref, watch, onMounted } from "vue";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { useUserStore } from "@/stores/user";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
 import { DocumentCard } from "@/components/dynamic_document/cards";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";

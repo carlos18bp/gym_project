@@ -11,9 +11,17 @@ from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf
+from .permissions import (
+    require_document_visibility,
+    require_document_visibility_by_id,
+    require_document_usability,
+    require_lawyer_or_owner,
+    require_lawyer_or_owner_by_id,
+    filter_documents_by_visibility
+)
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import legal
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -72,6 +80,7 @@ def generate_encrypted_document_id(document_id, created_at):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
 def get_document_signatures(request, document_id):
     """
     Get all signatures for a specific document.
@@ -94,6 +103,7 @@ def get_pending_signatures(request):
     """
     Get all documents that require a signature from the authenticated user.
     Returns the complete document information along with signature details.
+    Only returns documents the user has permission to view.
     """
     # Get all pending signatures for the user
     pending_signatures = DocumentSignature.objects.filter(
@@ -101,18 +111,25 @@ def get_pending_signatures(request):
         signed=False
     ).select_related('document')
     
-    # Get unique documents that need signatures
+    # Get unique documents that need signatures and filter by visibility
     documents = DynamicDocument.objects.filter(
         signatures__in=pending_signatures
     ).distinct()
     
+    # Filter by visibility permissions
+    visible_documents = []
+    for document in documents:
+        if document.can_view(request.user):
+            visible_documents.append(document)
+    
     # Serialize the documents with their signature information
-    serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+    serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
 def sign_document(request, document_id, user_id):
     """
     Sign a document using the user's signature.
@@ -291,6 +308,7 @@ def sign_document(request, document_id, user_id):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
 def remove_signature_request(request, document_id, user_id):
     """
     Remove a signature request for a specific user on a document.
@@ -347,12 +365,20 @@ def remove_signature_request(request, document_id, user_id):
 def get_user_pending_documents_full(request, user_id):
     """
     Obtener información detallada sobre documentos que requieren la firma de un usuario específico.
+    Only returns documents the requesting user has permission to view.
     """
     try:
         user = User.objects.get(pk=user_id)
         pending_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=False).select_related('document')
-        documents = [signature.document for signature in pending_signatures]
-        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        all_documents = [signature.document for signature in pending_signatures]
+        
+        # Filter documents by visibility permissions
+        visible_documents = []
+        for document in all_documents:
+            if document.can_view(request.user):
+                visible_documents.append(document)
+        
+        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -365,12 +391,20 @@ def get_user_pending_documents_full(request, user_id):
 def get_user_signed_documents(request, user_id):
     """
     Obtener información detallada sobre documentos que han sido firmados por un usuario específico.
+    Only returns documents the requesting user has permission to view.
     """
     try:
         user = User.objects.get(pk=user_id)
         signed_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=True).select_related('document')
-        documents = [signature.document for signature in signed_signatures]
-        serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
+        all_documents = [signature.document for signature in signed_signatures]
+        
+        # Filter documents by visibility permissions
+        visible_documents = []
+        for document in all_documents:
+            if document.can_view(request.user):
+                visible_documents.append(document)
+                
+        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -462,11 +496,33 @@ def generate_original_document_pdf(document):
     # Register fonts
     font_paths = register_carlito_fonts()
 
+    # Define background image style if letterhead exists
+    background_style = ""
+    if document.letterhead_image:
+        try:
+            # Get the absolute path to the letterhead image
+            letterhead_path = os.path.abspath(document.letterhead_image.path)
+            if os.path.exists(letterhead_path):
+                # Convert image to base64 for better xhtml2pdf compatibility
+                import base64
+                with open(letterhead_path, 'rb') as img_file:
+                    img_data = base64.b64encode(img_file.read()).decode()
+                    img_mime = 'image/png'  # Assuming PNG as per validation
+                    background_style = f"""
+        background-image: url('data:{img_mime};base64,{img_data}');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        background-attachment: fixed;"""
+        except (ValueError, AttributeError, IOError):
+            # Image file doesn't exist or path is invalid
+            background_style = ""
+
     # Define CSS styles for PDF
     styles = f"""
     <style>
     @page {{
-        margin: 2cm;
+        margin: 2cm;{background_style}
     }}
 
     @font-face {{
@@ -562,9 +618,9 @@ def generate_original_document_pdf(document):
 
     # Create watermark canvas
     watermark_buffer = BytesIO()
-    c = canvas.Canvas(watermark_buffer, pagesize=letter)
+    c = canvas.Canvas(watermark_buffer, pagesize=legal)
     c.saveState()
-    c.translate(300, 400)  # Move to center of page
+    c.translate(300, 504)  # Move to center of page (adjusted for Legal size)
     c.rotate(45)  # Rotate 45 degrees
     c.setFont('Carlito-Bold', 60)
     c.setFillColor(colors.lightgrey)
@@ -599,7 +655,7 @@ def create_signatures_pdf(document, request):
     # Create the PDF document with smaller margins for single page optimization
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=letter,
+        pagesize=legal,
         rightMargin=60,
         leftMargin=60,
         topMargin=60,
@@ -817,6 +873,7 @@ def combine_pdfs(pdf1_buffer, pdf2_buffer):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_document_visibility
 def generate_signatures_pdf(request, pk):
     """
     Generates a comprehensive PDF document containing the original document and its signatures information.

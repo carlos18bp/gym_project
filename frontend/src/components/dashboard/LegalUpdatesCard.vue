@@ -50,7 +50,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import { Autoplay, Pagination } from 'swiper/modules';
-import { useLegalUpdateStore } from '@/stores/legalUpdate';
+import { useLegalUpdateStore } from '@/stores/legal/legalUpdate';
 import 'swiper/css';
 import 'swiper/css/pagination';
 

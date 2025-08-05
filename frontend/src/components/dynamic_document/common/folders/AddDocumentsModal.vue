@@ -267,8 +267,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
-import { useUserStore } from '@/stores/user';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
+import { useUserStore } from '@/stores/auth/user';
 
 // Icons
 import { 

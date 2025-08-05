@@ -76,9 +76,9 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useDocumentFolderStore } from '@/stores/documentFolder';
-import { useDynamicDocumentStore } from '@/stores/dynamicDocument';
-import { useUserStore } from '@/stores/user';
+import { useDocumentFolderStore } from '@/stores/dynamic_document/folders';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
+import { useUserStore } from '@/stores/auth/user';
 import { showNotification } from '@/shared/notification_message';
 
 // Icons

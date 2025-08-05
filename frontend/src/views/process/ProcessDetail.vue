@@ -252,7 +252,7 @@ import { EyeIcon } from "@heroicons/vue/24/outline";
 import { computed, onBeforeMount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 
 // Route and store instances
 const route = useRoute();

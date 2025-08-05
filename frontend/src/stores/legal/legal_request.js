@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import { get_request, create_request } from "./services/request_http";
-import { registerUserActivity, ACTION_TYPES } from "./activity_feed";
+import { get_request, create_request } from "../services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 export const useLegalRequestStore = defineStore("legalRequest", {
   /**

@@ -22,8 +22,8 @@
 <script setup>
 import { computed, onMounted } from "vue";
 import { PencilIcon } from "@heroicons/vue/24/outline";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
-import { useUserStore } from "@/stores/user";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useUserStore } from "@/stores/auth/user";
 import { DocumentCard } from "@/components/dynamic_document/cards";
 
 const documentStore = useDynamicDocumentStore();

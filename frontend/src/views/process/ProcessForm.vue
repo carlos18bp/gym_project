@@ -485,9 +485,9 @@ import {
 } from "@headlessui/vue";
 import { useRoute } from "vue-router";
 import router from "@/router";
-import { useCaseTypeStore } from "@/stores/case_type";
-import { useUserStore } from "@/stores/user";
-import { useAuthStore } from "@/stores/auth";
+import { useCaseTypeStore } from "@/stores/legal/case_type";
+import { useUserStore } from "@/stores/auth/user";
+import { useAuthStore } from "@/stores/auth/auth";
 import { useProcessStore } from "@/stores/process";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 

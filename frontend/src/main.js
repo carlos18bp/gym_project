@@ -7,7 +7,7 @@ import App from './App.vue'; // Import main App component
 import { createPinia } from 'pinia'; // Import createPinia - this must be loaded synchronously
 import router, { installRouterGuards } from './router';
 import axios from 'axios';
-import { useAuthStore } from './stores/auth';
+import { useAuthStore } from './stores/auth/auth';
 import vue3GoogleLogin from 'vue3-google-login';
 import { registerSW } from 'virtual:pwa-register';
 

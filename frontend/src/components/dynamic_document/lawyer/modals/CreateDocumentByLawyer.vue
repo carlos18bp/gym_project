@@ -63,7 +63,7 @@
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref, watchEffect, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 
 const router = useRouter();
 const store = useDynamicDocumentStore();

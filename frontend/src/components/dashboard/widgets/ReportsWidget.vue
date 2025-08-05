@@ -79,7 +79,7 @@
  * 3. Generate and download the report in Excel format
  */
 import { ref, computed, onMounted } from 'vue';
-import { useReportsStore } from '@/stores/reports';
+import { useReportsStore } from '@/stores/dashboard/reports';
 
 const props = defineProps({
   /**

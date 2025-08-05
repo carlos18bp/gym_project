@@ -4,6 +4,7 @@ export { default as DocumentCard } from './DocumentCard.vue';
 export { default as UseDocumentCard } from './UseDocumentCard.vue';
 export { default as SignatureDocumentCard } from './SignatureDocumentCard.vue';
 export { default as FolderCard } from './FolderCard.vue';
+export { default as HierarchicalMenu } from './HierarchicalMenu.vue';
 
 // Modal Components
 export { default as EditDocumentModal } from './modals/EditDocumentModal.vue';
@@ -11,11 +12,15 @@ export { default as SendDocumentModal } from './modals/SendDocumentModal.vue';
 export { default as DocumentPreviewModal } from './modals/DocumentPreviewModal.vue';
 export { default as DocumentSignaturesModal } from './modals/DocumentSignaturesModal.vue';
 export { default as ElectronicSignatureModal } from './modals/ElectronicSignatureModal.vue';
+export { default as DocumentPermissionsModal } from './modals/DocumentPermissionsModal.vue';
+
+// Menu helpers
+export { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
 
 // Modal Manager Composable
 import { ref } from 'vue';
 import { openPreviewModal } from "@/shared/document_utils";
-import { useUserStore } from "@/stores/user";
+import { useUserStore } from "@/stores/auth/user";
 
 /**
  * Composable for managing card modals centrally
@@ -28,7 +33,9 @@ export function useCardModals(documentStore, userStore) {
     email: { isOpen: false, document: null },
     preview: { isOpen: false, document: null },
     signatures: { isOpen: false, document: null },
-    electronicSignature: { isOpen: false, document: null }
+    electronicSignature: { isOpen: false, document: null },
+    permissions: { isOpen: false, document: null },
+    letterhead: { isOpen: false, document: null }
   });
 
   /**
@@ -58,6 +65,14 @@ export function useCardModals(documentStore, userStore) {
         
       case 'electronic-signature':
         activeModals.value.electronicSignature = { isOpen: true, document };
+        break;
+        
+      case 'permissions':
+        activeModals.value.permissions = { isOpen: true, document };
+        break;
+        
+      case 'letterhead':
+        activeModals.value.letterhead = { isOpen: true, document };
         break;
         
       default:

@@ -109,8 +109,8 @@ import { ref, onMounted, defineEmits, defineProps } from 'vue';
 import SignatureModal from './SignatureModal.vue';
 import ImageUploadSignature from './ImageUploadSignature.vue';
 import DrawSignature from './DrawSignature.vue';
-import { useUserStore } from '@/stores/user';
-import { useAuthStore } from '@/stores/auth';
+import { useUserStore } from '@/stores/auth/user';
+import { useAuthStore } from '@/stores/auth/auth';
 
 /**
  * Main electronic signature component

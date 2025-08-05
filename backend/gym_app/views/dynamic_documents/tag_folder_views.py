@@ -5,6 +5,7 @@ from rest_framework import status
 
 from gym_app.models.dynamic_document import Tag, DocumentFolder, DynamicDocument
 from gym_app.serializers.dynamic_document import TagSerializer, DocumentFolderSerializer
+from .permissions import require_lawyer_only
 
 # -----------------------------------------------------------------------------
 # Helper permission checks
@@ -34,11 +35,9 @@ def list_tags(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_only
 def create_tag(request):
     """Create a new tag (lawyer only)."""
-    if not _is_lawyer(request.user):
-        return Response({'detail': 'Solo los abogados pueden crear etiquetas.'}, status=status.HTTP_403_FORBIDDEN)
-
     serializer = TagSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         serializer.save()
@@ -48,15 +47,13 @@ def create_tag(request):
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_only
 def update_tag(request, pk):
     """Update an existing tag (lawyer only)."""
     try:
         tag = Tag.objects.get(pk=pk)
     except Tag.DoesNotExist:
         return Response({'detail': 'Etiqueta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
-
-    if not _is_lawyer(request.user):
-        return Response({'detail': 'Solo los abogados pueden actualizar etiquetas.'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = TagSerializer(tag, data=request.data, partial=(request.method == 'PATCH'), context={'request': request})
     if serializer.is_valid():
@@ -67,11 +64,9 @@ def update_tag(request, pk):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@require_lawyer_only
 def delete_tag(request, pk):
     """Delete a tag (lawyer only)."""
-    if not _is_lawyer(request.user):
-        return Response({'detail': 'Solo los abogados pueden eliminar etiquetas.'}, status=status.HTTP_403_FORBIDDEN)
-
     try:
         tag = Tag.objects.get(pk=pk)
     except Tag.DoesNotExist:

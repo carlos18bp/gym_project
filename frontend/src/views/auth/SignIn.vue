@@ -164,13 +164,13 @@
 
 <script setup>
 import axios from "axios";
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/auth/auth";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
-import { useCaptchaStore } from "@/stores/captcha";
+import { useCaptchaStore } from "@/stores/auth/captcha";
 
 const timer = ref(0); // A ref to manage the countdown timer for send a new code
 const router = useRouter(); // Get the router instance

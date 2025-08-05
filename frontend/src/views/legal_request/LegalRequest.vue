@@ -371,7 +371,7 @@ import {
 } from "@heroicons/vue/20/solid";
 import { DocumentIcon } from "@heroicons/vue/24/outline";
 import { ref, reactive, onMounted, computed } from "vue";
-import { useLegalRequestStore } from "@/stores/legal_request.js";
+import { useLegalRequestStore } from "@/stores/legal/legal_request.js";
 import { showNotification } from "@/shared/notification_message.js";
 import { RouterLink } from "vue-router";
 import { showLoading, hideLoading } from "@/shared/loading_message.js";

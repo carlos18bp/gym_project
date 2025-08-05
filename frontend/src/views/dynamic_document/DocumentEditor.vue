@@ -10,15 +10,26 @@
 
 <script setup>
 import Editor from "@tinymce/tinymce-vue";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useDynamicDocumentStore } from "@/stores/dynamicDocument";
+import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
 
 const editorContent = ref(""); // Content of the editor
 const router = useRouter();
 const route = useRoute();
 const store = useDynamicDocumentStore();
+const userStore = useUserStore();
+
+// Detect if user is a client (vs lawyer)
+const isClient = computed(() => {
+  return route.path.includes('/client/editor/') || userStore.currentUser?.role !== 'lawyer';
+});
+
+// Store the original content with variables
+const originalContent = ref("");
+const processedContent = ref("");
 
 onMounted(async () => {
   const documentId = route.params.id;
@@ -29,12 +40,26 @@ onMounted(async () => {
       
       // Update document in store
       store.selectedDocument = documentData;
-      editorContent.value = documentData?.content || "";
+      originalContent.value = documentData?.content || "";
+      
+      // For clients, replace variables with values and protect them
+      if (isClient.value) {
+        editorContent.value = replaceVariablesWithValues(originalContent.value);
+      } else {
+        // For lawyers, use original content with {{variables}}
+        editorContent.value = originalContent.value;
+      }
     } catch (error) {
       console.error("Error fetching document:", error);
       // If request fails, use store document as fallback
       store.selectedDocument = await store.documentById(documentId);
-      editorContent.value = store.selectedDocument?.content || "";
+      originalContent.value = store.selectedDocument?.content || "";
+      
+      if (isClient.value) {
+        editorContent.value = replaceVariablesWithValues(originalContent.value);
+      } else {
+        editorContent.value = originalContent.value;
+      }
     }
   }
 });
@@ -42,10 +67,59 @@ onMounted(async () => {
 /**
  * Extracts variables from the editor content using regex.
  */
-const extractVariables = () => {
+const extractVariables = (content = null) => {
+  const textToAnalyze = content || editorContent.value;
   const regex = /{{(.*?)}}/g;
   return Array.from(
-    new Set([...editorContent.value.matchAll(regex)].map((match) => match[1]))
+    new Set([...textToAnalyze.matchAll(regex)].map((match) => match[1]))
+  );
+};
+
+/**
+ * Replaces variables in content with their actual values for client view
+ */
+const replaceVariablesWithValues = (content) => {
+  if (!content || !store.selectedDocument?.variables) return content;
+  
+  let processedContent = content;
+  
+  store.selectedDocument.variables.forEach(variable => {
+    const variablePattern = new RegExp(`{{${variable.name_en}}}`, 'g');
+    const value = variable.value || `[${variable.name_es || variable.name_en}]`;
+    
+    // Create a highly protected span with multiple protection layers
+    const protectedSpan = `<span 
+      class="variable-protected mceNonEditable" 
+      data-variable="${variable.name_en}" 
+      data-mce-contenteditable="false"
+      contenteditable="false" 
+      unselectable="on"
+      style="background-color: #ffeb3b !important; color: #d32f2f !important; padding: 2px 4px !important; border-radius: 3px !important; font-weight: bold !important; cursor: not-allowed !important; user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; display: inline-block !important;"
+      title="Variable protegida: ${variable.name_es || variable.name_en} - No se puede editar"
+      onmousedown="return false;"
+      onselectstart="return false;"
+      ondragstart="return false;"
+    >${value}</span>`;
+    
+    processedContent = processedContent.replace(variablePattern, protectedSpan);
+  });
+  
+  return processedContent;
+};
+
+/**
+ * Converts protected spans back to variable format for saving
+ */
+const convertProtectedSpansToVariables = (content) => {
+  if (!content) return content;
+  
+  // Replace protected spans back to {{variable}} format - handle both single and multi-line spans
+  return content.replace(
+    /<span[^>]*(?:class="[^"]*variable-protected[^"]*"|data-variable="([^"]*)")(?:[^>]*data-variable="([^"]*)")?[^>]*>[\s\S]*?<\/span>/g, 
+    (match, var1, var2) => {
+      const variableName = var1 || var2;
+      return variableName ? `{{${variableName}}}` : match;
+    }
   );
 };
 
@@ -71,15 +145,51 @@ const syncVariables = (variables) => {
 };
 
 /**
- * Save the document as a draft.
+ * Save the document content (for clients) - preserves original state
+ */
+const saveDocumentContent = async () => {
+  try {
+    const contentToSave = convertProtectedSpansToVariables(editorContent.value);
+    
+    if (store.selectedDocument) {
+      // Preserve original state and other properties, only update content
+      const updatedDocument = {
+        ...store.selectedDocument,
+        content: contentToSave
+        // Deliberately NOT changing state - preserve original
+      };
+      
+      const response = await store.updateDocument(store.selectedDocument.id, updatedDocument);
+      
+      if (response) {
+        await showNotification("Documento guardado exitosamente.", "success");
+        
+        // Redirect to documents dashboard after successful save
+        setTimeout(() => {
+          window.location.href = '/dynamic_document_dashboard';
+        }, 500);
+      }
+    } else {
+      await showNotification("Error: No se encontró el documento para guardar.", "error");
+    }
+  } catch (error) {
+    console.error("Error saving document content:", error);
+    await showNotification("Error al guardar el documento.", "error");
+  }
+};
+
+/**
+ * Save the document as a draft (for lawyers).
  */
 const saveDocumentDraft = async () => {
   try {
+    const contentToSave = editorContent.value;
+    
     // Extract variables from editor content
     const variables = extractVariables();
     
     if (store.selectedDocument) {
-      store.selectedDocument.content = editorContent.value;
+      store.selectedDocument.content = contentToSave;
       store.selectedDocument.state = "Draft";
       
       // Sync variables if there are any
@@ -92,7 +202,7 @@ const saveDocumentDraft = async () => {
           store.selectedDocument?.title ||
           route.params.title ||
           "Untitled Document",
-        content: editorContent.value,
+        content: contentToSave,
         state: "Draft",
         variables: [],
       };
@@ -216,12 +326,15 @@ function enforceCarlito(content) {
 /**
  * Configuration object for the TinyMCE editor.
  */
-const editorConfig = {
+const editorConfig = computed(() => ({
   language: "es",
-  plugins: "lists link image table code wordcount autolink searchreplace textpattern", 
+  plugins: isClient.value 
+    ? "lists link image table code wordcount autolink searchreplace textpattern noneditable"
+    : "lists link image table code wordcount autolink searchreplace textpattern", 
   menubar: "",
-  toolbar:
-    "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+  toolbar: isClient.value 
+    ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
+    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
   height: "100vh",
   width: "100%",
 
@@ -229,6 +342,18 @@ const editorConfig = {
     @import url('https://fonts.googleapis.com/css2?family=Carlito&display=swap');
     body, p, span, div, strong, em, u, i, b {
       font-family: 'Carlito', sans-serif !important;
+    }
+    .variable-protected {
+      background-color: #ffeb3b !important;
+      color: #d32f2f !important;
+      padding: 2px 4px !important;
+      border-radius: 3px !important;
+      font-weight: bold !important;
+      cursor: not-allowed !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
     }
   `,
 
@@ -246,6 +371,13 @@ const editorConfig = {
     style: "font-family: 'Carlito', sans-serif;" 
   },
 
+  // Configuration for noneditable plugin (only for clients)
+  ...(isClient.value && {
+    noneditable_noneditable_class: 'variable-protected',
+    noneditable_editable_class: 'mce-editable',
+    content_css_cors: true,
+  }),
+
   /**
    * Sets up the TinyMCE editor with custom configurations and event listeners.
    * 
@@ -255,10 +387,14 @@ const editorConfig = {
     tinyMCEEditor = editor;
 
     editor.ui.registry.addButton("save", {
-      text: "Guardar como borrador",
+      text: isClient.value ? "Guardar" : "Guardar como borrador",
       icon: "save",
       onAction: () => {
-        saveDocumentDraft();
+        if (isClient.value) {
+          saveDocumentContent();
+        } else {
+          saveDocumentDraft();
+        }
       },
     });
 
@@ -350,8 +486,215 @@ const editorConfig = {
         lastInputTime = now;
       }
     });
+
+    // Add protection for variables for client users
+    if (isClient.value) {
+      // Comprehensive protection for variables
+      const protectVariables = () => {
+        const protectedElements = editor.dom.select('.variable-protected');
+        protectedElements.forEach(element => {
+          // Apply all possible protection attributes
+          element.setAttribute('contenteditable', 'false');
+          element.setAttribute('data-mce-contenteditable', 'false');
+          element.setAttribute('unselectable', 'on');
+          element.className = element.className.replace('mceNonEditable', '') + ' mceNonEditable';
+          
+          // Style-based protection
+          element.style.userSelect = 'none';
+          element.style.webkitUserSelect = 'none';
+          element.style.mozUserSelect = 'none';
+          element.style.msUserSelect = 'none';
+          element.style.pointerEvents = 'none';
+          element.style.cursor = 'not-allowed';
+          
+          // Event-based protection
+          element.onmousedown = () => false;
+          element.onselectstart = () => false;
+          element.ondragstart = () => false;
+          element.oncontextmenu = () => false;
+          
+          // Make it visually distinct
+          element.style.backgroundColor = '#ffeb3b';
+          element.style.color = '#d32f2f';
+          element.style.fontWeight = 'bold';
+          element.style.padding = '2px 4px';
+          element.style.borderRadius = '3px';
+          element.style.display = 'inline-block';
+          element.style.border = '1px solid #fbc02d';
+          
+          // Add tooltip
+          element.title = 'Variable protegida - No se puede editar';
+        });
+      };
+
+      // Prevent all forms of variable deletion/modification
+      editor.on("keydown", (e) => {
+        const selection = editor.selection;
+        const selectedNode = selection.getNode();
+        const range = selection.getRng();
+        
+        // Check if cursor is near or inside a protected variable
+        const isNearProtected = selectedNode.classList?.contains('variable-protected') || 
+                               selectedNode.closest('.variable-protected') ||
+                               range.commonAncestorContainer?.parentElement?.classList?.contains('variable-protected');
+        
+        // Check if selection contains any protected variables
+        const selectedContent = selection.getContent();
+        const containsProtected = selectedContent.includes('variable-protected') || 
+                                 selectedContent.includes('data-variable=');
+        
+        // Prevent any destructive actions on protected content
+        if ((e.key === 'Backspace' || e.key === 'Delete' || e.key === 'x' && (e.ctrlKey || e.metaKey)) && 
+            (isNearProtected || containsProtected)) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Move cursor away from protected element
+          if (isNearProtected) {
+            const protectedElement = selectedNode.classList?.contains('variable-protected') ? 
+                                   selectedNode : selectedNode.closest('.variable-protected');
+            if (protectedElement) {
+              const nextNode = protectedElement.nextSibling;
+              if (nextNode) {
+                selection.select(nextNode);
+                selection.collapse(true);
+              } else {
+                // Create a space after the protected element if none exists
+                const space = editor.dom.create('span', {}, '\u00A0');
+                editor.dom.insertAfter(space, protectedElement);
+                selection.select(space);
+                selection.collapse(true);
+              }
+            }
+          }
+          
+          return false;
+        }
+
+        // Prevent typing inside protected variables
+        if (isNearProtected && !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Prevent pasting over or into protected variables
+      editor.on("paste", (e) => {
+        const selection = editor.selection;
+        const selectedNode = selection.getNode();
+        const selectedContent = selection.getContent();
+        
+        if (selectedNode.classList?.contains('variable-protected') || 
+            selectedNode.closest('.variable-protected') ||
+            selectedContent.includes('variable-protected')) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Monitor and restore content if variables are compromised
+      let lastValidContent = '';
+      
+      editor.on("BeforeSetContent", (e) => {
+        if (!isProcessingContent && e.content) {
+          lastValidContent = editor.getContent();
+        }
+      });
+
+      editor.on("SetContent", (e) => {
+        if (!isProcessingContent) {
+          setTimeout(() => {
+            protectVariables();
+          }, 10);
+        }
+      });
+
+      // Continuous monitoring and protection
+      editor.on("input", () => {
+        if (isProcessingContent) return;
+        
+        const currentContent = editor.getContent();
+        
+        // Check if any variables were removed
+        const originalVariableCount = (originalContent.value.match(/{{.*?}}/g) || []).length;
+        const currentVariableSpans = (currentContent.match(/variable-protected/g) || []).length;
+        
+        if (currentVariableSpans < originalVariableCount) {
+          // Variables were compromised, restore and re-protect
+          isProcessingContent = true;
+          const restoredContent = replaceVariablesWithValues(originalContent.value);
+          editor.setContent(restoredContent);
+          setTimeout(() => {
+            protectVariables();
+            isProcessingContent = false;
+          }, 10);
+          return;
+        }
+
+        // Re-apply protection to any variables that lost it
+        protectVariables();
+      });
+
+      // Prevent drag and drop that might affect variables
+      editor.on("dragstart", (e) => {
+        const target = e.target;
+        if (target.classList?.contains('variable-protected') || 
+            target.closest('.variable-protected')) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Block any selection that includes protected variables
+      editor.on("selectionchange", () => {
+        const selectedContent = editor.selection.getContent();
+        if (selectedContent.includes('variable-protected') || 
+            selectedContent.includes('mceNonEditable')) {
+          // If selection includes protected content, clear it
+          const selection = editor.selection;
+          const range = selection.getRng();
+          
+          // Find a safe place to put the cursor
+          const body = editor.getBody();
+          const textNodes = editor.dom.select('p,div', body);
+          
+          if (textNodes.length > 0) {
+            const safeNode = textNodes[0];
+            selection.select(safeNode);
+            selection.collapse(true);
+          }
+        }
+      });
+
+      // Additional event to prevent any changes to protected elements
+      editor.on("beforeinput", (e) => {
+        const selection = editor.selection;
+        const selectedNode = selection.getNode();
+        
+        if (selectedNode.classList?.contains('variable-protected') || 
+            selectedNode.closest('.variable-protected') ||
+            selection.getContent().includes('variable-protected')) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Apply initial protection after editor initialization
+      editor.on("init", () => {
+        setTimeout(() => {
+          protectVariables();
+        }, 100);
+      });
+
+      // Re-apply protection when content is loaded
+      editor.on("LoadContent", () => {
+        setTimeout(() => {
+          protectVariables();
+        }, 50);
+      });
+    }
   },
-};
+}));
 
 /**
  * Handles navigation back to the document dashboard.
