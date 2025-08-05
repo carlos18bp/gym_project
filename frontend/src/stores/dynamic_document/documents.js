@@ -3,6 +3,7 @@ import {
   create_request,
   update_request,
   delete_request,
+  upload_file_request,
 } from "../services/request_http";
 import { downloadFile } from "@/shared/document_utils";
 import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
@@ -320,5 +321,81 @@ export const documentActions = {
    */
   clearSelectedDocument() {
     this.selectedDocument = null;
+  },
+
+  /**
+   * Upload letterhead image for a dynamic document
+   * 
+   * @param {number|string} documentId - ID of the document
+   * @param {File} imageFile - PNG image file to upload
+   * @returns {Promise<Object>} - Upload response with image info
+   */
+  async uploadLetterheadImage(documentId, imageFile) {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      
+      const response = await upload_file_request(
+        `dynamic-documents/${documentId}/letterhead/upload/`,
+        formData
+      );
+      
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Subiste imagen de membrete para documento ID ${documentId}`
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error uploading letterhead image for document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get letterhead image for a dynamic document
+   * 
+   * @param {number|string} documentId - ID of the document
+   * @param {string} responseType - Response type (default: 'blob' for images)
+   * @returns {Promise<Object>} - Image response
+   */
+  async getLetterheadImage(documentId, responseType = 'blob') {
+    try {
+      const response = await get_request(
+        `dynamic-documents/${documentId}/letterhead/`,
+        responseType
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error fetching letterhead image for document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete letterhead image for a dynamic document
+   * 
+   * @param {number|string} documentId - ID of the document
+   * @returns {Promise<Object>} - Delete response
+   */
+  async deleteLetterheadImage(documentId) {
+    try {
+      const response = await delete_request(
+        `dynamic-documents/${documentId}/letterhead/delete/`
+      );
+      
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.DELETE,
+        `Eliminaste imagen de membrete para documento ID ${documentId}`
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error deleting letterhead image for document ID ${documentId}:`, error);
+      throw error;
+    }
   },
 };

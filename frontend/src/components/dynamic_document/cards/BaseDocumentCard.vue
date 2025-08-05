@@ -179,6 +179,16 @@
     @close="closeModal('permissions')"
     @saved="handleRefresh"
   />
+
+  <!-- Letterhead Modal -->
+  <LetterheadModal
+    v-if="activeModals.letterhead.isOpen"
+    :is-visible="activeModals.letterhead.isOpen"
+    :document="activeModals.letterhead.document"
+    @close="closeModal('letterhead')"
+    @uploaded="handleRefresh"
+    @deleted="handleRefresh"
+  />
 </template>
 
 <script setup>
@@ -204,6 +214,9 @@ import {
   ElectronicSignatureModal,
   DocumentPermissionsModal
 } from './index.js';
+
+// Import LetterheadModal from common
+import LetterheadModal from '../common/LetterheadModal.vue';
 
 // Import hierarchical menu components
 import HierarchicalMenu from './HierarchicalMenu.vue';
@@ -339,6 +352,9 @@ const cardConfigs = {
       // Always show "Usar Formato" for default card type
       options.push({ label: "Usar Formato", action: "useDocument" });
 
+      // Add letterhead management option
+      options.push({ label: "Gestionar Membrete", action: "letterhead" });
+
       // Add remove from folder option when in folder context
       if (context === 'folder') {
         options.push({
@@ -374,6 +390,9 @@ const cardConfigs = {
         label: "Eliminar",
         action: "delete"
       });
+
+      // Add letterhead management option
+      options.push({ label: "Gestionar Membrete", action: "letterhead" });
 
       // Options only for Completed state
       if (document.state === 'Completed') {
@@ -413,6 +432,7 @@ const cardConfigs = {
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
+        { label: "Gestionar Membrete", action: "letterhead" },
       ];
       
       // Add state-based options
@@ -466,7 +486,8 @@ const cardConfigs = {
   signatures: {
     getMenuOptions: (document, context) => {
       const options = [
-        { label: "Previsualizar", action: "preview" }
+        { label: "Previsualizar", action: "preview" },
+        { label: "Gestionar Membrete", action: "letterhead" }
       ];
 
       // Add signature-related options
@@ -730,6 +751,10 @@ const handleMenuAction = async (action, document) => {
       case "useDocument":
         // For UseDocumentCard - emit click to trigger use document modal
         emit('click', document);
+        break;
+        
+      case "letterhead":
+        openModal('letterhead', document);
         break;
         
       default:

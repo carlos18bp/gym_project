@@ -503,13 +503,18 @@ def generate_original_document_pdf(document):
             # Get the absolute path to the letterhead image
             letterhead_path = os.path.abspath(document.letterhead_image.path)
             if os.path.exists(letterhead_path):
-                background_style = f"""
-        background-image: url('file://{letterhead_path}');
+                # Convert image to base64 for better xhtml2pdf compatibility
+                import base64
+                with open(letterhead_path, 'rb') as img_file:
+                    img_data = base64.b64encode(img_file.read()).decode()
+                    img_mime = 'image/png'  # Assuming PNG as per validation
+                    background_style = f"""
+        background-image: url('data:{img_mime};base64,{img_data}');
         background-repeat: no-repeat;
         background-position: center;
         background-size: contain;
         background-attachment: fixed;"""
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, IOError):
             # Image file doesn't exist or path is invalid
             background_style = ""
 

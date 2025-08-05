@@ -251,13 +251,18 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
                 # Get the absolute path to the letterhead image
                 letterhead_path = os.path.abspath(document.letterhead_image.path)
                 if os.path.exists(letterhead_path):
-                    background_style = f"""
-            background-image: url('file://{letterhead_path}');
+                    # Convert image to base64 for better xhtml2pdf compatibility
+                    import base64
+                    with open(letterhead_path, 'rb') as img_file:
+                        img_data = base64.b64encode(img_file.read()).decode()
+                        img_mime = 'image/png'  # Assuming PNG as per validation
+                        background_style = f"""
+            background-image: url('data:{img_mime};base64,{img_data}');
             background-repeat: no-repeat;
             background-position: center;
             background-size: contain;
             background-attachment: fixed;"""
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError, IOError):
                 # Image file doesn't exist or path is invalid
                 background_style = ""
 
@@ -376,7 +381,6 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         print(f"Unexpected error: {e}")
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_document_visibility
@@ -419,65 +423,206 @@ def download_dynamic_document_word(request, pk):
         doc = Document()
         
         # Configure page size to Legal (Oficio)
-        from docx.shared import Inches
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+        
         section = doc.sections[0]
         section.page_width = Inches(8.5)   # 8.5 inches width
         section.page_height = Inches(14)   # 14 inches height (Legal/Oficio)
         
-        # Add letterhead image as background if available
+        # Configure margins (adjust as needed)
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
+        
+        # Add letterhead image as background using VML in header
         if document.letterhead_image:
             try:
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                from docx.oxml.shared import qn
-                from docx.oxml import parse_xml
+                import os
+                import base64
+                from PIL import Image as PILImage
                 
-                # Add background image using Word's background functionality
-                # This creates a true background image that appears behind all content
+                # Verify image file exists and is accessible
+                letterhead_path = os.path.abspath(document.letterhead_image.path)
+                if not os.path.exists(letterhead_path):
+                    print(f"Warning: Letterhead image not found at {letterhead_path}")
+                    raise FileNotFoundError("Letterhead image file not accessible")
                 
-                # Get the document's body element
-                body = doc.element.body
+                # Read and encode image to base64
+                with open(letterhead_path, 'rb') as img_file:
+                    image_data = img_file.read()
+                    image_base64 = base64.b64encode(image_data).decode('utf-8')
                 
-                # Create background element
-                background_xml = f'''
-                <w:background xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" 
-                             xmlns:v="urn:schemas-microsoft-com:vml"
-                             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-                             w:color="ffffff">
-                    <v:fill r:id="rId1" type="frame"/>
-                </w:background>
+                # Detect image format
+                with PILImage.open(letterhead_path) as img:
+                    img_format = img.format.lower() if img.format else 'png'
+                
+                # Access the header
+                header = section.header
+                
+                # Create or get header paragraph
+                if header.paragraphs:
+                    header_para = header.paragraphs[0]
+                    header_para.clear()
+                else:
+                    header_para = header.add_paragraph()
+                
+                # Add the image to document relationships
+                from docx.opc.constants import RELATIONSHIP_TYPE as RT
+                
+                # Add image part to document
+                image_part = doc.part.package.image_parts.add_image(letterhead_path)
+                rId = doc.part.relate_to(image_part, RT.IMAGE)
+                
+                # Now we need to create a picture element that goes behind text
+                # We'll manipulate the XML directly
+                from lxml import etree
+                from docx.oxml.ns import qn
+                
+                # Create a run
+                run = header_para.add_run()
+                
+                # Create the picture XML with anchor positioning
+                # This is the key: we create a properly formatted anchor element
+                pic_xml = f'''
+                    <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                        <wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" 
+                                   relativeHeight="0" behindDoc="1" locked="0" layoutInCell="0" 
+                                   allowOverlap="1" 
+                                   xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
+                            <wp:simplePos x="0" y="0"/>
+                            <wp:positionH relativeFrom="page">
+                                <wp:posOffset>0</wp:posOffset>
+                            </wp:positionH>
+                            <wp:positionV relativeFrom="page">
+                                <wp:posOffset>0</wp:posOffset>
+                            </wp:positionV>
+                            <wp:extent cx="7772400" cy="12700800"/>
+                            <wp:effectExtent l="0" t="0" r="0" b="0"/>
+                            <wp:wrapNone/>
+                            <wp:docPr id="1" name="Background"/>
+                            <wp:cNvGraphicFramePr>
+                                <a:graphicFrameLocks noChangeAspect="1" 
+                                    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
+                            </wp:cNvGraphicFramePr>
+                            <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+                                <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                                    <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                                        <pic:nvPicPr>
+                                            <pic:cNvPr id="1" name="Background"/>
+                                            <pic:cNvPicPr/>
+                                        </pic:nvPicPr>
+                                        <pic:blipFill>
+                                            <a:blip r:embed="{rId}" 
+                                                xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>
+                                            <a:stretch>
+                                                <a:fillRect/>
+                                            </a:stretch>
+                                        </pic:blipFill>
+                                        <pic:spPr>
+                                            <a:xfrm>
+                                                <a:off x="0" y="0"/>
+                                                <a:ext cx="7772400" cy="12700800"/>
+                                            </a:xfrm>
+                                            <a:prstGeom prst="rect">
+                                                <a:avLst/>
+                                            </a:prstGeom>
+                                        </pic:spPr>
+                                    </pic:pic>
+                                </a:graphicData>
+                            </a:graphic>
+                        </wp:anchor>
+                    </w:drawing>
                 '''
                 
-                try:
-                    background_element = parse_xml(background_xml)
-                    body.addprevious(background_element)
-                except:
-                    # Fallback: Add as watermark in header with behind text positioning
-                    header = section.header
-                    header_para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-                    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    run = header_para.runs[0] if header_para.runs else header_para.add_run()
-                    
-                    # Add image sized to cover most of the page as background
-                    picture = run.add_picture(
-                        document.letterhead_image.path,
-                        width=Inches(6.5),   # Almost full page width
-                        height=Inches(12)    # Almost full page height
-                    )
-                    
-                    # Try to set the image behind text (this may not work in all Word versions)
-                    try:
-                        # Access the drawing element and set it behind text
-                        drawing = picture._element
-                        drawing.set(qn('wp:behindDoc'), '1')
-                    except:
-                        pass
-                    
-                    # Minimize header distance
-                    section.header_distance = Inches(0.1)
+                # Parse the XML string
+                drawing_element = etree.fromstring(pic_xml)
+                
+                # Append to run
+                run._element.append(drawing_element)
+                
+                # Configure header paragraph to take no space
+                header_para.paragraph_format.space_after = Pt(0)
+                header_para.paragraph_format.space_before = Pt(0)
+                header_para.paragraph_format.line_spacing = 1
+                
+                # Set header distance to 0
+                section.header_distance = Inches(0)
+                
+                print(f"Letterhead image added successfully with rId: {rId}")
                 
             except Exception as e:
                 print(f"Warning: Could not add letterhead image to Word document: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                # Alternative approach: Add image to first paragraph of body
+                try:
+                    print("Trying alternative approach...")
+                    
+                    # Get the first paragraph or create one
+                    if not doc.paragraphs:
+                        first_para = doc.add_paragraph()
+                    else:
+                        first_para = doc.paragraphs[0]
+                    
+                    # Add the image
+                    run = first_para.add_run()
+                    picture = run.add_picture(letterhead_path, width=Inches(7.5))
+                    
+                    # Try to access the inline element and modify it
+                    from docx.oxml import parse_xml
+                    from docx.oxml.ns import qn
+                    
+                    inline = picture._inline
+                    
+                    # Get the extent (size) from inline
+                    extent = inline.extent
+                    cx = extent.cx
+                    cy = extent.cy
+                    
+                    # Get the docPr from inline
+                    docPr = inline.docPr
+                    
+                    # Get graphic from inline
+                    graphic = inline.graphic
+                    
+                    # Create an anchor element
+                    anchor_xml = f'''
+                        <wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                                   distT="0" distB="0" distL="0" distR="0" 
+                                   simplePos="0" relativeHeight="0" 
+                                   behindDoc="1" locked="0" layoutInCell="0" allowOverlap="1">
+                            <wp:simplePos x="0" y="0"/>
+                            <wp:positionH relativeFrom="page">
+                                <wp:align>center</wp:align>
+                            </wp:positionH>
+                            <wp:positionV relativeFrom="page">
+                                <wp:align>center</wp:align>
+                            </wp:positionV>
+                            <wp:extent cx="{cx}" cy="{cy}"/>
+                            <wp:effectExtent l="0" t="0" r="0" b="0"/>
+                            <wp:wrapNone/>
+                        </wp:anchor>
+                    '''
+                    
+                    anchor = parse_xml(anchor_xml)
+                    
+                    # Add docPr and graphic to anchor
+                    anchor.append(docPr)
+                    anchor.append(inline.cNvGraphicFramePr)
+                    anchor.append(graphic)
+                    
+                    # Replace inline with anchor
+                    drawing = picture._element
+                    drawing_parent = drawing.getparent()
+                    drawing_parent.replace(drawing, anchor)
+                    
+                    print("Alternative approach succeeded")
+                    
+                except Exception as e2:
+                    print(f"Alternative approach also failed: {e2}")
         
         # Configure default font for the document to Calibri
         font_name = 'Calibri'
@@ -491,6 +636,7 @@ def download_dynamic_document_word(request, pk):
             if style_name in doc.styles:
                 doc.styles[style_name].font.name = font_name
 
+        # Process HTML content
         for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
@@ -536,6 +682,8 @@ def download_dynamic_document_word(request, pk):
                 def apply_styles_to_run(run, element):
                     """Apply appropriate styles to a run based on the element and its style attributes"""
                     try:
+                        from docx.shared import RGBColor
+                        
                         element_name = element.name if hasattr(element, 'name') else None
                         element_style = element.get("style", "") if hasattr(element, 'get') else ""
                         
@@ -603,7 +751,7 @@ def download_dynamic_document_word(request, pk):
                                     if "color:" in normalized_style:
                                         color_part = normalized_style.split("color:")[1].split(";")[0].strip()
                                     else:
-                                        return  # Color not found
+                                        return run  # Color not found
                                     
                                     # Handle RGB colors
                                     if color_part.startswith("rgb("):
@@ -640,6 +788,8 @@ def download_dynamic_document_word(request, pk):
                     Process elements by flattening the structure and tracking styles
                     This approach creates separate runs for each text node but applies all parent styles
                     """
+                    from bs4 import NavigableString
+                    
                     if current_styles is None:
                         current_styles = []
                     
@@ -757,7 +907,7 @@ def update_recent_document(request, document_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@require_document_usability
+@require_document_usability('usability')
 def upload_letterhead_image(request, pk):
     """
     Upload a letterhead image for a specific document.
@@ -920,7 +1070,7 @@ def get_letterhead_image(request, pk):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-@require_document_usability
+@require_document_usability('usability')
 def delete_letterhead_image(request, pk):
     """
     Delete the letterhead image for a specific document.

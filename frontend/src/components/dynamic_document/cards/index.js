@@ -34,7 +34,8 @@ export function useCardModals(documentStore, userStore) {
     preview: { isOpen: false, document: null },
     signatures: { isOpen: false, document: null },
     electronicSignature: { isOpen: false, document: null },
-    permissions: { isOpen: false, document: null }
+    permissions: { isOpen: false, document: null },
+    letterhead: { isOpen: false, document: null }
   });
 
   /**
@@ -68,6 +69,10 @@ export function useCardModals(documentStore, userStore) {
         
       case 'permissions':
         activeModals.value.permissions = { isOpen: true, document };
+        break;
+        
+      case 'letterhead':
+        activeModals.value.letterhead = { isOpen: true, document };
         break;
         
       default:
