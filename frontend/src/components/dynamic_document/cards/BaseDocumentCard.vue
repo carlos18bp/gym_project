@@ -32,15 +32,15 @@
       
       <!-- Right action slot (menu or arrow) -->
       <slot name="right-action">
-        <!-- Use hierarchical menu if there are many options -->
+        <!-- Use hierarchical menu if there are many options or if any option has children -->
         <HierarchicalMenu
-          v-if="shouldUseHierarchicalMenu(menuOptions)"
+          v-if="shouldUseHierarchicalMenu(menuOptions) || hasSubMenuOptions(menuOptions)"
           :menu-items="organizedMenuItems"
           :menu-position="menuPosition"
           @menu-action="(action) => handleMenuAction(action, document)"
         />
         
-        <!-- Use traditional menu for fewer options -->
+        <!-- Use traditional menu for fewer options without submenus -->
         <Menu v-else-if="menuOptions && menuOptions.length > 0" as="div" class="relative inline-block text-left menu-container">
           <MenuButton class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-0">
             <EllipsisVerticalIcon class="w-5 h-5" aria-hidden="true" />
@@ -371,11 +371,30 @@ const cardConfigs = {
     getMenuOptions: (document, context) => {
       const options = [];
       
-      // Edit/Complete option
-      options.push({
-        label: document.state === "Completed" ? "Editar" : "Completar",
-        action: "edit"
-      });
+      // Edit options with submenu for completed documents
+      if (document.state === "Completed") {
+        options.push({
+          label: "Editar",
+          action: "edit-submenu",
+          isGroup: true,
+          children: [
+            {
+              label: "Editar Formulario",
+              action: "editForm"
+            },
+            {
+              label: "Editar Documento", 
+              action: "editDocument"
+            }
+          ]
+        });
+      } else {
+        // For non-completed documents, keep simple "Completar" option
+        options.push({
+          label: "Completar",
+          action: "editForm"
+        });
+      }
 
       // Preview option for completed documents
       if (document.state === 'Completed') {
@@ -580,6 +599,12 @@ const organizedMenuItems = computed(() => {
     return [];
   }
   
+  // If any option already has children, return as-is (already organized)
+  if (hasSubMenuOptions(menuOptions.value)) {
+    return menuOptions.value;
+  }
+  
+  // Otherwise, organize into groups
   return organizeMenuIntoGroups(menuOptions.value, props.document);
 });
 
@@ -692,6 +717,14 @@ const handleMenuAction = async (action, document) => {
         await handleEditAction(document);
         break;
         
+      case "editForm":
+        await handleEditFormAction(document);
+        break;
+        
+      case "editDocument":
+        await handleEditDocumentAction(document);
+        break;
+        
       case "permissions":
         openModal('permissions', document);
         break;
@@ -778,6 +811,29 @@ const handleEditAction = async (document) => {
     // Open modal
     openModal('edit', document, { userRole: getUserRole() });
   }
+};
+
+/**
+ * Handle edit form action - opens modal for form editing (original client behavior)
+ */
+const handleEditFormAction = async (document) => {
+  // Always open modal for form editing
+  openModal('edit', document, { userRole: getUserRole() });
+};
+
+/**
+ * Handle edit document action - navigates directly to document editor
+ */
+const handleEditDocumentAction = async (document) => {
+  // Navigate directly to client document editor
+  router.push(`/dynamic_document_dashboard/client/editor/edit/${document.id}`);
+};
+
+/**
+ * Check if any menu option has children (submenu)
+ */
+const hasSubMenuOptions = (options) => {
+  return options && options.some(option => option.children && option.children.length > 0);
 };
 
 /**

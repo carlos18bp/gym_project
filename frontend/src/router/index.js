@@ -220,6 +220,15 @@ const router = createRouter({
           },
         },
         {
+          path: "client/editor/edit/:id",
+          component: () => import(/* webpackChunkName: "dynamic-document-editor" */ "@/views/dynamic_document/DocumentEditor.vue"),
+          props: true,
+          meta: { 
+            requiresAuth: true, 
+            title: "Editar Documento"
+          },
+        },
+        {
           path: "document/use/:mode/:id/:title",
           component: () => import(/* webpackChunkName: "dynamic-document-form" */ "@/views/dynamic_document/DocumentForm.vue"),
           props: true,
