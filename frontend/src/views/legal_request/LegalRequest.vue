@@ -275,11 +275,13 @@
                       for="file-upload"
                       class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
                     >
-                      <span>Sube un archivo</span>
+                      <span>Sube archivos</span>
                       <input
                         id="file-upload"
                         name="file-upload"
                         type="file"
+                        multiple
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
                         class="sr-only"
                         @change="handleFileChange"
                       />
@@ -291,30 +293,55 @@
                   </p>
                 </div>
                 <!-- list of files -->
-                <div v-else class="w-full flex flex-wrap gap-3">
-                  <div
-                    v-for="(file, index) in files"
-                    :key="index"
-                    class="relative p-4 grid rounded-md bg-white border-2"
-                    :class="file.style.general"
-                    @mouseenter="file.hover = true"
-                    @mouseleave="file.hover = false"
-                  >
+                <div v-else class="w-full">
+                  <div class="flex flex-wrap gap-3 mb-4">
                     <div
-                      v-show="file.hover"
-                      class="absolute p-0.5 mt-2 ml-2 rounded-full"
-                      :class="file.style.xMark"
-                      @click="removeFile(index)"
+                      v-for="(file, index) in files"
+                      :key="index"
+                      class="relative p-4 grid rounded-md bg-white border-2"
+                      :class="file.style.general"
+                      @mouseenter="file.hover = true"
+                      @mouseleave="file.hover = false"
                     >
-                      <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      <div
+                        v-show="file.hover"
+                        class="absolute p-0.5 mt-2 ml-2 rounded-full"
+                        :class="file.style.xMark"
+                        @click="removeFile(index)"
+                      >
+                        <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      </div>
+                      <component
+                        :is="file.icon"
+                        class="size-12 mx-auto"
+                      ></component>
+                      <span class="text-center text-xs truncate w-20">
+                        {{ file.name }}
+                      </span>
                     </div>
-                    <component
-                      :is="file.icon"
-                      class="size-12 mx-auto"
-                    ></component>
-                    <span class="text-center text-xs truncate w-20">
-                      {{ file.name }}
-                    </span>
+                  </div>
+                  <!-- Add more files button -->
+                  <div class="text-center">
+                    <label
+                      for="additional-files"
+                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      <CloudArrowUpIcon class="w-4 h-4 mr-2" />
+                      Agregar más archivos
+                      <input
+                        id="additional-files"
+                        name="additional-files"
+                        type="file"
+                        multiple
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
+                        class="sr-only"
+                        @change="handleFileChange"
+                      />
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2">
+                      PNG, JPG, PDF, DOCX de hasta 30MB cada uno<br/>
+                      Puedes seleccionar múltiples archivos
+                    </p>
                   </div>
                 </div>
               </div>
@@ -542,21 +569,62 @@ const submitHandler = async () => {
   formData.files = extractedFiles;
 
   try {
-    // Submit the form data to the store
-    const status = await legalRequestStore.createLegalRequest(formData);
-    hideLoading(); // Hide the loading spinner
+    // Submit only the main data first (without files) for immediate response
+    const mainDataOnly = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      requestTypeId: formData.requestTypeId,
+      disciplineId: formData.disciplineId,
+      description: formData.description,
+      files: [] // No files in the initial request
+    };
 
+    // Create legal request (main data only) - this should be very fast
+    const status = await legalRequestStore.createLegalRequest(mainDataOnly);
+    hideLoading(); // Hide the loading spinner immediately
+    
     if (status === 201) {
-      showNotification("¡Solicitud creada exitosamente!", "success");
+      // Show single unified success message
+      if (extractedFiles.length > 0) {
+        showNotification(
+          `✅ ¡Solicitud recibida exitosamente! Tus ${extractedFiles.length} archivo(s) se procesarán y recibirás un email de confirmación.`,
+          "success"
+        );
+        
+        // Start file upload in background (non-blocking)
+        setTimeout(async () => {
+          try {
+            // Get the last created legal request ID
+            const legalRequestId = legalRequestStore.getLastCreatedRequestId();
+            if (legalRequestId) {
+              await legalRequestStore.uploadFilesAsync(legalRequestId, extractedFiles);
+            }
+          } catch (fileError) {
+            console.error("Background file upload failed:", fileError);
+            // File errors will be handled via email notification
+          }
+        }, 500);
+      } else {
+        // No files to process - simpler message
+        showNotification(
+          "✅ ¡Solicitud recibida exitosamente! Recibirás un email de confirmación en breve.",
+          "success"
+        );
+      }
+      
       resetForm(); // Reset the form after successful submission
       router.push({ name: "process_list" });
+      
     } else {
       showNotification(
         "Error al crear la solicitud. Intenta nuevamente.",
         "error"
       );
     }
+    
   } catch (error) {
+    hideLoading(); // Ensure loading is hidden even on error
     console.error("Error al enviar la solicitud:", error);
     showNotification(
       "Hubo un error inesperado. Por favor, inténtalo más tarde.",
