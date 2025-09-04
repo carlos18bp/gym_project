@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature
 from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
@@ -68,17 +68,30 @@ class LegalRequestAdmin(admin.ModelAdmin):
     Manages legal requests and their associated data.
     """
     list_display = (
-        'first_name', 'last_name', 'email', 'request_type', 
-        'discipline', 'description', 'created_at'
+        'request_number', 'get_user_name', 'get_user_email', 'request_type', 
+        'discipline', 'status', 'created_at'
     )
     filter_horizontal = ('files',)
     search_fields = (
-        'first_name', 'last_name', 'email', 
-        'request_type__name', 'discipline__name', 'description', 'created_at'
+        'request_number', 'user__first_name', 'user__last_name', 'user__email', 
+        'request_type__name', 'discipline__name', 'description'
     )
     list_filter = (
-        'request_type', 'discipline', 'created_at'
+        'status', 'request_type', 'discipline', 'created_at'
     )
+    readonly_fields = ('request_number', 'created_at', 'status_updated_at')
+    
+    def get_user_name(self, obj):
+        """Get the full name of the user who created the request."""
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+    get_user_name.short_description = 'Usuario'
+    get_user_name.admin_order_field = 'user__first_name'
+    
+    def get_user_email(self, obj):
+        """Get the email of the user who created the request."""
+        return obj.user.email
+    get_user_email.short_description = 'Email'
+    get_user_email.admin_order_field = 'user__email'
 
 class LegalRequestTypeAdmin(admin.ModelAdmin):
     """
@@ -106,6 +119,28 @@ class LegalRequestFilesAdmin(admin.ModelAdmin):
     list_display = ('file', 'created_at')
     search_fields = ('file',)
     list_filter = ('created_at',)
+
+class LegalRequestResponseAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the LegalRequestResponse model.
+    Manages responses to legal requests.
+    """
+    list_display = ('legal_request', 'get_user_name', 'user_type', 'get_response_preview', 'created_at')
+    list_filter = ('user_type', 'created_at')
+    search_fields = ('legal_request__request_number', 'user__first_name', 'user__last_name', 'response_text')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('legal_request', 'user')
+    
+    def get_user_name(self, obj):
+        """Get the full name of the user who created the response."""
+        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+    get_user_name.short_description = 'Usuario'
+    get_user_name.admin_order_field = 'user__first_name'
+    
+    def get_response_preview(self, obj):
+        """Get a preview of the response text."""
+        return obj.response_text[:100] + '...' if len(obj.response_text) > 100 else obj.response_text
+    get_response_preview.short_description = 'Respuesta'
 
 class DocumentVariableInline(admin.StackedInline):
     """
@@ -245,7 +280,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'legal_request_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['LegalRequest', 'LegalRequestType', 'LegalDiscipline', 'LegalRequestFiles']
+                    if model['object_name'] in ['LegalRequest', 'LegalRequestType', 'LegalDiscipline', 'LegalRequestFiles', 'LegalRequestResponse']
                 ]
             },
             {
@@ -273,6 +308,7 @@ admin_site.register(LegalRequest, LegalRequestAdmin)
 admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
+admin_site.register(LegalRequestResponse, LegalRequestResponseAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)

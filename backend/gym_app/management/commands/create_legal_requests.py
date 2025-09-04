@@ -3,7 +3,7 @@ import random
 from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
-from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, User
 
 class Command(BaseCommand):
     help = 'Create legal requests with random types, disciplines, and files'
@@ -14,11 +14,17 @@ class Command(BaseCommand):
 
         Arguments:
             --number_of_requests: Number of legal requests to be created.
+            --with_responses: Include sample responses for requests.
         """
         parser.add_argument(
             '--number_of_requests',
             type=int,
             help='Indicates the number of legal requests to be created'
+        )
+        parser.add_argument(
+            '--with_responses',
+            action='store_true',
+            help='Create sample responses for the legal requests'
         )
 
     def handle(self, *args, **options):
@@ -31,7 +37,11 @@ class Command(BaseCommand):
         """
         # Get the number of requests to create, default to 10 if not specified
         number_of_requests = options.get('number_of_requests') or 10
+        with_responses = options.get('with_responses', False)
         fake = Faker()
+        
+        # Status choices for random assignment
+        status_choices = ['PENDING', 'IN_REVIEW', 'RESPONDED', 'CLOSED']
 
         # Create random LegalRequestTypes if they do not already exist
         request_types = [
@@ -85,21 +95,40 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'No files found in {request_files_directory}'))
             return
 
+        # Get users for creating requests and responses
+        all_clients = list(User.objects.filter(role='client'))
+        lawyers = list(User.objects.filter(role='lawyer')) if with_responses else []
+        
+        # Ensure we have at least one client to create requests
+        if not all_clients:
+            self.stdout.write(self.style.ERROR('No client users found. Please create client users first.'))
+            return
+        
         # Loop to create the specified number of legal requests
-        for _ in range(number_of_requests):
+        for i in range(number_of_requests):
             # Randomly select a type and discipline
             request_type = random.choice(legal_request_types)
             discipline = random.choice(legal_disciplines)
+            
+            # Randomly assign status (80% PENDING for new requests, 20% others)
+            if random.random() < 0.8:
+                status = 'PENDING'
+            else:
+                status = random.choice(status_choices)
 
-            # Create a new legal request with random data
+            # Randomly select a client user for this request
+            client_user = random.choice(all_clients)
+            
+            # Create a new legal request with the selected client user
             legal_request = LegalRequest.objects.create(
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                email=fake.email(),
+                user=client_user,
                 request_type=request_type,
                 discipline=discipline,
-                description=fake.paragraph(nb_sentences=5)
+                description=fake.paragraph(nb_sentences=5),
+                status=status
             )
+            
+            self.stdout.write(f'Created request {legal_request.request_number} with status {status}')
 
             # Create a random number of files for the legal request
             num_files = random.randint(1, 5)
@@ -114,6 +143,47 @@ class Command(BaseCommand):
                         file=File(file, name=random_file_name)
                     )
                     legal_request.files.add(legal_request_file)
+            
+            # Create sample responses if requested
+            if with_responses and (lawyers or clients):
+                # Create responses based on status
+                if status in ['IN_REVIEW', 'RESPONDED', 'CLOSED']:
+                    # Create lawyer response
+                    if lawyers:
+                        lawyer = random.choice(lawyers)
+                        lawyer_responses = [
+                            "Hemos recibido su solicitud y estamos revisando la documentación.",
+                            "Necesitamos información adicional para proceder con su caso.",
+                            "Su caso ha sido asignado a nuestro equipo especializado.",
+                            "Hemos completado el análisis inicial de su solicitud.",
+                            "Le informamos que su caso requiere documentación adicional."
+                        ]
+                        
+                        LegalRequestResponse.objects.create(
+                            legal_request=legal_request,
+                            response_text=random.choice(lawyer_responses),
+                            user=lawyer,
+                            user_type='lawyer'
+                        )
+                        
+                        # Sometimes add a client response back (from the request owner)
+                        if random.random() < 0.4:  # 40% chance
+                            # Use the same client who created the request
+                            client_responses = [
+                                "Gracias por la información. Adjunto la documentación solicitada.",
+                                "¿Podrían proporcionarme más detalles sobre los próximos pasos?",
+                                "He enviado los documentos adicionales por correo.",
+                                "¿Cuál es el tiempo estimado para resolver mi caso?",
+                                "Agradezco su pronta respuesta y seguimiento."
+                            ]
+                            
+                            LegalRequestResponse.objects.create(
+                                legal_request=legal_request,
+                                response_text=random.choice(client_responses),
+                                user=client_user,  # Use the client who created the request
+                                user_type='client'
+                            )
 
         # Print success message
-        self.stdout.write(self.style.SUCCESS(f'{number_of_requests} legal requests created successfully'))
+        response_msg = f" with sample responses" if with_responses else ""
+        self.stdout.write(self.style.SUCCESS(f'{number_of_requests} legal requests created successfully{response_msg}'))

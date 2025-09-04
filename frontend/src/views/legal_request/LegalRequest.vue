@@ -16,73 +16,7 @@
       <form @submit.prevent="submitHandler()">
         <div class="mt-4 space-y-3">
           <!-- First row -->
-          <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <!--Name form -->
-            <div>
-              <label
-                for="name"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Nombre
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.firstName"
-                  type="text"
-                  name="name"
-                  id="name"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!--Last Name form -->
-            <div>
-              <label
-                for="last_name"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Apellido
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.lastName"
-                  type="text"
-                  name="last_name"
-                  id="last_name"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!--Email form -->
-            <div>
-              <label
-                for="email"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Correo electronico
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.email"
-                  type="email"
-                  name="email"
-                  id="email"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-                <p
-                  v-if="formData.email && !isValidEmail(formData.email)"
-                  class="absolute font-regular text-red-500 text-sm"
-                >
-                  Por favor, introduce un correo válido.
-                </p>
-              </div>
-            </div>
+          <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             <!-- Type request form -->
             <div>
               <Combobox
@@ -420,9 +354,6 @@ const legalRequestStore = useLegalRequestStore();
 const legalRequestTypes = ref([]); // List of legal request types
 const legalDisciplines = ref([]); // List of legal disciplines
 const formData = reactive({
-  firstName: "", // User's first name
-  lastName: "", // User's last name
-  email: "", // User's email address
   requestTypeId: "", // Selected legal request type ID
   disciplineId: "", // Selected discipline ID
   description: "", // Request description
@@ -545,10 +476,6 @@ const isValidEmail = (email) => {
  */
 const isSaveButtonEnabled = computed(() => {
   return (
-    formData.firstName.trim() &&
-    formData.lastName.trim() &&
-    formData.email.trim() &&
-    isValidEmail(formData.email) && // Validate email format
     formData.requestTypeId &&
     formData.disciplineId &&
     formData.description.trim()
@@ -571,9 +498,6 @@ const submitHandler = async () => {
   try {
     // Submit only the main data first (without files) for immediate response
     const mainDataOnly = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
       requestTypeId: formData.requestTypeId,
       disciplineId: formData.disciplineId,
       description: formData.description,
@@ -614,7 +538,7 @@ const submitHandler = async () => {
       }
       
       resetForm(); // Reset the form after successful submission
-      router.push({ name: "process_list" });
+      router.push({ name: "legal_requests_list" });
       
     } else {
       showNotification(
@@ -637,9 +561,6 @@ const submitHandler = async () => {
  * Resets the form data and clears the file list after submission.
  */
 const resetForm = () => {
-  formData.firstName = "";
-  formData.lastName = "";
-  formData.email = "";
   formData.requestTypeId = "";
   formData.disciplineId = "";
   formData.description = "";

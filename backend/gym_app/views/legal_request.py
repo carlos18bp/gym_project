@@ -8,12 +8,19 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import transaction, models
 from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
-from gym_app.serializers import LegalRequestSerializer, LegalRequestTypeSerializer, LegalDisciplineSerializer
+from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse
+from gym_app.serializers import (
+    LegalRequestSerializer, LegalRequestTypeSerializer, LegalDisciplineSerializer,
+    LegalRequestListSerializer, LegalRequestResponseSerializer
+)
 from gym_app.views.layouts.sendEmail import send_template_email
+from gym_app.utils.email_notifications import (
+    send_status_update_notification,
+    notify_client_of_lawyer_response,
+    notify_lawyers_of_client_response
+)
 
 # Configure logger for professional error handling
 logger = logging.getLogger(__name__)
@@ -26,16 +33,6 @@ ALLOWED_FILE_TYPES = {
     'image/png': ['.png']
 }
 MAX_FILE_SIZE = 30 * 1024 * 1024  # 30MB
-
-def validate_email_format(email):
-    """Validate email format using Django's validator"""
-    try:
-        validate_email(email)
-        logger.info(f"Email validation successful for: {email}")
-        return True
-    except ValidationError as e:
-        logger.warning(f"Email validation failed for: {email} - {str(e)}")
-        raise ValidationError(f"Invalid email format: {str(e)}")
 
 def validate_file_security(file):
     """Comprehensive file validation for security"""
@@ -78,6 +75,63 @@ def sanitize_filename(filename):
     logger.info(f"Sanitized filename: {filename} -> {sanitized}")
     return sanitized
 
+def process_file_upload(file, legal_request):
+    """
+    Process a single file upload with validation and security checks.
+    
+    Args:
+        file: Uploaded file object
+        legal_request: LegalRequest instance to associate the file with
+    
+    Returns:
+        dict: Result with success status and file data or error info
+    """
+    try:
+        # Comprehensive file validation
+        validate_file_security(file)
+        
+        # Sanitize filename for security
+        original_filename = file.name
+        sanitized_filename = sanitize_filename(original_filename)
+        
+        # Use atomic transaction for file creation
+        with transaction.atomic():
+            file_instance = LegalRequestFiles.objects.create(file=file)
+            legal_request.files.add(file_instance)
+        
+        logger.info(f"File uploaded successfully: {original_filename} -> {sanitized_filename} for legal request {legal_request.id}")
+        
+        return {
+            'success': True,
+            'data': {
+                'id': file_instance.id,
+                'original_name': original_filename,
+                'sanitized_name': sanitized_filename,
+                'size': file.size
+            }
+        }
+        
+    except ValidationError as e:
+        error_msg = f"Validation failed for {file.name}: {str(e)}"
+        logger.warning(error_msg)
+        return {
+            'success': False,
+            'error': {
+                'name': file.name,
+                'message': str(e)
+            }
+        }
+    except Exception as e:
+        error_msg = f"Upload failed for {file.name}: {str(e)}"
+        logger.error(error_msg)
+        return {
+            'success': False,
+            'error': {
+                'name': file.name,
+                'message': 'Upload failed due to server error'
+            }
+        }
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_legal_request(request):
@@ -100,8 +154,8 @@ def create_legal_request(request):
             logger.error(f"JSON parsing error for user {request.user.id}: {str(e)}")
             return Response({'detail': 'Invalid JSON format in main data.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate required fields
-        required_fields = ['firstName', 'lastName', 'email', 'requestTypeId', 'disciplineId', 'description']
+        # Validate required fields (removed user fields since we use authenticated user)
+        required_fields = ['requestTypeId', 'disciplineId', 'description']
         missing_fields = [field for field in required_fields if not main_data.get(field)]
         if missing_fields:
             logger.warning(f"Missing required fields for user {request.user.id}: {missing_fields}")
@@ -110,12 +164,7 @@ def create_legal_request(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate email format in backend
-        try:
-            validate_email_format(main_data.get('email'))
-        except ValidationError as e:
-            logger.warning(f"Email validation failed for user {request.user.id}: {str(e)}")
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Email validation not needed since we use authenticated user's email
 
         # Validate foreign key references
         try:
@@ -132,11 +181,9 @@ def create_legal_request(request):
 
         # Use atomic transaction to ensure data consistency
         with transaction.atomic():
-            # Create the LegalRequest instance with validated and sanitized data
+            # Create the LegalRequest instance with authenticated user
             legal_request = LegalRequest.objects.create(
-                first_name=main_data.get('firstName').strip(),
-                last_name=main_data.get('lastName').strip(),
-                email=main_data.get('email').strip().lower(),
+                user=request.user,
                 request_type=request_type,
                 discipline=discipline,
                 description=main_data.get('description').strip()
@@ -207,42 +254,12 @@ def upload_legal_request_file(request):
 
         # Process each file with validation and atomic transactions
         for file in files:
-            try:
-                # Comprehensive file validation
-                validate_file_security(file)
-                
-                # Sanitize filename for security
-                original_filename = file.name
-                sanitized_filename = sanitize_filename(original_filename)
-                
-                # Use atomic transaction for file creation
-                with transaction.atomic():
-                    file_instance = LegalRequestFiles.objects.create(file=file)
-                    legal_request.files.add(file_instance)
-                
-                uploaded_files.append({
-                    'id': file_instance.id,
-                    'original_name': original_filename,
-                    'sanitized_name': sanitized_filename,
-                    'size': file.size
-                })
-                
-                logger.info(f"File uploaded successfully: {original_filename} -> {sanitized_filename} for legal request {legal_request_id}")
-                
-            except ValidationError as e:
-                error_msg = f"Validation failed for {file.name}: {str(e)}"
-                logger.warning(error_msg)
-                failed_files.append({
-                    'name': file.name,
-                    'error': str(e)
-                })
-            except Exception as e:
-                error_msg = f"Upload failed for {file.name}: {str(e)}"
-                logger.error(error_msg)
-                failed_files.append({
-                    'name': file.name,
-                    'error': 'Upload failed due to server error'
-                })
+            result = process_file_upload(file, legal_request)
+            
+            if result['success']:
+                uploaded_files.append(result['data'])
+            else:
+                failed_files.append(result['error'])
 
         # Files processed successfully - no email needed, only logging
         if uploaded_files or failed_files:
@@ -346,3 +363,406 @@ def send_confirmation_email(request):
             {'detail': 'An unexpected error occurred'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# ===============================
+# NEW ENDPOINTS FOR MANAGEMENT SYSTEM
+# ===============================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_legal_requests(request):
+    """
+    List legal requests filtered by user role.
+    Lawyers see all requests, clients see only their own.
+    """
+    try:
+        user = request.user
+        
+        # Base queryset with related data for performance
+        queryset = LegalRequest.objects.select_related(
+            'request_type', 'discipline'
+        ).prefetch_related('responses', 'files')
+        
+        # Filter based on user role
+        if hasattr(user, 'role') and user.role == 'lawyer':
+            # Lawyers see all requests
+            requests = queryset.all()
+            logger.info(f"Lawyer {user.id} requested all legal requests")
+        else:
+            # Clients see only their own requests (filter by user)
+            requests = queryset.filter(user=user)
+            logger.info(f"Client {user.id} requested their legal requests")
+        
+        # Apply search filter if provided
+        search = request.GET.get('search', '').strip()
+        if search:
+            requests = requests.filter(
+                models.Q(request_number__icontains=search) |
+                models.Q(user__first_name__icontains=search) |
+                models.Q(user__last_name__icontains=search) |
+                models.Q(user__email__icontains=search) |
+                models.Q(description__icontains=search)
+            )
+        
+        # Apply status filter if provided
+        status_filter = request.GET.get('status', '').strip()
+        if status_filter:
+            requests = requests.filter(status=status_filter)
+        
+        # Apply date filters if provided
+        date_from = request.GET.get('date_from', '').strip()
+        date_to = request.GET.get('date_to', '').strip()
+        
+        if date_from:
+            try:
+                from datetime import datetime
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+                requests = requests.filter(created_at__date__gte=date_from_obj)
+                logger.info(f"Applied date_from filter: {date_from}")
+            except ValueError:
+                logger.warning(f"Invalid date_from format: {date_from}")
+        
+        if date_to:
+            try:
+                from datetime import datetime
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+                requests = requests.filter(created_at__date__lte=date_to_obj)
+                logger.info(f"Applied date_to filter: {date_to}")
+            except ValueError:
+                logger.warning(f"Invalid date_to format: {date_to}")
+        
+        # Order by creation date (newest first)
+        requests = requests.order_by('-created_at')
+        
+        # Use list serializer for better performance
+        serializer = LegalRequestListSerializer(requests, many=True)
+        
+        return Response({
+            'requests': serializer.data,
+            'count': requests.count(),
+            'user_role': getattr(user, 'role', 'client')
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error listing legal requests for user {request.user.id}: {str(e)}")
+        return Response(
+            {'detail': 'Error retrieving legal requests'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def get_or_delete_legal_request(request, request_id):
+    """
+    Get detailed information about a specific legal request or delete it.
+    Includes all responses and files.
+    """
+    try:
+        user = request.user
+        
+        # Get the request with related data
+        legal_request = get_object_or_404(
+            LegalRequest.objects.select_related('request_type', 'discipline')
+            .prefetch_related('responses__user', 'files'),
+            id=request_id
+        )
+        
+        # Check permissions
+        if not (hasattr(user, 'role') and user.role == 'lawyer') and legal_request.user != user:
+            logger.warning(f"User {user.id} attempted to access legal request {request_id} without permission")
+            return Response(
+                {'detail': 'You do not have permission to view this request'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if request.method == 'GET':
+            # Serialize the request with full details
+            serializer = LegalRequestSerializer(legal_request)
+            
+            logger.info(f"User {user.id} accessed legal request {request_id}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        elif request.method == 'DELETE':
+            # Check if user is a lawyer for deletion
+            if not (hasattr(user, 'role') and user.role == 'lawyer'):
+                return Response(
+                    {'detail': 'Only lawyers can delete requests'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            request_number = legal_request.request_number
+            
+            # Delete the request (cascade will handle related objects)
+            legal_request.delete()
+            
+            logger.info(f"Lawyer {user.id} deleted legal request {request_number}")
+            
+            return Response({
+                'message': f'Legal request {request_number} deleted successfully'
+            }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error with legal request {request_id} for user {request.user.id}: {str(e)}")
+        return Response(
+            {'detail': 'Error processing legal request'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_legal_request_status(request, request_id):
+    """
+    Update the status of a legal request.
+    Only lawyers can update status.
+    """
+    try:
+        user = request.user
+        
+        # Check if user is a lawyer
+        if not (hasattr(user, 'role') and user.role == 'lawyer'):
+            return Response(
+                {'detail': 'Only lawyers can update request status'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get the legal request
+        legal_request = get_object_or_404(LegalRequest, id=request_id)
+        
+        # Get new status from request
+        new_status = request.data.get('status')
+        if not new_status:
+            return Response(
+                {'detail': 'Status is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate status choice
+        valid_statuses = [choice[0] for choice in LegalRequest.STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return Response(
+                {'detail': f'Invalid status. Valid choices: {valid_statuses}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update status
+        old_status = legal_request.status
+        legal_request.status = new_status
+        legal_request.save()
+        
+        logger.info(f"Lawyer {user.id} updated legal request {request_id} status from {old_status} to {new_status}")
+        
+        # Send email notification to client about status change
+        try:
+            send_status_update_notification(legal_request, old_status, new_status)
+        except Exception as e:
+            logger.error(f"Failed to send status update notification: {str(e)}")
+            # Don't fail the request if email fails
+        
+        # Return updated request
+        serializer = LegalRequestSerializer(legal_request)
+        return Response({
+            'message': f'Status updated from {old_status} to {new_status}',
+            'request': serializer.data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error updating legal request status {request_id}: {str(e)}")
+        return Response(
+            {'detail': 'Error updating request status'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_legal_request_response(request, request_id):
+    """
+    Create a response to a legal request.
+    Both lawyers and clients can create responses.
+    """
+    try:
+        user = request.user
+        
+        # Get the legal request
+        legal_request = get_object_or_404(LegalRequest, id=request_id)
+        
+        # Check permissions
+        user_role = getattr(user, 'role', 'client')
+        if user_role != 'lawyer' and legal_request.user != user:
+            return Response(
+                {'detail': 'You do not have permission to respond to this request'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get response text
+        response_text = request.data.get('response_text', '').strip()
+        if not response_text:
+            return Response(
+                {'detail': 'Response text is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the response
+        response = LegalRequestResponse.objects.create(
+            legal_request=legal_request,
+            response_text=response_text,
+            user=user,
+            user_type=user_role
+        )
+        
+        # Auto-update status if lawyer responds to a pending request
+        if user_role == 'lawyer' and legal_request.status == 'PENDING':
+            previous_status = legal_request.status
+            legal_request.status = 'IN_REVIEW'
+            legal_request.save()
+            logger.info(f"Auto-updated legal request {request_id} status from {previous_status} to IN_REVIEW after lawyer response")
+        
+        logger.info(f"User {user.id} ({user_role}) created response for legal request {request_id}")
+        
+        # Send email notifications based on who created the response
+        try:
+            if user_role == 'lawyer':
+                # Lawyer responded - notify the client
+                notify_client_of_lawyer_response(legal_request, response)
+            else:
+                # Client responded - notify all lawyers
+                notify_lawyers_of_client_response(legal_request, response)
+        except Exception as e:
+            logger.error(f"Failed to send response notification: {str(e)}")
+            # Don't fail the request if email fails
+        
+        # Serialize the response
+        serializer = LegalRequestResponseSerializer(response)
+        
+        return Response({
+            'message': 'Response created successfully',
+            'response': serializer.data
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Error creating response for legal request {request_id}: {str(e)}")
+        return Response(
+            {'detail': 'Error creating response'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_legal_request(request, request_id):
+    """
+    Delete a legal request.
+    Only lawyers can delete requests.
+    """
+    try:
+        user = request.user
+        
+        # Check if user is a lawyer
+        if not (hasattr(user, 'role') and user.role == 'lawyer'):
+            return Response(
+                {'detail': 'Only lawyers can delete requests'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get the legal request
+        legal_request = get_object_or_404(LegalRequest, id=request_id)
+        request_number = legal_request.request_number
+        
+        # Delete the request (cascade will handle related objects)
+        legal_request.delete()
+        
+        logger.info(f"Lawyer {user.id} deleted legal request {request_number}")
+        
+        return Response({
+            'message': f'Legal request {request_number} deleted successfully'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error deleting legal request {request_id}: {str(e)}")
+        return Response(
+            {'detail': 'Error deleting request'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_files_to_legal_request(request, request_id):
+    """
+    Add additional files to an existing legal request.
+    Only the client who created the request can add files.
+    """
+    try:
+        user = request.user
+        
+        # Get the legal request
+        legal_request = get_object_or_404(LegalRequest, id=request_id)
+        
+        # Check permissions - only the request owner (and only clients) can add files
+        user_role = getattr(user, 'role', 'client')
+        if legal_request.user != user:
+            logger.warning(f"User {user.id} attempted to add files to legal request {request_id} without permission")
+            return Response(
+                {'detail': 'You do not have permission to add files to this request'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Additional check: only clients can add files
+        if user_role != 'client':
+            logger.warning(f"Non-client user {user.id} ({user_role}) attempted to add files to legal request {request_id}")
+            return Response(
+                {'detail': 'Only clients can add files to requests'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if request is closed (optional - you can adjust this logic)
+        if legal_request.status == 'CLOSED':
+            return Response(
+                {'detail': 'Cannot add files to a closed request'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get uploaded files
+        uploaded_files = request.FILES.getlist('files')
+        if not uploaded_files:
+            return Response({'detail': 'No files provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        successful_uploads = []
+        failed_uploads = []
+        
+        with transaction.atomic():
+            for uploaded_file in uploaded_files:
+                result = process_file_upload(uploaded_file, legal_request)
+                
+                if result['success']:
+                    successful_uploads.append({
+                        'id': result['data']['id'],
+                        'filename': result['data']['sanitized_name'],
+                        'size': result['data']['size']
+                    })
+                    logger.info(f"File {result['data']['sanitized_name']} added to legal request {request_id} by user {user.id}")
+                else:
+                    failed_uploads.append({
+                        'filename': result['error']['name'],
+                        'error': result['error']['message']
+                    })
+                    logger.error(f"Failed to upload file {result['error']['name']} to request {request_id}: {result['error']['message']}")
+        
+        # Prepare response
+        response_data = {
+            'message': f'{len(successful_uploads)} files uploaded successfully',
+            'successful_uploads': successful_uploads,
+            'failed_uploads': failed_uploads
+        }
+        
+        if failed_uploads:
+            response_data['warning'] = f'{len(failed_uploads)} files failed to upload'
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error adding files to legal request {request_id}: {str(e)}")
+        return Response({'detail': 'An error occurred while adding files.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

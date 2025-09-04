@@ -49,10 +49,19 @@ process_urls = [
 
 # Legal request management URLs
 legal_request_urls = [
+    # Original endpoints
     path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
     path('upload_legal_request_file/', legal_request.upload_legal_request_file, name='upload-legal-request-file'),
     path('dropdown_options_legal_request/', legal_request.get_dropdown_options, name='get-dropdown-options'),
     path('send_confirmation_email/', legal_request.send_confirmation_email, name='send-confirmation-email'),
+    
+    # New management endpoints
+    path('legal_requests/', legal_request.list_legal_requests, name='list-legal-requests'),
+    path('legal_requests/<int:request_id>/', legal_request.get_or_delete_legal_request, name='get-or-delete-legal-request'),
+    path('legal_requests/<int:request_id>/status/', legal_request.update_legal_request_status, name='update-legal-request-status'),
+    path('legal_requests/<int:request_id>/responses/', legal_request.create_legal_request_response, name='create-legal-request-response'),
+    path('legal_requests/<int:request_id>/files/', legal_request.add_files_to_legal_request, name='add-files-to-legal-request'),
+    path('legal_requests/<int:request_id>/delete/', legal_request.delete_legal_request, name='delete-legal-request'),
 ]
 
 # Intranet document management URLs
