@@ -157,6 +157,54 @@ const router = createRouter({
       ],
     },
     {
+      path: "/legal_requests",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "legal_requests_management",
+          component: () => import(/* webpackChunkName: "legal-requests-management" */ "@/views/legal_request/LegalRequestsManagement.vue"),
+          meta: { requiresAuth: true, title: "Gestión de Solicitudes" },
+        },
+      ],
+    },
+    {
+      path: "/legal_requests_list",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "legal_requests_list",
+          component: () => import(/* webpackChunkName: "legal-requests-list" */ "@/views/legal_request/LegalRequestsList.vue"),
+          meta: { requiresAuth: true, title: "Lista de Solicitudes" },
+        },
+      ],
+    },
+    {
+      path: "/legal_request_create",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "legal_request_create",
+          component: () => import(/* webpackChunkName: "legal-request-create" */ "@/views/legal_request/LegalRequest.vue"),
+          meta: { requiresAuth: true, title: "Nueva Solicitud" },
+        },
+      ],
+    },
+    {
+      path: "/legal_request_detail/:id",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "legal_request_detail",
+          component: () => import(/* webpackChunkName: "legal-request-detail" */ "@/views/legal_request/LegalRequestDetail.vue"),
+          meta: { requiresAuth: true, title: "Detalle de Solicitud" },
+        },
+      ],
+    },
+    {
       path: "/intranet_g_y_m",
       component: SlideBar,
       children: [

@@ -385,25 +385,31 @@ onMounted(async () => {
   showProfile.value = !!!currentUser.is_profile_completed;
 
   // Filter out the "Radicar Proceso" option if the user role is "client"
-  if (currentUser.role == "client") {
+  if (currentUser.role == 'client') {
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Radicar Proceso" &&
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M"
     );
-  } else if (currentUser.role == "lawyer" && !currentUser.is_gym_lawyer) {
+  } else if (currentUser.role == 'lawyer' && !currentUser.is_gym_lawyer) {
     // Remove "Intranet G&M" for lawyers who are not GYM lawyers
     navigation.value = navigation.value.filter(
       (navItem) => navItem.name !== "Intranet G&M"
     );
   }
 
-  // Filter out the "Solicitudes" option if the user role is "lawyer" or is_gym_lawyer
-  if (currentUser.role === "lawyer" || currentUser.is_gym_lawyer) {
+  // Filter navigation based on user role
+  if (currentUser.role === 'lawyer' || currentUser.is_gym_lawyer) {
+    // Lawyers: Remove "Solicitudes" (client creation) and "Agendar Cita", keep "Gestión de Solicitudes"
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
+    );
+  } else if (currentUser.role === 'client') {
+    // Clients: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Gestión de Solicitudes"
     );
   }
 
@@ -490,11 +496,21 @@ const navigation = ref([
     name: "Solicitudes",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "legal_request" });
+      router.push({ name: "legal_requests_management" });
     },
     icon: InboxArrowDownIcon,
     current: false,
-    routes: ['/legal_request']
+    routes: ['/legal_requests', '/legal_request']
+  },
+  {
+    name: "Gestión de Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "legal_requests_management" });
+    },
+    icon: ScaleIcon,
+    current: false,
+    routes: ['/legal_requests', '/legal_request']
   },
   {
     name: "Agendar Cita",

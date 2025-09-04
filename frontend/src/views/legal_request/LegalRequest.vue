@@ -16,73 +16,7 @@
       <form @submit.prevent="submitHandler()">
         <div class="mt-4 space-y-3">
           <!-- First row -->
-          <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-            <!--Name form -->
-            <div>
-              <label
-                for="name"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Nombre
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.firstName"
-                  type="text"
-                  name="name"
-                  id="name"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!--Last Name form -->
-            <div>
-              <label
-                for="last_name"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Apellido
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.lastName"
-                  type="text"
-                  name="last_name"
-                  id="last_name"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-              </div>
-            </div>
-            <!--Email form -->
-            <div>
-              <label
-                for="email"
-                class="block text-base font-medium leading-6 text-primary"
-              >
-                Correo electronico
-                <span class="text-red-500">*</span>
-              </label>
-              <div class="mt-2">
-                <input
-                  v-model="formData.email"
-                  type="email"
-                  name="email"
-                  id="email"
-                  class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                  required
-                />
-                <p
-                  v-if="formData.email && !isValidEmail(formData.email)"
-                  class="absolute font-regular text-red-500 text-sm"
-                >
-                  Por favor, introduce un correo válido.
-                </p>
-              </div>
-            </div>
+          <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
             <!-- Type request form -->
             <div>
               <Combobox
@@ -275,11 +209,13 @@
                       for="file-upload"
                       class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
                     >
-                      <span>Sube un archivo</span>
+                      <span>Sube archivos</span>
                       <input
                         id="file-upload"
                         name="file-upload"
                         type="file"
+                        multiple
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
                         class="sr-only"
                         @change="handleFileChange"
                       />
@@ -291,30 +227,55 @@
                   </p>
                 </div>
                 <!-- list of files -->
-                <div v-else class="w-full flex flex-wrap gap-3">
-                  <div
-                    v-for="(file, index) in files"
-                    :key="index"
-                    class="relative p-4 grid rounded-md bg-white border-2"
-                    :class="file.style.general"
-                    @mouseenter="file.hover = true"
-                    @mouseleave="file.hover = false"
-                  >
+                <div v-else class="w-full">
+                  <div class="flex flex-wrap gap-3 mb-4">
                     <div
-                      v-show="file.hover"
-                      class="absolute p-0.5 mt-2 ml-2 rounded-full"
-                      :class="file.style.xMark"
-                      @click="removeFile(index)"
+                      v-for="(file, index) in files"
+                      :key="index"
+                      class="relative p-4 grid rounded-md bg-white border-2"
+                      :class="file.style.general"
+                      @mouseenter="file.hover = true"
+                      @mouseleave="file.hover = false"
                     >
-                      <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      <div
+                        v-show="file.hover"
+                        class="absolute p-0.5 mt-2 ml-2 rounded-full"
+                        :class="file.style.xMark"
+                        @click="removeFile(index)"
+                      >
+                        <XMarkIcon class="size-3 text-white"></XMarkIcon>
+                      </div>
+                      <component
+                        :is="file.icon"
+                        class="size-12 mx-auto"
+                      ></component>
+                      <span class="text-center text-xs truncate w-20">
+                        {{ file.name }}
+                      </span>
                     </div>
-                    <component
-                      :is="file.icon"
-                      class="size-12 mx-auto"
-                    ></component>
-                    <span class="text-center text-xs truncate w-20">
-                      {{ file.name }}
-                    </span>
+                  </div>
+                  <!-- Add more files button -->
+                  <div class="text-center">
+                    <label
+                      for="additional-files"
+                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      <CloudArrowUpIcon class="w-4 h-4 mr-2" />
+                      Agregar más archivos
+                      <input
+                        id="additional-files"
+                        name="additional-files"
+                        type="file"
+                        multiple
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
+                        class="sr-only"
+                        @change="handleFileChange"
+                      />
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2">
+                      PNG, JPG, PDF, DOCX de hasta 30MB cada uno<br/>
+                      Puedes seleccionar múltiples archivos
+                    </p>
                   </div>
                 </div>
               </div>
@@ -393,9 +354,6 @@ const legalRequestStore = useLegalRequestStore();
 const legalRequestTypes = ref([]); // List of legal request types
 const legalDisciplines = ref([]); // List of legal disciplines
 const formData = reactive({
-  firstName: "", // User's first name
-  lastName: "", // User's last name
-  email: "", // User's email address
   requestTypeId: "", // Selected legal request type ID
   disciplineId: "", // Selected discipline ID
   description: "", // Request description
@@ -518,10 +476,6 @@ const isValidEmail = (email) => {
  */
 const isSaveButtonEnabled = computed(() => {
   return (
-    formData.firstName.trim() &&
-    formData.lastName.trim() &&
-    formData.email.trim() &&
-    isValidEmail(formData.email) && // Validate email format
     formData.requestTypeId &&
     formData.disciplineId &&
     formData.description.trim()
@@ -542,21 +496,59 @@ const submitHandler = async () => {
   formData.files = extractedFiles;
 
   try {
-    // Submit the form data to the store
-    const status = await legalRequestStore.createLegalRequest(formData);
-    hideLoading(); // Hide the loading spinner
+    // Submit only the main data first (without files) for immediate response
+    const mainDataOnly = {
+      requestTypeId: formData.requestTypeId,
+      disciplineId: formData.disciplineId,
+      description: formData.description,
+      files: [] // No files in the initial request
+    };
 
+    // Create legal request (main data only) - this should be very fast
+    const status = await legalRequestStore.createLegalRequest(mainDataOnly);
+    hideLoading(); // Hide the loading spinner immediately
+    
     if (status === 201) {
-      showNotification("¡Solicitud creada exitosamente!", "success");
+      // Show single unified success message
+      if (extractedFiles.length > 0) {
+        showNotification(
+          `✅ ¡Solicitud recibida exitosamente! Tus ${extractedFiles.length} archivo(s) se procesarán y recibirás un email de confirmación.`,
+          "success"
+        );
+        
+        // Start file upload in background (non-blocking)
+        setTimeout(async () => {
+          try {
+            // Get the last created legal request ID
+            const legalRequestId = legalRequestStore.getLastCreatedRequestId();
+            if (legalRequestId) {
+              await legalRequestStore.uploadFilesAsync(legalRequestId, extractedFiles);
+            }
+          } catch (fileError) {
+            console.error("Background file upload failed:", fileError);
+            // File errors will be handled via email notification
+          }
+        }, 500);
+      } else {
+        // No files to process - simpler message
+        showNotification(
+          "✅ ¡Solicitud recibida exitosamente! Recibirás un email de confirmación en breve.",
+          "success"
+        );
+      }
+      
       resetForm(); // Reset the form after successful submission
-      router.push({ name: "process_list" });
+      router.push({ name: "legal_requests_list" });
+      
     } else {
       showNotification(
         "Error al crear la solicitud. Intenta nuevamente.",
         "error"
       );
     }
+    
   } catch (error) {
+    hideLoading(); // Ensure loading is hidden even on error
     console.error("Error al enviar la solicitud:", error);
     showNotification(
       "Hubo un error inesperado. Por favor, inténtalo más tarde.",
@@ -569,9 +561,6 @@ const submitHandler = async () => {
  * Resets the form data and clears the file list after submission.
  */
 const resetForm = () => {
-  formData.firstName = "";
-  formData.lastName = "";
-  formData.email = "";
   formData.requestTypeId = "";
   formData.disciplineId = "";
   formData.description = "";

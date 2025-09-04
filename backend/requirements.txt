@@ -75,3 +75,6 @@ webencodings==0.5.1
 xhtml2pdf==0.2.17
 XlsxWriter==3.2.0
 zopfli==0.2.3.post1
+
+# Security and validation dependencies
+python-magic==0.4.27

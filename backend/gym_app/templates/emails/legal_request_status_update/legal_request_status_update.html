@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualización de Estado - Solicitud Legal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-in-review { background-color: #dbeafe; color: #1e40af; }
+        .status-responded { background-color: #d1fae5; color: #065f46; }
+        .status-closed { background-color: #f3f4f6; color: #374151; }
+        .request-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #6b7280;
+        }
+        .info-value {
+            color: #111827;
+        }
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4f46e5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #4338ca;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">G&M Legal</div>
+            <h1>Actualización de Estado</h1>
+        </div>
+
+        <p>Estimado/a <strong>{{ client_name }}</strong>,</p>
+
+        <p>Te informamos que el estado de tu solicitud legal ha sido actualizado:</p>
+
+        <div class="request-info">
+            <div class="info-row">
+                <span class="info-label">Número de Solicitud:</span>
+                <span class="info-value">{{ request_number }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Tipo de Solicitud:</span>
+                <span class="info-value">{{ request_type }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Disciplina Legal:</span>
+                <span class="info-value">{{ discipline }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Estado Anterior:</span>
+                <span class="info-value">{{ previous_status }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Estado Actual:</span>
+                <span class="info-value">
+                    <span class="status-badge status-{{ new_status|lower|replace:'_','-' }}">
+                        {{ new_status_display }}
+                    </span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Fecha de Actualización:</span>
+                <span class="info-value">{{ update_date }}</span>
+            </div>
+        </div>
+
+        {% if status_message %}
+        <div class="message">
+            <h3>Información adicional:</h3>
+            <p>{{ status_message }}</p>
+        </div>
+        {% endif %}
+
+        <div style="text-align: center;">
+            <a href="{{ request_url }}" class="button">Ver Detalles de la Solicitud</a>
+        </div>
+
+        <div class="footer">
+            <p>Este es un mensaje automático del sistema de gestión legal G&M.</p>
+            <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+            <p><strong>G&M Legal Services</strong><br>
+            Email: info@gmlegal.com | Teléfono: +1 (555) 123-4567</p>
+        </div>
+    </div>
+</body>
+</html>
