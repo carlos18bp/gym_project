@@ -101,7 +101,7 @@
                   Solo archivos PNG, máximo 10MB
                 </p>
                 <p class="text-xs text-gray-400 mt-1">
-                  Dimensiones ideales: 612 × 792 píxeles (8.5:14 Legal/Oficio)
+                  Dimensiones ideales: 612 × 612 píxeles (8.5:11 Carta)
                 </p>
               </div>
               
@@ -160,11 +160,11 @@
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Alto:</span>
-                    <span class="ml-2 text-blue-600 font-mono">792 píxeles</span>
+                    <span class="ml-2 text-blue-600 font-mono">612 píxeles</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Proporción:</span>
-                    <span class="ml-2 text-blue-600">8.5:14 (Legal/Oficio)</span>
+                    <span class="ml-2 text-blue-600">8.5:11 (Carta)</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Tolerancia:</span>
@@ -180,27 +180,27 @@
               <div class="bg-white rounded-lg p-4 border border-blue-200">
                 <div class="space-y-4">
                   <!-- Visual Layout -->
-                  <div class="mx-auto w-40 h-52 border-2 border-gray-300 rounded bg-gradient-to-b from-blue-100 via-yellow-50 to-green-100 relative text-xs">
+                  <div class="mx-auto w-40 h-44 border-2 border-gray-300 rounded bg-gradient-to-b from-blue-100 via-yellow-50 to-green-100 relative text-xs">
                     <!-- Header Zone -->
-                    <div class="absolute top-0 left-0 right-0 h-16 bg-blue-200 bg-opacity-70 border-b border-blue-300 flex items-center justify-center text-blue-800 font-medium">
+                    <div class="absolute top-0 left-0 right-0 h-12 bg-blue-200 bg-opacity-70 border-b border-blue-300 flex items-center justify-center text-blue-800 font-medium">
                       HEADER ZONE
                     </div>
-                    <div class="absolute top-14 left-1 text-blue-700 text-[10px]">150-200px</div>
+                    <div class="absolute top-10 left-1 text-blue-700 text-[10px]">120-150px</div>
                     
                     <!-- Body Zone -->
-                    <div class="absolute top-16 left-0 right-0 bottom-16 bg-yellow-100 bg-opacity-50 border-y border-yellow-300 flex items-center justify-center text-yellow-800 font-medium">
+                    <div class="absolute top-12 left-0 right-0 bottom-12 bg-yellow-100 bg-opacity-50 border-y border-yellow-300 flex items-center justify-center text-yellow-800 font-medium">
                       <div class="text-center">
                         <div>BODY ZONE</div>
                         <div class="text-[10px] mt-1">⚠️ ZONA CRÍTICA</div>
                       </div>
                     </div>
-                    <div class="absolute top-28 left-1 text-yellow-700 text-[10px]">400-500px</div>
+                    <div class="absolute top-20 left-1 text-yellow-700 text-[10px]">300-400px</div>
                     
                     <!-- Footer Zone -->
-                    <div class="absolute bottom-0 left-0 right-0 h-16 bg-green-200 bg-opacity-70 border-t border-green-300 flex items-center justify-center text-green-800 font-medium">
+                    <div class="absolute bottom-0 left-0 right-0 h-12 bg-green-200 bg-opacity-70 border-t border-green-300 flex items-center justify-center text-green-800 font-medium">
                       FOOTER ZONE
                     </div>
-                    <div class="absolute bottom-14 left-1 text-green-700 text-[10px]">92-192px</div>
+                    <div class="absolute bottom-10 left-1 text-green-700 text-[10px]">80-120px</div>
                   </div>
                   
                   <!-- Zone Descriptions -->
@@ -252,10 +252,10 @@
                     <span class="text-blue-600 font-medium">•</span>
                     <span><strong>Resolución:</strong> 72-150 DPI es suficiente para documentos digitales</span>
                   </div>
-                  <div class="flex items-start space-x-2">
-                    <span class="text-orange-600 font-medium">⚠️</span>
-                    <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (400-500px de altura)</span>
-                  </div>
+                    <div class="flex items-start space-x-2">
+                      <span class="text-orange-600 font-medium">⚠️</span>
+                      <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (300-400px de altura)</span>
+                    </div>
                 </div>
               </div>
             </div>
@@ -264,9 +264,9 @@
             <div class="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
               <h4 class="font-medium text-green-800 mb-2">💡 Tips de Diseño Rápido</h4>
               <div class="text-sm text-green-700 space-y-1">
-                <div>• Si solo tienes header, ubícalo en los primeros 150-200px</div>
+                <div>• Si solo tienes header, ubícalo en los primeros 120-150px</div>
                 <div>• El resto de la imagen debe ser transparente o blanco</div>
-                <div>• Para footer, usa los últimos 92-192px</div>
+                <div>• Para footer, usa los últimos 80-120px</div>
                 <div>• El texto se superpone en toda la imagen, mantén el centro claro</div>
               </div>
             </div>
@@ -382,7 +382,7 @@ const handleFileSelect = (event) => {
 
 const validateImageDimensions = (width, height) => {
   const idealWidth = 612;
-  const idealHeight = 792;
+  const idealHeight = 612;
   const tolerance = 0.1; // 10% tolerance
   
   // Calculate proportion
@@ -392,7 +392,7 @@ const validateImageDimensions = (width, height) => {
   
   // Check if dimensions are exactly ideal
   if (width === idealWidth && height === idealHeight) {
-    warnings.value.push('✅ Dimensiones perfectas: 612 × 792 píxeles');
+    warnings.value.push('✅ Dimensiones perfectas: 612 × 612 píxeles');
     return;
   }
   
@@ -400,20 +400,20 @@ const validateImageDimensions = (width, height) => {
   if (ratioDiff <= tolerance) {
     warnings.value.push(`ℹ️ Buenas proporciones detectadas: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
     if (width !== idealWidth || height !== idealHeight) {
-      warnings.value.push('💡 Para mejores resultados, usa exactamente 612 × 792 píxeles');
+      warnings.value.push('💡 Para mejores resultados, usa exactamente 612 × 612 píxeles');
     }
   } else {
     warnings.value.push(`⚠️ Proporciones no ideales: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
-    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:14)`);
-    warnings.value.push('📐 Considera redimensionar tu imagen a 612 × 792 píxeles');
+    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:11)`);
+    warnings.value.push('📐 Considera redimensionar tu imagen a 612 × 612 píxeles');
   }
   
   // Additional warnings based on dimensions
-  if (width < 300 || height < 400) {
+  if (width < 300 || height < 300) {
     warnings.value.push('⚠️ Imagen muy pequeña - puede verse pixelada en documentos');
   }
   
-  if (width > 1500 || height > 2000) {
+  if (width > 1200 || height > 1600) {
     warnings.value.push('ℹ️ Imagen muy grande - se redimensionará automáticamente');
   }
 };

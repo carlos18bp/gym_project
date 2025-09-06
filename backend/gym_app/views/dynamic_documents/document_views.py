@@ -422,13 +422,13 @@ def download_dynamic_document_word(request, pk):
         # Create Word document
         doc = Document()
         
-        # Configure page size to Legal (Oficio)
+        # Configure page size to Letter (Carta)
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
         
         section = doc.sections[0]
         section.page_width = Inches(8.5)   # 8.5 inches width
-        section.page_height = Inches(14)   # 14 inches height (Legal/Oficio)
+        section.page_height = Inches(11)   # 11 inches height (Letter/Carta)
         
         # Configure margins (adjust as needed)
         section.top_margin = Inches(1)
