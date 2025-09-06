@@ -854,6 +854,7 @@ def download_dynamic_document_word(request, pk):
     except Exception as e:
         print(f"Error generating Word document: {str(e)}")
         return Response({'detail': f'Error generating Word document: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -313,7 +313,9 @@ const props = defineProps({
 const emit = defineEmits([
   'click', 
   'refresh',
-  'remove-from-folder'
+  'remove-from-folder',
+  'modal-open',
+  'navigation'
 ]);
 
 // Initialize centralized modal and actions system

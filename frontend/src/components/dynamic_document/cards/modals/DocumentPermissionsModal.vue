@@ -95,6 +95,8 @@ const props = defineProps({
   }
 });
 
+
+
 // Emits
 const emit = defineEmits(['close', 'saved']);
 
@@ -134,6 +136,7 @@ const savePermissions = async () => {
 
   // Obtener permisos del componente reutilizado
   const currentPermissions = permissionsManagerRef.value?.getPermissionsData();
+  
   if (!currentPermissions) {
     await showNotification('Error al obtener los permisos actuales', 'error');
     return;
@@ -144,20 +147,8 @@ const savePermissions = async () => {
   try {
     const documentId = props.document.id;
     
-    // Usar métodos del store para todas las operaciones
-    if (typeof currentPermissions.is_public === 'boolean') {
-      await store.toggleDocumentPublicAccess(documentId);
-    }
-    
-    if (!currentPermissions.is_public) {
-      if (currentPermissions.visibility_user_ids?.length > 0) {
-        await store.grantVisibilityPermissions(documentId, currentPermissions.visibility_user_ids);
-      }
-      
-      if (currentPermissions.usability_user_ids?.length > 0) {
-        await store.grantUsabilityPermissions(documentId, currentPermissions.usability_user_ids);
-      }
-    }
+    // Usar el nuevo endpoint unificado que reemplaza todos los permisos
+    await store.manageDocumentPermissions(documentId, currentPermissions);
 
     await showNotification('Permisos actualizados exitosamente', 'success');
     emit('saved', props.document);

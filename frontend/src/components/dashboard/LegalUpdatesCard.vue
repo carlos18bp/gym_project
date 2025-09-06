@@ -34,7 +34,7 @@
           <div class="w-full h-full bg-black overflow-hidden" 
                style="border-top-right-radius: 0.5rem; border-bottom-right-radius: 0.5rem;">
             <img 
-              :src="update.image || 'https://via.placeholder.com/250x200'"
+              :src="update.image || placeholderImage"
               :alt="update.title || 'Actualización Legal'" 
               class="w-full h-full object-cover"
               @error="handleImageError"
@@ -64,9 +64,15 @@ const legalUpdateStore = useLegalUpdateStore();
 // Computed property to get active updates
 const legalUpdates = computed(() => legalUpdateStore.activeUpdates);
 
+// Placeholder image as base64 to avoid external dependencies
+const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjUwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMjUwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y0ZjRmNCIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZW4gbm8gZGlzcG9uaWJsZTwvdGV4dD4KICA8L3N2Zz4=';
+
 // Function to handle image loading errors
 const handleImageError = (e) => {
-  e.target.src = 'https://via.placeholder.com/250x200';
+  // Prevent infinite loop by checking if we're already using the placeholder
+  if (e.target.src !== placeholderImage) {
+    e.target.src = placeholderImage;
+  }
 };
 
 // Load updates when component is mounted
