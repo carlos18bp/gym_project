@@ -5,8 +5,8 @@
           :space-between="30"
           class="w-full">
     <!-- Dynamic slides -->
-    <swiper-slide v-for="update in legalUpdates" :key="update.id" class="shadow-md p-1">
-      <div class="relative rounded-lg overflow-hidden flex flex-col sm:flex-row" style="background-color: #DCF2FF;">
+    <swiper-slide v-for="update in legalUpdates" :key="update.id" class="p-1">
+      <div class="relative rounded-lg overflow-hidden flex flex-col sm:flex-row bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
         <div class="flex-grow p-8 overflow-hidden flex flex-col sm:w-[60%]">
           <!-- Larger black quotation mark -->
           <div class="absolute top-6 left-8 text-black text-7xl">❝</div>
@@ -91,8 +91,5 @@ onMounted(async () => {
   margin-top: 15px;
 }
 
-/* Additional style to improve shadow */
-:deep(.swiper-slide) {
-  filter: drop-shadow(0 6px 5px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.05));
-}
+/* Additional style to improve shadow - removed as we're using Tailwind classes */
 </style>
