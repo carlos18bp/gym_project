@@ -1,0 +1,1 @@
+import{u as s,o as t,e as a,f as n}from"./index.js";const o={class:"legal-requests-management"},_={__name:"LegalRequestsManagement",setup(r){const e=s();return t(()=>{e.replace({name:"legal_requests_list"})}),(c,l)=>(a(),n("div",o))}};export{_ as default};
