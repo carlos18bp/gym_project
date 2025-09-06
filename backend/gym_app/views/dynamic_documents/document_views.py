@@ -246,10 +246,11 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         # Define background image style if letterhead exists
         background_style = ""
-        if document.letterhead_image:
+        letterhead_image = get_letterhead_for_document(document, request.user)
+        if letterhead_image:
             try:
                 # Get the absolute path to the letterhead image
-                letterhead_path = os.path.abspath(document.letterhead_image.path)
+                letterhead_path = os.path.abspath(letterhead_image.path)
                 if os.path.exists(letterhead_path):
                     # Convert image to base64 for better xhtml2pdf compatibility
                     import base64
@@ -437,14 +438,15 @@ def download_dynamic_document_word(request, pk):
         section.right_margin = Inches(1)
         
         # Add letterhead image as background using VML in header
-        if document.letterhead_image:
+        letterhead_image = get_letterhead_for_document(document, request.user)
+        if letterhead_image:
             try:
                 import os
                 import base64
                 from PIL import Image as PILImage
                 
                 # Verify image file exists and is accessible
-                letterhead_path = os.path.abspath(document.letterhead_image.path)
+                letterhead_path = os.path.abspath(letterhead_image.path)
                 if not os.path.exists(letterhead_path):
                     print(f"Warning: Letterhead image not found at {letterhead_path}")
                     raise FileNotFoundError("Letterhead image file not accessible")
@@ -1114,6 +1116,229 @@ def delete_letterhead_image(request, pk):
             {'detail': 'Documento no encontrado.'},
             status=status.HTTP_404_NOT_FOUND
         )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al eliminar la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ==================== LETTERHEAD HELPER FUNCTIONS ====================
+
+def get_letterhead_for_document(document, user):
+    """
+    Get the appropriate letterhead image for a document.
+    
+    Priority:
+    1. Document-specific letterhead (if exists)
+    2. User's global letterhead (if exists)
+    3. None (no letterhead)
+    
+    Args:
+        document: DynamicDocument instance
+        user: User instance (document creator/owner)
+    
+    Returns:
+        ImageField or None: The letterhead image to use
+    """
+    # First priority: document-specific letterhead
+    if document.letterhead_image:
+        return document.letterhead_image
+    
+    # Second priority: user's global letterhead
+    if user.letterhead_image:
+        return user.letterhead_image
+    
+    # No letterhead available
+    return None
+
+
+# ==================== USER GLOBAL LETTERHEAD ENDPOINTS ====================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_user_letterhead_image(request):
+    """
+    Upload a global letterhead image for the authenticated user.
+    
+    This letterhead will be used as a fallback for all documents created by the user
+    when they don't have a specific letterhead configured.
+    
+    Accepts a PNG image file and saves it to the user's letterhead_image field.
+    The image should be in 8.5:11 ratio (612x792 pixels recommended) for best results.
+    
+    Parameters:
+        request (HttpRequest): The request object containing the image file
+    
+    Returns:
+        Response: Success message with image info or error message
+    """
+    try:
+        user = request.user
+        
+        # Check if image file is provided
+        if 'image' not in request.FILES:
+            return Response(
+                {'detail': 'Se requiere un archivo de imagen.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_file = request.FILES['image']
+        
+        # Validate file extension
+        if not image_file.name.lower().endswith('.png'):
+            return Response(
+                {'detail': 'Solo se permiten archivos PNG para el membrete.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if image_file.size > max_size:
+            return Response(
+                {'detail': f'El archivo es demasiado grande. Tamaño máximo permitido: {max_size // (1024*1024)}MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate image dimensions and format using PIL
+        try:
+            img = Image.open(image_file)
+            width, height = img.size
+            
+            # Check if it's a valid image
+            img.verify()
+            
+            # Reset file pointer after verification
+            image_file.seek(0)
+            
+            # Recommended dimensions check (warning, not error)
+            recommended_width, recommended_height = 612, 792
+            aspect_ratio = width / height
+            recommended_ratio = recommended_width / recommended_height
+            
+            warnings = []
+            if abs(aspect_ratio - recommended_ratio) > 0.1:  # Allow 10% tolerance
+                warnings.append(f"La proporción de aspecto recomendada es 8.5:11 ({recommended_width}x{recommended_height}). Su imagen es {width}x{height}.")
+            
+        except Exception as e:
+            return Response(
+                {'detail': f'Archivo de imagen inválido: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Delete previous letterhead image if exists
+        if user.letterhead_image:
+            try:
+                if os.path.exists(user.letterhead_image.path):
+                    os.remove(user.letterhead_image.path)
+            except:
+                pass  # Continue even if deletion fails
+        
+        # Save the new image
+        user.letterhead_image = image_file
+        user.save(update_fields=['letterhead_image'])
+        
+        # Prepare response data
+        response_data = {
+            'message': 'Membrete global subido exitosamente.',
+            'user_id': user.id,
+            'image_info': {
+                'filename': image_file.name,
+                'size_bytes': image_file.size,
+                'dimensions': f"{width}x{height}",
+                'format': img.format if hasattr(img, 'format') else 'PNG'
+            }
+        }
+        
+        if warnings:
+            response_data['warnings'] = warnings
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al subir la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_letterhead_image(request):
+    """
+    Get the global letterhead image for the authenticated user.
+    
+    Returns:
+        FileResponse: The letterhead image file
+        Response: Error message if image not found
+    """
+    try:
+        user = request.user
+        
+        # Check if user has letterhead image
+        if not user.letterhead_image:
+            return Response(
+                {'detail': 'No tienes una imagen de membrete global configurada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if file exists
+        if not os.path.exists(user.letterhead_image.path):
+            return Response(
+                {'detail': 'El archivo de imagen no se encuentra en el servidor.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return the image file
+        return FileResponse(
+            open(user.letterhead_image.path, 'rb'),
+            as_attachment=False,
+            filename=os.path.basename(user.letterhead_image.name),
+            content_type='image/png'
+        )
+        
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al obtener la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_user_letterhead_image(request):
+    """
+    Delete the global letterhead image for the authenticated user.
+    
+    Returns:
+        Response: Success or error message
+    """
+    try:
+        user = request.user
+        
+        # Check if user has letterhead image
+        if not user.letterhead_image:
+            return Response(
+                {'detail': 'No tienes una imagen de membrete global para eliminar.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Delete the file from filesystem
+        try:
+            if os.path.exists(user.letterhead_image.path):
+                os.remove(user.letterhead_image.path)
+        except Exception as e:
+            print(f"Warning: Could not delete file {user.letterhead_image.path}: {e}")
+        
+        # Clear the field
+        user.letterhead_image = None
+        user.save(update_fields=['letterhead_image'])
+        
+        return Response(
+            {'message': 'Membrete global eliminado exitosamente.'},
+            status=status.HTTP_200_OK
+        )
+        
     except Exception as e:
         return Response(
             {'detail': f'Error al eliminar la imagen: {str(e)}'},

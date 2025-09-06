@@ -398,4 +398,77 @@ export const documentActions = {
       throw error;
     }
   },
+
+  /**
+   * Upload global letterhead image for the authenticated user
+   * 
+   * @param {File} imageFile - PNG image file to upload
+   * @returns {Promise<Object>} - Upload response with image info
+   */
+  async uploadGlobalLetterheadImage(imageFile) {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      
+      const response = await upload_file_request(
+        `user/letterhead/upload/`,
+        formData
+      );
+      
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Subiste imagen de membrete global`
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error uploading global letterhead image:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get global letterhead image for the authenticated user
+   * 
+   * @param {string} responseType - Response type (default: 'blob' for images)
+   * @returns {Promise<Object>} - Image response
+   */
+  async getGlobalLetterheadImage(responseType = 'blob') {
+    try {
+      const response = await get_request(
+        `user/letterhead/`,
+        responseType
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error fetching global letterhead image:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete global letterhead image for the authenticated user
+   * 
+   * @returns {Promise<Object>} - Delete response
+   */
+  async deleteGlobalLetterheadImage() {
+    try {
+      const response = await delete_request(
+        `user/letterhead/delete/`
+      );
+      
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.DELETE,
+        `Eliminaste imagen de membrete global`
+      );
+      
+      return response;
+    } catch (error) {
+      console.error(`Error deleting global letterhead image:`, error);
+      throw error;
+    }
+  },
 };

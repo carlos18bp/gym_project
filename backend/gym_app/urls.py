@@ -36,6 +36,11 @@ user_urls = [
     path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
+    
+    # User global letterhead management
+    path('user/letterhead/upload/', document_views.upload_user_letterhead_image, name='upload-user-letterhead-image'),
+    path('user/letterhead/', document_views.get_user_letterhead_image, name='get-user-letterhead-image'),
+    path('user/letterhead/delete/', document_views.delete_user_letterhead_image, name='delete-user-letterhead-image'),
 ]
 
 # Process and case management URLs
