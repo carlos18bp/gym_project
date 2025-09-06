@@ -9,6 +9,8 @@
     <DocumentsNavigation
       @openNewDocument="showCreateDocumentModal = true"
       @updateCurrentSection="handleSection"
+      @globalLetterheadUploaded="handleGlobalLetterheadUploaded"
+      @globalLetterheadDeleted="handleGlobalLetterheadDeleted"
       :role="userRole"
     />
 
@@ -364,6 +366,20 @@ const closeModal = () => {
  */
 const handleRefresh = async () => {
   await documentStore.init(true);
+};
+
+/**
+ * Handles global letterhead upload events.
+ */
+const handleGlobalLetterheadUploaded = (uploadData) => {
+  console.log('Global letterhead uploaded:', uploadData);
+};
+
+/**
+ * Handles global letterhead delete events.
+ */
+const handleGlobalLetterheadDeleted = () => {
+  console.log('Global letterhead deleted');
 };
 
 /**

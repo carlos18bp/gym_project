@@ -12,6 +12,7 @@ export const useLegalRequestStore = defineStore("legalRequest", {
     dataLoaded: false,
     legalRequestTypes: [],
     legalDisciplines: [],
+    lastCreatedRequestId: null, // Store the last created request ID for file processing
   }),
 
   actions: {
@@ -81,32 +82,37 @@ export const useLegalRequestStore = defineStore("legalRequest", {
 
         if (response.status === 201) {
           const legalRequestId = response.data.id; // Retrieve the created legal request ID
-
-          // Step 2: Upload associated files (if any)
-          if (formData.files && formData.files.length > 0) {
-            const uploadResults = await this.uploadFiles(
-              legalRequestId,
-              formData.files
-            );
-            // Check if all files were uploaded successfully
-            const allUploaded = uploadResults.every((result) => result.success);
-            if (!allUploaded) {
-              console.warn(
-                "Some files failed to upload:",
-                uploadResults.filter((r) => !r.success)
-              );
-            }
-          }
+          
+          // Store the created request ID for later file processing
+          this.lastCreatedRequestId = legalRequestId;
+          
+          // Show immediate success message to user
+          console.log("Legal request received successfully:", response.data.message);
 
           // Get the request type name for the activity description
           const requestTypeName = formData.requestTypeId.name || "legal";
           const disciplineName = formData.disciplineId.name || "";
           
-          // Register activity for legal request creation
-          await registerUserActivity(
+          // Register activity for legal request creation (non-blocking)
+          registerUserActivity(
             ACTION_TYPES.CREATE,
             `Radicaste una solicitud de ${requestTypeName}${disciplineName ? ` en ${disciplineName}` : ''}.`
-          );
+          ).catch(error => {
+            console.warn("Activity registration failed:", error);
+          });
+
+          // Send confirmation email asynchronously (non-blocking)
+          setTimeout(() => {
+            this.sendConfirmationEmailAsync(legalRequestId);
+          }, 200);
+
+          // Step 2: Upload associated files asynchronously (in background, non-blocking)
+          if (formData.files && formData.files.length > 0) {
+            // Start file upload process in background without blocking the response
+            setTimeout(() => {
+              this.uploadFilesAsync(legalRequestId, formData.files);
+            }, 300); // Small delay to ensure UI updates first
+          }
 
           this.dataLoaded = false; // Reset dataLoaded to force refresh if necessary
           return response.status; // Return success status code
@@ -154,6 +160,99 @@ export const useLegalRequestStore = defineStore("legalRequest", {
       }
 
       return results; // Return a list of upload results
+    },
+
+    /**
+     * Upload files asynchronously using the new backend endpoint that supports multiple files.
+     * This function provides retry logic with exponential backoff and immediate user feedback.
+     *
+     * @param {number} legalRequestId - The ID of the legal request.
+     * @param {Array} files - List of files to upload.
+     */
+    async uploadFilesAsync(legalRequestId, files) {
+      const maxRetries = 3;
+      const baseDelay = 1000; // 1 second
+      
+      const uploadWithRetry = async (formData, retryCount = 0) => {
+        try {
+          const response = await create_request(
+            "upload_legal_request_file/",
+            formData
+          );
+          
+          return response;
+        } catch (error) {
+          if (retryCount < maxRetries) {
+            // Exponential backoff with jitter
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 1000;
+            console.log(`Retry ${retryCount + 1}/${maxRetries} for file upload after ${delay}ms`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return uploadWithRetry(formData, retryCount + 1);
+          }
+          
+          throw error;
+        }
+      };
+      
+      try {
+        // Create FormData with all files
+        const formData = new FormData();
+        formData.append("legalRequestId", legalRequestId);
+        
+        // Append all files at once for parallel backend processing
+        files.forEach((file, index) => {
+          formData.append(`files`, file); // Using 'files' key for multiple files
+        });
+        
+        console.log(`Starting upload of ${files.length} files for legal request ${legalRequestId}`);
+        
+        // Upload all files with retry logic
+        const response = await uploadWithRetry(formData);
+        
+        if (response.status === 201) {
+          console.log('Files uploaded successfully:', response.data);
+        } else {
+          console.warn('Some files may have failed to upload:', response.data);
+        }
+        
+      } catch (error) {
+        console.error("Error uploading files after all retries:", error.message);
+        // Files upload failure is already handled by backend via email notification
+      }
+    },
+
+    /**
+     * Get the ID of the last created legal request.
+     * This is a simple helper method for background file processing.
+     * @returns {number|null} The ID of the last created request or null if none found
+     */
+    getLastCreatedRequestId() {
+      return this.lastCreatedRequestId;
+    },
+
+    /**
+     * Send confirmation email asynchronously for a legal request.
+     * @param {number} legalRequestId - The ID of the legal request
+     */
+    async sendConfirmationEmailAsync(legalRequestId) {
+      try {
+        const formData = new FormData();
+        formData.append("legal_request_id", legalRequestId);
+        
+        const response = await create_request(
+          "send_confirmation_email/",
+          formData
+        );
+        
+        if (response.status === 200) {
+          console.log(`Confirmation email sent for legal request ${legalRequestId}`);
+        } else {
+          console.warn(`Failed to send confirmation email for legal request ${legalRequestId}`);
+        }
+      } catch (error) {
+        console.error(`Error sending confirmation email for legal request ${legalRequestId}:`, error);
+      }
     },
   },
 });

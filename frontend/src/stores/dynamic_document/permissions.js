@@ -47,52 +47,39 @@ export const permissionActions = {
   },
 
   /**
-   * Toggle public access for a document
-   * @param {number|string} documentId - The document ID
-   * @returns {Promise<Object>} Response data
+   * Fetch available roles for document permissions
+   * @returns {Promise<Array>} List of available roles
    */
-  async toggleDocumentPublicAccess(documentId) {
+  async fetchAvailableRoles() {
     try {
-      const response = await create_request(`dynamic-documents/${documentId}/permissions/public/toggle/`, {});
+      const response = await get_request('dynamic-documents/permissions/roles/');
       return response.data;
     } catch (error) {
-      console.error(`Error toggling public access for document ${documentId}:`, error);
+      console.error("Error fetching available roles:", error);
       throw error;
     }
   },
 
   /**
-   * Grant visibility permissions to users
+   * Manage document permissions (unified endpoint)
+   * Replaces all permissions with the provided data
    * @param {number|string} documentId - The document ID
-   * @param {Array<number>} userIds - Array of user IDs to grant permission to
+   * @param {Object} permissionsData - Complete permissions configuration
+   * @param {boolean} permissionsData.is_public - Whether document is public
+   * @param {Object} permissionsData.visibility - Visibility permissions
+   * @param {Array<string>} permissionsData.visibility.roles - Roles with visibility access
+   * @param {Array<number>} permissionsData.visibility.user_ids - User IDs with visibility access
+   * @param {Object} permissionsData.usability - Usability permissions
+   * @param {Array<string>} permissionsData.usability.roles - Roles with usability access
+   * @param {Array<number>} permissionsData.usability.user_ids - User IDs with usability access
    * @returns {Promise<Object>} Response data
    */
-  async grantVisibilityPermissions(documentId, userIds) {
+  async manageDocumentPermissions(documentId, permissionsData) {
     try {
-      const response = await create_request(`dynamic-documents/${documentId}/permissions/visibility/grant/`, {
-        user_ids: userIds
-      });
+      const response = await create_request(`dynamic-documents/${documentId}/permissions/manage/`, permissionsData);
       return response.data;
     } catch (error) {
-      console.error(`Error granting visibility permissions for document ${documentId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Grant usability permissions to users
-   * @param {number|string} documentId - The document ID
-   * @param {Array<number>} userIds - Array of user IDs to grant permission to
-   * @returns {Promise<Object>} Response data
-   */
-  async grantUsabilityPermissions(documentId, userIds) {
-    try {
-      const response = await create_request(`dynamic-documents/${documentId}/permissions/usability/grant/`, {
-        user_ids: userIds
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error granting usability permissions for document ${documentId}:`, error);
+      console.error(`Error managing permissions for document ${documentId}:`, error);
       throw error;
     }
   },

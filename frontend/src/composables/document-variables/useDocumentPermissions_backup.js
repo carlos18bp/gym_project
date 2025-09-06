@@ -16,12 +16,12 @@ export function useDocumentPermissions() {
   const isLoadingClients = ref(false);
   const clientSearchQuery = ref('');
   
-  // Role-based permissions state
+  // New state for role-based permissions
   const availableRoles = ref([]);
-  const selectedRolesVisibility = ref([]);
-  const selectedRolesUsability = ref([]);
+  const selectedVisibilityRoles = ref([]);
+  const selectedUsabilityRoles = ref([]);
   const isLoadingRoles = ref(false);
-
+  const permissionMode = ref('individual'); // 'individual' or 'role'
 
   // Check if current user is a lawyer
   const isLawyer = computed(() => {
@@ -55,9 +55,17 @@ export function useDocumentPermissions() {
     return Array.isArray(filteredClients.value) && filteredClients.value.length > 0;
   });
 
-  // Computed to check if we have roles
+  // Computed to check if we have available roles
   const hasAvailableRoles = computed(() => {
     return Array.isArray(availableRoles.value) && availableRoles.value.length > 0;
+  });
+
+  // Computed to get assignable roles (only roles that can be granted permissions)
+  const assignableRoles = computed(() => {
+    if (!Array.isArray(availableRoles.value)) {
+      return [];
+    }
+    return availableRoles.value.filter(role => role.can_be_granted_permissions);
   });
 
   /**
@@ -84,17 +92,53 @@ export function useDocumentPermissions() {
    * Load available roles for permissions
    */
   const loadAvailableRoles = async () => {
-    if (!isLawyer.value) return;
+    if (!isLawyer.value || isLoadingRoles.value) return;
     
     isLoadingRoles.value = true;
-    
     try {
       const rolesData = await store.fetchAvailableRoles();
-      availableRoles.value = Array.isArray(rolesData.roles) ? rolesData.roles : [];
+      availableRoles.value = rolesData?.roles || [];
     } catch (error) {
       console.error('Error loading available roles:', error);
-      await showNotification('Error al cargar roles disponibles', 'error');
-      availableRoles.value = [];
+      
+      // Datos de prueba temporales para desarrollo
+      console.log('Usando datos de prueba para roles...');
+      availableRoles.value = [
+        {
+          code: "client",
+          display_name: "Client",
+          description: "Cliente regular del sistema",
+          user_count: 25,
+          has_automatic_access: false,
+          can_be_granted_permissions: true
+        },
+        {
+          code: "corporate_client",
+          display_name: "Corporate Client",
+          description: "Cliente corporativo con necesidades empresariales",
+          user_count: 8,
+          has_automatic_access: false,
+          can_be_granted_permissions: true
+        },
+        {
+          code: "basic",
+          display_name: "Basic",
+          description: "Usuario con acceso básico limitado",
+          user_count: 12,
+          has_automatic_access: false,
+          can_be_granted_permissions: true
+        },
+        {
+          code: "lawyer",
+          display_name: "Lawyer",
+          description: "Abogado con acceso completo automático",
+          user_count: 5,
+          has_automatic_access: true,
+          can_be_granted_permissions: false
+        }
+      ];
+      
+      await showNotification('Usando datos de prueba para roles (desarrollo)', 'warning');
     } finally {
       isLoadingRoles.value = false;
     }
@@ -107,16 +151,15 @@ export function useDocumentPermissions() {
     if (!documentId || !isLawyer.value) return;
     
          try {
-        const permissionsData = await store.fetchDocumentPermissions(documentId);
-        
-        
-        // Initialize permissions with the fetched data
-        initializeExistingPermissions(permissionsData);
-      } catch (error) {
-        console.error('Error loading document permissions:', error);
-        // Still initialize with the basic document data if available
-        initializeExistingPermissions(store.selectedDocument);
-      }
+       const permissionsData = await store.fetchDocumentPermissions(documentId);
+       
+       // Initialize permissions with the fetched data
+       initializeExistingPermissions(permissionsData);
+     } catch (error) {
+       console.error('Error loading document permissions:', error);
+       // Still initialize with the basic document data if available
+       initializeExistingPermissions(store.selectedDocument);
+     }
   };
 
   /**
@@ -127,59 +170,44 @@ export function useDocumentPermissions() {
        return;
      }
      
-      // Reset permissions to default state first
-      selectedVisibilityUsers.value = [];
-      selectedUsabilityUsers.value = [];
-      selectedRolesVisibility.value = [];
-      selectedRolesUsability.value = [];
-      isPublicDocument.value = false;
+     // Reset permissions to default state first
+     selectedVisibilityUsers.value = [];
+     selectedUsabilityUsers.value = [];
+     isPublicDocument.value = false;
      
      // Initialize public access state
      if (typeof permissionsData.is_public === 'boolean') {
        isPublicDocument.value = permissionsData.is_public;
      }
      
-      // Only initialize permissions if document is not public
-      if (!isPublicDocument.value) {
-        // Initialize role-based permissions from active_roles
-        if (permissionsData.active_roles) {
-          // Set visibility roles
-          if (permissionsData.active_roles.visibility_roles && Array.isArray(permissionsData.active_roles.visibility_roles)) {
-            selectedRolesVisibility.value = [...permissionsData.active_roles.visibility_roles];
-          }
-          
-          // Set usability roles
-          if (permissionsData.active_roles.usability_roles && Array.isArray(permissionsData.active_roles.usability_roles)) {
-            selectedRolesUsability.value = [...permissionsData.active_roles.usability_roles];
-          }
-        }
-
-        // Initialize individual permissions
-        if (permissionsData.visibility_permissions && Array.isArray(permissionsData.visibility_permissions)) {
-          const filtered = permissionsData.visibility_permissions
-            .filter(permission => permission.user_id && permission.email && permission.full_name);
-          
-          selectedVisibilityUsers.value = filtered.map(permission => ({
-            id: permission.user_id,
-            user_id: permission.user_id,
-            email: permission.email,
-            full_name: permission.full_name
-          }));
-        }
-        
-        // Initialize usability permissions
-        if (permissionsData.usability_permissions && Array.isArray(permissionsData.usability_permissions)) {
-          const filtered = permissionsData.usability_permissions
-            .filter(permission => permission.user_id && permission.email && permission.full_name);
-          
-          selectedUsabilityUsers.value = filtered.map(permission => ({
-            id: permission.user_id,
-            user_id: permission.user_id,
-            email: permission.email,
-            full_name: permission.full_name
-          }));
-        }
-      }
+     // Only initialize individual permissions if document is not public
+     if (!isPublicDocument.value) {
+       // Initialize visibility permissions
+       if (permissionsData.visibility_permissions && Array.isArray(permissionsData.visibility_permissions)) {
+         const filtered = permissionsData.visibility_permissions
+           .filter(permission => permission.user_id && permission.email && permission.full_name);
+         
+         selectedVisibilityUsers.value = filtered.map(permission => ({
+           id: permission.user_id,
+           user_id: permission.user_id,
+           email: permission.email,
+           full_name: permission.full_name
+         }));
+       }
+       
+       // Initialize usability permissions
+       if (permissionsData.usability_permissions && Array.isArray(permissionsData.usability_permissions)) {
+         const filtered = permissionsData.usability_permissions
+           .filter(permission => permission.user_id && permission.email && permission.full_name);
+         
+         selectedUsabilityUsers.value = filtered.map(permission => ({
+           id: permission.user_id,
+           user_id: permission.user_id,
+           email: permission.email,
+           full_name: permission.full_name
+         }));
+       }
+     }
    };
 
   /**
@@ -242,99 +270,128 @@ export function useDocumentPermissions() {
    * Toggle public access
    */
   const togglePublicAccess = () => {
-    
     isPublicDocument.value = !isPublicDocument.value;
     
     if (isPublicDocument.value) {
       // Clear all individual permissions when making public
       selectedVisibilityUsers.value = [];
       selectedUsabilityUsers.value = [];
-      selectedRolesVisibility.value = [];
-      selectedRolesUsability.value = [];
     }
   };
 
   /**
    * Toggle visibility permission for a role
    */
-  const toggleRoleVisibilityPermission = (roleCode) => {
+  const toggleVisibilityRolePermission = (role) => {
+    if (!role) return;
     
-    const index = selectedRolesVisibility.value.indexOf(roleCode);
+    const index = selectedVisibilityRoles.value.findIndex(r => r.code === role.code);
     
     if (index >= 0) {
-      // Remove from visibility and also from usability (cascade removal)
-      selectedRolesVisibility.value.splice(index, 1);
-      const usabilityIndex = selectedRolesUsability.value.indexOf(roleCode);
+      selectedVisibilityRoles.value.splice(index, 1);
+      // Also remove from usability if it was there
+      const usabilityIndex = selectedUsabilityRoles.value.findIndex(r => r.code === role.code);
       if (usabilityIndex >= 0) {
-        selectedRolesUsability.value.splice(usabilityIndex, 1);
+        selectedUsabilityRoles.value.splice(usabilityIndex, 1);
       }
     } else {
-      // Add to visibility
-      selectedRolesVisibility.value.push(roleCode);
+      selectedVisibilityRoles.value.push(role);
     }
   };
 
   /**
    * Toggle usability permission for a role
    */
-  const toggleRoleUsabilityPermission = (roleCode) => {
+  const toggleUsabilityRolePermission = (role) => {
+    if (!role) return;
     
-    const hasVisibility = selectedRolesVisibility.value.includes(roleCode);
+    const hasVisibility = selectedVisibilityRoles.value.some(r => r.code === role.code);
     
     if (!hasVisibility) {
-      // Must have visibility first
       showNotification('El rol debe tener permisos de visualización primero', 'warning');
       return;
     }
     
-    const index = selectedRolesUsability.value.indexOf(roleCode);
+    const index = selectedUsabilityRoles.value.findIndex(r => r.code === role.code);
     
     if (index >= 0) {
-      selectedRolesUsability.value.splice(index, 1);
+      selectedUsibilityRoles.value.splice(index, 1);
     } else {
-      selectedRolesUsability.value.push(roleCode);
+      selectedUsabilityRoles.value.push(role);
     }
   };
 
   /**
    * Check if role has visibility permission
    */
-  const hasRoleVisibilityPermission = (roleCode) => {
-    return selectedRolesVisibility.value.includes(roleCode);
+  const hasVisibilityRolePermission = (role) => {
+    if (!role) return false;
+    return selectedVisibilityRoles.value.some(r => r.code === role.code);
   };
 
   /**
    * Check if role has usability permission
    */
-  const hasRoleUsabilityPermission = (roleCode) => {
-    return selectedRolesUsability.value.includes(roleCode);
+  const hasUsabilityRolePermission = (role) => {
+    if (!role) return false;
+    return selectedUsibilityRoles.value.some(r => r.code === role.code);
   };
 
   /**
-   * Get role display name by code
+   * Switch permission mode between individual and role-based
    */
-  const getRoleDisplayName = (roleCode) => {
-    const role = availableRoles.value.find(r => r.code === roleCode);
-    return role ? role.display_name : roleCode;
+  const switchPermissionMode = (mode) => {
+    permissionMode.value = mode;
+    
+    if (mode === 'role') {
+      // Clear individual selections when switching to role mode
+      selectedVisibilityUsers.value = [];
+      selectedUsabilityUsers.value = [];
+    } else {
+      // Clear role selections when switching to individual mode
+      selectedVisibilityRoles.value = [];
+      selectedUsabilityRoles.value = [];
+    }
   };
 
   /**
-   * Get permissions data for saving (new unified format)
+   * Get permissions data for saving
    */
   const getPermissionsData = () => {
     if (!isLawyer.value) return {};
     
-    return {
+    const baseData = {
       is_public: isPublicDocument.value,
-      visibility: {
-        roles: isPublicDocument.value ? [] : selectedRolesVisibility.value,
-        user_ids: isPublicDocument.value ? [] : selectedVisibilityUsers.value.map(user => user.user_id)
-      },
-      usability: {
-        roles: isPublicDocument.value ? [] : selectedRolesUsability.value,
-        user_ids: isPublicDocument.value ? [] : selectedUsabilityUsers.value.map(user => user.user_id)
-      }
+      permission_mode: permissionMode.value
     };
+
+    if (isPublicDocument.value) {
+      return {
+        ...baseData,
+        visibility_user_ids: [],
+        usability_user_ids: [],
+        visibility_roles: [],
+        usability_roles: []
+      };
+    }
+
+    if (permissionMode.value === 'role') {
+      return {
+        ...baseData,
+        visibility_user_ids: [],
+        usability_user_ids: [],
+        visibility_roles: selectedVisibilityRoles.value.map(role => role.code),
+        usability_roles: selectedUsabilityRoles.value.map(role => role.code)
+      };
+    } else {
+      return {
+        ...baseData,
+        visibility_user_ids: selectedVisibilityUsers.value.map(user => user.user_id),
+        usability_user_ids: selectedUsabilityUsers.value.map(user => user.user_id),
+        visibility_roles: [],
+        usability_roles: []
+      };
+    }
   };
 
   /**
@@ -343,6 +400,7 @@ export function useDocumentPermissions() {
   const initializePermissions = async (document) => {
     if (!isLawyer.value) return;
     
+    // Load both clients and roles in parallel
     await Promise.all([
       loadAvailableClients(),
       loadAvailableRoles()
@@ -362,10 +420,13 @@ export function useDocumentPermissions() {
     isPublicDocument,
     isLoadingClients,
     clientSearchQuery,
+    
+    // New role-based state
     availableRoles,
-    selectedRolesVisibility,
-    selectedRolesUsability,
+    selectedVisibilityRoles,
+    selectedUsabilityRoles,
     isLoadingRoles,
+    permissionMode,
     
     // Computed
     isLawyer,
@@ -373,21 +434,26 @@ export function useDocumentPermissions() {
     hasAvailableClients,
     hasFilteredClients,
     hasAvailableRoles,
+    assignableRoles,
     
     // Methods
     loadAvailableClients,
+    loadAvailableRoles,
     loadDocumentPermissions,
     initializeExistingPermissions,
     toggleVisibilityPermission,
     toggleUsabilityPermission,
     hasVisibilityPermission,
     hasUsabilityPermission,
+    
+    // New role-based methods
+    toggleVisibilityRolePermission,
+    toggleUsabilityRolePermission,
+    hasVisibilityRolePermission,
+    hasUsabilityRolePermission,
+    switchPermissionMode,
+    
     togglePublicAccess,
-    toggleRoleVisibilityPermission,
-    toggleRoleUsabilityPermission,
-    hasRoleVisibilityPermission,
-    hasRoleUsabilityPermission,
-    getRoleDisplayName,
     getPermissionsData,
     initializePermissions
   };

@@ -28,6 +28,16 @@
         </div>
       </button>
       <button
+        @click="showGlobalLetterheadModal = true"
+        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-green-300 bg-white text-start transition-all duration-200 hover:bg-green-50 hover:shadow-md flex-1 min-w-0"
+      >
+        <DocumentTextIcon class="size-6 text-green-500 font-semibold flex-shrink-0"></DocumentTextIcon>
+        <div class="grid min-w-0">
+          <span class="font-medium text-base truncate">Membrete Global</span>
+          <span class="text-gray-400 font-regular text-sm truncate">Para todos los documentos</span>
+        </div>
+      </button>
+      <button
         @click="$emit('openNewDocument')"
         class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-gray-200 bg-white text-start transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:border-secondary"
       >
@@ -54,13 +64,20 @@
       </button>
       
       <!-- Secondary Actions - Grid Layout -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-3 gap-3">
         <button
           @click="showElectronicSignatureModal = true"
           class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-purple-300 bg-white text-center transition-all duration-200 hover:bg-purple-50 min-h-[90px]"
         >
           <FingerPrintIcon class="size-8 text-purple-500 font-semibold mb-2"></FingerPrintIcon>
           <span class="font-medium text-sm leading-tight">Firma Electrónica</span>
+        </button>
+        <button
+          @click="showGlobalLetterheadModal = true"
+          class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-green-300 bg-white text-center transition-all duration-200 hover:bg-green-50 min-h-[90px]"
+        >
+          <DocumentTextIcon class="size-8 text-green-500 font-semibold mb-2"></DocumentTextIcon>
+          <span class="font-medium text-sm leading-tight">Membrete Global</span>
         </button>
         <button
           @click="$emit('openNewDocument')"
@@ -100,6 +117,16 @@
         </div>
       </button>
       <button
+        @click="showGlobalLetterheadModal = true"
+        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-green-300 bg-white text-start transition-all duration-200 hover:bg-green-50 hover:shadow-md flex-1 min-w-0"
+      >
+        <DocumentTextIcon class="size-6 text-green-500 font-semibold flex-shrink-0"></DocumentTextIcon>
+        <div class="grid min-w-0">
+          <span class="font-medium text-base truncate">Membrete Global</span>
+          <span class="text-gray-400 font-regular text-sm truncate">Para todos los documentos</span>
+        </div>
+      </button>
+      <button
         @click="handleSection('useDocument')"
         class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-gray-200 bg-white text-start transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:border-secondary"
         :class="{ 'bg-selected-background border-secondary': currentSection == 'useDocument' }"
@@ -126,13 +153,20 @@
       </button>
       
       <!-- Secondary Actions - Grid Layout -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-3 gap-3">
         <button
           @click="showElectronicSignatureModal = true"
           class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-purple-300 bg-white text-center transition-all duration-200 hover:bg-purple-50 min-h-[90px]"
         >
           <FingerPrintIcon class="size-8 text-purple-500 font-semibold mb-2"></FingerPrintIcon>
           <span class="font-medium text-sm leading-tight">Firma Electrónica</span>
+        </button>
+        <button
+          @click="showGlobalLetterheadModal = true"
+          class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-green-300 bg-white text-center transition-all duration-200 hover:bg-green-50 min-h-[90px]"
+        >
+          <DocumentTextIcon class="size-8 text-green-500 font-semibold mb-2"></DocumentTextIcon>
+          <span class="font-medium text-sm leading-tight">Membrete Global</span>
         </button>
         <button
           @click="handleSection('useDocument')"
@@ -166,13 +200,22 @@
       />
     </div>
   </ModalTransition>
+
+  <!-- Global Letterhead Modal -->
+  <GlobalLetterheadModal
+    :is-visible="showGlobalLetterheadModal"
+    @close="showGlobalLetterheadModal = false"
+    @uploaded="handleGlobalLetterheadUploaded"
+    @deleted="handleGlobalLetterheadDeleted"
+  />
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { FolderIcon, PlusIcon, FingerPrintIcon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { FolderIcon, PlusIcon, FingerPrintIcon, XMarkIcon, DocumentTextIcon } from "@heroicons/vue/24/outline";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import ElectronicSignature from "@/components/electronic_signature/ElectronicSignature.vue";
+import GlobalLetterheadModal from "@/components/dynamic_document/common/GlobalLetterheadModal.vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useAuthStore } from "@/stores/auth/auth";
 import { showNotification } from "@/shared/notification_message";
@@ -188,11 +231,12 @@ onMounted(async () => {
 });
 
 // Define events that the component can emit
-const emit = defineEmits(["updateCurrentSection", "openNewDocument"]);
+const emit = defineEmits(["updateCurrentSection", "openNewDocument", "globalLetterheadUploaded", "globalLetterheadDeleted"]);
 
 // Reactive reference to keep track of the current section
 const currentSection = ref("default");
 const showElectronicSignatureModal = ref(false);
+const showGlobalLetterheadModal = ref(false);
 
 // Define properties received from the parent component
 const props = defineProps({
@@ -236,5 +280,23 @@ const handleSignatureSaved = async (signatureData) => {
     console.error('Error updating signature information:', error);
     showNotification('Hubo un problema al guardar la firma', 'error');
   }
+};
+
+/**
+ * Handles when global letterhead is uploaded.
+ *
+ * @param {Object} uploadData - The upload response data.
+ */
+const handleGlobalLetterheadUploaded = (uploadData) => {
+  showNotification('Membrete global subido correctamente', 'success');
+  emit('globalLetterheadUploaded', uploadData);
+};
+
+/**
+ * Handles when global letterhead is deleted.
+ */
+const handleGlobalLetterheadDeleted = () => {
+  showNotification('Membrete global eliminado correctamente', 'success');
+  emit('globalLetterheadDeleted');
 };
 </script>

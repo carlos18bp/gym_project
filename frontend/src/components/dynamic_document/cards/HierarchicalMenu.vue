@@ -42,7 +42,7 @@
             <div v-else class="submenu-container relative">
               <MenuItem>
                 <div
-                  class="block w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition cursor-pointer flex items-center justify-between"
+                  class="w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition cursor-pointer flex items-center justify-between"
                   @mouseenter="showSubmenu(item.id)"
                   @mouseleave="hideSubmenu(item.id)"
                 >
@@ -121,7 +121,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['menu-action']);
+const emit = defineEmits(['menu-action', 'modalOpen', 'navigation']);
 
 const activeSubmenu = ref(null);
 let submenuTimeout = null;

@@ -3,9 +3,9 @@
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Gestión de Membrete</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Gestión de Membrete Global</h2>
         <p class="text-sm text-gray-500 mt-1">
-          Documento: {{ document?.title || 'Cargando...' }}
+          Este membrete se aplicará por defecto a todos tus documentos
         </p>
         <button 
           @click="close" 
@@ -27,11 +27,11 @@
         <div v-else class="space-y-6">
           <!-- Current letterhead preview -->
           <div v-if="currentImageUrl" class="space-y-4">
-            <h3 class="text-lg font-medium text-gray-900">Membrete Actual</h3>
+            <h3 class="text-lg font-medium text-gray-900">Membrete Global Actual</h3>
             <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <img 
                 :src="currentImageUrl" 
-                alt="Membrete actual"
+                alt="Membrete global actual"
                 class="max-w-full h-auto max-h-64 mx-auto shadow-sm"
                 @error="handleImageError"
               />
@@ -58,16 +58,19 @@
           <!-- No letterhead message -->
           <div v-else class="text-center py-8">
             <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Sin Membrete</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Sin Membrete Global</h3>
             <p class="mt-1 text-sm text-gray-500">
-              Este documento no tiene una imagen de membrete configurada.
+              No tienes una imagen de membrete global configurada.
+            </p>
+            <p class="mt-1 text-xs text-gray-400">
+              El membrete global se aplicará a todos los documentos que no tengan un membrete específico.
             </p>
           </div>
           
           <!-- Upload section -->
           <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">
-              {{ currentImageUrl ? 'Reemplazar Membrete' : 'Subir Membrete' }}
+              {{ currentImageUrl ? 'Reemplazar Membrete Global' : 'Subir Membrete Global' }}
             </h3>
             
             <!-- File upload area -->
@@ -146,7 +149,17 @@
           <div v-if="showSpecifications" class="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-6">
             <div class="flex items-center space-x-2">
               <InformationCircleIcon class="h-6 w-6 text-blue-600" />
-              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete</h3>
+              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete Global</h3>
+            </div>
+            
+            <!-- Priority Info -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 class="font-medium text-yellow-800 mb-2">🔄 Prioridad de Membrete</h4>
+              <div class="text-sm text-yellow-700 space-y-1">
+                <div><strong>1º Prioridad:</strong> Membrete específico del documento</div>
+                <div><strong>2º Prioridad:</strong> Membrete global del usuario (este)</div>
+                <div><strong>3º Prioridad:</strong> Sin membrete</div>
+              </div>
             </div>
             
             <!-- Dimensions -->
@@ -252,10 +265,10 @@
                     <span class="text-blue-600 font-medium">•</span>
                     <span><strong>Resolución:</strong> 72-150 DPI es suficiente para documentos digitales</span>
                   </div>
-                    <div class="flex items-start space-x-2">
-                      <span class="text-orange-600 font-medium">⚠️</span>
-                      <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (300-400px de altura)</span>
-                    </div>
+                  <div class="flex items-start space-x-2">
+                    <span class="text-orange-600 font-medium">⚠️</span>
+                    <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (300-400px de altura)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -292,7 +305,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import {
@@ -312,10 +325,6 @@ const props = defineProps({
   isVisible: {
     type: Boolean,
     default: false
-  },
-  document: {
-    type: Object,
-    default: null
   }
 });
 
@@ -336,9 +345,6 @@ const currentImageUrl = ref(null);
 const warnings = ref([]);
 const fileInput = ref(null);
 const showSpecifications = ref(false);
-
-// Computed
-const documentId = computed(() => props.document?.id);
 
 // Methods
 const close = () => {
@@ -429,13 +435,13 @@ const clearSelection = () => {
 };
 
 const uploadFile = async () => {
-  if (!selectedFile.value || !documentId.value) return;
+  if (!selectedFile.value) return;
   
   uploading.value = true;
   warnings.value = [];
   
   try {
-    const response = await store.uploadLetterheadImage(documentId.value, selectedFile.value);
+    const response = await store.uploadGlobalLetterheadImage(selectedFile.value);
     
     // Handle warnings from backend
     if (response.data?.warnings && response.data.warnings.length > 0) {
@@ -450,7 +456,7 @@ const uploadFile = async () => {
     
     emit('uploaded', response.data);
   } catch (error) {
-    console.error('Error uploading letterhead:', error);
+    console.error('Error uploading global letterhead:', error);
     alert('Error al subir la imagen. Por favor intenta nuevamente.');
   } finally {
     uploading.value = false;
@@ -458,10 +464,8 @@ const uploadFile = async () => {
 };
 
 const loadCurrentImage = async () => {
-  if (!documentId.value) return;
-  
   try {
-    const response = await store.getLetterheadImage(documentId.value);
+    const response = await store.getGlobalLetterheadImage();
     if (response.data) {
       currentImageUrl.value = URL.createObjectURL(response.data);
     }
@@ -472,18 +476,16 @@ const loadCurrentImage = async () => {
 };
 
 const confirmDelete = () => {
-  if (confirm('¿Estás seguro de que deseas eliminar la imagen de membrete?')) {
+  if (confirm('¿Estás seguro de que deseas eliminar la imagen de membrete global?')) {
     deleteImage();
   }
 };
 
 const deleteImage = async () => {
-  if (!documentId.value) return;
-  
   deleting.value = true;
   
   try {
-    await store.deleteLetterheadImage(documentId.value);
+    await store.deleteGlobalLetterheadImage();
     
     // Clear current image
     if (currentImageUrl.value) {
@@ -493,7 +495,7 @@ const deleteImage = async () => {
     
     emit('deleted');
   } catch (error) {
-    console.error('Error deleting letterhead:', error);
+    console.error('Error deleting global letterhead:', error);
     alert('Error al eliminar la imagen. Por favor intenta nuevamente.');
   } finally {
     deleting.value = false;
@@ -504,7 +506,7 @@ const downloadImage = () => {
   if (currentImageUrl.value) {
     const a = document.createElement('a');
     a.href = currentImageUrl.value;
-    a.download = `membrete-${props.document?.title || 'documento'}.png`;
+    a.download = `membrete-global.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -525,13 +527,7 @@ const formatFileSize = (bytes) => {
 
 // Watchers
 watch(() => props.isVisible, (newValue) => {
-  if (newValue && documentId.value) {
-    loadCurrentImage();
-  }
-});
-
-watch(() => props.document, (newDocument) => {
-  if (newDocument && props.isVisible) {
+  if (newValue) {
     loadCurrentImage();
   }
 });
@@ -548,7 +544,7 @@ const cleanup = () => {
 
 // Load image when component mounts if modal is visible
 onMounted(() => {
-  if (props.isVisible && documentId.value) {
+  if (props.isVisible) {
     loadCurrentImage();
   }
 });

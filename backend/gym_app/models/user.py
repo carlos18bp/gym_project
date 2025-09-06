@@ -1,5 +1,13 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+import uuid
+import os
+
+def user_letterhead_image_path(instance, filename):
+    """Generate unique path for user letterhead images"""
+    ext = filename.split('.')[-1].lower()
+    filename = f"user_letterhead_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('user_letterheads', str(instance.id), filename)
 
 class UserManager(BaseUserManager):
     """
@@ -104,6 +112,12 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
 
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
+    letterhead_image = models.ImageField(
+        upload_to=user_letterhead_image_path,
+        null=True,
+        blank=True,
+        help_text="Imagen PNG para membrete global que se aplicará a todos los documentos del usuario cuando no tengan uno específico. Recomendado: 612x792 píxeles."
+    )
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
     is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
     is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")

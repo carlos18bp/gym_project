@@ -36,6 +36,11 @@ user_urls = [
     path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
+    
+    # User global letterhead management
+    path('user/letterhead/upload/', document_views.upload_user_letterhead_image, name='upload-user-letterhead-image'),
+    path('user/letterhead/', document_views.get_user_letterhead_image, name='get-user-letterhead-image'),
+    path('user/letterhead/delete/', document_views.delete_user_letterhead_image, name='delete-user-letterhead-image'),
 ]
 
 # Process and case management URLs
@@ -49,9 +54,19 @@ process_urls = [
 
 # Legal request management URLs
 legal_request_urls = [
+    # Original endpoints
     path('create_legal_request/', legal_request.create_legal_request, name='create-legal-request'),
     path('upload_legal_request_file/', legal_request.upload_legal_request_file, name='upload-legal-request-file'),
     path('dropdown_options_legal_request/', legal_request.get_dropdown_options, name='get-dropdown-options'),
+    path('send_confirmation_email/', legal_request.send_confirmation_email, name='send-confirmation-email'),
+    
+    # New management endpoints
+    path('legal_requests/', legal_request.list_legal_requests, name='list-legal-requests'),
+    path('legal_requests/<int:request_id>/', legal_request.get_or_delete_legal_request, name='get-or-delete-legal-request'),
+    path('legal_requests/<int:request_id>/status/', legal_request.update_legal_request_status, name='update-legal-request-status'),
+    path('legal_requests/<int:request_id>/responses/', legal_request.create_legal_request_response, name='create-legal-request-response'),
+    path('legal_requests/<int:request_id>/files/', legal_request.add_files_to_legal_request, name='add-files-to-legal-request'),
+    path('legal_requests/<int:request_id>/delete/', legal_request.delete_legal_request, name='delete-legal-request'),
 ]
 
 # Intranet document management URLs
@@ -107,12 +122,24 @@ dynamic_document_urls = [
     
     # Permission management
     path('dynamic-documents/<int:pk>/permissions/', permission_views.get_document_permissions, name='get-document-permissions'),
+    path('dynamic-documents/<int:pk>/permissions/manage/', permission_views.manage_document_permissions_unified, name='manage-document-permissions-unified'),
     path('dynamic-documents/<int:pk>/permissions/public/toggle/', permission_views.toggle_public_access, name='toggle-public-access'),
     path('dynamic-documents/<int:pk>/permissions/visibility/grant/', permission_views.grant_visibility_permissions, name='grant-visibility-permissions'),
     path('dynamic-documents/<int:pk>/permissions/usability/grant/', permission_views.grant_usability_permissions, name='grant-usability-permissions'),
     path('dynamic-documents/<int:pk>/permissions/visibility/revoke/<int:user_id>/', permission_views.revoke_visibility_permission, name='revoke-visibility-permission'),
     path('dynamic-documents/<int:pk>/permissions/usability/revoke/<int:user_id>/', permission_views.revoke_usability_permission, name='revoke-usability-permission'),
     path('dynamic-documents/permissions/clients/', permission_views.get_available_clients, name='get-available-clients'),
+    path('dynamic-documents/permissions/roles/', permission_views.get_available_roles, name='get-available-roles'),
+    
+    # Role-based permission management
+    path('dynamic-documents/<int:pk>/permissions/visibility/grant-by-role/', permission_views.grant_visibility_permissions_by_role, name='grant-visibility-permissions-by-role'),
+    path('dynamic-documents/<int:pk>/permissions/usability/grant-by-role/', permission_views.grant_usability_permissions_by_role, name='grant-usability-permissions-by-role'),
+    path('dynamic-documents/<int:pk>/permissions/revoke-by-role/', permission_views.revoke_permissions_by_role, name='revoke-permissions-by-role'),
+    
+    # Combined permission management (users + roles)
+    path('dynamic-documents/<int:pk>/permissions/visibility/grant-combined/', permission_views.grant_visibility_permissions_combined, name='grant-visibility-permissions-combined'),
+    path('dynamic-documents/<int:pk>/permissions/usability/grant-combined/', permission_views.grant_usability_permissions_combined, name='grant-usability-permissions-combined'),
+    path('dynamic-documents/<int:pk>/permissions/revoke-combined/', permission_views.revoke_permissions_combined, name='revoke-permissions-combined'),
     
     # Letterhead image management
     path('dynamic-documents/<int:pk>/letterhead/upload/', document_views.upload_letterhead_image, name='upload-letterhead-image'),

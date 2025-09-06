@@ -15,6 +15,7 @@
       :disable-internal-actions="disableInternalActions"
       :show-menu-options="showMenuOptions"
       @click="handleCardClick"
+      @menu-action="handleMenuAction"
       @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom right action slot with arrow instead of menu (only when should show arrow) -->
@@ -58,9 +59,13 @@ import { getColorById, getColorStyles } from '@/shared/color_palette.js';
 import {
   ChevronRightIcon,
   DocumentArrowUpIcon,
+  EllipsisVerticalIcon,
+  EyeIcon,
+  PlayIcon,
 } from "@heroicons/vue/24/outline";
 import UseDocumentByClient from '../client/modals/UseDocumentByClient.vue';
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import { openPreviewModal } from "@/shared/document_utils";
 
 const props = defineProps({
   document: {
@@ -123,36 +128,33 @@ const cardAdditionalClasses = computed(() => {
   return 'group !border-purple-400 !bg-purple-50/50 !shadow-purple-100';
 });
 
-// Menu options - simplified logic to work with BaseDocumentCard
+// Menu options - always show menu with "Usar" and "Previsualización" options
 const menuOptions = computed(() => {
   // If menuOptions prop is explicitly provided, use it (highest priority)
   if (props.menuOptions !== null) {
     return props.menuOptions;
   }
   
-  // Let BaseDocumentCard handle menuOptions based on showMenuOptions prop
-  // This allows BaseDocumentCard to control menu display logic
-  return null;
+  // Default menu options for UseDocumentCard
+  return [
+    {
+      label: "Usar",
+      action: "use",
+      icon: PlayIcon,
+      iconClasses: "w-4 h-4 text-purple-600"
+    },
+    {
+      label: "Previsualización", 
+      action: "preview",
+      icon: EyeIcon,
+      iconClasses: "w-4 h-4 text-gray-600"
+    }
+  ];
 });
 
-// Determine when to show only arrow vs menu
+// Always show menu instead of arrow for UseDocumentCard
 const shouldShowArrowOnly = computed(() => {
-  // Show arrow when internal actions are disabled (selection mode)
-  if (props.disableInternalActions) {
-    return false; // No arrow, just click
-  }
-  
-  // Show arrow when explicitly set to hide menu options
-  if (props.showMenuOptions === false) {
-    return true; // Show arrow only
-  }
-  
-  // Show arrow when not in folder context and showMenuOptions is not explicitly true
-  if (props.showMenuOptions !== true && props.cardContext !== 'folder') {
-    return true; // Show arrow only  
-  }
-  
-  // Otherwise, let menu show (don't override with arrow)
+  // Never show arrow only - always show menu for UseDocumentCard
   return false;
 });
 
@@ -166,6 +168,24 @@ const handleCardClick = (document, event) => {
   } else {
     // Open internal modal instead of emitting to parent
     openUseModal(document.id);
+  }
+};
+
+/**
+ * Handle menu actions from BaseDocumentCard
+ */
+const handleMenuAction = (action, document) => {
+  switch (action) {
+    case 'use':
+      // Same action as clicking the card
+      openUseModal(document.id);
+      break;
+    case 'preview':
+      // Open preview modal using shared utility
+      openPreviewModal(document);
+      break;
+    default:
+      console.warn('Unknown menu action:', action);
   }
 };
 

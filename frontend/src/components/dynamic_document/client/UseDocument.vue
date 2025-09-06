@@ -4,10 +4,17 @@
       v-for="document in filteredavailableDocuments"
       :key="document.id"
       :document="document"
-      :show-menu-options="false"
+      :show-menu-options="true"
       @document-created="handleDocumentCreated"
     />
   </div>
+
+  <!-- Modal de previsualización global -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -15,6 +22,8 @@ import { computed, ref } from "vue";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from '@/stores/auth/user';
 import { UseDocumentCard } from "@/components/dynamic_document/cards";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();

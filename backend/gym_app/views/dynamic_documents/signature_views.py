@@ -477,10 +477,42 @@ def register_carlito_fonts():
 
     return font_paths
 
-def generate_original_document_pdf(document):
+def get_letterhead_for_document(document, user):
+    """
+    Get the appropriate letterhead image for a document.
+    
+    Priority:
+    1. Document-specific letterhead (if exists)
+    2. User's global letterhead (if exists)
+    3. None (no letterhead)
+    
+    Args:
+        document: DynamicDocument instance
+        user: User instance (document creator/owner)
+    
+    Returns:
+        ImageField or None: The letterhead image to use
+    """
+    # First priority: document-specific letterhead
+    if document.letterhead_image:
+        return document.letterhead_image
+    
+    # Second priority: user's global letterhead
+    if user and user.letterhead_image:
+        return user.letterhead_image
+    
+    # No letterhead available
+    return None
+
+
+def generate_original_document_pdf(document, user=None):
     """
     Generates the original document PDF.
     Returns a BytesIO buffer containing the PDF.
+    
+    Args:
+        document: DynamicDocument instance
+        user: User instance (optional, for global letterhead fallback)
     """
     # Replace variables within the content
     processed_content = document.content
@@ -498,10 +530,11 @@ def generate_original_document_pdf(document):
 
     # Define background image style if letterhead exists
     background_style = ""
-    if document.letterhead_image:
+    letterhead_image = get_letterhead_for_document(document, user)
+    if letterhead_image:
         try:
             # Get the absolute path to the letterhead image
-            letterhead_path = os.path.abspath(document.letterhead_image.path)
+            letterhead_path = os.path.abspath(letterhead_image.path)
             if os.path.exists(letterhead_path):
                 # Convert image to base64 for better xhtml2pdf compatibility
                 import base64
@@ -914,7 +947,7 @@ def generate_signatures_pdf(request, pk):
             )
         
         # Get the original document PDF
-        original_pdf_buffer = generate_original_document_pdf(document)
+        original_pdf_buffer = generate_original_document_pdf(document, request.user)
         
         # Create the signatures PDF
         signatures_pdf_buffer = create_signatures_pdf(document, request)

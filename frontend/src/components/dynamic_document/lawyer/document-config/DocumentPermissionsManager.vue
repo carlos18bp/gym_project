@@ -31,7 +31,102 @@
     </div>
 
     <!-- Individual Permissions (only show if not public) -->
-    <div v-if="!isPublicDocument" class="space-y-4">
+    <div v-if="!isPublicDocument" class="space-y-6">
+      
+      <!-- Role-based Permissions Section -->
+      <div class="border-b border-gray-200 pb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-sm font-medium text-gray-700">Permisos por Rol</h4>
+        </div>
+        
+        <!-- Available Roles -->
+        <div v-if="hasAvailableRoles" class="space-y-3">
+          <div
+            v-for="role in availableRoles"
+            :key="role.code"
+            class="flex items-center justify-between p-3 bg-gray-50 border rounded-lg"
+          >
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-medium text-gray-900">{{ role.display_name }}</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {{ role.user_count }} usuarios
+                </span>
+                <span v-if="role.has_automatic_access" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Acceso automático
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">{{ role.description }}</p>
+            </div>
+            
+            <div v-if="role.can_be_granted_permissions" class="flex items-center space-x-4">
+              <!-- Visibility Permission -->
+              <div class="flex items-center">
+                <input
+                  :id="`role_visibility_${role.code}`"
+                  type="checkbox"
+                  :checked="hasRoleVisibilityPermission(role.code)"
+                  @change="toggleRoleVisibilityPermission(role.code)"
+                  class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded"
+                />
+                <label :for="`role_visibility_${role.code}`" class="ml-2 text-sm text-gray-600">
+                  Ver
+                </label>
+              </div>
+              
+              <!-- Usability Permission -->
+              <div class="flex items-center">
+                <input
+                  :id="`role_usability_${role.code}`"
+                  type="checkbox"
+                  :checked="hasRoleUsabilityPermission(role.code)"
+                  @change="toggleRoleUsabilityPermission(role.code)"
+                  :disabled="!hasRoleVisibilityPermission(role.code)"
+                  class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded disabled:bg-gray-100"
+                />
+                <label :for="`role_usability_${role.code}`" class="ml-2 text-sm text-gray-600">
+                  Usar
+                </label>
+              </div>
+            </div>
+            
+            <div v-else class="text-xs text-gray-400 italic">
+              No requiere permisos explícitos
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading roles -->
+        <div v-else-if="isLoadingRoles" class="text-center py-4">
+          <p class="text-gray-500 text-sm">Cargando roles disponibles...</p>
+        </div>
+
+        <!-- No roles available -->
+        <div v-else class="text-center py-4">
+          <p class="text-gray-500 text-sm">No hay roles disponibles.</p>
+        </div>
+
+        <!-- Role Permissions Summary -->
+        <div v-if="selectedRolesVisibility.length > 0 || selectedRolesUsability.length > 0" class="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <h5 class="text-sm font-medium text-purple-800 mb-2">Resumen de Permisos por Rol:</h5>
+          
+          <!-- Visibility Roles Summary -->
+          <div v-if="selectedRolesVisibility.length > 0" class="mb-2">
+            <p class="text-sm text-purple-700">
+              <strong>Roles que pueden ver:</strong>
+              {{ selectedRolesVisibility.map(code => getRoleDisplayName(code)).join(', ') }}
+            </p>
+          </div>
+          
+          <!-- Usability Roles Summary -->
+          <div v-if="selectedRolesUsability.length > 0">
+            <p class="text-sm text-purple-700">
+              <strong>Roles que pueden usar:</strong>
+              {{ selectedRolesUsability.map(code => getRoleDisplayName(code)).join(', ') }}
+            </p>
+          </div>
+        </div>
+      </div>
       <!-- Available Clients List -->
       <div v-if="hasAvailableClients">
         <div class="flex items-center justify-between mb-3">
@@ -187,7 +282,7 @@
 </template>
 
 <script setup>
-import { onMounted, defineProps, defineExpose } from 'vue';
+import { onMounted, defineProps, defineExpose, watch } from 'vue';
 import { useDocumentPermissions } from '@/composables/document-variables/useDocumentPermissions';
 
 // Props
@@ -207,12 +302,17 @@ const {
   isPublicDocument,
   isLoadingClients,
   clientSearchQuery,
+  availableRoles,
+  selectedRolesVisibility,
+  selectedRolesUsability,
+  isLoadingRoles,
   
   // Computed
   isLawyer,
   filteredClients,
   hasAvailableClients,
   hasFilteredClients,
+  hasAvailableRoles,
   
   // Methods
   toggleVisibilityPermission,
@@ -220,6 +320,11 @@ const {
   hasVisibilityPermission,
   hasUsabilityPermission,
   togglePublicAccess,
+  toggleRoleVisibilityPermission,
+  toggleRoleUsabilityPermission,
+  hasRoleVisibilityPermission,
+  hasRoleUsabilityPermission,
+  getRoleDisplayName,
   getPermissionsData,
   initializePermissions
 } = useDocumentPermissions();
@@ -230,6 +335,13 @@ onMounted(async () => {
     await initializePermissions(props.document);
   }
 });
+
+// Watch for document changes
+watch(() => props.document, (newDoc, oldDoc) => {
+  if (newDoc && newDoc.id !== oldDoc?.id) {
+    initializePermissions(newDoc);
+  }
+}, { deep: true });
 
 // Expose methods for parent component
 defineExpose({
