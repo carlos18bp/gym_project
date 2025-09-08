@@ -315,7 +315,8 @@ const emit = defineEmits([
   'refresh',
   'remove-from-folder',
   'modal-open',
-  'navigation'
+  'navigation',
+  'menuAction'
 ]);
 
 // Initialize centralized modal and actions system

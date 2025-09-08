@@ -21,20 +21,38 @@
     />
   </div>
     
-    <!-- No documents message -->
+    <!-- Empty state message when no documents are found -->
     <div
       v-if="filteredDocuments.length === 0"
-      class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-8 rounded-xl"
+      class="mt-6 flex flex-col items-center justify-center text-center text-gray-500 w-full p-12 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200"
     >
-      <p class="text-lg font-semibold mb-2">
-        No hay documentos disponibles para mostrar.
+      <svg 
+        class="w-16 h-16 mb-4 text-gray-300"
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="1.5" 
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+      <h3 class="text-lg font-semibold mb-2 text-gray-700">
+        No hay documentos en esta sección
+      </h3>
+      <p class="text-sm mb-4 max-w-md">
+        {{ getEmptyDocumentsMessage }}
       </p>
-      <p class="text-sm">
-        Contacta a tu abogado para gestionar tus documentos.
-      </p>
+      <div class="flex flex-col sm:flex-row gap-3 mt-2">
+        <div class="text-xs text-gray-400 bg-gray-100 px-3 py-2 rounded-lg">
+          💡 <strong>Tip:</strong> Los documentos aparecerán cuando tu abogado los asigne
+        </div>
+      </div>
     </div>
 
-  <!-- Modal de previsualización -->
+  <!-- Preview modal -->
   <DocumentPreviewModal
     :isVisible="showPreviewModal"
     :documentData="previewDocumentData"
@@ -74,6 +92,24 @@ const isLoading = ref(false);
 
 // Use userStore to get the signature
 const signature = userStore.userSignature;
+
+/**
+ * Computed message for empty state based on filters applied
+ */
+const getEmptyDocumentsMessage = computed(() => {
+  const hasSearchQuery = props.searchQuery && props.searchQuery.trim().length > 0;
+  const hasTagFilters = props.selectedTags && props.selectedTags.length > 0;
+  
+  if (hasSearchQuery && hasTagFilters) {
+    return 'No se encontraron documentos que coincidan con tu búsqueda y filtros seleccionados. Intenta ajustar los criterios de búsqueda.';
+  } else if (hasSearchQuery) {
+    return 'No se encontraron documentos que coincidan con tu búsqueda. Intenta con otros términos.';
+  } else if (hasTagFilters) {
+    return 'No hay documentos disponibles con las etiquetas seleccionadas. Prueba con otras etiquetas.';
+  } else {
+    return 'Aún no tienes documentos asignados. Contacta a tu abogado para gestionar tus documentos jurídicos.';
+  }
+});
 
 // Computed property that determines which document should be highlighted
 // It first checks if the store's lastUpdatedDocumentId exists in filtered documents

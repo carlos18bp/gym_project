@@ -251,7 +251,12 @@ export function useDocumentActions(documentStore, userStore, emit) {
     if (!documentStore) return;
     
     try {
-      const updatedData = { ...document, state: "Published" };
+      // When publishing a document, mark it as public so clients can see it as a template
+      const updatedData = { 
+        ...document, 
+        state: "Published",
+        is_public: true 
+      };
       await documentStore.updateDocument(document.id, updatedData);
       await showNotification('Documento publicado exitosamente', 'success');
       emit('refresh');
