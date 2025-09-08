@@ -14,7 +14,7 @@ This module defines all the URL patterns for the gym application, organized into
 """
 from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports, captcha
 from .views.layouts import sendEmail
-from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views
+from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
 
 # Authentication URLs
@@ -145,6 +145,13 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:pk>/letterhead/upload/', document_views.upload_letterhead_image, name='upload-letterhead-image'),
     path('dynamic-documents/<int:pk>/letterhead/', document_views.get_letterhead_image, name='get-letterhead-image'),
     path('dynamic-documents/<int:pk>/letterhead/delete/', document_views.delete_letterhead_image, name='delete-letterhead-image'),
+    
+    # Document relationship management
+    path('dynamic-documents/<int:document_id>/relationships/', relationship_views.list_document_relationships, name='list-document-relationships'),
+    path('dynamic-documents/<int:document_id>/related-documents/', relationship_views.list_related_documents, name='list-related-documents'),
+    path('dynamic-documents/<int:document_id>/available-for-relationship/', relationship_views.list_available_documents_for_relationship, name='list-available-documents-for-relationship'),
+    path('dynamic-documents/relationships/create/', relationship_views.create_document_relationship, name='create-document-relationship'),
+    path('dynamic-documents/relationships/<int:relationship_id>/delete/', relationship_views.delete_document_relationship, name='delete-document-relationship'),
 ]
 
 # Legal update management URLs

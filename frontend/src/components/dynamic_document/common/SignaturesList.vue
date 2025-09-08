@@ -9,7 +9,7 @@
         :highlighted-doc-id="highlightedDocId"
         :document-store="documentStore"
         :user-store="userStore"
-        @refresh="refreshDocuments"
+        @refresh="handleRefresh"
         class="mb-4"
       />
 
@@ -89,6 +89,9 @@ const props = defineProps({
     default: () => []
   }
 });
+
+// Emits
+const emit = defineEmits(['refresh']);
 
 // Store instances
 const userStore = useUserStore();
@@ -238,10 +241,23 @@ const refreshDocuments = async () => {
 };
 
 /**
+ * Refresh function to be called from parent components
+ */
+const handleRefresh = async () => {
+  await refreshDocuments();
+  emit('refresh'); // Notify parent that refresh is complete
+};
+
+/**
  * Initializes the component by fetching necessary data
  */
 onMounted(async () => {
   await refreshDocuments();
+});
+
+// Expose refresh function for parent components
+defineExpose({
+  refresh: handleRefresh
 });
 
 // Watch for changes in the store's documents
@@ -257,7 +273,7 @@ watch(
 watch(
   () => userStore.currentUser,
   (newUser) => {
-    refreshDocuments();
+    handleRefresh();
   }
 );
 
@@ -266,7 +282,7 @@ watch(
   () => props.searchQuery,
   (newQuery) => {
     if (!newQuery) {
-      refreshDocuments();
+      handleRefresh();
     }
   }
 );

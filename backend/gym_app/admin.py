@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
@@ -299,6 +299,26 @@ class DocumentFolderAdmin(admin.ModelAdmin):
     get_document_count.short_description = 'Documents Count'
     get_document_count.admin_order_field = 'documents__count'
 
+class DocumentRelationshipAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for DocumentRelationship model.
+    Manages relationships between documents.
+    """
+    list_display = ('source_document', 'target_document', 'created_by', 'created_at')
+    search_fields = ('source_document__title', 'target_document__title')
+    list_filter = ('created_at', 'created_by')
+    raw_id_fields = ('source_document', 'target_document', 'created_by')
+    readonly_fields = ('created_at',)
+    fieldsets = (
+        ('Relationship Details', {
+            'fields': ('source_document', 'target_document', 'created_by')
+        }),
+        ('Additional Information', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
 class GyMAdminSite(admin.AdminSite):
     """
     Custom AdminSite to organize models by functional sections.
@@ -360,7 +380,7 @@ class GyMAdminSite(admin.AdminSite):
                     if model['object_name'] in [
                         'DynamicDocument', 'DocumentSignature', 'DocumentVariable', 
                         'Tag', 'DocumentFolder', 'DocumentVisibilityPermission', 
-                        'DocumentUsabilityPermission'
+                        'DocumentUsabilityPermission', 'DocumentRelationship'
                     ]
                 ]
             },
@@ -389,6 +409,7 @@ admin_site.register(Tag, TagAdmin)
 admin_site.register(DocumentFolder, DocumentFolderAdmin)
 admin_site.register(DocumentVisibilityPermission, DocumentVisibilityPermissionAdmin)
 admin_site.register(DocumentUsabilityPermission, DocumentUsabilityPermissionAdmin)
+admin_site.register(DocumentRelationship, DocumentRelationshipAdmin)
 admin_site.register(LegalUpdate, LegalUpdateAdmin)
 admin_site.register(RecentDocument, RecentDocumentAdmin)
 admin_site.register(RecentProcess, RecentProcessAdmin)

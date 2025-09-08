@@ -218,6 +218,130 @@ class DynamicDocument(models.Model):
             return 'public_access'
         
         return None
+    
+    def get_related_documents(self, user=None):
+        """
+        Get all documents that have a bidirectional relationship with this document.
+        
+        This method finds all documents that are connected to the current document
+        through DocumentRelationship, regardless of whether the current document
+        is the source or target of the relationship.
+        
+        Args:
+            user (User, optional): If provided, filters results to only show documents
+                                 that the user owns (created_by or assigned_to) and
+                                 are in 'Completed' state, plus user has view permissions.
+        
+        Returns:
+            QuerySet[DynamicDocument]: Related documents that meet the criteria.
+                                     Empty queryset if no relationships exist.
+        
+        Example:
+            # Get all related documents for current user
+            related_docs = document.get_related_documents(user=request.user)
+            
+            # Get all related documents (admin view)
+            all_related = document.get_related_documents()
+        """
+        from django.db.models import Q
+        
+        # Get documents where this document is the source or target
+        related_relationships = DocumentRelationship.objects.filter(
+            Q(source_document=self) | Q(target_document=self)
+        ).select_related('source_document', 'target_document')
+        
+        related_document_ids = set()
+        for relationship in related_relationships:
+            if relationship.source_document.id != self.id:
+                related_document_ids.add(relationship.source_document.id)
+            if relationship.target_document.id != self.id:
+                related_document_ids.add(relationship.target_document.id)
+        
+        related_documents = DynamicDocument.objects.filter(id__in=related_document_ids)
+        
+        # Filter by user permissions and ownership if provided
+        if user:
+            # Only show documents that belong to the user and are completed
+            accessible_docs = []
+            for doc in related_documents:
+                # Check if user owns the document and it's completed
+                user_owns_doc = (doc.created_by == user or doc.assigned_to == user)
+                is_completed = doc.state == 'Completed'
+                can_view_doc = doc.can_view(user)
+                
+                if user_owns_doc and is_completed and can_view_doc:
+                    accessible_docs.append(doc.id)
+            related_documents = related_documents.filter(id__in=accessible_docs)
+        
+        return related_documents
+    
+    def add_relationship(self, target_document, created_by=None):
+        """
+        Create a bidirectional relationship with another document.
+        
+        This method creates a relationship from this document to the target document.
+        The relationship is automatically bidirectional - the target document will
+        also show this document as related.
+        
+        Args:
+            target_document (DynamicDocument): The document to create a relationship with.
+                                             Must be a different document (not self).
+            created_by (User, optional): The user creating this relationship.
+                                       Used for audit purposes.
+        
+        Returns:
+            tuple: (DocumentRelationship, bool) - The relationship object and
+                   whether it was created (True) or already existed (False).
+        
+        Raises:
+            ValidationError: If attempting to relate document to itself.
+            
+        Example:
+            # Create relationship between documents
+            contract = DynamicDocument.objects.get(id=1)
+            amendment = DynamicDocument.objects.get(id=2) 
+            relationship, created = contract.add_relationship(amendment, user)
+        """
+        relationship, created = DocumentRelationship.objects.get_or_create(
+            source_document=self,
+            target_document=target_document,
+            defaults={
+                'created_by': created_by
+            }
+        )
+        return relationship
+    
+    def remove_relationship(self, target_document):
+        """
+        Remove the bidirectional relationship with another document.
+        
+        This method removes the relationship between this document and the target
+        document. Since relationships are bidirectional, this removes the connection
+        in both directions (A->B and B->A are removed).
+        
+        Args:
+            target_document (DynamicDocument): The document to remove the relationship with.
+                                             Can be the source or target of the relationship.
+        
+        Returns:
+            bool: True if a relationship was found and removed, False if no
+                  relationship existed between the documents.
+        
+        Example:
+            # Remove relationship between documents
+            contract = DynamicDocument.objects.get(id=1)
+            amendment = DynamicDocument.objects.get(id=2)
+            removed = contract.remove_relationship(amendment)
+            # Now amendment.remove_relationship(contract) would return False
+        """
+        from django.db.models import Q
+        
+        deleted_count, _ = DocumentRelationship.objects.filter(
+            Q(source_document=self, target_document=target_document) |
+            Q(source_document=target_document, target_document=self)
+        ).delete()
+        
+        return deleted_count > 0
 
     def check_fully_signed(self):
         """
@@ -574,3 +698,74 @@ class DocumentFolder(models.Model):
     def __str__(self):
         """Return folder name and owner email."""
         return f"{self.name} ({self.owner.email})"
+
+
+class DocumentRelationship(models.Model):
+    """
+    Model to manage bidirectional relationships between dynamic documents.
+    
+    This model creates simple associations between documents, allowing users to link
+    related legal documents together. Relationships are bidirectional - if document A
+    is related to document B, then document B automatically shows a relationship with
+    document A.
+    
+    Key Features:
+    - Bidirectional relationships (A->B implies B->A)
+    - User ownership validation (only completed documents owned by user are shown)
+    - Self-relationship prevention (document cannot relate to itself)
+    - Automatic cleanup on document deletion
+    
+    Use Cases:
+    - Link related contracts or amendments
+    - Associate supporting documents
+    - Create document chains for legal processes
+    
+    Security:
+    - Only document owners can create/delete relationships
+    - Relationships respect document visibility permissions
+    - Backend validation prevents unauthorized access
+    """
+    source_document = models.ForeignKey(
+        'DynamicDocument',
+        related_name='relationships_as_source',
+        on_delete=models.CASCADE,
+        help_text="The document from which the relationship is created."
+    )
+    target_document = models.ForeignKey(
+        'DynamicDocument',
+        related_name='relationships_as_target',
+        on_delete=models.CASCADE,
+        help_text="The document that is being related to the source document."
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="created_document_relationships",
+        on_delete=models.CASCADE,
+        help_text="User who created this relationship."
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when the relationship was created."
+    )
+
+    class Meta:
+        verbose_name = "Document Relationship"
+        verbose_name_plural = "Document Relationships"
+        ordering = ['-created_at']
+        # Ensure no duplicate relationships
+        unique_together = ['source_document', 'target_document']
+
+    def __str__(self):
+        """Return string representation of the relationship."""
+        return f"{self.source_document.title} -> {self.target_document.title}"
+
+    def clean(self):
+        """Validate that a document cannot be related to itself."""
+        from django.core.exceptions import ValidationError
+        if self.source_document == self.target_document:
+            raise ValidationError("A document cannot be related to itself.")
+
+    def save(self, *args, **kwargs):
+        """Override save to call clean validation."""
+        self.clean()
+        super().save(*args, **kwargs)

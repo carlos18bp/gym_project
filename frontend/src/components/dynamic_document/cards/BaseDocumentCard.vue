@@ -189,6 +189,15 @@
     @uploaded="handleRefresh"
     @deleted="handleRefresh"
   />
+
+  <!-- Document Relationships Modal -->
+  <DocumentRelationshipsModal
+    v-if="activeModals.relationships.isOpen"
+    :is-open="activeModals.relationships.isOpen"
+    :document="activeModals.relationships.document"
+    @close="closeModal('relationships')"
+    @refresh="handleRefresh"
+  />
 </template>
 
 <script setup>
@@ -214,6 +223,9 @@ import {
   ElectronicSignatureModal,
   DocumentPermissionsModal
 } from './index.js';
+
+// Import the document relationships modal
+import DocumentRelationshipsModal from '../modals/DocumentRelationshipsModal.vue';
 
 // Import LetterheadModal from common
 import LetterheadModal from '../common/LetterheadModal.vue';
@@ -416,6 +428,9 @@ const cardConfigs = {
       // Add letterhead management option
       options.push({ label: "Gestionar Membrete", action: "letterhead" });
 
+      // Add document relationships management option
+      options.push({ label: "Administrar Asociaciones", action: "relationships" });
+
       // Options only for Completed state
       if (document.state === 'Completed') {
         options.push(
@@ -451,6 +466,7 @@ const cardConfigs = {
       const baseOptions = [
         { label: "Editar", action: "edit" },
         { label: "Permisos", action: "permissions" },
+        { label: "Administrar Asociaciones", action: "relationships" },
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
@@ -731,6 +747,10 @@ const handleMenuAction = async (action, document) => {
       case "permissions":
         openModal('permissions', document);
         break;
+
+      case "relationships":
+        openModal('relationships', document);
+        break;
         
       case "preview":
         await handlePreviewDocument(document);
@@ -787,6 +807,11 @@ const handleMenuAction = async (action, document) => {
       case "useDocument":
         // For UseDocumentCard - emit click to trigger use document modal
         emit('click', document);
+        break;
+        
+      case "use":
+        // For UseDocumentCard - emit menuAction to be handled by the card
+        emit('menuAction', action, document);
         break;
         
       case "letterhead":

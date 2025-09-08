@@ -35,7 +35,8 @@ export function useCardModals(documentStore, userStore) {
     signatures: { isOpen: false, document: null },
     electronicSignature: { isOpen: false, document: null },
     permissions: { isOpen: false, document: null },
-    letterhead: { isOpen: false, document: null }
+    letterhead: { isOpen: false, document: null },
+    relationships: { isOpen: false, document: null }
   });
 
   /**
@@ -73,6 +74,10 @@ export function useCardModals(documentStore, userStore) {
         
       case 'letterhead':
         activeModals.value.letterhead = { isOpen: true, document };
+        break;
+
+      case 'relationships':
+        activeModals.value.relationships = { isOpen: true, document };
         break;
         
       default:
