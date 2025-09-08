@@ -37,22 +37,25 @@ export const useAuthStore = defineStore("auth", {
       }
     },
     /**
-     * Validates the current JWT token by sending a request to the backend.
-     *
-     * This method sends a GET request to the '/api/validate_token/' endpoint to
-     * verify if the stored JWT token is still valid. If the token is valid, it
-     * returns `true`. If the token has expired or is invalid, it logs out the user
-     * and returns `false`. Any other errors are rethrown for further handling.
-     *
-     * @returns {Promise<boolean>} - Returns `true` if the token is valid, or `false` if it is invalid or expired.
-     * @throws {Error} - Rethrows any unexpected errors that occur during the request.
+     * Validates the current authentication token with the server.
+     * 
+     * Sends a GET request to '/api/validate_token/' to verify token validity.
+     * Only triggers logout for authentication-related errors (401, 403).
+     * Network errors, server errors, and other non-auth issues preserve the session
+     * to avoid unwanted logouts due to temporary connectivity problems.
+     * 
+     * @returns {Promise<boolean>} True if token is valid, false otherwise
      */
     async validateToken() {
       try {
         await get_request("validate_token/");
         return true;
       } catch (error) {
-        this.logout(); // Handle logout if token is not valid
+        // Only logout for authentication-related errors (401, 403)
+        // Don't logout for network errors, server errors, etc.
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          this.logout();
+        }
         return false;
       }
     },
