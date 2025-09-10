@@ -193,7 +193,7 @@
         :searchQuery="searchQuery"
         :selectedTags="selectedTags"
       ></UseDocument>
-      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents' && activeTab != 'folders'}">
+      <div v-else class="grid gap-3 sm:gap-4" :class="{'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3': activeTab != 'my-documents' && activeTab != 'folders' && activeTab != 'pending-signatures' && activeTab != 'signed-documents'}">
         <SignaturesList 
           v-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"

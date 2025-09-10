@@ -185,6 +185,15 @@ const saveDocumentDraft = async () => {
   try {
     const contentToSave = editorContent.value;
     
+    // Check if document content is empty
+    if (isContentEmpty(contentToSave)) {
+      await showNotification(
+        "No puedes guardar un documento vacío. Por favor, agrega contenido al documento antes de guardarlo.", 
+        "warning"
+      );
+      return;
+    }
+    
     // Extract variables from editor content
     const variables = extractVariables();
     
@@ -269,9 +278,29 @@ const saveDocumentDraft = async () => {
 };
 
 /**
+ * Check if document content is empty or contains only whitespace/HTML tags
+ */
+const isContentEmpty = (content) => {
+  if (!content || content.trim() === '') return true;
+  
+  // Remove HTML tags and check if there's actual text content
+  const textContent = content.replace(/<[^>]*>/g, '').trim();
+  return textContent === '' || textContent === '&nbsp;';
+};
+
+/**
  * Handle the continue action by synchronizing variables and navigating to the next step.
  */
 const handleContinue = async () => {
+  // Check if document content is empty
+  if (isContentEmpty(editorContent.value)) {
+    await showNotification(
+      "No puedes continuar con un documento vacío. Por favor, agrega contenido al documento antes de continuar.", 
+      "warning"
+    );
+    return;
+  }
+
   const variables = extractVariables();
   if (variables.length > 0) {
     if (store.selectedDocument) {

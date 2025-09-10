@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
@@ -157,24 +157,38 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     Custom admin configuration for the DynamicDocument model.
     Provides comprehensive management of dynamic documents with variable support.
     """
-    list_display = ('title', 'created_by', 'assigned_to', 'created_at', 'updated_at', 'requires_signature')
-    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email')
-    list_filter = ('created_at', 'updated_at', 'state', 'requires_signature')
+    list_display = ('title', 'state', 'created_by', 'assigned_to', 'is_public', 'fully_signed', 'requires_signature', 'created_at')
+    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email', 'tags__name')
+    list_filter = ('state', 'is_public', 'requires_signature', 'fully_signed', 'created_at', 'updated_at', 'tags')
+    filter_horizontal = ('tags',)
     inlines = [DocumentVariableInline]
 
     fieldsets = (
-        (None, {
-            'fields': ('title', 'content', 'state', 'requires_signature')
+        ('Document Information', {
+            'fields': ('title', 'content', 'state', 'letterhead_image')
         }),
-        ('User Management', {
-            'fields': ('created_by', 'assigned_to')
+        ('Access Control', {
+            'fields': ('is_public', 'created_by', 'assigned_to'),
+            'description': 'Control document visibility and ownership. When is_public=True, all users can view and use this document as a template.'
+        }),
+        ('Tags & Organization', {
+            'fields': ('tags',),
+            'description': 'Organize documents with tags for better filtering and categorization.'
+        }),
+        ('Signature Management', {
+            'fields': ('requires_signature', 'fully_signed'),
+            'description': 'Manage document signature requirements and status.'
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at', 'fully_signed')
+    
+    def get_queryset(self, request):
+        """Optimize queryset to reduce database queries."""
+        return super().get_queryset(request).select_related('created_by', 'assigned_to').prefetch_related('tags')
 
 class LegalUpdateAdmin(admin.ModelAdmin):
     """
@@ -229,6 +243,81 @@ class DocumentSignatureAdmin(admin.ModelAdmin):
     list_filter = ['signed', 'signed_at']
     search_fields = ['document__title', 'signer__email', 'signer__first_name', 'signer__last_name']
     ordering = ['signed_at']
+
+class TagAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the Tag model.
+    Manages document tags for categorization and filtering.
+    """
+    list_display = ('name', 'color_id', 'get_document_count')
+    search_fields = ('name',)
+    list_filter = ('color_id',)
+    ordering = ('name',)
+    
+    def get_document_count(self, obj):
+        """Get the count of documents using this tag."""
+        return obj.documents.count()
+    get_document_count.short_description = 'Documents Count'
+    get_document_count.admin_order_field = 'documents__count'
+
+class DocumentVisibilityPermissionAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for DocumentVisibilityPermission model.
+    Manages who can view specific documents.
+    """
+    list_display = ('document', 'user', 'granted_at')
+    search_fields = ('document__title', 'user__email', 'user__first_name', 'user__last_name')
+    list_filter = ('granted_at',)
+    raw_id_fields = ('document', 'user')
+    readonly_fields = ('granted_at',)
+
+class DocumentUsabilityPermissionAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for DocumentUsabilityPermission model.
+    Manages who can edit/use specific documents.
+    """
+    list_display = ('document', 'user', 'granted_at')
+    search_fields = ('document__title', 'user__email', 'user__first_name', 'user__last_name')
+    list_filter = ('granted_at',)
+    raw_id_fields = ('document', 'user')
+    readonly_fields = ('granted_at',)
+
+class DocumentFolderAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for DocumentFolder model.
+    Manages document folders and organization.
+    """
+    list_display = ('name', 'color_id', 'get_document_count', 'created_at')
+    search_fields = ('name',)
+    list_filter = ('color_id', 'created_at')
+    filter_horizontal = ('documents',)
+    readonly_fields = ('created_at',)
+    
+    def get_document_count(self, obj):
+        """Get the count of documents in this folder."""
+        return obj.documents.count()
+    get_document_count.short_description = 'Documents Count'
+    get_document_count.admin_order_field = 'documents__count'
+
+class DocumentRelationshipAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for DocumentRelationship model.
+    Manages relationships between documents.
+    """
+    list_display = ('source_document', 'target_document', 'created_by', 'created_at')
+    search_fields = ('source_document__title', 'target_document__title')
+    list_filter = ('created_at', 'created_by')
+    raw_id_fields = ('source_document', 'target_document', 'created_by')
+    readonly_fields = ('created_at',)
+    fieldsets = (
+        ('Relationship Details', {
+            'fields': ('source_document', 'target_document', 'created_by')
+        }),
+        ('Additional Information', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
 
 class GyMAdminSite(admin.AdminSite):
     """
@@ -288,7 +377,11 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'dynamic_document',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['DynamicDocument', 'DocumentSignature', 'DocumentVariable']
+                    if model['object_name'] in [
+                        'DynamicDocument', 'DocumentSignature', 'DocumentVariable', 
+                        'Tag', 'DocumentFolder', 'DocumentVisibilityPermission', 
+                        'DocumentUsabilityPermission', 'DocumentRelationship'
+                    ]
                 ]
             },
         ]
@@ -312,6 +405,11 @@ admin_site.register(LegalRequestResponse, LegalRequestResponseAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)
+admin_site.register(Tag, TagAdmin)
+admin_site.register(DocumentFolder, DocumentFolderAdmin)
+admin_site.register(DocumentVisibilityPermission, DocumentVisibilityPermissionAdmin)
+admin_site.register(DocumentUsabilityPermission, DocumentUsabilityPermissionAdmin)
+admin_site.register(DocumentRelationship, DocumentRelationshipAdmin)
 admin_site.register(LegalUpdate, LegalUpdateAdmin)
 admin_site.register(RecentDocument, RecentDocumentAdmin)
 admin_site.register(RecentProcess, RecentProcessAdmin)

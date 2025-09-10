@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+// Vue compiler macros (defineProps, defineEmits) are automatically available in <script setup>
 
 /**
  * Modal component for selecting electronic signature type

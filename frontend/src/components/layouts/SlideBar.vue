@@ -358,7 +358,8 @@ import {
   UsersIcon,
   DocumentTextIcon,
   RectangleStackIcon,
-  Square2StackIcon
+  Square2StackIcon,
+  EnvelopeIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
@@ -407,10 +408,10 @@ onMounted(async () => {
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
   } else if (currentUser.role === 'client') {
-    // Clients: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
-    navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Gestión de Solicitudes"
-    );
+      // Clients: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
+      navigation.value = navigation.value.filter(
+        (navItem) => navItem.name !== "Gestión de Solicitudes"
+      );
   }
 
   updateActiveNavItem();
@@ -508,7 +509,7 @@ const navigation = ref([
       setCurrent(item);
       router.push({ name: "legal_requests_management" });
     },
-    icon: ScaleIcon,
+    icon: EnvelopeIcon,
     current: false,
     routes: ['/legal_requests', '/legal_request']
   },

@@ -247,5 +247,33 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
       }
     },
 
+    /**
+     * Download a file from a legal request
+     */
+    async downloadFile(requestId, fileId) {
+      try {
+        const response = await get_request(
+          `legal_requests/${requestId}/files/${fileId}/download/`,
+          {},
+          {
+            responseType: 'blob', // Important for file downloads
+            headers: {
+              'Accept': 'application/octet-stream'
+            }
+          }
+        )
+
+        if (response.status === 200) {
+          return response
+        }
+
+        throw new Error('Failed to download file')
+
+      } catch (error) {
+        console.error('Error downloading file:', error)
+        throw error
+      }
+    },
+
   }
 })

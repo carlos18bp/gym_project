@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from gym_app.models.dynamic_document import (
     DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder,
-    DocumentVisibilityPermission, DocumentUsabilityPermission
+    DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentRelationship
 )
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
@@ -590,6 +590,80 @@ class DocumentVisibilityPermissionSerializer(serializers.ModelSerializer):
         return full_name if full_name else obj.user.email
 
 
+class DocumentRelationshipSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DocumentRelationship model.
+    
+    Handles serialization/deserialization of document relationships with enhanced
+    data for frontend consumption. Automatically includes document titles and
+    creator information for display purposes.
+    
+    Features:
+    - Auto-populated creator information from request context
+    - Validation against self-relationships
+    - Enhanced document metadata (titles, creator details)
+    - Read-only fields for audit data
+    
+    Fields:
+    - id: Unique identifier for the relationship
+    - source_document: ID of the source document
+    - target_document: ID of the target document  
+    - created_by: User who created the relationship (auto-set)
+    - created_at: Timestamp when relationship was created (auto-set)
+    - source_document_title: Title of source document (read-only)
+    - target_document_title: Title of target document (read-only)
+    - created_by_email: Email of creator (read-only)
+    - created_by_name: Full name of creator (read-only)
+    """
+    source_document_title = serializers.CharField(source='source_document.title', read_only=True)
+    target_document_title = serializers.CharField(source='target_document.title', read_only=True)
+    created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
+    created_by_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = DocumentRelationship
+        fields = [
+            'id', 'source_document', 'target_document', 'created_by', 'created_at',
+            'source_document_title', 'target_document_title', 
+            'created_by_email', 'created_by_name'
+        ]
+        read_only_fields = ['id', 'created_by', 'created_at']
+
+    def get_created_by_name(self, obj):
+        """Return the full name of the user who created the relationship."""
+        if obj.created_by:
+            first_name = obj.created_by.first_name or ""
+            last_name = obj.created_by.last_name or ""
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name if full_name else obj.created_by.email
+        return ""
+
+    def validate(self, data):
+        """
+        Custom validation to ensure a document cannot be related to itself.
+        """
+        source_document = data.get('source_document')
+        target_document = data.get('target_document')
+        
+        if source_document and target_document and source_document == target_document:
+            raise serializers.ValidationError(
+                "A document cannot be related to itself."
+            )
+        
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a new document relationship.
+        """
+        # Set created_by from the request context
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['created_by'] = request.user
+        
+        return super().create(validated_data)
+
+
 class DocumentUsabilityPermissionSerializer(serializers.ModelSerializer):
     """
     Serializer for DocumentUsabilityPermission model.
@@ -616,3 +690,77 @@ class DocumentUsabilityPermissionSerializer(serializers.ModelSerializer):
         last_name = obj.user.last_name or ""
         full_name = f"{first_name} {last_name}".strip()
         return full_name if full_name else obj.user.email
+
+
+class DocumentRelationshipSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DocumentRelationship model.
+    
+    Handles serialization/deserialization of document relationships with enhanced
+    data for frontend consumption. Automatically includes document titles and
+    creator information for display purposes.
+    
+    Features:
+    - Auto-populated creator information from request context
+    - Validation against self-relationships
+    - Enhanced document metadata (titles, creator details)
+    - Read-only fields for audit data
+    
+    Fields:
+    - id: Unique identifier for the relationship
+    - source_document: ID of the source document
+    - target_document: ID of the target document  
+    - created_by: User who created the relationship (auto-set)
+    - created_at: Timestamp when relationship was created (auto-set)
+    - source_document_title: Title of source document (read-only)
+    - target_document_title: Title of target document (read-only)
+    - created_by_email: Email of creator (read-only)
+    - created_by_name: Full name of creator (read-only)
+    """
+    source_document_title = serializers.CharField(source='source_document.title', read_only=True)
+    target_document_title = serializers.CharField(source='target_document.title', read_only=True)
+    created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
+    created_by_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = DocumentRelationship
+        fields = [
+            'id', 'source_document', 'target_document', 'created_by', 'created_at',
+            'source_document_title', 'target_document_title', 
+            'created_by_email', 'created_by_name'
+        ]
+        read_only_fields = ['id', 'created_by', 'created_at']
+
+    def get_created_by_name(self, obj):
+        """Return the full name of the user who created the relationship."""
+        if obj.created_by:
+            first_name = obj.created_by.first_name or ""
+            last_name = obj.created_by.last_name or ""
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name if full_name else obj.created_by.email
+        return ""
+
+    def validate(self, data):
+        """
+        Custom validation to ensure a document cannot be related to itself.
+        """
+        source_document = data.get('source_document')
+        target_document = data.get('target_document')
+        
+        if source_document and target_document and source_document == target_document:
+            raise serializers.ValidationError(
+                "A document cannot be related to itself."
+            )
+        
+        return data
+
+    def create(self, validated_data):
+        """
+        Create a new document relationship.
+        """
+        # Set created_by from the request context
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['created_by'] = request.user
+        
+        return super().create(validated_data)

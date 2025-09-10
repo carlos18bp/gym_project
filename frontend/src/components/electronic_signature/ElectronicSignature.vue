@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits, defineProps } from 'vue';
+import { ref, onMounted } from 'vue';
 import SignatureModal from './SignatureModal.vue';
 import ImageUploadSignature from './ImageUploadSignature.vue';
 import DrawSignature from './DrawSignature.vue';

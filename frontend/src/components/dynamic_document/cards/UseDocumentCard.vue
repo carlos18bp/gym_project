@@ -15,7 +15,7 @@
       :disable-internal-actions="disableInternalActions"
       :show-menu-options="showMenuOptions"
       @click="handleCardClick"
-      @menu-action="handleMenuAction"
+      @menuAction="handleMenuAction"
       @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom right action slot with arrow instead of menu (only when should show arrow) -->

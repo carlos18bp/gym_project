@@ -10,6 +10,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404
 from django.db import transaction, models
 from django.core.exceptions import ValidationError
+from django.http import FileResponse, Http404
+from django.conf import settings
 from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse
 from gym_app.serializers import (
     LegalRequestSerializer, LegalRequestTypeSerializer, LegalDisciplineSerializer,
@@ -28,7 +30,9 @@ logger = logging.getLogger(__name__)
 # File validation configuration
 ALLOWED_FILE_TYPES = {
     'application/pdf': ['.pdf'],
+    'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    'application/zip': ['.docx'],  # .docx files may be detected as ZIP
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png']
 }
@@ -47,11 +51,30 @@ def validate_file_security(file):
     if not any(file_ext in extensions for extensions in ALLOWED_FILE_TYPES.values()):
         raise ValidationError(f"File type {file_ext} not allowed. Allowed types: {list(ALLOWED_FILE_TYPES.keys())}")
     
-    # Check MIME type
+    # Check MIME type with enhanced detection for .docx files
     try:
-        mime_type = magic.from_buffer(file.read(1024), mime=True)
+        # Read more bytes for better detection (especially for .docx files)
+        mime_type = magic.from_buffer(file.read(2048), mime=True)
         file.seek(0)  # Reset file pointer
         
+        logger.info(f"Detected MIME type for {file.name}: {mime_type}")
+        
+        # Special handling for .docx files that might be detected as application/zip
+        if file_ext == '.docx' and mime_type == 'application/zip':
+            # Verify it's actually a .docx by checking internal structure
+            try:
+                file_content = file.read(512)
+                file.seek(0)  # Reset file pointer
+                # Check for typical .docx ZIP signatures
+                if b'PK' in file_content[:4] and (b'word/' in file_content or b'docProps/' in file_content):
+                    logger.info(f"Confirmed {file.name} is a valid .docx file (detected as ZIP)")
+                    # Accept this as valid .docx
+                    logger.info(f"File validation successful for .docx file: {file.name}")
+                    return True
+            except Exception as inner_e:
+                logger.warning(f"Could not verify .docx internal structure for {file.name}: {str(inner_e)}")
+        
+        # Standard MIME type validation
         if mime_type not in ALLOWED_FILE_TYPES:
             raise ValidationError(f"MIME type {mime_type} not allowed")
         
@@ -59,6 +82,9 @@ def validate_file_security(file):
         if file_ext not in ALLOWED_FILE_TYPES[mime_type]:
             raise ValidationError(f"File extension {file_ext} doesn't match MIME type {mime_type}")
             
+    except ValidationError:
+        # Re-raise validation errors
+        raise
     except Exception as e:
         logger.error(f"Error checking MIME type for {file.name}: {str(e)}")
         raise ValidationError("Unable to verify file type")
@@ -766,3 +792,86 @@ def add_files_to_legal_request(request, request_id):
     except Exception as e:
         logger.error(f"Error adding files to legal request {request_id}: {str(e)}")
         return Response({'detail': 'An error occurred while adding files.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_legal_request_file(request, request_id, file_id):
+    """
+    Download a specific file from a legal request.
+    Users can only download files from requests they have access to.
+    """
+    try:
+        user = request.user
+        
+        # Get the legal request first
+        legal_request = get_object_or_404(LegalRequest, id=request_id)
+        
+        # Check permissions
+        user_role = getattr(user, 'role', 'client')
+        if user_role != 'lawyer' and legal_request.user != user:
+            logger.warning(f"User {user.id} attempted to download file from legal request {request_id} without permission")
+            return Response(
+                {'detail': 'You do not have permission to download files from this request'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get the file
+        try:
+            file_obj = LegalRequestFiles.objects.get(id=file_id)
+        except LegalRequestFiles.DoesNotExist:
+            logger.error(f"File {file_id} not found")
+            raise Http404("File not found")
+        
+        # Verify the file belongs to this legal request
+        if not legal_request.files.filter(id=file_id).exists():
+            logger.warning(f"File {file_id} does not belong to legal request {request_id}")
+            return Response(
+                {'detail': 'File does not belong to this request'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if file exists on disk
+        if not file_obj.file or not os.path.exists(file_obj.file.path):
+            logger.error(f"Physical file not found for file ID {file_id}: {file_obj.file.path if file_obj.file else 'No file path'}")
+            return Response(
+                {'detail': 'File not found on server'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Log the download
+        logger.info(f"User {user.id} downloading file {file_id} from legal request {request_id}")
+        
+        # Get the original filename
+        original_filename = os.path.basename(file_obj.file.name)
+        
+        # Create the file response
+        response = FileResponse(
+            open(file_obj.file.path, 'rb'),
+            as_attachment=True,
+            filename=original_filename
+        )
+        
+        # Set the content type based on file extension
+        file_ext = os.path.splitext(original_filename)[1].lower()
+        if file_ext == '.pdf':
+            response['Content-Type'] = 'application/pdf'
+        elif file_ext in ['.doc', '.docx']:
+            response['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif file_ext in ['.jpg', '.jpeg']:
+            response['Content-Type'] = 'image/jpeg'
+        elif file_ext == '.png':
+            response['Content-Type'] = 'image/png'
+        else:
+            response['Content-Type'] = 'application/octet-stream'
+        
+        return response
+        
+    except Http404:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading file {file_id} from legal request {request_id}: {str(e)}")
+        return Response(
+            {'detail': 'Error downloading file'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

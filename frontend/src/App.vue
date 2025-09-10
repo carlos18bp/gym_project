@@ -4,7 +4,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { RouterView } from "vue-router";
 import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 import { useAuthStore } from "@/stores/auth/auth";
@@ -18,33 +18,53 @@ const setupComplete = ref(false);
 const authStore = useAuthStore();
 const userStore = useUserStore();
 
-// Add controller reference for the idle logout composable
+// Idle logout controller reference
 const idleController = ref(null);
 
-// Watch for changes in the authentication token.
-// When the user logs in we initialise the idle-logout detector.
-// When the user logs out we tear it down to free resources.
+/**
+ * Initializes the idle logout system when user has a valid token.
+ * Sets up activity listeners and starts the 15-minute inactivity timer.
+ */
+const initializeIdleLogout = () => {
+  if (authStore.token && !idleController.value) {
+    try {
+      const controller = useIdleLogout(); // Default 15 minutes
+      controller.subscribe();
+      idleController.value = controller;
+    } catch (error) {
+      console.error("Error starting idle logout:", error);
+    }
+  }
+};
+
+/**
+ * Cleans up the idle logout system by removing event listeners and timers.
+ * Called when user logs out or component unmounts.
+ */
+const cleanupIdleLogout = () => {
+  if (idleController.value) {
+    try {
+      idleController.value.unsubscribe();
+      idleController.value = null;
+    } catch (error) {
+      console.error("Error stopping idle logout:", error);
+    }
+  }
+};
+
+// Watch authentication token changes to manage idle logout lifecycle
 watch(
   () => authStore.token,
   (token) => {
     if (token && !idleController.value) {
-      // User has just logged in – start idle detection
-      try {
-        idleController.value = useIdleLogout();
-      } catch (error) {
-        console.error("Error starting idle logout:", error);
-      }
+      // User logged in - start idle detection
+      initializeIdleLogout();
     } else if (!token && idleController.value) {
-      // User has logged out – stop idle detection
-      try {
-        idleController.value.unsubscribe();
-        idleController.value = null;
-      } catch (error) {
-        console.error("Error stopping idle logout:", error);
-      }
+      // User logged out - stop idle detection
+      cleanupIdleLogout();
     }
   },
-  { immediate: false } // Changed to false to avoid immediate execution
+  { immediate: false }
 );
 
 // Perform initialization after component is mounted
@@ -53,24 +73,29 @@ onMounted(async () => {
   if (setupComplete.value) return;
   
   try {
-    // Verify if user is authenticated
-    if (await authStore.isAuthenticated()) {
-      await userStore.init();
+    // Check if there's a token in storage first (without validating it)
+    if (authStore.token) {
+      // Initialize idle logout immediately if token exists
+      initializeIdleLogout();
       
-      // Initialize idle logout if user is authenticated and not already initialized
-      if (authStore.token && !idleController.value) {
-        try {
-          idleController.value = useIdleLogout();
-        } catch (error) {
-          console.error("Error initializing idle logout on mount:", error);
+      // Try to validate token and initialize user store
+      try {
+        if (await authStore.isAuthenticated()) {
+          await userStore.init();
+          setupComplete.value = true;
         }
+      } catch (error) {
+        console.warn("Token validation failed during initialization:", error);
+        // Token will be cleared by the auth store, idle logout will be cleaned by watcher
       }
-      
-      // The rest of redirection logic will be moved to the router
-      setupComplete.value = true;
     }
   } catch (error) {
     console.error("Error during App initialization:", error);
   }
+});
+
+// Cleanup when component unmounts
+onBeforeUnmount(() => {
+  cleanupIdleLogout();
 });
 </script>

@@ -2,7 +2,7 @@
 // Composable to automatically log out the authenticated user after a period of inactivity.
 // All documentation and comments are in English as requested.
 
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth/auth";
 import { googleLogout } from "vue3-google-login";
@@ -16,8 +16,7 @@ const ACTIVITY_EVENTS = [
   "touchstart",
 ];
 
-// Event used to detect that the tab or window is being closed or refreshed
-const TAB_CLOSE_EVENT = "beforeunload";
+// Note: beforeunload event removed due to browser security policies
 
 /**
  * Automatically logs the user out after a given period of inactivity.
@@ -35,6 +34,7 @@ const TAB_CLOSE_EVENT = "beforeunload";
  * @returns {{ unsubscribe: Function }} – Function to manually stop the idle watcher (removes listeners and timeout).
  */
 export function useIdleLogout({ timeout = 15 * 60 * 1000 } = {}) {
+  // Get Vue instances immediately (before any async operations)
   const router = useRouter();
   const authStore = useAuthStore();
   const timerId = ref(null);
@@ -61,29 +61,13 @@ export function useIdleLogout({ timeout = 15 * 60 * 1000 } = {}) {
     router.push({ name: "sign_in" });
   };
 
-  /**
-   * Called when the user is closing or refreshing the tab.
-   * We cannot rely on async operations finishing here, but clearing the local token is enough
-   * because it prevents automatic re-authentication and signals other tabs (storage event).
-   */
-  const handleTabClose = () => {
-    if (!authStore.token) return;
-
-    authStore.logout();
-    try {
-      googleLogout(); // Best-effort; may not complete before the tab actually closes
-    } catch (_) {
-      /* ignore */
-    }
-    // No router navigation – the page is about to unload.
-  };
+  // handleTabClose function removed due to beforeunload event security restrictions
 
   /**
    * Attaches activity listeners and starts the idle timer.
    */
   const subscribe = () => {
     ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, resetTimer, true));
-    window.addEventListener(TAB_CLOSE_EVENT, handleTabClose, true);
     resetTimer(); // Start the initial timer
   };
 
@@ -92,16 +76,13 @@ export function useIdleLogout({ timeout = 15 * 60 * 1000 } = {}) {
    */
   const unsubscribe = () => {
     ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, resetTimer, true));
-    window.removeEventListener(TAB_CLOSE_EVENT, handleTabClose, true);
     if (timerId.value) {
       clearTimeout(timerId.value);
       timerId.value = null;
     }
   };
 
-  // Lifecycle hooks – subscribe on mount, clean up on unmount
-  onMounted(subscribe);
-  onBeforeUnmount(unsubscribe);
-
-  return { unsubscribe };
+  // Return control functions without automatic lifecycle hooks
+  // The caller should handle initialization manually
+  return { subscribe, unsubscribe };
 } 

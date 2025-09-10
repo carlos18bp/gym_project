@@ -429,6 +429,11 @@ const processFiles = (fileList) => {
         style.general = "border-red-600/20 text-red-600/60";
         style.xMark = "bg-red-600/60";
         break;
+      case "doc":
+        icon = DocumentIcon;
+        style.general = "border-blue-600/20 text-blue-600/60";
+        style.xMark = "bg-blue-600/60";
+        break;
       case "docx":
         icon = DocumentIcon;
         style.general = "border-blue-600/20 text-blue-600/60";
@@ -437,7 +442,7 @@ const processFiles = (fileList) => {
       default:
         // Notify the user if the file type is unsupported
         showNotification(
-          "¡Ups! Ese tipo de archivo no es compatible. Asegúrate de que el archivo sea PDF, DOCX, JPG, PNG, JPEG.",
+          "¡Ups! Ese tipo de archivo no es compatible. Asegúrate de que el archivo sea PDF, DOC, DOCX, JPG, PNG, JPEG.",
           "warning"
         );
         return;
