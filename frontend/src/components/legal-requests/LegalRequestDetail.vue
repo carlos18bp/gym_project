@@ -133,13 +133,13 @@
                 {{ formatDate(file.created_at) }}
               </p>
             </div>
-            <a
-              :href="file.file"
-              target="_blank"
-              class="ml-3 text-indigo-600 hover:text-indigo-800"
+            <button
+              @click="downloadFile(file.id)"
+              class="ml-3 text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors"
+              title="Descargar archivo"
             >
               <ArrowDownTrayIcon class="h-5 w-5" />
-            </a>
+            </button>
           </div>
         </div>
         
@@ -339,6 +339,44 @@ const handleFilesAdded = async () => {
   // Refresh the request data to show new files
   await fetchRequest()
   showAddFilesModal.value = false
+}
+
+const downloadFile = async (fileId) => {
+  try {
+    const response = await legalRequestsStore.downloadFile(requestId.value, fileId)
+    
+    // Create a blob from the response
+    const blob = new Blob([response.data], { 
+      type: response.headers['content-type'] || 'application/octet-stream' 
+    })
+    
+    // Get filename from content-disposition header or use default
+    let filename = 'archivo'
+    const contentDisposition = response.headers['content-disposition']
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
+      if (filenameMatch) {
+        filename = filenameMatch[1]
+      }
+    }
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(link)
+    
+  } catch (error) {
+    console.error('Error downloading file:', error)
+    // You could show a notification here
+    alert('Error al descargar el archivo. Inténtalo de nuevo.')
+  }
 }
 
 // Lifecycle

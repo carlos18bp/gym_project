@@ -153,7 +153,7 @@
 </template>
 
 <script setup>
-import { onMounted, defineProps, defineExpose } from 'vue';
+import { onMounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { useDocumentTags } from '@/composables/document-variables/useDocumentTags';
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';

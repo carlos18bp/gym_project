@@ -282,7 +282,7 @@
 </template>
 
 <script setup>
-import { onMounted, defineProps, defineExpose, watch } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useDocumentPermissions } from '@/composables/document-variables/useDocumentPermissions';
 
 // Props

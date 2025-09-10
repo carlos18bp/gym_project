@@ -66,6 +66,7 @@ legal_request_urls = [
     path('legal_requests/<int:request_id>/status/', legal_request.update_legal_request_status, name='update-legal-request-status'),
     path('legal_requests/<int:request_id>/responses/', legal_request.create_legal_request_response, name='create-legal-request-response'),
     path('legal_requests/<int:request_id>/files/', legal_request.add_files_to_legal_request, name='add-files-to-legal-request'),
+    path('legal_requests/<int:request_id>/files/<int:file_id>/download/', legal_request.download_legal_request_file, name='download-legal-request-file'),
     path('legal_requests/<int:request_id>/delete/', legal_request.delete_legal_request, name='delete-legal-request'),
 ]
 

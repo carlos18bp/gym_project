@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "jest --config jest.config.cjs"
+    "dev": "node -r ./suppress-warnings.cjs node_modules/.bin/vite",
+    "build": "node -r ./suppress-warnings.cjs node_modules/.bin/vite build",
+    "preview": "node -r ./suppress-warnings.cjs node_modules/.bin/vite preview",
+    "test": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
