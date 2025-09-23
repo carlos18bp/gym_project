@@ -229,6 +229,18 @@ const router = createRouter({
       ],
     },
     {
+      path: "/organizations_dashboard",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "organizations_dashboard",
+          component: () => import(/* webpackChunkName: "organizations" */ "@/views/organizations/Dashboard.vue"),
+          meta: { requiresAuth: true, title: "Organizaciones" },
+        },
+      ],
+    },
+    {
       path: "/dynamic_document_dashboard",
       component: SlideBar,
       children: [

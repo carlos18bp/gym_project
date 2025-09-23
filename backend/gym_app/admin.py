@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
@@ -141,6 +141,210 @@ class LegalRequestResponseAdmin(admin.ModelAdmin):
         """Get a preview of the response text."""
         return obj.response_text[:100] + '...' if len(obj.response_text) > 100 else obj.response_text
     get_response_preview.short_description = 'Respuesta'
+
+class CorporateRequestAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the CorporateRequest model.
+    """
+    list_display = (
+        'request_number', 'title', 'get_client_name', 'get_corporate_client_name', 
+        'status', 'priority', 'created_at', 'get_assigned_to_name'
+    )
+    search_fields = (
+        'request_number', 'title', 'description',
+        'client__email', 'client__first_name', 'client__last_name',
+        'corporate_client__email', 'corporate_client__first_name', 'corporate_client__last_name'
+    )
+    list_filter = ('status', 'priority', 'request_type', 'created_at', 'status_updated_at')
+    readonly_fields = ('request_number', 'created_at', 'status_updated_at')
+    filter_horizontal = ('files',)
+    raw_id_fields = ('client', 'corporate_client', 'assigned_to')
+    
+    def get_client_name(self, obj):
+        return f"{obj.client.first_name} {obj.client.last_name} ({obj.client.email})" if obj.client else None
+    get_client_name.short_description = 'Cliente'
+    get_client_name.admin_order_field = 'client__email'
+    
+    def get_corporate_client_name(self, obj):
+        return f"{obj.corporate_client.first_name} {obj.corporate_client.last_name} ({obj.corporate_client.email})" if obj.corporate_client else None
+    get_corporate_client_name.short_description = 'Cliente Corporativo'
+    get_corporate_client_name.admin_order_field = 'corporate_client__email'
+    
+    def get_assigned_to_name(self, obj):
+        return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}" if obj.assigned_to else "No asignado"
+    get_assigned_to_name.short_description = 'Asignado a'
+    get_assigned_to_name.admin_order_field = 'assigned_to__email'
+
+class CorporateRequestTypeAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the CorporateRequestType model.
+    """
+    list_display = ('name',)
+    search_fields = ('name',)
+    list_filter = ('name',)
+
+class CorporateRequestFilesAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the CorporateRequestFiles model.
+    """
+    list_display = ('file', 'created_at')
+    search_fields = ('file',)
+    list_filter = ('created_at',)
+    readonly_fields = ('created_at',)
+
+class CorporateRequestResponseAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the CorporateRequestResponse model.
+    """
+    list_display = (
+        'corporate_request', 'get_user_name', 'user_type', 
+        'is_internal_note', 'get_response_preview', 'created_at'
+    )
+    search_fields = (
+        'corporate_request__request_number', 'user__email', 
+        'response_text'
+    )
+    list_filter = ('user_type', 'is_internal_note', 'created_at')
+    readonly_fields = ('created_at',)
+    filter_horizontal = ('response_files',)
+    raw_id_fields = ('corporate_request', 'user')
+    
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}" if obj.user else None
+    get_user_name.short_description = 'Usuario'
+    get_user_name.admin_order_field = 'user__email'
+    
+    def get_response_preview(self, obj):
+        """Display a preview of the response text"""
+        return obj.response_text[:100] + "..." if len(obj.response_text) > 100 else obj.response_text
+    get_response_preview.short_description = "Vista Previa"
+
+class OrganizationAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the Organization model.
+    """
+    list_display = (
+        'title', 'get_corporate_client_name', 'is_active', 
+        'get_member_count', 'get_pending_invitations_count', 'created_at'
+    )
+    search_fields = (
+        'title', 'description',
+        'corporate_client__email', 'corporate_client__first_name', 'corporate_client__last_name'
+    )
+    list_filter = ('is_active', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('corporate_client',)
+    
+    def get_corporate_client_name(self, obj):
+        return f"{obj.corporate_client.first_name} {obj.corporate_client.last_name} ({obj.corporate_client.email})"
+    get_corporate_client_name.short_description = 'Líder Corporativo'
+    get_corporate_client_name.admin_order_field = 'corporate_client__email'
+    
+    def get_member_count(self, obj):
+        return obj.get_member_count()
+    get_member_count.short_description = 'Miembros'
+    
+    def get_pending_invitations_count(self, obj):
+        return obj.get_pending_invitations_count()
+    get_pending_invitations_count.short_description = 'Invitaciones Pendientes'
+
+class OrganizationInvitationAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the OrganizationInvitation model.
+    """
+    list_display = (
+        'organization', 'get_invited_user_name', 'get_invited_by_name',
+        'status', 'created_at', 'expires_at', 'get_is_expired'
+    )
+    search_fields = (
+        'organization__title',
+        'invited_user__email', 'invited_user__first_name', 'invited_user__last_name',
+        'invited_by__email', 'invited_by__first_name', 'invited_by__last_name'
+    )
+    list_filter = ('status', 'created_at', 'expires_at')
+    readonly_fields = ('invitation_token', 'created_at', 'responded_at')
+    raw_id_fields = ('organization', 'invited_user', 'invited_by')
+    
+    def get_invited_user_name(self, obj):
+        return f"{obj.invited_user.first_name} {obj.invited_user.last_name} ({obj.invited_user.email})"
+    get_invited_user_name.short_description = 'Usuario Invitado'
+    get_invited_user_name.admin_order_field = 'invited_user__email'
+    
+    def get_invited_by_name(self, obj):
+        return f"{obj.invited_by.first_name} {obj.invited_by.last_name} ({obj.invited_by.email})"
+    get_invited_by_name.short_description = 'Invitado Por'
+    get_invited_by_name.admin_order_field = 'invited_by__email'
+    
+    def get_is_expired(self, obj):
+        return "Sí" if obj.is_expired() else "No"
+    get_is_expired.short_description = 'Expirada'
+    get_is_expired.boolean = True
+
+class OrganizationMembershipAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the OrganizationMembership model.
+    """
+    list_display = (
+        'organization', 'get_user_name', 'role', 'is_active', 
+        'joined_at', 'deactivated_at'
+    )
+    search_fields = (
+        'organization__title',
+        'user__email', 'user__first_name', 'user__last_name'
+    )
+    list_filter = ('role', 'is_active', 'joined_at')
+    readonly_fields = ('joined_at',)
+    raw_id_fields = ('organization', 'user')
+    
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name} ({obj.user.email})"
+    get_user_name.short_description = 'Usuario'
+    get_user_name.admin_order_field = 'user__email'
+
+
+class OrganizationPostAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the OrganizationPost model.
+    """
+    list_display = (
+        'title', 'organization', 'get_author_name', 'is_active', 
+        'is_pinned', 'has_link', 'created_at'
+    )
+    search_fields = (
+        'title', 'content', 'link_name',
+        'organization__title',
+        'author__email', 'author__first_name', 'author__last_name'
+    )
+    list_filter = ('is_active', 'is_pinned', 'created_at')
+    readonly_fields = ('created_at', 'updated_at', 'has_link')
+    raw_id_fields = ('organization', 'author')
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('title', 'content', 'organization', 'author')
+        }),
+        ('Hipervínculo (Opcional)', {
+            'fields': ('link_name', 'link_url'),
+            'classes': ('collapse',)
+        }),
+        ('Estado y Visibilidad', {
+            'fields': ('is_active', 'is_pinned')
+        }),
+        ('Información de Sistema', {
+            'fields': ('created_at', 'updated_at', 'has_link'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_author_name(self, obj):
+        return f"{obj.author.first_name} {obj.author.last_name} ({obj.author.email})"
+    get_author_name.short_description = 'Autor'
+    get_author_name.admin_order_field = 'author__email'
+    
+    def has_link(self, obj):
+        return obj.has_link
+    has_link.short_description = 'Tiene Enlace'
+    has_link.boolean = True
 
 class DocumentVariableInline(admin.StackedInline):
     """
@@ -373,6 +577,22 @@ class GyMAdminSite(admin.AdminSite):
                 ]
             },
             {
+                'name': _('Corporate Request Management'),
+                'app_label': 'corporate_request_management',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['CorporateRequest', 'CorporateRequestType', 'CorporateRequestFiles', 'CorporateRequestResponse']
+                ]
+            },
+            {
+                'name': _('Organization Management'),
+                'app_label': 'organization_management',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['Organization', 'OrganizationInvitation', 'OrganizationMembership', 'OrganizationPost']
+                ]
+            },
+            {
                 'name': _('Dynamic Document Generate'),
                 'app_label': 'dynamic_document',
                 'models': [
@@ -402,6 +622,14 @@ admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalRequestResponse, LegalRequestResponseAdmin)
+admin_site.register(CorporateRequest, CorporateRequestAdmin)
+admin_site.register(CorporateRequestType, CorporateRequestTypeAdmin)
+admin_site.register(CorporateRequestFiles, CorporateRequestFilesAdmin)
+admin_site.register(CorporateRequestResponse, CorporateRequestResponseAdmin)
+admin_site.register(Organization, OrganizationAdmin)
+admin_site.register(OrganizationInvitation, OrganizationInvitationAdmin)
+admin_site.register(OrganizationMembership, OrganizationMembershipAdmin)
+admin_site.register(OrganizationPost, OrganizationPostAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)

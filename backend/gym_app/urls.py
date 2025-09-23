@@ -12,7 +12,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Recent processes (tracking and updates)
 - Reports (Excel report generation)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, legal_update, reports, captcha
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -68,6 +68,73 @@ legal_request_urls = [
     path('legal_requests/<int:request_id>/files/', legal_request.add_files_to_legal_request, name='add-files-to-legal-request'),
     path('legal_requests/<int:request_id>/files/<int:file_id>/download/', legal_request.download_legal_request_file, name='download-legal-request-file'),
     path('legal_requests/<int:request_id>/delete/', legal_request.delete_legal_request, name='delete-legal-request'),
+]
+
+# Corporate request management URLs  
+corporate_request_urls = [
+    # Client endpoints (normal clients)
+    path('corporate-requests/clients/my-organizations/', corporate_request.client_get_my_organizations, name='client-get-my-organizations'),
+    path('corporate-requests/clients/request-types/', corporate_request.client_get_request_types, name='client-get-request-types'),
+    path('corporate-requests/clients/create/', corporate_request.client_create_corporate_request, name='client-create-corporate-request'),
+    path('corporate-requests/clients/my-requests/', corporate_request.client_get_my_corporate_requests, name='client-get-my-corporate-requests'),
+    path('corporate-requests/clients/<int:request_id>/', corporate_request.client_get_corporate_request_detail, name='client-get-corporate-request-detail'),
+    path('corporate-requests/clients/<int:request_id>/responses/', corporate_request.client_add_response_to_request, name='client-add-response-to-request'),
+    
+    # Corporate client endpoints
+    path('corporate-requests/corporate/received/', corporate_request.corporate_get_received_requests, name='corporate-get-received-requests'),
+    path('corporate-requests/corporate/<int:request_id>/', corporate_request.corporate_get_request_detail, name='corporate-get-request-detail'),
+    path('corporate-requests/corporate/<int:request_id>/update/', corporate_request.corporate_update_request_status, name='corporate-update-request-status'),
+    path('corporate-requests/corporate/<int:request_id>/responses/', corporate_request.corporate_add_response_to_request, name='corporate-add-response-to-request'),
+    path('corporate-requests/corporate/dashboard-stats/', corporate_request.corporate_get_dashboard_stats, name='corporate-get-dashboard-stats'),
+    
+    # Shared endpoints
+    path('corporate-requests/<int:request_id>/conversation/', corporate_request.get_request_conversation, name='get-request-conversation'),
+]
+
+# Organization management URLs
+organization_urls = [
+    # Corporate client endpoints (organization management)
+    path('organizations/create/', organization.create_organization, name='create-organization'),
+    path('organizations/my-organizations/', organization.get_my_organizations, name='get-my-organizations'),
+    path('organizations/<int:organization_id>/', organization.get_organization_detail, name='get-organization-detail'),
+    path('organizations/<int:organization_id>/update/', organization.update_organization, name='update-organization'),
+    path('organizations/<int:organization_id>/delete/', organization.delete_organization, name='delete-organization'),
+    
+    # Invitation management
+    path('organizations/<int:organization_id>/invitations/send/', organization.send_organization_invitation, name='send-organization-invitation'),
+    path('organizations/<int:organization_id>/invitations/', organization.get_organization_invitations, name='get-organization-invitations'),
+    path('organizations/<int:organization_id>/invitations/<int:invitation_id>/cancel/', organization.cancel_organization_invitation, name='cancel-organization-invitation'),
+    
+    # Member management
+    path('organizations/<int:organization_id>/members/', organization.get_organization_members, name='get-organization-members'),
+    path('organizations/<int:organization_id>/members/<int:user_id>/remove/', organization.remove_organization_member, name='remove-organization-member'),
+    
+    # Organization statistics
+    path('organizations/stats/', organization.get_organization_stats, name='get-organization-stats'),
+    
+    # Normal client endpoints (invitation handling)
+    path('invitations/my-invitations/', organization.get_my_invitations, name='get-my-invitations'),
+    path('invitations/<int:invitation_id>/respond/', organization.respond_to_invitation, name='respond-to-invitation'),
+        path('organizations/my-memberships/', organization.get_my_memberships, name='get-my-memberships'),
+    path('organizations/<int:organization_id>/leave/', organization.leave_organization, name='leave-organization'),
+    
+    # Shared endpoints
+    path('organizations/<int:organization_id>/public/', organization.get_organization_public_detail, name='get-organization-public-detail'),
+]
+
+# Organization posts management URLs
+organization_posts_urls = [
+    # Corporate client endpoints (post management)
+    path('organizations/<int:organization_id>/posts/create/', organization_posts.create_organization_post, name='create-organization-post'),
+    path('organizations/<int:organization_id>/posts/', organization_posts.get_organization_posts, name='get-organization-posts'),
+    path('organizations/<int:organization_id>/posts/<int:post_id>/', organization_posts.get_organization_post_detail, name='get-organization-post-detail'),
+    path('organizations/<int:organization_id>/posts/<int:post_id>/update/', organization_posts.update_organization_post, name='update-organization-post'),
+    path('organizations/<int:organization_id>/posts/<int:post_id>/delete/', organization_posts.delete_organization_post, name='delete-organization-post'),
+    path('organizations/<int:organization_id>/posts/<int:post_id>/toggle-pin/', organization_posts.toggle_organization_post_pin, name='toggle-organization-post-pin'),
+    path('organizations/<int:organization_id>/posts/<int:post_id>/toggle-status/', organization_posts.toggle_organization_post_status, name='toggle-organization-post-status'),
+    
+    # Public endpoints (for organization members)
+    path('organizations/<int:organization_id>/posts/public/', organization_posts.get_organization_posts_public, name='get-organization-posts-public'),
 ]
 
 # Intranet document management URLs
@@ -185,6 +252,9 @@ urlpatterns = (
     user_urls +
     process_urls +
     legal_request_urls +
+    corporate_request_urls +
+    organization_urls +
+    organization_posts_urls +
     intranet_gym_urls +
     dynamic_document_urls +
     google_captcha_urls +

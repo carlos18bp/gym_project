@@ -359,7 +359,8 @@ import {
   DocumentTextIcon,
   RectangleStackIcon,
   Square2StackIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  BuildingOfficeIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
@@ -385,8 +386,9 @@ onMounted(async () => {
   Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
   showProfile.value = !!!currentUser.is_profile_completed;
 
-  // Filter out the "Radicar Proceso" option if the user role is "client"
-  if (currentUser.role == 'client') {
+  // Filter navigation based on user role
+  if (currentUser.role == 'client' || currentUser.role == 'corporate_client') {
+    // For clients and corporate clients: Remove lawyer-specific options
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Radicar Proceso" &&
@@ -398,16 +400,21 @@ onMounted(async () => {
     navigation.value = navigation.value.filter(
       (navItem) => navItem.name !== "Intranet G&M"
     );
+  } else if (currentUser.role == 'lawyer') {
+    // For lawyers: Remove "Organizaciones" since it's only for clients
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Organizaciones"
+    );
   }
 
-  // Filter navigation based on user role
+  // Filter navigation for legal requests based on user role
   if (currentUser.role === 'lawyer' || currentUser.is_gym_lawyer) {
     // Lawyers: Remove "Solicitudes" (client creation) and "Agendar Cita", keep "Gestión de Solicitudes"
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
-  } else if (currentUser.role === 'client') {
+  } else if (currentUser.role === 'client' || currentUser.role === 'corporate_client') {
       // Clients: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
       navigation.value = navigation.value.filter(
         (navItem) => navItem.name !== "Gestión de Solicitudes"
@@ -480,6 +487,18 @@ const navigation = ref([
     icon: RectangleStackIcon,
     current: false,
     routes: ['/process_list', '/process_detail', '/process_form']
+  },
+  {
+    name: "Organizaciones",
+    action: (item) => {
+      setCurrent(item);
+      router.push({
+        name: "organizations_dashboard",
+      });
+    },
+    icon: BuildingOfficeIcon,
+    current: false,
+    routes: ['/organizations_dashboard']
   },
   {
     name: "Archivos Juridicos",
