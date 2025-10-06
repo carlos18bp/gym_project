@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import axios from 'axios'
 import { get_request, create_request, update_request, delete_request } from '../services/request_http'
 
 export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
@@ -252,14 +253,19 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
      */
     async downloadFile(requestId, fileId) {
       try {
-        const response = await get_request(
-          `legal_requests/${requestId}/files/${fileId}/download/`,
-          {},
+        // Use axios directly for file downloads to ensure proper binary handling
+        const token = localStorage.getItem("token")
+        const headers = {
+          ...(token && { "Authorization": `Bearer ${token}` }),
+          'Accept': 'application/octet-stream, */*'
+        }
+
+        const response = await axios.get(
+          `/api/legal_requests/${requestId}/files/${fileId}/download/`,
           {
-            responseType: 'blob', // Important for file downloads
-            headers: {
-              'Accept': 'application/octet-stream'
-            }
+            responseType: 'arraybuffer', // Critical for binary data
+            timeout: 30000,
+            headers
           }
         )
 
@@ -267,7 +273,7 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
           return response
         }
 
-        throw new Error('Failed to download file')
+        throw new Error(`Failed to download file: HTTP ${response.status}`)
 
       } catch (error) {
         console.error('Error downloading file:', error)

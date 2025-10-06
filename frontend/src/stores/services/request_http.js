@@ -37,7 +37,6 @@ async function makeRequest(method, url, params = {}, config = {}) {
 
     switch (method) {
       case "GET":
-        console.log('GET request to:', `/api/${url}`);
         response = await axios.get(`/api/${url}`, { headers, ...config });
         break;
       case "POST":

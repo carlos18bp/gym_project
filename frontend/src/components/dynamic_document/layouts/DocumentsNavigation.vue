@@ -90,9 +90,9 @@
     </div>
   </div>
 
-  <!-- Buttons panel for client -->
+  <!-- Buttons panel for client, basic, and corporate_client -->
   <div
-    v-if="props?.role === 'client'"
+    v-if="props?.role === 'client' || props?.role === 'basic' || props?.role === 'corporate_client'"
     class="pb-6 border-b border-gray-200"
   >
     <!-- Desktop Layout -->

@@ -1,4 +1,5 @@
 import secrets
+import requests
 from rest_framework import status
 from gym_app.models import User, PasswordCode
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from gym_app.views.layouts.sendEmail import send_template_email
+from django.conf import settings
 
 @api_view(['POST'])
 def sign_on(request):
@@ -73,11 +75,33 @@ def send_verification_code(request):
         Response: A Response object with the passcode if sent successfully,
                   or an error message if the email is already registered or if email is missing.
     """
-    # Get the email from the request data
+    # Get the email and captcha_token from the request data
     email = request.data.get('email')
+    captcha_token = request.data.get('captcha_token')
     
     if not email:
         return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not captcha_token:
+        return Response({'error': 'Captcha verification is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate captcha token with Google
+    verification_url = "https://www.google.com/recaptcha/api/siteverify"
+    payload = {
+        "secret": settings.RECAPTCHA_SECRET_KEY,
+        "response": captcha_token,
+        "remoteip": request.META.get("REMOTE_ADDR"),
+    }
+    
+    try:
+        google_response = requests.post(verification_url, data=payload, timeout=5)
+        google_response.raise_for_status()
+        captcha_result = google_response.json()
+        
+        if not captcha_result.get("success", False):
+            return Response({'error': 'Captcha verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+    except requests.RequestException:
+        return Response({'error': 'Error verifying captcha'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Check if the user already exists based on the email
     if User.objects.filter(email=email).exists():
@@ -106,20 +130,45 @@ def sign_in(request):
     """
     Handle user sign-in by validating credentials and generating authentication tokens.
 
-    This view processes POST requests to authenticate a user using either a password or
-    a passcode. If the credentials are valid, it generates and returns JWT tokens for the user.
+    This view processes POST requests to authenticate a user using email and password only.
+    If the credentials are valid, it generates and returns JWT tokens for the user.
 
     Args:
-        request (Request): The HTTP request object containing user credentials.
+        request (Request): The HTTP request object containing user credentials (email, password, and captcha_token).
 
     Returns:
         Response: A Response object with JWT tokens if authentication is successful,
                   or an error message if authentication fails.
     """
-    # Get the email, password, and passcode from the request data
+    # Get the email, password, and captcha_token from the request data
     email = request.data.get('email')
     password = request.data.get('password')
-    passcode = request.data.get('passcode')
+    captcha_token = request.data.get('captcha_token')
+
+    # Validate required fields
+    if not email or not password:
+        return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not captcha_token:
+        return Response({'error': 'Captcha verification is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate captcha token with Google
+    verification_url = "https://www.google.com/recaptcha/api/siteverify"
+    payload = {
+        "secret": settings.RECAPTCHA_SECRET_KEY,
+        "response": captcha_token,
+        "remoteip": request.META.get("REMOTE_ADDR"),
+    }
+    
+    try:
+        google_response = requests.post(verification_url, data=payload, timeout=5)
+        google_response.raise_for_status()
+        captcha_result = google_response.json()
+        
+        if not captcha_result.get("success", False):
+            return Response({'error': 'Captcha verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+    except requests.RequestException:
+        return Response({'error': 'Error verifying captcha'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Retrieve the user based on the email
     user = User.objects.filter(email=email).first()
@@ -130,23 +179,12 @@ def sign_in(request):
     if not user:
         return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
-    if password:
-        # Authenticate using password
-        if user.check_password(password):
-            auth_user = authenticate(request, email=email, password=password)
-            if auth_user:
-                # Generate authentication tokens for the user
-                return Response(generate_auth_tokens(auth_user), status=status.HTTP_200_OK)
-        return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
-    
-    elif passcode:
-        # Validate the passcode
-        passcode_valid = PasswordCode.objects.filter(user=user, code=passcode, used=False).first()
-        if passcode_valid:
-            passcode_valid.used = True
-            passcode_valid.save()
+    # Authenticate using password only
+    if user.check_password(password):
+        auth_user = authenticate(request, email=email, password=password)
+        if auth_user:
             # Generate authentication tokens for the user
-            return Response(generate_auth_tokens(user), status=status.HTTP_200_OK)
+            return Response(generate_auth_tokens(auth_user), status=status.HTTP_200_OK)
     
     return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -290,12 +328,34 @@ def send_passcode(request):
         Response: A Response object with a success message if the passcode is sent successfully,
                   or an error message if the user is not found.
     """
-    # Get the email from the request data
+    # Get the email, subject_email, and captcha_token from the request data
     email = request.data.get('email')
     subject_email = request.data.get('subject_email')
+    captcha_token = request.data.get('captcha_token')
     
     if not email:
         return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not captcha_token:
+        return Response({'error': 'Captcha verification is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate captcha token with Google
+    verification_url = "https://www.google.com/recaptcha/api/siteverify"
+    payload = {
+        "secret": settings.RECAPTCHA_SECRET_KEY,
+        "response": captcha_token,
+        "remoteip": request.META.get("REMOTE_ADDR"),
+    }
+    
+    try:
+        google_response = requests.post(verification_url, data=payload, timeout=5)
+        google_response.raise_for_status()
+        captcha_result = google_response.json()
+        
+        if not captcha_result.get("success", False):
+            return Response({'error': 'Captcha verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+    except requests.RequestException:
+        return Response({'error': 'Error verifying captcha'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     try:
         # Retrieve the user based on the email
@@ -337,13 +397,35 @@ def verify_passcode_and_reset_password(request):
         Response: A Response object with a success message if the password reset is successful,
                   or an error message if the passcode is invalid or expired.
     """
-    # Get the passcode and new password from the request data
+    # Get the passcode, new password, and captcha_token from the request data
     passcode = request.data.get('passcode')
     new_password = request.data.get('new_password')
+    captcha_token = request.data.get('captcha_token')
 
-    # Ensure both passcode and new password are provided
+    # Ensure all required fields are provided
     if not passcode or not new_password:
         return Response({'error': 'Passcode and new password are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not captcha_token:
+        return Response({'error': 'Captcha verification is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate captcha token with Google
+    verification_url = "https://www.google.com/recaptcha/api/siteverify"
+    payload = {
+        "secret": settings.RECAPTCHA_SECRET_KEY,
+        "response": captcha_token,
+        "remoteip": request.META.get("REMOTE_ADDR"),
+    }
+    
+    try:
+        google_response = requests.post(verification_url, data=payload, timeout=5)
+        google_response.raise_for_status()
+        captcha_result = google_response.json()
+        
+        if not captcha_result.get("success", False):
+            return Response({'error': 'Captcha verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+    except requests.RequestException:
+        return Response({'error': 'Error verifying captcha'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     try:
         # Search for the passcode in the database

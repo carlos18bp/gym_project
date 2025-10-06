@@ -209,13 +209,9 @@ const siteKey = ref(""); // will be fetched asynchronously
 
 const captchaToken = ref("");
 const onCaptchaVerified = async (token) => {
-  const ok = await captchaStore.verify(token);
-  if (ok) {
-    captchaToken.value = token;
-  } else {
-    showNotification("Error verificando captcha", "error");
-    captchaToken.value = "";
-  }
+  // Simply store the token without validating it here
+  // The backend will validate it when the user submits the form
+  captchaToken.value = token;
 };
 const onCaptchaExpired = () => {
   captchaToken.value = "";

@@ -3,23 +3,35 @@
     <!-- Request Detail View -->
     <RequestDetailView v-if="$route.query.tab === 'request-detail'" />
 
-    <!-- Corporate Client Dashboard -->
-    <CorporateClientDashboard v-else-if="userRole === 'corporate_client'" />
+    <!-- Main Organizations Dashboard -->
+    <div v-else>
+      <!-- Header with hamburger menu -->
+      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+        <!-- Hamburger menu button (mobile) -->
+        <slot></slot>
+        
+        <!-- Title -->
+        <h1 class="text-lg font-semibold leading-6 text-gray-900">Organizaciones</h1>
+      </div>
 
-    <!-- Regular Client View -->
-    <ClientOrganizationsView v-else-if="userRole === 'client'" />
+      <!-- Corporate Client Dashboard -->
+      <CorporateClientDashboard v-if="userRole === 'corporate_client'" />
 
-    <!-- Access Denied -->
-    <div v-else class="px-4 py-6 sm:px-6 lg:px-8">
-      <div class="text-center py-12">
-        <div class="mx-auto max-w-md">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">Acceso Restringido</h3>
-          <p class="mt-1 text-sm text-gray-500">
-            No tienes permisos para acceder a este módulo.
-          </p>
+      <!-- Regular Client View -->
+      <ClientOrganizationsView v-else-if="userRole === 'client' || userRole === 'basic'" />
+
+      <!-- Access Denied -->
+      <div v-else class="px-4 py-6 sm:px-6 lg:px-8">
+        <div class="text-center py-12">
+          <div class="mx-auto max-w-md">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Acceso Restringido</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              No tienes permisos para acceder a este módulo.
+            </p>
+          </div>
         </div>
       </div>
     </div>

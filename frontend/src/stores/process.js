@@ -66,7 +66,7 @@ export const useProcessStore = defineStore("process", {
         const lastStage = process.stages[process.stages.length - 1];
         const isActive = lastStage && lastStage.status !== "Fallo";
         
-        if (currentUser.role === "client") {
+        if (currentUser.role === "client" || currentUser.role === "basic") {
           return isActive && process.client.id === currentUser.id;
         } else if (currentUser.role === "lawyer") {
           return isActive && process.lawyer.id === currentUser.id;

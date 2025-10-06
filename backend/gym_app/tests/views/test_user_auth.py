@@ -154,12 +154,20 @@ class TestSendVerificationCode:
 @pytest.mark.django_db
 class TestSignIn:
     
-    def test_sign_in_with_password_success(self, api_client, existing_user):
-        """Test successful sign-in with password"""
+    @patch('gym_app.views.userAuth.requests.post')
+    def test_sign_in_with_password_success(self, mock_requests_post, api_client, existing_user):
+        """Test successful sign-in with password and valid captcha"""
+        # Mock successful captcha verification
+        mock_response = MagicMock()
+        mock_response.json.return_value = {'success': True}
+        mock_response.raise_for_status.return_value = None
+        mock_requests_post.return_value = mock_response
+        
         # Prepare data
         data = {
             'email': existing_user.email,
-            'password': 'existingpassword'  # Plain password from fixture
+            'password': 'existingpassword',  # Plain password from fixture
+            'captcha_token': 'valid_captcha_token'
         }
         
         # Make the request
@@ -171,6 +179,9 @@ class TestSignIn:
         assert 'refresh' in response.data
         assert 'access' in response.data
         assert 'user' in response.data
+        
+        # Verify captcha was validated
+        mock_requests_post.assert_called_once()
     
     def test_sign_in_with_wrong_password(self, api_client, existing_user):
         """Test sign-in with wrong password"""
@@ -188,16 +199,11 @@ class TestSignIn:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert 'error' in response.data
     
-    def test_sign_in_with_passcode_success(self, api_client, existing_user):
-        """Test successful sign-in with passcode"""
-        # Create a passcode for the user
-        passcode = '123456'
-        PasswordCode.objects.create(user=existing_user, code=passcode, used=False)
-        
-        # Prepare data
+    def test_sign_in_missing_email(self, api_client):
+        """Test sign-in with missing email"""
+        # Prepare data without email
         data = {
-            'email': existing_user.email,
-            'passcode': passcode
+            'password': 'anypassword'
         }
         
         # Make the request
@@ -205,29 +211,42 @@ class TestSignIn:
         response = api_client.post(url, data, format='json')
         
         # Assert the response
-        assert response.status_code == status.HTTP_200_OK
-        assert 'refresh' in response.data
-        assert 'access' in response.data
-        assert 'user' in response.data
-        
-        # Verify passcode was marked as used
-        assert PasswordCode.objects.get(code=passcode).used == True
-    
-    def test_sign_in_with_invalid_passcode(self, api_client, existing_user):
-        """Test sign-in with invalid passcode"""
-        # Prepare data with invalid passcode
-        data = {
-            'email': existing_user.email,
-            'passcode': '999999'  # Invalid passcode
-        }
-        
-        # Make the request
-        url = reverse('sign_in')
-        response = api_client.post(url, data, format='json')
-        
-        # Assert the response
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'error' in response.data
+        assert 'Email and password are required' in response.data['error']
+    
+    def test_sign_in_missing_password(self, api_client):
+        """Test sign-in with missing password"""
+        # Prepare data without password
+        data = {
+            'email': 'test@example.com'
+        }
+        
+        # Make the request
+        url = reverse('sign_in')
+        response = api_client.post(url, data, format='json')
+        
+        # Assert the response
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'error' in response.data
+        assert 'Email and password are required' in response.data['error']
+    
+    def test_sign_in_missing_captcha(self, api_client):
+        """Test sign-in with missing captcha token"""
+        # Prepare data without captcha_token
+        data = {
+            'email': 'test@example.com',
+            'password': 'testpassword'
+        }
+        
+        # Make the request
+        url = reverse('sign_in')
+        response = api_client.post(url, data, format='json')
+        
+        # Assert the response
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'error' in response.data
+        assert 'Captcha verification is required' in response.data['error']
     
     def test_sign_in_user_not_found(self, api_client):
         """Test sign-in with non-existent user"""

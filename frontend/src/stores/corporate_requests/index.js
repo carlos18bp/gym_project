@@ -544,7 +544,7 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
       }
       
       // Fetch appropriate requests based on role
-      if (userRole === 'client') {
+      if (userRole === 'client' || userRole === 'basic') {
         await this.getMyRequests(params);
       } else if (userRole === 'corporate_client') {
         await this.getReceivedRequests(params);
@@ -573,7 +573,7 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
         page_size: this.pagination.pageSize
       };
       
-      if (userRole === 'client') {
+      if (userRole === 'client' || userRole === 'basic') {
         await this.getMyRequests(params);
       } else if (userRole === 'corporate_client') {
         await this.getReceivedRequests(params);

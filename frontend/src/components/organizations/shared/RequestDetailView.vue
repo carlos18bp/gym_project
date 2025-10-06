@@ -374,7 +374,7 @@ const loadRequestDetail = async () => {
     }
 
     let response;
-    if (userRole.value === 'client') {
+    if (userRole.value === 'client' || userRole.value === 'basic') {
       response = await requestsStore.getMyRequestDetail(requestId);
     } else if (userRole.value === 'corporate_client') {
       response = await requestsStore.getReceivedRequestDetail(requestId);
@@ -406,7 +406,7 @@ const submitResponse = async () => {
     }
 
     let response;
-    if (userRole.value === 'client') {
+    if (userRole.value === 'client' || userRole.value === 'basic') {
       response = await requestsStore.addResponseToMyRequest(request.value.id, responseData);
     } else if (userRole.value === 'corporate_client') {
       response = await requestsStore.addResponseToReceivedRequest(request.value.id, responseData);

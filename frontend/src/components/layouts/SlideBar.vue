@@ -387,8 +387,8 @@ onMounted(async () => {
   showProfile.value = !!!currentUser.is_profile_completed;
 
   // Filter navigation based on user role
-  if (currentUser.role == 'client' || currentUser.role == 'corporate_client') {
-    // For clients and corporate clients: Remove lawyer-specific options
+  if (currentUser.role == 'client' || currentUser.role == 'corporate_client' || currentUser.role == 'basic') {
+    // For clients, basic users and corporate clients: Remove lawyer-specific options
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Radicar Proceso" &&
@@ -414,8 +414,8 @@ onMounted(async () => {
       (navItem) =>
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
-  } else if (currentUser.role === 'client' || currentUser.role === 'corporate_client') {
-      // Clients: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
+  } else if (currentUser.role === 'client' || currentUser.role === 'corporate_client' || currentUser.role === 'basic') {
+      // Clients and Basic users: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
       navigation.value = navigation.value.filter(
         (navItem) => navItem.name !== "Gestión de Solicitudes"
       );

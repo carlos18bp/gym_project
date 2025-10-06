@@ -125,8 +125,8 @@ class OrganizationInvitation(models.Model):
         'User',
         on_delete=models.CASCADE,
         related_name='received_invitations',
-        limit_choices_to={'role': 'client'},
-        help_text="Usuario invitado (cliente normal)"
+        limit_choices_to={'role__in': ['client', 'basic']},
+        help_text="Usuario invitado (cliente normal o básico)"
     )
     invited_by = models.ForeignKey(
         'User',
@@ -178,9 +178,9 @@ class OrganizationInvitation(models.Model):
     
     def clean(self):
         """Validate invitation constraints"""
-        # Check that invited user is a normal client
-        if self.invited_user and self.invited_user.role != 'client':
-            raise ValidationError('Solo se puede invitar a clientes normales')
+        # Check that invited user is a normal client or basic user
+        if self.invited_user and self.invited_user.role not in ['client', 'basic']:
+            raise ValidationError('Solo se puede invitar a clientes normales y usuarios básicos')
         
         # Check that inviter is a corporate client
         if self.invited_by and self.invited_by.role != 'corporate_client':

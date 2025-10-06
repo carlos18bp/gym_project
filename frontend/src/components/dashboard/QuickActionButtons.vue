@@ -61,8 +61,8 @@
         </div>
       </template>
       
-      <!-- Buttons for clients -->
-      <template v-else-if="user?.role === 'client'">
+      <!-- Buttons for all non-lawyer users (client, basic, corporate_client, etc.) -->
+      <template v-else>
         <router-link 
           :to="{ name: 'process_list' }" 
           class="flex items-center bg-terciary rounded-xl px-6 py-4 hover:shadow-md transition border border-stroke"
