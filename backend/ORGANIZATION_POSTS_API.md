@@ -264,3 +264,4 @@ GET /api/organizations/{organization_id}/posts/public/
 
 ¡Sistema simple y efectivo para comunicación interna en organizaciones! 🎉
 
+
