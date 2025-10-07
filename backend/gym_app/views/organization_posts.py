@@ -326,3 +326,4 @@ def toggle_organization_post_status(request, organization_id, post_id):
         'post': OrganizationPostSerializer(post, context={'request': request}).data
     }, status=status.HTTP_200_OK)
 
+
