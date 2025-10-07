@@ -194,7 +194,7 @@ const showCreateRequestModal = ref(false);
 const isLoading = computed(() => 
   organizationsStore.isLoading || requestsStore.isLoadingRequests
 );
-const isValidRole = computed(() => userStore.currentUser?.role === 'client');
+const isValidRole = computed(() => userStore.currentUser?.role === 'client' || userStore.currentUser?.role === 'basic');
 const myInvitations = computed(() => organizationsStore.myInvitations);
 const myMemberships = computed(() => organizationsStore.myMemberships);
 const myRequests = computed(() => requestsStore.myRequests);

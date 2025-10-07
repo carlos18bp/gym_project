@@ -35,13 +35,13 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
-     * Get users with role of 'client' and 'lawyer'.
+     * Get users with role of 'client', 'basic' and 'lawyer'.
      * @param {object} state - State.
-     * @returns {array} - List of users with 'client' and 'lawyer' role.
+     * @returns {array} - List of users with 'client', 'basic' and 'lawyer' role.
      */
     clientsAndLawyers: (state) => {
       return state.users.filter(
-        (user) => user.role == "client" || user.role == "lawyer"
+        (user) => user.role == "client" || user.role == "basic" || user.role == "lawyer"
       );
     },
 

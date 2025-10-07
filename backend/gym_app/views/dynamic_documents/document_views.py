@@ -1173,6 +1173,11 @@ def upload_user_letterhead_image(request):
     Returns:
         Response: Success message with image info or error message
     """
+    # Restrict basic users from uploading letterhead images
+    if request.user.role == 'basic':
+        return Response({
+            'error': 'Los usuarios básicos no pueden gestionar membretes'
+        }, status=status.HTTP_403_FORBIDDEN)
     try:
         user = request.user
         
@@ -1313,6 +1318,11 @@ def delete_user_letterhead_image(request):
     Returns:
         Response: Success or error message
     """
+    # Restrict basic users from deleting letterhead images
+    if request.user.role == 'basic':
+        return Response({
+            'error': 'Los usuarios básicos no pueden gestionar membretes'
+        }, status=status.HTTP_403_FORBIDDEN)
     try:
         user = request.user
         

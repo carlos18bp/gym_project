@@ -206,12 +206,12 @@ class OrganizationInvitationCreateSerializer(serializers.Serializer):
     message = serializers.CharField(max_length=500, required=False, allow_blank=True)
 
     def validate_invited_user_email(self, value):
-        """Validate that the email corresponds to a normal client"""
+        """Validate that the email corresponds to a normal client or basic user"""
         try:
-            user = User.objects.get(email=value, role='client')
+            user = User.objects.get(email=value, role__in=['client', 'basic'])
             return value
         except User.DoesNotExist:
-            raise serializers.ValidationError("No se encontró un cliente normal con este email")
+            raise serializers.ValidationError("No se encontró un cliente normal o usuario básico con este email")
 
     def create(self, validated_data):
         """Create invitation for the specified organization"""
@@ -221,7 +221,7 @@ class OrganizationInvitationCreateSerializer(serializers.Serializer):
         # Get the invited user
         invited_user = User.objects.get(
             email=validated_data['invited_user_email'],
-            role='client'
+            role__in=['client', 'basic']
         )
         
         # Check if user is already a member

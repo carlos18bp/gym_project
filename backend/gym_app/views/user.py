@@ -149,6 +149,12 @@ def update_signature(request, user_id):
         return Response({'error': 'You do not have permission to update this signature'}, 
                         status=status.HTTP_403_FORBIDDEN)
     
+    # Restrict basic users from updating signatures
+    if request.user.role == 'basic':
+        logger.error(f"Usuario básico {request.user.id} intentó actualizar su firma")
+        return Response({'error': 'Los usuarios básicos no pueden gestionar firmas'}, 
+                        status=status.HTTP_403_FORBIDDEN)
+    
     try:
         # Get the user by ID
         user = User.objects.get(pk=user_id)

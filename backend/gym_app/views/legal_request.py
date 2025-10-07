@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404
 from django.db import transaction, models
 from django.core.exceptions import ValidationError
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.conf import settings
 from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse
 from gym_app.serializers import (
@@ -845,25 +845,49 @@ def download_legal_request_file(request, request_id, file_id):
         # Get the original filename
         original_filename = os.path.basename(file_obj.file.name)
         
-        # Create the file response
-        response = FileResponse(
-            open(file_obj.file.path, 'rb'),
-            as_attachment=True,
-            filename=original_filename
-        )
-        
-        # Set the content type based on file extension
+        # Determine content type based on file extension
         file_ext = os.path.splitext(original_filename)[1].lower()
         if file_ext == '.pdf':
-            response['Content-Type'] = 'application/pdf'
-        elif file_ext in ['.doc', '.docx']:
-            response['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            content_type = 'application/pdf'
+        elif file_ext == '.doc':
+            content_type = 'application/msword'
+        elif file_ext == '.docx':
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         elif file_ext in ['.jpg', '.jpeg']:
-            response['Content-Type'] = 'image/jpeg'
+            content_type = 'image/jpeg'
         elif file_ext == '.png':
-            response['Content-Type'] = 'image/png'
+            content_type = 'image/png'
+        elif file_ext == '.txt':
+            content_type = 'text/plain'
+        elif file_ext in ['.xls', '.xlsx']:
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         else:
-            response['Content-Type'] = 'application/octet-stream'
+            content_type = 'application/octet-stream'
+        
+        # Read file content
+        try:
+            with open(file_obj.file.path, 'rb') as file_handle:
+                file_content = file_handle.read()
+        except Exception as read_error:
+            logger.error(f"Error reading file content: {str(read_error)}")
+            return Response(
+                {'detail': 'Error reading file content'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Create HttpResponse with file content
+        response = HttpResponse(
+            file_content,
+            content_type=content_type
+        )
+        
+        # Set headers for download
+        response['Content-Disposition'] = f'attachment; filename="{original_filename}"'
+        response['Content-Length'] = len(file_content)
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        response['Accept-Ranges'] = 'bytes'
         
         return response
         

@@ -119,8 +119,8 @@
       </div>
     </div>
 
-    <!-- Documents for clients -->
-    <div v-if="userRole === 'client'" class="mt-6">
+    <!-- Documents for clients, basic users, and corporate clients -->
+    <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'" class="mt-6">
       <!-- Navigation tabs -->
       <div 
         v-if="currentSection !== 'useDocument'"
@@ -323,7 +323,7 @@ const filteredDocuments = computed(() => {
 
   if (userRole.value === "lawyer") {
     allDocuments = documentStore.draftAndPublishedDocumentsUnassigned;
-  } else if (userRole.value === "client") {
+  } else if (userRole.value === "client" || userRole.value === "basic" || userRole.value === "corporate_client") {
     allDocuments = documentStore.progressAndCompletedDocumentsByClient(
       currentUser.value.id
     );

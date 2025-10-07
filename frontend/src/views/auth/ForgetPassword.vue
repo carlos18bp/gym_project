@@ -47,14 +47,20 @@
         />
         <button
           :class="{
-            'text-sm font-medium text-secondary cursor-pointer':
-              !isButtonDisabled,
-            hidden: isButtonDisabled,
+            'text-sm font-medium text-secondary cursor-pointer flex items-center':
+              !isButtonDisabled && !isLoadingSendCode,
+            'text-sm font-medium text-gray-400 cursor-not-allowed flex items-center':
+              isLoadingSendCode,
+            hidden: isButtonDisabled && !isLoadingSendCode,
           }"
           @click.prevent="handleRequestPasswordReset"
-          :disabled="isButtonDisabled"
+          :disabled="isButtonDisabled || isLoadingSendCode"
         >
-          Enviar código
+          <svg v-if="isLoadingSendCode" class="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isLoadingSendCode ? 'Enviando...' : 'Enviar código' }}
         </button>
         <div v-if="timer > 0" class="text-start text-sm mt-2 text-gray-600">
           <span class="font-regular">Enviar nuevo código en </span
@@ -108,9 +114,19 @@
       <div class="grid">
         <button
           type="submit"
-          class="w-full text-white bg-secondary hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+          :disabled="isLoadingReset"
+          :class="{
+            'w-full text-white bg-secondary hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center justify-center':
+              !isLoadingReset,
+            'w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center justify-center':
+              isLoadingReset,
+          }"
         >
-          Iniciar sesión
+          <svg v-if="isLoadingReset" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isLoadingReset ? 'Restableciendo contraseña...' : 'Iniciar sesión' }}
         </button>
         <p class="w-full font-medium rounded-lg text-sm py-2.5 text-start">
           <span>¿Recordaste tu contraseña? </span>
@@ -164,19 +180,17 @@ const newPassword = ref(""); // A ref to store the new password input
 const confirmPassword = ref(""); // A ref to store the confirm password input
 const timer = ref(0); // A ref to manage the countdown timer
 const isButtonDisabled = ref(false); // A ref to manage the button disabled state
+const isLoadingSendCode = ref(false); // Loading state for sending code
+const isLoadingReset = ref(false); // Loading state for password reset
 
 // reCAPTCHA v2 integration
 const captchaStore = useCaptchaStore();
 const siteKey = ref("");
 const captchaToken = ref("");
 const onCaptchaVerified = async (token) => {
-  const ok = await captchaStore.verify(token);
-  if (ok) {
-    captchaToken.value = token;
-  } else {
-    showNotification("Error verificando captcha", "error");
-    captchaToken.value = "";
-  }
+  // Simply store the token without validating it here
+  // The backend will validate it when the user submits the form
+  captchaToken.value = token;
 };
 const onCaptchaExpired = () => {
   captchaToken.value = "";
@@ -202,6 +216,11 @@ const handleRequestPasswordReset = async () => {
     return;
   }
 
+  if (isLoadingSendCode.value) {
+    return;
+  }
+
+  isLoadingSendCode.value = true;
   try {
     await axios.post("/api/send_passcode/", {
       email: email.value,
@@ -209,11 +228,17 @@ const handleRequestPasswordReset = async () => {
       captcha_token: captchaToken.value,
     });
 
-    showNotification("Password reset code sent to your email", "info");
+    showNotification("Código de restablecimiento enviado a tu correo", "info");
     startTimer(); // Start the countdown timer
   } catch (error) {
     console.error("Error when password reset is requested:", error);
-    showNotification("User not found", "warning");
+    if (error.response && error.response.status === 400) {
+      showNotification(error.response.data.error || "Error de validación", "error");
+    } else {
+      showNotification("Usuario no encontrado", "warning");
+    }
+  } finally {
+    isLoadingSendCode.value = false;
   }
 };
 
@@ -246,20 +271,20 @@ const startTimer = () => {
  */
 const handleResetPassword = async () => {
   if (!passcode.value) {
-    showNotification("Passcode is required!", "warning");
+    showNotification("Código es requerido!", "warning");
     return;
   }
   if (!newPassword.value) {
-    showNotification("New Password is required!", "warning");
+    showNotification("Nueva contraseña es requerida!", "warning");
     return;
   }
   if (!confirmPassword.value) {
-    showNotification("Confirm Password is required!", "warning");
+    showNotification("Confirmar contraseña es requerido!", "warning");
     return;
   }
 
   if (newPassword.value !== confirmPassword.value) {
-    showNotification("Passwords do not match!", "warning");
+    showNotification("Las contraseñas no coinciden!", "warning");
     return;
   }
   if (!captchaToken.value) {
@@ -267,6 +292,11 @@ const handleResetPassword = async () => {
     return;
   }
 
+  if (isLoadingReset.value) {
+    return;
+  }
+
+  isLoadingReset.value = true;
   try {
     await axios.post("/api/verify_passcode_and_reset_password/", {
       passcode: passcode.value,
@@ -274,10 +304,16 @@ const handleResetPassword = async () => {
       captcha_token: captchaToken.value,
     });
 
-    showNotification("Password reset successful!", "success");
+    showNotification("¡Contraseña restablecida exitosamente!", "success");
     router.push({ name: "sign_in" });
   } catch (error) {
-    showNotification(error.response.data.error, "error");
+    if (error.response && error.response.data) {
+      showNotification(error.response.data.error, "error");
+    } else {
+      showNotification("Error al restablecer contraseña", "error");
+    }
+  } finally {
+    isLoadingReset.value = false;
   }
 };
 </script>

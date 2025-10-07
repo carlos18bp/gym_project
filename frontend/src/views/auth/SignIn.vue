@@ -25,36 +25,6 @@
         />
       </div>
 
-      <div>
-        <label
-          for="passcode"
-          class="block mb-2 text-sm font-medium text-gray-900"
-        >
-          Código de verificación
-        </label>
-        <input
-          v-model="userForm.passcode"
-          type="number"
-          id="passcode"
-          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-secondary focus:border-secondary block w-full p-2.5"
-        />
-        <button
-          :class="{
-            'text-sm font-medium text-secondary cursor-pointer':
-              !isButtonDisabled,
-            hidden: isButtonDisabled,
-          }"
-          @click.prevent="handleSendPassword"
-          :disabled="isButtonDisabled"
-        >
-          Enviar código
-        </button>
-        <div v-if="timer > 0" class="text-start text-sm mt-2 text-gray-600">
-          <span class="font-regular">Enviar nuevo código en </span
-          ><span class="font-bold">{{ timer }}</span>
-          <span class="font-regular"> segundos.</span>
-        </div>
-      </div>
 
       <div>
         <label
@@ -93,15 +63,19 @@
           <button
             @click.prevent="signInUser"
             type="submit"
-            :disabled="signInSecondsRemaining > 1"
+            :disabled="signInSecondsRemaining > 1 || isLoading"
             :class="{
-              'w-full text-white bg-secondary hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center':
-                signInSecondsRemaining < 1,
-              'w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center':
-                signInSecondsRemaining >= 1,
+              'w-full text-white bg-secondary hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center justify-center':
+                signInSecondsRemaining < 1 && !isLoading,
+              'w-full text-white bg-gray-400 cursor-not-allowed font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center justify-center':
+                signInSecondsRemaining >= 1 || isLoading,
             }"
           >
-            Iniciar sesión
+            <svg v-if="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ isLoading ? 'Validando credenciales...' : 'Iniciar sesión' }}
           </button>
           <div
             v-if="signInSecondsRemaining > 0"
@@ -172,7 +146,6 @@ import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
 
-const timer = ref(0); // A ref to manage the countdown timer for send a new code
 const router = useRouter(); // Get the router instance
 const authStore = useAuthStore(); // Get the authentication store instance
 const captchaStore = useCaptchaStore();
@@ -180,24 +153,19 @@ const siteKey = ref(""); // will be fetched asynchronously
 
 const captchaToken = ref("");
 const onCaptchaVerified = async (token) => {
-  const ok = await captchaStore.verify(token);
-  if (ok) {
-    captchaToken.value = token;
-  } else {
-    showNotification("Error verificando captcha", "error");
-    captchaToken.value = "";
-  }
+  // Simply store the token without validating it here
+  // The backend will validate it when the user submits the form
+  captchaToken.value = token;
 };
 const onCaptchaExpired = () => {
   captchaToken.value = "";
 };
-const isButtonDisabled = ref(false); // A ref to manage the button disabled state in Send Code
 const signInTries = computed(() => authStore.signInTries); // A ref to count tries of Sign In
 const signInSecondsRemaining = computed(() => authStore.signInSecondsRemaining); // A ref to seconds countdown for try again Sign In
+const isLoading = ref(false); // Loading state for sign in process
 
 const userForm = reactive({
   email: "",
-  passcode: "",
   password: "",
 });
 
@@ -224,10 +192,20 @@ const signInUser = async () => {
     showNotification("Email is required!", "warning");
     return;
   }
+  if (!userForm.password) {
+    showNotification("Password is required!", "warning");
+    return;
+  }
   if (!captchaToken.value) {
     showNotification("Por favor verifica que no eres un robot", "warning");
     return;
   }
+  
+  // Prevent multiple submissions
+  if (isLoading.value) {
+    return;
+  }
+  
   authStore.attempsSignIn();
 
   if (signInTries.value % 3 === 0) {
@@ -236,25 +214,31 @@ const signInUser = async () => {
       "warning"
     );
   } else {
+    isLoading.value = true; // Start loading
     try {
       const response = await axios.post("/api/sign_in/", {
-        ...userForm,
+        email: userForm.email,
+        password: userForm.password,
         captcha_token: captchaToken.value,
       });
       authStore.login(response.data); // Log in the user
 
-      showNotification("Sign In successful!", "success");
+      showNotification("¡Inicio de sesión exitoso!", "success");
       // Reload the page to ensure a clean state
       window.location.href = "/dashboard";
     } catch (error) {
       if (error.response && error.response.status === 401) {
-        showNotification("Invalid credentials!", "warning");
+        showNotification("Credenciales inválidas!", "warning");
+      } else if (error.response && error.response.status === 400) {
+        // Handle captcha or validation errors
+        showNotification(error.response.data.error || "Error de validación", "error");
       } else {
-        showNotification("Sign On failed!", "error");
+        showNotification("¡Error en el inicio de sesión!", "error");
       }
+    } finally {
+      isLoading.value = false; // Stop loading
     }
   }
-  userForm.passcode = "";
   userForm.password = "";
 };
 
@@ -263,48 +247,5 @@ const signInUser = async () => {
  */
 const handleLoginWithGoogle = (response) => {
   loginWithGoogle(response, router, authStore);
-};
-
-/**
- * Handles sending password reset passcode to the user's email
- */
-const handleSendPassword = async () => {
-  if (!userForm.email) {
-    showNotification("Email is required!", "warning");
-    return;
-  }
-  if (!captchaToken.value) {
-    showNotification("Por favor verifica que no eres un robot", "warning");
-    return;
-  }
-  startTimer(); // Start the countdown timer for resend code
-
-  try {
-    await axios.post("/api/send_passcode/", {
-      email: userForm.email,
-      subject_email: "Login code",
-      captcha_token: captchaToken.value,
-    });
-    showNotification("Password code sent to your email", "info");
-  } catch (error) {
-    console.error("Error when code is sent:", error);
-    showNotification("User not found", "warning");
-  }
-};
-
-/**
- * Starts the countdown timer for the resend button
- */
-const startTimer = () => {
-  isButtonDisabled.value = true;
-  timer.value = 180;
-
-  const interval = setInterval(() => {
-    timer.value--;
-    if (timer.value <= 0) {
-      clearInterval(interval);
-      isButtonDisabled.value = false;
-    }
-  }, 1000);
 };
 </script>

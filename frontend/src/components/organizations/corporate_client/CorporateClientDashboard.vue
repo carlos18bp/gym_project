@@ -477,7 +477,7 @@ onMounted(async () => {
     console.error('User does not have corporate_client role.');
     console.error('Store role:', userRole);
     console.error('LocalStorage role:', userAuth.role);
-    console.error('Available roles should be: client, corporate_client, lawyer');
+    console.error('Available roles should be: client, basic, corporate_client, lawyer');
   }
 });
 </script>

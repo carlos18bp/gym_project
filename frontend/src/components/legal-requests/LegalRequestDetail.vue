@@ -252,7 +252,7 @@ const canAddFiles = computed(() => {
   const userId = currentUser.id || authStore.user?.id
   
   // Only clients can add files
-  const isClient = userRole === 'client'
+  const isClient = userRole === 'client' || userRole === 'basic'
   
   // Cannot add files to closed requests
   const isNotClosed = request.value?.status !== 'CLOSED'
@@ -345,19 +345,44 @@ const downloadFile = async (fileId) => {
   try {
     const response = await legalRequestsStore.downloadFile(requestId.value, fileId)
     
-    // Create a blob from the response
-    const blob = new Blob([response.data], { 
-      type: response.headers['content-type'] || 'application/octet-stream' 
-    })
+    // Ensure we have valid response data
+    if (!response.data) {
+      throw new Error('No data received from server')
+    }
+    
+    // Get content type from headers (normalize header names)
+    const contentType = response.headers['content-type'] || 
+                       response.headers['Content-Type'] || 
+                       'application/octet-stream'
+    
+    // Create blob from ArrayBuffer response
+    const blob = new Blob([response.data], { type: contentType })
     
     // Get filename from content-disposition header or use default
-    let filename = 'archivo'
-    const contentDisposition = response.headers['content-disposition']
+    let filename = 'archivo_descargado'
+    const contentDisposition = response.headers['content-disposition'] || 
+                              response.headers['Content-Disposition']
+    
     if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
-      if (filenameMatch) {
-        filename = filenameMatch[1]
+      // Try multiple patterns for filename extraction
+      const patterns = [
+        /filename\*=UTF-8''([^;]+)/,  // RFC 5987 format
+        /filename="([^"]+)"/,         // Quoted filename
+        /filename=([^;]+)/            // Unquoted filename
+      ]
+      
+      for (const pattern of patterns) {
+        const match = contentDisposition.match(pattern)
+        if (match) {
+          filename = decodeURIComponent(match[1].trim())
+          break
+        }
       }
+    }
+    
+    // Validate blob size
+    if (blob.size === 0) {
+      throw new Error('Received empty file')
     }
     
     // Create download link
@@ -365,17 +390,33 @@ const downloadFile = async (fileId) => {
     const link = document.createElement('a')
     link.href = url
     link.download = filename
+    link.style.display = 'none'
+    
+    // Add to DOM, click, and remove
     document.body.appendChild(link)
     link.click()
     
-    // Cleanup
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(link)
+    // Cleanup with slight delay to ensure download starts
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url)
+      if (document.body.contains(link)) {
+        document.body.removeChild(link)
+      }
+    }, 100)
+    
     
   } catch (error) {
     console.error('Error downloading file:', error)
-    // You could show a notification here
-    alert('Error al descargar el archivo. Inténtalo de nuevo.')
+    
+    // More specific error messages
+    let errorMessage = 'Error al descargar el archivo.'
+    if (error.message.includes('No data received')) {
+      errorMessage = 'El archivo no se pudo descargar. Puede estar corrupto o no existir.'
+    } else if (error.message.includes('empty file')) {
+      errorMessage = 'El archivo está vacío o corrupto.'
+    }
+    
+    alert(errorMessage + ' Inténtalo de nuevo.')
   }
 }
 

@@ -353,9 +353,9 @@ export function installRouterGuards(authStore) {
         const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
         await userStore.init();
         
-        // Check if the user is a client trying to access a lawyer-only route
-        if (userStore.currentUser?.role === 'client') {
-          console.warn("Client user attempting to access lawyer-only route. Redirecting to dashboard.");
+        // Check if the user is a client or basic user trying to access a lawyer-only route
+        if (userStore.currentUser?.role === 'client' || userStore.currentUser?.role === 'basic') {
+          console.warn("Client/Basic user attempting to access lawyer-only route. Redirecting to dashboard.");
           return next({ name: 'dashboard' });
         }
       }
