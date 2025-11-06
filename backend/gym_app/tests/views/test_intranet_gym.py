@@ -70,13 +70,23 @@ class TestIntranetGymViews:
         
         # Assert the response
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 3
         
-        # Verify the returned data
-        document_names = [doc['name'] for doc in response.data]
+        # Verify the response structure
+        assert 'documents' in response.data
+        assert 'profile' in response.data
+        assert 'lawyers_count' in response.data
+        assert 'users_count' in response.data
+        
+        # Verify documents
+        assert len(response.data['documents']) == 3
+        document_names = [doc['name'] for doc in response.data['documents']]
         assert 'Document 1' in document_names
         assert 'Document 2' in document_names
         assert 'Document 3' in document_names
+        
+        # Verify counts
+        assert isinstance(response.data['lawyers_count'], int)
+        assert isinstance(response.data['users_count'], int)
     
     def test_list_legal_intranet_documents_unauthenticated(self, api_client, legal_documents):
         """

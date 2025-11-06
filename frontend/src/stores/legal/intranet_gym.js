@@ -8,6 +8,12 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
    */
   state: () => ({
     legalDocuments: [], // Array to store legal documents
+    profile: {          // Profile data with images
+      cover_image_url: '',
+      profile_image_url: ''
+    },
+    lawyers_count: 0,   // Number of GYM lawyers
+    users_count: 0,     // Total number of active users
     dataLoaded: false,  // Flag to check if data has been loaded
   }),
 
@@ -28,11 +34,26 @@ export const useIntranetGymStore = defineStore("intranetGymStore", {
     async fetchLegalDocuments() {
       try {
         const response = await get_request(`list_legal_intranet_documents/`);
-        this.legalDocuments = response.data;
+        
+        // Extract data from response
+        this.legalDocuments = response.data.documents || [];
+        this.profile = response.data.profile || {
+          cover_image_url: '',
+          profile_image_url: ''
+        };
+        this.lawyers_count = response.data.lawyers_count || 0;
+        this.users_count = response.data.users_count || 0;
+        
         this.dataLoaded = true;
       } catch (error) {
         console.error("Error fetching legal documents:", error);
         this.legalDocuments = [];
+        this.profile = {
+          cover_image_url: '',
+          profile_image_url: ''
+        };
+        this.lawyers_count = 0;
+        this.users_count = 0;
         this.dataLoaded = false;
       }
     },

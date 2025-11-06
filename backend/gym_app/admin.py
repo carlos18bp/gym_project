@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from gym_app.models.user import UserSignature
 
 class UserAdmin(admin.ModelAdmin):
@@ -33,6 +33,23 @@ class LegalDocumentAdmin(admin.ModelAdmin):
     list_display = ('name', 'file')
     search_fields = ('name',)
     list_filter = ('name',)
+
+class IntranetProfileAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the IntranetProfile model.
+    Manages cover and profile images for the intranet documents section.
+    """
+    list_display = ('id', 'cover_image', 'profile_image', 'created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Images', {
+            'fields': ('cover_image', 'profile_image')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 class ProcessAdmin(admin.ModelAdmin):
     """
@@ -557,7 +574,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'legal_user_link_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['LegalDocument']
+                    if model['object_name'] in ['LegalDocument', 'IntranetProfile']
                 ]
             },
             {
@@ -631,6 +648,7 @@ admin_site.register(OrganizationInvitation, OrganizationInvitationAdmin)
 admin_site.register(OrganizationMembership, OrganizationMembershipAdmin)
 admin_site.register(OrganizationPost, OrganizationPostAdmin)
 admin_site.register(LegalDocument, LegalDocumentAdmin)
+admin_site.register(IntranetProfile, IntranetProfileAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)
 admin_site.register(Tag, TagAdmin)

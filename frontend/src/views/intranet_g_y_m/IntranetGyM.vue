@@ -5,15 +5,13 @@
   >
     <slot></slot>
   </div>
-  <!-- Main content -->
-  <div class="pb-10 px-4 sm:px-6 lg:px-8 lg:pt-10">
-    <!-- Atributes company -->
+  
+  <!-- Attributes company -->
+  <div class="px-4 sm:px-6 lg:px-8 pt-10 pb-6">
     <div class="grid grid-cols-3 w-full text-center font-semibold overflow-hidden rounded-lg">
-      <!-- Seguridad -->
       <span class="bg-secondary text-white py-3">
         Seguridad
       </span>
-      <!-- Confianza -->
       <span class="bg-terciary text-primary py-3">
         Confianza
       </span>
@@ -22,84 +20,132 @@
       </span>
     </div>
   </div>
-  <!-- Main container in 3 columns -->
-  <div class="grid grid-cols-1 gap-6 md:grid-cols-3 sm:px-6 lg:px-8">
-    <!-- 1. Organization Chart (Organigrama) -->
-    <div class="bg-gray-100 p-6 rounded-xl shadow-md">
-      <div class="mb-4 flex items-center space-x-2">
-        <!-- Icon (if you have one imported) -->
-        <!-- <BuildingOfficeIcon class="h-5 w-5 text-primary" /> -->
-        <h2 class="text-lg font-semibold text-primary">Organigrama</h2>
-      </div>
+
+  <!-- Cover Image and Profile Section -->
+  <div class="relative">
+    <!-- Cover Image -->
+    <div class="h-64 w-full overflow-hidden">
       <img 
-      @click="showOrganizationChart = true" 
-      class="cursor-pointer transition-all duration-200 ease-in-out transform hover:bg-gray-200 hover:rounded-xl hover:shadow-lg hover:-translate-x-1 hover:-translate-y-1" 
-      src="@/assets/images/charts/organization_chart.png" 
-      alt="Organigrama G&M"
+        :src="intranetGymStore.profile.cover_image_url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=400&fit=crop'" 
+        alt="Cover" 
+        class="h-full w-full object-cover"
       >
     </div>
-
-    <!-- 2. Processes and Subprocesses (with search bar) -->
-    <div class="bg-blue-100 p-6 rounded-xl shadow-md flex flex-col max-h-[550px]">
-      <!-- Header: Icon and Title -->
-      <div class="mb-4 flex items-center space-x-2">
-        <!-- <FolderIcon class="h-5 w-5 text-primary" /> -->
-        <h2 class="text-lg font-semibold text-primary">
-          Procesos y Subprocesos
-        </h2>
+    
+    <!-- Profile Image -->
+    <div class="absolute left-8 -bottom-16 sm:left-12">
+      <div class="relative">
+        <img 
+          :src="intranetGymStore.profile.profile_image_url || 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&h=200&fit=crop'" 
+          alt="G&M Logo" 
+          class="h-32 w-32 rounded-full border-4 border-white shadow-lg object-cover"
+        >
       </div>
+    </div>
+  </div>
 
-      <!-- Search bar -->
-      <div class="w-full mb-4">
-        <label for="search" class="sr-only">Buscar</label>
-        <div class="relative">
-          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
-          </div>
-          <input
-            id="search"
-            name="search"
-            v-model="searchTerm"
-            class="block w-full rounded-xl border-0 bg-white py-1.5 pl-10 pr-3
-                  text-gray-900 ring-1 ring-inset ring-gray-300
-                  placeholder:text-gray-400
-                  focus:ring-2 focus:ring-inset focus:ring-secondary
-                  sm:text-sm sm:leading-6"
-            placeholder="Buscar"
-            type="search"
-          />
+  <!-- Company Info Section -->
+  <div class="px-4 sm:px-6 lg:px-8 pt-20 pb-6">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">G&M</h1>
+        <p class="text-lg text-gray-600 mt-1">Firma de Abogados G&M</p>
+        <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
+          <span class="flex items-center gap-1">
+            <UsersIcon class="h-4 w-4" />
+            {{ intranetGymStore.lawyers_count }} {{ intranetGymStore.lawyers_count === 1 ? 'miembro' : 'miembros' }}
+          </span>
+          <span class="flex items-center gap-1">
+            <EnvelopeIcon class="h-4 w-4" />
+            0 invitaciones pendientes
+          </span>
+          <span class="flex items-center gap-1">
+            <CalendarIcon class="h-4 w-4" />
+            Creado 28 de septiembre de 2025
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="px-4 sm:px-6 lg:px-8 pb-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Column: Organigrama and Radicar Informe buttons -->
+      <div class="space-y-6">
+        <!-- Organigrama Button -->
+        <div class="bg-gray-100 p-6 rounded-xl shadow-md">
+          <h2 class="text-lg font-semibold text-primary mb-4">Organigrama</h2>
+          <button
+            type="button"
+            @click="showOrganizationChart = true"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-white rounded-lg hover:bg-opacity-90 transition-all font-medium"
+          >
+            <BuildingOfficeIcon class="h-5 w-5" />
+            Ver Organigrama
+          </button>
+        </div>
+
+        <!-- Radicar Informe Button -->
+        <div class="bg-gray-100 p-6 rounded-xl shadow-md">
+          <h2 class="text-lg font-semibold text-primary mb-4">Radicar Informe</h2>
+          <p class="text-sm text-gray-700 mb-4 leading-relaxed">
+            Por favor, radique su Informe de Actividades y su Cuenta de Cobro o Factura en este espacio. Recuerde presentar únicamente los documentos debidamente aprobados y firmados por el Supervisor, incluyendo los anexos correspondientes según los términos establecidos.
+          </p>
+          <button
+            type="button"
+            @click="showFacturationModal = true"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-white rounded-lg hover:bg-opacity-90 transition-all font-medium"
+          >
+            <DocumentTextIcon class="h-5 w-5" />
+            Enviar Informe
+          </button>
         </div>
       </div>
 
-      <!-- List of legal documents -->
-      <ul class="flex-grow space-y-2 text-sm rounded-xl font-regular bg-white px-3 pt-1 pb-3 overflow-auto">
-        <!-- Loop through filteredProcess and display each document's name with a link -->
-        <li v-for="(process, index) in filteredProcess" :key="index" class="cursor-pointer hover:bg-blue-100 rounded-lg">
-          <a :href="process.file_url" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-1 text-primary font-regular">
-            <DocumentTextIcon class="size-4" />
-            <HighlightText :text="process.name" :query="searchTerm" highlightClass="bg-blue-200" />
-          </a>
-        </li>
-      </ul>
-    </div>
-    <!-- 3. Billing / File a Report -->
-    <div class="bg-gray-100 p-6 rounded-xl shadow-md">
-      <div class="mb-4 flex items-center space-x-2">
-        <!-- Icon (if you have one imported) -->
-        <!-- <DocumentTextIcon class="h-5 w-5 text-primary" /> -->
-        <h2 class="text-lg font-semibold text-primary">Radicar Informe</h2>
+      <!-- Middle Column: Processes and Subprocesses -->
+      <div class="lg:col-span-2 bg-blue-100 p-6 rounded-xl shadow-md flex flex-col">
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold text-primary mb-2">
+            Procedimientos G&M
+          </h2>
+          <p class="text-sm text-gray-700">
+            Aquí encontrarás los procesos y sub-procesos administrativos, operativos, mercadeo y comerciales de G&M
+          </p>
+        </div>
+
+        <!-- Search bar -->
+        <div class="w-full mb-4">
+          <label for="search" class="sr-only">Buscar</label>
+          <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+            </div>
+            <input
+              id="search"
+              name="search"
+              v-model="searchTerm"
+              class="block w-full rounded-xl border-0 bg-white py-2 pl-10 pr-3
+                    text-gray-900 ring-1 ring-inset ring-gray-300
+                    placeholder:text-gray-400
+                    focus:ring-2 focus:ring-inset focus:ring-secondary
+                    sm:text-sm sm:leading-6"
+              placeholder="Buscar"
+              type="search"
+            />
+          </div>
+        </div>
+
+        <!-- List of legal documents -->
+        <ul class="flex-grow space-y-2 text-sm rounded-xl font-regular bg-white px-4 py-3 overflow-auto max-h-[500px]">
+          <li v-for="(process, index) in filteredProcess" :key="index" class="cursor-pointer hover:bg-blue-100 rounded-lg p-2 transition-colors">
+            <a :href="process.file_url" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 text-primary font-regular">
+              <DocumentTextIcon class="size-5 flex-shrink-0" />
+              <HighlightText :text="process.name" :query="searchTerm" highlightClass="bg-blue-200" />
+            </a>
+          </li>
+        </ul>
       </div>
-      <p class="text-lg font-regular text-gray-700 mb-4 leading-relaxed text-justify">
-        Por favor, radique su Informe de Actividades y su Cuenta de Cobro o Factura en este espacio. Recuerde presentar únicamente los documentos debidamente aprobados y firmados por el Supervisor, incluyendo los anexos correspondientes según los términos establecidos.
-      </p>
-      <button
-        type="button"
-        @click="showFacturationModal = true"
-        class="inline-flex items-center px-4 py-2 bg-secondary text-white
-              rounded-md"
-      >
-        Enviar Informe
-      </button>
     </div>
   </div>
 
@@ -122,6 +168,10 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   DocumentTextIcon,
+  UsersIcon,
+  EnvelopeIcon,
+  CalendarIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/vue/24/outline";
 import { useIntranetGymStore } from "@/stores/legal/intranet_gym";
 import { onMounted, ref } from "vue";

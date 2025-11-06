@@ -3,8 +3,8 @@ from django.core.files.storage import default_storage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models import LegalDocument
-from gym_app.serializers import LegalDocumentSerializer
+from gym_app.models import LegalDocument, IntranetProfile, User
+from gym_app.serializers import LegalDocumentSerializer, IntranetProfileSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from gym_app.views.layouts.sendEmail import send_template_email
@@ -13,13 +13,39 @@ from django.conf import settings
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_legal_intranet_documents(request):
+    # Get all legal documents
     legal_intranet_documents = LegalDocument.objects.all()
-    serializer = LegalDocumentSerializer(
+    documents_serializer = LegalDocumentSerializer(
         legal_intranet_documents, 
         many=True, 
-        context={'request': request}  # Pass request here
+        context={'request': request}
     )
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # Get or create the intranet profile (should be only one instance)
+    intranet_profile = IntranetProfile.objects.first()
+    profile_data = None
+    if intranet_profile:
+        profile_serializer = IntranetProfileSerializer(
+            intranet_profile,
+            context={'request': request}
+        )
+        profile_data = profile_serializer.data
+    
+    # Count lawyers (users with role='lawyer' and is_gym_lawyer=True)
+    lawyers_count = User.objects.filter(role='lawyer', is_gym_lawyer=True).count()
+    
+    # Count all users (excluding superusers/staff if needed, or count all)
+    users_count = User.objects.filter(is_active=True).count()
+    
+    # Build response
+    response_data = {
+        'documents': documents_serializer.data,
+        'profile': profile_data,
+        'lawyers_count': lawyers_count,
+        'users_count': users_count
+    }
+    
+    return Response(response_data, status=status.HTTP_200_OK)
 
 
 
