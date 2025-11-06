@@ -28,12 +28,12 @@
                 getBorderColorClass(activity.type)
               ]"
             >
-              <PlusIcon v-if="activity.type === 'create'" class="h-5 w-5 text-green-500" />
+              <PlusIcon v-if="activity.type === 'create'" class="h-5 w-5 text-blue-600" />
               <PencilIcon v-else-if="activity.type === 'edit'" class="h-5 w-5 text-blue-500" />
-              <ArrowDownIcon v-else-if="activity.type === 'finish'" class="h-5 w-5 text-indigo-500" />
-              <TrashIcon v-else-if="activity.type === 'delete'" class="h-5 w-5 text-red-500" />
-              <ArrowUpIcon v-else-if="activity.type === 'update'" class="h-5 w-5 text-yellow-500" />
-              <QuestionMarkCircleIcon v-else class="h-5 w-5 text-gray-500" />
+              <ArrowDownIcon v-else-if="activity.type === 'finish'" class="h-5 w-5 text-blue-700" />
+              <TrashIcon v-else-if="activity.type === 'delete'" class="h-5 w-5 text-blue-400" />
+              <ArrowUpIcon v-else-if="activity.type === 'update'" class="h-5 w-5 text-blue-600" />
+              <QuestionMarkCircleIcon v-else class="h-5 w-5 text-blue-500" />
             </div>
             <!-- Timeline connector line -->
             <div 
@@ -89,18 +89,18 @@ const activityFeedStore = useActivityFeedStore();
 const getBorderColorClass = (type) => {
   switch (type) {
     case 'create':
-      return 'border-green-500';
+      return 'border-blue-600';
     case 'edit':
       return 'border-blue-500';
     case 'finish':
-      return 'border-indigo-500';
+      return 'border-blue-700';
     case 'delete':
-      return 'border-red-500';
+      return 'border-blue-400';
     case 'update':
-      return 'border-yellow-500';
+      return 'border-blue-600';
     case 'other':
     default:
-      return 'border-gray-500';
+      return 'border-blue-500';
   }
 };
 
@@ -108,18 +108,18 @@ const getBorderColorClass = (type) => {
 const getActivityIconClass = (type) => {
   switch (type) {
     case 'create':
-      return 'bg-green-200';
+      return 'bg-blue-100';
     case 'edit':
-      return 'bg-blue-200';
+      return 'bg-blue-50';
     case 'finish':
-      return 'bg-indigo-200';
+      return 'bg-blue-100';
     case 'delete':
-      return 'bg-red-200';
+      return 'bg-blue-50';
     case 'update':
-      return 'bg-yellow-200';
+      return 'bg-blue-100';
     case 'other':
     default:
-      return 'bg-gray-200';
+      return 'bg-blue-50';
   }
 };
 
@@ -127,18 +127,18 @@ const getActivityIconClass = (type) => {
 const getActivityLineClass = (type) => {
   switch (type) {
     case 'create':
-      return 'bg-green-300';
+      return 'bg-blue-300';
     case 'edit':
       return 'bg-blue-300';
     case 'finish':
-      return 'bg-indigo-300';
+      return 'bg-blue-300';
     case 'delete':
-      return 'bg-red-300';
+      return 'bg-blue-300';
     case 'update':
-      return 'bg-yellow-300';
+      return 'bg-blue-300';
     case 'other':
     default:
-      return 'bg-gray-300';
+      return 'bg-blue-300';
   }
 };
 

@@ -33,8 +33,8 @@
       </div>
     </div>
 
-    <!-- Folders Grid Component -->
-    <FoldersGrid
+    <!-- Folders Table Component -->
+    <FoldersTable
       :sorted-folders="sortedFolders"
       :search-query="searchQuery"
       :is-loading="isLoading"
@@ -54,7 +54,7 @@
     />
 
     <!-- Folder Details Modal -->
-    <FolderDetailsModal
+    <FolderDetailsModalTable
       :folder="selectedFolder"
       @close="handleCloseFolderDetails"
       @add-documents="handleOpenAddDocumentsModal"
@@ -87,9 +87,9 @@ import { PlusIcon } from '@heroicons/vue/24/outline';
 // Components
 import {
   CreateEditFolderModal,
-  FolderDetailsModal,
+  FolderDetailsModalTable,
   AddDocumentsModal,
-  FoldersGrid
+  FoldersTable
 } from './index.js';
 
 // Props

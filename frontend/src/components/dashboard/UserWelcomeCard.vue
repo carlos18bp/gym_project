@@ -10,13 +10,23 @@
 
       <!-- Second row: Avatar + Stats cards - stacked until 1450px, horizontal from there -->
       <div class="flex flex-col 2xl:flex-row gap-4 sm:gap-6 2xl:items-center">
-        <!-- Avatar - centered on mobile -->
+        <!-- Avatar - centered on mobile with edit button -->
         <div class="flex-shrink-0 w-full 2xl:w-auto flex justify-center 2xl:justify-start">
-          <img 
-            :src="user?.photo_profile || defaultAvatarUrl" 
-            :alt="user?.first_name"
-            class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white"
-          />
+          <div class="relative">
+            <img 
+              :src="user?.photo_profile || defaultAvatarUrl" 
+              :alt="user?.first_name"
+              class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white"
+            />
+            <!-- Edit button with pencil icon -->
+            <button
+              @click="openPhotoEditor"
+              class="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors border-2 border-blue-500"
+              title="Editar foto de perfil"
+            >
+              <PencilIcon class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+            </button>
+          </div>
         </div>
 
         <!-- Stats cards - stacked below avatar until 1450px, then horizontal -->
@@ -66,8 +76,10 @@
  * - On tablets and up: Horizontal layout with properly sized elements
  */
 import { computed, onMounted, ref } from 'vue';
-import { RectangleStackIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
+import { RectangleStackIcon, CalendarDaysIcon, PencilIcon } from '@heroicons/vue/24/outline';
 import { useProcessStore } from '@/stores/process';
+import { useUserStore } from '@/stores/auth/user';
+import { showNotification } from '@/shared/notification_message';
 import defaultAvatarUrl from "@/assets/images/user_avatar.jpg";
 
 // Props for customization
@@ -89,6 +101,8 @@ const props = defineProps({
 });
 
 const processStore = useProcessStore();
+const userStore = useUserStore();
+const fileInput = ref(null);
 
 // Gender-neutral welcome messages
 const welcomeMessages = [
@@ -154,4 +168,64 @@ onMounted(async () => {
 const activeProcesses = computed(() => {
   return processStore.activeProcessesForCurrentUser.length;
 });
+
+/**
+ * Opens the file input dialog for selecting a new profile photo
+ */
+const openPhotoEditor = () => {
+  // Create a temporary file input
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = handleFileChange;
+  input.click();
+};
+
+/**
+ * Handles file selection and updates the user's profile picture
+ * @param {Event} event - The file input change event
+ */
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    try {
+      // Show preview immediately
+      const previewUrl = URL.createObjectURL(file);
+      
+      // Update the preview in the UI immediately
+      if (props.user) {
+        props.user.photo_profile = previewUrl;
+      }
+      
+      // Create a temporary user object with the new photo
+      const updatedUser = {
+        ...props.user,
+        photo_profile: file,
+        photo_profile_preview: previewUrl
+      };
+      
+      // Update the user profile with the new photo
+      await userStore.updateUser(updatedUser);
+      
+      showNotification('Foto de perfil actualizada correctamente', 'success');
+      
+      // Refresh user data to get the updated photo URL from the server
+      // This will update the store and propagate to all components
+      const refreshedUser = await userStore.getUserInfo();
+      
+      // Update the prop with the new photo URL from server
+      if (refreshedUser && refreshedUser.photo_profile) {
+        props.user.photo_profile = refreshedUser.photo_profile;
+      }
+      
+      // Clean up the preview URL after a delay to ensure the new image is loaded
+      setTimeout(() => {
+        URL.revokeObjectURL(previewUrl);
+      }, 1000);
+    } catch (error) {
+      console.error('Error updating profile photo:', error);
+      showNotification('Error al actualizar la foto de perfil', 'error');
+    }
+  }
+};
 </script>

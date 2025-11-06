@@ -6,10 +6,10 @@
       <template v-if="user?.role === 'lawyer'">
         <router-link 
           :to="{ name: 'process_list', query: { group: 'general' } }" 
-          class="flex items-center bg-blue-300/30 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-300"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <ChevronRightIcon class="size-8 text-blue-500" />
+            <FolderOpenIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Todos los Procesos</span>
@@ -20,10 +20,10 @@
         
         <router-link 
           :to="{ name: 'process_form', params: { action: 'create' } }" 
-          class="flex items-center bg-terciary rounded-xl px-6 py-4 hover:shadow-md transition border border-stroke"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <PlusIcon class="size-8 text-secondary" />
+            <DocumentArrowDownIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Radicar Proceso</span>
@@ -34,13 +34,13 @@
         
         <router-link 
           :to="{ name: 'dynamic_document_dashboard' }" 
-          class="flex items-center bg-yellow-300/30 rounded-xl px-6 py-4 hover:shadow-md transition border border-yellow-300"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <PlusIcon class="size-8 text-yellow-500" />
+            <DocumentTextIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
-            <span class="font-medium text-primary">Nuevo Documento</span>
+            <span class="font-medium text-primary">Nueva Minuta</span>
             <span class="text-sm text-gray-500">Contrato o formato jurídico</span>
           </div>
           <ChevronRightIcon class="w-5 h-5 text-gray-400 ml-auto" />
@@ -48,10 +48,10 @@
         
         <div 
           @click="showFacturationModal = true"
-          class="flex items-center bg-green-300/30 rounded-xl px-6 py-4 hover:shadow-md transition border border-green-300 cursor-pointer"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200 cursor-pointer"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <PlusIcon class="size-8 text-green-500" />
+            <DocumentChartBarIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Radicar Informe</span>
@@ -65,10 +65,10 @@
       <template v-else>
         <router-link 
           :to="{ name: 'process_list' }" 
-          class="flex items-center bg-terciary rounded-xl px-6 py-4 hover:shadow-md transition border border-stroke"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <FolderIcon class="size-8 text-secondary" />
+            <FolderIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Mis Procesos</span>
@@ -79,10 +79,10 @@
         
         <router-link 
           :to="{ name: 'schedule_appointment' }" 
-          class="flex items-center bg-yellow-300/30 rounded-xl px-6 py-4 hover:shadow-md transition border border-yellow-300"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <CalendarDaysIcon class="size-8 text-yellow-500" />
+            <CalendarDaysIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Agendar Cita</span>
@@ -93,10 +93,10 @@
         
         <router-link 
           :to="{ name: 'legal_request' }" 
-          class="flex items-center bg-green-300/30 rounded-xl px-6 py-4 hover:shadow-md transition border border-green-300"
+          class="flex items-center bg-blue-50 rounded-xl px-6 py-4 hover:shadow-md transition border border-blue-200"
         >
           <div class="flex-shrink-0 rounded-full p-3 mr-4">
-            <PlusIcon class="size-8 text-green-500" />
+            <PlusCircleIcon class="size-8 text-blue-600" />
           </div>
           <div class="flex flex-col">
             <span class="font-medium text-primary">Radicar Solicitud</span>
@@ -124,10 +124,13 @@
  */
 import { ref } from 'vue';
 import { 
-  DocumentIcon, 
+  FolderOpenIcon,
+  DocumentArrowDownIcon,
+  DocumentTextIcon,
+  DocumentChartBarIcon,
   CalendarDaysIcon,
   FolderIcon,
-  PlusIcon,
+  PlusCircleIcon,
   ChevronRightIcon
 } from '@heroicons/vue/24/outline';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';

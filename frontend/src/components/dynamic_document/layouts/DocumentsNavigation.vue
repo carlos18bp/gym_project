@@ -2,91 +2,56 @@
   <!-- Buttons panel for lawyer -->
   <div
     v-if="props?.role === 'lawyer'"
-    class="pb-6 border-b border-gray-200"
+    class="pb-4 border-b border-gray-200"
   >
-    <!-- Desktop Layout -->
-    <div class="hidden sm:flex gap-4 lg:gap-6">
-      <button
-        @click="handleSection('default')"
-        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-yellow-300 text-start bg-white transition-all duration-200 hover:shadow-md flex-1 min-w-0"
-        :class="{ 'bg-yellow-300/30 shadow-md': currentSection == 'default' }"
-      >
-        <FolderIcon class="size-6 text-yellow-500 font-semibold flex-shrink-0"></FolderIcon>
-        <div class="grid min-w-0">
-          <span class="font-medium text-base truncate">Minutas y Documentos</span>
-          <span class="text-gray-400 font-regular text-sm truncate">Mi unidad</span>
-        </div>
-      </button>
+    <!-- Desktop Layout - Minimalist buttons aligned to the right -->
+    <div class="hidden sm:flex gap-3 justify-end">
       <button
         @click="showElectronicSignatureModal = true"
-        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-purple-300 bg-white text-start transition-all duration-200 hover:bg-purple-50 hover:shadow-md flex-1 min-w-0"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
       >
-        <FingerPrintIcon class="size-6 text-purple-500 font-semibold flex-shrink-0"></FingerPrintIcon>
-        <div class="grid min-w-0">
-          <span class="font-medium text-base truncate">Firma Electrónica</span>
-          <span class="text-gray-400 font-regular text-sm truncate">Documentos</span>
-        </div>
+        <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
+        <span>Firma Electrónica</span>
       </button>
       <button
         @click="showGlobalLetterheadModal = true"
-        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-green-300 bg-white text-start transition-all duration-200 hover:bg-green-50 hover:shadow-md flex-1 min-w-0"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
       >
-        <DocumentTextIcon class="size-6 text-green-500 font-semibold flex-shrink-0"></DocumentTextIcon>
-        <div class="grid min-w-0">
-          <span class="font-medium text-base truncate">Membrete Global</span>
-          <span class="text-gray-400 font-regular text-sm truncate">Para todos los documentos</span>
-        </div>
+        <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
+        <span>Membrete Global</span>
       </button>
       <button
         @click="$emit('openNewDocument')"
-        class="flex gap-3 items-center py-3 px-4 rounded-xl border-2 border-gray-200 bg-white text-start transition-all duration-200 hover:bg-gray-50 hover:shadow-md hover:border-secondary"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
       >
-        <PlusIcon class="size-6 text-secondary font-semibold flex-shrink-0"></PlusIcon>
-        <div class="grid">
-          <span class="font-medium text-base">Nueva Minuta</span>
-        </div>
+        <PlusIcon class="size-5"></PlusIcon>
+        <span>Nueva Minuta</span>
       </button>
     </div>
 
     <!-- Mobile Layout -->
-    <div class="sm:hidden space-y-3">
-      <!-- Primary Action - Most Used -->
+    <div class="sm:hidden grid grid-cols-3 gap-2">
       <button
-        @click="handleSection('default')"
-        class="w-full flex gap-3 items-center py-4 px-4 rounded-xl border-2 border-yellow-300 text-start bg-white transition-all duration-200"
-        :class="{ 'bg-yellow-300/30 shadow-md': currentSection == 'default' }"
+        @click="showElectronicSignatureModal = true"
+        class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
       >
-        <FolderIcon class="size-7 text-yellow-500 font-semibold flex-shrink-0"></FolderIcon>
-        <div class="grid">
-          <span class="font-semibold text-lg">Minutas y Documentos</span>
-          <span class="text-gray-500 font-regular text-sm">Mi unidad</span>
-        </div>
+        <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
+        <span class="font-medium text-xs leading-tight">Firma</span>
       </button>
-      
-      <!-- Secondary Actions - Grid Layout -->
-      <div class="grid grid-cols-3 gap-3">
-        <button
-          @click="showElectronicSignatureModal = true"
-          class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-purple-300 bg-white text-center transition-all duration-200 hover:bg-purple-50 min-h-[90px]"
-        >
-          <FingerPrintIcon class="size-8 text-purple-500 font-semibold mb-2"></FingerPrintIcon>
-          <span class="font-medium text-sm leading-tight">Firma Electrónica</span>
-        </button>
-        <button
-          @click="showGlobalLetterheadModal = true"
-          class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-green-300 bg-white text-center transition-all duration-200 hover:bg-green-50 min-h-[90px]"
-        >
-          <DocumentTextIcon class="size-8 text-green-500 font-semibold mb-2"></DocumentTextIcon>
-          <span class="font-medium text-sm leading-tight">Membrete Global</span>
-        </button>
-        <button
-          @click="$emit('openNewDocument')"
-          class="flex flex-col items-center justify-center py-4 px-3 rounded-xl border-2 border-gray-200 bg-white text-center transition-all duration-200 hover:bg-gray-50 hover:border-secondary min-h-[90px]"
-        >
-          <PlusIcon class="size-8 text-secondary font-semibold mb-2"></PlusIcon>
-          <span class="font-medium text-sm leading-tight">Nueva Minuta</span>
-        </button>
-      </div>
+      <button
+        @click="showGlobalLetterheadModal = true"
+        class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
+      >
+        <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
+        <span class="font-medium text-xs leading-tight">Membrete</span>
+      </button>
+      <button
+        @click="$emit('openNewDocument')"
+        class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+      >
+        <PlusIcon class="size-6 mb-1"></PlusIcon>
+        <span class="font-medium text-xs leading-tight">Nueva</span>
+      </button>
     </div>
   </div>
 

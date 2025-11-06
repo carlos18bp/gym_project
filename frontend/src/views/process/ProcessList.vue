@@ -1,317 +1,655 @@
 <template>
-  <!-- Using the SearchBarAndFilterBy component -->
-  <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>    
-    <template v-if="currentUser?.role == 'lawyer'" #auxiliary_button>
-      <router-link 
-        :to="{ name: 'process_form', params: { action: 'create' } }"  
-        class="flex items-center gap-2 rounded-lg bg-secondary text-white px-4 py-2"
-      >
-        <PlusIcon class="size-5" aria-hidden="true" />
-        <span class="text-sm font-medium">Nuevo</span>
-      </router-link>
-      <Menu as="div" class="relative inline-block text-left">
-        <div>
-          <MenuButton
-            class="flex items-center rounded-full bg-gray-100 text-gray-400 hover:text-gray-600"
-          >
-            <span class="sr-only">Open options</span>
-            <AdjustmentsVerticalIcon class="size-5" aria-hidden="true" />
-          </MenuButton>
-        </div>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Mobile menu button -->
+    <slot></slot>
 
-        <transition
-          enter-active-class="transition ease-out duration-100"
-          enter-from-class="transform opacity-0 scale-95"
-          enter-to-class="transform opacity-100 scale-100"
-          leave-active-class="transition ease-in duration-75"
-          leave-from-class="transform opacity-100 scale-100"
-          leave-to-class="transform opacity-0 scale-95"
-        >
-          <MenuItems
-            class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+    <!-- Main content -->
+    <div class="py-6 px-4 sm:px-6 lg:px-8">
+      <!-- Tabs Navigation -->
+      <div class="border-b border-gray-200 mb-6">
+        <div class="flex items-center justify-between">
+          <nav class="-mb-px flex space-x-8">
+            <button
+              @click="activeTab = 'my_processes'"
+              :class="[
+                activeTab === 'my_processes'
+                  ? 'border-secondary text-secondary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              ]"
+            >
+              Mis Procesos
+            </button>
+            <button
+              v-if="currentUser?.role === 'lawyer'"
+              @click="activeTab = 'all_processes'"
+              :class="[
+                activeTab === 'all_processes'
+                  ? 'border-secondary text-secondary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              ]"
+            >
+              Todos los Procesos
+            </button>
+            <button
+              @click="activeTab = 'archived_processes'"
+              :class="[
+                activeTab === 'archived_processes'
+                  ? 'border-secondary text-secondary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              ]"
+            >
+              Procesos Archivados
+            </button>
+          </nav>
+          
+          <!-- Nueva Solicitud Button - Only for clients -->
+          <button
+            v-if="currentUser?.role === 'client' || currentUser?.role === 'corporate_client'"
+            @click="goToNewRequest"
+            class="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
           >
-            <div class="py-1">
-              <MenuItem v-slot="{ active }">
-                <a
-                  @click="processGroup = 'default'"
-                  :class="[
-                    active
-                      ? 'bg-gray-100 text-gray-900 outline-none'
-                      : 'text-gray-700',
-                    'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80',
-                  ]"
-                  >Mis procesos</a
-                >
-              </MenuItem>
-              <MenuItem v-slot="{ active }">
-                <a
-                  @click="processGroup = 'general'"
-                  :class="[
-                    active
-                      ? 'bg-gray-100 text-gray-900 outline-none'
-                      : 'text-gray-700',
-                    'block px-4 py-2 text-sm cursor-pointer hover:bg-gray-200/80',
-                  ]"
-                  >Todos los procesos</a
-                >
-              </MenuItem>
-            </div>
-          </MenuItems>
-        </transition>
-      </Menu>
-    </template>
-  </SearchBarAndFilterBy>
-
-  <div
-    v-if="filteredProcesses.length"
-    class="py-10 px-4 sm:px-6 lg:px-8 grid gap-3 auto-rows-auto place-items-start grid-cols-1 md:grid-cols-2 2xl:grid-cols-4"
-  >
-    <div
-      v-for="process in filteredProcesses"
-      :key="process.id"
-      class="p-5 rounded-lg border-2 border-stroke bg-terciary grid w-full"
-    >
-      <!-- Card header -->
-      <div
-        class="flex items-center justify-between gap-3 cursor-pointer"
-        @click="toggleExpand(process.id)"
-      >
-        <div class="flex items-center gap-3">
-          <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
-          <div class="grid">
-            <h1 class="text-base text-primary font-medium">
-              {{ process.client.first_name }} {{ process.client.last_name }}
-            </h1>
-            <h2 class="text-sm text-gray-500 font-regular">
-              {{ process.case.type }}
-            </h2>
-          </div>
+            <PlusIcon class="h-5 w-5" />
+          Solicitar Información
+          </button>
         </div>
-        <ChevronUpIcon
-          class="h-6 w-6 cursor-pointer"
-          :class="
-            expandedProcesses.includes(process.id)
-              ? 'transform rotate-180'
-              : 'transform rotate-0'
-          "
-        >
-        </ChevronUpIcon>
       </div>
 
-      <!-- Content -->
-      <div v-if="expandedProcesses.includes(process.id)">
-        <!-- Relevant information -->
-        <div class="font-medium mt-4 space-y-1">
-          <!-- Authority information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Autoridad:</h3>
-            <p class="text-gray-500">
-              {{ process.authority }}
-            </p>
-          </div>
-          <!-- Accionant information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Dte./Accionante:</h3>
-            <p class="text-gray-500">{{ process.plaintiff }}</p>
-          </div>
-          <!-- plaintiff information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Dte./Accionado:</h3>
-            <p class="text-gray-500">{{ process.defendant }}</p>
-          </div>
-          <!-- Ref information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Radicado:</h3>
-            <p class="text-gray-500">{{ process.ref }}</p>
-          </div>
-          <!-- Last stage -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Etapa Procesal:</h3>
-            <p class="text-gray-500">
-              {{ process.stages[process.stages.length - 1].status }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Content -->
-        <div>
-          <!-- Timeline of process state -->
-          <div class="relative mt-16">
-            <!-- Line -->
-            <div class="relative">
-              <div class="flex justify-between">
-                <div class="border-2 border-gray-500 h-4 w-0"></div>
-                <div class="border-2 border-gray-500 h-4 w-0"></div>
-              </div>
-              <div class="border-2 border-gray-500"></div>
-              <div class="flex justify-between">
-                <div class="border-2 border-gray-500 h-4 w-0"></div>
-                <div class="border-2 border-gray-500 h-4 w-0"></div>
-              </div>
-
-              <!-- Bubbles -->
-              <div
-                class="absolute top-1/2 left-0 right-0 z-10 transform -translate-y-1/2 flex w-full h-full px-16 justify-center items-center"
-              >
-                <div class="size-16 bg-secondary rounded-full"></div>
-              </div>
+      <!-- Filters and Search Bar -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+          <!-- Left side: Search and Filters -->
+          <div class="flex flex-col sm:flex-row gap-3 flex-1 w-full lg:w-auto">
+            <!-- Search -->
+            <div class="relative flex-1 min-w-[200px]">
+              <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Buscar..."
+                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent"
+              />
             </div>
 
-            <!-- Text of states -->
-            <div>
-              <div
-                class="relative mt-5 px-16 flex justify-center items-center text-gray-500 font-medium"
-              >
-                <p class="text-sm w-16 text-center">
-                  {{
-                    process.stages.length > 0
-                      ? process.stages[process.stages.length - 1].status
-                      : "Sin estado"
-                  }}
-                </p>
-              </div>
-            </div>
-          </div>
+            <!-- Filter Dropdowns -->
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <FunnelIcon class="h-4 w-4" />
+                <span class="max-w-[120px] truncate">{{ filterByType || 'Tipo' }}</span>
+                <ChevronDownIcon class="h-4 w-4" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="filterByType = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Todos
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-for="type in processTypes" :key="type" v-slot="{ active }">
+                    <a @click="filterByType = type" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      {{ type }}
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
 
-          <!-- Button for detail view -->
-          <div class="font-medium text-sm mt-8">
-            <router-link
-              class="p-2.5 text-white bg-secondary rounded-md"
-              :to="{
-                name: 'process_detail',
-                params: { process_id: process.id, display: displayParam },
-              }"
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <FunnelIcon class="h-4 w-4" />
+                <span class="max-w-[120px] truncate">{{ filterByAuthority || 'Autoridad' }}</span>
+                <ChevronDownIcon class="h-4 w-4" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="filterByAuthority = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Todos
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-for="authority in authorities" :key="authority" v-slot="{ active }">
+                    <a @click="filterByAuthority = authority" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      {{ authority }}
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <FunnelIcon class="h-4 w-4" />
+                <span class="max-w-[120px] truncate">{{ filterByStage || 'Etapa' }}</span>
+                <ChevronDownIcon class="h-4 w-4" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="filterByStage = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Todos
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-for="stage in stages" :key="stage" v-slot="{ active }">
+                    <a @click="filterByStage = stage" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      {{ stage }}
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+
+            <!-- Clear filters button -->
+            <button
+              v-if="filterByType || filterByAuthority || filterByStage"
+              @click="clearFilters"
+              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              title="Limpiar filtros"
             >
-              <span>Consultar expediente</span>
+              <XMarkIcon class="h-4 w-4" />
+              Limpiar
+            </button>
+          </div>
+
+          <!-- Right side: Sort and Actions -->
+          <div class="flex items-center gap-3 w-full lg:w-auto">
+            <!-- Results count -->
+            <span class="text-sm text-gray-500 whitespace-nowrap">
+              Mostrando {{ filteredAndSortedProcesses.length }} resultados
+            </span>
+
+            <!-- Sort -->
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Ordenar: {{ sortLabel }}
+                <ChevronDownIcon class="h-4 w-4" />
+              </MenuButton>
+              <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="sortBy = 'recent'" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Más recientes
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <a @click="sortBy = 'name'" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Nombre (A-Z)
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+
+            <!-- New Process Button (only for lawyers) -->
+            <router-link
+              v-if="currentUser?.role === 'lawyer'"
+              :to="{ name: 'process_form', params: { action: 'create' } }"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
+            >
+              <PlusIcon class="h-5 w-5" />
+              Nuevo
             </router-link>
+
+            <!-- Export Button -->
+            <button
+              @click="exportProcesses"
+              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowDownTrayIcon class="h-4 w-4" />
+              Exportar
+            </button>
+
+            <!-- More options -->
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-gray-100">
+                <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
+              </MenuButton>
+              <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="selectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Seleccionar todo
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <a @click="deselectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Deseleccionar todo
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
           </div>
         </div>
+      </div>
+
+      <!-- Table -->
+      <div v-if="filteredAndSortedProcesses.length" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="w-12 px-6 py-3">
+                  <input
+                    type="checkbox"
+                    :checked="allSelected"
+                    @change="toggleSelectAll"
+                    class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded"
+                  />
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  E-mail
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tipo Proceso
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dte./Accionante
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dte./Accionado
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Etapa
+                </th>
+                <th scope="col" class="w-16 px-6 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr
+                v-for="process in filteredAndSortedProcesses"
+                :key="process.id"
+                class="hover:bg-gray-50 transition-colors cursor-pointer"
+                @click="goToProcessDetail(process.id)"
+              >
+                <td class="px-6 py-4 whitespace-nowrap" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="selectedProcesses.includes(process.id)"
+                    @change="toggleSelectProcess(process.id)"
+                    class="h-4 w-4 text-secondary focus:ring-secondary border-gray-300 rounded"
+                  />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="h-10 w-10 flex-shrink-0">
+                      <img
+                        class="h-10 w-10 rounded-full object-cover"
+                        :src="process.client.photo_profile || defaultAvatar"
+                        :alt="process.client.first_name"
+                      />
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900">
+                        {{ process.client.first_name }} {{ process.client.last_name }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-900">{{ process.client.email }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {{ process.case.type }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ process.plaintiff || '-' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ process.defendant || '-' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    {{ process.stages[process.stages.length - 1]?.status || 'Sin estado' }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
+                  <Menu as="div" class="relative inline-block text-left">
+                    <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
+                      <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
+                    </MenuButton>
+                    <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                      <div class="py-1">
+                        <MenuItem v-slot="{ active }">
+                          <router-link
+                            :to="{ name: 'process_detail', params: { process_id: process.id } }"
+                            :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
+                          >
+                            Ver detalles
+                          </router-link>
+                        </MenuItem>
+                        <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                          <router-link
+                            :to="{ name: 'process_form', params: { action: 'edit', process_id: process.id } }"
+                            :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
+                          >
+                            Editar
+                          </router-link>
+                        </MenuItem>
+                      </div>
+                    </MenuItems>
+                  </Menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center"
+      >
+        <CubeTransparentIcon class="mx-auto h-24 w-24 text-gray-400" />
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No hay procesos disponibles</h3>
+        <p class="mt-2 text-sm text-gray-500">
+          {{ activeTab === 'archived_processes' ? 'No hay procesos archivados para mostrar.' : 'Contacta a tu abogado para gestionar tus procesos.' }}
+        </p>
       </div>
     </div>
-  </div>
-  <div
-    v-else
-    class="absolute top-1/2 left-1/2 grid justify-center items-center transform -translate-y-1/2 -translate-x-1/2 lg:-translate-x-0 text-gray-400"
-  >
-    <CubeTransparentIcon class="mx-auto h-40 w-40"></CubeTransparentIcon>
-    <p class="text-center font-semibold pt-4 text-2xl">
-      No hay procesos disponibles<br />para mostrar.
-    </p>
-    <p class="text-center font-semibold pt-4 text-lg">Contacta a tu abogado para gestionar tus procesos.</p>
   </div>
 </template>
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
-import { AdjustmentsVerticalIcon, ChevronUpIcon, CubeTransparentIcon, PlusIcon } from "@heroicons/vue/20/solid";
+import {
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ChevronDownIcon,
+  PlusIcon,
+  ArrowDownTrayIcon,
+  EllipsisVerticalIcon,
+  CubeTransparentIcon,
+  XMarkIcon
+} from "@heroicons/vue/24/outline";
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/auth/user";
 import { useProcessStore } from "@/stores/process";
+import userAvatar from "@/assets/images/user_avatar.jpg";
 
 const route = useRoute();
-const userIdParam = ref("");
-const displayParam = ref("");
-
+const router = useRouter();
 const userStore = useUserStore();
 const processStore = useProcessStore();
 
-const user = ref(null);
-const isClient = ref(true);
+// Default avatar
+const defaultAvatar = userAvatar;
 
-// Reactive variable for search query
-const searchQuery = ref("");
-const processGroup = ref("default");
-
-// Computed property to get the current authenticated user
+// Current user
 const currentUser = computed(() => userStore.getCurrentUser);
 
-const expandedProcesses = ref([]);
+// Active tab state
+const activeTab = ref('my_processes');
 
+// Search and filter states
+const searchQuery = ref("");
+const filterByType = ref(null);
+const filterByAuthority = ref(null);
+const filterByStage = ref(null);
+const sortBy = ref('recent');
+
+// Selection state
+const selectedProcesses = ref([]);
+
+// Initialize
 onMounted(async () => {
   await processStore.init();
-  userIdParam.value = route.params.user_id;
-  displayParam.value = route.params.display;
-  
-  // Check if group query parameter exists and set processGroup accordingly
-  if (route.query.group === 'general') {
-    processGroup.value = 'general';
-  }
-
   await userStore.init();
-  user.value = userIdParam.value
-    ? userStore.userById(userIdParam.value)
-    : userStore.getCurrentUser;
-  isClient.value = !!(user.value.role == "client");
+  
+  // Set initial tab based on route params
+  if (route.params.display === 'history') {
+    activeTab.value = 'archived_processes';
+  } else if (route.query.group === 'general') {
+    activeTab.value = 'all_processes';
+  } else {
+    activeTab.value = 'my_processes';
+  }
 });
 
-watch(
-  () => route.params.user_id,
-  async (newUserId) => {
-    userIdParam.value = newUserId;
-    displayParam.value = route.params.display;
-  }
-);
-
+// Watch for route changes
 watch(
   () => route.params.display,
-  async (newDisplay) => {
-    userIdParam.value = route.params.user_id;
-    displayParam.value = newDisplay;
-  }
-);
-
-// Add a watch for query parameters
-watch(
-  () => route.query,
-  (query) => {
-    if (query.group === 'general') {
-      processGroup.value = 'general';
-    } else if (query.group === 'default') {
-      processGroup.value = 'default';
+  (newDisplay) => {
+    if (newDisplay === 'history') {
+      activeTab.value = 'archived_processes';
     }
   }
 );
 
-// Filtered processes based on search query
-const filteredProcesses = computed(() => {
-  if (processGroup.value === "default") {
-    return processStore.filteredProcesses(
-      searchQuery.value,
-      isClient.value,
-      user.value ? user.value.id : null,
-      displayParam.value
-    );
-  } else if (processGroup.value === "general") {
-    return processStore.filteredProcesses(
-      searchQuery.value,
-      isClient.value,
-      null,
-      displayParam.value
-    );
+watch(
+  () => route.query.group,
+  (newGroup) => {
+    if (newGroup === 'general') {
+      activeTab.value = 'all_processes';
+    } else if (newGroup === 'default') {
+      activeTab.value = 'my_processes';
+    }
+  }
+);
+
+// Get unique values for filters
+const processTypes = computed(() => {
+  const types = new Set();
+  processStore.processes.forEach(process => {
+    if (process.case?.type) {
+      types.add(process.case.type);
+    }
+  });
+  return Array.from(types).sort();
+});
+
+const authorities = computed(() => {
+  const authoritiesList = new Set();
+  processStore.processes.forEach(process => {
+    if (process.authority) {
+      authoritiesList.add(process.authority);
+    }
+  });
+  return Array.from(authoritiesList).sort();
+});
+
+const stages = computed(() => {
+  const stagesList = new Set();
+  processStore.processes.forEach(process => {
+    if (process.stages && process.stages.length > 0) {
+      process.stages.forEach(stage => {
+        if (stage.status) {
+          stagesList.add(stage.status);
+        }
+      });
+    }
+  });
+  return Array.from(stagesList).sort();
+});
+
+// Base filtered processes based on active tab
+const baseFilteredProcesses = computed(() => {
+  let processes = [];
+  const isClient = currentUser.value?.role === 'client' || currentUser.value?.role === 'basic' || currentUser.value?.role === 'corporate_client';
+  const userId = currentUser.value?.id;
+
+  if (activeTab.value === 'archived_processes') {
+    // Archived processes
+    processes = processStore.processesWithClosedStatus;
+    // Filter archived processes by user
+    if (isClient) {
+      processes = processes.filter(p => p.client?.id === userId);
+    } else if (currentUser.value?.role === 'lawyer') {
+      processes = processes.filter(p => p.lawyer?.id === userId);
+    }
+  } else {
+    // Active processes
+    processes = processStore.processesWithoutClosedStatus;
+    
+    // Filter by tab
+    if (activeTab.value === 'my_processes') {
+      // My processes only
+      if (isClient) {
+        processes = processes.filter(p => p.client?.id === userId);
+      } else if (currentUser.value?.role === 'lawyer') {
+        processes = processes.filter(p => p.lawyer?.id === userId);
+      }
+    }
+    // 'all_processes' shows all (no additional filtering)
+  }
+
+  return processes;
+});
+
+// Apply search and filters
+const filteredAndSortedProcesses = computed(() => {
+  let processes = [...baseFilteredProcesses.value];
+
+  // Apply search
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    processes = processes.filter(process => {
+      return (
+        process.client?.first_name?.toLowerCase().includes(query) ||
+        process.client?.last_name?.toLowerCase().includes(query) ||
+        process.client?.email?.toLowerCase().includes(query) ||
+        process.case?.type?.toLowerCase().includes(query) ||
+        process.subcase?.toLowerCase().includes(query) ||
+        process.ref?.toLowerCase().includes(query) ||
+        process.plaintiff?.toLowerCase().includes(query) ||
+        process.defendant?.toLowerCase().includes(query) ||
+        process.authority?.toLowerCase().includes(query) ||
+        process.stages?.some(stage => stage.status?.toLowerCase().includes(query))
+      );
+    });
+  }
+
+  // Apply type filter
+  if (filterByType.value) {
+    processes = processes.filter(p => p.case?.type === filterByType.value);
+  }
+
+  // Apply authority filter
+  if (filterByAuthority.value) {
+    processes = processes.filter(p => p.authority === filterByAuthority.value);
+  }
+
+  // Apply stage filter
+  if (filterByStage.value) {
+    processes = processes.filter(p => {
+      const lastStage = p.stages?.[p.stages.length - 1];
+      return lastStage?.status === filterByStage.value;
+    });
+  }
+
+  // Apply sorting
+  if (sortBy.value === 'name') {
+    processes.sort((a, b) => {
+      const nameA = `${a.client?.first_name} ${a.client?.last_name}`.toLowerCase();
+      const nameB = `${b.client?.first_name} ${b.client?.last_name}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  } else if (sortBy.value === 'recent') {
+    // Most recent first (assuming processes are already in order, or sort by ID desc)
+    processes.sort((a, b) => b.id - a.id);
+  }
+
+  return processes;
+});
+
+// Sort label
+const sortLabel = computed(() => {
+  switch (sortBy.value) {
+    case 'name': return 'Nombre (A-Z)';
+    case 'recent':
+    default: return 'Más recientes';
   }
 });
 
-/**
- * Toggles the expansion state of a process by its ID.
- *
- * This function checks if the given `id` is present in the `expandedProcesses` array.
- * If the `id` is already present, it removes the `id` from the array, collapsing the process.
- * If the `id` is not present, it adds the `id` to the array, expanding the process.
- *
- * @function toggleExpand
- * @param {number|string} id - The unique identifier of the process to toggle.
- * @returns {void}
- */
-const toggleExpand = (id) => {
-  if (expandedProcesses.value.includes(id)) {
-    expandedProcesses.value = expandedProcesses.value.filter(
-      (item) => item !== id
-    );
+// Clear all filters
+const clearFilters = () => {
+  filterByType.value = null;
+  filterByAuthority.value = null;
+  filterByStage.value = null;
+};
+
+// Selection functions
+const allSelected = computed(() => {
+  return filteredAndSortedProcesses.value.length > 0 &&
+    selectedProcesses.value.length === filteredAndSortedProcesses.value.length;
+});
+
+const toggleSelectAll = () => {
+  if (allSelected.value) {
+    selectedProcesses.value = [];
   } else {
-    expandedProcesses.value.push(id);
+    selectedProcesses.value = filteredAndSortedProcesses.value.map(p => p.id);
   }
+};
+
+const toggleSelectProcess = (id) => {
+  const index = selectedProcesses.value.indexOf(id);
+  if (index > -1) {
+    selectedProcesses.value.splice(index, 1);
+  } else {
+    selectedProcesses.value.push(id);
+  }
+};
+
+const selectAll = () => {
+  selectedProcesses.value = filteredAndSortedProcesses.value.map(p => p.id);
+};
+
+const deselectAll = () => {
+  selectedProcesses.value = [];
+};
+
+// Navigation
+const goToProcessDetail = (processId) => {
+  router.push({
+    name: 'process_detail',
+    params: { process_id: processId }
+  });
+};
+
+const goToNewRequest = () => {
+  router.push('/legal_request_create');
+};
+
+// Export function
+const exportProcesses = () => {
+  const processesToExport = selectedProcesses.value.length > 0
+    ? filteredAndSortedProcesses.value.filter(p => selectedProcesses.value.includes(p.id))
+    : filteredAndSortedProcesses.value;
+
+  // Create CSV content
+  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Dte./Accionado', 'Etapa'];
+  const rows = processesToExport.map(process => [
+    `${process.client?.first_name || ''} ${process.client?.last_name || ''}`,
+    process.client?.email || '',
+    process.case?.type || '',
+    process.plaintiff || '-',
+    process.defendant || '-',
+    process.stages?.[process.stages.length - 1]?.status || 'Sin estado'
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n');
+
+  // Download CSV
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `procesos_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 </script>

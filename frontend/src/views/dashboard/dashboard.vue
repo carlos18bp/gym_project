@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import UserWelcomeCard from '@/components/dashboard/UserWelcomeCard.vue';
 import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
@@ -104,8 +104,10 @@ import { useAuthStore } from '@/stores/auth/auth';
 const userStore = useUserStore();
 const authStore = useAuthStore();
 
-// Component state
-const currentUser = ref({});
+// Component state - use computed to make currentUser reactive to store changes
+const currentUser = computed(() => {
+  return userStore.userById(authStore.userAuth?.id) || {};
+});
 const activeProcesses = ref(0);
 const showRecentProcesses = ref(false);
 const showRecentDocuments = ref(false);
@@ -130,7 +132,7 @@ onMounted(async () => {
   try {
     await userStore.init();
     if (authStore.userAuth?.id) {
-      Object.assign(currentUser.value, userStore.userById(authStore.userAuth.id));
+      // currentUser is now computed, so it updates automatically
       
       // Load secondary components after
       loadSecondaryComponents();

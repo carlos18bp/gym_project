@@ -335,7 +335,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue";
+import { onMounted, computed, ref, watch } from "vue";
 import Profile from "@/components/user/Profile.vue";
 import PWAInstallButton from "@/components/pwa/PWAInstallButton.vue";
 import {
@@ -358,7 +358,6 @@ import {
   UsersIcon,
   DocumentTextIcon,
   RectangleStackIcon,
-  Square2StackIcon,
   EnvelopeIcon,
   BuildingOfficeIcon
 } from "@heroicons/vue/24/outline";
@@ -376,18 +375,21 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore(); // Get the authentication store instance
 const userStore = useUserStore();
-const currentUser = reactive({});
+
+// Use computed to make currentUser reactive to store changes
+const currentUser = computed(() => {
+  return userStore.userById(authStore.userAuth?.id) || {};
+});
 
 const showProfile = ref(false); // Show modal with profile information
 const slidebarOpen = ref(false); // Show modal with navigation
 
 onMounted(async () => {
   await userStore.init();
-  Object.assign(currentUser, userStore.userById(authStore.userAuth.id));
-  showProfile.value = !!!currentUser.is_profile_completed;
+  showProfile.value = !!!currentUser.value.is_profile_completed;
 
   // Filter navigation based on user role
-  if (currentUser.role == 'client' || currentUser.role == 'corporate_client' || currentUser.role == 'basic') {
+  if (currentUser.value.role == 'client' || currentUser.value.role == 'corporate_client' || currentUser.value.role == 'basic') {
     // For clients, basic users and corporate clients: Remove lawyer-specific options
     navigation.value = navigation.value.filter(
       (navItem) =>
@@ -395,12 +397,12 @@ onMounted(async () => {
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M"
     );
-  } else if (currentUser.role == 'lawyer' && !currentUser.is_gym_lawyer) {
+  } else if (currentUser.value.role == 'lawyer' && !currentUser.value.is_gym_lawyer) {
     // Remove "Intranet G&M" for lawyers who are not GYM lawyers
     navigation.value = navigation.value.filter(
       (navItem) => navItem.name !== "Intranet G&M"
     );
-  } else if (currentUser.role == 'lawyer') {
+  } else if (currentUser.value.role == 'lawyer') {
     // For lawyers: Remove "Organizaciones" since it's only for clients
     navigation.value = navigation.value.filter(
       (navItem) => navItem.name !== "Organizaciones"
@@ -408,13 +410,13 @@ onMounted(async () => {
   }
 
   // Filter navigation for legal requests based on user role
-  if (currentUser.role === 'lawyer' || currentUser.is_gym_lawyer) {
+  if (currentUser.value.role === 'lawyer' || currentUser.value.is_gym_lawyer) {
     // Lawyers: Remove "Solicitudes" (client creation) and "Agendar Cita", keep "Gestión de Solicitudes"
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
     );
-  } else if (currentUser.role === 'client' || currentUser.role === 'corporate_client' || currentUser.role === 'basic') {
+  } else if (currentUser.value.role === 'client' || currentUser.value.role === 'corporate_client' || currentUser.value.role === 'basic') {
       // Clients and Basic users: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
       navigation.value = navigation.value.filter(
         (navItem) => navItem.name !== "Gestión de Solicitudes"
@@ -552,19 +554,6 @@ const navigation = ref([
     current: false,
     routes: ['/intranet_g_y_m']
   },
-  {
-    name: "Procesos Archivados",
-    action: (item) => {
-      setCurrent(item);
-      router.push({
-        name: "process_list",
-        params: { user_id: "", display: "history" },
-      });
-    },
-    icon: Square2StackIcon,
-    current: false,
-    routes: ['/process_list']
-  },
 ]);
 
 /**
@@ -599,25 +588,16 @@ const updateActiveNavItem = () => {
   const currentPath = route.path;
   
   navigation.value.forEach((navItem) => {
-    // Special case for Procesos Archivados
-    if (navItem.name === "Procesos Archivados" && 
-        currentPath.startsWith('/process_list') && 
-        route.params.display === "history") {
-      navItem.current = true;
-      foundMatch = true;
-    }
-    // Special case for regular Procesos (not archived)
-    else if (navItem.name === "Procesos" && 
-            (currentPath.startsWith('/process_list') && route.params.display !== "history" ||
+    // Special case for Procesos (includes archived view now)
+    if (navItem.name === "Procesos" && 
+            (currentPath.startsWith('/process_list') ||
              currentPath.startsWith('/process_detail') || 
              currentPath.startsWith('/process_form'))) {
       navItem.current = true;
       foundMatch = true;
     }
     // For other navigation items
-    else if (navItem.routes && navItem.routes.some(routePath => currentPath.startsWith(routePath)) && 
-            !(navItem.name === "Procesos" && route.params.display === "history") &&
-            !(navItem.name === "Procesos Archivados" && route.params.display !== "history")) {
+    else if (navItem.routes && navItem.routes.some(routePath => currentPath.startsWith(routePath))) {
       navItem.current = true;
       foundMatch = true;
     }

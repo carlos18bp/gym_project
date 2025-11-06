@@ -2,7 +2,7 @@
   <transition @enter="fadeIn" @leave="fadeOut">
     <div
       v-if="$slots.default"
-      class="fixed inset-0 z-50 bg-gray-400 bg-opacity-40 backdrop-blur-md flex items-center justify-center"
+      class="fixed inset-0 z-[9999] bg-gray-400 bg-opacity-40 backdrop-blur-md flex items-center justify-center"
     >
       <slot />
     </div>
