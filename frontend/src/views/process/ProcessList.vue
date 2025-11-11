@@ -1,7 +1,9 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Mobile menu button -->
-    <slot></slot>
+    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+      <slot></slot>
+    </div>
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
