@@ -22,6 +22,7 @@
         :organization="organization"
         @left="handleOrganizationLeft"
         @create-request="handleCreateRequest"
+        @view-details="handleViewDetails"
       />
     </div>
 
@@ -92,7 +93,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['organization-left', 'create-request']);
+const emit = defineEmits(['organization-left', 'create-request', 'view-details']);
 
 // Methods
 const handleOrganizationLeft = (organizationId) => {
@@ -101,6 +102,10 @@ const handleOrganizationLeft = (organizationId) => {
 
 const handleCreateRequest = (organizationId) => {
   emit('create-request', organizationId);
+};
+
+const handleViewDetails = (organizationId) => {
+  emit('view-details', organizationId);
 };
 </script>
 

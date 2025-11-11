@@ -42,7 +42,8 @@
 
     <!-- Empty state -->
     <div v-else class="text-center py-12">
-      <SpeakerWaveIcon class="h-16 w-16 mx-auto mb-4 text-gray-300" />
+      <LockClosedIcon v-if="hasAccessError" class="h-16 w-16 mx-auto mb-4 text-amber-400" />
+      <SpeakerWaveIcon v-else class="h-16 w-16 mx-auto mb-4 text-gray-300" />
       <h3 class="text-lg font-medium text-gray-900 mb-2">
         {{ getEmptyStateTitle }}
       </h3>
@@ -52,15 +53,46 @@
       
 
       <!-- Info about organization communication -->
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+      <div 
+        :class="[
+          hasAccessError 
+            ? 'bg-amber-50 border-amber-200' 
+            : 'bg-blue-50 border-blue-200',
+          'border rounded-lg p-4 max-w-md mx-auto'
+        ]"
+      >
         <div class="flex">
-          <InformationCircleIcon class="h-5 w-5 text-blue-400 mt-0.5" />
+          <InformationCircleIcon 
+            :class="[
+              hasAccessError ? 'text-amber-400' : 'text-blue-400',
+              'h-5 w-5 mt-0.5'
+            ]" 
+          />
           <div class="ml-3 text-left">
-            <h5 class="text-sm font-medium text-blue-800">Sobre los anuncios</h5>
-            <div class="mt-1 text-sm text-blue-700 space-y-1">
-              <p>• Los líderes de la organización pueden publicar anuncios importantes</p>
-              <p>• Revisa esta sección regularmente para mantenerte informado</p>
-              <p>• Los anuncios fijados aparecen en la parte superior</p>
+            <h5 
+              :class="[
+                hasAccessError ? 'text-amber-800' : 'text-blue-800',
+                'text-sm font-medium'
+              ]"
+            >
+              {{ hasAccessError ? '¿Cómo acceder?' : 'Sobre los anuncios' }}
+            </h5>
+            <div 
+              :class="[
+                hasAccessError ? 'text-amber-700' : 'text-blue-700',
+                'mt-1 text-sm space-y-1'
+              ]"
+            >
+              <template v-if="hasAccessError">
+                <p>• Acepta una invitación pendiente de una organización</p>
+                <p>• Solicita unirte a una organización existente</p>
+                <p>• Contacta al líder de la organización para recibir una invitación</p>
+              </template>
+              <template v-else>
+                <p>• Los líderes de la organización pueden publicar anuncios importantes</p>
+                <p>• Revisa esta sección regularmente para mantenerte informado</p>
+                <p>• Los anuncios fijados aparecen en la parte superior</p>
+              </template>
             </div>
           </div>
         </div>
@@ -75,7 +107,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { 
   SpeakerWaveIcon, 
   ArrowPathIcon, 
-  InformationCircleIcon
+  InformationCircleIcon,
+  LockClosedIcon
 } from '@heroicons/vue/24/outline';
 import { useOrganizationPostsStore } from '@/stores/organization_posts';
 import { showNotification } from '@/shared/notification_message';
@@ -95,6 +128,8 @@ const props = defineProps({
 const postsStore = useOrganizationPostsStore();
 
 // Reactive state
+const loadError = ref(null);
+const hasAccessError = ref(false);
 
 // Computed properties
 const isLoading = computed(() => postsStore.isLoadingPosts);
@@ -110,20 +145,37 @@ const regularPosts = computed(() => {
 });
 
 const getEmptyStateTitle = computed(() => {
+  if (hasAccessError.value) {
+    return 'No tienes acceso a estos anuncios';
+  }
   return 'No hay anuncios disponibles';
 });
 
 const getEmptyStateMessage = computed(() => {
+  if (hasAccessError.value) {
+    return 'Para ver los anuncios de una organización, primero debes ser miembro activo de ella. Acepta una invitación o solicita unirte a una organización.';
+  }
   return 'La organización aún no ha publicado ningún anuncio. Los anuncios importantes aparecerán aquí.';
 });
 
 // Methods
 const loadPosts = async () => {
   try {
+    loadError.value = null;
+    hasAccessError.value = false;
     await postsStore.getPublicPosts(props.organizationId);
   } catch (error) {
     console.error('Error loading posts:', error);
-    showNotification('Error al cargar los anuncios', 'error');
+    loadError.value = error;
+    
+    // Check if it's an access denied error (403)
+    if (error.response?.status === 403) {
+      hasAccessError.value = true;
+      // Don't show error notification for access denied, just show friendly message
+    } else {
+      // For other errors, show notification
+      showNotification('Error al cargar los anuncios', 'error');
+    }
   }
 };
 

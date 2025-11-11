@@ -39,9 +39,15 @@
           <!-- Quick actions -->
           <div class="mt-4 sm:mt-0 flex space-x-3">
             <button
-              v-if="myMemberships.length > 0"
               @click="openCreateRequestModal"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              :disabled="myMemberships.length === 0"
+              :class="[
+                myMemberships.length === 0
+                  ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white',
+                'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              ]"
+              :title="myMemberships.length === 0 ? 'Debes ser miembro de una organización para crear solicitudes' : ''"
             >
               <PlusIcon class="h-4 w-4 mr-2" />
               Nueva Solicitud
@@ -51,7 +57,7 @@
       </div>
 
       <!-- Organization Posts Section (for organizations the client is a member of) -->
-      <div v-if="myMemberships.length > 0" class="mb-8">
+      <div v-if="myMemberships.length > 0" class="mb-8" ref="postsSection">
         <div class="mb-6">
           <h2 class="text-lg font-medium text-gray-900">Anuncios de Organizaciones</h2>
           <p class="mt-1 text-sm text-gray-600">
@@ -60,7 +66,11 @@
         </div>
         
         <div class="space-y-8">
-          <div v-for="organization in myMemberships" :key="`posts-${organization.id}`">
+          <div 
+            v-for="organization in myMemberships" 
+            :key="`posts-${organization.id}`"
+            :ref="el => setOrganizationRef(el, organization.id)"
+          >
             <!-- Organization Header -->
             <div class="bg-white shadow rounded-lg overflow-hidden">
               <div class="px-6 py-4 border-b border-gray-200">
@@ -92,20 +102,28 @@
           <button
             v-for="tab in tabs"
             :key="tab.id"
-            @click="activeTab = tab.id"
+            @click="!tab.disabled && (activeTab = tab.id)"
+            :disabled="tab.disabled"
             :class="[
-              activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
+              tab.disabled
+                ? 'border-transparent text-gray-300 cursor-not-allowed'
+                : activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors'
             ]"
+            :title="tab.disabled ? 'Debes ser miembro de al menos una organización para acceder a esta sección' : ''"
           >
             <component :is="tab.icon" class="h-5 w-5 mr-2 inline" />
             {{ tab.name }}
             <span
               v-if="tab.count !== undefined"
               :class="[
-                activeTab === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-900',
+                tab.disabled
+                  ? 'bg-gray-100 text-gray-400'
+                  : activeTab === tab.id 
+                    ? 'bg-blue-100 text-blue-600' 
+                    : 'bg-gray-100 text-gray-900',
                 'ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium'
               ]"
             >
@@ -124,6 +142,7 @@
             :is-loading="organizationsStore.isLoading"
             @organization-left="handleOrganizationLeft"
             @create-request="openCreateRequestModal"
+            @view-details="handleViewOrganizationDetails"
           />
         </div>
 
@@ -159,7 +178,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { useCorporateRequestsStore } from '@/stores/corporate_requests';
@@ -192,6 +211,7 @@ import userAvatar from '@/assets/images/user_avatar.jpg';
 // Reactive state
 const activeTab = ref('organizations');
 const showCreateRequestModal = ref(false);
+const organizationRefs = ref({});
 
 // Computed properties
 const isLoading = computed(() => 
@@ -208,19 +228,22 @@ const tabs = computed(() => [
     id: 'organizations',
     name: 'Mis Organizaciones',
     icon: BuildingOfficeIcon,
-    count: myMemberships.value.length
+    count: myMemberships.value.length,
+    disabled: false
   },
   {
     id: 'requests',
     name: 'Mis Solicitudes',
     icon: ClipboardDocumentListIcon,
-    count: myRequests.value.length
+    count: myRequests.value.length,
+    disabled: myMemberships.value.length === 0 // Disabled if no memberships
   },
   {
     id: 'invitations',
     name: 'Invitaciones',
     icon: EnvelopeIcon,
-    count: myInvitations.value.filter(inv => inv.status === 'PENDING').length
+    count: myInvitations.value.filter(inv => inv.status === 'PENDING').length,
+    disabled: false
   }
 ]);
 
@@ -235,26 +258,40 @@ const loadData = async () => {
       return;
     }
     
-    if (userRole !== 'client') {
-      console.error('User is not a client, cannot load client dashboard data');
+    if (userRole !== 'client' && userRole !== 'basic') {
+      console.error('User is not a client or basic user, cannot load dashboard data');
       return;
     }
     
-    console.log('Loading client dashboard data...');
+    console.log('Loading dashboard data for role:', userRole);
     
-    await Promise.all([
+    // Load data with individual error handling
+    const results = await Promise.allSettled([
       organizationsStore.getMyInvitations(),
       organizationsStore.getMyMemberships(),
       requestsStore.getMyRequests({ page_size: 50 })
     ]);
     
-    console.log('Client dashboard data loaded successfully');
+    // Check for errors in each request
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const errorNames = ['invitations', 'memberships', 'requests'];
+        console.error(`Error loading ${errorNames[index]}:`, result.reason);
+        
+        // Don't show error for requests if user has no memberships (403 is expected)
+        if (index === 2 && result.reason?.response?.status === 403) {
+          console.log('User may not have organization memberships yet, skipping request load');
+        }
+      }
+    });
+    
+    console.log('Dashboard data loaded successfully');
   } catch (error) {
-    console.error('Error loading client dashboard data:', error);
+    console.error('Error loading dashboard data:', error);
     
     // Show user-friendly error message based on error type
     if (error.response?.status === 403) {
-      console.error('Access denied. User may not have client permissions.');
+      console.error('Access denied. User may not have proper permissions.');
     } else if (error.response?.status === 401) {
       console.error('Authentication error. User may need to log in again.');
     }
@@ -303,6 +340,44 @@ const viewRequestDetail = (requestId) => {
   });
 };
 
+const setOrganizationRef = (el, organizationId) => {
+  if (el) {
+    organizationRefs.value[organizationId] = el;
+  }
+};
+
+const handleViewOrganizationDetails = (organizationId) => {
+  // Scroll to the organization's posts section
+  const organizationElement = organizationRefs.value[organizationId];
+  if (organizationElement) {
+    // Get the element's position
+    const elementPosition = organizationElement.getBoundingClientRect().top + window.pageYOffset;
+    
+    // Calculate offset to show the section header (adjust 150px up to show "Anuncios de Organizaciones")
+    const offsetPosition = elementPosition - 150;
+    
+    // Smooth scroll to position
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    });
+    
+    // Add a highlight effect
+    organizationElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+    setTimeout(() => {
+      organizationElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+    }, 2000);
+  }
+};
+
+// Watchers
+watch(myMemberships, (newMemberships) => {
+  // If user has no memberships and is on requests tab, switch to organizations tab
+  if (newMemberships.length === 0 && activeTab.value === 'requests') {
+    activeTab.value = 'organizations';
+  }
+});
+
 // Lifecycle
 onMounted(async () => {
   console.log('ClientDashboard mounted');
@@ -317,10 +392,10 @@ onMounted(async () => {
   const userRole = userStore.currentUser?.role;
   console.log('Current user role:', userRole);
   
-  if (userRole === 'client') {
+  if (userRole === 'client' || userRole === 'basic') {
     loadData();
   } else {
-    console.error('User does not have client role. Current role:', userRole);
+    console.error('User does not have client or basic role. Current role:', userRole);
   }
 });
 </script>

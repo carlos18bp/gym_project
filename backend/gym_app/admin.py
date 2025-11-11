@@ -293,7 +293,7 @@ class OrganizationInvitationAdmin(admin.ModelAdmin):
     get_invited_by_name.admin_order_field = 'invited_by__email'
     
     def get_is_expired(self, obj):
-        return "Sí" if obj.is_expired() else "No"
+        return obj.is_expired()
     get_is_expired.short_description = 'Expirada'
     get_is_expired.boolean = True
 

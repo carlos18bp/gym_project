@@ -142,7 +142,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['left', 'create-request']);
+const emit = defineEmits(['left', 'create-request', 'view-details']);
 
 // Store
 const organizationsStore = useOrganizationsStore();
@@ -157,8 +157,8 @@ const createRequest = () => {
 };
 
 const viewDetails = () => {
-  // TODO: Implement organization details view
-  console.log('View organization details:', props.organization.id);
+  // Emit event to parent to scroll to organization posts section
+  emit('view-details', props.organization.id);
 };
 
 const leaveOrganization = async () => {
