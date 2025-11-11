@@ -85,21 +85,46 @@ class UserBasicInfoSerializer(serializers.ModelSerializer):
     Basic user information serializer for corporate requests.
     """
     full_name = serializers.SerializerMethodField()
+    profile_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role']
+        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role', 'profile_image_url']
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_profile_image_url(self, obj):
+        """Get the full URL for the user's profile image"""
+        if obj.photo_profile:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo_profile.url)
+            # If no request context, build URL with MEDIA_URL
+            from django.conf import settings
+            return f"{settings.MEDIA_URL}{obj.photo_profile.name}"
+        return None
 
 class OrganizationBasicInfoSerializer(serializers.ModelSerializer):
     """
     Basic organization information serializer for corporate requests.
     """
+    profile_image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Organization
-        fields = ['id', 'title', 'profile_image', 'cover_image']
+        fields = ['id', 'title', 'profile_image', 'profile_image_url', 'cover_image']
+
+    def get_profile_image_url(self, obj):
+        """Get the full URL for the profile image"""
+        if obj.profile_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_image.url)
+            # If no request context, build URL with MEDIA_URL
+            from django.conf import settings
+            return f"{settings.MEDIA_URL}{obj.profile_image.name}"
+        return None
 
 class CorporateRequestSerializer(serializers.ModelSerializer):
     """
@@ -179,11 +204,10 @@ class CorporateRequestListSerializer(serializers.ModelSerializer):
     """
     Simplified serializer for listing corporate requests.
     """
-    client_email = serializers.CharField(source='client.email', read_only=True)
-    client_name = serializers.SerializerMethodField()
+    client_info = UserBasicInfoSerializer(source='client', read_only=True)
     corporate_client_email = serializers.CharField(source='corporate_client.email', read_only=True)
     corporate_client_name = serializers.SerializerMethodField()
-    organization_title = serializers.CharField(source='organization.title', read_only=True)
+    organization_info = OrganizationBasicInfoSerializer(source='organization', read_only=True)
     request_type_name = serializers.CharField(source='request_type.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
@@ -193,10 +217,10 @@ class CorporateRequestListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CorporateRequest
         fields = [
-            'id', 'request_number', 'title', 'status', 'status_display', 
+            'id', 'request_number', 'title', 'status', 'status_display',
             'priority', 'priority_display', 'created_at', 'status_updated_at',
-            'client_email', 'client_name', 'corporate_client_email', 'corporate_client_name',
-            'organization_title', 'request_type_name', 'days_since_created', 'response_count'
+            'client_info', 'corporate_client_email', 'corporate_client_name',
+            'organization_info', 'request_type_name', 'days_since_created', 'response_count'
         ]
 
     def get_client_name(self, obj):

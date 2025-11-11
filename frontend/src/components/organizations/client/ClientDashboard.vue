@@ -65,8 +65,8 @@
             <div class="bg-white shadow rounded-lg overflow-hidden">
               <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center space-x-4">
-                  <img 
-                    :src="organization.profile_image || '/src/assets/images/user_avatar.jpg'" 
+                  <img
+                    :src="organization.profile_image_url || userAvatar"
                     :alt="`Logo de ${organization.title}`"
                     class="h-12 w-12 rounded-full object-cover bg-gray-100"
                   />
@@ -185,6 +185,9 @@ const organizationsStore = useOrganizationsStore();
 const requestsStore = useCorporateRequestsStore();
 const userStore = useUserStore();
 const router = useRouter();
+
+// Assets
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Reactive state
 const activeTab = ref('organizations');

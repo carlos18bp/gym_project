@@ -12,8 +12,8 @@
       
       <!-- Organization Profile Image -->
       <div class="absolute bottom-3 left-4">
-        <img 
-          :src="organization.profile_image_url || '/src/assets/images/user_avatar.jpg'" 
+        <img
+          :src="organization.profile_image_url || userAvatar"
           :alt="`Logo de ${organization.title}`"
           class="h-12 w-12 rounded-full border-2 border-white object-cover bg-white"
         />
@@ -56,8 +56,8 @@
       <div class="mb-4 p-3 bg-gray-50 rounded-lg">
         <p class="text-xs text-gray-500 mb-1">Líder de la organización</p>
         <div class="flex items-center space-x-2">
-          <img 
-            :src="organization.profile_image_url || '/src/assets/images/user_avatar.jpg'"
+          <img
+            :src="organization.corporate_client_info.profile_image_url || userAvatar"
             :alt="`Avatar de ${organization.corporate_client_info.full_name}`"
             class="h-6 w-6 rounded-full object-cover border border-gray-200"
           />
@@ -131,6 +131,7 @@ import {
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
 import ConfirmationModal from '../../modals/ConfirmationModal.vue';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({

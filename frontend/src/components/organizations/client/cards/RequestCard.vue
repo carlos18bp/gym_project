@@ -95,13 +95,14 @@
 
 <script setup>
 import { computed } from 'vue';
-import { 
-  EyeIcon, 
-  TagIcon, 
-  CalendarIcon, 
-  ChatBubbleLeftIcon, 
-  ClockIcon 
+import {
+  EyeIcon,
+  TagIcon,
+  CalendarIcon,
+  ChatBubbleLeftIcon,
+  ClockIcon
 } from '@heroicons/vue/24/outline';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({
@@ -116,7 +117,7 @@ const emit = defineEmits(['view-detail']);
 
 // Computed properties
 const organizationImage = computed(() => {
-  return props.request.organization_info?.profile_image || '/src/assets/images/user_avatar.jpg';
+  return props.request.organization_info?.profile_image_url || userAvatar;
 });
 
 // Methods

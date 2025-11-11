@@ -133,7 +133,7 @@
                       <!-- Profile Image Preview -->
                       <div class="flex-shrink-0">
                         <img
-                          :src="profileImagePreview || '/src/assets/images/user_avatar.jpg'"
+                          :src="profileImagePreview || userAvatar"
                           alt="Profile preview"
                           class="h-16 w-16 rounded-full object-cover border-2 border-gray-200 bg-gray-50"
                         />
@@ -219,8 +219,8 @@
                       
                       <!-- Profile Preview -->
                       <div class="absolute bottom-2 left-4">
-                        <img 
-                          :src="profileImagePreview || '/src/assets/images/user_avatar.jpg'" 
+                        <img
+                          :src="profileImagePreview || userAvatar"
                           alt="Logo preview"
                           class="h-12 w-12 rounded-full border-2 border-white object-cover bg-white"
                         />
@@ -301,6 +301,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({

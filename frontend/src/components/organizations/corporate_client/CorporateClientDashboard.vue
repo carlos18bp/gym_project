@@ -128,19 +128,20 @@
         <div v-for="organization in organizations" :key="organization.id" class="bg-white shadow rounded-lg overflow-hidden">
           <!-- Organization Header with Cover Image -->
           <div class="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
-            <img 
-              v-if="organization.cover_image_url" 
-              :src="organization.cover_image_url" 
+            <img
+              v-if="organization.cover_image_url"
+              :src="organization.cover_image_url"
               :alt="`Portada de ${organization.title}`"
               class="w-full h-full object-cover"
             />
+
             <div class="absolute inset-0 bg-black bg-opacity-30"></div>
-            
+
             <!-- Organization Profile Image -->
             <div class="absolute bottom-4 left-6">
               <div class="relative">
-                <img 
-                  :src="organization.profile_image_url || '/src/assets/images/user_avatar.jpg'" 
+                <img
+                  :src="organization.profile_image_url || userAvatar"
                   :alt="`Logo de ${organization.title}`"
                   class="h-20 w-20 rounded-full border-4 border-white object-cover bg-white"
                 />
@@ -294,6 +295,9 @@ const organizationsStore = useOrganizationsStore();
 const requestsStore = useCorporateRequestsStore();
 const userStore = useUserStore();
 const router = useRouter();
+
+// Assets
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Reactive state
 const showCreateModal = ref(false);

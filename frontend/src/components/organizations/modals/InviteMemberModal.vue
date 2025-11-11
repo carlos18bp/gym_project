@@ -55,7 +55,7 @@
                 <div v-if="organization" class="bg-gray-50 rounded-lg p-4">
                   <div class="flex items-center space-x-3">
                     <img
-                      :src="organization.profile_image_url || '/src/assets/images/user_avatar.jpg'"
+                      :src="organization.profile_image_url || userAvatar"
                       :alt="`Logo de ${organization.title}`"
                       class="h-12 w-12 rounded-full object-cover border-2 border-white"
                     />
@@ -207,6 +207,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({

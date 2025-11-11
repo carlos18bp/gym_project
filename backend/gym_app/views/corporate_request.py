@@ -175,16 +175,16 @@ def client_get_my_corporate_requests(request):
     
     # Order by creation date (newest first)
     queryset = queryset.order_by('-created_at')
-    
+
     # Pagination
     paginator = CorporateRequestPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
+
     if page is not None:
-        serializer = CorporateRequestListSerializer(page, many=True)
+        serializer = CorporateRequestListSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
-    
-    serializer = CorporateRequestListSerializer(queryset, many=True)
+
+    serializer = CorporateRequestListSerializer(queryset, many=True, context={'request': request})
     return Response({
         'corporate_requests': serializer.data,
         'total_count': len(serializer.data)
@@ -308,10 +308,10 @@ def corporate_get_received_requests(request):
     page = paginator.paginate_queryset(queryset, request)
     
     if page is not None:
-        serializer = CorporateRequestListSerializer(page, many=True)
+        serializer = CorporateRequestListSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
-    
-    serializer = CorporateRequestListSerializer(queryset, many=True)
+
+    serializer = CorporateRequestListSerializer(queryset, many=True, context={'request': request})
     return Response({
         'corporate_requests': serializer.data,
         'total_count': len(serializer.data)

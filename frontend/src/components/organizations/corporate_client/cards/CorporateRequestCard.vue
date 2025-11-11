@@ -73,15 +73,15 @@
       <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
         <img
           :src="clientImage"
-          :alt="`Avatar de ${request.client_name}`"
+          :alt="`Avatar de ${request.client_info?.full_name}`"
           class="h-8 w-8 rounded-full object-cover border border-gray-200"
         />
         <div>
           <p class="text-sm font-medium text-gray-900">
-            {{ request.client_name }}
+            {{ request.client_info?.full_name }}
           </p>
           <p class="text-xs text-gray-500">
-            Cliente • {{ request.client_email }}
+            Cliente • {{ request.client_info?.email }}
           </p>
         </div>
       </div>
@@ -150,14 +150,15 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { 
-  EyeIcon, 
-  TagIcon, 
-  CalendarIcon, 
-  ChatBubbleLeftIcon, 
-  ClockIcon, 
-  ArrowPathIcon 
+import {
+  EyeIcon,
+  TagIcon,
+  CalendarIcon,
+  ChatBubbleLeftIcon,
+  ClockIcon,
+  ArrowPathIcon
 } from '@heroicons/vue/24/outline';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({
@@ -176,11 +177,11 @@ const isUpdating = ref(false);
 
 // Computed properties
 const clientImage = computed(() => {
-  return '/src/assets/images/user_avatar.jpg'; // Default client avatar
+  return props.request.client_info?.profile_image_url || userAvatar;
 });
 
 const organizationImage = computed(() => {
-  return props.request.organization_info?.profile_image || '/src/assets/images/user_avatar.jpg';
+  return props.request.organization_info?.profile_image_url || userAvatar;
 });
 
 const availableStatuses = computed(() => [

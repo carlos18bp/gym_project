@@ -284,7 +284,7 @@
             <h3 class="text-lg font-medium text-gray-900 mb-4">Organización</h3>
             <div class="flex items-center space-x-3">
               <img
-                :src="request.organization_info.profile_image || '/src/assets/images/user_avatar.jpg'"
+                :src="request.organization_info.profile_image_url || userAvatar"
                 :alt="`Logo de ${request.organization_info.title}`"
                 class="h-10 w-10 rounded-full object-cover border border-gray-200"
               />
@@ -339,6 +339,7 @@ import {
 import { useCorporateRequestsStore } from '@/stores/corporate_requests';
 import { useUserStore } from '@/stores/auth/user';
 import { showNotification } from '@/shared/notification_message';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Stores
 const requestsStore = useCorporateRequestsStore();
@@ -358,9 +359,9 @@ const isUpdatingStatus = ref(false);
 
 // Computed properties
 const userRole = computed(() => userStore.currentUser?.role);
-const clientAvatar = computed(() => '/src/assets/images/user_avatar.jpg');
-const corporateClientAvatar = computed(() => '/src/assets/images/user_avatar.jpg');
-const assignedToAvatar = computed(() => '/src/assets/images/user_avatar.jpg');
+const clientAvatar = computed(() => request.value?.client_info?.profile_image_url || userAvatar);
+const corporateClientAvatar = computed(() => request.value?.corporate_client_info?.profile_image_url || userAvatar);
+const assignedToAvatar = computed(() => request.value?.assigned_to_info?.profile_image_url || userAvatar);
 
 // Methods
 const loadRequestDetail = async () => {
