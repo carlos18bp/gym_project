@@ -276,7 +276,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr
-                v-for="process in filteredAndSortedProcesses"
+                v-for="(process, index) in filteredAndSortedProcesses"
                 :key="process.id"
                 class="hover:bg-gray-50 transition-colors cursor-pointer"
                 @click="goToProcessDetail(process.id)"
@@ -329,7 +329,13 @@
                     <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                       <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                     </MenuButton>
-                    <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <MenuItems 
+                      :class="[
+                        index >= filteredAndSortedProcesses.length - 3 
+                          ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                          : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                      ]"
+                    >
                       <div class="py-1">
                         <MenuItem v-slot="{ active }">
                           <router-link
