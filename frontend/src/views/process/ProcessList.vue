@@ -562,13 +562,17 @@ const filteredAndSortedProcesses = computed(() => {
   // Apply sorting
   if (sortBy.value === 'name') {
     processes.sort((a, b) => {
-      const nameA = `${a.client?.first_name} ${a.client?.last_name}`.toLowerCase();
-      const nameB = `${b.client?.first_name} ${b.client?.last_name}`.toLowerCase();
+      const nameA = `${a.client?.first_name || ''} ${a.client?.last_name || ''}`.toLowerCase();
+      const nameB = `${b.client?.first_name || ''} ${b.client?.last_name || ''}`.toLowerCase();
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    // Most recent first (assuming processes are already in order, or sort by ID desc)
-    processes.sort((a, b) => b.id - a.id);
+    // Most recent first - sort by created_at date
+    processes.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA; // Descending order (newest first)
+    });
   }
 
   return processes;
