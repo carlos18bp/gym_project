@@ -61,25 +61,29 @@
             </div>
           </div>
 
-          <div class="bg-white overflow-hidden shadow rounded-lg">
+          <button
+            @click="openAllMembersModal"
+            class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow cursor-pointer text-left w-full group"
+            :title="'Ver todos los miembros de tus organizaciones'"
+          >
             <div class="p-5">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
-                  <UsersIcon class="h-6 w-6 text-gray-400" />
+                  <UsersIcon class="h-6 w-6 text-gray-400 group-hover:text-blue-600 transition-colors" />
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 truncate">
+                    <dt class="text-sm font-medium text-gray-500 truncate group-hover:text-blue-600 transition-colors">
                       Miembros Totales
                     </dt>
-                    <dd class="text-lg font-medium text-gray-900">
+                    <dd class="text-lg font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                       {{ organizationStats.total_members }}
                     </dd>
                   </dl>
                 </div>
               </div>
             </div>
-          </div>
+          </button>
 
           <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-5">
@@ -174,10 +178,16 @@
                 
                 <!-- Organization Metrics -->
                 <div class="flex items-center space-x-6 text-sm text-gray-500 mb-4">
-                  <div class="flex items-center">
-                    <UsersIcon class="h-4 w-4 mr-1" />
-                    {{ organization.member_count }} miembros
-                  </div>
+                  <button
+                    @click="openMembersModal(organization)"
+                    class="flex items-center hover:text-blue-600 transition-colors cursor-pointer group"
+                    :title="`Ver lista de miembros de ${organization.title}`"
+                  >
+                    <UsersIcon class="h-4 w-4 mr-1 group-hover:text-blue-600" />
+                    <span class="group-hover:underline">
+                      {{ organization.member_count }} miembros
+                    </span>
+                  </button>
                   <div class="flex items-center">
                     <EnvelopeIcon class="h-4 w-4 mr-1" />
                     {{ organization.pending_invitations_count }} invitaciones pendientes
@@ -260,6 +270,18 @@
       @close="closeInviteModal"
       @invited="handleMemberInvited"
     />
+
+    <MembersListModal
+      :visible="showMembersModal"
+      :organization="selectedOrganizationForMembers"
+      @close="closeMembersModal"
+    />
+
+    <AllMembersModal
+      :visible="showAllMembersModal"
+      :organizations="organizations"
+      @close="closeAllMembersModal"
+    />
   </div>
 </template>
 
@@ -287,6 +309,8 @@ import {
 import CreateOrganizationModal from '../modals/CreateOrganizationModal.vue';
 import EditOrganizationModal from '../modals/EditOrganizationModal.vue';
 import InviteMemberModal from '../modals/InviteMemberModal.vue';
+import MembersListModal from '../modals/MembersListModal.vue';
+import AllMembersModal from '../modals/AllMembersModal.vue';
 import ReceivedRequestsSection from './sections/ReceivedRequestsSection.vue';
 import OrganizationPostsSection from './sections/OrganizationPostsSection.vue';
 
@@ -303,7 +327,10 @@ import userAvatar from '@/assets/images/user_avatar.jpg';
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showInviteModal = ref(false);
+const showMembersModal = ref(false);
+const showAllMembersModal = ref(false);
 const selectedOrganization = ref(null);
+const selectedOrganizationForMembers = ref(null);
 
 // Computed properties
 const isLoading = computed(() => organizationsStore.isLoading || requestsStore.isLoadingRequests);
@@ -369,6 +396,24 @@ const openInviteMemberModal = (organization) => {
 const closeInviteModal = () => {
   showInviteModal.value = false;
   selectedOrganization.value = null;
+};
+
+const openMembersModal = (organization) => {
+  selectedOrganizationForMembers.value = organization;
+  showMembersModal.value = true;
+};
+
+const openAllMembersModal = () => {
+  showAllMembersModal.value = true;
+};
+
+const closeAllMembersModal = () => {
+  showAllMembersModal.value = false;
+};
+
+const closeMembersModal = () => {
+  showMembersModal.value = false;
+  selectedOrganizationForMembers.value = null;
 };
 
 const openCreateOrganizationModal = () => {
