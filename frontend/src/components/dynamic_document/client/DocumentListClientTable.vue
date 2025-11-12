@@ -220,7 +220,14 @@
                       
                       <!-- Gestionar Membrete -->
                       <MenuItem v-slot="{ active }">
-                        <a @click="handleLetterhead(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                        <a 
+                          @click="handleLetterhead(document)" 
+                          :class="[
+                            active ? 'bg-gray-100' : '', 
+                            currentUser?.role === 'basic' ? 'opacity-60 cursor-not-allowed text-gray-400' : 'text-gray-700 cursor-pointer',
+                            'block px-4 py-2 text-sm'
+                          ]"
+                        >
                           Gestionar Membrete
                         </a>
                       </MenuItem>
@@ -407,12 +414,16 @@ import EditDocumentModal from "@/components/dynamic_document/cards/modals/EditDo
 import SendDocumentModal from "@/components/dynamic_document/cards/modals/SendDocumentModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import { useBasicUserRestrictions } from "@/composables/useBasicUserRestrictions";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
 const router = useRouter();
 
 const emit = defineEmits(['refresh', 'open-letterhead', 'open-relationships']);
+
+// Basic user restrictions
+const { handleFeatureAccess } = useBasicUserRestrictions();
 
 // Setup modals and actions
 const { activeModals, openModal, closeModal } = useCardModals(documentStore, userStore);
@@ -750,7 +761,9 @@ const handleDelete = async (document) => {
 };
 
 const handleLetterhead = (document) => {
-  openModal('letterhead', document);
+  handleFeatureAccess('Membrete Individual', () => {
+    openModal('letterhead', document);
+  });
 };
 
 const handleRelationships = (document) => {
