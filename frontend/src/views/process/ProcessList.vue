@@ -10,7 +10,8 @@
       <!-- Tabs Navigation -->
       <div class="border-b border-gray-200 mb-6">
         <div class="flex items-center justify-between">
-          <nav class="-mb-px flex space-x-8">
+          <!-- Desktop Tabs -->
+          <nav class="-mb-px hidden sm:flex space-x-8">
             <button
               @click="activeTab = 'my_processes'"
               :class="[
@@ -46,6 +47,53 @@
               Procesos Archivados
             </button>
           </nav>
+
+          <!-- Mobile Dropdown -->
+          <div class="sm:hidden flex-1">
+            <Menu as="div" class="relative">
+              <MenuButton class="w-full inline-flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <span>{{ getActiveTabLabel() }}</span>
+                <ChevronDownIcon class="h-5 w-5 ml-2" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-full origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'my_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Mis Procesos
+                    </button>
+                  </MenuItem>
+                  <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'all_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Todos los Procesos
+                    </button>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'archived_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Procesos Archivados
+                    </button>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+          </div>
           
           <!-- Nueva Solicitud Button - Only for clients -->
           <button
@@ -241,7 +289,7 @@
 
       <!-- Table -->
       <div v-if="filteredAndSortedProcesses.length" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" :class="filteredAndSortedProcesses.length <= 3 ? 'pl-52' : ''">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
@@ -329,13 +377,15 @@
                     <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                       <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                     </MenuButton>
-                    <MenuItems 
-                      :class="[
-                        index >= filteredAndSortedProcesses.length - 3 
+                  <MenuItems
+                    :class="[
+                      filteredAndSortedProcesses.length <= 3
+                        ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                        : index >= filteredAndSortedProcesses.length - 3
                           ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
                           : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                      ]"
-                    >
+                    ]"
+                  >
                       <div class="py-1">
                         <MenuItem v-slot="{ active }">
                           <router-link
@@ -631,6 +681,20 @@ const selectAll = () => {
 
 const deselectAll = () => {
   selectedProcesses.value = [];
+};
+
+// Get active tab label for mobile dropdown
+const getActiveTabLabel = () => {
+  switch (activeTab.value) {
+    case 'my_processes':
+      return 'Mis Procesos';
+    case 'all_processes':
+      return 'Todos los Procesos';
+    case 'archived_processes':
+      return 'Procesos Archivados';
+    default:
+      return 'Mis Procesos';
+  }
 };
 
 // Navigation

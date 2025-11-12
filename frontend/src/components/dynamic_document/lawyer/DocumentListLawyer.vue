@@ -1,110 +1,117 @@
 <template>
   <div>
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-      <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <!-- Left side: Search and Filters -->
-        <div class="flex flex-col sm:flex-row gap-3 flex-1 w-full lg:w-auto">
-          <!-- Search -->
-          <div class="relative flex-1 min-w-[200px]">
-            <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              v-model="localSearchQuery"
-              type="text"
-              placeholder="Buscar..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent"
-            />
-          </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+      <!-- Search Bar -->
+      <div class="mb-4">
+        <div class="relative w-full">
+          <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            v-model="localSearchQuery"
+            type="text"
+            placeholder="Buscar..."
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+          />
+        </div>
+      </div>
 
-          <!-- Filter Dropdowns -->
-          <Menu as="div" class="relative">
-            <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-              <FunnelIcon class="h-4 w-4" />
-              <span class="max-w-[120px] truncate">{{ filterByState || 'Estado' }}</span>
-              <ChevronDownIcon class="h-4 w-4" />
-            </MenuButton>
-            <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              <div class="py-1">
+      <!-- Filters Section -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <Menu as="div" class="relative">
+          <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <div class="flex items-center gap-2 min-w-0">
+              <FunnelIcon class="h-4 w-4 flex-shrink-0" />
+              <span class="truncate">{{ filterByState || 'Estado' }}</span>
+            </div>
+            <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
+          </MenuButton>
+          <MenuItems class="absolute left-0 z-10 mt-2 w-full min-w-[14rem] origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <div class="py-1">
+              <MenuItem v-slot="{ active }">
+                <a @click="filterByState = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                  Todos
+                </a>
+              </MenuItem>
+              <MenuItem v-for="state in documentStates" :key="state" v-slot="{ active }">
+                <a @click="filterByState = state" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                  {{ getStateLabel(state) }}
+                </a>
+              </MenuItem>
+            </div>
+          </MenuItems>
+        </Menu>
+
+        <Menu as="div" class="relative">
+          <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <div class="flex items-center gap-2 min-w-0">
+              <FunnelIcon class="h-4 w-4 flex-shrink-0" />
+              <span class="truncate">{{ selectedTagName || 'Etiqueta' }}</span>
+            </div>
+            <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
+          </MenuButton>
+          <MenuItems class="absolute left-0 z-10 mt-2 w-full min-w-[16rem] origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <div class="p-2">
+              <!-- Search input -->
+              <div class="relative mb-2">
+                <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  v-model="tagSearchQuery"
+                  type="text"
+                  placeholder="Buscar etiquetas..."
+                  class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent"
+                  @click.stop
+                />
+              </div>
+              <!-- Tags list -->
+              <div class="max-h-60 overflow-y-auto">
                 <MenuItem v-slot="{ active }">
-                  <a @click="filterByState = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                  <a @click="filterByTag = null" :class="[active ? 'bg-gray-100' : '', 'block px-3 py-2 text-sm text-gray-700 cursor-pointer rounded-md']">
                     Todos
                   </a>
                 </MenuItem>
-                <MenuItem v-for="state in documentStates" :key="state" v-slot="{ active }">
-                  <a @click="filterByState = state" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                    {{ getStateLabel(state) }}
+                <MenuItem v-for="tag in filteredAvailableTags" :key="tag.id" v-slot="{ active }">
+                  <a @click="filterByTag = tag.id" :class="[active ? 'bg-gray-100' : '', 'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer rounded-md']">
+                    <span class="w-3 h-3 rounded-full flex-shrink-0" :class="getTagColorClass(tag)"></span>
+                    <span class="truncate">{{ tag.name }}</span>
                   </a>
                 </MenuItem>
-              </div>
-            </MenuItems>
-          </Menu>
-
-          <Menu as="div" class="relative">
-            <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-              <FunnelIcon class="h-4 w-4" />
-              <span class="max-w-[120px] truncate">{{ selectedTagName || 'Etiqueta' }}</span>
-              <ChevronDownIcon class="h-4 w-4" />
-            </MenuButton>
-            <MenuItems class="absolute left-0 z-10 mt-2 w-64 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              <div class="p-2">
-                <!-- Search input -->
-                <div class="relative mb-2">
-                  <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    v-model="tagSearchQuery"
-                    type="text"
-                    placeholder="Buscar etiquetas..."
-                    class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent"
-                    @click.stop
-                  />
-                </div>
-                <!-- Tags list -->
-                <div class="max-h-60 overflow-y-auto">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filterByTag = null" :class="[active ? 'bg-gray-100' : '', 'block px-3 py-2 text-sm text-gray-700 cursor-pointer rounded-md']">
-                      Todos
-                    </a>
-                  </MenuItem>
-                  <MenuItem v-for="tag in filteredAvailableTags" :key="tag.id" v-slot="{ active }">
-                    <a @click="filterByTag = tag.id" :class="[active ? 'bg-gray-100' : '', 'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer rounded-md']">
-                      <span class="w-3 h-3 rounded-full flex-shrink-0" :class="getTagColorClass(tag)"></span>
-                      <span class="truncate">{{ tag.name }}</span>
-                    </a>
-                  </MenuItem>
-                  <div v-if="filteredAvailableTags.length === 0" class="px-3 py-2 text-sm text-gray-500 text-center">
-                    No se encontraron etiquetas
-                  </div>
+                <div v-if="filteredAvailableTags.length === 0" class="px-3 py-2 text-sm text-gray-500 text-center">
+                  No se encontraron etiquetas
                 </div>
               </div>
-            </MenuItems>
-          </Menu>
+            </div>
+          </MenuItems>
+        </Menu>
 
-          <!-- Clear filters button -->
+        <div class="flex items-center justify-stretch">
           <button
             v-if="filterByState || filterByTag"
             @click="clearFilters"
-            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             title="Limpiar filtros"
           >
-            <XMarkIcon class="h-4 w-4" />
-            Limpiar
+            <XMarkIcon class="h-4 w-4 flex-shrink-0" />
+            <span>Limpiar</span>
           </button>
         </div>
+      </div>
 
-        <!-- Right side: Sort and Actions -->
-        <div class="flex items-center gap-3 w-full lg:w-auto">
-          <!-- Results count -->
-          <span class="text-sm text-gray-500 whitespace-nowrap">
-            Mostrando {{ filteredAndSortedDocuments.length }} resultados
-          </span>
+      <!-- Actions Section -->
+      <div class="flex flex-col gap-3 pt-4 border-t border-gray-200">
+        <!-- Top row: Results count and Sort -->
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <!-- Left side: Results count -->
+          <div class="text-sm text-gray-500">
+            <span class="font-medium">{{ filteredAndSortedDocuments.length }}</span> resultados
+          </div>
 
-          <!-- Sort -->
+          <!-- Right side: Sort -->
           <Menu as="div" class="relative">
-            <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Ordenar: {{ sortLabel }}
+            <MenuButton class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <span class="hidden sm:inline">Ordenar:</span> {{ sortLabel }}
               <ChevronDownIcon class="h-4 w-4" />
             </MenuButton>
-            <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div class="py-1">
                 <MenuItem v-slot="{ active }">
                   <a @click="sortBy = 'recent'" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -119,14 +126,17 @@
               </div>
             </MenuItems>
           </Menu>
+        </div>
 
+        <!-- Bottom row: Action buttons -->
+        <div class="flex items-center gap-2">
           <!-- Export Button -->
           <button
             @click="exportDocuments"
-            class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <ArrowDownTrayIcon class="h-4 w-4" />
-            Exportar
+            <span class="hidden sm:inline">Exportar</span>
           </button>
 
           <!-- More options -->
@@ -134,7 +144,7 @@
             <MenuButton class="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-gray-100">
               <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
             </MenuButton>
-            <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div class="py-1">
                 <MenuItem v-slot="{ active }">
                   <a @click="selectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -181,7 +191,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr
-              v-for="document in filteredAndSortedDocuments"
+              v-for="(document, index) in filteredAndSortedDocuments"
               :key="document.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
               @click="handleDocumentClick(document)"
@@ -229,7 +239,15 @@
                   <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                     <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                   </MenuButton>
-                  <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <MenuItems
+                    :class="[
+                      filteredAndSortedDocuments.length <= 3
+                        ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                        : index >= filteredAndSortedDocuments.length - 3
+                          ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                          : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                    ]"
+                  >
                     <div class="py-1">
                       <MenuItem v-slot="{ active }">
                         <a @click="handleDocumentClick(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -287,7 +305,7 @@ import { showNotification } from "@/shared/notification_message";
 import { get_request } from "@/stores/services/request_http";
 import { DocumentCard } from "@/components/dynamic_document/cards";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
-import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
+import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -853,14 +871,14 @@ const exportDocuments = () => {
 
 // Handle document click
 const handleDocumentClick = (document) => {
-  // Navigate to document detail or open modal
-  router.push({ name: 'dynamic_document_detail', params: { id: document.id } });
+  // Open document preview modal
+  openPreviewModal(document);
 };
 
 // Handle edit document
 const handleEditDocument = (document) => {
-  // Open edit modal or navigate to edit view
-  router.push({ name: 'dynamic_document_edit', params: { id: document.id } });
+  // Navigate to document editor
+  router.push(`/dynamic_document_dashboard/lawyer/editor/edit/${document.id}`);
 };
 </script>
 

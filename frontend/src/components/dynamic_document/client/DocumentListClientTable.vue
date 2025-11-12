@@ -103,7 +103,7 @@
     </div>
 
     <!-- Table -->
-    <div style="overflow: visible !important;">
+    <div style="overflow: visible !important;" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''">
       <div style="overflow: visible !important;">
         <table class="min-w-full divide-y divide-gray-200" style="overflow: visible !important;">
           <thead class="bg-gray-50">
@@ -125,7 +125,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200" style="overflow: visible !important;">
             <tr
-              v-for="document in filteredAndSortedDocuments"
+              v-for="(document, index) in filteredAndSortedDocuments"
               :key="document.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
               style="overflow: visible !important;"
@@ -177,7 +177,15 @@
                   <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                     <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                   </MenuButton>
-                  <MenuItems class="absolute right-0 z-[9999] mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <MenuItems
+                    :class="[
+                      filteredAndSortedDocuments.length <= 3
+                        ? 'absolute right-full mr-2 top-0 z-[9999] w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                        : index >= filteredAndSortedDocuments.length - 3
+                          ? 'absolute right-0 z-[9999] bottom-full mb-2 w-56 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                          : 'absolute right-0 z-[9999] mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                    ]"
+                  >
                     <div class="py-1">
                       <!-- Editar / Completar -->
                       <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
@@ -328,18 +336,14 @@ const {
   downloadWordDocument
 } = useDocumentActions(documentStore, userStore, emit);
 
-// Debug: watch activeModals
+// Watch activeModals changes
 watch(activeModals, (newVal) => {
-  console.log('activeModals changed:', newVal);
+  // Handle activeModals changes
 }, { deep: true });
 
-// Debug: log on mount
+// Initialize component
 onMounted(() => {
-  console.log('DocumentListClientTable mounted');
-  console.log('activeModals:', activeModals.value);
-  console.log('openModal function:', openModal);
-  console.log('LetterheadModal component:', LetterheadModal);
-  console.log('DocumentRelationshipsModal component:', DocumentRelationshipsModal);
+  // Component initialization
 });
 
 const props = defineProps({
@@ -554,47 +558,38 @@ const handleDocumentClick = (document) => {
 
 // Menu action handlers
 const handleEditForm = (document) => {
-  console.log('handleEditForm called', document);
   openModal('edit', document, { userRole: userStore.currentUser?.role || 'client' });
 };
 
 const handleEditDocument = (document) => {
-  console.log('handleEditDocument called', document);
   router.push(`/dynamic_document_dashboard/client/editor/edit/${document.id}`);
 };
 
 const handlePreview = async (document) => {
-  console.log('handlePreview called', document);
   await handlePreviewDocument(document);
 };
 
 const handleDelete = async (document) => {
-  console.log('handleDelete called', document);
   await deleteDocument(document);
 };
 
 const handleLetterhead = (document) => {
-  console.log('handleLetterhead called', document);
   openModal('letterhead', document);
 };
 
 const handleRelationships = (document) => {
-  console.log('handleRelationships called', document);
   openModal('relationships', document);
 };
 
 const handleDownloadPDF = async (document) => {
-  console.log('handleDownloadPDF called', document);
   await downloadPDFDocument(document);
 };
 
 const handleDownloadWord = async (document) => {
-  console.log('handleDownloadWord called', document);
   await downloadWordDocument(document);
 };
 
 const handleEmail = (document) => {
-  console.log('handleEmail called', document);
   openModal('email', document);
 };
 </script>
