@@ -314,7 +314,7 @@
                   Dte./Accionante
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Dte./Accionado
+                  Ddo./Accionado
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Etapa
@@ -892,7 +892,7 @@ const exportProcesses = () => {
     : filteredAndSortedProcesses.value;
 
   // Create CSV content
-  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Dte./Accionado', 'Etapa'];
+  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Ddo./Accionado', 'Etapa'];
   const rows = processesToExport.map(process => [
     `${process.client?.first_name || ''} ${process.client?.last_name || ''}`,
     process.client?.email || '',
