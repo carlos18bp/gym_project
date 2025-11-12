@@ -205,7 +205,7 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import {
   MagnifyingGlassIcon,
@@ -370,7 +370,11 @@ const clearFilters = () => {
 
 // Handle document click
 const handleDocumentClick = (document) => {
-  const editRoute = `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodeURIComponent(document.title.trim())}`;
+  // If it's a template (Published without assigned_to), use creator route to create a copy
+  // Otherwise, use editor route to edit existing document
+  const isTemplate = document.state === 'Published' && !document.assigned_to;
+  const routeType = isTemplate ? 'creator' : 'editor';
+  const editRoute = `/dynamic_document_dashboard/document/use/${routeType}/${document.id}/${encodeURIComponent(document.title.trim())}`;
   router.push(editRoute);
 };
 
@@ -378,4 +382,13 @@ const handleDocumentClick = (document) => {
 const goBack = () => {
   emit('go-back');
 };
+
+// Initialize store when component mounts
+onMounted(async () => {
+  // Ensure documents are loaded
+  if (!documentStore.documents || documentStore.documents.length === 0) {
+    await documentStore.init(true);
+  }
+});
+
 </script>

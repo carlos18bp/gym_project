@@ -136,6 +136,7 @@ class DynamicDocument(models.Model):
         Check if user has visibility permissions for this document.
         
         Lawyers always have access. Public documents are accessible to all users.
+        Published documents without assigned_to are templates visible to all clients.
         For other users, check visibility permissions.
         
         Args:
@@ -152,6 +153,10 @@ class DynamicDocument(models.Model):
         if self.created_by == user:
             return True
             
+        # Published documents without assigned_to are templates visible to all clients
+        if self.state == 'Published' and self.assigned_to is None:
+            return True
+            
         # Public documents are accessible to all authenticated users
         if self.is_public:
             return True
@@ -164,6 +169,7 @@ class DynamicDocument(models.Model):
         Check if user has usability permissions for this document.
         
         Lawyers always have access. Public documents grant edit access to all users.
+        Published documents without assigned_to are templates usable by all clients.
         For other users, check usability permissions.
         
         Args:
@@ -178,6 +184,10 @@ class DynamicDocument(models.Model):
             
         # Document creator always has access
         if self.created_by == user:
+            return True
+            
+        # Published documents without assigned_to are templates usable by all clients
+        if self.state == 'Published' and self.assigned_to is None:
             return True
             
         # Public documents grant edit access to all authenticated users
@@ -204,6 +214,10 @@ class DynamicDocument(models.Model):
         # Document creator is owner
         if self.created_by == user:
             return 'owner'
+        
+        # Published documents without assigned_to are templates usable by all clients
+        if self.state == 'Published' and self.assigned_to is None:
+            return 'usability'
         
         # Check usability permissions (explicit permissions take precedence over public access)
         if self.usability_permissions.filter(user=user).exists():

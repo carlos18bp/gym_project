@@ -195,6 +195,7 @@
             <button
               @click.stop="handleSection('useDocument')"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+              type="button"
             >
               <PlusIcon class="h-4 w-4" />
               Nuevo Documento
@@ -259,6 +260,7 @@
           <button
             @click.stop="handleSection('useDocument')"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+            type="button"
           >
             <PlusIcon class="h-5 w-5" />
             Nuevo Documento
@@ -468,10 +470,19 @@ const filteredDocuments = computed(() => {
  *
  * @param {string} message - The selected section name.
  */
-const handleSection = (message) => {
+const handleSection = async (message) => {
   currentSection.value = message;
   // Clear any selected document when changing sections
   documentStore.selectedDocument = null;
+  
+  // If switching to useDocument section, ensure documents are loaded
+  if (message === 'useDocument') {
+    try {
+      await documentStore.init(true); // Force refresh to get latest published documents
+    } catch (error) {
+      console.error('Error loading documents for useDocument section:', error);
+    }
+  }
 };
 
 /**

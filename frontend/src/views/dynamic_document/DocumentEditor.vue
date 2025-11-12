@@ -27,6 +27,11 @@ const isClient = computed(() => {
   return route.path.includes('/client/editor/') || userStore.currentUser?.role !== 'lawyer';
 });
 
+// Detect if we're creating from a template (creator route) vs editing existing document (editor route)
+const isCreatingFromTemplate = computed(() => {
+  return route.path.includes('/creator/');
+});
+
 // Store the original content with variables
 const originalContent = ref("");
 const processedContent = ref("");
@@ -145,29 +150,121 @@ const syncVariables = (variables) => {
 };
 
 /**
- * Save the document content (for clients) - preserves original state
+ * Save the document content (for clients) - creates a copy if editing a template
  */
 const saveDocumentContent = async () => {
   try {
     const contentToSave = convertProtectedSpansToVariables(editorContent.value);
     
     if (store.selectedDocument) {
-      // Preserve original state and other properties, only update content
-      const updatedDocument = {
-        ...store.selectedDocument,
-        content: contentToSave
-        // Deliberately NOT changing state - preserve original
-      };
+      const document = store.selectedDocument;
       
-      const response = await store.updateDocument(store.selectedDocument.id, updatedDocument);
+      // Get current user (use getCurrentUser getter, not currentUser property)
+      const currentUser = userStore.getCurrentUser;
       
-      if (response) {
-        await showNotification("Documento guardado exitosamente.", "success");
+      // Check if this document belongs to the current user
+      // Convert both to strings for comparison to handle type mismatches
+      const documentAssignedToId = document.assigned_to ? String(document.assigned_to) : null;
+      const currentUserId = currentUser?.id ? String(currentUser.id) : null;
+      const documentBelongsToUser = documentAssignedToId && currentUserId && documentAssignedToId === currentUserId;
+      
+      // Check if it's a template (Published without assigned_to)
+      const isTemplate = document.state === 'Published' && !document.assigned_to;
+      
+      // IMPORTANT: If the original document is a template (Published without assigned_to),
+      // ALWAYS create a copy, even if we're editing a document that was previously created from this template.
+      // This ensures that each time a user works with a template, they get a fresh copy.
+      // Only update if:
+      // 1. We're NOT creating from template route AND
+      // 2. The document belongs to the user AND
+      // 3. The document is NOT a template (has assigned_to or state is not Published)
+      const shouldCreateCopy = isCreatingFromTemplate.value || isTemplate || !documentBelongsToUser;
+      
+      // Create a copy if we're creating from template OR if document doesn't belong to user OR is a template
+      if (shouldCreateCopy) {
+        // Get current user (use getCurrentUser getter)
+        const currentUser = userStore.getCurrentUser;
+        let userId = currentUser?.id;
         
-        // Redirect to documents dashboard after successful save
-        setTimeout(() => {
+        // Try alternative ways to get user ID
+        if (!userId) {
+          userId = userStore.getCurrentUser?.id;
+        }
+        if (!userId && currentUser) {
+          userId = currentUser.id;
+        }
+        
+        if (!userId) {
+          await showNotification("Error: No se pudo identificar al usuario. Por favor, recarga la página.", "error");
+          return;
+        }
+        
+        // Create a new document copy for the client
+        // IMPORTANT: Build the object step by step to ensure no state/assigned_to leakage
+        // NEVER copy state or assigned_to from the original document
+        const documentToCreate = {
+          title: String(document.title || 'Untitled'),
+          content: String(contentToSave || ''),
+          state: 'Progress', // ALWAYS Progress - hardcoded, never copied
+          assigned_to: Number(userId), // ALWAYS current user ID - hardcoded, never copied
+          variables: Array.isArray(document.variables) ? document.variables.map(v => ({
+            name_en: v.name_en || '',
+            name_es: v.name_es || '',
+            tooltip: v.tooltip || '',
+            field_type: v.field_type || 'input',
+            value: v.value || '',
+            select_options: v.select_options || null
+          })) : [],
+          tag_ids: Array.isArray(document.tags) ? document.tags.map(t => {
+            const tagId = typeof t === 'object' ? t.id : t;
+            return Number(tagId);
+          }).filter(id => !isNaN(id)) : [],
+          requires_signature: Boolean(document.requires_signature || false),
+          is_public: false
+        };
+        
+        // Final validation - ensure state and assigned_to are correct
+        if (documentToCreate.state !== 'Progress') {
+          documentToCreate.state = 'Progress';
+        }
+        if (!documentToCreate.assigned_to || documentToCreate.assigned_to !== userId) {
+          documentToCreate.assigned_to = Number(userId);
+        }
+        
+        const response = await store.createDocument(documentToCreate);
+        
+        if (response && response.id) {
+          await showNotification("Documento creado exitosamente desde la plantilla.", "success");
+          
+          // Refresh the store to include the new document
+          await store.init(true);
+          
+          // Wait a bit more to ensure store is updated
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // Redirect to documents dashboard after successful save
           window.location.href = '/dynamic_document_dashboard';
-        }, 500);
+        } else {
+          console.error('Failed to create document - no ID returned:', response);
+          await showNotification("Error: No se pudo crear el documento.", "error");
+        }
+      } else {
+        // Update existing document (client's own document)
+        const updatedDocument = {
+          ...document,
+          content: contentToSave
+        };
+        
+        const response = await store.updateDocument(document.id, updatedDocument);
+        
+        if (response) {
+          await showNotification("Documento guardado exitosamente.", "success");
+          
+          // Redirect to documents dashboard after successful save
+          setTimeout(() => {
+            window.location.href = '/dynamic_document_dashboard';
+          }, 500);
+        }
       }
     } else {
       await showNotification("Error: No se encontró el documento para guardar.", "error");

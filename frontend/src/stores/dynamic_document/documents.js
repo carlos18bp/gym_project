@@ -177,6 +177,12 @@ export const documentActions = {
    */
   async createDocument(documentData) {
     try {
+      // Ensure state and assigned_to are correct (safety check for client documents)
+      if (documentData.state !== 'Progress' && documentData.state !== 'Draft' && documentData.assigned_to) {
+        // If document has assigned_to (client document), force Progress state
+        documentData.state = 'Progress';
+      }
+      
       const response = await create_request("dynamic-documents/create/", documentData);
       
       // Add to the local data

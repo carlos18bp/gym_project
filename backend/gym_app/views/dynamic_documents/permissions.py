@@ -234,6 +234,7 @@ def filter_documents_by_visibility(view_func):
     Decorator that filters document lists based on user visibility permissions.
     
     Lawyers see all documents. Other users see only documents they have visibility for.
+    Published documents without assigned_to are visible to all clients (templates).
     
     Args:
         view_func: The view function to protect (must return documents queryset)
@@ -259,10 +260,17 @@ def filter_documents_by_visibility(view_func):
             
             for doc_data in response.data:
                 doc_id = doc_data.get('id')
+                doc_state = doc_data.get('state')
+                doc_assigned_to = doc_data.get('assigned_to')
+                
                 if doc_id:
                     try:
                         document = DynamicDocument.objects.get(pk=doc_id)
-                        if document.can_view(user):
+                        
+                        # Published documents without assigned_to are templates visible to all clients
+                        is_template = (doc_state == 'Published' and doc_assigned_to is None)
+                        
+                        if is_template or document.can_view(user):
                             filtered_documents.append(doc_data)
                     except DynamicDocument.DoesNotExist:
                         continue

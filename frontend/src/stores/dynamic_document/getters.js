@@ -107,10 +107,11 @@ export const getters = {
       return [];
     }
 
+    const queryClientId = String(clientId);
+    
     const filteredDocs = state.documents.filter(
       (doc) => {
         const docClientId = doc.assigned_to ? String(doc.assigned_to) : null;
-        const queryClientId = String(clientId);
         
         const matches = docClientId === queryClientId && 
                       (doc.state === "Progress" || doc.state === "Completed");
