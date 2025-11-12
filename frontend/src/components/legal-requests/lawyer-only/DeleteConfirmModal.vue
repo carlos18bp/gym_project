@@ -41,27 +41,37 @@
       <!-- Confirmation input -->
       <div class="mb-6">
         <label class="block text-sm font-medium text-gray-700 mb-2">
-          Para confirmar, escribe "ELIMINAR":
+          Para confirmar, escribe "eliminar":
         </label>
         <input
           v-model="confirmationText"
           type="text"
-          placeholder="ELIMINAR"
+          placeholder="eliminar"
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          @keyup.enter="handleEnterKey"
         />
+        <p v-if="confirmationText && !isConfirmationValid" class="mt-1 text-xs text-red-600">
+          Debes escribir exactamente "eliminar" para confirmar
+        </p>
+      </div>
+
+      <!-- Error message -->
+      <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        <p class="text-sm text-red-800">{{ errorMessage }}</p>
       </div>
 
       <!-- Actions -->
       <div class="flex justify-end space-x-3">
         <button
           @click="$emit('close')"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+          :disabled="deleting"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancelar
         </button>
         <button
           @click="deleteRequest"
-          :disabled="confirmationText !== 'ELIMINAR' || deleting"
+          :disabled="!isConfirmationValid || deleting"
           class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
         >
           {{ deleting ? 'Eliminando...' : 'Eliminar Solicitud' }}
@@ -72,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useLegalRequestsStore } from '@/stores/legal/legal_requests_management.js'
@@ -95,15 +105,35 @@ const router = useRouter()
 // Reactive data
 const confirmationText = ref('')
 const deleting = ref(false)
+const errorMessage = ref('')
+
+// Computed
+const isConfirmationValid = computed(() => {
+  return confirmationText.value.toLowerCase().trim() === 'eliminar'
+})
 
 // Methods
+const handleEnterKey = () => {
+  if (isConfirmationValid.value && !deleting.value) {
+    deleteRequest()
+  }
+}
+
 const deleteRequest = async () => {
-  if (confirmationText.value !== 'ELIMINAR') return
+  if (!isConfirmationValid.value) {
+    errorMessage.value = 'Debes escribir "eliminar" para confirmar'
+    return
+  }
 
   deleting.value = true
+  errorMessage.value = ''
 
   try {
+    console.log(`🗑️ Deleting legal request ID: ${props.request.id}`)
+    
     await legalRequestsStore.deleteRequest(props.request.id)
+    
+    console.log('✅ Solicitud eliminada exitosamente')
     
     emit('deleted')
     
@@ -114,12 +144,17 @@ const deleteRequest = async () => {
     console.log('🔄 Redirigiendo a lista de solicitudes...')
     window.location.href = '/legal_requests_list'
     
-    // Show success notification
-    console.log('✅ Solicitud eliminada exitosamente')
-    
   } catch (error) {
-    console.error('Error deleting request:', error)
-    // Show error notification
+    console.error('❌ Error deleting request:', error)
+    
+    // Set user-friendly error message
+    errorMessage.value = error.message || 'Error al eliminar la solicitud. Por favor intenta nuevamente.'
+    
+    // Log detailed error for debugging
+    if (error.response) {
+      console.error('Response status:', error.response.status)
+      console.error('Response data:', error.response.data)
+    }
   } finally {
     deleting.value = false
   }

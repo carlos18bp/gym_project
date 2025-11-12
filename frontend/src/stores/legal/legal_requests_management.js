@@ -184,11 +184,16 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
      */
     async deleteRequest(requestId) {
       try {
+        console.log(`🗑️ Attempting to delete legal request ID: ${requestId}`)
+        
+        // Use the explicit delete endpoint for better reliability
         const response = await delete_request(
-          `legal_requests/${requestId}/`
+          `legal_requests/${requestId}/delete/`
         )
 
-        if (response.status === 200) {
+        console.log(`✅ Delete response status: ${response.status}`, response.data)
+
+        if (response.status === 200 || response.status === 204) {
           // Remove from local state
           this.requests = this.requests.filter(r => r.id !== requestId)
           
@@ -200,11 +205,29 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
           return true
         }
 
-        throw new Error('Failed to delete request')
+        throw new Error(`Failed to delete request: Status ${response.status}`)
 
       } catch (error) {
-        console.error('Error deleting request:', error)
-        throw error
+        console.error('❌ Error deleting request:', error)
+        
+        // Log detailed error information
+        if (error.response) {
+          console.error('Response status:', error.response.status)
+          console.error('Response data:', error.response.data)
+          console.error('Response headers:', error.response.headers)
+        } else if (error.request) {
+          console.error('Request made but no response received:', error.request)
+        } else {
+          console.error('Error setting up request:', error.message)
+        }
+        
+        // Re-throw with more context
+        const errorMessage = error.response?.data?.detail || 
+                           error.response?.data?.message || 
+                           error.message || 
+                           'Error desconocido al eliminar la solicitud'
+        
+        throw new Error(errorMessage)
       }
     },
 
