@@ -1,1 +1,1 @@
-import{ai as o}from"./index.js";function e(i="Procesando...",s="Por favor espere, estamos procesando la solicitud."){o.fire({title:i,text:s,iconColor:"#FFF",allowOutsideClick:!1,showConfirmButton:!1,didOpen:()=>{o.showLoading()}})}function n(){o.close()}export{n as h,e as s};
+import{aj as o}from"./index.js";function i(s="Procesando...",a="Por favor espere, estamos procesando la solicitud."){o.fire({title:s,text:a,iconColor:"#FFF",allowOutsideClick:!1,showConfirmButton:!1,didOpen:()=>{o.showLoading()}})}function n(){o.close()}export{n as h,i as s};
