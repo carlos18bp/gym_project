@@ -140,8 +140,8 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" style="overflow-x: visible; overflow-y: hidden;">
+      <div class="overflow-x-auto" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''" style="overflow-y: visible;">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -162,7 +162,6 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
-              <th scope="col" class="w-16 px-6 py-3"></th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -209,35 +208,6 @@
                   </span>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
-                <Menu as="div" class="relative inline-block text-left">
-                  <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
-                    <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
-                  </MenuButton>
-                  <MenuItems
-                    :class="[
-                      paginatedDocuments.length <= 3
-                        ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                        : index >= paginatedDocuments.length - 3
-                          ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                          : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                    ]"
-                  >
-                    <div class="py-1">
-                      <MenuItem v-slot="{ active }">
-                        <a @click="handleDocumentClick(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Ver detalles
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-if="state === 'PendingSignatures'" v-slot="{ active }">
-                        <a @click="handleSignDocument(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Firmar
-                        </a>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </Menu>
               </td>
             </tr>
           </tbody>
@@ -349,6 +319,36 @@
       :documentData="previewDocumentData"
       @close="showPreviewModal = false"
     />
+
+    <!-- Modals using centralized system -->
+    <teleport to="body">
+      <DocumentSignaturesModal
+        v-if="activeModals.signatures.isOpen"
+        :document-id="activeModals.signatures.document?.id"
+        @close="closeModal('signatures')"
+        @refresh="emit('refresh')"
+      />
+      
+      <LetterheadModal
+        v-if="activeModals.letterhead.isOpen"
+        :is-visible="activeModals.letterhead.isOpen"
+        :document="activeModals.letterhead.document"
+        @close="closeModal('letterhead')"
+        @uploaded="emit('refresh')"
+        @deleted="emit('refresh')"
+      />
+      
+      <DocumentActionsModal
+        v-if="showActionsModal"
+        :is-visible="showActionsModal"
+        :document="selectedDocumentForActions"
+        card-type="signatures"
+        context="table"
+        :user-store="userStore"
+        @close="showActionsModal = false"
+        @action="handleModalAction"
+      />
+    </teleport>
   </div>
 </template>
 
@@ -374,6 +374,10 @@ import { get_request } from "@/stores/services/request_http";
 import { showNotification } from "@/shared/notification_message";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
+import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/menuOptionsHelper";
+import { useCardModals, useDocumentActions, SendDocumentModal, DocumentSignaturesModal } from "@/components/dynamic_document/cards";
+import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 
 // Props
 const props = defineProps({
@@ -399,6 +403,15 @@ const emit = defineEmits(['refresh']);
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
 const router = useRouter();
+
+// Initialize centralized modal and actions system
+const { activeModals, openModal, closeModal, getUserRole } = useCardModals(documentStore, userStore);
+const {
+  handlePreviewDocument,
+  downloadPDFDocument,
+  signDocument,
+  downloadSignedDocument
+} = useDocumentActions(documentStore, userStore, emit);
 
 // Reactive state
 const documents = ref([]);
@@ -734,12 +747,62 @@ const exportDocuments = () => {
 };
 
 // Handle document click
+const showActionsModal = ref(false);
+const selectedDocumentForActions = ref(null);
+
 const handleDocumentClick = (document) => {
-  // Navigate to document editor in view mode
-  router.push(`/dynamic_document_dashboard/lawyer/editor/edit/${document.id}`);
+  // Open actions modal instead of navigating
+  selectedDocumentForActions.value = document;
+  showActionsModal.value = true;
+};
+
+const handleModalAction = async (action, document) => {
+  showActionsModal.value = false;
+  await handleMenuAction(action, document);
 };
 
 // Handle sign document
+// Get menu options for a document
+const getMenuOptionsForDocument = (document) => {
+  return getMenuOptionsForCardType('signatures', document, 'list', userStore);
+};
+
+// Handle menu action
+const handleMenuAction = async (action, document) => {
+  try {
+    switch (action) {
+      case "preview":
+        await handlePreviewDocument(document);
+        break;
+        
+      case "letterhead":
+        openModal('letterhead', document);
+        break;
+        
+      case "viewSignatures":
+        openModal('signatures', document);
+        break;
+        
+      case "sign":
+        await signDocument(document, openModal);
+        break;
+        
+      case "downloadSignedDocument":
+        await downloadSignedDocument(document);
+        break;
+        
+      case "downloadPDF":
+        await downloadPDFDocument(document);
+        break;
+        
+      default:
+        console.warn("Unknown action:", action);
+    }
+  } catch (error) {
+    console.error(`Error executing action ${action}:`, error);
+  }
+};
+
 const handleSignDocument = (document) => {
   router.push({ name: 'sign_document', params: { id: document.id } });
 };

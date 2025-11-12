@@ -5,6 +5,7 @@ import {
   delete_request,
   upload_file_request,
 } from "../services/request_http";
+import axios from "axios";
 import { downloadFile } from "@/shared/document_utils";
 import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
@@ -367,14 +368,34 @@ export const documentActions = {
    * @returns {Promise<Object>} - Image response
    */
   async getLetterheadImage(documentId, responseType = 'blob') {
+    // Use axios directly to handle 404 silently without logging from request_http.js
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const token = localStorage.getItem('token');
+    
+    const headers = {
+      'X-CSRFToken': csrfToken,
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+    
     try {
-      const response = await get_request(
-        `dynamic-documents/${documentId}/letterhead/`,
-        responseType
+      const response = await axios.get(
+        `/api/dynamic-documents/${documentId}/letterhead/`,
+        { 
+          headers, 
+          responseType,
+          // Don't treat 404 as an error - it's expected when document has no letterhead
+          validateStatus: (status) => status === 200 || status === 404
+        }
       );
+      
+      // If 404, return null to indicate no letterhead exists
+      if (response.status === 404) {
+        return null;
+      }
       
       return response;
     } catch (error) {
+      // This should only catch non-404 errors now
       console.error(`Error fetching letterhead image for document ID ${documentId}:`, error);
       throw error;
     }

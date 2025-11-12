@@ -122,8 +122,8 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto" :class="paginatedDocuments.length <= 3 ? 'pl-52' : ''">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" style="overflow-x: visible; overflow-y: hidden;">
+      <div class="overflow-x-auto" :class="paginatedDocuments.length <= 3 ? 'pl-52' : ''" style="overflow-y: visible;">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -147,7 +147,6 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
-              <th scope="col" class="w-16 px-6 py-3"></th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -197,35 +196,6 @@
                   </span>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
-                <Menu as="div" class="relative inline-block text-left">
-                  <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
-                    <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
-                  </MenuButton>
-                  <MenuItems
-                    :class="[
-                      paginatedDocuments.length <= 3
-                        ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                        : index >= paginatedDocuments.length - 3
-                          ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                          : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                    ]"
-                  >
-                    <div class="py-1">
-                      <MenuItem v-slot="{ active }">
-                        <a @click="handleDocumentClick(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Ver detalles
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-slot="{ active }">
-                        <a @click="handleEditDocument(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Editar
-                        </a>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </Menu>
               </td>
             </tr>
           </tbody>
@@ -324,6 +294,51 @@
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay documentos en progreso</h3>
       <p class="mt-1 text-sm text-gray-500">Los documentos en progreso por clientes aparecerán aquí.</p>
     </div>
+
+    <!-- Modals using centralized system -->
+    <teleport to="body">
+      <EditDocumentModal
+        v-if="activeModals.edit.isOpen"
+        :document="activeModals.edit.document"
+        :user-role="getUserRole()"
+        @close="closeModal('edit')"
+        @refresh="emit('refresh')"
+      />
+      
+      <SendDocumentModal
+        v-if="activeModals.email.isOpen"
+        :document="activeModals.email.document"
+        @close="closeModal('email')"
+      />
+      
+      <LetterheadModal
+        v-if="activeModals.letterhead.isOpen"
+        :is-visible="activeModals.letterhead.isOpen"
+        :document="activeModals.letterhead.document"
+        @close="closeModal('letterhead')"
+        @uploaded="emit('refresh')"
+        @deleted="emit('refresh')"
+      />
+      
+      <DocumentRelationshipsModal
+        v-if="activeModals.relationships.isOpen"
+        :is-open="activeModals.relationships.isOpen"
+        :document="activeModals.relationships.document"
+        @close="closeModal('relationships')"
+        @refresh="emit('refresh')"
+      />
+      
+      <DocumentActionsModal
+        v-if="showActionsModal"
+        :is-visible="showActionsModal"
+        :document="selectedDocumentForActions"
+        card-type="client"
+        context="table"
+        :user-store="userStore"
+        @close="showActionsModal = false"
+        @action="handleModalAction"
+      />
+    </teleport>
   </div>
 </template>
 
@@ -345,6 +360,11 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
+import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/menuOptionsHelper";
+import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal } from "@/components/dynamic_document/cards";
+import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
@@ -359,6 +379,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['refresh']);
+
+// Initialize centralized modal and actions system
+const { activeModals, openModal, closeModal, getUserRole } = useCardModals(documentStore, userStore);
+const {
+  handlePreviewDocument,
+  deleteDocument,
+  downloadPDFDocument,
+  downloadWordDocument
+} = useDocumentActions(documentStore, userStore, emit);
 
 // Local state
 const localSearchQuery = ref("");
@@ -628,10 +657,72 @@ const exportDocuments = () => {
   document.body.removeChild(link);
 };
 
+// Get menu options for a document
+const getMenuOptionsForDocument = (document) => {
+  return getMenuOptionsForCardType('client', document, 'list', userStore);
+};
+
+// Handle menu action
+const handleMenuAction = async (action, document) => {
+  try {
+    switch (action) {
+      case "editForm":
+        openModal('edit', document, { userRole: getUserRole() });
+        break;
+        
+      case "editDocument":
+        router.push(`/dynamic_document_dashboard/client/editor/edit/${document.id}`);
+        break;
+        
+      case "preview":
+        await handlePreviewDocument(document);
+        break;
+        
+      case "delete":
+        await deleteDocument(document);
+        break;
+        
+      case "letterhead":
+        openModal('letterhead', document);
+        break;
+        
+      case "relationships":
+        openModal('relationships', document);
+        break;
+        
+      case "downloadPDF":
+        await downloadPDFDocument(document);
+        break;
+        
+      case "downloadWord":
+        await downloadWordDocument(document);
+        break;
+        
+      case "email":
+        openModal('email', document);
+        break;
+        
+      default:
+        console.warn("Unknown action:", action);
+    }
+  } catch (error) {
+    console.error(`Error executing action ${action}:`, error);
+  }
+};
+
 // Handle document click
+const showActionsModal = ref(false);
+const selectedDocumentForActions = ref(null);
+
 const handleDocumentClick = (document) => {
-  const editRoute = `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodeURIComponent(document.title.trim())}`;
-  router.push(editRoute);
+  // Open actions modal instead of navigating
+  selectedDocumentForActions.value = document;
+  showActionsModal.value = true;
+};
+
+const handleModalAction = async (action, document) => {
+  showActionsModal.value = false;
+  await handleMenuAction(action, document);
 };
 
 // Handle edit document
