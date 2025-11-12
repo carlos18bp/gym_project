@@ -191,7 +191,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr
-              v-for="(document, index) in filteredAndSortedDocuments"
+              v-for="(document, index) in paginatedDocuments"
               :key="document.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
               @click="handleDocumentClick(document)"
@@ -241,9 +241,9 @@
                   </MenuButton>
                   <MenuItems
                     :class="[
-                      filteredAndSortedDocuments.length <= 3
+                      paginatedDocuments.length <= 3
                         ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                        : index >= filteredAndSortedDocuments.length - 3
+                        : index >= paginatedDocuments.length - 3
                           ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
                           : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
                     ]"
@@ -268,12 +268,97 @@
         </table>
       </div>
 
-      <!-- Empty State -->
-      <div v-if="filteredAndSortedDocuments.length === 0" class="text-center py-12">
-        <CubeTransparentIcon class="mx-auto h-12 w-12 text-gray-400" />
-        <h3 class="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
-        <p class="mt-1 text-sm text-gray-500">No se encontraron documentos con los filtros seleccionados.</p>
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div class="flex flex-1 justify-between sm:hidden">
+          <button
+            @click="previousPage"
+            :disabled="currentPage === 1"
+            :class="[
+              'relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50',
+              currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+            ]"
+          >
+            Anterior
+          </button>
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages"
+            :class="[
+              'relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50',
+              currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+            ]"
+          >
+            Siguiente
+          </button>
+        </div>
+        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-gray-700">
+              Mostrando
+              <span class="font-medium">{{ paginationInfo.start }}</span>
+              a
+              <span class="font-medium">{{ paginationInfo.end }}</span>
+              de
+              <span class="font-medium">{{ paginationInfo.total }}</span>
+              resultados
+            </p>
+          </div>
+          <div>
+            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+              <button
+                @click="previousPage"
+                :disabled="currentPage === 1"
+                :class="[
+                  'relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                  currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                ]"
+              >
+                <span class="sr-only">Anterior</span>
+                <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
+              </button>
+              <template v-for="page in visiblePages" :key="page">
+                <button
+                  v-if="page !== '...'"
+                  @click="goToPage(page)"
+                  :class="[
+                    'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0',
+                    currentPage === page
+                      ? 'z-10 bg-secondary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary'
+                      : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                  ]"
+                >
+                  {{ page }}
+                </button>
+                <span
+                  v-else
+                  class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700"
+                >
+                  ...
+                </span>
+              </template>
+              <button
+                @click="nextPage"
+                :disabled="currentPage === totalPages"
+                :class="[
+                  'relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                  currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                ]"
+              >
+                <span class="sr-only">Siguiente</span>
+                <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
+              </button>
+            </nav>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-if="filteredAndSortedDocuments.length === 0" class="text-center py-12">
+      <CubeTransparentIcon class="mx-auto h-12 w-12 text-gray-400" />
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
+      <p class="mt-1 text-sm text-gray-500">No se encontraron documentos con los filtros seleccionados.</p>
     </div>
 
     <!-- Modal de previsualización -->
@@ -297,7 +382,9 @@ import {
   EllipsisVerticalIcon,
   CubeTransparentIcon,
   XMarkIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
@@ -339,6 +426,10 @@ const sortBy = ref('recent');
 
 // Selection state
 const selectedDocuments = ref([]);
+
+// Pagination state
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
 
 // --- Helper functions for DocumentCard props ---
 
@@ -583,6 +674,30 @@ const filteredAndSortedDocuments = computed(() => {
   }
 
   return documents;
+});
+
+// Paginated documents
+const paginatedDocuments = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredAndSortedDocuments.value.slice(start, end);
+});
+
+// Total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredAndSortedDocuments.value.length / itemsPerPage.value);
+});
+
+// Pagination info
+const paginationInfo = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
+  const end = Math.min(currentPage.value * itemsPerPage.value, filteredAndSortedDocuments.value.length);
+  return { start, end, total: filteredAndSortedDocuments.value.length };
+});
+
+// Reset to first page when filters change
+watch([localSearchQuery, filterByState, filterByTag], () => {
+  currentPage.value = 1;
 });
 
 // Sort label
@@ -837,6 +952,67 @@ const clearFilters = () => {
   filterByState.value = null;
   filterByTag.value = null;
 };
+
+// Pagination methods
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+// Visible pages for pagination (show max 7 pages)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const pages = [];
+  
+  if (total <= 7) {
+    // Show all pages if total is 7 or less
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Show pages with ellipsis logic
+    if (current <= 4) {
+      // Show first 5 pages, then ellipsis, then last page
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 3) {
+      // Show first page, ellipsis, then last 5 pages
+      pages.push(1);
+      pages.push('...');
+      for (let i = total - 4; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show first page, ellipsis, current-1, current, current+1, ellipsis, last page
+      pages.push(1);
+      pages.push('...');
+      pages.push(current - 1);
+      pages.push(current);
+      pages.push(current + 1);
+      pages.push('...');
+      pages.push(total);
+    }
+  }
+  
+  return pages;
+});
 
 // Export function
 const exportDocuments = () => {
