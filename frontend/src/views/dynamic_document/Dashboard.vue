@@ -179,15 +179,27 @@
           <!-- Action Buttons (Desktop) -->
           <div class="flex items-center gap-2 mb-4">
             <button
-              @click.stop="showElectronicSignatureModal = true"
-              class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors border border-purple-200"
+              @click.stop="handleElectronicSignatureClick"
+              :disabled="isBasicUser"
+              :class="[
+                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                isBasicUser 
+                  ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                  : 'text-purple-600 hover:bg-purple-50 border-purple-200'
+              ]"
             >
               <FingerPrintIcon class="h-4 w-4" />
               Firma Electrónica
             </button>
             <button
-              @click.stop="showGlobalLetterheadModal = true"
-              class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-green-200"
+              @click.stop="handleGlobalLetterheadClick"
+              :disabled="isBasicUser"
+              :class="[
+                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                isBasicUser 
+                  ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                  : 'text-green-600 hover:bg-green-50 border-green-200'
+              ]"
             >
               <DocumentTextIcon class="h-4 w-4" />
               Membrete Global
@@ -244,15 +256,27 @@
         <!-- Mobile Action Buttons -->
         <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
           <button
-            @click.stop="showElectronicSignatureModal = true"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+            @click.stop="handleElectronicSignatureClick"
+            :disabled="isBasicUser"
+            :class="[
+              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+              isBasicUser 
+                ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+            ]"
           >
             <FingerPrintIcon class="h-5 w-5" />
             Firma Electrónica
           </button>
           <button
-            @click.stop="showGlobalLetterheadModal = true"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+            @click.stop="handleGlobalLetterheadClick"
+            :disabled="isBasicUser"
+            :class="[
+              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+              isBasicUser 
+                ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                : 'text-green-600 bg-green-50 hover:bg-green-100'
+            ]"
           >
             <DocumentTextIcon class="h-5 w-5" />
             Membrete Global
@@ -392,12 +416,16 @@ import GlobalLetterheadModal from "@/components/dynamic_document/common/GlobalLe
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
+import { useBasicUserRestrictions } from "@/composables/useBasicUserRestrictions";
 
 // Store instances
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
 const folderStore = useDocumentFolderStore();
 const router = useRouter();
+
+// Basic user restrictions
+const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
 
 // Reactive state
 const searchQuery = ref("");
@@ -501,6 +529,24 @@ const closeModal = () => {
  */
 const handleRefresh = async () => {
   await documentStore.init(true);
+};
+
+/**
+ * Handle electronic signature button click with basic user restriction
+ */
+const handleElectronicSignatureClick = () => {
+  handleFeatureAccess('Firma Electrónica', () => {
+    showElectronicSignatureModal.value = true;
+  });
+};
+
+/**
+ * Handle global letterhead button click with basic user restriction
+ */
+const handleGlobalLetterheadClick = () => {
+  handleFeatureAccess('Membrete Global', () => {
+    showGlobalLetterheadModal.value = true;
+  });
 };
 
 // selectLawyerTab function removed - dropdown functionality simplified

@@ -79,6 +79,7 @@
 <script setup>
 import { computed } from 'vue';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
+import { useBasicUserRestrictions } from '@/composables/useBasicUserRestrictions';
 import {
   XMarkIcon,
   DocumentIcon,
@@ -294,8 +295,28 @@ const getButtonClasses = (action) => {
   return 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300';
 };
 
+// Basic user restrictions
+const { handleFeatureAccess } = useBasicUserRestrictions();
+
 // Handle action click
 const handleAction = (action) => {
+  // Find the option to check if it's disabled
+  const option = menuOptions.value.find(opt => {
+    if (opt.action === action) return opt;
+    if (opt.children) {
+      return opt.children.find(child => child.action === action);
+    }
+    return null;
+  });
+  
+  const actualOption = option?.children ? option.children.find(child => child.action === action) : option;
+  
+  // If option is disabled, show restriction notification
+  if (actualOption?.disabled) {
+    handleFeatureAccess('Esta funcionalidad', null);
+    return;
+  }
+  
   emit('action', action, props.document);
 };
 

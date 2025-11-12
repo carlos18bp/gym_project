@@ -212,7 +212,11 @@ const router = createRouter({
           path: "",
           name: "intranet_g_y_m",
           component: () => import(/* webpackChunkName: "intranet" */ "@/views/intranet_g_y_m/IntranetGyM.vue"),
-          meta: { requiresAuth: true, title: "Intranet G y M" },
+          meta: { 
+            requiresAuth: true, 
+            title: "Intranet G y M",
+            requiresLawyer: true
+          },
         },
       ],
     },
@@ -353,9 +357,11 @@ export function installRouterGuards(authStore) {
         const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
         await userStore.init();
         
-        // Check if the user is a client or basic user trying to access a lawyer-only route
-        if (userStore.currentUser?.role === 'client' || userStore.currentUser?.role === 'basic') {
-          console.warn("Client/Basic user attempting to access lawyer-only route. Redirecting to dashboard.");
+        // Check if the user is a client, basic user, or corporate_client trying to access a lawyer-only route
+        if (userStore.currentUser?.role === 'client' || 
+            userStore.currentUser?.role === 'basic' || 
+            userStore.currentUser?.role === 'corporate_client') {
+          console.warn("Non-lawyer user attempting to access lawyer-only route. Redirecting to dashboard.");
           return next({ name: 'dashboard' });
         }
       }

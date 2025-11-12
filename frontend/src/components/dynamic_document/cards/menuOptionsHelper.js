@@ -153,6 +153,7 @@ const cardConfigs = {
   client: {
     getMenuOptions: (document, context, userStore) => {
       const options = [];
+      const isBasicUser = userStore?.currentUser?.role === 'basic';
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
@@ -193,8 +194,17 @@ const cardConfigs = {
         action: "delete"
       });
 
-      // Add letterhead management option
-      options.push({ label: "Gestionar Membrete", action: "letterhead" });
+      // Add letterhead management option (restricted for basic users)
+      if (!isBasicUser) {
+        options.push({ label: "Gestionar Membrete", action: "letterhead" });
+      } else {
+        // Show disabled option for basic users
+        options.push({ 
+          label: "Gestionar Membrete", 
+          action: "letterhead",
+          disabled: true
+        });
+      }
 
       // Add document relationships management option
       options.push({ label: "Administrar Asociaciones", action: "relationships" });
