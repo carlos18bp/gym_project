@@ -1,46 +1,52 @@
 <template>
-  <!-- Main content -->
-  <div class="p-4 sm:p-6 lg:p-8" style="overflow: visible !important;">
+  <div class="min-h-screen bg-gray-50">
+    <!-- Mobile menu button -->
+    <div class="sticky top-0 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+      <slot></slot>
+    </div>
+
+    <!-- Main content -->
+    <div class="p-4 sm:p-6 lg:p-8">
     <!-- Documents for lawyers -->
-    <div v-if="userRole === 'lawyer'" style="overflow: visible !important;">
+    <div v-if="userRole === 'lawyer'">
       <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
       <div class="mb-6 border-b border-gray-200">
-        <!-- Desktop Tabs with Action Buttons -->
-        <div class="hidden md:flex items-center justify-between -mb-px">
-          <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
+        <!-- Desktop Tabs -->
+        <div class="hidden md:block">
+          <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
             <button
               v-for="tab in lawyerNavigationTabs"
               :key="tab.name"
-              @click="activeLawyerTab = tab.name"
+              @click.stop="selectLawyerTab(tab.name)"
               :class="[
                 activeLawyerTab === tab.name
                   ? 'border-primary text-primary'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
               ]"
             >
               {{ tab.label }}
             </button>
           </nav>
-          
-          <!-- Action Buttons aligned to the right -->
-          <div class="flex gap-3 pb-4">
+
+          <!-- Action Buttons -->
+          <div class="flex gap-3">
             <button
-              @click="showSignatureModal = true"
+              @click.stop="showSignatureModal = true"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
             >
               <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
               <span>Firma Electrónica</span>
             </button>
             <button
-              @click="showGlobalLetterheadModal = true"
+              @click.stop="showGlobalLetterheadModal = true"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
             >
               <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
               <span>Membrete Global</span>
             </button>
             <button
-              @click="showCreateDocumentModal = true"
+              @click.stop="showCreateDocumentModal = true"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
             >
               <PlusIcon class="size-5"></PlusIcon>
@@ -50,31 +56,31 @@
         </div>
 
         <!-- Mobile Dropdown -->
-        <div class="md:hidden space-y-3">
+        <div class="md:hidden space-y-3 relative">
           <button
-            @click="showLawyerDropdown = !showLawyerDropdown"
-            class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            @click.stop="showLawyerDropdown = !showLawyerDropdown"
+            class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <span>{{ lawyerNavigationTabs.find(tab => tab.name === activeLawyerTab)?.label || 'Seleccionar sección' }}</span>
-            <svg 
+            <svg
               :class="['ml-2 h-5 w-5 transition-transform duration-200', showLawyerDropdown ? 'transform rotate-180' : '']"
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
-          
+
           <!-- Dropdown Menu -->
-          <div 
-            v-show="showLawyerDropdown"
-            class="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+          <div
+            v-if="showLawyerDropdown"
+            class="absolute z-20 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden w-full"
           >
             <button
               v-for="tab in lawyerNavigationTabs"
               :key="tab.name"
-              @click="selectLawyerTab(tab.name)"
+              @click.stop="selectLawyerTab(tab.name)"
               :class="[
                 'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
                 activeLawyerTab === tab.name
@@ -89,21 +95,21 @@
           <!-- Action Buttons for Mobile -->
           <div class="grid grid-cols-3 gap-2">
             <button
-              @click="showSignatureModal = true"
+              @click.stop="showSignatureModal = true"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
             >
               <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
               <span class="font-medium text-xs leading-tight">Firma</span>
             </button>
             <button
-              @click="showGlobalLetterheadModal = true"
+              @click.stop="showGlobalLetterheadModal = true"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
             >
               <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
               <span class="font-medium text-xs leading-tight">Membrete</span>
             </button>
             <button
-              @click="showCreateDocumentModal = true"
+              @click.stop="showCreateDocumentModal = true"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
             >
               <PlusIcon class="size-6 mb-1"></PlusIcon>
@@ -148,9 +154,9 @@
     </div>
 
     <!-- Documents for clients, basic users, and corporate clients -->
-    <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'" style="overflow: visible !important;">
+    <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'">
       <!-- Navigation tabs with action buttons -->
-      <div class="mb-6 border-b border-gray-200" style="overflow: visible !important;">
+      <div class="mb-6 border-b border-gray-200">
         
         <!-- Desktop Layout: Tabs + Action Buttons -->
         <div class="hidden md:flex items-center justify-between">
@@ -158,7 +164,7 @@
           <button
             v-for="tab in navigationTabs"
             :key="tab.name"
-            @click="activeTab = tab.name"
+            @click.stop="selectClientTab(tab.name)"
             :class="[
               activeTab === tab.name
                 ? 'border-primary text-primary'
@@ -173,22 +179,23 @@
           <!-- Action Buttons (Desktop) -->
           <div class="flex items-center gap-2 mb-4">
             <button
-              @click="showElectronicSignatureModal = true"
+              @click.stop="showElectronicSignatureModal = true"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors border border-purple-200"
             >
               <FingerPrintIcon class="h-4 w-4" />
               Firma Electrónica
             </button>
             <button
-              @click="showGlobalLetterheadModal = true"
+              @click.stop="showGlobalLetterheadModal = true"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-green-200"
             >
               <DocumentTextIcon class="h-4 w-4" />
               Membrete Global
             </button>
             <button
-              @click="handleSection('useDocument')"
+              @click.stop="handleSection('useDocument')"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+              type="button"
             >
               <PlusIcon class="h-4 w-4" />
               Nuevo Documento
@@ -199,14 +206,14 @@
         <!-- Mobile Dropdown -->
         <div class="md:hidden relative">
           <button
-            @click="showClientDropdown = !showClientDropdown"
+            @click.stop="showClientDropdown = !showClientDropdown"
             class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <span>{{ navigationTabs.find(tab => tab.name === activeTab)?.label || 'Seleccionar sección' }}</span>
-            <svg 
+            <svg
               :class="['ml-2 h-5 w-5 transition-transform duration-200', showClientDropdown ? 'transform rotate-180' : '']"
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -215,13 +222,13 @@
           
           <!-- Dropdown Menu -->
           <div 
-            v-show="showClientDropdown"
+            v-if="showClientDropdown"
             class="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
           >
             <button
               v-for="tab in navigationTabs"
               :key="tab.name"
-              @click="selectClientTab(tab.name)"
+              @click.stop="selectClientTab(tab.name)"
               :class="[
                 'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
                 activeTab === tab.name
@@ -237,22 +244,23 @@
         <!-- Mobile Action Buttons -->
         <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
           <button
-            @click="showElectronicSignatureModal = true"
+            @click.stop="showElectronicSignatureModal = true"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
           >
             <FingerPrintIcon class="h-5 w-5" />
             Firma Electrónica
           </button>
           <button
-            @click="showGlobalLetterheadModal = true"
+            @click.stop="showGlobalLetterheadModal = true"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
           >
             <DocumentTextIcon class="h-5 w-5" />
             Membrete Global
           </button>
           <button
-            @click="handleSection('useDocument')"
+            @click.stop="handleSection('useDocument')"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+            type="button"
           >
             <PlusIcon class="h-5 w-5" />
             Nuevo Documento
@@ -268,7 +276,7 @@
           @go-back="handleNavigateToMain"
         ></UseDocumentTable>
       </div>
-      <div v-else style="overflow: visible !important;">
+      <div v-else>
         <DocumentListClientTable
           v-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
@@ -285,13 +293,14 @@
       </div>
     </div>
   </div>
+  </div>
 
   <!-- Modals -->
-  <ModalTransition v-show="showCreateDocumentModal">
+  <ModalTransition v-if="showCreateDocumentModal">
     <CreateDocumentByLawyer @close="closeModal" />
   </ModalTransition>
 
-  <!-- Electronic Signature Modal -->
+  <!-- Electronic Signature Modal for Lawyers -->
   <ModalTransition v-if="showSignatureModal">
     <div class="p-4 sm:p-6">
       <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
@@ -302,11 +311,33 @@
           </button>
         </div>
         <div class="p-4 sm:p-6">
-          <ElectronicSignature 
+          <ElectronicSignature
             :user-id="currentUser.id"
             :initial-show-options="!currentUser.has_signature"
             @signatureSaved="handleSignatureSaved"
             @cancel="showSignatureModal = false"
+          />
+        </div>
+      </div>
+    </div>
+  </ModalTransition>
+
+  <!-- Electronic Signature Modal for Clients -->
+  <ModalTransition v-if="showElectronicSignatureModal">
+    <div class="p-4 sm:p-6">
+      <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
+        <div class="flex justify-between items-center p-4 border-b">
+          <h2 class="text-lg font-medium text-primary">Firma Electrónica</h2>
+          <button @click="showElectronicSignatureModal = false" class="text-gray-400 hover:text-gray-500 p-1 rounded-full hover:bg-gray-100">
+            <XMarkIcon class="h-6 w-6" />
+          </button>
+        </div>
+        <div class="p-4 sm:p-6">
+          <ElectronicSignature
+            :user-id="currentUser.id"
+            :initial-show-options="!currentUser.has_signature"
+            @signatureSaved="handleSignatureSaved"
+            @cancel="showElectronicSignatureModal = false"
           />
         </div>
       </div>
@@ -321,13 +352,12 @@
   />
 
   <!-- Global Letterhead Modal -->
-  <ModalTransition v-if="showGlobalLetterheadModal">
-    <GlobalLetterheadModal
-      @close="showGlobalLetterheadModal = false"
-      @letterheadUploaded="handleGlobalLetterheadUploaded"
-      @letterheadDeleted="handleGlobalLetterheadDeleted"
-    />
-  </ModalTransition>
+  <GlobalLetterheadModal
+    :isVisible="showGlobalLetterheadModal"
+    @close="showGlobalLetterheadModal = false"
+    @uploaded="handleGlobalLetterheadUploaded"
+    @deleted="handleGlobalLetterheadDeleted"
+  />
 </template>
 
 <script setup>
@@ -336,7 +366,9 @@ import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
 import { useRouter } from "vue-router";
-import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon } from "@heroicons/vue/24/outline";
+import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
+import { showNotification } from "@/shared/notification_message";
 
 // Shared components
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
@@ -373,12 +405,29 @@ const currentSection = ref("default");
 const showCreateDocumentModal = ref(false);
 const activeTab = ref('folders');
 const activeLawyerTab = ref('legal-documents');
+const showElectronicSignatureModal = ref(false);
 const showSignatureModal = ref(false);
 const showGlobalLetterheadModal = ref(false);
 const showLetterheadModal = ref(false);
 const showRelationshipsModal = ref(false);
 const selectedDocument = ref(null);
 const selectedTags = ref([]);
+const sortBy = ref('recent');
+
+// Watch activeLawyerTab changes
+watch(activeLawyerTab, (newVal, oldVal) => {
+  // Handle tab changes
+}, { immediate: true });
+
+// Available tags computed property
+const availableTags = computed(() => {
+  return [];
+});
+
+// Sort label computed property
+const sortLabel = computed(() => {
+  return sortBy.value === 'recent' ? 'Más recientes' : 'Nombre (A-Z)';
+});
 
 // Get the current user
 const currentUser = computed(() => userStore.currentUser);
@@ -386,7 +435,6 @@ const currentUser = computed(() => userStore.currentUser);
 // Add this computed property
 const userRole = computed(() => {
   if (!currentUser.value) {
-    console.log('Current user is null, redirecting to login...');
     router.push('/login');
     return null;
   }
@@ -406,7 +454,9 @@ const filteredDocuments = computed(() => {
   }
 
   // Get selected tag IDs
-  const selectedTagIds = selectedTags.value.map(tag => tag.id);
+  const selectedTagIds = selectedTags.value && Array.isArray(selectedTags.value)
+    ? selectedTags.value.map(tag => tag.id)
+    : [];
 
   return documentStore
     .filteredDocumentsBySearchAndTags(searchQuery.value, userStore, selectedTagIds)
@@ -420,10 +470,19 @@ const filteredDocuments = computed(() => {
  *
  * @param {string} message - The selected section name.
  */
-const handleSection = (message) => {
+const handleSection = async (message) => {
   currentSection.value = message;
   // Clear any selected document when changing sections
   documentStore.selectedDocument = null;
+  
+  // If switching to useDocument section, ensure documents are loaded
+  if (message === 'useDocument') {
+    try {
+      await documentStore.init(true); // Force refresh to get latest published documents
+    } catch (error) {
+      console.error('Error loading documents for useDocument section:', error);
+    }
+  }
 };
 
 /**
@@ -444,40 +503,43 @@ const handleRefresh = async () => {
   await documentStore.init(true);
 };
 
+// selectLawyerTab function removed - dropdown functionality simplified
+
+
+
 /**
  * Handles global letterhead upload events.
  */
 const handleGlobalLetterheadUploaded = (uploadData) => {
-  console.log('Global letterhead uploaded:', uploadData);
+  // Show success notification
+  showNotification('Membrete global subido correctamente', 'success');
+  // Refresh any related data if needed
+  // You could emit an event to parent components or update local state
 };
 
 /**
  * Handles global letterhead delete events.
  */
 const handleGlobalLetterheadDeleted = () => {
-  console.log('Global letterhead deleted');
+  // Show success notification
+  showNotification('Membrete global eliminado correctamente', 'success');
+  // Refresh any related data if needed
 };
 
 /**
  * Handle opening letterhead modal
  */
 const handleOpenLetterhead = (document) => {
-  console.log('Dashboard: Opening letterhead modal for document:', document);
   selectedDocument.value = document;
   showLetterheadModal.value = true;
-  console.log('Dashboard: showLetterheadModal is now:', showLetterheadModal.value);
-  console.log('Dashboard: selectedDocument is now:', selectedDocument.value);
 };
 
 /**
  * Handle opening relationships modal
  */
 const handleOpenRelationships = (document) => {
-  console.log('Dashboard: Opening relationships modal for document:', document);
   selectedDocument.value = document;
   showRelationshipsModal.value = true;
-  console.log('Dashboard: showRelationshipsModal is now:', showRelationshipsModal.value);
-  console.log('Dashboard: selectedDocument is now:', selectedDocument.value);
 };
 
 /**
@@ -515,9 +577,8 @@ const handleNavigateToMain = async () => {
     // Small delay to ensure backend has processed document additions
     await new Promise(resolve => setTimeout(resolve, 100));
     await folderStore.fetchFolders(true); // Force refresh from backend
-    console.log('📂 Dashboard: Refreshed folders after navigate-to-main');
   } catch (error) {
-    console.warn('Error refreshing folders on navigate-to-main:', error);
+    // Silently handle error - folders will refresh on next navigation
   }
 };
 
@@ -540,17 +601,17 @@ watch(
   { immediate: false }
 );
 
-// Debug: Watch modal states
+// Watch modal states
 watch(showLetterheadModal, (newVal) => {
-  console.log('showLetterheadModal changed to:', newVal);
+  // Handle modal state changes
 });
 
 watch(showRelationshipsModal, (newVal) => {
-  console.log('showRelationshipsModal changed to:', newVal);
+  // Handle modal state changes
 });
 
 watch(selectedDocument, (newVal) => {
-  console.log('selectedDocument changed to:', newVal);
+  // Handle selected document changes
 });
 
 // Navigation tabs for client users
@@ -580,23 +641,8 @@ const closeDropdowns = () => {
   showClientDropdown.value = false;
 };
 
-/**
- * Handles click outside dropdown to close them
- */
-const handleClickOutside = (event) => {
-  const dropdownElements = document.querySelectorAll('.relative');
-  let clickedInside = false;
-  
-  dropdownElements.forEach(element => {
-    if (element.contains(event.target)) {
-      clickedInside = true;
-    }
-  });
-  
-  if (!clickedInside) {
-    closeDropdowns();
-  }
-};
+// Dropdowns will close when clicking on tabs or action buttons via their handlers
+// No need for global event listeners that interfere with clicks
 
 /**
  * Selects a tab from the lawyer dropdown.
@@ -606,6 +652,8 @@ const handleClickOutside = (event) => {
 const selectLawyerTab = (tabName) => {
   activeLawyerTab.value = tabName;
   showLawyerDropdown.value = false;
+  // Ensure dropdowns are closed
+  closeDropdowns();
 };
 
 /**
@@ -616,7 +664,10 @@ const selectLawyerTab = (tabName) => {
 const selectClientTab = (tabName) => {
   activeTab.value = tabName;
   showClientDropdown.value = false;
+  // Ensure dropdowns are closed
+  closeDropdowns();
 };
+
 
 // Load data when the component is mounted
 onMounted(async () => {
@@ -624,31 +675,26 @@ onMounted(async () => {
   await userStore.init();
   await documentStore.init();
   await folderStore.init();
-  
+
   documentStore.selectedDocument = null;
-  
+
   // Make sure we are in the default section when loading
   currentSection.value = "default";
+
   // Check localStorage for saved document ID to highlight
   const savedId = localStorage.getItem('lastUpdatedDocumentId');
-  
+
   if (savedId) {
     // Only set the ID if that document exists in our store
     const docExists = documentStore.documents.some(doc => doc.id.toString() === savedId);
-    
+
     if (docExists) {
       documentStore.lastUpdatedDocumentId = parseInt(savedId);
     }
   }
-  
-  // Add event listener for clicks outside dropdowns
-  document.addEventListener('click', handleClickOutside);
 });
 
-// Cleanup event listener when component is unmounted
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
+// Event listeners are handled by component directives
 
 // Add handler for signature creation completion
 const handleSignatureSaved = async (signatureData) => {

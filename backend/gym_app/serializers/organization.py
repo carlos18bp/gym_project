@@ -11,13 +11,25 @@ class UserBasicInfoSerializer(serializers.ModelSerializer):
     Basic user information serializer for organization contexts.
     """
     full_name = serializers.SerializerMethodField()
+    profile_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role']
+        fields = ['id', 'email', 'first_name', 'last_name', 'full_name', 'role', 'profile_image_url']
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_profile_image_url(self, obj):
+        """Get the full URL for the user's profile image"""
+        if obj.photo_profile:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo_profile.url)
+            # If no request context, build URL with MEDIA_URL
+            from django.conf import settings
+            return f"{settings.MEDIA_URL}{obj.photo_profile.name}"
+        return None
 
 class OrganizationListSerializer(serializers.ModelSerializer):
     """

@@ -450,11 +450,25 @@ const saveDocument = async (state = 'Draft') => {
   }
 
   try {
+    // Get current user ID (for clients creating documents from templates)
+    const currentUser = userStore.getCurrentUser;
+    const userId = currentUser?.id || store.currentUser?.id;
+    
+    // Determine if this is a client creating from a template
+    const isClientCreatingFromTemplate = route.params.mode === 'creator' && 
+                                         document.value.state === 'Published' && 
+                                         !document.value.assigned_to;
+    
+    // For clients creating from templates, always use 'Progress' state and assign to current user
+    const finalState = isClientCreatingFromTemplate ? 'Progress' : 
+                      (route.params.mode === 'formalize' ? 'PendingSignatures' : state);
+    
     const documentData = {
       title: document.value.title,
       content: document.value.content,
-      // If we're in formalize mode, set state as PendingSignatures
-      state: route.params.mode === 'formalize' ? 'PendingSignatures' : state,
+      state: finalState,
+      // Assign to current user if creating from template or if document doesn't have assigned_to
+      assigned_to: (isClientCreatingFromTemplate || !document.value.assigned_to) && userId ? userId : document.value.assigned_to,
       variables: document.value.variables.map((variable) => ({
         name_en: variable.name_en,
         name_es: variable.name_es,
@@ -487,6 +501,8 @@ const saveDocument = async (state = 'Draft') => {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
         documentId = response.id;
+        // Refresh the store to include the new document in the list
+        await store.init(true);
       }
     }
     

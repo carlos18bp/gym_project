@@ -331,6 +331,11 @@ const props = defineProps({
 // Define emits
 const emit = defineEmits(['close', 'uploaded', 'deleted']);
 
+// Watch for isVisible changes
+watch(() => props.isVisible, (newValue) => {
+  // Handle visibility changes
+});
+
 // Store
 const store = useDynamicDocumentStore();
 

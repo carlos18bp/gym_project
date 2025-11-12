@@ -7,5 +7,6 @@ backend/media/
 backend/gym_project_env/
 backend/staticfiles/
 gym_project_env/
+backend/venv_gym_backend/
 frontend/.cursor/
 backend/debug.log

@@ -129,8 +129,8 @@ def get_organization_posts_public(request, organization_id):
     if request.user.role == 'corporate_client' and organization.corporate_client == request.user:
         # Corporate client can see all active posts
         pass
-    elif request.user.role == 'client':
-        # Check if client is a member
+    elif request.user.role in ['client', 'basic']:
+        # Check if client or basic user is a member
         is_member = OrganizationMembership.objects.filter(
             organization=organization,
             user=request.user,

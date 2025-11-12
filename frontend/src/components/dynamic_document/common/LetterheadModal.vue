@@ -460,13 +460,26 @@ const uploadFile = async () => {
 const loadCurrentImage = async () => {
   if (!documentId.value) return;
   
+  // Check if document has letterhead_image property before making request
+  // This avoids unnecessary 404 requests
+  if (props.document && !props.document.letterhead_image) {
+    currentImageUrl.value = null;
+    return;
+  }
+  
   try {
     const response = await store.getLetterheadImage(documentId.value);
-    if (response.data) {
+    // Handle case when document doesn't have a letterhead (404 returns null)
+    if (response && response.data) {
       currentImageUrl.value = URL.createObjectURL(response.data);
+    } else {
+      currentImageUrl.value = null;
     }
   } catch (error) {
-    // Image probably doesn't exist, which is fine
+    // For unexpected errors, log but don't show as critical
+    if (error.response && error.response.status !== 404) {
+      console.error('Unexpected error loading letterhead:', error);
+    }
     currentImageUrl.value = null;
   }
 };

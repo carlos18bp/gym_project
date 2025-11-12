@@ -563,8 +563,8 @@ export const useOrganizationsStore = defineStore("organizations", {
         const response = await get_request(url);
         
         if (response.status === 200) {
-          this.organizationMembers = response.data;
-          return response.data;
+          this.organizationMembers = response.data.members || [];
+          return response.data.members || [];
         }
         
         throw new Error('Error fetching members');

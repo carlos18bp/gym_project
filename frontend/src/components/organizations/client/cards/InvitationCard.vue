@@ -140,6 +140,7 @@ import {
 } from '@heroicons/vue/24/outline';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({
@@ -177,7 +178,7 @@ const isExpiringSoon = computed(() => {
 
 const invitedByProfileImage = computed(() => {
   // Use organization profile image as fallback for invited_by user
-  return props.invitation.organization_info.profile_image_url || '/src/assets/images/user_avatar.jpg';
+  return props.invitation.organization_info.profile_image_url || userAvatar;
 });
 
 // Methods

@@ -1,14 +1,17 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Mobile menu button -->
-    <slot></slot>
+    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+      <slot></slot>
+    </div>
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
       <!-- Tabs Navigation -->
       <div class="border-b border-gray-200 mb-6">
         <div class="flex items-center justify-between">
-          <nav class="-mb-px flex space-x-8">
+          <!-- Desktop Tabs -->
+          <nav class="-mb-px hidden sm:flex space-x-8">
             <button
               @click="activeTab = 'my_processes'"
               :class="[
@@ -44,6 +47,53 @@
               Procesos Archivados
             </button>
           </nav>
+
+          <!-- Mobile Dropdown -->
+          <div class="sm:hidden flex-1">
+            <Menu as="div" class="relative">
+              <MenuButton class="w-full inline-flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <span>{{ getActiveTabLabel() }}</span>
+                <ChevronDownIcon class="h-5 w-5 ml-2" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-full origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'my_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Mis Procesos
+                    </button>
+                  </MenuItem>
+                  <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'all_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Todos los Procesos
+                    </button>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <button
+                      @click="activeTab = 'archived_processes'"
+                      :class="[
+                        active ? 'bg-gray-100' : '',
+                        'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      ]"
+                    >
+                      Procesos Archivados
+                    </button>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+          </div>
           
           <!-- Nueva Solicitud Button - Only for clients -->
           <button
@@ -58,114 +108,124 @@
       </div>
 
       <!-- Filters and Search Bar -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <!-- Left side: Search and Filters -->
-          <div class="flex flex-col sm:flex-row gap-3 flex-1 w-full lg:w-auto">
-            <!-- Search -->
-            <div class="relative flex-1 min-w-[200px]">
-              <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Buscar..."
-                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent"
-              />
-            </div>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+        <!-- Search Bar - Always on top -->
+        <div class="mb-4">
+          <div class="relative w-full">
+            <MagnifyingGlassIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Buscar procesos..."
+              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            />
+          </div>
+        </div>
 
-            <!-- Filter Dropdowns -->
-            <Menu as="div" class="relative">
-              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <FunnelIcon class="h-4 w-4" />
-                <span class="max-w-[120px] truncate">{{ filterByType || 'Tipo' }}</span>
-                <ChevronDownIcon class="h-4 w-4" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filterByType = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      Todos
-                    </a>
-                  </MenuItem>
-                  <MenuItem v-for="type in processTypes" :key="type" v-slot="{ active }">
-                    <a @click="filterByType = type" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      {{ type }}
-                    </a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+        <!-- Filters Section -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <Menu as="div" class="relative">
+            <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div class="flex items-center gap-2 min-w-0">
+                <FunnelIcon class="h-4 w-4 flex-shrink-0" />
+                <span class="truncate">{{ filterByType || 'Tipo' }}</span>
+              </div>
+              <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
+            </MenuButton>
+            <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div class="py-1">
+                <MenuItem v-slot="{ active }">
+                  <a @click="filterByType = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    Todos
+                  </a>
+                </MenuItem>
+                <MenuItem v-for="type in processTypes" :key="type" v-slot="{ active }">
+                  <a @click="filterByType = type" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    {{ type }}
+                  </a>
+                </MenuItem>
+              </div>
+            </MenuItems>
+          </Menu>
 
-            <Menu as="div" class="relative">
-              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <FunnelIcon class="h-4 w-4" />
-                <span class="max-w-[120px] truncate">{{ filterByAuthority || 'Autoridad' }}</span>
-                <ChevronDownIcon class="h-4 w-4" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filterByAuthority = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      Todos
-                    </a>
-                  </MenuItem>
-                  <MenuItem v-for="authority in authorities" :key="authority" v-slot="{ active }">
-                    <a @click="filterByAuthority = authority" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      {{ authority }}
-                    </a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+          <Menu as="div" class="relative">
+            <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div class="flex items-center gap-2 min-w-0">
+                <FunnelIcon class="h-4 w-4 flex-shrink-0" />
+                <span class="truncate">{{ filterByAuthority || 'Autoridad' }}</span>
+              </div>
+              <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
+            </MenuButton>
+            <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
+              <div class="py-1">
+                <MenuItem v-slot="{ active }">
+                  <a @click="filterByAuthority = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    Todos
+                  </a>
+                </MenuItem>
+                <MenuItem v-for="authority in authorities" :key="authority" v-slot="{ active }">
+                  <a @click="filterByAuthority = authority" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    {{ authority }}
+                  </a>
+                </MenuItem>
+              </div>
+            </MenuItems>
+          </Menu>
 
-            <Menu as="div" class="relative">
-              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <FunnelIcon class="h-4 w-4" />
-                <span class="max-w-[120px] truncate">{{ filterByStage || 'Etapa' }}</span>
-                <ChevronDownIcon class="h-4 w-4" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filterByStage = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      Todos
-                    </a>
-                  </MenuItem>
-                  <MenuItem v-for="stage in stages" :key="stage" v-slot="{ active }">
-                    <a @click="filterByStage = stage" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                      {{ stage }}
-                    </a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+          <Menu as="div" class="relative">
+            <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <div class="flex items-center gap-2 min-w-0">
+                <FunnelIcon class="h-4 w-4 flex-shrink-0" />
+                <span class="truncate">{{ filterByStage || 'Etapa' }}</span>
+              </div>
+              <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
+            </MenuButton>
+            <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto">
+              <div class="py-1">
+                <MenuItem v-slot="{ active }">
+                  <a @click="filterByStage = null" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    Todos
+                  </a>
+                </MenuItem>
+                <MenuItem v-for="stage in stages" :key="stage" v-slot="{ active }">
+                  <a @click="filterByStage = stage" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                    {{ stage }}
+                  </a>
+                </MenuItem>
+              </div>
+            </MenuItems>
+          </Menu>
 
-            <!-- Clear filters button -->
+          <div class="flex items-center justify-stretch">
             <button
               v-if="filterByType || filterByAuthority || filterByStage"
               @click="clearFilters"
-              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
               title="Limpiar filtros"
             >
-              <XMarkIcon class="h-4 w-4" />
-              Limpiar
+              <XMarkIcon class="h-4 w-4 flex-shrink-0" />
+              <span>Limpiar</span>
             </button>
           </div>
+        </div>
 
-          <!-- Right side: Sort and Actions -->
-          <div class="flex items-center gap-3 w-full lg:w-auto">
-            <!-- Results count -->
-            <span class="text-sm text-gray-500 whitespace-nowrap">
-              Mostrando {{ filteredAndSortedProcesses.length }} resultados
-            </span>
+        <!-- Actions Section -->
+        <div class="flex flex-col gap-3 pt-4 border-t border-gray-200">
+          <!-- Top row: Results count and Sort -->
+          <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <!-- Left side: Results count -->
+            <div class="text-sm text-gray-500">
+              <span class="font-medium">{{ filteredAndSortedProcesses.length }}</span> resultados encontrados
+            </div>
 
-            <!-- Sort -->
+            <!-- Right side: Sort -->
             <Menu as="div" class="relative">
-              <MenuButton class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Ordenar: {{ sortLabel }}
+              <MenuButton class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <ArrowsUpDownIcon class="h-4 w-4" />
+                <span class="hidden sm:inline">{{ sortLabel }}</span>
                 <ChevronDownIcon class="h-4 w-4" />
               </MenuButton>
-              <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                 <div class="py-1">
                   <MenuItem v-slot="{ active }">
                     <a @click="sortBy = 'recent'" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -180,24 +240,27 @@
                 </div>
               </MenuItems>
             </Menu>
+          </div>
 
+          <!-- Bottom row: Action buttons -->
+          <div class="flex items-center gap-2">
             <!-- New Process Button (only for lawyers) -->
             <router-link
               v-if="currentUser?.role === 'lawyer'"
               :to="{ name: 'process_form', params: { action: 'create' } }"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
+              class="inline-flex items-center gap-2 px-3 py-2 bg-secondary text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap"
             >
-              <PlusIcon class="h-5 w-5" />
-              Nuevo
+              <PlusIcon class="h-4 w-4" />
+              <span class="hidden sm:inline">Nuevo</span>
             </router-link>
 
             <!-- Export Button -->
             <button
               @click="exportProcesses"
-              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <ArrowDownTrayIcon class="h-4 w-4" />
-              Exportar
+              <span class="hidden sm:inline">Exportar</span>
             </button>
 
             <!-- More options -->
@@ -205,7 +268,7 @@
               <MenuButton class="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-gray-100">
                 <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
               </MenuButton>
-              <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                 <div class="py-1">
                   <MenuItem v-slot="{ active }">
                     <a @click="selectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -226,7 +289,7 @@
 
       <!-- Table -->
       <div v-if="filteredAndSortedProcesses.length" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" :class="paginatedProcesses.length <= 3 ? 'pl-52' : ''">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
@@ -251,7 +314,7 @@
                   Dte./Accionante
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Dte./Accionado
+                  Ddo./Accionado
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Etapa
@@ -261,7 +324,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr
-                v-for="process in filteredAndSortedProcesses"
+                v-for="(process, index) in paginatedProcesses"
                 :key="process.id"
                 class="hover:bg-gray-50 transition-colors cursor-pointer"
                 @click="goToProcessDetail(process.id)"
@@ -314,7 +377,15 @@
                     <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                       <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                     </MenuButton>
-                    <MenuItems class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <MenuItems
+                    :class="[
+                      paginatedProcesses.length <= 3
+                        ? 'absolute right-full mr-2 top-0 z-10 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                        : index >= paginatedProcesses.length - 3
+                          ? 'absolute right-0 z-10 bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                          : 'absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                    ]"
+                  >
                       <div class="py-1">
                         <MenuItem v-slot="{ active }">
                           <router-link
@@ -339,6 +410,91 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div class="flex flex-1 justify-between sm:hidden">
+            <button
+              @click="previousPage"
+              :disabled="currentPage === 1"
+              :class="[
+                'relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50',
+                currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+              ]"
+            >
+              Anterior
+            </button>
+            <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages"
+              :class="[
+                'relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50',
+                currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+              ]"
+            >
+              Siguiente
+            </button>
+          </div>
+          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-gray-700">
+                Mostrando
+                <span class="font-medium">{{ paginationInfo.start }}</span>
+                a
+                <span class="font-medium">{{ paginationInfo.end }}</span>
+                de
+                <span class="font-medium">{{ paginationInfo.total }}</span>
+                resultados
+              </p>
+            </div>
+            <div>
+              <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <button
+                  @click="previousPage"
+                  :disabled="currentPage === 1"
+                  :class="[
+                    'relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                    currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                  ]"
+                >
+                  <span class="sr-only">Anterior</span>
+                  <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
+                </button>
+                <template v-for="page in visiblePages" :key="page">
+                  <button
+                    v-if="page !== '...'"
+                    @click="goToPage(page)"
+                    :class="[
+                      'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0',
+                      currentPage === page
+                        ? 'z-10 bg-secondary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary'
+                        : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                    ]"
+                  >
+                    {{ page }}
+                  </button>
+                  <span
+                    v-else
+                    class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700"
+                  >
+                    ...
+                  </span>
+                </template>
+                <button
+                  @click="nextPage"
+                  :disabled="currentPage === totalPages"
+                  :class="[
+                    'relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                    currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                  ]"
+                >
+                  <span class="sr-only">Siguiente</span>
+                  <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -367,7 +523,10 @@ import {
   ArrowDownTrayIcon,
   EllipsisVerticalIcon,
   CubeTransparentIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowsUpDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from "@heroicons/vue/24/outline";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -398,6 +557,10 @@ const sortBy = ref('recent');
 
 // Selection state
 const selectedProcesses = ref([]);
+
+// Pagination state
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
 
 // Initialize
 onMounted(async () => {
@@ -548,16 +711,44 @@ const filteredAndSortedProcesses = computed(() => {
   // Apply sorting
   if (sortBy.value === 'name') {
     processes.sort((a, b) => {
-      const nameA = `${a.client?.first_name} ${a.client?.last_name}`.toLowerCase();
-      const nameB = `${b.client?.first_name} ${b.client?.last_name}`.toLowerCase();
+      const nameA = `${a.client?.first_name || ''} ${a.client?.last_name || ''}`.toLowerCase();
+      const nameB = `${b.client?.first_name || ''} ${b.client?.last_name || ''}`.toLowerCase();
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    // Most recent first (assuming processes are already in order, or sort by ID desc)
-    processes.sort((a, b) => b.id - a.id);
+    // Most recent first - sort by created_at date
+    processes.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA; // Descending order (newest first)
+    });
   }
 
   return processes;
+});
+
+// Paginated processes
+const paginatedProcesses = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredAndSortedProcesses.value.slice(start, end);
+});
+
+// Total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredAndSortedProcesses.value.length / itemsPerPage.value);
+});
+
+// Pagination info
+const paginationInfo = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
+  const end = Math.min(currentPage.value * itemsPerPage.value, filteredAndSortedProcesses.value.length);
+  return { start, end, total: filteredAndSortedProcesses.value.length };
+});
+
+// Reset to first page when filters change
+watch([searchQuery, filterByType, filterByAuthority, filterByStage, activeTab], () => {
+  currentPage.value = 1;
 });
 
 // Sort label
@@ -607,6 +798,20 @@ const deselectAll = () => {
   selectedProcesses.value = [];
 };
 
+// Get active tab label for mobile dropdown
+const getActiveTabLabel = () => {
+  switch (activeTab.value) {
+    case 'my_processes':
+      return 'Mis Procesos';
+    case 'all_processes':
+      return 'Todos los Procesos';
+    case 'archived_processes':
+      return 'Procesos Archivados';
+    default:
+      return 'Mis Procesos';
+  }
+};
+
 // Navigation
 const goToProcessDetail = (processId) => {
   router.push({
@@ -619,6 +824,67 @@ const goToNewRequest = () => {
   router.push('/legal_request_create');
 };
 
+// Pagination methods
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+// Visible pages for pagination (show max 7 pages)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const pages = [];
+  
+  if (total <= 7) {
+    // Show all pages if total is 7 or less
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Show pages with ellipsis logic
+    if (current <= 4) {
+      // Show first 5 pages, then ellipsis, then last page
+      for (let i = 1; i <= 5; i++) {
+        pages.push(i);
+      }
+      pages.push('...');
+      pages.push(total);
+    } else if (current >= total - 3) {
+      // Show first page, ellipsis, then last 5 pages
+      pages.push(1);
+      pages.push('...');
+      for (let i = total - 4; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Show first page, ellipsis, current-1, current, current+1, ellipsis, last page
+      pages.push(1);
+      pages.push('...');
+      pages.push(current - 1);
+      pages.push(current);
+      pages.push(current + 1);
+      pages.push('...');
+      pages.push(total);
+    }
+  }
+  
+  return pages;
+});
+
 // Export function
 const exportProcesses = () => {
   const processesToExport = selectedProcesses.value.length > 0
@@ -626,7 +892,7 @@ const exportProcesses = () => {
     : filteredAndSortedProcesses.value;
 
   // Create CSV content
-  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Dte./Accionado', 'Etapa'];
+  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Ddo./Accionado', 'Etapa'];
   const rows = processesToExport.map(process => [
     `${process.client?.first_name || ''} ${process.client?.last_name || ''}`,
     process.client?.email || '',

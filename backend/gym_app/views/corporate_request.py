@@ -25,11 +25,11 @@ class CorporateRequestPagination(PageNumberPagination):
 
 # Decorators for role-based access
 def require_client_only(view_func):
-    """Decorator to ensure only normal clients can access the view"""
+    """Decorator to ensure only normal clients and basic users can access the view"""
     def wrapper(request, *args, **kwargs):
-        if request.user.role != 'client':
+        if request.user.role not in ['client', 'basic']:
             return Response(
-                {'error': 'Solo los clientes normales pueden acceder a este endpoint'},
+                {'error': 'Solo los clientes normales y usuarios básicos pueden acceder a este endpoint'},
                 status=status.HTTP_403_FORBIDDEN
             )
         return view_func(request, *args, **kwargs)
@@ -47,9 +47,9 @@ def require_corporate_client_only(view_func):
     return wrapper
 
 def require_client_or_corporate_client(view_func):
-    """Decorator to ensure only clients or corporate clients can access the view"""
+    """Decorator to ensure only clients, basic users, or corporate clients can access the view"""
     def wrapper(request, *args, **kwargs):
-        if request.user.role not in ['client', 'corporate_client']:
+        if request.user.role not in ['client', 'basic', 'corporate_client']:
             return Response(
                 {'error': 'Solo los clientes pueden acceder a este endpoint'},
                 status=status.HTTP_403_FORBIDDEN
@@ -175,16 +175,16 @@ def client_get_my_corporate_requests(request):
     
     # Order by creation date (newest first)
     queryset = queryset.order_by('-created_at')
-    
+
     # Pagination
     paginator = CorporateRequestPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
+
     if page is not None:
-        serializer = CorporateRequestListSerializer(page, many=True)
+        serializer = CorporateRequestListSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
-    
-    serializer = CorporateRequestListSerializer(queryset, many=True)
+
+    serializer = CorporateRequestListSerializer(queryset, many=True, context={'request': request})
     return Response({
         'corporate_requests': serializer.data,
         'total_count': len(serializer.data)
@@ -308,10 +308,10 @@ def corporate_get_received_requests(request):
     page = paginator.paginate_queryset(queryset, request)
     
     if page is not None:
-        serializer = CorporateRequestListSerializer(page, many=True)
+        serializer = CorporateRequestListSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
-    
-    serializer = CorporateRequestListSerializer(queryset, many=True)
+
+    serializer = CorporateRequestListSerializer(queryset, many=True, context={'request': request})
     return Response({
         'corporate_requests': serializer.data,
         'total_count': len(serializer.data)

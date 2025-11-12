@@ -247,6 +247,7 @@ import {
 import { XMarkIcon, PhotoIcon } from '@heroicons/vue/24/outline';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
+import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({
@@ -284,7 +285,7 @@ const coverImagePreview = ref(null);
 const currentProfileImage = computed(() => {
   if (profileImagePreview.value) return profileImagePreview.value;
   if (props.organization?.profile_image_url) return props.organization.profile_image_url;
-  return '/src/assets/images/user_avatar.jpg';
+  return userAvatar;
 });
 
 const currentCoverImage = computed(() => {

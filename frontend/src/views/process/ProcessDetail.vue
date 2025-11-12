@@ -52,7 +52,7 @@
           </div>
           <!-- Defendant information -->
           <div class="flex gap-2">
-            <h3 class="text-base text-primary">Dte./Accionado:</h3>
+            <h3 class="text-base text-primary">Ddo./Accionado:</h3>
             <p class="text-gray-500">{{ process.defendant }}</p>
           </div>
           <!-- Reference number information -->

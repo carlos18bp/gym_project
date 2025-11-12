@@ -46,7 +46,7 @@
 
   <!-- Company Info Section -->
   <div class="px-4 sm:px-6 lg:px-8 pt-20 pb-6">
-    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">G&M</h1>
         <p class="text-lg text-gray-600 mt-1">Firma de Abogados G&M</p>
@@ -65,27 +65,25 @@
           </span>
         </div>
       </div>
+      <!-- Organigrama Button -->
+      <div class="mt-4 sm:mt-0 sm:self-start">
+        <button
+          type="button"
+          @click="showOrganizationChart = true"
+          class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all font-medium shadow-md hover:shadow-lg"
+        >
+          <BuildingOfficeIcon class="h-5 w-5" />
+          Ver Organigrama
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Main Content Grid -->
   <div class="px-4 sm:px-6 lg:px-8 pb-10">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Column: Organigrama and Radicar Informe buttons -->
+      <!-- Left Column: Radicar Informe button -->
       <div class="space-y-6">
-        <!-- Organigrama Button -->
-        <div class="bg-gray-100 p-6 rounded-xl shadow-md">
-          <h2 class="text-lg font-semibold text-primary mb-4">Organigrama</h2>
-          <button
-            type="button"
-            @click="showOrganizationChart = true"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-secondary text-white rounded-lg hover:bg-opacity-90 transition-all font-medium"
-          >
-            <BuildingOfficeIcon class="h-5 w-5" />
-            Ver Organigrama
-          </button>
-        </div>
-
         <!-- Radicar Informe Button -->
         <div class="bg-gray-100 p-6 rounded-xl shadow-md">
           <h2 class="text-lg font-semibold text-primary mb-4">Radicar Informe</h2>
@@ -154,12 +152,39 @@
     <FacturationForm @close="showFacturationModal = false" />
   </ModalTransition>
   <ModalTransition v-show="showOrganizationChart">
-      <div class="relative bg-white rounded-xl p-3">
-        <div class="absolute right-0 top-0 pt-6 pe-6">
-          <XMarkIcon class="cursor-pointer size-6 text-primary" @click="showOrganizationChart = false"></XMarkIcon>
-        </div>
-        <img src="@/assets/images/charts/organigram_chart.png" alt="Organigrama y organización de G&M">
+    <div class="relative bg-white rounded-xl shadow-xl max-w-[95vw] w-full max-h-[95vh] overflow-hidden flex flex-col">
+      <!-- Header with close button -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+        <h2 class="text-xl font-semibold text-gray-900">Organigrama G&M</h2>
+        <button
+          @click="showOrganizationChart = false"
+          class="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+          title="Cerrar"
+        >
+          <XMarkIcon class="h-6 w-6" />
+        </button>
       </div>
+      
+      <!-- Image content -->
+      <div class="p-6 overflow-auto flex-grow flex items-start justify-center bg-gray-50 min-h-0">
+        <img 
+          src="@/assets/images/charts/organigram_chart.png" 
+          alt="Organigrama y organización de G&M"
+          class="max-w-full h-auto rounded-lg shadow-md"
+          style="min-width: fit-content;"
+        >
+      </div>
+      
+      <!-- Footer with close button -->
+      <div class="px-6 py-4 border-t border-gray-200 flex justify-end flex-shrink-0">
+        <button
+          @click="showOrganizationChart = false"
+          class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
   </ModalTransition>
 </template>
 
