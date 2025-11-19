@@ -162,18 +162,6 @@ const router = createRouter({
       children: [
         {
           path: "",
-          name: "legal_requests_management",
-          component: () => import(/* webpackChunkName: "legal-requests-management" */ "@/views/legal_request/LegalRequestsManagement.vue"),
-          meta: { requiresAuth: true, title: "Gestión de Solicitudes" },
-        },
-      ],
-    },
-    {
-      path: "/legal_requests_list",
-      component: SlideBar,
-      children: [
-        {
-          path: "",
           name: "legal_requests_list",
           component: () => import(/* webpackChunkName: "legal-requests-list" */ "@/views/legal_request/LegalRequestsList.vue"),
           meta: { requiresAuth: true, title: "Lista de Solicitudes" },
