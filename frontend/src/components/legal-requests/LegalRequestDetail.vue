@@ -300,9 +300,18 @@ const handleStatusUpdated = (updatedRequest) => {
   showStatusModal.value = false
 }
 
-const handleDeleted = () => {
+const handleDeleted = async () => {
   showDeleteModal.value = false
-  router.push({ name: 'legal_requests_list' })
+  
+  // Use replace instead of push to avoid history issues
+  // and ensure smooth navigation in production
+  try {
+    await router.replace({ name: 'legal_requests_list' })
+  } catch (error) {
+    console.error('Navigation error after delete:', error)
+    // Fallback: use hash-based URL to avoid server 404
+    window.location.href = '/#/legal_requests'
+  }
 }
 
 const scrollToLatestMessage = () => {

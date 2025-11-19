@@ -470,7 +470,11 @@ export const documentActions = {
       
       return response;
     } catch (error) {
-      console.error(`Error fetching global letterhead image:`, error);
+      // 404 is expected when user doesn't have a letterhead configured
+      // Only log other errors
+      if (error.response?.status !== 404) {
+        console.error(`Error fetching global letterhead image:`, error);
+      }
       throw error;
     }
   },

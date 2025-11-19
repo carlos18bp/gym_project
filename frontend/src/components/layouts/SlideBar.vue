@@ -518,7 +518,7 @@ const navigation = ref([
     name: "Solicitudes",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "legal_requests_management" });
+      router.push({ name: "legal_requests_list" });
     },
     icon: InboxArrowDownIcon,
     current: false,
@@ -528,7 +528,7 @@ const navigation = ref([
     name: "Gestión de Solicitudes",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "legal_requests_management" });
+      router.push({ name: "legal_requests_list" });
     },
     icon: EnvelopeIcon,
     current: false,

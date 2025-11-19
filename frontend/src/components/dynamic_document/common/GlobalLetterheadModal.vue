@@ -350,6 +350,7 @@ const currentImageUrl = ref(null);
 const warnings = ref([]);
 const fileInput = ref(null);
 const showSpecifications = ref(false);
+const hasAttemptedLoad = ref(false);
 
 // Methods
 const close = () => {
@@ -453,6 +454,9 @@ const uploadFile = async () => {
       warnings.value = response.data.warnings;
     }
     
+    // Reset load flag so we fetch the new image
+    hasAttemptedLoad.value = false;
+    
     // Refresh current image
     await loadCurrentImage();
     
@@ -469,6 +473,14 @@ const uploadFile = async () => {
 };
 
 const loadCurrentImage = async () => {
+  // Don't attempt to load if we already know there's no image
+  // This prevents unnecessary 404 requests
+  if (currentImageUrl.value === null && hasAttemptedLoad.value) {
+    return;
+  }
+  
+  hasAttemptedLoad.value = true;
+  
   try {
     const response = await store.getGlobalLetterheadImage();
     if (response.data) {
@@ -497,6 +509,9 @@ const deleteImage = async () => {
       URL.revokeObjectURL(currentImageUrl.value);
     }
     currentImageUrl.value = null;
+    
+    // Reset load flag since image was deleted
+    hasAttemptedLoad.value = true; // Keep as true to prevent trying to load deleted image
     
     emit('deleted');
   } catch (error) {

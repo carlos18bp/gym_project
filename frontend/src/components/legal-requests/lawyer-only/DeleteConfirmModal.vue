@@ -129,24 +129,27 @@ const deleteRequest = async () => {
   errorMessage.value = ''
 
   try {
-    console.log(`🗑️ Deleting legal request ID: ${props.request.id}`)
-    
     await legalRequestsStore.deleteRequest(props.request.id)
-    
-    console.log('✅ Solicitud eliminada exitosamente')
-    
+
     emit('deleted')
     
     // Close modal first
     emit('close')
     
-    // Use window.location for reliable redirect after deletion
-    console.log('🔄 Redirigiendo a lista de solicitudes...')
-    window.location.href = '/legal_requests_list'
+    // Navigate using Vue Router to avoid 404 in production
+    // Small delay to ensure modal closes smoothly
+    setTimeout(async () => {
+      try {
+        await router.replace({ name: 'legal_requests_list' })
+      } catch (navError) {
+        // Fallback: use hash-based URL to avoid server 404
+        window.location.href = '/#/legal_requests'
+      }
+    }, 100)
     
   } catch (error) {
-    console.error('❌ Error deleting request:', error)
-    
+    console.error('Error deleting request:', error)
+
     // Set user-friendly error message
     errorMessage.value = error.message || 'Error al eliminar la solicitud. Por favor intenta nuevamente.'
     

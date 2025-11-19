@@ -1,5 +1,11 @@
 import axios from "axios";
 
+// Endpoints where 404 is expected and should not be logged as errors
+const SILENT_404_ENDPOINTS = [
+  'user/letterhead/',
+  'user/signature/'
+];
+
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {
@@ -57,13 +63,22 @@ async function makeRequest(method, url, params = {}, config = {}) {
 
     return response;
   } catch (error) {
-    console.error("Error during request:", error);
-    if (error.response) {
-      console.error("Response data:", error.response.data);
-      console.error("Status code:", error.response.status);
-    } else {
-      console.error("Request failed without response.");
+    // Check if this is a 404 on an endpoint where it's expected
+    const is404 = error.response?.status === 404;
+    const isSilentEndpoint = SILENT_404_ENDPOINTS.some(endpoint => url.includes(endpoint));
+    const shouldSilence = is404 && isSilentEndpoint;
+    
+    // Only log errors that are not expected 404s
+    if (!shouldSilence) {
+      console.error("Error during request:", error);
+      if (error.response) {
+        console.error("Response data:", error.response.data);
+        console.error("Status code:", error.response.status);
+      } else {
+        console.error("Request failed without response.");
+      }
     }
+    
     throw error;
   }
 }

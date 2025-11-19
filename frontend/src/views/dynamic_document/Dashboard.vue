@@ -32,8 +32,14 @@
           <!-- Action Buttons -->
           <div class="flex gap-3">
             <button
-              @click.stop="showSignatureModal = true"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+              @click.stop="handleLawyerSignatureClick"
+              :disabled="!currentUser"
+              :class="[
+                'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-sm font-medium transition-all duration-200',
+                currentUser
+                  ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
+                  : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+              ]"
             >
               <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
               <span>Firma Electrónica</span>
@@ -95,8 +101,14 @@
           <!-- Action Buttons for Mobile -->
           <div class="grid grid-cols-3 gap-2">
             <button
-              @click.stop="showSignatureModal = true"
-              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
+              @click.stop="handleLawyerSignatureClick"
+              :disabled="!currentUser"
+              :class="[
+                'flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 text-center transition-all duration-200',
+                currentUser
+                  ? 'bg-white hover:bg-purple-50'
+                  : 'bg-gray-50 cursor-not-allowed opacity-60'
+              ]"
             >
               <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
               <span class="font-medium text-xs leading-tight">Firma</span>
@@ -325,7 +337,7 @@
   </ModalTransition>
 
   <!-- Electronic Signature Modal for Lawyers -->
-  <ModalTransition v-if="showSignatureModal">
+  <ModalTransition v-if="showSignatureModal && currentUser">
     <div class="p-4 sm:p-6">
       <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
         <div class="flex justify-between items-center p-4 border-b">
@@ -347,7 +359,7 @@
   </ModalTransition>
 
   <!-- Electronic Signature Modal for Clients -->
-  <ModalTransition v-if="showElectronicSignatureModal">
+  <ModalTransition v-if="showElectronicSignatureModal && currentUser">
     <div class="p-4 sm:p-6">
       <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
         <div class="flex justify-between items-center p-4 border-b">
@@ -532,9 +544,24 @@ const handleRefresh = async () => {
 };
 
 /**
+ * Handle lawyer signature button click
+ */
+const handleLawyerSignatureClick = () => {
+  if (!currentUser.value) {
+    console.error('Cannot open signature modal: currentUser is not loaded');
+    return;
+  }
+  showSignatureModal.value = true;
+};
+
+/**
  * Handle electronic signature button click with basic user restriction
  */
 const handleElectronicSignatureClick = () => {
+  if (!currentUser.value) {
+    console.error('Cannot open signature modal: currentUser is not loaded');
+    return;
+  }
   handleFeatureAccess('Firma Electrónica', () => {
     showElectronicSignatureModal.value = true;
   });
@@ -544,6 +571,10 @@ const handleElectronicSignatureClick = () => {
  * Handle global letterhead button click with basic user restriction
  */
 const handleGlobalLetterheadClick = () => {
+  if (!currentUser.value) {
+    console.error('Cannot open letterhead modal: currentUser is not loaded');
+    return;
+  }
   handleFeatureAccess('Membrete Global', () => {
     showGlobalLetterheadModal.value = true;
   });
