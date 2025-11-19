@@ -165,8 +165,8 @@ class CorporateRequestSerializer(serializers.ModelSerializer):
         # Set the client from the request context (must be a normal client)
         request = self.context.get('request')
         if request and request.user:
-            if request.user.role != 'client':
-                raise serializers.ValidationError("Solo los clientes normales pueden crear solicitudes corporativas.")
+            if request.user.role not in ['client', 'basic']:
+                raise serializers.ValidationError("Solo los clientes normales y usuarios bsicos pueden crear solicitudes corporativas.")
             validated_data['client'] = request.user
             
             # Validate that client is member of the organization
@@ -255,8 +255,8 @@ class CorporateRequestCreateSerializer(serializers.ModelSerializer):
         # Set the client from the request context
         request = self.context.get('request')
         if request and request.user:
-            if request.user.role != 'client':
-                raise serializers.ValidationError("Solo los clientes normales pueden crear solicitudes corporativas.")
+            if request.user.role not in ['client', 'basic']:
+                raise serializers.ValidationError("Solo los clientes normales y usuarios bsicos pueden crear solicitudes corporativas.")
             validated_data['client'] = request.user
             
             # Validate that client is member of the organization
