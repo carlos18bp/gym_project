@@ -1,9 +1,9 @@
 <template>
-  <div class="folders-table" style="overflow: visible !important;">
+  <div class="folders-table">
     <!-- Table -->
-    <div v-if="!isLoading && filteredFolders.length > 0" style="overflow: visible !important;">
-      <div style="overflow: visible !important;">
-        <table class="min-w-full divide-y divide-gray-200" style="overflow: visible !important;">
+    <div v-if="!isLoading && filteredFolders.length > 0" class="bg-white rounded-lg shadow-sm border border-gray-200" style="overflow-x: visible; overflow-y: hidden;">
+      <div class="overflow-x-auto" style="overflow-y: visible;">
+        <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -18,12 +18,11 @@
               <th scope="col" class="w-16 px-6 py-3"></th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200" style="overflow: visible !important;">
+          <tbody class="bg-white divide-y divide-gray-200">
             <tr
               v-for="folder in filteredFolders"
               :key="folder.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
-              style="overflow: visible !important;"
               @click="handleFolderClick(folder)"
             >
               <td class="px-6 py-4 whitespace-nowrap">
@@ -55,8 +54,8 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(folder.created_at) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" style="overflow: visible !important;" @click.stop>
-                <Menu as="div" class="relative inline-block text-left" style="overflow: visible !important;">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
+                <Menu as="div" class="relative inline-block text-left">
                   <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                     <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                   </MenuButton>

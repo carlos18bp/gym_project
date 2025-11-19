@@ -1,7 +1,7 @@
 <template>
-  <div class="document-list-client-table" style="overflow: visible !important;">
+  <div class="document-list-client-table">
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6" style="overflow: visible !important;">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
       <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <!-- Left side: Search and Filters -->
         <div class="flex flex-col sm:flex-row gap-3 flex-1 w-full lg:w-auto">
@@ -103,9 +103,9 @@
     </div>
 
     <!-- Table -->
-    <div style="overflow: visible !important;" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''">
-      <div style="overflow: visible !important;">
-        <table class="min-w-full divide-y divide-gray-200" style="overflow: visible !important;">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200" style="overflow-x: visible; overflow-y: hidden;">
+      <div class="overflow-x-auto" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''" style="overflow-y: visible;">
+        <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -123,12 +123,11 @@
               <th scope="col" class="w-16 px-6 py-3"></th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200" style="overflow: visible !important;">
+          <tbody class="bg-white divide-y divide-gray-200">
             <tr
               v-for="(document, index) in paginatedDocuments"
               :key="document.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
-              style="overflow: visible !important;"
               @click="handleDocumentClick(document)"
             >
               <td class="px-6 py-4 whitespace-nowrap">
@@ -172,8 +171,8 @@
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" style="overflow: visible !important;" @click.stop>
-                <Menu as="div" class="relative inline-block text-left" style="overflow: visible !important;">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
+                <Menu as="div" class="relative inline-block text-left">
                   <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
                     <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                   </MenuButton>
