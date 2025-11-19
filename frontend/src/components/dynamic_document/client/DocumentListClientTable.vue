@@ -104,7 +104,7 @@
 
     <!-- Table -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200" style="overflow-x: visible; overflow-y: hidden;">
-      <div class="overflow-x-auto" :class="filteredAndSortedDocuments.length <= 3 ? 'pl-52' : ''" style="overflow-y: visible;">
+      <div class="overflow-x-auto" style="overflow-y: visible;">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
