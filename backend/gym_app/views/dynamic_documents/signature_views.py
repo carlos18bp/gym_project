@@ -234,6 +234,7 @@ def sign_document(request, document_id, user_id):
                     )
                     email_message.send()
                 except Exception as e:
+                    pass
             # === Fin envío de correo ===
             
         except Exception as e:
@@ -762,6 +763,7 @@ def create_signatures_pdf(document, request):
                     elements.append(Spacer(1, 4))
             
         except Exception as e:
+            pass
     
     if not signature_images_added:
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
