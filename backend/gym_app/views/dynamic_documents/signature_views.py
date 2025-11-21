@@ -73,7 +73,6 @@ def generate_encrypted_document_id(document_id, created_at):
         
         return formatted_id
     except Exception as e:
-        print(f"Error generating encrypted ID: {e}")
         # Fallback to simple format
         return f"DOC-{document_id:04d}-{created_at.strftime('%Y%m%d')}"
 
@@ -142,23 +141,13 @@ def sign_document(request, document_id, user_id):
         document_id: The ID of the document to sign
         user_id: The ID of the user who is signing the document
     """
-    print("\n=== STARTING DOCUMENT SIGNING PROCESS ===")
-    print(f"Document ID: {document_id}")
-    print(f"User ID: {user_id}")
-    print(f"Authenticated user: {request.user.email}")
     
     try:
         # Check that the document exists
         document = DynamicDocument.objects.get(pk=document_id)
-        print(f"\nDocument found:")
-        print(f"- Title: {document.title}")
-        print(f"- State: {document.state}")
-        print(f"- Requires signature: {document.requires_signature}")
-        print(f"- Current signatures: {document.signatures.count()}")
         
         # Check that the document requires signatures
         if not document.requires_signature:
-            print("\nError: Document does not require signatures")
             return Response(
                 {'detail': 'This document does not require signatures.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -168,9 +157,6 @@ def sign_document(request, document_id, user_id):
         # Only the user themselves or an administrator can sign on behalf of a user
         authenticated_user = request.user
         if authenticated_user.id != user_id and not authenticated_user.is_staff:
-            print(f"\nError: Unauthorized signing attempt")
-            print(f"Authenticated user ID: {authenticated_user.id}")
-            print(f"Requested user ID: {user_id}")
             return Response(
                 {'detail': 'You are not authorized to sign documents on behalf of other users.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -179,11 +165,7 @@ def sign_document(request, document_id, user_id):
         # Check that the user exists
         try:
             signing_user = User.objects.get(pk=user_id)
-            print(f"\nSigning user found:")
-            print(f"- Email: {signing_user.email}")
-            print(f"- Has signature: {hasattr(signing_user, 'signature')}")
         except User.DoesNotExist:
-            print(f"\nError: User {user_id} not found")
             return Response(
                 {'detail': 'User not found.'},
                 status=status.HTTP_404_NOT_FOUND
@@ -196,12 +178,7 @@ def sign_document(request, document_id, user_id):
                 signer=signing_user,
                 signed=False
             )
-            print(f"\nSignature record found:")
-            print(f"- ID: {signature_record.id}")
-            print(f"- Created at: {signature_record.created_at}")
-            print(f"- Currently signed: {signature_record.signed}")
         except DocumentSignature.DoesNotExist:
-            print(f"\nError: No valid signature record found for user {signing_user.email}")
             return Response(
                 {'detail': 'This user is not authorized to sign this document or has already signed it.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -209,22 +186,17 @@ def sign_document(request, document_id, user_id):
             
         # Check that the user has an electronic signature
         if not hasattr(signing_user, 'signature'):
-            print(f"\nError: User {signing_user.email} has no signature")
             return Response(
                 {'detail': f'User {signing_user.email} needs to create a signature before signing documents.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
         # Update the signature record
-        print("\nUpdating signature record...")
         try:
             signature_record.signed = True
             signature_record.signed_at = timezone.now()
             signature_record.ip_address = request.META.get('REMOTE_ADDR')
             signature_record.save()
-            print(f"Signature record updated successfully:")
-            print(f"- Signed at: {signature_record.signed_at}")
-            print(f"- IP: {signature_record.ip_address}")
             
             # Verify the signature was saved
             saved_signature = DocumentSignature.objects.get(id=signature_record.id)
@@ -262,11 +234,10 @@ def sign_document(request, document_id, user_id):
                     )
                     email_message.send()
                 except Exception as e:
-                    print(f"Error enviando correo a {email}: {e}")
+                    pass
             # === Fin envío de correo ===
             
         except Exception as e:
-            print(f"\nError saving signature record: {str(e)}")
             return Response(
                 {'detail': f'Error saving signature: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -276,30 +247,22 @@ def sign_document(request, document_id, user_id):
         all_signatures = document.signatures.all()
         total_signatures = all_signatures.count()
         signed_signatures = all_signatures.filter(signed=True).count()
-        print(f"\nChecking document completion:")
-        print(f"- Total signatures required: {total_signatures}")
-        print(f"- Signatures completed: {signed_signatures}")
         
         if all(sig.signed for sig in all_signatures):
-            print("\nAll signatures complete, updating document state...")
             document.state = 'FullySigned'
             document.fully_signed = True
             document.save()
-            print(f"Document state updated to: {document.state}")
         
         # Return the updated signature record
         serializer = DocumentSignatureSerializer(signature_record)
-        print("\n=== SIGNING PROCESS COMPLETED SUCCESSFULLY ===")
         return Response(serializer.data, status=status.HTTP_200_OK)
         
     except DynamicDocument.DoesNotExist:
-        print(f"\nError: Document {document_id} not found")
         return Response(
             {'detail': 'Document not found.'},
             status=status.HTTP_404_NOT_FOUND
         )
     except Exception as e:
-        print(f"\nUnexpected error: {str(e)}")
         return Response(
             {'detail': f'An unexpected error occurred: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -418,32 +381,21 @@ def get_user_signature(request, user_id):
     """
     Obtener la firma del usuario especificado por su ID.
     """
-    print("\n=== GETTING USER SIGNATURE ===")
-    print(f"Requested user ID: {user_id}")
-    print(f"Authenticated user: {request.user.email}")
     
     try:
         user = User.objects.get(pk=user_id)
-        print(f"\nUser found:")
-        print(f"- Email: {user.email}")
-        print(f"- Has signature: {hasattr(user, 'signature')}")
         
         if hasattr(user, 'signature'):
-            print("\nUser has signature, serializing...")
             serializer = UserSignatureSerializer(user.signature, context={'request': request})
-            print(f"Serialized data: {serializer.data}")
             return Response({
                 'has_signature': True,
                 'signature': serializer.data
             }, status=status.HTTP_200_OK)
         else:
-            print("\nUser has no signature")
             return Response({'has_signature': False}, status=status.HTTP_200_OK)
     except User.DoesNotExist:
-        print(f"\nError: User {user_id} not found")
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        print(f"\nUnexpected error: {str(e)}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -472,7 +424,6 @@ def register_carlito_fonts():
         pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
         pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
     except Exception as e:
-        print(f"Error registering fonts: {e}")
         raise
 
     return font_paths
@@ -807,14 +758,12 @@ def create_signatures_pdf(document, request):
                     elements.append(img)
                     elements.append(Spacer(1, 4))
                     signature_images_added = True
-                    print(f"✅ Signature image added for user: {user.email}")
                 except Exception as e:
-                    print(f"❌ Error adding signature image for user {user.email}: {str(e)}")
                     elements.append(Paragraph("<b>Error:</b> al cargar la imagen de la firma", detail_style))
                     elements.append(Spacer(1, 4))
             
         except Exception as e:
-            print(f"❌ Error processing signature image: {str(e)}")
+            pass
     
     if not signature_images_added:
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
@@ -838,7 +787,6 @@ def create_signatures_pdf(document, request):
     elements.append(Paragraph(f"<b>Generado el:</b> {generation_time} | <b>Por:</b> {request.user.get_full_name() or request.user.email}", detail_style))
     
     # Build the PDF
-    print("\nBuilding comprehensive PDF...")
     
     # Create a custom canvas class to add watermark
     class WatermarkCanvas(canvas.Canvas):
@@ -871,7 +819,6 @@ def create_signatures_pdf(document, request):
     
     # Build the PDF with watermark
     doc.build(elements, canvasmaker=WatermarkCanvas)
-    print("✅ Comprehensive PDF built successfully")
     
     # Get the value of the BytesIO buffer
     buffer.seek(0)
@@ -924,15 +871,12 @@ def generate_signatures_pdf(request, pk):
         Response: A JSON response with an error message if an exception occurs.
     """
     try:
-        print(f"\n=== GENERATING COMBINED PDF FOR DOCUMENT {pk} ===")
         
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('signatures__signer', 'variables').get(pk=pk)
-        print(f"Document found: {document.title}")
+        document = DynamicDocument.objects.prefetch_related('signatures__signer', 'variables', 'tags').get(pk=pk)
         
         # Verify document state
         if document.state != 'FullySigned':
-            print(f"❌ Document is not fully signed. Current state: {document.state}")
             return Response(
                 {'detail': 'El documento debe estar completamente firmado para generar el PDF de firmas.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -940,7 +884,6 @@ def generate_signatures_pdf(request, pk):
         
         # Verify signatures exist
         if not document.signatures.exists():
-            print("❌ Document has no signatures")
             return Response(
                 {'detail': 'El documento no tiene firmas registradas.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -963,18 +906,14 @@ def generate_signatures_pdf(request, pk):
         response['Content-Length'] = len(combined_pdf_buffer.getvalue())
         response.write(combined_pdf_buffer.getvalue())
         
-        print("✅ Combined PDF response created successfully")
         return response
         
     except DynamicDocument.DoesNotExist:
-        print(f"\n❌ Error: Document with ID {pk} not found")
         return Response(
             {'detail': 'Documento no encontrado.'},
             status=status.HTTP_404_NOT_FOUND
         )
     except Exception as e:
-        print(f"\n❌ Unexpected error: {str(e)}")
-        print(f"Error details: {traceback.format_exc()}")
         return Response(
             {'detail': f'Error al generar el PDF de firmas: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -237,6 +237,14 @@ watch(() => props.documentId, (newValue) => {
     loadDocumentData();
   }
 }, { immediate: true });
+
+// Watch for changes in the document store to refresh data
+watch(() => documentStore.documents, () => {
+  // Refresh document data when store updates
+  if (props.documentId) {
+    loadDocumentData();
+  }
+}, { deep: true });
 </script>
 
 <style scoped>

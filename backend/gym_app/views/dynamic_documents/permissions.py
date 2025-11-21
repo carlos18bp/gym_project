@@ -265,7 +265,7 @@ def filter_documents_by_visibility(view_func):
                 
                 if doc_id:
                     try:
-                        document = DynamicDocument.objects.get(pk=doc_id)
+                        document = DynamicDocument.objects.prefetch_related('tags').get(pk=doc_id)
                         
                         # Published documents without assigned_to are templates visible to all clients
                         is_template = (doc_state == 'Published' and doc_assigned_to is None)

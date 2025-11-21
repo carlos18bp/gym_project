@@ -123,8 +123,6 @@ def send_verification_code(request):
     return Response({'passcode': passcode}, status=status.HTTP_200_OK)
 
 
-from django.contrib.auth import authenticate
-
 @api_view(['POST'])
 def sign_in(request):
     """
@@ -179,12 +177,10 @@ def sign_in(request):
     if not user:
         return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
-    # Authenticate using password only
+    # Verify password and generate tokens
     if user.check_password(password):
-        auth_user = authenticate(request, email=email, password=password)
-        if auth_user:
-            # Generate authentication tokens for the user
-            return Response(generate_auth_tokens(auth_user), status=status.HTTP_200_OK)
+        # Generate authentication tokens for the user
+        return Response(generate_auth_tokens(user), status=status.HTTP_200_OK)
     
     return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 

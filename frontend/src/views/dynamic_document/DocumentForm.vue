@@ -411,7 +411,8 @@ onMounted(async () => {
   }
 
   if (route.params.mode === "editor" || route.params.mode === "formalize") {
-    document.value = documentBase.value;
+    // Create a deep copy to avoid modifying the original document in the store
+    document.value = JSON.parse(JSON.stringify(documentBase.value));
     document.value.title = route.params.title;
     
     // If we're in formalize mode, update state and load signers
@@ -479,7 +480,16 @@ const saveDocument = async (state = 'Draft') => {
       })),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',
-      signers: route.params.mode === 'formalize' ? selectedSigners.value.map(user => user.id) : [],
+      signers: route.params.mode === 'formalize' ? (() => {
+        // Get selected signer IDs
+        const signerIds = selectedSigners.value.map(user => user.id);
+        // Add current user as signer if not already included (for corporate/client roles)
+        const currentUserId = userStore.currentUser?.id;
+        if (currentUserId && !signerIds.includes(currentUserId)) {
+          signerIds.push(currentUserId);
+        }
+        return signerIds;
+      })() : [],
       // Include tags if they exist (for client documents created from templates)
       tag_ids: document.value.tags ? document.value.tags.map(tag => tag.id) : []
     };
@@ -523,7 +533,19 @@ const saveDocument = async (state = 'Draft') => {
     
     // Redirect to dashboard after a short delay
     setTimeout(() => {
-      router.push('/dynamic_document_dashboard');
+      // If in formalize mode, redirect to pending signatures tab
+      if (route.params.mode === 'formalize') {
+        const currentUser = userStore.currentUser;
+        if (currentUser?.role === 'lawyer') {
+          // For lawyers, use query param to set the tab
+          router.push({ path: '/dynamic_document_dashboard', query: { lawyerTab: 'pending-signatures' } });
+        } else {
+          // For clients/corporate, use query param to set the tab
+          router.push({ path: '/dynamic_document_dashboard', query: { tab: 'pending-signatures' } });
+        }
+      } else {
+        router.push('/dynamic_document_dashboard');
+      }
     }, 300);
   } catch (error) {
     console.error('Error saving document:', error);

@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- Mobile menu button -->
-    <div class="sticky top-0 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       <slot></slot>
     </div>
 
@@ -138,12 +138,23 @@
 
       <!-- Pending Signatures Tab -->
       <div v-if="activeLawyerTab === 'pending-signatures'">
-        <SignaturesListTable state="PendingSignatures" :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        <SignaturesListTable 
+          state="PendingSignatures" 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          @open-electronic-signature="handleLawyerSignatureClick"
+          @document-fully-signed="handleDocumentFullySigned"
+        />
       </div>
 
       <!-- Signed Documents Tab -->
       <div v-if="activeLawyerTab === 'signed-documents'">
-        <SignaturesListTable state="FullySigned" :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        <SignaturesListTable 
+          state="FullySigned" 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          @open-electronic-signature="handleLawyerSignatureClick"
+        />
       </div>
 
       <!-- Finished Documents Tab -->
@@ -190,32 +201,50 @@
           
           <!-- Action Buttons (Desktop) -->
           <div class="flex items-center gap-2 mb-4">
-            <button
-              @click.stop="handleElectronicSignatureClick"
-              :disabled="isBasicUser"
-              :class="[
-                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                isBasicUser 
-                  ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                  : 'text-purple-600 hover:bg-purple-50 border-purple-200'
-              ]"
-            >
-              <FingerPrintIcon class="h-4 w-4" />
-              Firma Electrónica
-            </button>
-            <button
-              @click.stop="handleGlobalLetterheadClick"
-              :disabled="isBasicUser"
-              :class="[
-                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                isBasicUser 
-                  ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                  : 'text-green-600 hover:bg-green-50 border-green-200'
-              ]"
-            >
-              <DocumentTextIcon class="h-4 w-4" />
-              Membrete Global
-            </button>
+            <div class="relative group">
+              <button
+                @click.stop="handleElectronicSignatureClick"
+                :disabled="isBasicUser"
+                :class="[
+                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                  isBasicUser 
+                    ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                    : 'text-purple-600 hover:bg-purple-50 border-purple-200'
+                ]"
+              >
+                <FingerPrintIcon class="h-4 w-4" />
+                Firma Electrónica
+              </button>
+              <div
+                v-if="isBasicUser"
+                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+              >
+                Actualiza tu suscripción para usar esta funcionalidad
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+            <div class="relative group">
+              <button
+                @click.stop="handleGlobalLetterheadClick"
+                :disabled="isBasicUser"
+                :class="[
+                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                  isBasicUser 
+                    ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                    : 'text-green-600 hover:bg-green-50 border-green-200'
+                ]"
+              >
+                <DocumentTextIcon class="h-4 w-4" />
+                Membrete Global
+              </button>
+              <div
+                v-if="isBasicUser"
+                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+              >
+                Actualiza tu suscripción para usar esta funcionalidad
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
             <button
               @click.stop="handleSection('useDocument')"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
@@ -267,32 +296,50 @@
         
         <!-- Mobile Action Buttons -->
         <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
-          <button
-            @click.stop="handleElectronicSignatureClick"
-            :disabled="isBasicUser"
-            :class="[
-              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-              isBasicUser 
-                ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
-            ]"
-          >
-            <FingerPrintIcon class="h-5 w-5" />
-            Firma Electrónica
-          </button>
-          <button
-            @click.stop="handleGlobalLetterheadClick"
-            :disabled="isBasicUser"
-            :class="[
-              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-              isBasicUser 
-                ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                : 'text-green-600 bg-green-50 hover:bg-green-100'
-            ]"
-          >
-            <DocumentTextIcon class="h-5 w-5" />
-            Membrete Global
-          </button>
+          <div class="relative group">
+            <button
+              @click.stop="handleElectronicSignatureClick"
+              :disabled="isBasicUser"
+              :class="[
+                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                isBasicUser 
+                  ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                  : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+              ]"
+            >
+              <FingerPrintIcon class="h-5 w-5" />
+              Firma Electrónica
+            </button>
+            <div
+              v-if="isBasicUser"
+              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+            >
+              Actualiza tu suscripción para usar esta funcionalidad
+              <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+          </div>
+          <div class="relative group">
+            <button
+              @click.stop="handleGlobalLetterheadClick"
+              :disabled="isBasicUser"
+              :class="[
+                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                isBasicUser 
+                  ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                  : 'text-green-600 bg-green-50 hover:bg-green-100'
+              ]"
+            >
+              <DocumentTextIcon class="h-5 w-5" />
+              Membrete Global
+            </button>
+            <div
+              v-if="isBasicUser"
+              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+            >
+              Actualiza tu suscripción para usar esta funcionalidad
+              <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+          </div>
           <button
             @click.stop="handleSection('useDocument')"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
@@ -313,18 +360,35 @@
         ></UseDocumentTable>
       </div>
       <div v-else>
-        <DocumentListClientTable
-          v-if="activeTab === 'my-documents'"
-          :searchQuery="searchQuery"
-          :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-        ></DocumentListClientTable>
         <FolderManagement
           v-if="activeTab === 'folders'"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
+        />
+        <DocumentListClientTable
+          v-else-if="activeTab === 'my-documents'"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+        ></DocumentListClientTable>
+        <SignaturesListTable
+          v-else-if="activeTab === 'pending-signatures'"
+          state="PendingSignatures"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleElectronicSignatureClick"
+          @document-fully-signed="handleClientDocumentFullySigned"
+        />
+        <SignaturesListTable
+          v-else-if="activeTab === 'signed-documents'"
+          state="FullySigned"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleElectronicSignatureClick"
         />
       </div>
     </div>
@@ -401,7 +465,7 @@ import { onMounted, computed, ref, watch, onUnmounted } from "vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { showNotification } from "@/shared/notification_message";
@@ -435,6 +499,7 @@ const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
 const folderStore = useDocumentFolderStore();
 const router = useRouter();
+const route = useRoute();
 
 // Basic user restrictions
 const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
@@ -568,6 +633,22 @@ const handleElectronicSignatureClick = () => {
 };
 
 /**
+ * Handle document fully signed event for Lawyer
+ */
+const handleDocumentFullySigned = async (document) => {
+  // Switch to signed documents tab immediately
+  activeLawyerTab.value = 'signed-documents';
+};
+
+/**
+ * Handle document fully signed event for Client/Corporate
+ */
+const handleClientDocumentFullySigned = async (document) => {
+  // Switch to signed documents tab immediately
+  activeTab.value = 'signed-documents';
+};
+
+/**
  * Handle global letterhead button click with basic user restriction
  */
 const handleGlobalLetterheadClick = () => {
@@ -691,10 +772,30 @@ watch(selectedDocument, (newVal) => {
   // Handle selected document changes
 });
 
+// Watch for route changes to refresh documents when returning from formalization
+watch(() => route.path, (newPath, oldPath) => {
+  // Refresh documents when returning to dashboard from document form
+  if (newPath === '/dynamic_document_dashboard' && oldPath && oldPath.includes('/document/use/')) {
+    documentStore.init();
+  }
+});
+
+// Watch for query params to set active tab
+watch(() => route.query, (query) => {
+  if (query.lawyerTab) {
+    activeLawyerTab.value = query.lawyerTab;
+  }
+  if (query.tab) {
+    activeTab.value = query.tab;
+  }
+}, { immediate: true });
+
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
-  { name: 'my-documents', label: 'Mis Documentos' }
+  { name: 'my-documents', label: 'Mis Documentos' },
+  { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
+  { name: 'signed-documents', label: 'Dcs. Firmados' }
 ];
 
 // Navigation tabs for lawyer users
@@ -775,9 +876,6 @@ onMounted(async () => {
 
 // Add handler for signature creation completion
 const handleSignatureSaved = async (signatureData) => {
-  // Get updated user information from backend
-  const updatedUser = await userStore.getUserInfo();
-  
   // Update has_signature property immediately in the current user object
   if (userStore.currentUser) {
     userStore.currentUser.has_signature = true;
@@ -788,6 +886,7 @@ const handleSignatureSaved = async (signatureData) => {
   // Close the modal after a small delay to allow the notification to be visible
   setTimeout(() => {
     showSignatureModal.value = false;
+    showElectronicSignatureModal.value = false;
   }, 500);
 };
 </script>

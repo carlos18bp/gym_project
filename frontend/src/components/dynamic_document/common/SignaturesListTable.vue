@@ -397,7 +397,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['refresh']);
+const emit = defineEmits(['refresh', 'document-fully-signed', 'open-electronic-signature']);
 
 // Store instances
 const userStore = useUserStore();
@@ -449,27 +449,39 @@ const filteredDocuments = computed(() => {
   if (userRole === 'lawyer') {
     if (props.state === 'PendingSignatures') {
       storeDocuments = documentStore.pendingSignatureDocuments.filter(doc => {
-        return doc.created_by === userId;
+        // Show documents where lawyer is creator OR signer
+        const isCreator = doc.created_by === userId;
+        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
+        return isCreator || isSigner;
       });
     } else {
-      storeDocuments = documentStore.fullySignedDocuments.filter(doc => 
-        doc.created_by === userId
-      );
+      storeDocuments = documentStore.fullySignedDocuments.filter(doc => {
+        // Show documents where lawyer is creator OR signer
+        const isCreator = doc.created_by === userId;
+        const isSigner = doc.signatures?.some(sig => 
+          sig.signer_email === userEmail && sig.signed
+        );
+        return isCreator || isSigner;
+      });
     }
   } else {
     if (props.state === 'PendingSignatures') {
       storeDocuments = documentStore.documents.filter(doc => {
         if (doc.state !== 'PendingSignatures') return false;
+        // Show documents where user is a signer OR created the document
         const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
-        return isSigner;
+        const isCreator = doc.created_by === userId;
+        return isSigner || isCreator;
       });
     } else {
       storeDocuments = documentStore.documents.filter(doc => {
         if (doc.state !== 'FullySigned') return false;
+        // Show documents where user signed OR created the document
         const isSigner = doc.signatures?.some(sig => 
           sig.signer_email === userEmail && sig.signed
         );
-        return isSigner;
+        const isCreator = doc.created_by === userId;
+        return isSigner || isCreator;
       });
     }
   }

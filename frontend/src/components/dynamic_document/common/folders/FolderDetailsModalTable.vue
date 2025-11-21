@@ -42,7 +42,7 @@
         <div class="flex-1 overflow-y-auto p-6">
           <!-- Table -->
           <div v-if="folder.documents.length > 0" class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" :style="{ minHeight: getMinHeight() }">
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -63,7 +63,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr
-                    v-for="document in folder.documents"
+                    v-for="(document, index) in folder.documents"
                     :key="document.id"
                     class="hover:bg-gray-50 cursor-pointer transition-colors"
                     @click="handleDocumentClick(document)"
@@ -105,11 +105,22 @@
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
-                      <Menu as="div" class="relative inline-block text-left">
-                        <MenuButton class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100">
+                      <Menu as="div" class="relative inline-block text-left" v-slot="{ open }">
+                        <MenuButton 
+                          :ref="el => setMenuButtonRef(el, index)"
+                          @click="handleMenuOpen(index, open)"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100"
+                        >
                           <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
                         </MenuButton>
-                        <MenuItems class="absolute right-0 z-[9999] mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                        <MenuItems 
+                          :ref="el => setMenuItemsRef(el, index)"
+                          :class="[
+                            folder.documents.length > 2 && index > 0 && index >= folder.documents.length - 3
+                              ? 'absolute right-0 z-[9999] bottom-full mb-2 w-48 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                              : 'absolute right-0 z-[9999] mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
+                          ]"
+                        >
                           <div class="py-1">
                             <MenuItem v-slot="{ active }">
                               <a @click="handleDocumentClick(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
@@ -151,7 +162,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { 
   XMarkIcon, 
@@ -186,6 +197,12 @@ const emit = defineEmits([
 // Stores
 const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
+
+// Menu refs for scroll handling
+const menuButtonRefs = ref({});
+const menuItemsRefs = ref({});
+const isAnyMenuOpen = ref(false);
+const openMenuIndex = ref(-1);
 
 // Folder colors
 const folderColors = [
@@ -282,6 +299,91 @@ const handleDocumentClick = (document) => {
     emit('use-document', document);
   } else {
     emit('view-document', document);
+  }
+};
+
+// Get dynamic minHeight based on open menu index
+const getMinHeight = () => {
+  if (!isAnyMenuOpen.value || !props.folder) return 'auto';
+  
+  // Si hay 1 elemento, siempre 280px
+  if (props.folder.documents.length === 1) return '280px';
+  
+  // Si hay 2 elementos
+  if (props.folder.documents.length === 2) {
+    // Si es el segundo elemento (índice 1), necesita más espacio
+    return openMenuIndex.value === 1 ? '340px' : '280px';
+  }
+  
+  // Para 3 o más elementos, usar el estándar
+  return '280px';
+};
+
+// Menu refs handlers
+const setMenuButtonRef = (el, index) => {
+  if (el) {
+    menuButtonRefs.value[index] = el;
+  }
+};
+
+const setMenuItemsRef = (el, index) => {
+  if (el) {
+    menuItemsRefs.value[index] = el;
+  }
+};
+
+// Handle menu open and scroll into view if needed
+const handleMenuOpen = (index, wasOpen) => {
+  // Track if menu is being opened or closed
+  isAnyMenuOpen.value = !wasOpen;
+  openMenuIndex.value = wasOpen ? -1 : index;
+  
+  // Use setTimeout to ensure the menu is rendered before checking position
+  if (!wasOpen) {
+    setTimeout(() => {
+      const menuItems = menuItemsRefs.value[index];
+      
+      if (menuItems) {
+        // Get the actual DOM element (Headless UI components wrap the element)
+        const menuElement = menuItems.$el || menuItems;
+        
+        if (menuElement && menuElement.getBoundingClientRect) {
+          const rect = menuElement.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          
+          // Special handling for first row (index 0) - always ensure it's fully visible
+          if (index === 0) {
+            // Check if menu extends below viewport
+            if (rect.bottom > viewportHeight - 20) {
+              const scrollAmount = rect.bottom - viewportHeight + 40;
+              window.scrollBy({ 
+                top: scrollAmount, 
+                behavior: 'smooth'
+              });
+            }
+          } else {
+            // For other rows, use standard logic
+            
+            // Check if menu is cut off at the bottom of viewport
+            if (rect.bottom > viewportHeight - 10) {
+              const scrollAmount = rect.bottom - viewportHeight + 30;
+              window.scrollBy({ 
+                top: scrollAmount, 
+                behavior: 'smooth'
+              });
+            }
+            // Check if menu is cut off at the top of viewport
+            else if (rect.top < 80) {
+              const scrollAmount = rect.top - 100;
+              window.scrollBy({ 
+                top: scrollAmount, 
+                behavior: 'smooth'
+              });
+            }
+          }
+        }
+      }
+    }, 100);
   }
 };
 </script>

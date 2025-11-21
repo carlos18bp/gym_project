@@ -82,20 +82,37 @@ const userIcon = computed(() => {
 const formatDate = (dateString) => {
   const date = new Date(dateString)
   const now = new Date()
-  const diffInHours = (now - date) / (1000 * 60 * 60)
+  
+  // Reset time to compare only dates
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  const diffInDays = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24))
 
-  if (diffInHours < 24) {
+  // Today - show only time
+  if (diffInDays === 0) {
     return date.toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit'
     })
-  } else if (diffInHours < 24 * 7) {
+  }
+  // Yesterday
+  else if (diffInDays === 1) {
+    return 'Ayer ' + date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+  // This week (2-6 days ago)
+  else if (diffInDays < 7) {
     return date.toLocaleDateString('es-ES', {
       weekday: 'short',
       hour: '2-digit',
       minute: '2-digit'
     })
-  } else {
+  }
+  // Older than a week
+  else {
     return date.toLocaleDateString('es-ES', {
       month: 'short',
       day: 'numeric',

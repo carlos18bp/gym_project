@@ -119,7 +119,7 @@ export const actions = {
         this.folders.push(newFolder);
         this.lastUpdatedFolderId = newFolder.id;
         
-        await showNotification('Carpeta creada exitosamente', 'success');
+        showNotification('Carpeta creada exitosamente', 'success');
         return newFolder;
       } else {
         throw new Error(`Error creating folder: ${response.status}`);
@@ -127,7 +127,7 @@ export const actions = {
     } catch (error) {
       console.error('Error creating folder:', error);
       this.error = error.message || 'Error al crear la carpeta';
-      await showNotification(this.error, 'error');
+      showNotification(this.error, 'error');
       throw error;
     } finally {
       this.isLoading = false;
@@ -178,7 +178,7 @@ export const actions = {
         
         this.lastUpdatedFolderId = folderId;
         
-        await showNotification('Carpeta actualizada exitosamente', 'success');
+        showNotification('Carpeta actualizada exitosamente', 'success');
         return updatedFolder;
       } else {
         throw new Error(`Error updating folder: ${response.status}`);
@@ -186,7 +186,7 @@ export const actions = {
     } catch (error) {
       console.error('Error updating folder:', error);
       this.error = error.message || 'Error al actualizar la carpeta';
-      await showNotification(this.error, 'error');
+      showNotification(this.error, 'error');
       throw error;
     } finally {
       this.isLoading = false;

@@ -153,18 +153,15 @@ const handleSubmit = async () => {
   try {
     if (props.editingFolder) {
       await folderStore.updateFolder(props.editingFolder.id, folderForm.value);
-      showNotification('Carpeta actualizada correctamente', 'success');
     } else {
       await folderStore.createFolder(folderForm.value);
-      showNotification('Carpeta creada correctamente', 'success');
     }
     
+    // Reset submitting state and close modal
+    isSubmitting.value = false;
     emit('success');
   } catch (error) {
-    const action = props.editingFolder ? 'actualizar' : 'crear';
-    showNotification(`Error al ${action} la carpeta`, 'error');
-    console.error(`Error ${action} folder:`, error);
-  } finally {
+    // Error notification is already handled by the store
     isSubmitting.value = false;
   }
 };

@@ -1,19 +1,55 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from gym_app.models.user import UserSignature
 
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(BaseUserAdmin):
     """
     Custom admin configuration for the User model.
     Displays and manages user information in the admin interface.
+    Extends BaseUserAdmin to properly handle password hashing.
     """
     list_display = (
-        'first_name', 'last_name', 'document_type', 'identification',
-        'email', 'role', 'birthday', 'contact', 'created_at'
+        'email', 'first_name', 'last_name', 'document_type', 'identification',
+        'role', 'is_staff', 'is_active', 'created_at'
     )
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
-    list_filter = ('role', 'document_type', 'created_at')
+    list_filter = ('role', 'document_type', 'is_staff', 'is_active', 'created_at')
+    ordering = ('email',)
+    filter_horizontal = ()
+    
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        (_('Personal info'), {
+            'fields': ('first_name', 'last_name', 'contact', 'birthday', 
+                      'identification', 'document_type', 'photo_profile', 'letterhead_image')
+        }),
+        (_('Permissions'), {
+            'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 
+                      'is_gym_lawyer', 'is_profile_completed'),
+        }),
+        (_('Important dates'), {
+            'fields': ('last_login', 'created_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2'),
+        }),
+        (_('Personal info'), {
+            'fields': ('first_name', 'last_name', 'contact', 'birthday', 
+                      'identification', 'document_type')
+        }),
+        (_('Permissions'), {
+            'fields': ('role', 'is_active', 'is_staff', 'is_superuser'),
+        }),
+    )
+    
+    readonly_fields = ('last_login', 'created_at')
 
 class UserSignatureAdmin(admin.ModelAdmin):
     """
