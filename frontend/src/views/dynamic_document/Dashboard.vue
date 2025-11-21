@@ -138,12 +138,23 @@
 
       <!-- Pending Signatures Tab -->
       <div v-if="activeLawyerTab === 'pending-signatures'">
-        <SignaturesListTable state="PendingSignatures" :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        <SignaturesListTable 
+          state="PendingSignatures" 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          @open-electronic-signature="handleLawyerSignatureClick"
+          @document-fully-signed="handleDocumentFullySigned"
+        />
       </div>
 
       <!-- Signed Documents Tab -->
       <div v-if="activeLawyerTab === 'signed-documents'">
-        <SignaturesListTable state="FullySigned" :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        <SignaturesListTable 
+          state="FullySigned" 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          @open-electronic-signature="handleLawyerSignatureClick"
+        />
       </div>
 
       <!-- Finished Documents Tab -->
@@ -349,18 +360,35 @@
         ></UseDocumentTable>
       </div>
       <div v-else>
-        <DocumentListClientTable
-          v-if="activeTab === 'my-documents'"
-          :searchQuery="searchQuery"
-          :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-        ></DocumentListClientTable>
         <FolderManagement
           v-if="activeTab === 'folders'"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
+        />
+        <DocumentListClientTable
+          v-else-if="activeTab === 'my-documents'"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+        ></DocumentListClientTable>
+        <SignaturesListTable
+          v-else-if="activeTab === 'pending-signatures'"
+          state="PendingSignatures"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleElectronicSignatureClick"
+          @document-fully-signed="handleClientDocumentFullySigned"
+        />
+        <SignaturesListTable
+          v-else-if="activeTab === 'signed-documents'"
+          state="FullySigned"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleElectronicSignatureClick"
         />
       </div>
     </div>
@@ -437,7 +465,7 @@ import { onMounted, computed, ref, watch, onUnmounted } from "vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { showNotification } from "@/shared/notification_message";
@@ -471,6 +499,7 @@ const userStore = useUserStore();
 const documentStore = useDynamicDocumentStore();
 const folderStore = useDocumentFolderStore();
 const router = useRouter();
+const route = useRoute();
 
 // Basic user restrictions
 const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
@@ -604,6 +633,22 @@ const handleElectronicSignatureClick = () => {
 };
 
 /**
+ * Handle document fully signed event for Lawyer
+ */
+const handleDocumentFullySigned = async (document) => {
+  // Switch to signed documents tab immediately
+  activeLawyerTab.value = 'signed-documents';
+};
+
+/**
+ * Handle document fully signed event for Client/Corporate
+ */
+const handleClientDocumentFullySigned = async (document) => {
+  // Switch to signed documents tab immediately
+  activeTab.value = 'signed-documents';
+};
+
+/**
  * Handle global letterhead button click with basic user restriction
  */
 const handleGlobalLetterheadClick = () => {
@@ -727,10 +772,30 @@ watch(selectedDocument, (newVal) => {
   // Handle selected document changes
 });
 
+// Watch for route changes to refresh documents when returning from formalization
+watch(() => route.path, (newPath, oldPath) => {
+  // Refresh documents when returning to dashboard from document form
+  if (newPath === '/dynamic_document_dashboard' && oldPath && oldPath.includes('/document/use/')) {
+    documentStore.init();
+  }
+});
+
+// Watch for query params to set active tab
+watch(() => route.query, (query) => {
+  if (query.lawyerTab) {
+    activeLawyerTab.value = query.lawyerTab;
+  }
+  if (query.tab) {
+    activeTab.value = query.tab;
+  }
+}, { immediate: true });
+
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
-  { name: 'my-documents', label: 'Mis Documentos' }
+  { name: 'my-documents', label: 'Mis Documentos' },
+  { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
+  { name: 'signed-documents', label: 'Dcs. Firmados' }
 ];
 
 // Navigation tabs for lawyer users
@@ -811,9 +876,6 @@ onMounted(async () => {
 
 // Add handler for signature creation completion
 const handleSignatureSaved = async (signatureData) => {
-  // Get updated user information from backend
-  const updatedUser = await userStore.getUserInfo();
-  
   // Update has_signature property immediately in the current user object
   if (userStore.currentUser) {
     userStore.currentUser.has_signature = true;
@@ -824,6 +886,7 @@ const handleSignatureSaved = async (signatureData) => {
   // Close the modal after a small delay to allow the notification to be visible
   setTimeout(() => {
     showSignatureModal.value = false;
+    showElectronicSignatureModal.value = false;
   }, 500);
 };
 </script>

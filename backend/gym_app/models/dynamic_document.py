@@ -153,6 +153,10 @@ class DynamicDocument(models.Model):
         if self.created_by == user:
             return True
             
+        # User is a signer of the document
+        if self.signatures.filter(signer=user).exists():
+            return True
+            
         # Published documents without assigned_to are templates visible to all clients
         if self.state == 'Published' and self.assigned_to is None:
             return True

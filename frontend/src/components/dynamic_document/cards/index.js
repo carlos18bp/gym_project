@@ -333,7 +333,8 @@ export function useDocumentActions(documentStore, userStore, emit) {
         );
         
         if (createSignature) {
-          openModalFn('electronic-signature', document);
+          // Emit event to open electronic signature modal in Dashboard
+          emit('open-electronic-signature');
         } else {
           await showNotification("Necesitas una firma para poder firmar documentos.", "warning");
         }
@@ -348,6 +349,10 @@ export function useDocumentActions(documentStore, userStore, emit) {
         await showNotification("Operación de firma cancelada", "info");
         return;
       }
+      
+      // Check if this will be the last signature
+      const unsignedSignatures = document.signatures?.filter(s => !s.signed) || [];
+      const isLastSigner = unsignedSignatures.length === 1 && unsignedSignatures[0].signer_email === userEmail;
 
       const signUrl = `dynamic-documents/${document.id}/sign/${userId}/`;
       
@@ -358,7 +363,32 @@ export function useDocumentActions(documentStore, userStore, emit) {
         
         if (response.status === 200 || response.status === 201) {
           await showNotification(`¡Documento "${document.title}" firmado correctamente!`, "success");
-          emit('refresh');
+          
+          // If this was the last signature, emit event immediately and switch tabs
+          if (isLastSigner) {
+            await showNotification(`El documento "${document.title}" ha sido firmado por todas las partes`, "success");
+            emit('document-fully-signed', document);
+            
+            // Wait for tab switch, then refresh and show modal
+            setTimeout(() => {
+              documentStore.init();
+              emit('refresh');
+              
+              // Show modal after tab switch is complete (longer delay to ensure tab has switched)
+              setTimeout(() => {
+                openModalFn('signatures', document);
+              }, 1500);
+            }, 1000);
+          } else {
+            // Not the last signer, just refresh normally
+            await documentStore.init();
+            emit('refresh');
+            
+            // Show signature status modal after signing
+            setTimeout(() => {
+              openModalFn('signatures', document);
+            }, 1000);
+          }
         } else {
           throw new Error(`Unexpected server response: ${response.status} ${response.statusText}`);
         }

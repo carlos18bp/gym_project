@@ -56,8 +56,6 @@ def create_dynamic_document(request):
         "tags": [1, 2]
     }
     """
-    print("Request data received:", request.data)
-
     # If it's a creation from the client, assign `assigned_to`.
     if request.data.get('state') in ['Progress', 'Completed'] and not request.data.get('assigned_to'):
         request.data['assigned_to'] = request.user.id
@@ -65,12 +63,8 @@ def create_dynamic_document(request):
     # Validate and save the document
     serializer = DynamicDocumentSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
-        print("Serializer is valid. Saving document...")
         instance = serializer.save()
-        print("Document saved successfully:", instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    print("Serializer errors:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
@@ -105,7 +99,6 @@ def get_dynamic_document(request, pk):
                 variable.save()
         
         serializer = DynamicDocumentSerializer(document)
-        print("Serialized data:", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -140,7 +133,6 @@ def update_dynamic_document(request, pk):
     
     Note: Providing permission fields will REPLACE existing permissions.
     """
-    print(request.data)
     try:
         # Get the document and load its related variables
         document = DynamicDocument.objects.prefetch_related('variables', 'tags').get(pk=pk)
@@ -154,12 +146,9 @@ def update_dynamic_document(request, pk):
     # Validate and update the document
     serializer = DynamicDocumentSerializer(document, data=request.data, partial=True, context={'request': request})
     if serializer.is_valid():
-        print("Serializer is valid. Updating document...")
         instance = serializer.save()
-        print("Document updated successfully:", instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    print("Serializer errors:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -176,7 +165,6 @@ def delete_dynamic_document(request, pk):
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     document.delete()
-    print(f"Document with ID {pk} deleted successfully.")
     return Response({'detail': 'Dynamic document deleted successfully.'}, status=status.HTTP_200_OK)
 
 
@@ -242,7 +230,6 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
             pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
         except Exception as e:
-            print(f"Error registering fonts: {e}")
             raise
 
         # Define background image style if letterhead exists
@@ -374,13 +361,10 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         )
 
     except DynamicDocument.DoesNotExist:
-        print("Error: Document not found in the database")
         return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
     except FileNotFoundError as e:
-        print(f"Error: {e}")
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
-        print(f"Unexpected error: {e}")
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
@@ -449,7 +433,6 @@ def download_dynamic_document_word(request, pk):
                 # Verify image file exists and is accessible
                 letterhead_path = os.path.abspath(letterhead_image.path)
                 if not os.path.exists(letterhead_path):
-                    print(f"Warning: Letterhead image not found at {letterhead_path}")
                     raise FileNotFoundError("Letterhead image file not accessible")
                 
                 # Read and encode image to base64
@@ -553,16 +536,9 @@ def download_dynamic_document_word(request, pk):
                 # Set header distance to 0
                 section.header_distance = Inches(0)
                 
-                print(f"Letterhead image added successfully with rId: {rId}")
-                
             except Exception as e:
-                print(f"Warning: Could not add letterhead image to Word document: {e}")
-                import traceback
-                traceback.print_exc()
-                
                 # Alternative approach: Add image to first paragraph of body
                 try:
-                    print("Trying alternative approach...")
                     
                     # Get the first paragraph or create one
                     if not doc.paragraphs:
@@ -622,10 +598,8 @@ def download_dynamic_document_word(request, pk):
                     drawing_parent = drawing.getparent()
                     drawing_parent.replace(drawing, anchor)
                     
-                    print("Alternative approach succeeded")
-                    
                 except Exception as e2:
-                    print(f"Alternative approach also failed: {e2}")
+                    pass
         
         # Configure default font for the document to Calibri
         font_name = 'Calibri'
@@ -672,14 +646,14 @@ def download_dynamic_document_word(request, pk):
                         padding_value = int(style.split("padding-left:")[1].split("px")[0].strip())
                         paragraph.paragraph_format.left_indent = Pt(padding_value)
                     except (ValueError, IndexError) as e:
-                        print(f"  Error parsing padding-left: {str(e)}")
+                        pass
 
                 if "line-height" in style:
                     try:
                         line_height = float(style.split("line-height:")[1].split(";")[0].strip())
                         paragraph.paragraph_format.line_spacing = line_height
                     except (ValueError, IndexError) as e:
-                        print(f"  Error parsing line-height: {str(e)}")
+                        pass
 
                 # Define a helper function to apply styles to runs
                 def apply_styles_to_run(run, element):
@@ -721,7 +695,7 @@ def download_dynamic_document_word(request, pk):
                                         font_size = int(font_size_part.split("pt")[0].strip())
                                         run.font.size = Pt(font_size)
                                 except (ValueError, IndexError) as e:
-                                    print(f"    Error parsing font-size: {str(e)}")
+                                    pass
                                     
                             if "color:" in element_style or "color :" in element_style:
                                 COLOR_MAP = {
@@ -778,11 +752,10 @@ def download_dynamic_document_word(request, pk):
                                         run.font.color.rgb = RGBColor(r, g, b)
                                         
                                 except (ValueError, IndexError) as e:
-                                    print(f"Error applying color: {str(e)}")
+                                    pass
                         
                         return run
                     except Exception as e:
-                        print(f"    Error applying styles to run: {str(e)}")
                         return run
 
                 # Improved recursive function to flatten the HTML structure
@@ -852,10 +825,8 @@ def download_dynamic_document_word(request, pk):
             content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     except DynamicDocument.DoesNotExist:
-        print("Error: Document not found")
         return Response({'detail': 'Document not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        print(f"Error generating Word document: {str(e)}")
         return Response({'detail': f'Error generating Word document: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
@@ -1101,7 +1072,7 @@ def delete_letterhead_image(request, pk):
             if os.path.exists(document.letterhead_image.path):
                 os.remove(document.letterhead_image.path)
         except Exception as e:
-            print(f"Warning: Could not delete file {document.letterhead_image.path}: {e}")
+            pass
         
         # Clear the field
         document.letterhead_image = None
@@ -1339,7 +1310,7 @@ def delete_user_letterhead_image(request):
             if os.path.exists(user.letterhead_image.path):
                 os.remove(user.letterhead_image.path)
         except Exception as e:
-            print(f"Warning: Could not delete file {user.letterhead_image.path}: {e}")
+            pass
         
         # Clear the field
         user.letterhead_image = None

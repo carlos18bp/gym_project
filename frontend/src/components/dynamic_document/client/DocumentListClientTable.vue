@@ -103,8 +103,8 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200" style="overflow-x: visible; overflow-y: hidden;">
-      <div class="overflow-x-auto" :style="{ minHeight: getMinHeight(), overflowY: 'visible' }">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -120,7 +120,6 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
-              <th scope="col" class="w-16 px-6 py-3"></th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -170,96 +169,6 @@
                   </span>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" @click.stop>
-                <Menu as="div" class="relative inline-block text-left" v-slot="{ open }">
-                  <MenuButton 
-                    :ref="el => setMenuButtonRef(el, index)"
-                    @click="handleMenuOpen(index, open)"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-md hover:bg-gray-100"
-                  >
-                    <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
-                  </MenuButton>
-                  <MenuItems
-                    :ref="el => setMenuItemsRef(el, index)"
-                    :class="[
-                      paginatedDocuments.length > 2 && index > 0 && index >= paginatedDocuments.length - 3
-                        ? 'absolute right-0 z-[9999] bottom-full mb-2 w-56 origin-bottom-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                        : 'absolute right-0 z-[9999] mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                    ]"
-                  >
-                    <div class="py-1">
-                      <!-- Editar / Completar -->
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handleEditForm(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Editar Formulario
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handleEditDocument(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Editar Documento
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-if="document.state !== 'Completed'" v-slot="{ active }">
-                        <a @click="handleEditForm(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Completar
-                        </a>
-                      </MenuItem>
-                      
-                      <!-- Previsualizar -->
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handlePreview(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Previsualizar
-                        </a>
-                      </MenuItem>
-                      
-                      <!-- Eliminar -->
-                      <MenuItem v-slot="{ active }">
-                        <a @click="handleDelete(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-red-600 cursor-pointer']">
-                          Eliminar
-                        </a>
-                      </MenuItem>
-                      
-                      <!-- Gestionar Membrete -->
-                      <MenuItem v-slot="{ active }">
-                        <a 
-                          @click="handleLetterhead(document)" 
-                          :class="[
-                            active ? 'bg-gray-100' : '', 
-                            currentUser?.role === 'basic' ? 'opacity-60 cursor-not-allowed text-gray-400' : 'text-gray-700 cursor-pointer',
-                            'block px-4 py-2 text-sm'
-                          ]"
-                        >
-                          Gestionar Membrete
-                        </a>
-                      </MenuItem>
-                      
-                      <!-- Administrar Asociaciones -->
-                      <MenuItem v-slot="{ active }">
-                        <a @click="handleRelationships(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Administrar Asociaciones
-                        </a>
-                      </MenuItem>
-                      
-                      <!-- Descargas y Envío (solo para Completed) -->
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handleDownloadPDF(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Descargar PDF
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handleDownloadWord(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Descargar Word
-                        </a>
-                      </MenuItem>
-                      <MenuItem v-if="document.state === 'Completed'" v-slot="{ active }">
-                        <a @click="handleEmail(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                          Enviar
-                        </a>
-                      </MenuItem>
-                    </div>
-                  </MenuItems>
-                </Menu>
               </td>
             </tr>
           </tbody>
@@ -391,6 +300,17 @@
       @close="closeModal('relationships')"
       @refresh="emit('refresh')"
     />
+    
+    <DocumentActionsModal
+      v-if="showActionsModal"
+      :is-visible="showActionsModal"
+      :document="selectedDocumentForActions"
+      card-type="client"
+      context="table"
+      :user-store="userStore"
+      @close="showActionsModal = false"
+      @action="handleModalAction"
+    />
   </teleport>
 </template>
 
@@ -402,7 +322,6 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   ChevronDownIcon,
-  EllipsisVerticalIcon,
   CubeTransparentIcon,
   XMarkIcon,
   DocumentTextIcon,
@@ -416,6 +335,7 @@ import EditDocumentModal from "@/components/dynamic_document/cards/modals/EditDo
 import SendDocumentModal from "@/components/dynamic_document/cards/modals/SendDocumentModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import { useBasicUserRestrictions } from "@/composables/useBasicUserRestrictions";
 
 const documentStore = useDynamicDocumentStore();
@@ -433,7 +353,9 @@ const {
   handlePreviewDocument,
   deleteDocument,
   downloadPDFDocument,
-  downloadWordDocument
+  downloadWordDocument,
+  formalizeDocument,
+  signDocument
 } = useDocumentActions(documentStore, userStore, emit);
 
 // Watch activeModals changes
@@ -511,12 +433,6 @@ const filteredAndSortedDocuments = computed(() => {
 // Pagination state
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
-
-// Menu refs for scroll handling
-const menuButtonRefs = ref({});
-const menuItemsRefs = ref({});
-const isAnyMenuOpen = ref(false);
-const openMenuIndex = ref(-1);
 
 // Paginated documents
 const paginatedDocuments = computed(() => {
@@ -745,133 +661,80 @@ const clearFilters = () => {
   filterByTag.value = null;
 };
 
-// Handle document click
+// Handle document click - Open actions modal
+const showActionsModal = ref(false);
+const selectedDocumentForActions = ref(null);
+
 const handleDocumentClick = (document) => {
-  const editRoute = `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodeURIComponent(document.title.trim())}`;
-  router.push(editRoute);
+  // Open actions modal instead of navigating directly
+  selectedDocumentForActions.value = document;
+  showActionsModal.value = true;
 };
 
-// Menu action handlers
-const handleEditForm = (document) => {
-  openModal('edit', document, { userRole: userStore.currentUser?.role || 'client' });
+const handleModalAction = async (action, document) => {
+  showActionsModal.value = false;
+  await handleMenuAction(action, document);
 };
 
-const handleEditDocument = (document) => {
-  router.push(`/dynamic_document_dashboard/client/editor/edit/${document.id}`);
-};
-
-const handlePreview = async (document) => {
-  await handlePreviewDocument(document);
-};
-
-const handleDelete = async (document) => {
-  await deleteDocument(document);
-};
-
-const handleLetterhead = (document) => {
-  handleFeatureAccess('Membrete Individual', () => {
-    openModal('letterhead', document);
-  });
-};
-
-const handleRelationships = (document) => {
-  openModal('relationships', document);
-};
-
-const handleDownloadPDF = async (document) => {
-  await downloadPDFDocument(document);
-};
-
-const handleDownloadWord = async (document) => {
-  await downloadWordDocument(document);
-};
-
-const handleEmail = (document) => {
-  openModal('email', document);
-};
-
-// Menu refs handlers
-const setMenuButtonRef = (el, index) => {
-  if (el) {
-    menuButtonRefs.value[index] = el;
-  }
-};
-
-const setMenuItemsRef = (el, index) => {
-  if (el) {
-    menuItemsRefs.value[index] = el;
-  }
-};
-
-// Get dynamic minHeight based on open menu index
-const getMinHeight = () => {
-  if (!isAnyMenuOpen.value) return 'auto';
-  
-  // Si hay 1 elemento, siempre 280px
-  if (paginatedDocuments.value.length === 1) return '280px';
-  
-  // Si hay 2 elementos
-  if (paginatedDocuments.value.length === 2) {
-    // Si es el segundo elemento (índice 1), necesita más espacio
-    return openMenuIndex.value === 1 ? '340px' : '280px';
-  }
-  
-  // Para 3 o más elementos, usar el estándar
-  return '280px';
-};
-
-// Handle menu open and scroll into view if needed
-const handleMenuOpen = (index, wasOpen) => {
-  // Track if menu is being opened or closed
-  isAnyMenuOpen.value = !wasOpen;
-  openMenuIndex.value = wasOpen ? -1 : index;
-  
-  // Use setTimeout to ensure the menu is rendered before checking position
-  if (!wasOpen) {
-    setTimeout(() => {
-      const menuItems = menuItemsRefs.value[index];
-      
-      if (menuItems) {
-        // Get the actual DOM element (Headless UI components wrap the element)
-        const menuElement = menuItems.$el || menuItems;
+// Handle menu action - Central handler for all document actions
+const handleMenuAction = async (action, document) => {
+  try {
+    switch (action) {
+      case "editForm":
+        openModal('edit', document, { userRole: userStore.currentUser?.role || 'client' });
+        break;
         
-        if (menuElement && menuElement.getBoundingClientRect) {
-          const rect = menuElement.getBoundingClientRect();
-          const viewportHeight = window.innerHeight;
-          
-          // Special handling for first row (index 0) - always ensure it's fully visible
-          if (index === 0) {
-            // Check if menu extends below viewport
-            if (rect.bottom > viewportHeight - 20) {
-              const scrollAmount = rect.bottom - viewportHeight + 40;
-              window.scrollBy({ 
-                top: scrollAmount, 
-                behavior: 'smooth'
-              });
-            }
-          } else {
-            // For other rows, use standard logic
-            
-            // Check if menu is cut off at the bottom of viewport
-            if (rect.bottom > viewportHeight - 10) {
-              const scrollAmount = rect.bottom - viewportHeight + 30;
-              window.scrollBy({ 
-                top: scrollAmount, 
-                behavior: 'smooth'
-              });
-            }
-            // Check if menu is cut off at the top of viewport
-            else if (rect.top < 80) {
-              const scrollAmount = rect.top - 100;
-              window.scrollBy({ 
-                top: scrollAmount, 
-                behavior: 'smooth'
-              });
-            }
-          }
-        }
-      }
-    }, 100);
+      case "editDocument":
+        router.push(`/dynamic_document_dashboard/client/editor/edit/${document.id}`);
+        break;
+        
+      case "preview":
+        await handlePreviewDocument(document);
+        break;
+        
+      case "delete":
+        await deleteDocument(document);
+        break;
+        
+      case "letterhead":
+        handleFeatureAccess('Membrete Individual', () => {
+          openModal('letterhead', document);
+        });
+        break;
+        
+      case "relationships":
+        openModal('relationships', document);
+        break;
+        
+      case "downloadPDF":
+        await downloadPDFDocument(document);
+        break;
+        
+      case "downloadWord":
+        await downloadWordDocument(document);
+        break;
+        
+      case "email":
+        openModal('email', document);
+        break;
+        
+      case "formalize":
+        await formalizeDocument(document);
+        break;
+        
+      case "viewSignatures":
+        openModal('signatures', document);
+        break;
+        
+      case "sign":
+        await signDocument(document, openModal);
+        break;
+        
+      default:
+        console.warn("Unknown action:", action);
+    }
+  } catch (error) {
+    console.error(`Error executing action ${action}:`, error);
   }
 };
 </script>

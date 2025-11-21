@@ -179,7 +179,12 @@ export const documentActions = {
   async createDocument(documentData) {
     try {
       // Ensure state and assigned_to are correct (safety check for client documents)
-      if (documentData.state !== 'Progress' && documentData.state !== 'Draft' && documentData.assigned_to) {
+      // BUT: Don't override state for documents that require signatures (formalize flow)
+      if (documentData.state !== 'Progress' && 
+          documentData.state !== 'Draft' && 
+          documentData.state !== 'PendingSignatures' &&  // Don't override signature documents
+          documentData.assigned_to && 
+          !documentData.requires_signature) {  // Don't override if requires signature
         // If document has assigned_to (client document), force Progress state
         documentData.state = 'Progress';
       }

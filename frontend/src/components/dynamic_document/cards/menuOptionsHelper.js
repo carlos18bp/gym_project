@@ -154,6 +154,8 @@ const cardConfigs = {
     getMenuOptions: (document, context, userStore) => {
       const options = [];
       const isBasicUser = userStore?.currentUser?.role === 'basic';
+      const isCorporateOrClient = userStore?.currentUser?.role === 'corporate_client' || 
+                                   userStore?.currentUser?.role === 'client';
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
@@ -172,6 +174,14 @@ const cardConfigs = {
             }
           ]
         });
+        
+        // Add "Formalizar y Agregar Firmas" for Corporate and Client roles (not Basic)
+        if (isCorporateOrClient) {
+          options.push({
+            label: "Formalizar y Agregar Firmas",
+            action: "formalize"
+          });
+        }
       } else {
         // For non-completed documents, keep simple "Completar" option
         options.push({
@@ -208,6 +218,22 @@ const cardConfigs = {
 
       // Add document relationships management option
       options.push({ label: "Administrar Asociaciones", action: "relationships" });
+
+      // Add signature-related options for documents that require signatures
+      if (document.requires_signature) {
+        options.push({
+          label: "Ver Firmas",
+          action: "viewSignatures"
+        });
+
+        // Add sign option if the user needs to sign
+        if (canSignDocument(document, userStore)) {
+          options.push({
+            label: "Firmar documento",
+            action: "sign"
+          });
+        }
+      }
 
       // Options only for Completed state
       if (document.state === 'Completed') {
