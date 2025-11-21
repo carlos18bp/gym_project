@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="!isAppInstalled"
+    v-if="showAlert && !isAppInstalled"
     ref="alert"
     class="fixed w-full top-4 xl:bottom-4 xl:top-auto left-1/2 transform -translate-x-1/2 z-50 bg-blue-50 p-4 rounded-md shadow-lg opacity-0 md:w-auto"
   >
@@ -34,6 +34,7 @@ import gsap from "gsap";
 // Destructure values from the usePWAInstall composable
 const { isAppInstalled, promptInstall } = usePWAInstall();
 const alert = ref(null); // Reference to the alert element for animation
+const showAlert = ref(true); // Local state to control alert visibility
 
 onMounted(() => {
   // Opacity animation for the alert using GSAP
@@ -42,13 +43,13 @@ onMounted(() => {
     duration: 1, // Duration of fade-in animation
   });
 
-  // Fade-out animation after 15 seconds
+  // Fade-out animation after 3.5 seconds
   gsap.to(alert.value, {
     opacity: 0, // Fades out opacity
-    delay: 3.5, // Starts fade-out after 10 seconds
+    delay: 3.5, // Starts fade-out after 3.5 seconds
     duration: 1, // Duration of fade-out animation
     onComplete: () => {
-      isAppInstalled.value = true; // Hides the alert once the animation completes
+      showAlert.value = false; // Hides the alert locally without affecting global state
     },
   });
 });

@@ -16,11 +16,19 @@
       </div>
     </a>
   </li>
+
+  <!-- Instructions Modal -->
+  <PWAInstallInstructionsModal
+    :is-open="showInstructionsModal"
+    :browser="currentBrowser"
+    @close="closeInstructionsModal"
+  />
 </template>
 
 <script setup>
 import { ArrowDownTrayIcon, SparklesIcon } from "@heroicons/vue/20/solid";
 import { usePWAInstall } from "@/composables/usePWAInstall";
+import PWAInstallInstructionsModal from "./PWAInstallInstructionsModal.vue";
 
-const { isAppInstalled, promptInstall } = usePWAInstall();
+const { isAppInstalled, showInstructionsModal, currentBrowser, promptInstall, closeInstructionsModal } = usePWAInstall();
 </script>
