@@ -80,7 +80,7 @@ def list_dynamic_documents(request):
     """
     Get a list of all dynamic documents.
     """
-    documents = DynamicDocument.objects.prefetch_related('variables').all()
+    documents = DynamicDocument.objects.prefetch_related('variables', 'tags').all()
     serializer = DynamicDocumentSerializer(documents, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -94,7 +94,8 @@ def get_dynamic_document(request, pk):
     try:
         document = DynamicDocument.objects.prefetch_related(
             'variables',
-            'signatures__signer'
+            'signatures__signer',
+            'tags'
         ).get(pk=pk)
         
         # Ensure variables have select_options initialized
@@ -142,7 +143,7 @@ def update_dynamic_document(request, pk):
     print(request.data)
     try:
         # Get the document and load its related variables
-        document = DynamicDocument.objects.prefetch_related('variables').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('variables', 'tags').get(pk=pk)
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -207,7 +208,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
     """
     try:
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
         # Replace variables within the content
         processed_content = document.content
@@ -401,7 +402,7 @@ def download_dynamic_document_word(request, pk):
     """
     try:
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
         # Replace variables dynamically
         def replace_variables(text):

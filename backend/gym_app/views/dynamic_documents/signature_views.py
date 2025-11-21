@@ -927,7 +927,7 @@ def generate_signatures_pdf(request, pk):
         print(f"\n=== GENERATING COMBINED PDF FOR DOCUMENT {pk} ===")
         
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('signatures__signer', 'variables').get(pk=pk)
+        document = DynamicDocument.objects.prefetch_related('signatures__signer', 'variables', 'tags').get(pk=pk)
         print(f"Document found: {document.title}")
         
         # Verify document state
