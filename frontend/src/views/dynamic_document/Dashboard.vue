@@ -190,32 +190,50 @@
           
           <!-- Action Buttons (Desktop) -->
           <div class="flex items-center gap-2 mb-4">
-            <button
-              @click.stop="handleElectronicSignatureClick"
-              :disabled="isBasicUser"
-              :class="[
-                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                isBasicUser 
-                  ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                  : 'text-purple-600 hover:bg-purple-50 border-purple-200'
-              ]"
-            >
-              <FingerPrintIcon class="h-4 w-4" />
-              Firma Electrónica
-            </button>
-            <button
-              @click.stop="handleGlobalLetterheadClick"
-              :disabled="isBasicUser"
-              :class="[
-                'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                isBasicUser 
-                  ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                  : 'text-green-600 hover:bg-green-50 border-green-200'
-              ]"
-            >
-              <DocumentTextIcon class="h-4 w-4" />
-              Membrete Global
-            </button>
+            <div class="relative group">
+              <button
+                @click.stop="handleElectronicSignatureClick"
+                :disabled="isBasicUser"
+                :class="[
+                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                  isBasicUser 
+                    ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                    : 'text-purple-600 hover:bg-purple-50 border-purple-200'
+                ]"
+              >
+                <FingerPrintIcon class="h-4 w-4" />
+                Firma Electrónica
+              </button>
+              <div
+                v-if="isBasicUser"
+                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+              >
+                Actualiza tu suscripción para usar esta funcionalidad
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
+            <div class="relative group">
+              <button
+                @click.stop="handleGlobalLetterheadClick"
+                :disabled="isBasicUser"
+                :class="[
+                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
+                  isBasicUser 
+                    ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
+                    : 'text-green-600 hover:bg-green-50 border-green-200'
+                ]"
+              >
+                <DocumentTextIcon class="h-4 w-4" />
+                Membrete Global
+              </button>
+              <div
+                v-if="isBasicUser"
+                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+              >
+                Actualiza tu suscripción para usar esta funcionalidad
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
             <button
               @click.stop="handleSection('useDocument')"
               class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
@@ -267,32 +285,50 @@
         
         <!-- Mobile Action Buttons -->
         <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
-          <button
-            @click.stop="handleElectronicSignatureClick"
-            :disabled="isBasicUser"
-            :class="[
-              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-              isBasicUser 
-                ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
-            ]"
-          >
-            <FingerPrintIcon class="h-5 w-5" />
-            Firma Electrónica
-          </button>
-          <button
-            @click.stop="handleGlobalLetterheadClick"
-            :disabled="isBasicUser"
-            :class="[
-              'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-              isBasicUser 
-                ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                : 'text-green-600 bg-green-50 hover:bg-green-100'
-            ]"
-          >
-            <DocumentTextIcon class="h-5 w-5" />
-            Membrete Global
-          </button>
+          <div class="relative group">
+            <button
+              @click.stop="handleElectronicSignatureClick"
+              :disabled="isBasicUser"
+              :class="[
+                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                isBasicUser 
+                  ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                  : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+              ]"
+            >
+              <FingerPrintIcon class="h-5 w-5" />
+              Firma Electrónica
+            </button>
+            <div
+              v-if="isBasicUser"
+              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+            >
+              Actualiza tu suscripción para usar esta funcionalidad
+              <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+          </div>
+          <div class="relative group">
+            <button
+              @click.stop="handleGlobalLetterheadClick"
+              :disabled="isBasicUser"
+              :class="[
+                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                isBasicUser 
+                  ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
+                  : 'text-green-600 bg-green-50 hover:bg-green-100'
+              ]"
+            >
+              <DocumentTextIcon class="h-5 w-5" />
+              Membrete Global
+            </button>
+            <div
+              v-if="isBasicUser"
+              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+            >
+              Actualiza tu suscripción para usar esta funcionalidad
+              <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+            </div>
+          </div>
           <button
             @click.stop="handleSection('useDocument')"
             class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
