@@ -359,7 +359,8 @@ import {
   DocumentTextIcon,
   RectangleStackIcon,
   EnvelopeIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  BookOpenIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
@@ -553,6 +554,21 @@ const navigation = ref([
     icon: ScaleIcon,
     current: false,
     routes: ['/intranet_g_y_m']
+  },
+  {
+    name: "Manual de Usuario",
+    action: (item) => {
+      setCurrent(item);
+      // Force navigation even if already on the route
+      if (route.path === '/user_guide') {
+        router.push({ name: "user_guide", params: { refresh: Date.now() } });
+      } else {
+        router.push({ name: "user_guide" });
+      }
+    },
+    icon: BookOpenIcon,
+    current: false,
+    routes: ['/user_guide']
   },
 ]);
 

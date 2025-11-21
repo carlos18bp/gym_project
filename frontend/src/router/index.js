@@ -297,6 +297,21 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: "/user_guide",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "user_guide",
+          component: () => import(/* webpackChunkName: "user-guide" */ "@/views/user_guide/UserGuideMain.vue"),
+          meta: { 
+            requiresAuth: true, 
+            title: "Manual de Usuario"
+          },
+        },
+      ],
+    },
     // Catch-all route to handle not found routes
     { 
       path: '/:pathMatch(.*)*', 
