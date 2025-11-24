@@ -21,7 +21,7 @@ from .permissions import (
 )
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
-from reportlab.lib.pagesizes import legal
+from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -602,9 +602,9 @@ def generate_original_document_pdf(document, user=None):
 
     # Create watermark canvas
     watermark_buffer = BytesIO()
-    c = canvas.Canvas(watermark_buffer, pagesize=legal)
+    c = canvas.Canvas(watermark_buffer, pagesize=letter)
     c.saveState()
-    c.translate(300, 504)  # Move to center of page (adjusted for Legal size)
+    c.translate(300, 400)  # Move to center of page (adjusted for Letter size)
     c.rotate(45)  # Rotate 45 degrees
     c.setFont('Carlito-Bold', 60)
     c.setFillColor(colors.lightgrey)
@@ -639,7 +639,7 @@ def create_signatures_pdf(document, request):
     # Create the PDF document with smaller margins for single page optimization
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=legal,
+        pagesize=letter,
         rightMargin=60,
         leftMargin=60,
         topMargin=60,
