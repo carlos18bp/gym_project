@@ -36,7 +36,11 @@ class UserSignatureSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         
         if request and instance.signature_image:
-            data['signature_image'] = request.build_absolute_uri(instance.signature_image.url)
+            try:
+                data['signature_image'] = request.build_absolute_uri(instance.signature_image.url)
+            except Exception:
+                # If file doesn't exist or there's an error, set to None
+                data['signature_image'] = None
         
         return data
 

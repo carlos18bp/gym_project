@@ -90,13 +90,13 @@
         
         <div class="relative">
           <img 
-            :src="savedSignature.signatureImage" 
+            :src="getSignatureImage(savedSignature)" 
             alt="Firma guardada" 
             class="max-h-24 mx-auto bg-white p-1 border border-gray-200 rounded"
           />
-          <div class="mt-2 text-xs text-gray-500 flex justify-between">
-            <span>Creada: {{ formatDate(savedSignature.traceabilityData.date) }}</span>
-            <span>Método: {{ savedSignature.traceabilityData.method === 'upload' ? 'Subida' : 'Dibujada' }}</span>
+          <div class="mt-2 text-xs text-gray-500 flex justify-between" v-if="getSignatureDate(savedSignature)">
+            <span>Creada: {{ formatDate(getSignatureDate(savedSignature)) }}</span>
+            <span>Método: {{ getSignatureMethod(savedSignature) === 'upload' ? 'Subida' : 'Dibujada' }}</span>
           </div>
         </div>
       </div>
@@ -277,11 +277,75 @@ const saveSignature = async (data) => {
 };
 
 /**
+ * Get signature image URL from either backend or local format
+ * @param {Object} signature - Signature object
+ * @returns {String} Image URL
+ */
+const getSignatureImage = (signature) => {
+  if (!signature) return '';
+  
+  // Check if it's from backend (has 'signature' property)
+  if (signature.signature && signature.signature.signature_image) {
+    return signature.signature.signature_image;
+  }
+  
+  // Check if it's local format (has 'signatureImage' property)
+  if (signature.signatureImage) {
+    return signature.signatureImage;
+  }
+  
+  return '';
+};
+
+/**
+ * Get signature creation date from either backend or local format
+ * @param {Object} signature - Signature object
+ * @returns {String|null} Date string or null
+ */
+const getSignatureDate = (signature) => {
+  if (!signature) return null;
+  
+  // Check if it's from backend
+  if (signature.signature && signature.signature.created_at) {
+    return signature.signature.created_at;
+  }
+  
+  // Check if it's local format
+  if (signature.traceabilityData && signature.traceabilityData.date) {
+    return signature.traceabilityData.date;
+  }
+  
+  return null;
+};
+
+/**
+ * Get signature method from either backend or local format
+ * @param {Object} signature - Signature object
+ * @returns {String} Method ('upload' or 'draw')
+ */
+const getSignatureMethod = (signature) => {
+  if (!signature) return '';
+  
+  // Check if it's from backend
+  if (signature.signature && signature.signature.method) {
+    return signature.signature.method;
+  }
+  
+  // Check if it's local format
+  if (signature.traceabilityData && signature.traceabilityData.method) {
+    return signature.traceabilityData.method;
+  }
+  
+  return '';
+};
+
+/**
  * Format date for display
  * @param {String} dateString - ISO date string
  * @returns {String} Formatted date string
  */
 const formatDate = (dateString) => {
+  if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleString();
 };
