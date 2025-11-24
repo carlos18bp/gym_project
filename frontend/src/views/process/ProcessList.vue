@@ -99,7 +99,7 @@
           <button
             v-if="currentUser?.role === 'client' || currentUser?.role === 'corporate_client'"
             @click="goToNewRequest"
-            class="inline-flex items-center gap-2 px-4 py-2 mb-4 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200 ml-3 sm:ml-4"
           >
             <PlusIcon class="h-5 w-5" />
           Solicitar Información

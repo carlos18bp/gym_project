@@ -355,15 +355,11 @@ const loadData = async () => {
       return;
     }
     
-    console.log('Loading corporate client dashboard data...');
-    
     await Promise.all([
       organizationsStore.getMyOrganizations(),
       organizationsStore.getOrganizationStats(),
       requestsStore.getReceivedRequests({ page_size: 50 }) // Get more requests for filtering
     ]);
-    
-    console.log('Dashboard data loaded successfully');
   } catch (error) {
     console.error('Error loading dashboard data:', error);
     
@@ -503,30 +499,17 @@ const formatRelativeDate = (dateString) => {
 // Lifecycle
 onMounted(async () => {
   // Only load data when component is mounted, not on app initialization
-  console.log('CorporateClientDashboard mounted');
   
   // Ensure user store is initialized
   if (!userStore.currentUser) {
-    console.log('Waiting for user data to be available...');
     await userStore.init();
   }
   
   // Double check user role
   const userRole = userStore.currentUser?.role;
-  const userAuth = JSON.parse(localStorage.getItem('userAuth') || '{}');
-  
-  console.log('Current user role (from store):', userRole);
-  console.log('Current user role (from localStorage):', userAuth.role);
-  console.log('Current user data:', userStore.currentUser);
-  console.log('LocalStorage userAuth:', userAuth);
   
   if (userRole === 'corporate_client') {
     loadData();
-  } else {
-    console.error('User does not have corporate_client role.');
-    console.error('Store role:', userRole);
-    console.error('LocalStorage role:', userAuth.role);
-    console.error('Available roles should be: client, basic, corporate_client, lawyer');
   }
 });
 </script>

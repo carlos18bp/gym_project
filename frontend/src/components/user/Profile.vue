@@ -53,7 +53,7 @@
             <h2 class="text-2xl font-semibold text-primary">
               {{ currentUser.first_name }} {{ currentUser.last_name }}
               <span class="text-gray-400">
-                ({{ currentUser.role == "client" ? "Cliente" : "Abogado" }})
+                ({{ currentUser.role == "client" ? "Cliente" : currentUser.role == "basic" ? "Básico" : currentUser.role == "corporate_client" ? "Corporativo" : "Abogado" }})
               </span>
             </h2>
             <p class="text-lg font-regular text-gray-500">
