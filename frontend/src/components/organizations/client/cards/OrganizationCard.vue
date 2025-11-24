@@ -84,21 +84,23 @@
         </button>
 
         <!-- Secondary actions -->
-        <div class="flex space-x-2">
+        <div class="flex gap-2">
           <button
             @click="viewDetails"
-            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            class="flex-1 inline-flex justify-center items-center px-2 py-2 border border-gray-300 text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
-            <EyeIcon class="h-4 w-4 mr-1" />
-            Ver Detalles
+            <EyeIcon class="h-4 w-4 sm:mr-1" />
+            <span class="hidden sm:inline">Ver Detalles</span>
+            <span class="sm:hidden">Detalles</span>
           </button>
           
           <button
             @click="showLeaveConfirmation = true"
-            class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            class="flex-1 inline-flex justify-center items-center px-2 py-2 border border-red-300 text-xs sm:text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
           >
-            <ArrowLeftOnRectangleIcon class="h-4 w-4 mr-1" />
-            Salir
+            <ArrowLeftOnRectangleIcon class="h-4 w-4 sm:mr-1" />
+            <span class="hidden sm:inline">Salir</span>
+            <span class="sm:hidden">Salir</span>
           </button>
         </div>
       </div>

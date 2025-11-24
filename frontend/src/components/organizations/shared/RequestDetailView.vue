@@ -30,36 +30,37 @@
     <div v-else-if="request">
       <!-- Header -->
       <div class="mb-6">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-4">
-            <button
-              @click="goBack"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <ArrowLeftIcon class="h-4 w-4 mr-2" />
-              Volver
-            </button>
-            <div>
-              <h1 class="text-2xl font-bold text-gray-900">{{ request.title }}</h1>
-              <p class="text-sm text-gray-600">Solicitud {{ request.request_number }}</p>
-            </div>
-          </div>
-          
-          <!-- Status and Priority Badges -->
-          <div class="flex items-center space-x-2">
-            <span 
-              :class="getStatusColorClass(request.status)"
-              class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-            >
-              {{ getStatusDisplay(request.status) }}
-            </span>
-            <span 
-              :class="getPriorityColorClass(request.priority)"
-              class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-            >
-              {{ getPriorityDisplay(request.priority) }}
-            </span>
-          </div>
+        <!-- Back button -->
+        <div class="mb-4">
+          <button
+            @click="goBack"
+            class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <ArrowLeftIcon class="h-4 w-4 mr-2" />
+            Volver
+          </button>
+        </div>
+        
+        <!-- Title and info -->
+        <div class="mb-3">
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-1">{{ request.title }}</h1>
+          <p class="text-sm text-gray-600">Solicitud {{ request.request_number }}</p>
+        </div>
+        
+        <!-- Status and Priority Badges -->
+        <div class="flex flex-wrap gap-2">
+          <span 
+            :class="getStatusColorClass(request.status)"
+            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium"
+          >
+            {{ getStatusDisplay(request.status) }}
+          </span>
+          <span 
+            :class="getPriorityColorClass(request.priority)"
+            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs sm:text-sm font-medium"
+          >
+            {{ getPriorityDisplay(request.priority) }}
+          </span>
         </div>
       </div>
 

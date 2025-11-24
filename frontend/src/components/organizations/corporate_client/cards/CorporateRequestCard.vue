@@ -1,50 +1,51 @@
 <template>
   <div class="bg-white shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
     <!-- Header with request number and status -->
-    <div class="flex items-start justify-between mb-4">
-      <div class="flex-1">
-        <div class="flex items-center space-x-2 mb-2">
-          <span class="text-sm font-medium text-gray-900">
-            {{ request.request_number }}
-          </span>
-          <span 
-            :class="getStatusColorClass(request.status)"
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-          >
-            {{ getStatusDisplay(request.status) }}
-          </span>
-          <span 
-            :class="getPriorityColorClass(request.priority)"
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-          >
-            {{ getPriorityDisplay(request.priority) }}
-          </span>
-        </div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-1">
-          {{ request.title }}
-        </h3>
-        <p class="text-sm text-gray-600 line-clamp-2 mb-3">
-          {{ request.description }}
-        </p>
+    <div class="mb-4">
+      <div class="flex items-center flex-wrap gap-2 mb-2">
+        <span class="text-sm font-medium text-gray-900">
+          {{ request.request_number }}
+        </span>
+        <span 
+          :class="getStatusColorClass(request.status)"
+          class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+        >
+          {{ getStatusDisplay(request.status) }}
+        </span>
+        <span 
+          :class="getPriorityColorClass(request.priority)"
+          class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+        >
+          {{ getPriorityDisplay(request.priority) }}
+        </span>
       </div>
       
+      <h3 class="text-lg font-semibold text-gray-900 mb-1">
+        {{ request.title }}
+      </h3>
+      <p class="text-sm text-gray-600 line-clamp-2 mb-3">
+        {{ request.description }}
+      </p>
+      
       <!-- Action menu -->
-      <div class="flex space-x-2">
+      <div class="flex flex-wrap gap-2">
         <button
           @click="viewDetail"
-          class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          <EyeIcon class="h-3 w-3 mr-1" />
-          Ver Detalle
+          <EyeIcon class="h-3 w-3 sm:mr-1" />
+          <span class="hidden sm:inline">Ver Detalle</span>
+          <span class="sm:hidden">Detalle</span>
         </button>
         
         <div class="relative">
           <button
             @click="showStatusMenu = !showStatusMenu"
-            class="inline-flex items-center px-3 py-1 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center px-2.5 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap"
           >
-            <ArrowPathIcon class="h-3 w-3 mr-1" />
-            Cambiar Estado
+            <ArrowPathIcon class="h-3 w-3 sm:mr-1" />
+            <span class="hidden sm:inline">Cambiar Estado</span>
+            <span class="sm:hidden">Estado</span>
           </button>
           
           <!-- Status dropdown -->
