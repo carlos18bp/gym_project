@@ -266,7 +266,8 @@ export const documentActions = {
       
       const response = await delete_request(`dynamic-documents/${documentId}/delete/`);
       
-      if (response.status === 204) {
+      // Treat any 2xx status as successful deletion (backend currently returns 200)
+      if (response.status >= 200 && response.status < 300) {
         // Remove from cache
         delete this.documentCache[documentId];
         
