@@ -213,13 +213,11 @@ export const useUserStore = defineStore("user", {
         const response = await upload_file_request(`users/update_signature/${userId}/`, formData);
 
         if (response.status === 200 || response.status === 201) {
-          // Update the user signature data
-          this.userSignature = {
-            has_signature: true,
-            signature: response.data
-          };
-          
-          // Update has_signature in currentUser
+          // Backend only returns a message here, so fetch the canonical signature
+          // representation (including image URL and created_at) from the dedicated endpoint
+          await this.fetchUserSignature();
+
+          // Ensure has_signature is in sync for the current user
           if (this.currentUser && this.currentUser.id == userId) {
             this.currentUser.has_signature = true;
           }
