@@ -316,7 +316,11 @@ export const documentActions = {
    */
   async downloadWord(documentId, documentTitle) {
     try {
-      await downloadFile(`dynamic-documents/${documentId}/download-word/`, `${documentTitle}.docx`);
+      await downloadFile(
+        `dynamic-documents/${documentId}/download-word/`,
+        `${documentTitle}.docx`,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
       
       // Register user activity
       await registerUserActivity(
