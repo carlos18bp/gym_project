@@ -41,6 +41,11 @@ user_urls = [
     path('user/letterhead/upload/', document_views.upload_user_letterhead_image, name='upload-user-letterhead-image'),
     path('user/letterhead/', document_views.get_user_letterhead_image, name='get-user-letterhead-image'),
     path('user/letterhead/delete/', document_views.delete_user_letterhead_image, name='delete-user-letterhead-image'),
+
+    # User global Word letterhead template management
+    path('user/letterhead/word-template/upload/', document_views.upload_user_letterhead_word_template, name='upload-user-letterhead-word-template'),
+    path('user/letterhead/word-template/', document_views.get_user_letterhead_word_template, name='get-user-letterhead-word-template'),
+    path('user/letterhead/word-template/delete/', document_views.delete_user_letterhead_word_template, name='delete-user-letterhead-word-template'),
 ]
 
 # Process and case management URLs

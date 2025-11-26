@@ -294,6 +294,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
+import { showConfirmationAlert } from '@/shared/confirmation_alert';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import {
   XMarkIcon,
@@ -484,10 +485,12 @@ const loadCurrentImage = async () => {
   }
 };
 
-const confirmDelete = () => {
-  if (confirm('¿Estás seguro de que deseas eliminar la imagen de membrete?')) {
-    deleteImage();
-  }
+const confirmDelete = async () => {
+  const confirmed = await showConfirmationAlert(
+    '¿Estás seguro de que deseas eliminar la imagen de membrete?'
+  );
+  if (!confirmed) return;
+  deleteImage();
 };
 
 const deleteImage = async () => {

@@ -512,4 +512,80 @@ export const documentActions = {
       throw error;
     }
   },
+
+  /**
+   * Upload global Word letterhead template (.docx) for the authenticated user
+   * 
+   * @param {File} templateFile - DOCX file to upload as Word letterhead template
+   * @returns {Promise<Object>} - Upload response with template info
+   */
+  async uploadGlobalLetterheadWordTemplate(templateFile) {
+    try {
+      const formData = new FormData();
+      formData.append('template', templateFile);
+
+      const response = await upload_file_request(
+        `user/letterhead/word-template/upload/`,
+        formData
+      );
+
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Subiste plantilla Word de membrete global`
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`Error uploading global Word letterhead template:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get global Word letterhead template (.docx) for the authenticated user
+   * 
+   * @param {string} responseType - Axios response type (default: 'blob')
+   * @returns {Promise<Object>} - Template response
+   */
+  async getGlobalLetterheadWordTemplate(responseType = 'blob') {
+    try {
+      const response = await get_request(
+        `user/letterhead/word-template/`,
+        responseType
+      );
+
+      return response;
+    } catch (error) {
+      // 404 is expected when user doesn't have a template configured
+      if (error.response?.status !== 404) {
+        console.error(`Error fetching global Word letterhead template:`, error);
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Delete global Word letterhead template (.docx) for the authenticated user
+   * 
+   * @returns {Promise<Object>} - Delete response
+   */
+  async deleteGlobalLetterheadWordTemplate() {
+    try {
+      const response = await delete_request(
+        `user/letterhead/word-template/delete/`
+      );
+
+      // Register user activity
+      await registerUserActivity(
+        ACTION_TYPES.DELETE,
+        `Eliminaste plantilla Word de membrete global`
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`Error deleting global Word letterhead template:`, error);
+      throw error;
+    }
+  },
 };

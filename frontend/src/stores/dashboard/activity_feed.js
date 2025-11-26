@@ -8,6 +8,7 @@ export const ACTION_TYPES = {
   FINISH: 'finish',
   DELETE: 'delete',
   UPDATE: 'update',
+  DOWNLOAD: 'download',
   OTHER: 'other'
 };
 

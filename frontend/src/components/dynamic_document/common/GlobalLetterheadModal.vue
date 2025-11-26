@@ -3,9 +3,10 @@
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Gestión de Membrete Global</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Gestión de Membrete Global para PDF</h2>
         <p class="text-sm text-gray-500 mt-1">
-          Este membrete se aplicará por defecto a todos tus documentos
+          La imagen de membrete se usará por defecto solo al generar documentos en PDF.
+          Para documentos Word, se utiliza la plantilla .docx configurada más abajo.
         </p>
         <button 
           @click="close" 
@@ -27,11 +28,11 @@
         <div v-else class="space-y-6">
           <!-- Current letterhead preview -->
           <div v-if="currentImageUrl" class="space-y-4">
-            <h3 class="text-lg font-medium text-gray-900">Membrete Global Actual</h3>
+            <h3 class="text-lg font-medium text-gray-900">Membrete de imagen para PDF actual</h3>
             <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <img 
                 :src="currentImageUrl" 
-                alt="Membrete global actual"
+                alt="Membrete de imagen para PDF actual"
                 class="max-w-full h-auto max-h-64 mx-auto shadow-sm"
                 @error="handleImageError"
               />
@@ -58,22 +59,22 @@
           <!-- No letterhead message -->
           <div v-else class="text-center py-8">
             <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Sin Membrete Global</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Sin Membrete para PDF</h3>
             <p class="mt-1 text-sm text-gray-500">
-              No tienes una imagen de membrete global configurada.
+              No tienes una imagen de membrete global configurada para los documentos PDF.
             </p>
             <p class="mt-1 text-xs text-gray-400">
-              El membrete global se aplicará a todos los documentos que no tengan un membrete específico.
+              Este membrete de imagen se aplicará solo a los PDF que no tengan un membrete específico.
             </p>
           </div>
           
           <!-- Upload section -->
           <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">
-              {{ currentImageUrl ? 'Reemplazar Membrete Global' : 'Subir Membrete Global' }}
+              {{ currentImageUrl ? 'Reemplazar Membrete de imagen para PDF' : 'Subir Membrete de imagen para PDF' }}
             </h3>
             
-            <!-- File upload area -->
+            <!-- File upload area (PNG for PDF) -->
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
               <input
                 ref="fileInput"
@@ -90,7 +91,7 @@
                     @click="$refs.fileInput.click()"
                     class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    Seleccionar Imagen PNG
+                    Seleccionar Imagen PNG para PDF
                   </button>
                   <button
                     @click="showSpecifications = !showSpecifications"
@@ -101,7 +102,7 @@
                   </button>
                 </div>
                 <p class="mt-2 text-sm text-gray-500">
-                  Solo archivos PNG, máximo 10MB
+                  Solo archivos PNG, máximo 10MB. Se usa únicamente para los PDF.
                 </p>
                 <p class="text-xs text-gray-400 mt-1">
                   Dimensiones ideales: 612 × 612 píxeles (8.5:11 Carta)
@@ -138,7 +139,100 @@
                   >
                     <CloudArrowUpIcon v-if="!uploading" class="h-4 w-4 mr-2" />
                     <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {{ uploading ? 'Subiendo...' : 'Subir Imagen' }}
+                    {{ uploading ? 'Subiendo...' : 'Subir Imagen para PDF' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Word template upload section -->
+          <div class="space-y-4 border-t border-gray-200 pt-6">
+            <h3 class="text-lg font-medium text-gray-900">Plantilla Word para documentos (.docx)</h3>
+            <p class="text-sm text-gray-500">
+              Esta plantilla se usará al descargar documentos en Word. Debe ser un archivo .docx con tu membrete
+              configurado (header, footer o watermark). El contenido del documento se añadirá sobre esa plantilla.
+            </p>
+
+            <!-- Current template info -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50" v-if="hasWordTemplate">
+              <div class="text-sm text-gray-700">
+                <div class="font-medium">Plantilla actual:</div>
+                <div class="mt-1 break-words">
+                  <span class="font-mono break-all">{{ currentWordTemplateName || 'plantilla_word.docx' }}</span>
+                  <span v-if="currentWordTemplateSize" class="text-gray-400 ml-2">({{ formatFileSize(currentWordTemplateSize) }})</span>
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-3">
+                <button
+                  v-if="currentWordTemplateUrl"
+                  @click="downloadWordTemplate"
+                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <ArrowDownTrayIcon class="h-4 w-4 mr-2" />
+                  Descargar
+                </button>
+                <button
+                  @click="confirmDeleteWordTemplate"
+                  :disabled="deletingWordTemplate"
+                  class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  <TrashIcon class="h-4 w-4 mr-2" />
+                  {{ deletingWordTemplate ? 'Eliminando...' : 'Eliminar' }}
+                </button>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500">
+              No tienes una plantilla Word configurada. Puedes subir un archivo .docx con tu membrete.
+            </div>
+
+            <!-- Template upload area -->
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+              <input
+                ref="wordTemplateInput"
+                type="file"
+                accept=".docx"
+                @change="handleWordTemplateSelect"
+                class="hidden"
+              />
+
+              <div v-if="!selectedWordTemplate">
+                <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
+                <div class="mt-4">
+                  <button
+                    @click="$refs.wordTemplateInput.click()"
+                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Seleccionar Plantilla .docx (Word)
+                  </button>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">
+                  Solo archivos .docx, máximo 10MB.
+                </p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                  <CheckCircleIcon class="h-5 w-5 text-green-500" />
+                  <span>{{ selectedWordTemplate.name }}</span>
+                  <span class="text-gray-400">({{ formatFileSize(selectedWordTemplate.size) }})</span>
+                </div>
+
+                <div class="flex justify-center space-x-3">
+                  <button
+                    @click="clearWordTemplateSelection"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    @click="uploadWordTemplate"
+                    :disabled="uploadingWordTemplate"
+                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  >
+                    <CloudArrowUpIcon v-if="!uploadingWordTemplate" class="h-4 w-4 mr-2" />
+                    <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {{ uploadingWordTemplate ? 'Subiendo...' : 'Subir Plantilla' }}
                   </button>
                 </div>
               </div>
@@ -149,7 +243,7 @@
           <div v-if="showSpecifications" class="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-6">
             <div class="flex items-center space-x-2">
               <InformationCircleIcon class="h-6 w-6 text-blue-600" />
-              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete Global</h3>
+              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete para PDF</h3>
             </div>
             
             <!-- Priority Info -->
@@ -157,7 +251,7 @@
               <h4 class="font-medium text-yellow-800 mb-2">🔄 Prioridad de Membrete</h4>
               <div class="text-sm text-yellow-700 space-y-1">
                 <div><strong>1º Prioridad:</strong> Membrete específico del documento</div>
-                <div><strong>2º Prioridad:</strong> Membrete global del usuario (este)</div>
+                <div><strong>2º Prioridad:</strong> Membrete global de imagen para PDF del usuario (este)</div>
                 <div><strong>3º Prioridad:</strong> Sin membrete</div>
               </div>
             </div>
@@ -307,6 +401,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
+import { showConfirmationAlert } from '@/shared/confirmation_alert';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import {
   XMarkIcon,
@@ -351,6 +446,16 @@ const warnings = ref([]);
 const fileInput = ref(null);
 const showSpecifications = ref(false);
 const hasAttemptedLoad = ref(false);
+
+// Word template reactive data
+const selectedWordTemplate = ref(null);
+const hasWordTemplate = ref(false);
+const currentWordTemplateUrl = ref(null);
+const currentWordTemplateName = ref('');
+const currentWordTemplateSize = ref(null);
+const uploadingWordTemplate = ref(false);
+const deletingWordTemplate = ref(false);
+const wordTemplateInput = ref(null);
 
 // Methods
 const close = () => {
@@ -492,10 +597,12 @@ const loadCurrentImage = async () => {
   }
 };
 
-const confirmDelete = () => {
-  if (confirm('¿Estás seguro de que deseas eliminar la imagen de membrete global?')) {
-    deleteImage();
-  }
+const confirmDelete = async () => {
+  const confirmed = await showConfirmationAlert(
+    '¿Estás seguro de que deseas eliminar la imagen de membrete global?'
+  );
+  if (!confirmed) return;
+  deleteImage();
 };
 
 const deleteImage = async () => {
@@ -519,6 +626,138 @@ const deleteImage = async () => {
     alert('Error al eliminar la imagen. Por favor intenta nuevamente.');
   } finally {
     deleting.value = false;
+  }
+};
+
+// Word template helpers
+const handleWordTemplateSelect = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.name.toLowerCase().endsWith('.docx')) {
+    alert('Solo se permiten archivos .docx para la plantilla Word');
+    return;
+  }
+
+  // Validate file size (10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    alert('El archivo de plantilla no puede ser mayor a 10MB');
+    return;
+  }
+
+  selectedWordTemplate.value = file;
+};
+
+const clearWordTemplateSelection = () => {
+  selectedWordTemplate.value = null;
+  if (wordTemplateInput.value) {
+    wordTemplateInput.value.value = '';
+  }
+};
+
+const uploadWordTemplate = async () => {
+  if (!selectedWordTemplate.value) return;
+
+  uploadingWordTemplate.value = true;
+
+  try {
+    const response = await store.uploadGlobalLetterheadWordTemplate(selectedWordTemplate.value);
+
+    const info = response.data?.template_info;
+    hasWordTemplate.value = true;
+    currentWordTemplateName.value = info?.filename || selectedWordTemplate.value.name;
+    currentWordTemplateSize.value = info?.size_bytes || selectedWordTemplate.value.size;
+
+    // Reload blob for download
+    await loadCurrentWordTemplate();
+
+    clearWordTemplateSelection();
+  } catch (error) {
+    console.error('Error uploading global Word template:', error);
+    alert('Error al subir la plantilla Word. Por favor intenta nuevamente.');
+  } finally {
+    uploadingWordTemplate.value = false;
+  }
+};
+
+const loadCurrentWordTemplate = async () => {
+  try {
+    const response = await store.getGlobalLetterheadWordTemplate('blob');
+
+    if (response && response.data) {
+      hasWordTemplate.value = true;
+
+      // Create blob URL for download
+      if (currentWordTemplateUrl.value) {
+        URL.revokeObjectURL(currentWordTemplateUrl.value);
+      }
+      currentWordTemplateUrl.value = URL.createObjectURL(response.data);
+
+      // Try to extract filename from headers
+      const disposition = response.headers?.['content-disposition'] || response.headers?.['Content-Disposition'];
+      let filename = 'plantilla_word.docx';
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+      currentWordTemplateName.value = filename;
+      currentWordTemplateSize.value = response.data.size || null;
+    }
+  } catch (error) {
+    if (error.response?.status === 404) {
+      hasWordTemplate.value = false;
+      if (currentWordTemplateUrl.value) {
+        URL.revokeObjectURL(currentWordTemplateUrl.value);
+      }
+      currentWordTemplateUrl.value = null;
+      currentWordTemplateName.value = '';
+      currentWordTemplateSize.value = null;
+    } else {
+      console.error('Error loading global Word template:', error);
+    }
+  }
+};
+
+const confirmDeleteWordTemplate = async () => {
+  const confirmed = await showConfirmationAlert(
+    '¿Estás seguro de que deseas eliminar la plantilla Word de membrete global?'
+  );
+  if (!confirmed) return;
+  deleteWordTemplate();
+};
+
+const deleteWordTemplate = async () => {
+  deletingWordTemplate.value = true;
+
+  try {
+    await store.deleteGlobalLetterheadWordTemplate();
+
+    if (currentWordTemplateUrl.value) {
+      URL.revokeObjectURL(currentWordTemplateUrl.value);
+    }
+    currentWordTemplateUrl.value = null;
+    currentWordTemplateName.value = '';
+    currentWordTemplateSize.value = null;
+    hasWordTemplate.value = false;
+  } catch (error) {
+    console.error('Error deleting global Word template:', error);
+    alert('Error al eliminar la plantilla Word. Por favor intenta nuevamente.');
+  } finally {
+    deletingWordTemplate.value = false;
+  }
+};
+
+const downloadWordTemplate = () => {
+  if (currentWordTemplateUrl.value) {
+    const a = document.createElement('a');
+    a.href = currentWordTemplateUrl.value;
+    a.download = currentWordTemplateName.value || 'membrete-word.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 };
 
@@ -549,6 +788,7 @@ const formatFileSize = (bytes) => {
 watch(() => props.isVisible, (newValue) => {
   if (newValue) {
     loadCurrentImage();
+    loadCurrentWordTemplate();
   }
 });
 
@@ -560,6 +800,9 @@ const cleanup = () => {
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value);
   }
+   if (currentWordTemplateUrl.value) {
+     URL.revokeObjectURL(currentWordTemplateUrl.value);
+   }
 };
 
 // Load image when component mounts if modal is visible
