@@ -11,6 +11,18 @@ import { useAuthStore } from './stores/auth/auth';
 import vue3GoogleLogin from 'vue3-google-login';
 import { registerSW } from 'virtual:pwa-register';
 
+const originalConsoleWarn = console.warn.bind(console);
+console.warn = (...args) => {
+  const message = args[0];
+  if (
+    typeof message === 'string' &&
+    message.includes('Blocked aria-hidden on an element because its descendant retained focus')
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
 // Create the application
 const app = createApp(App);
 

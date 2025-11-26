@@ -3,6 +3,7 @@ import axios from "axios";
 // Endpoints where 404 is expected and should not be logged as errors
 const SILENT_404_ENDPOINTS = [
   'user/letterhead/',
+  'user/letterhead/word-template/',
   'user/signature/'
 ];
 

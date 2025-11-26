@@ -46,6 +46,7 @@
   --tw-bg-opacity: 1;
   background-color: rgb(156 163 175 / var(--tw-bg-opacity));
   backdrop-filter: blur(8px); /* Desenfoque para el fondo */
+  z-index: 11000 !important; /* Ensure SweetAlert overlay appears above app modals (z-[9999]) and overrides inline styles */
 }
 
 /* Title style */

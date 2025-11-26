@@ -9,6 +9,13 @@ def user_letterhead_image_path(instance, filename):
     filename = f"user_letterhead_{uuid.uuid4().hex}.{ext}"
     return os.path.join('user_letterheads', str(instance.id), filename)
 
+
+def user_letterhead_template_path(instance, filename):
+    """Generate unique path for user Word letterhead templates"""
+    ext = filename.split('.')[-1].lower()
+    filename = f"user_letterhead_template_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('user_letterhead_templates', str(instance.id), filename)
+
 class UserManager(BaseUserManager):
     """
     Custom user manager to handle user creation with email as the unique identifier.
@@ -118,6 +125,12 @@ class User(AbstractUser):
         blank=True,
         help_text="Imagen PNG para membrete global que se aplicará a todos los documentos del usuario cuando no tengan uno específico. Recomendado: 612x792 píxeles."
     )
+    letterhead_word_template = models.FileField(
+        upload_to=user_letterhead_template_path,
+        null=True,
+        blank=True,
+        help_text="Plantilla Word (.docx) para membrete global utilizada al generar documentos Word."
+    )
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
     is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
     is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")
@@ -191,6 +204,7 @@ class ActivityFeed(models.Model):
         ('finish', 'Finish'),
         ('delete', 'Delete'),
         ('update', 'Update'),
+        ('download', 'Download'),
         ('other', 'Other'),
     ]
     action_type = models.CharField(max_length=10, choices=ACTION_TYPE_CHOICES, default='other')

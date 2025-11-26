@@ -255,6 +255,10 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
                 # Image file doesn't exist or path is invalid
                 background_style = ""
 
+        body_extra_top_padding = ""
+        if letterhead_image:
+            body_extra_top_padding = "padding-top: 1cm;"
+
         # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches)
         styles = f"""
         <style>
@@ -294,6 +298,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         body {{
             font-family: 'Carlito', sans-serif !important;
             font-size: 12pt;
+            {body_extra_top_padding}
         }}
 
         p, span {{
@@ -406,201 +411,32 @@ def download_dynamic_document_word(request, pk):
         # Parse HTML with BeautifulSoup
         soup = BeautifulSoup(html_content, "html.parser")
 
-        # Create Word document
-        doc = Document()
-        
-        # Configure page size to Letter (Carta)
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-        
-        section = doc.sections[0]
-        section.page_width = Inches(8.5)   # 8.5 inches width
-        section.page_height = Inches(11)   # 11 inches height (Letter/Carta)
-        
-        # Configure margins (adjust as needed)
-        section.top_margin = Inches(1)
-        section.bottom_margin = Inches(1)
-        section.left_margin = Inches(1)
-        section.right_margin = Inches(1)
-        
-        # Add letterhead image as background using VML in header
-        letterhead_image = get_letterhead_for_document(document, request.user)
-        if letterhead_image:
+
+        # Create Word document, optionally using the user's global Word template
+        use_word_template = False
+        word_template = getattr(request.user, 'letterhead_word_template', None)
+
+        if word_template and hasattr(word_template, 'path') and os.path.exists(word_template.path):
             try:
-                import os
-                import base64
-                from PIL import Image as PILImage
-                
-                # Verify image file exists and is accessible
-                letterhead_path = os.path.abspath(letterhead_image.path)
-                if not os.path.exists(letterhead_path):
-                    raise FileNotFoundError("Letterhead image file not accessible")
-                
-                # Read and encode image to base64
-                with open(letterhead_path, 'rb') as img_file:
-                    image_data = img_file.read()
-                    image_base64 = base64.b64encode(image_data).decode('utf-8')
-                
-                # Detect image format
-                with PILImage.open(letterhead_path) as img:
-                    img_format = img.format.lower() if img.format else 'png'
-                
-                # Access the header
-                header = section.header
-                
-                # Create or get header paragraph
-                if header.paragraphs:
-                    header_para = header.paragraphs[0]
-                    header_para.clear()
-                else:
-                    header_para = header.add_paragraph()
-                
-                # Add the image to document relationships
-                from docx.opc.constants import RELATIONSHIP_TYPE as RT
-                
-                # Add image part to document
-                image_part = doc.part.package.image_parts.add_image(letterhead_path)
-                rId = doc.part.relate_to(image_part, RT.IMAGE)
-                
-                # Now we need to create a picture element that goes behind text
-                # We'll manipulate the XML directly
-                from lxml import etree
-                from docx.oxml.ns import qn
-                
-                # Create a run
-                run = header_para.add_run()
-                
-                # Create the picture XML with anchor positioning
-                # This is the key: we create a properly formatted anchor element
-                pic_xml = f'''
-                    <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-                        <wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" 
-                                   relativeHeight="0" behindDoc="1" locked="0" layoutInCell="0" 
-                                   allowOverlap="1" 
-                                   xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">
-                            <wp:simplePos x="0" y="0"/>
-                            <wp:positionH relativeFrom="page">
-                                <wp:posOffset>0</wp:posOffset>
-                            </wp:positionH>
-                            <wp:positionV relativeFrom="page">
-                                <wp:posOffset>0</wp:posOffset>
-                            </wp:positionV>
-                            <wp:extent cx="7772400" cy="12700800"/>
-                            <wp:effectExtent l="0" t="0" r="0" b="0"/>
-                            <wp:wrapNone/>
-                            <wp:docPr id="1" name="Background"/>
-                            <wp:cNvGraphicFramePr>
-                                <a:graphicFrameLocks noChangeAspect="1" 
-                                    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>
-                            </wp:cNvGraphicFramePr>
-                            <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-                                <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                                    <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                                        <pic:nvPicPr>
-                                            <pic:cNvPr id="1" name="Background"/>
-                                            <pic:cNvPicPr/>
-                                        </pic:nvPicPr>
-                                        <pic:blipFill>
-                                            <a:blip r:embed="{rId}" 
-                                                xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>
-                                            <a:stretch>
-                                                <a:fillRect/>
-                                            </a:stretch>
-                                        </pic:blipFill>
-                                        <pic:spPr>
-                                            <a:xfrm>
-                                                <a:off x="0" y="0"/>
-                                                <a:ext cx="7772400" cy="12700800"/>
-                                            </a:xfrm>
-                                            <a:prstGeom prst="rect">
-                                                <a:avLst/>
-                                            </a:prstGeom>
-                                        </pic:spPr>
-                                    </pic:pic>
-                                </a:graphicData>
-                            </a:graphic>
-                        </wp:anchor>
-                    </w:drawing>
-                '''
-                
-                # Parse the XML string
-                drawing_element = etree.fromstring(pic_xml)
-                
-                # Append to run
-                run._element.append(drawing_element)
-                
-                # Configure header paragraph to take no space
-                header_para.paragraph_format.space_after = Pt(0)
-                header_para.paragraph_format.space_before = Pt(0)
-                header_para.paragraph_format.line_spacing = 1
-                
-                # Set header distance to 0
-                section.header_distance = Inches(0)
-                
-            except Exception as e:
-                # Alternative approach: Add image to first paragraph of body
-                try:
-                    
-                    # Get the first paragraph or create one
-                    if not doc.paragraphs:
-                        first_para = doc.add_paragraph()
-                    else:
-                        first_para = doc.paragraphs[0]
-                    
-                    # Add the image
-                    run = first_para.add_run()
-                    picture = run.add_picture(letterhead_path, width=Inches(7.5))
-                    
-                    # Try to access the inline element and modify it
-                    from docx.oxml import parse_xml
-                    from docx.oxml.ns import qn
-                    
-                    inline = picture._inline
-                    
-                    # Get the extent (size) from inline
-                    extent = inline.extent
-                    cx = extent.cx
-                    cy = extent.cy
-                    
-                    # Get the docPr from inline
-                    docPr = inline.docPr
-                    
-                    # Get graphic from inline
-                    graphic = inline.graphic
-                    
-                    # Create an anchor element
-                    anchor_xml = f'''
-                        <wp:anchor xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-                                   distT="0" distB="0" distL="0" distR="0" 
-                                   simplePos="0" relativeHeight="0" 
-                                   behindDoc="1" locked="0" layoutInCell="0" allowOverlap="1">
-                            <wp:simplePos x="0" y="0"/>
-                            <wp:positionH relativeFrom="page">
-                                <wp:align>center</wp:align>
-                            </wp:positionH>
-                            <wp:positionV relativeFrom="page">
-                                <wp:align>center</wp:align>
-                            </wp:positionV>
-                            <wp:extent cx="{cx}" cy="{cy}"/>
-                            <wp:effectExtent l="0" t="0" r="0" b="0"/>
-                            <wp:wrapNone/>
-                        </wp:anchor>
-                    '''
-                    
-                    anchor = parse_xml(anchor_xml)
-                    
-                    # Add docPr and graphic to anchor
-                    anchor.append(docPr)
-                    anchor.append(inline.cNvGraphicFramePr)
-                    anchor.append(graphic)
-                    
-                    # Replace inline with anchor
-                    drawing = picture._element
-                    drawing_parent = drawing.getparent()
-                    drawing_parent.replace(drawing, anchor)
-                    
-                except Exception as e2:
-                    pass
+                doc = Document(word_template.path)
+                use_word_template = True
+            except Exception:
+                # Fall back to a blank document if the template cannot be opened
+                doc = Document()
+        else:
+            doc = Document()
+
+        # If we are using a blank document, configure Letter page size and margins
+        section = doc.sections[0]
+        if not use_word_template:
+            section.page_width = Inches(8.5)   # 8.5 inches width
+            section.page_height = Inches(11)   # 11 inches height (Letter/Carta)
+            section.top_margin = Inches(1)
+            section.bottom_margin = Inches(1)
+            section.left_margin = Inches(1)
+            section.right_margin = Inches(1)
         
         # Configure default font for the document to Calibri
         font_name = 'Calibri'
@@ -613,6 +449,9 @@ def download_dynamic_document_word(request, pk):
         for style_name in ['Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6']:
             if style_name in doc.styles:
                 doc.styles[style_name].font.name = font_name
+
+        # Track whether we've already placed the first body paragraph
+        first_body_paragraph_used = False
 
         # Process HTML content
         for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
@@ -628,7 +467,21 @@ def download_dynamic_document_word(request, pk):
                 if tag.get_text().strip() == "":
                     continue
 
-                paragraph = doc.add_paragraph()
+                # For the very first body paragraph when using a template that has
+                # only the default empty paragraph, reuse that paragraph instead
+                # of creating a new one. This avoids starting on the "second" line
+                # while preserving any content the user may have added to the body.
+                if (
+                    use_word_template
+                    and not first_body_paragraph_used
+                    and len(doc.paragraphs) == 1
+                    and not doc.paragraphs[0].text.strip()
+                ):
+                    paragraph = doc.paragraphs[0]
+                else:
+                    paragraph = doc.add_paragraph()
+
+                first_body_paragraph_used = True
                 
                 # Apply paragraph style attributes
                 style = tag.get("style", "")
@@ -1092,6 +945,143 @@ def delete_letterhead_image(request, pk):
     except Exception as e:
         return Response(
             {'detail': f'Error al eliminar la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_user_letterhead_word_template(request):
+    """Upload a global Word letterhead template (.docx) for the authenticated user."""
+    if request.user.role == 'basic':
+        return Response({
+            'error': 'Los usuarios básicos no pueden gestionar membretes'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        user = request.user
+
+        if 'template' not in request.FILES:
+            return Response(
+                {'detail': 'Se requiere un archivo de plantilla (.docx).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        template_file = request.FILES['template']
+
+        # Validate extension
+        if not template_file.name.lower().endswith('.docx'):
+            return Response(
+                {'detail': 'Solo se permiten archivos .docx para la plantilla de Word.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024
+        if template_file.size > max_size:
+            return Response(
+                {'detail': f'El archivo es demasiado grande. Tamaño máximo permitido: {max_size // (1024*1024)}MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Delete previous template if exists
+        if user.letterhead_word_template:
+            try:
+                if os.path.exists(user.letterhead_word_template.path):
+                    os.remove(user.letterhead_word_template.path)
+            except Exception:
+                pass
+
+        # Save new template
+        user.letterhead_word_template = template_file
+        user.save(update_fields=['letterhead_word_template'])
+
+        response_data = {
+            'message': 'Plantilla Word de membrete global subida exitosamente.',
+            'user_id': user.id,
+            'template_info': {
+                'filename': template_file.name,
+                'size_bytes': template_file.size,
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al subir la plantilla: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_letterhead_word_template(request):
+    """Get the global Word letterhead template (.docx) for the authenticated user."""
+    try:
+        user = request.user
+
+        if not user.letterhead_word_template:
+            return Response(
+                {'detail': 'No tienes una plantilla Word de membrete global configurada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not os.path.exists(user.letterhead_word_template.path):
+            return Response(
+                {'detail': 'El archivo de plantilla no se encuentra en el servidor.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return FileResponse(
+            open(user.letterhead_word_template.path, 'rb'),
+            as_attachment=False,
+            filename=os.path.basename(user.letterhead_word_template.name),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al obtener la plantilla: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_user_letterhead_word_template(request):
+    """Delete the global Word letterhead template (.docx) for the authenticated user."""
+    if request.user.role == 'basic':
+        return Response({
+            'error': 'Los usuarios básicos no pueden gestionar membretes'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        user = request.user
+
+        if not user.letterhead_word_template:
+            return Response(
+                {'detail': 'No tienes una plantilla Word de membrete global para eliminar.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            if os.path.exists(user.letterhead_word_template.path):
+                os.remove(user.letterhead_word_template.path)
+        except Exception:
+            pass
+
+        user.letterhead_word_template = None
+        user.save(update_fields=['letterhead_word_template'])
+
+        return Response(
+            {'message': 'Plantilla Word de membrete global eliminada exitosamente.'},
+            status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al eliminar la plantilla: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
