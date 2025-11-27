@@ -132,7 +132,7 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr
-              v-for="document in filteredAndSortedDocuments"
+              v-for="(document, index) in filteredAndSortedDocuments"
               :key="document.id"
               class="hover:bg-gray-50 cursor-pointer transition-colors"
               @click="handleDocumentClick(document)"

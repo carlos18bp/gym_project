@@ -41,6 +41,10 @@ def sign_on(request):
     
     # Validate the serialized data
     if serializer.is_valid():
+        # Ensure default role is 'basic' when not explicitly provided
+        if not serializer.validated_data.get('role'):
+            serializer.validated_data['role'] = 'basic'
+
         # Hash the user's password
         serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
         
@@ -223,6 +227,7 @@ def google_login(request):
                 defaults={
                     'first_name': given_name,
                     'last_name': family_name,
+                    'role': 'basic',
                 }
             )
 

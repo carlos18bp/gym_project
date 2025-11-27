@@ -116,7 +116,7 @@ class User(AbstractUser):
         ('corporate_client', 'Corporate Client'),
         ('basic', 'Basic'),
     ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='basic', help_text="The role of the user within the system (default: 'basic').")
 
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     letterhead_image = models.ImageField(
