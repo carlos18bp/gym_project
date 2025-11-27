@@ -10,7 +10,7 @@
     <!-- Documents for lawyers -->
     <div v-if="userRole === 'lawyer'">
       <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
-      <div class="mb-6 border-b border-gray-200">
+      <div class="mb-6 border-b border-gray-200 pb-4">
         <!-- Desktop Tabs -->
         <div class="hidden md:block">
           <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
@@ -201,27 +201,14 @@
           
           <!-- Action Buttons (Desktop) -->
           <div class="flex items-center gap-2 mb-4">
-            <div class="relative group">
+            <div class="relative">
               <button
                 @click.stop="handleElectronicSignatureClick"
-                :disabled="isBasicUser"
-                :class="[
-                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                  isBasicUser 
-                    ? 'text-purple-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                    : 'text-purple-600 hover:bg-purple-50 border-purple-200'
-                ]"
+                class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border text-purple-600 hover:bg-purple-50 border-purple-200"
               >
                 <FingerPrintIcon class="h-4 w-4" />
                 Firma Electrónica
               </button>
-              <div
-                v-if="isBasicUser"
-                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
-              >
-                Actualiza tu suscripción para usar esta funcionalidad
-                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-              </div>
             </div>
             <div class="relative group">
               <button
@@ -296,27 +283,14 @@
         
         <!-- Mobile Action Buttons -->
         <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
-          <div class="relative group">
+          <div class="relative">
             <button
               @click.stop="handleElectronicSignatureClick"
-              :disabled="isBasicUser"
-              :class="[
-                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-                isBasicUser 
-                  ? 'text-purple-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                  : 'text-purple-600 bg-purple-50 hover:bg-purple-100'
-              ]"
+              class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-purple-600 bg-purple-50 hover:bg-purple-100"
             >
               <FingerPrintIcon class="h-5 w-5" />
               Firma Electrónica
             </button>
-            <div
-              v-if="isBasicUser"
-              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
-            >
-              Actualiza tu suscripción para usar esta funcionalidad
-              <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-            </div>
           </div>
           <div class="relative group">
             <button
@@ -379,7 +353,7 @@
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
-          @open-electronic-signature="handleElectronicSignatureClick"
+          @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           @document-fully-signed="handleClientDocumentFullySigned"
         />
         <SignaturesListTable
@@ -388,7 +362,7 @@
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
-          @open-electronic-signature="handleElectronicSignatureClick"
+          @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
         />
       </div>
     </div>
@@ -621,15 +595,26 @@ const handleLawyerSignatureClick = () => {
 
 /**
  * Handle electronic signature button click with basic user restriction
+ * (used by the generic header button)
  */
 const handleElectronicSignatureClick = () => {
   if (!currentUser.value) {
     console.error('Cannot open signature modal: currentUser is not loaded');
     return;
   }
-  handleFeatureAccess('Firma Electrónica', () => {
-    showElectronicSignatureModal.value = true;
-  });
+  showElectronicSignatureModal.value = true;
+};
+
+/**
+ * Handle electronic signature when user comes from the signing flow
+ * This should allow basic users to create/use their signature in order to sign
+ */
+const handleElectronicSignatureFromSigningFlow = () => {
+  if (!currentUser.value) {
+    console.error('Cannot open signature modal: currentUser is not loaded');
+    return;
+  }
+  showElectronicSignatureModal.value = true;
 };
 
 /**

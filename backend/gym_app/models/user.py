@@ -116,14 +116,14 @@ class User(AbstractUser):
         ('corporate_client', 'Corporate Client'),
         ('basic', 'Basic'),
     ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='client', help_text="The role of the user within the system (default: 'client').")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='basic', help_text="The role of the user within the system (default: 'basic').")
 
     photo_profile = models.ImageField(upload_to='profile_photos/', null=True, blank=True, help_text="The profile picture of the user.")
     letterhead_image = models.ImageField(
         upload_to=user_letterhead_image_path,
         null=True,
         blank=True,
-        help_text="Imagen PNG para membrete global que se aplicará a todos los documentos del usuario cuando no tengan uno específico. Recomendado: 612x792 píxeles."
+        help_text="Imagen PNG para membrete global que se aplicará a todos los documentos del usuario cuando no tengan uno específico. Recomendado: 2550x3300 píxeles (tamaño carta, aproximadamente 8.5 x 11 pulgadas a 300 DPI)."
     )
     letterhead_word_template = models.FileField(
         upload_to=user_letterhead_template_path,

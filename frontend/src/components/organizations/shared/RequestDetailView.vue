@@ -425,8 +425,6 @@ const submitResponse = async () => {
     newResponse.value = '';
     isInternalNote.value = false;
     
-    showNotification('Respuesta enviada exitosamente', 'success');
-    
   } catch (err) {
     console.error('Error submitting response:', err);
     showNotification(err.response?.data?.error || 'Error al enviar la respuesta', 'error');
@@ -478,12 +476,17 @@ const formatDate = (dateString) => {
 const formatRelativeDate = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
-  const diffTime = Math.abs(now - date);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Normalize both dates to midnight to compare calendar days
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const diffTime = startOfToday - startOfDate;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   
   if (diffDays === 0) return 'Hoy';
   if (diffDays === 1) return 'Ayer';
-  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays > 1 && diffDays < 7) return `Hace ${diffDays} días`;
   
   return formatDate(dateString);
 };

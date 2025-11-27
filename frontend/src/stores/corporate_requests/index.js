@@ -294,7 +294,6 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
         
         if (response.status === 201) {
           const newResponse = response.data.response;
-          this.requestResponses.push(newResponse);
           
           // Update response count and responses in current request
           if (this.currentRequest && this.currentRequest.id === requestId) {
@@ -303,6 +302,9 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
               this.currentRequest.responses = [];
             }
             this.currentRequest.responses.push(newResponse);
+          } else {
+            // Fallback: keep requestResponses in sync when there is no currentRequest
+            this.requestResponses.push(newResponse);
           }
           
           return response.data;
@@ -447,7 +449,6 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
         
         if (response.status === 201) {
           const newResponse = response.data.response;
-          this.requestResponses.push(newResponse);
           
           // Update response count and responses in current request
           if (this.currentRequest && this.currentRequest.id === requestId) {
@@ -456,6 +457,9 @@ export const useCorporateRequestsStore = defineStore("corporateRequests", {
               this.currentRequest.responses = [];
             }
             this.currentRequest.responses.push(newResponse);
+          } else {
+            // Fallback: keep requestResponses in sync when there is no currentRequest
+            this.requestResponses.push(newResponse);
           }
           
           return response.data;

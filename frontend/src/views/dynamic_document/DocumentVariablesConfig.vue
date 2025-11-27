@@ -301,6 +301,13 @@ const validateForm = () => {
  * @param {string} state - The state of the document ('Draft' or 'Published').
  */
 const validateAndSave = (state) => {
+  // Para borradores, permitir guardar sin validar todos los campos de variables
+  if (state === 'Draft') {
+    saveDocument(state);
+    return;
+  }
+
+  // Para publicación, requerir formulario completo y válido
   if (validateForm()) {
     saveDocument(state);
   }

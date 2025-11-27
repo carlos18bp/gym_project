@@ -349,11 +349,6 @@ export function useDocumentActions(documentStore, userStore, emit) {
         await showNotification("Operación de firma cancelada", "info");
         return;
       }
-      
-      // Check if this will be the last signature
-      const unsignedSignatures = document.signatures?.filter(s => !s.signed) || [];
-      const isLastSigner = unsignedSignatures.length === 1 && unsignedSignatures[0].signer_email === userEmail;
-
       const signUrl = `dynamic-documents/${document.id}/sign/${userId}/`;
       
       try {
@@ -362,31 +357,35 @@ export function useDocumentActions(documentStore, userStore, emit) {
         const response = await create_request(signUrl, {});
         
         if (response.status === 200 || response.status === 201) {
-          await showNotification(`¡Documento "${document.title}" firmado correctamente!`, "success");
-          
-          // If this was the last signature, emit event immediately and switch tabs
-          if (isLastSigner) {
-            await showNotification(`El documento "${document.title}" ha sido firmado por todas las partes`, "success");
-            emit('document-fully-signed', document);
-            
-            // Wait for tab switch, then refresh and show modal
+          // Refresh documents to get the updated state and signatures
+          await documentStore.init(true);
+          const updatedDocument = documentStore.documents?.find(d => d.id === document.id) || document;
+
+          await showNotification(`¡Documento "${updatedDocument.title}" firmado correctamente!`, "success");
+
+          // Determine if the document is now fully signed (all signatures marked as signed)
+          const allSigned = Array.isArray(updatedDocument.signatures) &&
+            updatedDocument.signatures.length > 0 &&
+            updatedDocument.signatures.every(s => s.signed);
+
+          if (allSigned) {
+            await showNotification(`El documento "${updatedDocument.title}" ha sido firmado por todas las partes`, "success");
+            emit('document-fully-signed', updatedDocument);
+
+            // Allow parent to switch tab, then refresh and show signatures modal
             setTimeout(() => {
-              documentStore.init();
               emit('refresh');
-              
-              // Show modal after tab switch is complete (longer delay to ensure tab has switched)
+
               setTimeout(() => {
-                openModalFn('signatures', document);
+                openModalFn('signatures', updatedDocument);
               }, 1500);
-            }, 1000);
+            }, 500);
           } else {
-            // Not the last signer, just refresh normally
-            await documentStore.init();
+            // Not fully signed yet: just refresh and show signatures modal
             emit('refresh');
-            
-            // Show signature status modal after signing
+
             setTimeout(() => {
-              openModalFn('signatures', document);
+              openModalFn('signatures', updatedDocument);
             }, 1000);
           }
         } else {
