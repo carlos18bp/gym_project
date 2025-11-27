@@ -115,9 +115,6 @@
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Firma
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
             </tr>
@@ -147,14 +144,6 @@
                   :class="getStatusClasses(document)"
                 >
                   {{ getStatusText(document) }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getSignatureClasses(document)"
-                >
-                  {{ getSignatureText(document) }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -574,56 +563,6 @@ const getStatusClasses = (document) => {
   if (document.state === 'Progress') {
     return 'bg-blue-100 text-blue-700 border border-blue-200';
   }
-  return 'bg-gray-100 text-gray-700 border border-gray-200';
-};
-
-// Get signature text and classes
-const getSignatureText = (document) => {
-  // Check if document requires signature
-  if (!document.signatures || document.signatures.length === 0) {
-    return 'Sin Firma';
-  }
-  
-  // Check if fully signed
-  if (document.fully_signed) {
-    return 'Firmado';
-  }
-  
-  // Check current user's signature
-  const userSignature = document.signatures.find(sig => sig.user_id === currentUser.value?.id);
-  if (userSignature) {
-    if (userSignature.signed) {
-      return 'Firmado';
-    } else {
-      return 'Pendiente Firmar';
-    }
-  }
-  
-  // Check if any signature is pending
-  const hasPendingSignatures = document.signatures.some(sig => !sig.signed);
-  if (hasPendingSignatures) {
-    return 'Pendiente Firmar';
-  }
-  
-  return 'Sin Firma';
-};
-
-const getSignatureClasses = (document) => {
-  const text = getSignatureText(document);
-  
-  if (text === 'Sin Firma') {
-    return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
-  }
-  if (text === 'Firmado') {
-    return 'bg-green-100 text-green-700 border border-green-200';
-  }
-  if (text === 'Pendiente Firmar') {
-    return 'bg-blue-100 text-blue-700 border border-blue-200';
-  }
-  if (text === 'Devuelto Sin Firma') {
-    return 'bg-red-100 text-red-700 border border-red-200';
-  }
-  
   return 'bg-gray-100 text-gray-700 border border-gray-200';
 };
 
