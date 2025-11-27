@@ -105,7 +105,7 @@
                   Solo archivos PNG, máximo 10MB. Se usa únicamente para los PDF.
                 </p>
                 <p class="text-xs text-gray-400 mt-1">
-                  Dimensiones ideales: 612 × 612 píxeles (8.5:11 Carta)
+                  Dimensiones ideales: 2550 × 3300 píxeles (tamaño carta, 8.5" × 11" a 300 DPI)
                 </p>
               </div>
               
@@ -263,15 +263,15 @@
                 <div class="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span class="font-medium text-gray-700">Ancho:</span>
-                    <span class="ml-2 text-blue-600 font-mono">612 píxeles</span>
+                    <span class="ml-2 text-blue-600 font-mono">2550 píxeles</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Alto:</span>
-                    <span class="ml-2 text-blue-600 font-mono">612 píxeles</span>
+                    <span class="ml-2 text-blue-600 font-mono">3300 píxeles</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Proporción:</span>
-                    <span class="ml-2 text-blue-600">8.5:11 (Carta)</span>
+                    <span class="ml-2 text-blue-600">8.5:11 (Carta, 300 DPI)</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Tolerancia:</span>
@@ -498,8 +498,9 @@ const handleFileSelect = (event) => {
 };
 
 const validateImageDimensions = (width, height) => {
-  const idealWidth = 612;
-  const idealHeight = 612;
+  // Tamaño carta a 300 DPI: 2550 x 3300 px
+  const idealWidth = 2550;
+  const idealHeight = 3300;
   const tolerance = 0.1; // 10% tolerance
   
   // Calculate proportion
@@ -509,7 +510,7 @@ const validateImageDimensions = (width, height) => {
   
   // Check if dimensions are exactly ideal
   if (width === idealWidth && height === idealHeight) {
-    warnings.value.push('✅ Dimensiones perfectas: 612 × 612 píxeles');
+    warnings.value.push('✅ Dimensiones perfectas: 2550 × 3300 píxeles');
     return;
   }
   
@@ -517,21 +518,21 @@ const validateImageDimensions = (width, height) => {
   if (ratioDiff <= tolerance) {
     warnings.value.push(`ℹ️ Buenas proporciones detectadas: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
     if (width !== idealWidth || height !== idealHeight) {
-      warnings.value.push('💡 Para mejores resultados, usa exactamente 612 × 612 píxeles');
+      warnings.value.push('💡 Para mejores resultados, usa exactamente 2550 × 3300 píxeles (tamaño carta, 8.5" × 11" a 300 DPI)');
     }
   } else {
     warnings.value.push(`⚠️ Proporciones no ideales: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
-    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:11)`);
-    warnings.value.push('📐 Considera redimensionar tu imagen a 612 × 612 píxeles');
+    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:11, tamaño carta)`);
+    warnings.value.push('📐 Considera redimensionar tu imagen a 2550 × 3300 píxeles (tamaño carta)');
   }
   
   // Additional warnings based on dimensions
-  if (width < 300 || height < 300) {
-    warnings.value.push('⚠️ Imagen muy pequeña - puede verse pixelada en documentos');
+  if (width < 1200 || height < 1600) {
+    warnings.value.push('⚠️ Imagen muy pequeña - puede verse pixelada en documentos PDF tamaño carta');
   }
   
-  if (width > 1200 || height > 1600) {
-    warnings.value.push('ℹ️ Imagen muy grande - se redimensionará automáticamente');
+  if (width > 4000 || height > 5000) {
+    warnings.value.push('ℹ️ Imagen muy grande - se redimensionará automáticamente para ajustarse al tamaño carta');
   }
 };
 

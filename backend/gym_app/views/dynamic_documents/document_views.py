@@ -790,7 +790,8 @@ def upload_letterhead_image(request, pk):
             image_file.seek(0)
             
             # Recommended dimensions check (warning, not error)
-            recommended_width, recommended_height = 612, 792
+            # Tamaño carta a 300 DPI: 2550x3300 px
+            recommended_width, recommended_height = 2550, 3300
             aspect_ratio = width / height
             recommended_ratio = recommended_width / recommended_height
             
@@ -1128,7 +1129,7 @@ def upload_user_letterhead_image(request):
     when they don't have a specific letterhead configured.
     
     Accepts a PNG image file and saves it to the user's letterhead_image field.
-    The image should be in 8.5:11 ratio (612x792 pixels recommended) for best results.
+    The image should be in 8.5:11 ratio (2550x3300 pixels recommended for letter size at 300 DPI) for best results.
     
     Parameters:
         request (HttpRequest): The request object containing the image file
@@ -1186,7 +1187,10 @@ def upload_user_letterhead_image(request):
             
             warnings = []
             if abs(aspect_ratio - recommended_ratio) > 0.1:  # Allow 10% tolerance
-                warnings.append(f"La proporción de aspecto recomendada es 8.5:11 ({recommended_width}x{recommended_height}). Su imagen es {width}x{height}.")
+                warnings.append(
+                    f"La proporción de aspecto recomendada es 8.5:11 (tamaño carta, {recommended_width}x{recommended_height} píxeles a 300 DPI). "
+                    f"Su imagen es {width}x{height}."
+                )
             
         except Exception as e:
             return Response(
