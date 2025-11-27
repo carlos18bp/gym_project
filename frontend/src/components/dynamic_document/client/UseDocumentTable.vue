@@ -211,6 +211,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal para nombrar el documento antes de usar la plantilla -->
+    <ModalTransition v-show="showUseModal">
+      <UseDocumentByClient
+        v-if="selectedTemplateId !== null"
+        :document-id="selectedTemplateId"
+        @close="handleUseModalClose"
+      />
+    </ModalTransition>
   </div>
 </template>
 
@@ -230,6 +239,8 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
+import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
+import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
@@ -243,13 +254,17 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['go-back']);
+const emit = defineEmits(["go-back"]);
 
 // Local state
 const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
 const filterByTag = ref(null);
-const sortBy = ref('recent');
+const sortBy = ref("recent");
+
+// Modal state for naming document before use
+const showUseModal = ref(false);
+const selectedTemplateId = ref(null);
 
 // Menu refs for scroll handling
 const menuButtonRefs = ref({});
@@ -385,14 +400,36 @@ const clearFilters = () => {
   filterByTag.value = null;
 };
 
+// Modal helpers
+const openUseModal = (templateId) => {
+  if (templateId) {
+    // Ensure we are in create-from-template mode (no selectedDocument)
+    documentStore.selectedDocument = null;
+    selectedTemplateId.value = templateId;
+    showUseModal.value = true;
+  }
+};
+
+const handleUseModalClose = () => {
+  showUseModal.value = false;
+  selectedTemplateId.value = null;
+};
+
 // Handle document click
 const handleDocumentClick = (document) => {
-  // If it's a template (Published without assigned_to), use creator route to create a copy
-  // Otherwise, use editor route to edit existing document
-  const isTemplate = document.state === 'Published' && !document.assigned_to;
-  const routeType = isTemplate ? 'creator' : 'editor';
-  const editRoute = `/dynamic_document_dashboard/document/use/${routeType}/${document.id}/${encodeURIComponent(document.title.trim())}`;
-  router.push(editRoute);
+  // All documents in this table are published templates, but keep a safety check
+  const isTemplate = document.state === "Published" && !document.assigned_to;
+
+  if (isTemplate) {
+    // Open naming modal so user can assign a custom title before generating
+    openUseModal(document.id);
+  } else {
+    // Fallback: direct navigation for non-template documents
+    const editRoute = `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodeURIComponent(
+      document.title.trim()
+    )}`;
+    router.push(editRoute);
+  }
 };
 
 // Go back to Mis Documentos

@@ -544,7 +544,8 @@ const saveDocument = async (state = 'Draft') => {
           router.push({ path: '/dynamic_document_dashboard', query: { tab: 'pending-signatures' } });
         }
       } else {
-        router.push('/dynamic_document_dashboard');
+        // For client/basic/corporate flows, always return to "Mis Documentos" tab
+        router.push({ path: '/dynamic_document_dashboard', query: { tab: 'my-documents' } });
       }
     }, 300);
   } catch (error) {

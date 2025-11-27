@@ -183,9 +183,10 @@ export const documentActions = {
       if (documentData.state !== 'Progress' && 
           documentData.state !== 'Draft' && 
           documentData.state !== 'PendingSignatures' &&  // Don't override signature documents
+          documentData.state !== 'Completed' &&           // Allow explicit Completed state for client documents
           documentData.assigned_to && 
           !documentData.requires_signature) {  // Don't override if requires signature
-        // If document has assigned_to (client document), force Progress state
+        // If document has assigned_to (client document) and an unexpected state, force Progress state
         documentData.state = 'Progress';
       }
       
