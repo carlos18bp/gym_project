@@ -100,9 +100,37 @@
       <div class="flex flex-col gap-3 pt-4 border-t border-gray-200">
         <!-- Top row: Results count and Sort -->
         <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <!-- Left side: Results count -->
-          <div class="text-sm text-gray-500">
-            <span class="font-medium">{{ filteredAndSortedDocuments.length }}</span> resultados
+          <!-- Bottom row: Action buttons -->
+          <div class="flex items-center gap-2">
+            <!-- Export Button -->
+            <button
+              @click="exportDocuments"
+              class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowDownTrayIcon class="h-4 w-4" />
+              <span class="hidden sm:inline">Exportar</span>
+            </button>
+
+            <!-- More options -->
+            <Menu as="div" class="relative">
+              <MenuButton class="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-gray-100">
+                <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="selectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Seleccionar todo
+                    </a>
+                  </MenuItem>
+                  <MenuItem v-slot="{ active }">
+                    <a @click="deselectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                      Deseleccionar todo
+                    </a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
           </div>
 
           <!-- Right side: Sort -->
@@ -121,39 +149,6 @@
                 <MenuItem v-slot="{ active }">
                   <a @click="sortBy = 'name'" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
                     Nombre (A-Z)
-                  </a>
-                </MenuItem>
-              </div>
-            </MenuItems>
-          </Menu>
-        </div>
-
-        <!-- Bottom row: Action buttons -->
-        <div class="flex items-center gap-2">
-          <!-- Export Button -->
-          <button
-            @click="exportDocuments"
-            class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <ArrowDownTrayIcon class="h-4 w-4" />
-            <span class="hidden sm:inline">Exportar</span>
-          </button>
-
-          <!-- More options -->
-          <Menu as="div" class="relative">
-            <MenuButton class="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-gray-100">
-              <EllipsisVerticalIcon class="h-5 w-5 text-gray-500" />
-            </MenuButton>
-            <MenuItems class="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-48 origin-top-left sm:origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              <div class="py-1">
-                <MenuItem v-slot="{ active }">
-                  <a @click="selectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                    Seleccionar todo
-                  </a>
-                </MenuItem>
-                <MenuItem v-slot="{ active }">
-                  <a @click="deselectAll" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
-                    Deseleccionar todo
                   </a>
                 </MenuItem>
               </div>

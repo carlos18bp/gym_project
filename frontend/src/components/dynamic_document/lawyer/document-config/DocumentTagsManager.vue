@@ -16,7 +16,15 @@
     <!-- Available Tags -->
     <div class="space-y-3">
       <div v-if="store.tags && store.tags.length > 0">
-        <h4 class="text-sm font-medium text-gray-700 mb-2">Etiquetas Disponibles:</h4>
+        <h4 class="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+          <span>Etiquetas Disponibles:</span>
+          <span
+            class="inline-flex items-center text-gray-400 cursor-help"
+            title="Estas son las etiquetas disponibles para todos tus documentos. Haz clic en una etiqueta para agregarla o quitarla de este documento."
+          >
+            <ExclamationCircleIcon class="h-4 w-4" />
+          </span>
+        </h4>
         <div class="flex flex-wrap gap-2">
           <div
             v-for="tag in store.sortedTags"
@@ -156,7 +164,7 @@
 import { onMounted } from 'vue';
 import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { useDocumentTags } from '@/composables/document-variables/useDocumentTags';
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline';
 
 // Props
 const props = defineProps({

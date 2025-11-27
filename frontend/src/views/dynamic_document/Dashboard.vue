@@ -10,7 +10,7 @@
     <!-- Documents for lawyers -->
     <div v-if="userRole === 'lawyer'">
       <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
-      <div class="mb-6 border-b border-gray-200">
+      <div class="mb-6 border-b border-gray-200 pb-4">
         <!-- Desktop Tabs -->
         <div class="hidden md:block">
           <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">

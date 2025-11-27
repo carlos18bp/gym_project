@@ -386,7 +386,8 @@ const isContentEmpty = (content) => {
 };
 
 /**
- * Handle the continue action by synchronizing variables and navigating to the next step.
+ * Handle the continue action by synchronizing variables and always navigating
+ * to the lawyer variables configuration view, even if there are no variables.
  */
 const handleContinue = async () => {
   // Check if document content is empty
@@ -399,22 +400,24 @@ const handleContinue = async () => {
   }
 
   const variables = extractVariables();
-  if (variables.length > 0) {
-    if (store.selectedDocument) {
-      store.selectedDocument.content = editorContent.value;
-    } else {
-      store.selectedDocument = {
-        title: route.params.title || "Untitled Document",
-        content: editorContent.value,
-        variables: [],
-      };
-    }
-    syncVariables(variables);
-    router.push("/dynamic_document_dashboard/lawyer/variables-config");
+
+  // Asegurar que haya un selectedDocument con título y contenido
+  if (store.selectedDocument) {
+    store.selectedDocument.content = editorContent.value;
   } else {
-    // If there are no variables, save as draft and update lastUpdatedDocumentId
-    await saveDocumentDraft();
+    store.selectedDocument = {
+      title: route.params.title || "Untitled Document",
+      content: editorContent.value,
+      variables: [],
+    };
   }
+
+  // Sincronizar variables aunque el arreglo esté vacío, para que
+  // DocumentVariablesConfig reciba la estructura correcta
+  syncVariables(variables);
+
+  // Ir siempre a la vista de configuración de variables del abogado
+  router.push("/dynamic_document_dashboard/lawyer/variables-config");
 };
 
 // Global reference for the editor (ensure it is available throughout the scope)
@@ -455,8 +458,8 @@ function enforceCarlito(content) {
 const editorConfig = computed(() => ({
   language: "es",
   plugins: isClient.value 
-    ? "lists link image table code wordcount autolink searchreplace textpattern noneditable"
-    : "lists link image table code wordcount autolink searchreplace textpattern", 
+    ? "lists link image table code wordcount autolink searchreplace noneditable"
+    : "lists link image table code wordcount autolink searchreplace", 
   menubar: "",
   toolbar: isClient.value 
     ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
