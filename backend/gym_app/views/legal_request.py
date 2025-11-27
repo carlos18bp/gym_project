@@ -356,17 +356,38 @@ def send_confirmation_email(request):
 
         # Send confirmation email
         try:
+            user = legal_request.user
+
+            # Safely get user's name and email from the related User model
+            first_name = getattr(user, 'first_name', '') or ''
+            last_name = getattr(user, 'last_name', '') or ''
+            recipient_email = getattr(user, 'email', None)
+
+            if not recipient_email:
+                logger.error(
+                    f"Cannot send confirmation email for legal request {legal_request.id}: user has no email configured"
+                )
+                return Response(
+                    {
+                        'detail': 'Email sending failed: user email is not configured',
+                        'legal_request_id': legal_request_id,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
             context = {
-                "first_name": legal_request.first_name,
-                "last_name": legal_request.last_name,
+                "first_name": first_name,
+                "last_name": last_name,
                 "description": legal_request.description,
                 "request_id": legal_request.id,
-                "email_type": "confirmation"
+                "request_number": legal_request.request_number,
+                "email_type": "confirmation",
             }
+
             send_template_email(
                 template_name="legal_request",
                 subject="Confirmación de solicitud legal",
-                to_emails=[legal_request.email],
+                to_emails=[recipient_email],
                 context=context,
             )
             logger.info(f"Confirmation email sent for legal request {legal_request.id}")

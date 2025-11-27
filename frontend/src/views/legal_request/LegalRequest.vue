@@ -337,6 +337,7 @@ import { showNotification } from "@/shared/notification_message.js";
 import { RouterLink } from "vue-router";
 import { showLoading, hideLoading } from "@/shared/loading_message.js";
 import { useRouter } from "vue-router";
+import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 
 /**
  * Router of app used for redirect the user.
