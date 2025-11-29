@@ -175,11 +175,12 @@ const cardConfigs = {
           ]
         });
         
-        // Add "Formalizar y Agregar Firmas" for Corporate and Client roles (not Basic)
-        if (isCorporateOrClient) {
+        // Add "Formalizar y Agregar Firmas" for Corporate/Client roles and show disabled for Basic
+        if (isCorporateOrClient || isBasicUser) {
           options.push({
             label: "Formalizar y Agregar Firmas",
-            action: "formalize"
+            action: "formalize",
+            disabled: isBasicUser
           });
         }
       } else {
@@ -216,8 +217,12 @@ const cardConfigs = {
         });
       }
 
-      // Add document relationships management option
-      options.push({ label: "Administrar Asociaciones", action: "relationships" });
+      // Add document relationships management option (restricted for basic users)
+      options.push({ 
+        label: "Administrar Asociaciones", 
+        action: "relationships",
+        disabled: isBasicUser
+      });
 
       // Add signature-related options for documents that require signatures
       if (document.requires_signature) {
@@ -243,12 +248,14 @@ const cardConfigs = {
             action: "downloadPDF"
           },
           {
-            label: "Descargar Word",
-            action: "downloadWord"
+            label: "Descargar Word (Plan Avanzado)",
+            action: "downloadWord",
+            disabled: isBasicUser
           },
           {
             label: "Enviar",
-            action: "email"
+            action: "email",
+            disabled: isBasicUser
           }
         );
       }

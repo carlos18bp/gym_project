@@ -825,6 +825,8 @@ const selectLawyerTab = (tabName) => {
  * @param {string} tabName - The name of the tab to select.
  */
 const selectClientTab = (tabName) => {
+  // Ensure we are in the main documents view when switching tabs
+  currentSection.value = 'default';
   activeTab.value = tabName;
   showClientDropdown.value = false;
   // Ensure dropdowns are closed

@@ -3,7 +3,7 @@
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Acciones del Documento</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Acciones del Documento y Herramientas</h2>
         <p class="text-sm text-gray-500 mt-1">
           {{ document?.title || 'Cargando...' }}
         </p>
@@ -27,35 +27,48 @@
             
             <!-- Action buttons grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
+              <div
                 v-for="option in group.options"
                 :key="option.action"
-                @click="handleAction(option.action)"
-                :disabled="option.disabled"
-                :class="[
-                  'flex items-center justify-start px-4 py-3 rounded-lg border transition-all duration-200',
-                  option.disabled 
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60' 
-                    : getButtonClasses(option.action),
-                  'hover:shadow-md hover:scale-[1.02]'
-                ]"
+                class="relative group"
               >
-                <!-- Icon -->
-                <component 
-                  :is="getIcon(option.action)" 
-                  class="h-5 w-5 mr-3 flex-shrink-0"
-                  :class="option.disabled ? 'text-gray-400' : getIconColor(option.action)"
-                />
-                
-                <!-- Label -->
-                <span class="text-sm font-medium">{{ option.label }}</span>
-                
-                <!-- Disabled indicator -->
-                <NoSymbolIcon 
-                  v-if="option.disabled" 
-                  class="h-4 w-4 ml-auto text-gray-400"
-                />
-              </button>
+                <button
+                  @click="handleAction(option.action)"
+                  :disabled="option.disabled"
+                  :class="[
+                    'flex items-center justify-start w-full px-4 py-3 rounded-lg border transition-all duration-200',
+                    option.disabled 
+                      ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60' 
+                      : getButtonClasses(option.action),
+                    'hover:shadow-md hover:scale-[1.02]'
+                  ]"
+                >
+                  <!-- Icon -->
+                  <component 
+                    :is="getIcon(option.action)" 
+                    class="h-5 w-5 mr-3 flex-shrink-0"
+                    :class="option.disabled ? 'text-gray-400' : getIconColor(option.action)"
+                  />
+                  
+                  <!-- Label -->
+                  <span class="text-sm font-medium">{{ option.label }}</span>
+                  
+                  <!-- Disabled indicator -->
+                  <NoSymbolIcon 
+                    v-if="option.disabled" 
+                    class="h-4 w-4 ml-auto text-gray-400"
+                  />
+                </button>
+
+                <!-- Tooltip for restricted actions (Basic users) -->
+                <div
+                  v-if="option.disabled && isBasicUser && isRestrictedAction(option.action)"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+                >
+                  Actualiza tu suscripción para usar esta funcionalidad
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                </div>
+              </div>
             </div>
             
             <!-- Divider between groups -->
@@ -296,7 +309,14 @@ const getButtonClasses = (action) => {
 };
 
 // Basic user restrictions
-const { handleFeatureAccess } = useBasicUserRestrictions();
+const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
+
+const restrictedActionsForBasic = ['formalize', 'letterhead', 'relationships', 'downloadWord', 'email'];
+
+const isRestrictedAction = (action) => {
+  const actionLower = action.toLowerCase();
+  return restrictedActionsForBasic.some(key => actionLower === key.toLowerCase());
+};
 
 // Handle action click
 const handleAction = (action) => {
