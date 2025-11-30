@@ -3,7 +3,7 @@
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Acciones del Documento y Herramientas</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Acciones del Documento</h2>
         <p class="text-sm text-gray-500 mt-1">
           {{ document?.title || 'Cargando...' }}
         </p>

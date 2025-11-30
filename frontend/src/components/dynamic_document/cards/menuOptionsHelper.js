@@ -248,7 +248,7 @@ const cardConfigs = {
             action: "downloadPDF"
           },
           {
-            label: "Descargar Word (Plan Avanzado)",
+            label: "Descargar Word",
             action: "downloadWord",
             disabled: isBasicUser
           },
