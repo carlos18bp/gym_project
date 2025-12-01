@@ -98,39 +98,99 @@
 
       <!-- Navigation Tabs -->
       <div class="border-b border-gray-200 mb-6">
-        <nav class="-mb-px flex space-x-8">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            @click="!tab.disabled && (activeTab = tab.id)"
-            :disabled="tab.disabled"
-            :class="[
-              tab.disabled
-                ? 'border-transparent text-gray-300 cursor-not-allowed'
-                : activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors'
-            ]"
-            :title="tab.disabled ? 'Debes ser miembro de al menos una organización para acceder a esta sección' : ''"
-          >
-            <component :is="tab.icon" class="h-5 w-5 mr-2 inline" />
-            {{ tab.name }}
-            <span
-              v-if="tab.count !== undefined"
+        <!-- Mobile: dropdown -->
+        <div class="sm:hidden">
+          <label for="current-tab" class="sr-only">Selecciona sección</label>
+          <div class="relative inline-block w-full">
+            <button
+              id="current-tab"
+              type="button"
+              @click="isMobileTabsOpen = !isMobileTabsOpen"
+              class="inline-flex w-full justify-between items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <span>{{ currentTabLabel }}</span>
+              <ChevronDownIcon class="h-4 w-4 text-gray-400" />
+            </button>
+
+            <div
+              v-if="isMobileTabsOpen"
+              class="absolute z-20 mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5"
+            >
+              <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+                <li
+                  v-for="tab in tabs"
+                  :key="tab.id"
+                >
+                  <button
+                    type="button"
+                    @click="!tab.disabled && (activeTab = tab.id)"
+                    :disabled="tab.disabled"
+                    :class="[
+                      'flex w-full items-center justify-between px-3 py-2 text-left',
+                      tab.disabled
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : activeTab === tab.id
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'hover:bg-gray-50'
+                    ]"
+                  >
+                    <span>{{ tab.name }}</span>
+                    <span
+                      v-if="tab.count !== undefined"
+                      :class="[
+                        'ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        tab.disabled
+                          ? 'bg-gray-100 text-gray-400'
+                          : activeTab === tab.id
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-900'
+                      ]"
+                    >
+                      {{ tab.count }}
+                    </span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desktop: horizontal tabs -->
+        <div class="hidden sm:block">
+          <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              v-for="tab in tabs"
+              :key="tab.id"
+              @click="!tab.disabled && (activeTab = tab.id)"
+              :disabled="tab.disabled"
               :class="[
                 tab.disabled
-                  ? 'bg-gray-100 text-gray-400'
-                  : activeTab === tab.id 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'bg-gray-100 text-gray-900',
-                'ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium'
+                  ? 'border-transparent text-gray-300 cursor-not-allowed'
+                  : activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors'
               ]"
+              :title="tab.disabled ? 'Debes ser miembro de al menos una organización para acceder a esta sección' : ''"
             >
-              {{ tab.count }}
-            </span>
-          </button>
-        </nav>
+              <component :is="tab.icon" class="h-5 w-5 mr-2 inline" />
+              {{ tab.name }}
+              <span
+                v-if="tab.count !== undefined"
+                :class="[
+                  tab.disabled
+                    ? 'bg-gray-100 text-gray-400'
+                    : activeTab === tab.id 
+                      ? 'bg-blue-100 text-blue-600' 
+                      : 'bg-gray-100 text-gray-900',
+                  'ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium'
+                ]"
+              >
+                {{ tab.count }}
+              </span>
+            </button>
+          </nav>
+        </div>
       </div>
 
       <!-- Tab Content -->
@@ -189,7 +249,8 @@ import {
   EnvelopeIcon,
   BuildingOfficeIcon,
   ClipboardDocumentListIcon,
-  PlusIcon
+  PlusIcon,
+  ChevronDownIcon
 } from '@heroicons/vue/24/outline';
 
 // Components
@@ -212,6 +273,7 @@ import userAvatar from '@/assets/images/user_avatar.jpg';
 const activeTab = ref('organizations');
 const showCreateRequestModal = ref(false);
 const organizationRefs = ref({});
+const isMobileTabsOpen = ref(false);
 
 // Computed properties
 const isLoading = computed(() => 
@@ -246,6 +308,11 @@ const tabs = computed(() => [
     disabled: false
   }
 ]);
+
+const currentTabLabel = computed(() => {
+  const current = tabs.value.find(tab => tab.id === activeTab.value);
+  return current ? current.name : 'Selecciona sección';
+});
 
 // Methods
 const loadData = async () => {
@@ -376,6 +443,10 @@ watch(myMemberships, (newMemberships) => {
   if (newMemberships.length === 0 && activeTab.value === 'requests') {
     activeTab.value = 'organizations';
   }
+});
+
+watch(activeTab, () => {
+  isMobileTabsOpen.value = false;
 });
 
 // Lifecycle

@@ -167,7 +167,7 @@
           <!-- Organization Content -->
           <div class="px-6 py-4">
             <!-- Organization Info -->
-            <div class="flex items-start justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div class="flex-1">
                 <h3 class="text-xl font-semibold text-gray-900 mb-2">
                   {{ organization.title }}
@@ -177,7 +177,7 @@
                 </p>
                 
                 <!-- Organization Metrics -->
-                <div class="flex items-center space-x-6 text-sm text-gray-500 mb-4">
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 mb-4">
                   <button
                     @click="openMembersModal(organization)"
                     class="flex items-center hover:text-blue-600 transition-colors cursor-pointer group"
@@ -200,10 +200,10 @@
               </div>
 
               <!-- Action Buttons -->
-              <div class="flex space-x-2 ml-4">
+              <div class="flex sm:ml-4 mt-4 sm:mt-0">
                 <button
                   @click="openInviteMemberModal(organization)"
-                  class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  class="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
                   <UserPlusIcon class="h-4 w-4 mr-2" />
                   Invitar Miembro
