@@ -77,6 +77,48 @@ def generate_encrypted_document_id(document_id, created_at):
         return f"DOC-{document_id:04d}-{created_at.strftime('%Y%m%d')}"
 
 
+def expire_overdue_documents():
+    """Mark documents with past signature_due_date as Expired and notify creators.
+
+    This runs opportunistically when fetching pending documents for signatures.
+    """
+    today = timezone.now().date()
+    overdue_documents = DynamicDocument.objects.filter(
+        requires_signature=True,
+        state='PendingSignatures',
+        signature_due_date__isnull=False,
+        signature_due_date__lt=today,
+    ).select_related('created_by')
+
+    for document in overdue_documents:
+        document.state = 'Expired'
+        document.updated_at = timezone.now()
+        document.save(update_fields=['state', 'updated_at'])
+
+        creator = document.created_by
+        if not creator or not getattr(creator, 'email', None):
+            continue
+
+        # Notify creator that the document has expired
+        try:
+            subject = f"[Firmas] El documento '{document.title}' ha expirado"
+            body = (
+                f"El documento '{document.title}' tenía una fecha límite de firma "
+                f"establecida para {document.signature_due_date} y ha expirado sin ser firmado completamente.\n\n"
+                f"Ahora puedes revisarlo, editarlo o eliminarlo desde tu bandeja."
+            )
+            email_message = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[creator.email],
+            )
+            email_message.send()
+        except Exception:
+            # No bloquear el flujo por errores de correo
+            pass
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_document_visibility_by_id
@@ -99,15 +141,21 @@ def get_document_signatures(request, document_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_pending_signatures(request):
-    """
-    Get all documents that require a signature from the authenticated user.
+    """Get all documents that require a signature from the authenticated user.
+
     Returns the complete document information along with signature details.
     Only returns documents the user has permission to view.
     """
-    # Get all pending signatures for the user
+
+    # First, expire any overdue documents
+    expire_overdue_documents()
+
+    # Get all pending (non-rejected) signatures for the user on active documents
     pending_signatures = DocumentSignature.objects.filter(
         signer=request.user,
-        signed=False
+        signed=False,
+        rejected=False,
+        document__state='PendingSignatures',
     ).select_related('document')
     
     # Get unique documents that need signatures and filter by visibility
@@ -176,7 +224,8 @@ def sign_document(request, document_id, user_id):
             signature_record = DocumentSignature.objects.select_for_update().get(
                 document=document,
                 signer=signing_user,
-                signed=False
+                signed=False,
+                rejected=False,
             )
         except DocumentSignature.DoesNotExist:
             return Response(
@@ -251,7 +300,8 @@ def sign_document(request, document_id, user_id):
         if all(sig.signed for sig in all_signatures):
             document.state = 'FullySigned'
             document.fully_signed = True
-            document.save()
+            document.updated_at = timezone.now()
+            document.save(update_fields=['state', 'fully_signed', 'updated_at'])
         
         # Return the updated signature record
         serializer = DocumentSignatureSerializer(signature_record)
@@ -266,6 +316,110 @@ def sign_document(request, document_id, user_id):
         return Response(
             {'detail': f'An unexpected error occurred: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_document_visibility_by_id
+def reject_document(request, document_id, user_id):
+    """Allow a signer to reject (devolver sin firmar) a document.
+
+    Marks the corresponding DocumentSignature as rejected, stores an optional
+    comment, updates the document state to Rejected, and notifies the creator.
+    """
+
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+
+        if not document.requires_signature:
+            return Response(
+                {'detail': 'This document does not require signatures.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        authenticated_user = request.user
+        if authenticated_user.id != user_id and not authenticated_user.is_staff:
+            return Response(
+                {'detail': 'You are not authorized to reject documents on behalf of other users.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            rejecting_user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'detail': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # The user must be a pending, non-rejected signer
+        try:
+            signature_record = DocumentSignature.objects.select_for_update().get(
+                document=document,
+                signer=rejecting_user,
+                signed=False,
+                rejected=False,
+            )
+        except DocumentSignature.DoesNotExist:
+            return Response(
+                {'detail': 'This user is not authorized to reject this document or it was already processed.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Optional rejection comment
+        comment = request.data.get('comment') or request.data.get('reason')
+
+        # Update the signature record as rejected
+        signature_record.rejected = True
+        signature_record.rejected_at = timezone.now()
+        if comment:
+            signature_record.rejection_comment = comment
+        signature_record.save()
+
+        # Update document state to Rejected
+        document.state = 'Rejected'
+        document.fully_signed = False
+        document.updated_at = timezone.now()
+        document.save(update_fields=['state', 'fully_signed', 'updated_at'])
+
+        # Notify the document creator
+        creator = document.created_by
+        if creator and getattr(creator, 'email', None):
+            try:
+                subject = f"[Firmas] El documento '{document.title}' fue rechazado"
+                nombre_rechazante = rejecting_user.get_full_name() or rejecting_user.email
+                body_lines = [
+                    f"El usuario {nombre_rechazante} ha rechazado el documento '{document.title}'.",
+                ]
+                if comment:
+                    body_lines.append("\nMotivo del rechazo:")
+                    body_lines.append(comment)
+                body = "\n".join(body_lines)
+
+                email_message = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[creator.email],
+                )
+                email_message.send()
+            except Exception:
+                # No bloquear el flujo por fallo de correo
+                pass
+
+        serializer = DocumentSignatureSerializer(signature_record)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Document not found.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'An unexpected error occurred: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -332,7 +486,16 @@ def get_user_pending_documents_full(request, user_id):
     """
     try:
         user = User.objects.get(pk=user_id)
-        pending_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=False).select_related('document')
+
+        # First, expire overdue documents
+        expire_overdue_documents()
+
+        pending_signatures = DocumentSignature.objects.filter(
+            signer_id=user_id,
+            signed=False,
+            rejected=False,
+            document__state='PendingSignatures',
+        ).select_related('document')
         all_documents = [signature.document for signature in pending_signatures]
         
         # Filter documents by visibility permissions
@@ -343,6 +506,40 @@ def get_user_pending_documents_full(request, user_id):
         
         serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_archived_documents(request, user_id):
+    """Obtener documentos rechazados o expirados asociados a un usuario firmante.
+
+    Incluye documentos donde el usuario es firmante y el documento está en
+    estado Rejected o Expired.
+    """
+
+    try:
+        user = User.objects.get(pk=user_id)
+
+        signatures = DocumentSignature.objects.filter(signer_id=user_id).select_related('document')
+        all_documents = [signature.document for signature in signatures]
+
+        archived_documents = [
+            doc for doc in all_documents
+            if doc.state in ['Rejected', 'Expired']
+        ]
+
+        visible_documents = []
+        for document in archived_documents:
+            if document.can_view(request.user):
+                visible_documents.append(document)
+
+        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:

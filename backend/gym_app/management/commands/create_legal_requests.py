@@ -98,7 +98,30 @@ class Command(BaseCommand):
         # Get users for creating requests and responses
         all_clients = list(User.objects.filter(role='client'))
         lawyers = list(User.objects.filter(role='lawyer')) if with_responses else []
-        
+
+        # Preferred test users by email (if they already exist)
+        special_lawyer = User.objects.filter(
+            email='core.paginaswebscolombia@gmail.com',
+            role='lawyer'
+        ).first()
+        special_client = User.objects.filter(
+            email='carlos18bp@gmail.com',
+            role='client'
+        ).first()
+        special_basic = User.objects.filter(
+            email='info.montreal.studios@gmail.com',
+            role='basic'
+        ).first()
+
+        # Enrich client pool so these users more often get requests
+        for user, weight in [(special_client, 5), (special_basic, 3)]:
+            if user:
+                all_clients.extend([user] * weight)
+
+        # Enrich lawyers pool so preferred lawyer more often answers
+        if with_responses and special_lawyer:
+            lawyers.extend([special_lawyer] * 5)
+
         # Ensure we have at least one client to create requests
         if not all_clients:
             self.stdout.write(self.style.ERROR('No client users found. Please create client users first.'))
@@ -145,7 +168,7 @@ class Command(BaseCommand):
                     legal_request.files.add(legal_request_file)
             
             # Create sample responses if requested
-            if with_responses and (lawyers or clients):
+            if with_responses and (lawyers or all_clients):
                 # Create responses based on status
                 if status in ['IN_REVIEW', 'RESPONDED', 'CLOSED']:
                     # Create lawyer response
@@ -183,6 +206,33 @@ class Command(BaseCommand):
                                 user=client_user,  # Use the client who created the request
                                 user_type='client'
                             )
+
+        # Create additional simple legal requests explicitly for preferred client/basic users
+        EXTRA_PER_USER = 10
+
+        def create_simple_request(for_user, label):
+            request_type = random.choice(legal_request_types)
+            discipline = random.choice(legal_disciplines)
+            status = 'PENDING'
+
+            lr = LegalRequest.objects.create(
+                user=for_user,
+                request_type=request_type,
+                discipline=discipline,
+                description=fake.paragraph(nb_sentences=3),
+                status=status,
+            )
+            self.stdout.write(
+                f'Extra test legal request for {label}: {lr.request_number} (user={for_user.email})'
+            )
+
+        if special_client:
+            for _ in range(EXTRA_PER_USER):
+                create_simple_request(special_client, f'cliente {special_client.email}')
+
+        if special_basic:
+            for _ in range(EXTRA_PER_USER):
+                create_simple_request(special_basic, f'básico {special_basic.email}')
 
         # Print success message
         response_msg = f" with sample responses" if with_responses else ""

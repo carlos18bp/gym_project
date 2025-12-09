@@ -88,7 +88,11 @@
               <!-- Relationship Info -->
               <div class="mt-3">
                 <div class="flex items-center space-x-2">
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span v-if="doc.isPending" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                    <LinkIcon class="w-3 h-3 mr-1" />
+                    Pendiente (se creará al formalizar)
+                  </span>
+                  <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     <LinkIcon class="w-3 h-3 mr-1" />
                     Relacionado
                   </span>
@@ -101,9 +105,9 @@
                 </div>
               </div>
 
-              <!-- Content Preview -->
+              <!-- Content Preview (with variables resolved for final states) -->
               <div v-if="doc.content" class="mt-3 text-sm text-gray-600 line-clamp-2">
-                {{ stripHtml(doc.content) }}
+                {{ getProcessedSnippet(doc) }}
               </div>
 
               <!-- Tags -->
@@ -119,9 +123,17 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex-shrink-0 ml-4">
+            <div class="flex-shrink-0 ml-4 flex flex-col space-y-2">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center px-3 py-1.5 border border-gray-200 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                @click.stop="openPreviewModal(doc)"
+              >
+                Ver documento
+              </button>
               <!-- Remove Relationship Button -->
               <button
+                v-if="!readonly"
                 @click="handleUnrelateDocument(doc)"
                 :disabled="isUnrelating"
                 class="inline-flex items-center justify-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 transition-colors"
@@ -149,6 +161,7 @@ import {
   ArrowPathIcon,
   TrashIcon
 } from '@heroicons/vue/24/outline'
+import { openPreviewModal, getProcessedDocumentContent } from '@/shared/document_utils'
 
 const props = defineProps({
   document: {
@@ -166,6 +179,22 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  readonly: {
+    type: Boolean,
+    default: false
+  },
+  deferSave: {
+    type: Boolean,
+    default: false
+  },
+  pendingRelationships: {
+    type: Array,
+    default: () => []
+  },
+  availableDocuments: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -177,20 +206,33 @@ const isUnrelating = ref(false)
 
 // Computed properties
 const filteredRelatedDocuments = computed(() => {
-  if (!props.relatedDocuments) return []
+  let allDocuments = []
   
-  let filtered = props.relatedDocuments
+  // In defer mode (formalize), show pending relationships as temporary documents
+  if (props.deferSave && props.pendingRelationships.length > 0) {
+    // Get the actual document objects from availableDocuments based on pending IDs
+    const pendingDocs = props.availableDocuments.filter(doc => 
+      props.pendingRelationships.includes(doc.id)
+    ).map(doc => ({
+      ...doc,
+      isPending: true  // Mark as pending for visual distinction
+    }))
+    allDocuments = [...pendingDocs]
+  } else {
+    // Normal mode: show actual related documents from backend
+    allDocuments = props.relatedDocuments || []
+  }
   
   // Filter by search query
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(doc => 
+    allDocuments = allDocuments.filter(doc => 
       doc.title?.toLowerCase().includes(query) ||
       doc.content?.toLowerCase().includes(query)
     )
   }
   
-  return filtered
+  return allDocuments
 })
 
 // Methods
@@ -209,6 +251,13 @@ const getRelationshipInfo = (documentId) => {
 }
 
 const handleUnrelateDocument = async (targetDocument) => {
+  // In defer mode, emit the document ID directly
+  if (props.deferSave) {
+    emit('unrelate-document', targetDocument.id)
+    return
+  }
+  
+  // Normal mode: get relationship ID and emit it
   const relationshipInfo = getRelationshipInfo(targetDocument.id)
   if (!relationshipInfo) return
   
@@ -275,6 +324,13 @@ const stripHtml = (html) => {
   const div = document.createElement('div')
   div.innerHTML = html
   return div.textContent || div.innerText || ''
+}
+
+// Returns a short, plain-text preview with variables already replaced
+// for completed / signed documents.
+const getProcessedSnippet = (doc) => {
+  const content = getProcessedDocumentContent(doc)
+  return stripHtml(content)
 }
 </script>
 

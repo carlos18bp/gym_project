@@ -75,7 +75,7 @@ def list_dynamic_documents(request):
     Get a list of all dynamic documents.
     """
     documents = DynamicDocument.objects.prefetch_related('variables', 'tags').all()
-    serializer = DynamicDocumentSerializer(documents, many=True)
+    serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])

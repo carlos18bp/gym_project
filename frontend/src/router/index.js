@@ -283,7 +283,7 @@ const router = createRouter({
         {
           path: "document/use/:mode/:id/:title",
           component: () => import(/* webpackChunkName: "dynamic-document-form" */ "@/views/dynamic_document/DocumentForm.vue"),
-          props: true,
+          // DocumentForm usa useRoute() para leer mode, id y title, por lo que no es necesario pasar props
           meta: { requiresAuth: true, title: "Completar Documento" },
         },
         {

@@ -38,8 +38,22 @@ function detectBrowser() {
  * Checks if the app is running as a PWA in standalone mode or if it's already installed.
  */
 function checkIfPWA() {
-  const isStandalone = window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches;
-  isAppInstalled.value = isStandalone;
+  // Check multiple indicators of standalone mode
+  const isStandalone = window.navigator.standalone || 
+                       window.matchMedia("(display-mode: standalone)").matches ||
+                       window.matchMedia("(display-mode: window-controls-overlay)").matches ||
+                       window.matchMedia("(display-mode: minimal-ui)").matches;
+  
+  // Also check if running in a webview or installed context
+  const isInWebAppiOS = window.navigator.standalone === true;
+  const isInWebAppChrome = window.matchMedia('(display-mode: standalone)').matches;
+  
+  isAppInstalled.value = isStandalone || isInWebAppiOS || isInWebAppChrome;
+  
+  // Store in localStorage for persistence
+  if (isAppInstalled.value) {
+    localStorage.setItem('pwa-installed', 'true');
+  }
 }
 
 /**
@@ -51,9 +65,23 @@ function initializePWA() {
   isInitialized = true;
   currentBrowser.value = detectBrowser();
   
-  // Only hide button if truly running in standalone mode
-  const isStandalone = window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches;
-  isAppInstalled.value = isStandalone;
+  // Check if previously marked as installed
+  const wasInstalled = localStorage.getItem('pwa-installed') === 'true';
+  
+  // Check current standalone mode
+  checkIfPWA();
+  
+  // If was previously installed, keep it marked as installed
+  if (wasInstalled && !isAppInstalled.value) {
+    isAppInstalled.value = true;
+  }
+  
+  // Re-check on visibility change (when user returns to the app)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      checkIfPWA();
+    }
+  });
 }
 
 /**

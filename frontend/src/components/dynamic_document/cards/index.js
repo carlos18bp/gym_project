@@ -126,6 +126,7 @@ import { get_request, create_request } from "@/stores/services/request_http";
 import { useRecentViews } from '@/composables/useRecentViews';
 import { useRouter } from 'vue-router';
 import { downloadFile } from "@/shared/document_utils";
+import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 
 /**
  * Document Actions Composable
@@ -362,6 +363,16 @@ export function useDocumentActions(documentStore, userStore, emit) {
           const updatedDocument = documentStore.documents?.find(d => d.id === document.id) || document;
 
           await showNotification(`¡Documento "${updatedDocument.title}" firmado correctamente!`, "success");
+
+          // Register activity for document signing
+          try {
+            await registerUserActivity(
+              ACTION_TYPES.FINISH,
+              `Firmaste el documento "${updatedDocument.title}"`
+            );
+          } catch (activityError) {
+            console.warn('No se pudo registrar la actividad de firma:', activityError);
+          }
 
           // Determine if the document is now fully signed (all signatures marked as signed)
           const allSigned = Array.isArray(updatedDocument.signatures) &&

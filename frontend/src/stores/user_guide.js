@@ -572,19 +572,22 @@ export const useUserGuideStore = defineStore('userGuide', {
           description: 'Gestión de documentos dinámicos, minutas y contratos',
           overview: `
             <p>El módulo de Archivos Jurídicos permite crear, gestionar y firmar documentos legales de manera digital.</p>
-            <p class="mt-2"><strong>Para Abogados:</strong> 5 pestañas principales</p>
+            <p class="mt-2"><strong>Para Abogados:</strong> 8 pestañas principales</p>
             <ul class="list-disc list-inside mt-2 space-y-1">
-              <li><strong>Minutas:</strong> Documentos creados (Published, Draft, Progress, Completed)</li>
+              <li><strong>Minutas:</strong> Plantillas de documentos creadas (Published, Draft)</li>
+              <li><strong>Mis Documentos:</strong> Documentos propios completados y en progreso</li>
+              <li><strong>Carpetas:</strong> Organización de documentos en carpetas personalizadas</li>
               <li><strong>Documentos por Firmar:</strong> Pendientes de firma (PendingSignatures)</li>
               <li><strong>Documentos Firmados:</strong> Completamente firmados (FullySigned)</li>
+              <li><strong>Documentos Archivados:</strong> Documentos archivados (Archived)</li>
               <li><strong>Documentos de Clientes (Completados):</strong> Finalizados por clientes</li>
               <li><strong>Documentos de Clientes (En Progreso):</strong> En proceso de completado</li>
             </ul>
             <p class="mt-2"><strong>Para Clientes:</strong> 5 pestañas principales</p>
             <ul class="list-disc list-inside mt-2 space-y-1">
+              <li><strong>Minutas:</strong> Plantillas disponibles para usar</li>
+              <li><strong>Mis Documentos:</strong> Documentos asignados y completados</li>
               <li><strong>Carpetas:</strong> Documentos organizados por carpetas</li>
-              <li><strong>Mis Documentos:</strong> Documentos asignados</li>
-              <li><strong>Usar Documento:</strong> Completar plantillas</li>
               <li><strong>Documentos por Firmar:</strong> Pendientes de firma</li>
               <li><strong>Documentos Firmados:</strong> Archivo final</li>
             </ul>
@@ -596,12 +599,20 @@ export const useUserGuideStore = defineStore('userGuide', {
               description: 'Organización de documentos por estado',
               roles: ['lawyer'],
               content: `
-                <p>Los abogados tienen acceso a 5 pestañas para gestionar documentos en diferentes estados del flujo de trabajo.</p>
+                <p>Los abogados tienen acceso a 8 pestañas para gestionar documentos en diferentes estados del flujo de trabajo.</p>
+                <p class="mt-2"><strong>Nuevas pestañas agregadas:</strong></p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                  <li><strong>Mis Documentos:</strong> Similar a la vista de clientes, permite al abogado usar minutas para crear documentos propios y formalizarlos con firmas.</li>
+                  <li><strong>Carpetas:</strong> Organizar documentos en carpetas personalizadas para mejor gestión.</li>
+                </ul>
               `,
               features: [
-                'Minutas: Crear, editar, duplicar, asignar documentos',
+                'Minutas: Crear y gestionar plantillas de documentos (solo plantillas)',
+                'Mis Documentos: Usar minutas para crear documentos propios y formalizarlos',
+                'Carpetas: Organizar documentos en carpetas personalizadas',
                 'Por Firmar: Ver documentos pendientes de firma',
                 'Firmados: Archivo de documentos completados',
+                'Archivados: Documentos archivados para referencia',
                 'Completados por Clientes: Revisar información llenada',
                 'En Progreso por Clientes: Ver avance de completado'
               ]
@@ -672,6 +683,85 @@ export const useUserGuideStore = defineStore('userGuide', {
                   'Olvidar configurar las variables antes de asignar',
                   'No definir el tipo de campo correcto (texto vs número vs fecha)',
                   'Asignar sin revisar que todas las variables estén bien escritas'
+                ]
+              }
+            },
+            {
+              id: 'formalize-from-my-documents',
+              name: 'Formalizar Documentos (Abogados)',
+              description: 'Crear documentos formales con firmas desde "Mis Documentos"',
+              roles: ['lawyer'],
+              content: `
+                <p>Los abogados pueden usar minutas para crear documentos propios y formalizarlos con firmas electrónicas desde la pestaña "Mis Documentos".</p>
+                <p class="mt-2"><strong>Importante:</strong> La opción "Formalizar y Agregar Firmas" ya NO está disponible en el menú de Minutas. Ahora solo aparece en "Mis Documentos" para documentos completados.</p>
+              `,
+              features: [
+                'Usar minutas como plantillas para crear documentos propios',
+                'Completar campos variables del documento',
+                'Gestionar asociaciones con documentos ya firmados',
+                'Agregar firmantes al documento',
+                'Enviar documento para firma electrónica',
+                'Seguimiento del estado de firmas'
+              ],
+              example: {
+                title: 'Flujo Completo: Formalizar un Documento',
+                description: 'Proceso paso a paso para crear y formalizar un documento desde "Mis Documentos".',
+                steps: [
+                  {
+                    title: 'Ir a "Mis Documentos"',
+                    description: 'Navega a la pestaña "Mis Documentos" en Archivos Jurídicos',
+                    note: 'Esta pestaña funciona igual que para clientes'
+                  },
+                  {
+                    title: 'Usar una Minuta',
+                    description: 'Selecciona una minuta publicada y haz click en "Usar"',
+                    note: 'Esto crea un documento nuevo basado en la plantilla'
+                  },
+                  {
+                    title: 'Completar Campos',
+                    description: 'Llena todos los campos variables del formulario',
+                    note: 'Ejemplo: Nombre del cliente, Objeto del contrato, Valor, etc.'
+                  },
+                  {
+                    title: 'Guardar como Completado',
+                    description: 'Click en "Generar" para completar el documento',
+                    note: 'El documento pasa a estado "Completed"'
+                  },
+                  {
+                    title: 'Abrir Menú de Acciones',
+                    description: 'En "Mis Documentos", click en el menú (⋮) del documento completado'
+                  },
+                  {
+                    title: 'Formalizar y Agregar Firmas',
+                    description: 'Selecciona la opción "Formalizar y Agregar Firmas"',
+                    note: 'Esta opción SOLO aparece en documentos Completed'
+                  },
+                  {
+                    title: 'Gestionar Asociaciones (Opcional)',
+                    description: 'Click en "Gestionar asociaciones" para relacionar con documentos firmados',
+                    note: 'Muestra dos tabs: "Documentos Relacionados" y "Relacionar Documentos"'
+                  },
+                  {
+                    title: 'Agregar Firmantes',
+                    description: 'Busca y selecciona los usuarios que deben firmar el documento',
+                    note: 'Puedes agregar múltiples firmantes'
+                  },
+                  {
+                    title: 'Publicar para Firmas',
+                    description: 'Click en "Formalizar y Agregar Firmas" para enviar',
+                    note: 'El documento pasa a estado "PendingSignatures"'
+                  }
+                ],
+                tips: [
+                  'Completa todos los campos antes de formalizar',
+                  'Asocia documentos relacionados antes de enviar a firmar',
+                  'Verifica que todos los firmantes sean correctos',
+                  'El documento aparecerá en "Documentos por Firmar" después de formalizar'
+                ],
+                commonErrors: [
+                  'Intentar formalizar desde "Minutas" (ya no disponible)',
+                  'No completar todos los campos obligatorios',
+                  'Olvidar agregar firmantes antes de publicar'
                 ]
               }
             },

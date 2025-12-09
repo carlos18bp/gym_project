@@ -47,14 +47,16 @@ def delete_file(sender, instance, **kwargs):
             os.remove(instance.file.path)
 
 class Stage(models.Model):
-    """
-    Model representing a stage in the legal process.
+    """Model representing a stage in the legal process.
 
     Attributes:
-        status (CharField): The current status of the stage.
-        created_at (DateTimeField): The date the stage was created.
+        status (CharField): The current status or description of the stage.
+        date (DateField): The logical date of this stage in the process timeline.
+        created_at (DateTimeField): The timestamp when the stage record was created.
     """
     status = models.CharField(max_length=100, help_text="The current status of the stage.")
+    # Optional explicit date for the stage; if not provided, defaults to today in views
+    date = models.DateField(null=True, blank=True, help_text="The date associated with this stage in the process.")
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the stage was created.")
 
     def __str__(self):

@@ -27,31 +27,37 @@
         </div>
       </div>
       <!-- Buttons Container -->
-      <div class="flex gap-2 mt-2.5">
+      <div class="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t border-gray-200">
         <!-- Update Name Button - Always visible in edit mode, but conditionally enabled -->
         <button
           v-if="isEditMode"
           type="button"
           @click="updateDocumentName"
           :disabled="!isTitleChanged"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200"
           :class="isTitleChanged 
-            ? 'bg-primary text-white cursor-pointer' 
-            : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-70'"
+            ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500' 
+            : 'bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300 cursor-not-allowed'"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
           <span>Actualizar nombre</span>
         </button>
         <!-- Continue/Edit Button -->
         <button
           type="submit"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200"
           :class="
             !isSaveButtonEnabled
-              ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-              : 'bg-secondary text-white'
+              ? 'bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
           "
           :disabled="!isSaveButtonEnabled"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
           <span>{{ isEditMode ? "Editar Documento" : "Continuar" }}</span>
         </button>
       </div>

@@ -66,6 +66,8 @@ class DynamicDocument(models.Model):
         ('Completed', 'Completed'),
         ('PendingSignatures', 'Pending Signatures'),
         ('FullySigned', 'Fully Signed'),
+        ('Rejected', 'Rejected'),
+        ('Expired', 'Expired'),
     ]
 
     title = models.CharField(max_length=200, help_text="Title of the dynamic document.")
@@ -102,6 +104,11 @@ class DynamicDocument(models.Model):
     updated_at = models.DateTimeField(auto_now=True, help_text="Document last updated timestamp.")
     requires_signature = models.BooleanField(default=False, help_text="Indicates if this document requires signatures.")
     fully_signed = models.BooleanField(default=False, help_text="Indicates if the document has been signed by all required signers.")
+    signature_due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Optional deadline date for collecting all required signatures."
+    )
     is_public = models.BooleanField(
         default=False, 
         help_text="If True, all users can view and use this document without explicit permissions."
@@ -267,28 +274,40 @@ class DynamicDocument(models.Model):
         related_relationships = DocumentRelationship.objects.filter(
             Q(source_document=self) | Q(target_document=self)
         ).select_related('source_document', 'target_document')
-        
         related_document_ids = set()
         for relationship in related_relationships:
             if relationship.source_document.id != self.id:
                 related_document_ids.add(relationship.source_document.id)
             if relationship.target_document.id != self.id:
                 related_document_ids.add(relationship.target_document.id)
-        
+
         related_documents = DynamicDocument.objects.filter(id__in=related_document_ids)
         
         # Filter by user permissions and ownership if provided
         if user:
-            # Only show documents that belong to the user and are completed
+            # For related documents, we use a permissive approach:
+            # If the user has access to the SOURCE document (the one they're viewing),
+            # they should be able to see ALL related documents in final states,
+            # even if they don't have direct access to those documents.
+            # This is because relationships are explicitly created and provide context.
+            
+            # Check if user has access to the source document
+            user_has_source_access = (
+                self.created_by == user or 
+                self.assigned_to == user or 
+                self.signatures.filter(signer=user).exists() or
+                self.is_lawyer(user)
+            )
+
             accessible_docs = []
             for doc in related_documents:
-                # Check if user owns the document and it's completed
-                user_owns_doc = (doc.created_by == user or doc.assigned_to == user)
-                is_completed = doc.state == 'Completed'
-                can_view_doc = doc.can_view(user)
-                
-                if user_owns_doc and is_completed and can_view_doc:
+                # Check if document is in a "final" state (Completed or FullySigned)
+                is_final_state = doc.state in ['Completed', 'FullySigned']
+
+                # If user has access to source document, show all related docs in final states
+                if user_has_source_access and is_final_state:
                     accessible_docs.append(doc.id)
+
             related_documents = related_documents.filter(id__in=accessible_docs)
         
         return related_documents
@@ -387,9 +406,11 @@ class DynamicDocument(models.Model):
         # If status changed, update the document state as well
         if not was_fully_signed and self.fully_signed:
             self.state = 'FullySigned'
-            self.save(update_fields=['fully_signed', 'state'])
+            self.updated_at = timezone.now()
+            self.save(update_fields=['fully_signed', 'state', 'updated_at'])
         elif self.fully_signed != was_fully_signed:
-            self.save(update_fields=['fully_signed'])
+            self.updated_at = timezone.now()
+            self.save(update_fields=['fully_signed', 'updated_at'])
             
         return self.fully_signed
 
@@ -536,13 +557,27 @@ class DocumentSignature(models.Model):
         help_text="Whether the document has been signed by this user"
     )
     signed_at = models.DateTimeField(
-        null=True, 
+        null=True,
         blank=True,
         help_text="When the document was signed"
     )
+    rejected = models.BooleanField(
+        default=False,
+        help_text="Whether this signer rejected the document instead of signing"
+    )
+    rejected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the signer rejected the document"
+    )
+    rejection_comment = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Optional comment explaining the rejection"
+    )
     ip_address = models.GenericIPAddressField(
-        null=True, 
-        blank=True, 
+        null=True,
+        blank=True,
         help_text="IP address from which the signature was submitted"
     )
     created_at = models.DateTimeField(
@@ -555,7 +590,12 @@ class DocumentSignature(models.Model):
         ordering = ['signer__email']
     
     def __str__(self):
-        status = "Signed" if self.signed else "Pending"
+        if self.signed:
+            status = "Signed"
+        elif self.rejected:
+            status = "Rejected"
+        else:
+            status = "Pending"
         return f"{self.document.title} - {self.signer.email} ({status})"
 
     def save(self, *args, **kwargs):
@@ -576,6 +616,17 @@ class DocumentVariable(models.Model):
         ('date', 'Date'),
         ('email', 'Email'),
         ('select', 'Select'),
+    ]
+
+    SUMMARY_FIELD_CHOICES = [
+        ('none', 'Sin clasificar'),
+        ('counterparty', 'Usuario / Contraparte'),
+        ('object', 'Objeto'),
+        ('value', 'Valor'),
+        ('term', 'Plazo'),
+        ('subscription_date', 'Fecha de suscripción'),
+        ('start_date', 'Fecha de inicio'),
+        ('end_date', 'Fecha de fin'),
     ]
 
     document = models.ForeignKey(
@@ -616,6 +667,24 @@ class DocumentVariable(models.Model):
         help_text="Options for select type fields."
     )
     value = models.TextField(blank=True, null=True, help_text="Value filled by the user.")
+
+    summary_field = models.CharField(
+        max_length=30,
+        choices=SUMMARY_FIELD_CHOICES,
+        default='none',
+        help_text="Clasificación opcional para usar este campo en columnas resumen de las tablas."
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=[
+            ('COP', 'COP'),
+            ('USD', 'USD'),
+            ('EUR', 'EUR'),
+        ],
+        null=True,
+        blank=True,
+        help_text="Moneda asociada al valor cuando la variable está clasificada como Valor."
+    )
 
     def clean(self):
         """

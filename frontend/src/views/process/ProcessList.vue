@@ -572,8 +572,14 @@ const isAnyMenuOpen = ref(false);
 
 // Initialize
 onMounted(async () => {
-  await processStore.init();
-  await userStore.init();
+  try {
+    await Promise.all([
+      processStore.init(),
+      userStore.init(),
+    ]);
+  } catch (error) {
+    console.error('Error initializing process list:', error);
+  }
   
   // Set initial tab based on route params
   if (route.params.display === 'history') {

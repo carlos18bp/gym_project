@@ -34,8 +34,37 @@ class Command(BaseCommand):
         fake = Faker()
 
         # Get all clients and lawyers from the database
-        clients = User.objects.filter(role='client')
-        lawyers = User.objects.filter(role='lawyer')
+        clients = list(User.objects.filter(role='client'))
+        lawyers = list(User.objects.filter(role='lawyer'))
+
+        # Preferred test users by email (if they already exist)
+        special_lawyer = User.objects.filter(
+            email='core.paginaswebscolombia@gmail.com',
+            role='lawyer'
+        ).first()
+        special_client = User.objects.filter(
+            email='carlos18bp@gmail.com',
+            role='client'
+        ).first()
+        special_basic = User.objects.filter(
+            email='info.montreal.studios@gmail.com',
+            role='basic'
+        ).first()
+
+        # Build candidate pools, giving more weight to preferred users when present
+        client_candidates = clients.copy()
+        for user, weight in [(special_client, 5), (special_basic, 3)]:
+            if user and user not in client_candidates:
+                client_candidates.extend([user] * weight)
+
+        lawyer_candidates = lawyers.copy()
+        if special_lawyer and special_lawyer not in lawyer_candidates:
+            lawyer_candidates.extend([special_lawyer] * 5)
+
+        # Abort early if there is no suitable client or lawyer
+        if not client_candidates or not lawyer_candidates:
+            self.stdout.write(self.style.ERROR('No clients or lawyers found. Please create them first.'))
+            return
 
         # Create case types with more details
         case_types = [
@@ -110,9 +139,9 @@ class Command(BaseCommand):
 
         # Loop to create the specified number of processes
         for index in range(number_of_processes):
-            # Randomly select a client, lawyer, and case
-            client = random.choice(clients)
-            lawyer = random.choice(lawyers)
+            # Select a client, lawyer, and case, prioritizing preferred test users when available
+            client = random.choice(client_candidates)
+            lawyer = random.choice(lawyer_candidates)
             case = random.choice(cases)
 
             # Create a new process with random data
@@ -146,21 +175,23 @@ class Command(BaseCommand):
             # Use sequential stages from the appropriate set
             stages = []
             for i in range(min(num_stages, len(stage_set))):
-                # Create dates with more variation
+                # Generate a realistic date in the past for this stage
                 days_ago = random.randint(30, 365)
-                stage_date = fake.date_time_between(start_date=f'-{days_ago}d', end_date='now')
-                
+                stage_datetime = fake.date_time_between(start_date=f'-{days_ago}d', end_date='now')
+                stage_date = stage_datetime.date()
+
                 stage = Stage.objects.create(
                     status=stage_set[i],
-                    created_at=stage_date,
+                    date=stage_date,
                 )
                 stages.append(stage)
 
-            # For some recent processes (last 20%), add a "Completed" stage to indicate completion
+            # For some recent processes (last 20%), add a "Concluido" stage to indicate completion
             if index >= number_of_processes - int(number_of_processes * 0.2):
+                concluido_datetime = fake.date_time_between(start_date='-30d', end_date='now')
                 stage_concluido = Stage.objects.create(
                     status='Concluido',
-                    created_at=fake.date_time_between(start_date='-30d', end_date='now'),
+                    date=concluido_datetime.date(),
                 )
                 stages.append(stage_concluido)
 
@@ -184,6 +215,44 @@ class Command(BaseCommand):
 
             # Add all created case files to the process
             process.case_files.add(*case_files)
+
+        # Helper to create a simple extra process
+        def create_simple_process(client_user, lawyer_user, label):
+            process = Process.objects.create(
+                authority=fake.company(),
+                plaintiff=fake.name(),
+                defendant=fake.name(),
+                ref=fake.uuid4(),
+                client=client_user,
+                lawyer=lawyer_user,
+                case=random.choice(cases),
+                subcase=fake.bs(),
+            )
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Extra test process for {label}: {process.ref} (client={client_user.email}, lawyer={lawyer_user.email})'
+                )
+            )
+
+        EXTRA_PER_USER = 10
+
+        # Extra processes where the special lawyer actúa como abogado
+        if special_lawyer and client_candidates:
+            for _ in range(EXTRA_PER_USER):
+                client = random.choice(client_candidates)
+                create_simple_process(client, special_lawyer, f'abogado {special_lawyer.email}')
+
+        # Extra processes donde el cliente especial es la parte cliente
+        if special_client and lawyer_candidates:
+            for _ in range(EXTRA_PER_USER):
+                lawyer = random.choice(lawyer_candidates)
+                create_simple_process(special_client, lawyer, f'cliente {special_client.email}')
+
+        # Extra processes donde el usuario básico especial es la parte cliente
+        if special_basic and lawyer_candidates:
+            for _ in range(EXTRA_PER_USER):
+                lawyer = random.choice(lawyer_candidates)
+                create_simple_process(special_basic, lawyer, f'básico {special_basic.email}')
 
         # Print success message
         self.stdout.write(self.style.SUCCESS(f'{number_of_processes} processes created successfully'))

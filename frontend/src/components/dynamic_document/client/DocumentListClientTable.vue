@@ -115,6 +115,12 @@
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Información clave
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Docs. Asociados
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
             </tr>
@@ -145,6 +151,53 @@
                 >
                   {{ getStatusText(document) }}
                 </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="hasSummary(document)"
+                    type="button"
+                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    @click.stop="openSummaryModal(document)"
+                  >
+                    Ver detalle
+                  </button>
+                  <span v-else class="text-gray-400 text-xs">
+                    Sin clasificación
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="relative inline-flex group">
+                  <button
+                    type="button"
+                    :disabled="document.state !== 'Completed' || !document.relationships_count || document.relationships_count === 0"
+                    :class="[
+                      'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                      document.state === 'Completed' && document.relationships_count && document.relationships_count > 0
+                        ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
+                        : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                    ]"
+                    @click.stop="document.state === 'Completed' && document.relationships_count > 0 && openModal('relationships', document)"
+                  >
+                    <span v-if="document.state === 'Completed' && document.relationships_count && document.relationships_count > 0">
+                      Ver asociaciones ({{ document.relationships_count }})
+                    </span>
+                    <span v-else-if="document.state === 'Completed'">
+                      Sin asociaciones
+                    </span>
+                    <span v-else>
+                      Ver asociaciones
+                    </span>
+                  </button>
+                  <div
+                    v-if="document.state !== 'Completed'"
+                    class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+                  >
+                    Solo puedes administrar asociaciones cuando el documento está completado.
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
@@ -300,6 +353,13 @@
       @close="showActionsModal = false"
       @action="handleModalAction"
     />
+
+    <DocumentSummaryModal
+      v-if="showSummaryModal"
+      :is-visible="showSummaryModal"
+      :document="summaryDocument"
+      @close="showSummaryModal = false"
+    />
   </teleport>
 </template>
 
@@ -325,13 +385,19 @@ import SendDocumentModal from "@/components/dynamic_document/cards/modals/SendDo
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
+import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 import { useBasicUserRestrictions } from "@/composables/useBasicUserRestrictions";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
 const router = useRouter();
 
-const emit = defineEmits(['refresh', 'open-letterhead', 'open-relationships']);
+const emit = defineEmits([
+  'refresh',
+  'open-letterhead',
+  'open-relationships',
+  'open-electronic-signature',
+]);
 
 // Basic user restrictions
 const { handleFeatureAccess } = useBasicUserRestrictions();
@@ -347,6 +413,15 @@ const {
   signDocument
 } = useDocumentActions(documentStore, userStore, emit);
 
+// Summary modal state
+const showSummaryModal = ref(false);
+const summaryDocument = ref(null);
+
+const openSummaryModal = (document) => {
+  summaryDocument.value = document;
+  showSummaryModal.value = true;
+};
+
 // Watch activeModals changes
 watch(activeModals, (newVal) => {
   // Handle activeModals changes
@@ -354,7 +429,8 @@ watch(activeModals, (newVal) => {
 
 // Initialize component
 onMounted(() => {
-  // Component initialization
+  documentStore.init();
+  userStore.init();
 });
 
 const props = defineProps({
@@ -370,11 +446,6 @@ const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
 const filterByTag = ref(null);
 const sortBy = ref('recent');
-
-onMounted(() => {
-  documentStore.init();
-  userStore.init();
-});
 
 // Get current user
 const currentUser = computed(() => userStore.getCurrentUser);
@@ -413,7 +484,12 @@ const filteredAndSortedDocuments = computed(() => {
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    docs.sort((a, b) => b.id - a.id);
+    // Sort by updated_at (most recent first)
+    docs.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at);
+      const dateB = new Date(b.updated_at || b.created_at);
+      return dateB - dateA;
+    });
   }
 
   return docs;
@@ -675,5 +751,39 @@ const handleMenuAction = async (action, document) => {
   } catch (error) {
     console.error(`Error executing action ${action}:`, error);
   }
+};
+
+// --- Helpers for summary fields (clasificación) ---
+const getSummaryCounterparty = (document) => {
+  return document.summary_counterparty || '';
+};
+
+const getSummaryValue = (document) => {
+  if (!document.summary_value) return '';
+  const currency = document.summary_value_currency || '';
+  if (currency) {
+    return `${currency} ${document.summary_value}`;
+  }
+  return document.summary_value;
+};
+
+const formatDate = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    return value.split('T')[0];
+  }
+  return value;
+};
+
+const hasSummary = (document) => {
+  return Boolean(
+    getSummaryCounterparty(document) ||
+    document.summary_object ||
+    getSummaryValue(document) ||
+    document.summary_term ||
+    document.summary_subscription_date ||
+    document.summary_start_date ||
+    document.summary_end_date
+  );
 };
 </script>

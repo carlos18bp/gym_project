@@ -137,15 +137,15 @@ onMounted(async () => {
       // Load secondary components after
       loadSecondaryComponents();
       
-      // Get number of active processes (example)
-      // Ideally this should come from a specific endpoint, not by loading all processes
-      const processStore = await import('@/stores/process').then(m => m.useProcessStore());
-      processStore.fetchProcessesData()
+      // Get approximate number of active processes without loading the full processes list
+      // Use the recentProcess store, which already has a lightweight endpoint
+      const recentProcessStore = await import('@/stores/dashboard/recentProcess').then(m => m.useRecentProcessStore());
+      recentProcessStore.init()
         .then(() => {
-          activeProcesses.value = processStore.activeProcessesForCurrentUser.length;
+          activeProcesses.value = recentProcessStore.recentProcesses.length;
         })
         .catch(error => {
-          console.error("Error loading active processes:", error);
+          console.error("Error loading recent processes:", error);
           activeProcesses.value = 0;
         });
     }

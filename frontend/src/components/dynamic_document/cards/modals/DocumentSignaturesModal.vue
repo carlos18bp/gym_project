@@ -119,7 +119,25 @@
       </div>
       
       <!-- Modal footer -->
-      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div class="flex gap-3">
+          <!-- Firmar documento button - only show if user can sign -->
+          <button
+            v-if="canCurrentUserSign"
+            @click="handleSignDocument"
+            class="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+          >
+            Firmar documento
+          </button>
+          <!-- Rechazar documento button - only show if user can sign -->
+          <button
+            v-if="canCurrentUserSign"
+            @click="openRejectModal"
+            class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+          >
+            Rechazar documento
+          </button>
+        </div>
         <button 
           @click="close" 
           class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400"
@@ -128,15 +146,74 @@
         </button>
       </div>
     </div>
+
+    <!-- Reject Document Modal -->
+    <div
+      v-if="showRejectModal"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+    >
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-gray-900">Rechazar documento</h2>
+          <button
+            type="button"
+            class="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            @click="closeRejectModal"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="px-4 py-4 space-y-3 text-sm text-gray-700">
+          <p>
+            Estás a punto de rechazar el documento
+            <span class="font-semibold">"{{ document?.title }}"</span>.
+          </p>
+          <p class="text-xs text-gray-500">
+            El rechazo devolverá el documento al abogado creador para que pueda revisarlo, editarlo o archivarlo.
+          </p>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">
+              Motivo del rechazo (opcional)
+            </label>
+            <textarea
+              v-model="rejectComment"
+              rows="4"
+              class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-secondary focus:border-transparent resize-none"
+              placeholder="Describe brevemente por qué no estás de acuerdo con el documento..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="px-4 py-3 border-t border-gray-100 flex justify-end gap-2 bg-gray-50">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100"
+            @click="closeRejectModal"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+            @click="confirmRejectDocument"
+          >
+            Rechazar documento
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
-import { get_request } from "@/stores/services/request_http";
+import { showConfirmationAlert } from "@/shared/confirmation_alert";
+import { get_request, create_request } from "@/stores/services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 
 /**
  * DocumentSignaturesModal Component
@@ -156,6 +233,27 @@ const userStore = useUserStore();
 
 // Data
 const document = ref(null);
+const showRejectModal = ref(false);
+const rejectComment = ref('');
+
+// Computed
+const canCurrentUserSign = computed(() => {
+  if (!document.value || !document.value.requires_signature || document.value.state !== 'PendingSignatures') {
+    return false;
+  }
+  
+  if (!document.value.signers || document.value.signers.length === 0) {
+    return false;
+  }
+  
+  const currentUserSigner = document.value.signers.find(s => s.is_current_user);
+  
+  if (!currentUserSigner || currentUserSigner.signed) {
+    return false;
+  }
+  
+  return true;
+});
 
 // Methods
 /**
@@ -245,6 +343,119 @@ watch(() => documentStore.documents, () => {
     loadDocumentData();
   }
 }, { deep: true });
+
+/**
+ * Handle sign document action
+ */
+const handleSignDocument = async () => {
+  try {
+    const userId = userStore.currentUser.id;
+    
+    if (!userStore.currentUser.has_signature) {
+      await showNotification("Para firmar documentos necesitas tener una firma registrada.", "info");
+      
+      const createSignature = await showConfirmationAlert(
+        "¿Deseas crear una firma electrónica ahora?"
+      );
+      
+      if (createSignature) {
+        emit('open-electronic-signature');
+      } else {
+        await showNotification("Necesitas una firma para poder firmar documentos.", "warning");
+      }
+      return;
+    }
+
+    const confirmed = await showConfirmationAlert(
+      `¿Estás seguro de que deseas firmar el documento "${document.value.title}"?`
+    );
+
+    if (!confirmed) {
+      await showNotification("Operación de firma cancelada", "info");
+      return;
+    }
+    
+    const signUrl = `dynamic-documents/${document.value.id}/sign/${userId}/`;
+    
+    await showNotification("Procesando firma del documento...", "info");
+    
+    const response = await create_request(signUrl, {});
+    
+    if (response.status === 200 || response.status === 201) {
+      await showNotification(`¡Documento "${document.value.title}" firmado correctamente!`, "success");
+
+      // Register activity for document signing
+      try {
+        await registerUserActivity(
+          ACTION_TYPES.FINISH,
+          `Firmaste el documento "${document.value.title}"`
+        );
+      } catch (activityError) {
+        console.warn('No se pudo registrar la actividad de firma:', activityError);
+      }
+
+      // Refresh document data
+      await loadDocumentData();
+      emit('refresh');
+    } else {
+      throw new Error(`Unexpected server response: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error signing document:', error);
+    await showNotification(`Error al firmar el documento: ${error.message}`, "error");
+  }
+};
+
+/**
+ * Open reject modal
+ */
+const openRejectModal = () => {
+  rejectComment.value = '';
+  showRejectModal.value = true;
+};
+
+/**
+ * Close reject modal
+ */
+const closeRejectModal = () => {
+  showRejectModal.value = false;
+  rejectComment.value = '';
+};
+
+/**
+ * Confirm reject document
+ */
+const confirmRejectDocument = async () => {
+  if (!document.value) {
+    return;
+  }
+  try {
+    const userId = userStore.currentUser.id;
+    const url = `dynamic-documents/${document.value.id}/reject/${userId}/`;
+    const payload = rejectComment.value ? { comment: rejectComment.value } : {};
+    const response = await create_request(url, payload);
+    if (response && (response.status === 200 || response.status === 201)) {
+      await showNotification('Documento rechazado correctamente.', 'success');
+      // Register activity for rejection
+      try {
+        await registerUserActivity(
+          ACTION_TYPES.FINISH,
+          `Rechazaste el documento "${document.value.title}"`
+        );
+      } catch (activityError) {
+        console.warn('No se pudo registrar la actividad de rechazo:', activityError);
+      }
+      closeRejectModal();
+      close();
+      emit('refresh');
+    } else {
+      await showNotification('Error al rechazar el documento.', 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting document:', error);
+    await showNotification('Error al rechazar el documento.', 'error');
+  }
+};
 </script>
 
 <style scoped>

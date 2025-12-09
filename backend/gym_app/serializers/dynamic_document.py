@@ -23,7 +23,10 @@ class DocumentVariableSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocumentVariable
-        fields = ['id', 'name_en', 'name_es', 'tooltip', 'field_type', 'value', 'select_options']
+        fields = [
+            'id', 'name_en', 'name_es', 'tooltip', 'field_type',
+            'value', 'select_options', 'summary_field', 'currency'
+        ]
 
     def validate(self, data):
         """
@@ -88,12 +91,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class DocumentSignatureSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the DocumentSignature model.
-    
-    This serializer handles the tracking of signatures for documents,
-    including who needs to sign, signature status, and signature metadata.
-    """
+    """Serializer for the DocumentSignature model."""
     signer_id = serializers.PrimaryKeyRelatedField(
         source='signer',
         queryset=User.objects.all(),
@@ -106,9 +104,10 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
         model = DocumentSignature
         fields = [
             'id', 'signer_id', 'signer_email', 'signer_name',
-            'signed', 'signed_at', 'created_at'
+            'signed', 'signed_at', 'rejected', 'rejected_at',
+            'rejection_comment', 'created_at'
         ]
-        read_only_fields = ['signed', 'signed_at', 'created_at']
+        read_only_fields = ['signed', 'signed_at', 'rejected', 'rejected_at', 'rejection_comment', 'created_at']
     
     def get_signer_name(self, obj):
         """Return the full name of the signer if available."""
@@ -179,6 +178,19 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     can_edit = serializers.SerializerMethodField(read_only=True)
     can_delete = serializers.SerializerMethodField(read_only=True)
 
+    # Summary fields for table views
+    summary_counterparty = serializers.SerializerMethodField(read_only=True)
+    summary_object = serializers.SerializerMethodField(read_only=True)
+    summary_value = serializers.SerializerMethodField(read_only=True)
+    summary_value_currency = serializers.SerializerMethodField(read_only=True)
+    summary_term = serializers.SerializerMethodField(read_only=True)
+    summary_subscription_date = serializers.SerializerMethodField(read_only=True)
+    summary_start_date = serializers.SerializerMethodField(read_only=True)
+    summary_end_date = serializers.SerializerMethodField(read_only=True)
+    
+    # Document relationships count
+    relationships_count = serializers.SerializerMethodField(read_only=True)
+
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
 
@@ -186,11 +198,15 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         model = DynamicDocument
         fields = [
             'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
-            'created_at', 'updated_at', 'variables', 'requires_signature',
+            'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
             'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
             'is_public', 'visibility_user_ids', 'usability_user_ids',
-            'user_permission_level', 'can_view', 'can_edit', 'can_delete'
+            'user_permission_level', 'can_view', 'can_edit', 'can_delete',
+            'summary_counterparty', 'summary_object', 'summary_value',
+            'summary_value_currency', 'summary_term',
+            'summary_subscription_date', 'summary_start_date',
+            'summary_end_date', 'relationships_count'
         ]
 
     def get_signer_ids(self, obj):
@@ -216,6 +232,27 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         if not obj.requires_signature:
             return 0
         return obj.signatures.count()
+    
+    def get_relationships_count(self, obj):
+        """
+        Return the number of related documents (associations) that the current user can see.
+        This matches the filtering logic in get_related_documents() to avoid showing
+        incorrect counts when documents are filtered by permissions.
+        """
+        # Get the current user from the serializer context
+        request = self.context.get('request')
+        if not request or not request.user:
+            # If no user context, count all relationships
+            from django.db.models import Q
+            total = DocumentRelationship.objects.filter(
+                Q(source_document=obj) | Q(target_document=obj)
+            ).count()
+            return total
+        
+        # Use the model method to get related documents with user filtering
+        related_docs = obj.get_related_documents(user=request.user)
+        count = related_docs.count()
+        return count
     
 
     
@@ -278,6 +315,74 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             return user_level >= delete_level
         except ValueError:
             return False
+
+    def _get_first_summary_variable(self, obj, summary_field):
+        """Helper to get the first variable classified with the given summary_field."""
+        return obj.variables.filter(summary_field=summary_field).first()
+
+    def get_summary_counterparty(self, obj):
+        """Get counterparty/user name for table views using configured variable or fallbacks."""
+        var = self._get_first_summary_variable(obj, 'counterparty')
+        if var and var.value:
+            return var.value
+
+        # Fallback 1: assigned user (owner/client of the document)
+        if obj.assigned_to:
+            first_name = getattr(obj.assigned_to, 'first_name', '') or ""
+            last_name = getattr(obj.assigned_to, 'last_name', '') or ""
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name or getattr(obj.assigned_to, 'email', None)
+
+        # Fallback 2: first signer different from creator
+        signature = obj.signatures.exclude(signer=obj.created_by).first()
+        if signature and signature.signer:
+            first_name = signature.signer.first_name or ""
+            last_name = signature.signer.last_name or ""
+            full_name = f"{first_name} {last_name}".strip()
+            return full_name or signature.signer.email
+
+        return None
+
+    def get_summary_object(self, obj):
+        var = self._get_first_summary_variable(obj, 'object')
+        return var.value if var and var.value else None
+
+    def get_summary_value(self, obj):
+        var = self._get_first_summary_variable(obj, 'value')
+        return var.value if var and var.value else None
+
+    def get_summary_value_currency(self, obj):
+        var = self._get_first_summary_variable(obj, 'value')
+        if not var or not getattr(var, 'currency', None):
+            return None
+        return var.currency
+
+    def get_summary_term(self, obj):
+        var = self._get_first_summary_variable(obj, 'term')
+        return var.value if var and var.value else None
+
+    def get_summary_subscription_date(self, obj):
+        var = self._get_first_summary_variable(obj, 'subscription_date')
+        if var and var.value:
+            return var.value
+
+        # Fallback: if no explicit subscription date, use document creation date
+        if obj.created_at:
+            try:
+                return obj.created_at.date().isoformat()
+            except AttributeError:
+                # In case created_at is already a date or unexpected type
+                return str(obj.created_at)
+
+        return None
+
+    def get_summary_start_date(self, obj):
+        var = self._get_first_summary_variable(obj, 'start_date')
+        return var.value if var and var.value else None
+
+    def get_summary_end_date(self, obj):
+        var = self._get_first_summary_variable(obj, 'end_date')
+        return var.value if var and var.value else None
 
     def create(self, validated_data):
         """
@@ -409,6 +514,9 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         """
         Update an existing document with new variables, signatures, and permissions.
         """
+        # Track original state to detect transitions that require side effects
+        original_state = instance.state
+
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', None)
@@ -524,7 +632,19 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Update main document fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
+        # If the document moves from Completed back to Progress, remove its relationships
+        # so that associations only exist for documents in their final/completed lifecycle.
+        new_state = getattr(instance, 'state', original_state)
+        if original_state == 'Completed' and new_state == 'Progress':
+            from django.db.models import Q
+            # Import here to avoid circular imports at module load time
+            from gym_app.models.dynamic_document import DocumentRelationship
+
+            DocumentRelationship.objects.filter(
+                Q(source_document=instance) | Q(target_document=instance)
+            ).delete()
+
         # Set requires_signature explicitly
         instance.requires_signature = requires_signature
         instance.save()

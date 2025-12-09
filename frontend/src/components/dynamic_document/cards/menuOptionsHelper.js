@@ -52,12 +52,17 @@ const cardConfigs = {
       const baseOptions = [
         { label: "Editar", action: "edit" },
         { label: "Permisos", action: "permissions" },
-        { label: "Administrar Asociaciones", action: "relationships" },
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
         { label: "Gestionar Membrete", action: "letterhead" },
       ];
+      
+      // Only add "Administrar Asociaciones" for documents that are NOT Draft or Published
+      // Minutas (Draft/Published) should not have relationship management
+      if (document.state !== 'Draft' && document.state !== 'Published') {
+        baseOptions.splice(2, 0, { label: "Administrar Asociaciones", action: "relationships" });
+      }
       
       // Add state-based options
       if (document.state === "Draft") {
@@ -70,11 +75,6 @@ const cardConfigs = {
         baseOptions.push({
           label: "Mover a Borrador",
           action: "draft",
-        });
-        
-        baseOptions.push({
-          label: "Formalizar y Agregar Firmas",
-          action: "formalize",
         });
       }
 
@@ -109,10 +109,20 @@ const cardConfigs = {
 
   signatures: {
     getMenuOptions: (document, context, userStore) => {
+      // For signatures context (documentos por firmar/firmados/archivados)
+      // we only show actions related to firma and visualización, not gestión de membrete.
       const options = [
-        { label: "Previsualizar", action: "preview" },
-        { label: "Gestionar Membrete", action: "letterhead" }
+        { label: "Previsualizar", action: "preview" }
       ];
+
+      // Document relationships management (read-only in signatures context)
+      // Enabled only when the document already has associations
+      const hasRelationships = document.relationships_count && document.relationships_count > 0;
+      options.push({
+        label: "Administrar Asociaciones",
+        action: "relationships",
+        disabled: !hasRelationships
+      });
 
       // Add signature-related options
       if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
@@ -127,6 +137,14 @@ const cardConfigs = {
         options.push({
           label: "Firmar documento",
           action: "sign"
+        });
+      }
+
+      // Reject document option (only when user can sign and document is pending signatures)
+      if (document.state === 'PendingSignatures' && canSignDocument(document, userStore)) {
+        options.push({
+          label: "Rechazar documento",
+          action: "reject"
         });
       }
 
@@ -146,6 +164,17 @@ const cardConfigs = {
         });
       }
 
+      // View rejection reason option for rejected documents
+      if (document.state === 'Rejected') {
+        const hasComment = Array.isArray(document.signatures) && document.signatures.some(sig => sig.rejection_comment);
+        if (hasComment) {
+          options.push({
+            label: "Ver motivo del rechazo",
+            action: "viewRejectionReason"
+          });
+        }
+      }
+
       return options;
     }
   },
@@ -156,6 +185,8 @@ const cardConfigs = {
       const isBasicUser = userStore?.currentUser?.role === 'basic';
       const isCorporateOrClient = userStore?.currentUser?.role === 'corporate_client' || 
                                    userStore?.currentUser?.role === 'client';
+      const isLawyer = userStore?.currentUser?.role === 'lawyer';
+      const isProgress = document.state === 'Progress';
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
@@ -175,16 +206,31 @@ const cardConfigs = {
           ]
         });
         
-        // Add "Formalizar y Agregar Firmas" for Corporate/Client roles and show disabled for Basic
-        if (isCorporateOrClient || isBasicUser) {
+        // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles and show disabled for Basic
+        if (isCorporateOrClient || isBasicUser || isLawyer) {
           options.push({
             label: "Formalizar y Agregar Firmas",
             action: "formalize",
             disabled: isBasicUser
           });
         }
+      } else if (document.state === 'Progress') {
+        // For in-progress documents, allow completing and show formalize disabled
+        options.push({
+          label: "Completar",
+          action: "editForm"
+        });
+
+        if (isCorporateOrClient || isBasicUser || isLawyer) {
+          options.push({
+            label: "Formalizar y Agregar Firmas",
+            action: "formalize",
+            // Siempre deshabilitado en estado Progress; el tooltip en el modal explicará el motivo
+            disabled: true
+          });
+        }
       } else {
-        // For non-completed documents, keep simple "Completar" option
+        // For other non-completed documents (e.g. Draft), keep simple "Completar" option
         options.push({
           label: "Completar",
           action: "editForm"
@@ -221,7 +267,8 @@ const cardConfigs = {
       options.push({ 
         label: "Administrar Asociaciones", 
         action: "relationships",
-        disabled: isBasicUser
+        // Disabled for basic users and when document is still in Progress
+        disabled: isBasicUser || isProgress
       });
 
       // Add signature-related options for documents that require signatures

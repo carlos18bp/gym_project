@@ -292,53 +292,124 @@
           <!-- Stages table -->
           <div class="qflow-root">
             <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-              <div
-                class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8"
-              >
-                <table class="min-w-full divide-y divide-gray-300">
-                  <thead>
-                    <tr class="text-left text-base font-regular text-primary">
-                      <th scope="col" class="py-3.5 pr-3 w-3/5">Descripción</th>
-                      <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    <tr v-for="(stage, index) in formData.stages" :key="index">
-                      <!-- Stage description -->
-                      <td
-                        class="w-4/5 py-4 pr-3 text-sm font-medium text-primary sm:pl-0 break-words"
-                      >
+              <!-- Mobile: Card layout -->
+              <div class="block md:hidden space-y-3">
+                <div
+                  v-for="(stage, index) in formData.stages"
+                  :key="index"
+                  class="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                >
+                  <div class="space-y-3">
+                    <!-- Stage description -->
+                    <div>
+                      <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Descripción
+                      </label>
+                      <input
+                        v-model="stage.status"
+                        type="text"
+                        name="stage"
+                        placeholder="Descripción de la etapa"
+                        class="block w-full rounded-md border-0 py-2 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary text-sm"
+                        required
+                      />
+                    </div>
+                    
+                    <!-- Date and delete button row -->
+                    <div class="flex items-end gap-2">
+                      <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Fecha
+                        </label>
                         <input
-                          v-model="stage.status"
-                          type="text"
-                          name="stage"
-                          id="stage"
-                          class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                          required
+                          v-model="stage.date"
+                          type="date"
+                          name="stage_date"
+                          class="block w-full rounded-md border-0 py-2 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary text-sm"
                         />
-                      </td>
-                      <!-- Actions buttons -->
-                      <td
-                        class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
+                      </div>
+                      
+                      <!-- Delete button -->
+                      <button
+                        @click="deleteStage(index)"
+                        :disabled="index == 0"
+                        class="p-2 rounded-md"
+                        :class="
+                          index == 0
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-red-600 hover:bg-red-50'
+                        "
                       >
-                        <!-- Delete stage -->
-                        <button
-                          @click="deleteStage(index)"
-                          :disabled="index == 0"
+                        <TrashIcon class="h-6 w-6" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Desktop: Table layout -->
+              <div class="hidden md:block">
+                <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                  <table class="min-w-full divide-y divide-gray-300">
+                    <thead>
+                      <tr class="text-left text-base font-regular text-primary">
+                        <th scope="col" class="py-3.5 pr-3 w-3/5">Descripción</th>
+                        <th scope="col" class="px-3 py-3.5 w-1/5">Fecha</th>
+                        <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                      <tr v-for="(stage, index) in formData.stages" :key="index">
+                        <!-- Stage description -->
+                        <td
+                          class="w-3/5 py-4 pr-3 text-sm font-medium text-primary sm:pl-0 break-words"
                         >
-                          <TrashIcon
-                            class="mx-3 h-7 w-7"
-                            :class="
-                              index == 0
-                                ? 'text-gray-500 cursor-not-allowed'
-                                : 'text-red-600/80'
-                            "
-                          ></TrashIcon>
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                          <input
+                            v-model="stage.status"
+                            type="text"
+                            name="stage"
+                            id="stage"
+                            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                            required
+                          />
+                        </td>
+                        <!-- Stage date -->
+                        <td
+                          class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary"
+                        >
+                          <input
+                            v-model="stage.date"
+                            type="date"
+                            name="stage_date"
+                            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                          />
+                        </td>
+                        <!-- Actions buttons -->
+                        <td
+                          class="whitespace-nowrap w-1/5 px-3 py-4 text-sm text-primary flex gap-2"
+                        >
+                          <!-- Delete stage -->
+                          <button
+                            @click="deleteStage(index)"
+                            :disabled="index == 0"
+                          >
+                            <TrashIcon
+                              class="mx-3 h-7 w-7"
+                              :class="
+                                index == 0
+                                  ? 'text-gray-500 cursor-not-allowed'
+                                  : 'text-red-600/80'
+                              "
+                            ></TrashIcon>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -431,36 +502,49 @@
             </div>
           </div>
         </div>
-        <!-- Save button -->
-        <div class="flex space-x-4">
+        <!-- Action buttons -->
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 border-t border-gray-200">
+          <!-- Save button -->
           <button
             @click="onSubmit"
             type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+            class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200"
             :class="
               !isSaveButtonEnabled
-                ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-                : 'bg-secondary text-white'
+                ? 'bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
             "
             :disabled="!isSaveButtonEnabled"
           >
-            <span>Guardar</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Guardar Proceso</span>
           </button>
+          
           <!-- Archive button - only visible when editing -->
           <button
             v-if="actionParam === 'edit' && programIdParam"
             @click="archiveProcess"
             type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-blue-500 text-white"
+            class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-amber-500 text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
             <span>Archivar Proceso</span>
           </button>
+          
+          <!-- Cancel button -->
           <button
             @click="cancelAction"
             type="button"
-            class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+            class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 sm:ml-auto"
           >
-            Cancelar
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Cancelar</span>
           </button>
         </div>
       </div>
@@ -517,6 +601,7 @@ const formData = reactive({
   stages: [
     {
       status: "",
+      date: "",
     },
   ],
   caseFiles: [
@@ -545,8 +630,15 @@ onMounted(async () => {
     }
   }
 
-  await caseTypeStore.init();
-  await userStore.init();
+  // Load case types and users in parallel for faster form setup
+  try {
+    await Promise.all([
+      caseTypeStore.init(),
+      userStore.init(),
+    ]);
+  } catch (error) {
+    console.error('Error initializing process form auxiliary data:', error);
+  }
 });
 
 /**
@@ -615,6 +707,7 @@ function assignProcessToFormData(process) {
   // Assign stages
   formData.stages = process.stages.map((stage) => ({
     status: stage.status || "",
+    date: stage.date || "",
   }));
 
   // Assign case files
@@ -848,7 +941,8 @@ const filteredClients = computed(() =>
  * @returns {void}
  */
 const addStage = () => {
-  formData.stages.push({ status: "" });
+  const today = new Date().toISOString().slice(0, 10);
+  formData.stages.push({ status: "", date: today });
 };
 
 /**
@@ -951,9 +1045,11 @@ const resetForm = () => {
   formData.lawyerId = ""; // Reset lawyer ID field
 
   // Reset stages array with an empty status
+  const today = new Date().toISOString().slice(0, 10);
   formData.stages = [
     {
       status: "",
+      date: today,
     },
   ];
 

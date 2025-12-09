@@ -3,8 +3,6 @@
 // All documentation and comments are in English as requested.
 
 import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "@/stores/auth/auth";
 import { googleLogout } from "vue3-google-login";
 
 // List of DOM events that we will treat as user activity
@@ -33,10 +31,11 @@ const ACTIVITY_EVENTS = [
  * @param {number}   [options.timeout=900000] – Idle time in milliseconds before logging out. Default: 15 minutes.
  * @returns {{ unsubscribe: Function }} – Function to manually stop the idle watcher (removes listeners and timeout).
  */
-export function useIdleLogout({ timeout = 15 * 60 * 1000 } = {}) {
-  // Get Vue instances immediately (before any async operations)
-  const router = useRouter();
-  const authStore = useAuthStore();
+export function useIdleLogout({ timeout = 15 * 60 * 1000, router, authStore } = {}) {
+  // Router and authStore must be provided explicitly from a valid setup() context
+  if (!router || !authStore) {
+    throw new Error("useIdleLogout requires both 'router' and 'authStore' instances");
+  }
   const timerId = ref(null);
 
   /**

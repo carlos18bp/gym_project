@@ -37,6 +37,9 @@ const alert = ref(null); // Reference to the alert element for animation
 const showAlert = ref(true); // Local state to control alert visibility
 
 onMounted(() => {
+  // Only animate if the alert element exists (not installed and should show)
+  if (!alert.value || isAppInstalled.value) return;
+  
   // Opacity animation for the alert using GSAP
   gsap.to(alert.value, {
     opacity: 1, // Sets opacity to fully visible

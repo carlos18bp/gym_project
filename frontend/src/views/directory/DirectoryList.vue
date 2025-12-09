@@ -11,11 +11,11 @@
         <li
           v-for="user in filteredUsers"
           :key="user.id"
-          class="relative flex justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 sm:px-6 lg:px-8"
+          class="relative flex justify-between gap-x-6 px-4 py-5 hover:bg-gray-50 sm:px-6 lg:px-8 cursor-pointer"
+          @click="openUserModal(user)"
         >
           <div
-            class="flex min-w-0 gap-x-4 cursor-pointer"
-            @click="navigateToProcessList(user.id)"
+            class="flex min-w-0 gap-x-4"
           >
             <img
               class="h-12 w-12 flex-none rounded-full bg-gray-50 object-cover object-center"
@@ -58,6 +58,16 @@
       </ul>
     </div>
   </div>
+
+  <!-- User details modal -->
+  <teleport to="body">
+    <DirectoryUserDetailsModal
+      v-if="showUserModal && selectedUser"
+      :is-visible="showUserModal"
+      :user="selectedUser"
+      @close="closeUserModal"
+    />
+  </teleport>
 </template>
 
 <script setup>
@@ -65,9 +75,12 @@ import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue"
 import { computed, onMounted, ref } from "vue";
 import { useUserStore } from "@/stores/auth/user";
 import { ChevronRightIcon } from "@heroicons/vue/20/solid";
+import DirectoryUserDetailsModal from "@/components/directory/DirectoryUserDetailsModal.vue";
 
 const userStore = useUserStore();
 const searchQuery = ref("");
+const showUserModal = ref(false);
+const selectedUser = ref(null);
 
 // Filter users based on search query
 const filteredUsers = computed(() =>
@@ -79,17 +92,13 @@ onMounted(async () => {
   await userStore.init();
 });
 
-/**
- * Navigates to the process list view for a specific user.
- *
- * This method is used to navigate to the "process_list" view, passing the user ID
- * as a parameter to display processes associated with the selected user.
- *
- * @function navigateToProcessList
- * @param {number|string} userId - The ID of the user for whom the processes are to be displayed.
- * @returns {void}
- */
-const navigateToProcessList = (userId) => {
-  window.location.href = `${window.location.origin}/process_list/${userId}`;
+const openUserModal = (user) => {
+  selectedUser.value = user;
+  showUserModal.value = true;
+};
+
+const closeUserModal = () => {
+  showUserModal.value = false;
+  selectedUser.value = null;
 };
 </script>

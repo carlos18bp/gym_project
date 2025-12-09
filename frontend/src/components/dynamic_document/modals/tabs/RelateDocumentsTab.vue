@@ -86,9 +86,9 @@
                 </div>
               </div>
               
-              <!-- Content Preview -->
+              <!-- Content Preview (with variables resolved for final states) -->
               <div v-if="doc.content" class="mt-3 text-sm text-gray-600 line-clamp-2">
-                {{ stripHtml(doc.content) }}
+                {{ getProcessedSnippet(doc) }}
               </div>
 
               <!-- Tags -->
@@ -103,8 +103,15 @@
               </div>
             </div>
 
-            <!-- Action Button -->
-            <div class="flex-shrink-0 ml-4">
+            <!-- Action Buttons -->
+            <div class="flex-shrink-0 ml-4 flex flex-col space-y-2">
+              <button
+                type="button"
+                class="inline-flex items-center px-3 py-1.5 border border-gray-200 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                @click.stop="openPreviewModal(doc)"
+              >
+                Ver documento
+              </button>
               <button
                 @click="handleRelateDocument(doc)"
                 :disabled="isRelating"
@@ -138,6 +145,7 @@ import {
   LinkIcon,
   ArrowPathIcon
 } from '@heroicons/vue/24/outline'
+import { openPreviewModal, getProcessedDocumentContent } from '@/shared/document_utils'
 
 const props = defineProps({
   document: {
@@ -151,6 +159,14 @@ const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
+  },
+  deferSave: {
+    type: Boolean,
+    default: false
+  },
+  pendingRelationships: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -165,6 +181,13 @@ const filteredDocuments = computed(() => {
   if (!props.availableDocuments) return []
   
   let filtered = props.availableDocuments
+  
+  // In defer mode, exclude documents that are already in pending relationships
+  if (props.deferSave && props.pendingRelationships.length > 0) {
+    filtered = filtered.filter(doc => 
+      !props.pendingRelationships.includes(doc.id)
+    )
+  }
   
   // Filter by search query
   if (searchQuery.value.trim()) {
@@ -242,6 +265,13 @@ const stripHtml = (html) => {
   const div = document.createElement('div')
   div.innerHTML = html
   return div.textContent || div.innerText || ''
+}
+
+// Returns a short, plain-text preview with variables already replaced
+// for completed / signed documents.
+const getProcessedSnippet = (doc) => {
+  const content = getProcessedDocumentContent(doc)
+  return stripHtml(content)
 }
 </script>
 

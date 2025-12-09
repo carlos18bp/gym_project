@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 def _build_response(data: Dict, status: int = 200) -> JsonResponse:
     """Utility helper to build JSON responses and log the payload."""
-    logger.debug("Google reCAPTCHA response: %s", data)
     return JsonResponse(data, status=status)
 
 
