@@ -378,6 +378,8 @@
       v-if="activeModals.edit.isOpen"
       :is-open="activeModals.edit.isOpen"
       :document="activeModals.edit.document"
+      :user-role="activeModals.edit.userRole || userStore.currentUser?.role || 'client'"
+      :show-editor-button="!activeModals.edit.renameOnly"
       @close="closeModal('edit')"
       @refresh="emit('refresh')"
     />
@@ -1082,8 +1084,15 @@ const handleMenuAction = async (action, document) => {
 
     // Edición
     case 'edit':
-      // Generic edit (kept for backward compatibility)
-      openModal('edit', document, { userRole: userStore.currentUser?.role || 'client' });
+      {
+        const userRole = userStore.currentUser?.role || 'client';
+        if (props.cardType === 'lawyer' && props.context === 'legal-documents') {
+          // En Minutas (abogado), usar modo solo renombrar (sin botón "Editar Documento")
+          openModal('edit', document, { userRole, renameOnly: true });
+        } else {
+          openModal('edit', document, { userRole });
+        }
+      }
       break;
     case 'editForm':
       // Editar configuración / variables

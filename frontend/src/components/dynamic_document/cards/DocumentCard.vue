@@ -30,7 +30,7 @@
     <!-- Signature status badge slot -->
     <template #additional-badges>
       <div 
-        v-if="document.requires_signature" 
+        v-if="showSignatureBadges" 
         class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
         :class="signatureStatusClasses"
       >
@@ -213,6 +213,16 @@ const menuOptions = computed(() => {
 const handleCardClick = (event) => {
   emit('click', props.document, event);
 };
+
+const showSignatureBadges = computed(() => {
+  // Only show signature badges in lawyer views. For client and generic
+  // contexts (Mis documentos, carpetas, etc.) no mostramos la etiqueta
+  // extra de estado de firmas ("Requiere firmas").
+  if (props.cardType !== 'lawyer') {
+    return false;
+  }
+  return props.document.requires_signature;
+});
 
 // Signature status badge classes
 const signatureStatusClasses = computed(() => {

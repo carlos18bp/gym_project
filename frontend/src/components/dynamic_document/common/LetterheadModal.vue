@@ -716,14 +716,6 @@ const uploadFile = async () => {
 
 const loadCurrentImage = async () => {
   if (!documentId.value) return;
-  
-  // Check if document has letterhead_image property before making request
-  // This avoids unnecessary 404 requests
-  if (props.document && !props.document.letterhead_image) {
-    currentImageUrl.value = null;
-    return;
-  }
-  
   try {
     const response = await store.getLetterheadImage(documentId.value);
     // Handle case when document doesn't have a letterhead (404 returns null)

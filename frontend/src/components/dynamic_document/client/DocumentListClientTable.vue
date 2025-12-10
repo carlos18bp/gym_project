@@ -213,13 +213,21 @@ Migration example:
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <span
-                    v-for="tag in document.tags"
+                    v-for="tag in document.tags?.slice(0, 2)"
                     :key="tag.id"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                     :class="getTagClasses(tag)"
                   >
                     {{ tag.name }}
                   </span>
+                  <button
+                    v-if="document.tags && document.tags.length > 2"
+                    type="button"
+                    class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 inline-flex items-center gap-1"
+                    @click.stop="openTagsModal(document)"
+                  >
+                    <span>+{{ document.tags.length - 2 }}</span>
+                  </button>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
               </td>
@@ -371,6 +379,68 @@ Migration example:
       :document="summaryDocument"
       @close="showSummaryModal = false"
     />
+
+    <!-- Tags List Modal -->
+    <div
+      v-if="showTagsModal && tagsModalDocument"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+    >
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <div class="flex items-center gap-2">
+            <DocumentTextIcon class="h-5 w-5 text-gray-500" />
+            <h2 class="text-sm font-semibold text-gray-900">Etiquetas del documento</h2>
+          </div>
+          <button
+            type="button"
+            class="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100"
+            @click="closeTagsModal"
+          >
+            <XMarkIcon class="h-5 w-5" />
+          </button>
+        </div>
+        <div class="px-4 py-3 border-b border-gray-100 text-xs text-gray-500">
+          <span class="font-medium text-gray-700">Documento:</span>
+          <span class="ml-1">{{ tagsModalDocument.title || 'Sin título' }}</span>
+        </div>
+        <div class="px-4 py-3 overflow-y-auto">
+          <div
+            v-if="!tagsModalDocument.tags || tagsModalDocument.tags.length === 0"
+            class="text-sm text-gray-500"
+          >
+            Este documento no tiene etiquetas.
+          </div>
+          <ul v-else class="space-y-2 text-sm">
+            <li
+              v-for="tag in tagsModalDocument.tags"
+              :key="tag.id"
+              class="flex items-center justify-between gap-2"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  :class="getTagClasses(tag)"
+                >
+                  {{ tag.name }}
+                </span>
+              </div>
+              <span v-if="tag.description" class="text-xs text-gray-500 truncate max-w-[8rem]">
+                {{ tag.description }}
+              </span>
+            </li>
+          </ul>
+        </div>
+        <div class="px-4 py-3 border-t border-gray-100 flex justify-end">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            @click="closeTagsModal"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
   </teleport>
 </template>
 
@@ -465,6 +535,8 @@ const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
 const filterByTag = ref(null);
 const sortBy = ref('recent');
+const showTagsModal = ref(false);
+const tagsModalDocument = ref(null);
 
 // Get current user
 const currentUser = computed(() => userStore.getCurrentUser);
@@ -656,7 +728,7 @@ const getStatusClasses = (document) => {
     return 'bg-green-100 text-green-700 border border-green-200';
   }
   if (document.state === 'Progress') {
-    return 'bg-blue-100 text-blue-700 border border-blue-200';
+    return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
   }
   return 'bg-gray-100 text-gray-700 border border-gray-200';
 };
@@ -693,6 +765,16 @@ const getTagColorClass = (tag) => {
 // Clear filters
 const clearFilters = () => {
   filterByTag.value = null;
+};
+
+const openTagsModal = (document) => {
+  tagsModalDocument.value = document;
+  showTagsModal.value = true;
+};
+
+const closeTagsModal = () => {
+  showTagsModal.value = false;
+  tagsModalDocument.value = null;
 };
 
 // Handle document click - Open actions modal

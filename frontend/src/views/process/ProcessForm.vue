@@ -693,7 +693,6 @@ const isSaveButtonEnabled = computed(() => {
  * @param {object} process - The process data to be assigned to formData.
  */
 function assignProcessToFormData(process) {
-  console.log("Process ID being assigned:", process.id);
   formData.processIdParam = process.id || "";
   formData.plaintiff = process.plaintiff || "";
   formData.defendant = process.defendant || "";

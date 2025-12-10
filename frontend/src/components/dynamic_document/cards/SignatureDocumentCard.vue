@@ -14,11 +14,7 @@
     :document-store="documentStore"
     :user-store="userStore"
     @click="handleCardClick"
-    @preview="$emit('preview', $event)"
-    @edit="$emit('edit', $event)"
     @refresh="$emit('refresh')"
-    @sign="$emit('sign', $event)"
-    @view-signatures="$emit('view-signatures', $event)"
     @remove-from-folder="$emit('remove-from-folder', $event)"
   >
     <!-- Custom status badge with SVG icon -->
@@ -106,11 +102,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'click', 
-  'preview', 
-  'edit', 
   'refresh', 
-  'sign', 
-  'view-signatures',
   'remove-from-folder'
 ]);
 
@@ -165,11 +157,6 @@ const getCompletedSignatures = (document) => {
  */
 const handleCardClick = (document, event) => {
   emit('click', document, event);
-  
-  if (!props.disableInternalActions) {
-    // Only emit preview when internal actions are enabled
-    emit('preview', document);
-  }
 };
 
 

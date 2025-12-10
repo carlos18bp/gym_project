@@ -222,8 +222,8 @@ const refreshSelectedFolder = async () => {
   if (!selectedFolder.value) return;
   
   try {
-    // Fetch fresh data from backend
-    await folderStore.fetchFolderById(selectedFolder.value.id, true);
+    // Fetch fresh data for this folder from backend
+    await folderStore.fetchFolder(selectedFolder.value.id);
     
     // Get updated folder from store
     const updatedFolder = folderStore.getFolderById(selectedFolder.value.id);
@@ -322,38 +322,10 @@ const handleRemoveDocumentFromFolder = async (documentId) => {
     // Show success message immediately after successful update
     showNotification('Documento removido de la carpeta', 'success');
     
-    // Close the folder details modal and navigate to main view
+    // Close the folder details modal and navigate to main view.
+    // updateFolder ya actualizó el store, así que la vista principal leerá datos frescos.
     selectedFolder.value = null;
     emit('navigate-to-main');
-    
-    // Update the UI immediately
-    try {
-      // First, update the folder store with fresh data
-      await folderStore.fetchFolderById(selectedFolder.value.id, true);
-      
-      // Get the updated folder from store
-      const updatedFolder = folderStore.getFolderById(selectedFolder.value.id);
-      if (updatedFolder) {
-        selectedFolder.value = updatedFolder;
-      }
-      
-      console.log('Folder data refreshed successfully after removal');
-    } catch (refreshError) {
-      console.warn('Error refreshing folder data:', refreshError);
-      
-      // If refresh fails, apply optimistic update
-      try {
-        // Remove the document from the current selectedFolder display
-        selectedFolder.value = {
-          ...selectedFolder.value,
-          documents: selectedFolder.value.documents.filter(doc => doc.id !== docIdToRemove)
-        };
-        
-        console.log('Applied optimistic removal for document ID:', docIdToRemove);
-      } catch (optimisticError) {
-        console.warn('Optimistic update failed:', optimisticError);
-      }
-    }
     
   } catch (error) {
     console.error('Error removing document from folder:', error);

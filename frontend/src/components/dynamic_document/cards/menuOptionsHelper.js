@@ -160,11 +160,14 @@ const cardConfigs = {
       });
 
       // Add signature-related options
-      if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
-        options.push({
-          label: "Estado de las firmas",
-          action: "viewSignatures"
-        });
+      if (document.requires_signature) {
+        const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
+        if (signatureStates.includes(document.state)) {
+          options.push({
+            label: "Estado de las firmas",
+            action: "viewSignatures"
+          });
+        }
       }
 
       // Sign document option
@@ -304,17 +307,23 @@ const cardConfigs = {
 
       // Add signature-related options for documents that require signatures
       if (document.requires_signature) {
-        options.push({
-          label: "Ver Firmas",
-          action: "viewSignatures"
-        });
-
-        // Add sign option if the user needs to sign
-        if (canSignDocument(document, userStore)) {
+        const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
+        const isSignatureState = signatureStates.includes(document.state);
+        // Do not show signature options in the 'my-documents' context; those flujos se manejan
+        // en las vistas específicas de firmas (Documentos por firmar, Firmados, Archivados).
+        if (context !== 'my-documents' && isSignatureState) {
           options.push({
-            label: "Firmar documento",
-            action: "sign"
+            label: "Ver Firmas",
+            action: "viewSignatures"
           });
+
+          // Add sign option if the user needs to sign
+          if (canSignDocument(document, userStore)) {
+            options.push({
+              label: "Firmar documento",
+              action: "sign"
+            });
+          }
         }
       }
 

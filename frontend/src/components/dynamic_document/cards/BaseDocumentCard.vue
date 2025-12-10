@@ -501,19 +501,22 @@ const cardConfigs = {
       }
 
       // Add signature-related options
-      // Only show for documents in signature workflow (PendingSignatures or FullySigned)
-      if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
-        baseOptions.push({
-          label: "Ver Firmas",
-          action: "viewSignatures"
-        });
-
-        // Add sign option if the lawyer needs to sign
-        if (canSignDocument(document)) {
+      // Only show for documents in signature workflow or archivados (PendingSignatures, FullySigned, Rejected, Expired)
+      if (document.requires_signature) {
+        const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
+        if (signatureStates.includes(document.state)) {
           baseOptions.push({
-            label: "Firmar documento",
-            action: "sign"
+            label: "Ver Firmas",
+            action: "viewSignatures"
           });
+
+          // Add sign option if the lawyer needs to sign
+          if (canSignDocument(document)) {
+            baseOptions.push({
+              label: "Firmar documento",
+              action: "sign"
+            });
+          }
         }
       }
 

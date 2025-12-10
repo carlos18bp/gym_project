@@ -123,8 +123,22 @@ const sortedStages = computed(() => {
  */
 const formatDate = (dateString) => {
   if (!dateString) return 'Fecha no disponible'
-  
-  const date = new Date(dateString)
+
+  let date
+
+  // If it's a pure date (YYYY-MM-DD), build a local Date to avoid timezone shifting
+  if (typeof dateString === 'string' && dateString.length === 10 && dateString.includes('-') && !dateString.includes('T')) {
+    const [year, month, day] = dateString.split('-').map(Number)
+    date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
+  // Fallback for full datetime strings (created_at)
+  date = new Date(dateString)
   const options = {
     year: 'numeric',
     month: 'long',
@@ -133,7 +147,7 @@ const formatDate = (dateString) => {
     minute: '2-digit',
     timeZone: 'America/Bogota'
   }
-  
+
   return date.toLocaleDateString('es-CO', options)
 }
 </script>

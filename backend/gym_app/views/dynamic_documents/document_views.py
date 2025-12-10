@@ -463,7 +463,9 @@ def download_dynamic_document_word(request, pk):
         first_body_paragraph_used = False
 
         # Process HTML content
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
+        # Include both <p> and <div> tags as paragraph blocks so that
+        # templates that wrap content in <div> elements are still rendered.
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 heading = doc.add_heading(tag.get_text().strip(), level=level)
@@ -472,7 +474,7 @@ def download_dynamic_document_word(request, pk):
                 for run in heading.runs:
                     run.font.name = font_name
 
-            elif tag.name == "p":
+            elif tag.name in ["p", "div"]:
                 if tag.get_text().strip() == "":
                     continue
 
