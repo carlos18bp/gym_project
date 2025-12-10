@@ -266,24 +266,26 @@ const handleDownload = async (process) => {
       return;
     }
 
-    // Extract filename from URL
+    // Extract the last path segment from the URL (may be percent-encoded)
     const urlParts = process.file_url.split('/');
-    let originalFilename = urlParts[urlParts.length - 1];
-    
-    // If no filename in URL, use process name with default extension
-    if (!originalFilename || originalFilename === '') {
-      originalFilename = `${process.name}.docx`;
+    let originalFilenameSegment = urlParts[urlParts.length - 1] || '';
+
+    // Decode percent-encoded characters if present (e.g. %C3%B3)
+    try {
+      originalFilenameSegment = decodeURIComponent(originalFilenameSegment);
+    } catch (e) {
+      // If decoding fails, keep the raw segment
     }
-    
-    // Extract file extension
-    const extensionMatch = originalFilename.match(/\.(docx?|pdf|xlsx?|txt)$/i);
+
+    // Detect file extension from the (possibly decoded) URL segment
+    const extensionMatch = originalFilenameSegment.match(/\.(docx?|pdf|xlsx?|txt)$/i);
     const extension = extensionMatch ? extensionMatch[0] : '.docx';
-    
-    // Get base name without extension
-    const baseName = originalFilename.replace(/\.(docx?|pdf|xlsx?|txt)$/i, '');
-    
-    // Sanitize the base name and reconstruct filename
-    const sanitizedBaseName = sanitizeFilename(baseName || process.name);
+
+    // Use the human-readable process name as base for the download filename
+    const baseName = process.name || originalFilenameSegment.replace(/\.(docx?|pdf|xlsx?|txt)$/i, '');
+
+    // Sanitize the base name (remove tildes and special characters) and reconstruct filename
+    const sanitizedBaseName = sanitizeFilename(baseName);
     const filename = `${sanitizedBaseName}${extension}`;
     
     // Determine MIME type based on file extension

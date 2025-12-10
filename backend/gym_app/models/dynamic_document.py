@@ -18,6 +18,12 @@ def letterhead_image_path(instance, filename):
     filename = f"letterhead_{uuid.uuid4().hex}.{ext}"
     return os.path.join('letterheads', str(instance.id), filename)
 
+def document_letterhead_template_path(instance, filename):
+    """Generate unique path for per-document Word letterhead templates"""
+    ext = filename.split('.')[-1].lower()
+    filename = f"document_letterhead_template_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('document_letterhead_templates', str(instance.id), filename)
+
 
 class Tag(models.Model):
     """
@@ -118,6 +124,12 @@ class DynamicDocument(models.Model):
         null=True,
         blank=True,
         help_text="Imagen PNG para membrete que se mostrará como fondo centrado en cada página del documento. Recomendado: 612x792 píxeles para tamaño oficio."
+    )
+    letterhead_word_template = models.FileField(
+        upload_to=document_letterhead_template_path,
+        null=True,
+        blank=True,
+        help_text="Plantilla Word (.docx) para membrete específica de este documento, utilizada al generar documentos Word cuando está configurada."
     )
 
     def __str__(self):

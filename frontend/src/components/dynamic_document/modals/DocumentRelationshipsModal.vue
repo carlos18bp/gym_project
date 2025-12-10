@@ -185,7 +185,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'refresh', 'update-pending'])
+const emit = defineEmits(['close', 'refresh', 'update-pending', 'update-count'])
 
 // Composable for API calls
 const {
@@ -279,7 +279,12 @@ const tabs = computed(() => {
 
 // Methods
 const closeModal = () => {
-  // Always emit refresh when closing to update the relationships count in the table
+  // Emit the updated count instead of forcing a full refresh
+  emit('update-count', {
+    documentId: props.document.id,
+    count: relationships.value.length
+  })
+  // Backwards compatibility: still emit refresh for consumers that rely on it
   emit('refresh')
   emit('close')
 }
@@ -340,6 +345,12 @@ const handleRelateDocument = async (targetDocument) => {
     
     await showNotification('Documentos relacionados exitosamente', 'success')
     await loadData()
+    // Emit the new count for optimistic update using the actual relationships length
+    emit('update-count', {
+      documentId: props.document.id,
+      count: relationships.value.length
+    })
+    // Backwards compatibility: also emit refresh
     emit('refresh')
   } catch (error) {
     console.error('Error relating document:', error)
@@ -363,6 +374,12 @@ const handleUnrelateDocument = async (relationshipIdOrDocId) => {
     await deleteRelationship(relationshipIdOrDocId)
     await showNotification('Relación eliminada exitosamente', 'success')
     await loadData()
+    // Emit the new count for optimistic update using the actual relationships length
+    emit('update-count', {
+      documentId: props.document.id,
+      count: relationships.value.length
+    })
+    // Backwards compatibility: also emit refresh
     emit('refresh')
   } catch (error) {
     console.error('Error unrelating document:', error)

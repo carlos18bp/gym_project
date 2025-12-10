@@ -64,7 +64,7 @@
             </p>
           </div>
           
-          <!-- Upload section -->
+          <!-- Upload section (PNG for PDF) -->
           <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">
               {{ currentImageUrl ? 'Reemplazar Membrete' : 'Subir Membrete' }}
@@ -98,10 +98,10 @@
                   </button>
                 </div>
                 <p class="mt-2 text-sm text-gray-500">
-                  Solo archivos PNG, máximo 10MB
+                  Solo archivos PNG, máximo 10MB. Se usa únicamente para los PDF.
                 </p>
                 <p class="text-xs text-gray-400 mt-1">
-                  Dimensiones ideales: 612 × 612 píxeles (8.5:11 Carta)
+                  Dimensiones ideales: 2550 × 3300 píxeles (tamaño carta, 8.5" × 11" a 300 DPI)
                 </p>
               </div>
               
@@ -141,12 +141,115 @@
               </div>
             </div>
           </div>
-          
+
+          <!-- Word template upload section -->
+          <div class="space-y-4 border-t border-gray-200 pt-6">
+            <h3 class="text-lg font-medium text-gray-900">Plantilla Word específica de este documento (.docx)</h3>
+            <p class="text-sm text-gray-500">
+              Esta plantilla se usará al descargar <strong>este documento</strong> en Word. Si no está configurada,
+              se usará la plantilla Word global (Membrete Global) si existe.
+            </p>
+
+            <!-- Current template info -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50" v-if="hasWordTemplate">
+              <div class="text-sm text-gray-700">
+                <div class="font-medium">Plantilla actual:</div>
+                <div class="mt-1 break-words">
+                  <span class="font-mono break-all">{{ currentWordTemplateName || 'plantilla_word.docx' }}</span>
+                  <span v-if="currentWordTemplateSize" class="text-gray-400 ml-2">({{ formatFileSize(currentWordTemplateSize) }})</span>
+                </div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-3">
+                <button
+                  v-if="currentWordTemplateUrl"
+                  @click="downloadWordTemplate"
+                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <ArrowDownTrayIcon class="h-4 w-4 mr-2" />
+                  Descargar
+                </button>
+                <button
+                  @click="confirmDeleteWordTemplate"
+                  :disabled="deletingWordTemplate"
+                  class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  <TrashIcon class="h-4 w-4 mr-2" />
+                  {{ deletingWordTemplate ? 'Eliminando...' : 'Eliminar' }}
+                </button>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500">
+              Este documento no tiene una plantilla Word configurada. Puedes subir un archivo .docx con tu membrete.
+            </div>
+
+            <!-- Template upload area -->
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+              <input
+                ref="wordTemplateInput"
+                type="file"
+                accept=".docx"
+                @change="handleWordTemplateSelect"
+                class="hidden"
+              />
+
+              <div v-if="!selectedWordTemplate">
+                <DocumentIcon class="mx-auto h-12 w-12 text-gray-400" />
+                <div class="mt-4">
+                  <button
+                    @click="$refs.wordTemplateInput.click()"
+                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Seleccionar Plantilla .docx (Word)
+                  </button>
+                </div>
+                <p class="mt-2 text-sm text-gray-500">
+                  Solo archivos .docx, máximo 10MB.
+                </p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div class="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                  <CheckCircleIcon class="h-5 w-5 text-green-500" />
+                  <span>{{ selectedWordTemplate.name }}</span>
+                  <span class="text-gray-400">({{ formatFileSize(selectedWordTemplate.size) }})</span>
+                </div>
+
+                <div class="flex justify-center space-x-3">
+                  <button
+                    @click="clearWordTemplateSelection"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    @click="uploadWordTemplate"
+                    :disabled="uploadingWordTemplate"
+                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                  >
+                    <CloudArrowUpIcon v-if="!uploadingWordTemplate" class="h-4 w-4 mr-2" />
+                    <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {{ uploadingWordTemplate ? 'Subiendo...' : 'Subir Plantilla' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Specifications Panel -->
           <div v-if="showSpecifications" class="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-6">
             <div class="flex items-center space-x-2">
               <InformationCircleIcon class="h-6 w-6 text-blue-600" />
-              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete</h3>
+              <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete para PDF</h3>
+            </div>
+            
+            <!-- Priority Info -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 class="font-medium text-yellow-800 mb-2">🔄 Prioridad de Membrete</h4>
+              <div class="text-sm text-yellow-700 space-y-1">
+                <div><strong>1º Prioridad:</strong> Membrete específico del documento (este)</div>
+                <div><strong>2º Prioridad:</strong> Membrete global de imagen para PDF del usuario</div>
+                <div><strong>3º Prioridad:</strong> Sin membrete</div>
+              </div>
             </div>
             
             <!-- Dimensions -->
@@ -156,15 +259,15 @@
                 <div class="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span class="font-medium text-gray-700">Ancho:</span>
-                    <span class="ml-2 text-blue-600 font-mono">612 píxeles</span>
+                    <span class="ml-2 text-blue-600 font-mono">2550 píxeles</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Alto:</span>
-                    <span class="ml-2 text-blue-600 font-mono">612 píxeles</span>
+                    <span class="ml-2 text-blue-600 font-mono">3300 píxeles</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Proporción:</span>
-                    <span class="ml-2 text-blue-600">8.5:11 (Carta)</span>
+                    <span class="ml-2 text-blue-600">8.5:11 (Carta, 300 DPI)</span>
                   </div>
                   <div>
                     <span class="font-medium text-gray-700">Tolerancia:</span>
@@ -252,10 +355,10 @@
                     <span class="text-blue-600 font-medium">•</span>
                     <span><strong>Resolución:</strong> 72-150 DPI es suficiente para documentos digitales</span>
                   </div>
-                    <div class="flex items-start space-x-2">
-                      <span class="text-orange-600 font-medium">⚠️</span>
-                      <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (300-400px de altura)</span>
-                    </div>
+                  <div class="flex items-start space-x-2">
+                    <span class="text-orange-600 font-medium">⚠️</span>
+                    <span><strong>Zona crítica:</strong> Evita elementos gráficos densos en el centro (300-400px de altura)</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -338,6 +441,16 @@ const warnings = ref([]);
 const fileInput = ref(null);
 const showSpecifications = ref(false);
 
+// Word template reactive data (per-document)
+const selectedWordTemplate = ref(null);
+const hasWordTemplate = ref(false);
+const currentWordTemplateUrl = ref(null);
+const currentWordTemplateName = ref('');
+const currentWordTemplateSize = ref(null);
+const uploadingWordTemplate = ref(false);
+const deletingWordTemplate = ref(false);
+const wordTemplateInput = ref(null);
+
 // Computed
 const documentId = computed(() => props.document?.id);
 
@@ -345,6 +458,148 @@ const documentId = computed(() => props.document?.id);
 const close = () => {
   clearSelection();
   emit('close');
+};
+
+// Word template helpers
+const handleWordTemplateSelect = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.name.toLowerCase().endsWith('.docx')) {
+    alert('Solo se permiten archivos .docx para la plantilla Word');
+    return;
+  }
+
+  // Validate file size (10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    alert('El archivo de plantilla no puede ser mayor a 10MB');
+    return;
+  }
+
+  selectedWordTemplate.value = file;
+};
+
+const clearWordTemplateSelection = () => {
+  selectedWordTemplate.value = null;
+  if (wordTemplateInput.value) {
+    wordTemplateInput.value.value = '';
+  }
+};
+
+const uploadWordTemplate = async () => {
+  if (!selectedWordTemplate.value || !documentId.value) return;
+
+  uploadingWordTemplate.value = true;
+
+  try {
+    const response = await store.uploadDocumentLetterheadWordTemplate(
+      documentId.value,
+      selectedWordTemplate.value
+    );
+
+    const info = response.data?.template_info;
+    hasWordTemplate.value = true;
+    currentWordTemplateName.value = info?.filename || selectedWordTemplate.value.name;
+    currentWordTemplateSize.value = info?.size_bytes || selectedWordTemplate.value.size;
+
+    // Reload blob for download
+    await loadCurrentWordTemplate();
+
+    clearWordTemplateSelection();
+  } catch (error) {
+    console.error('Error uploading document Word template:', error);
+    alert('Error al subir la plantilla Word. Por favor intenta nuevamente.');
+  } finally {
+    uploadingWordTemplate.value = false;
+  }
+};
+
+const loadCurrentWordTemplate = async () => {
+  if (!documentId.value) return;
+
+  try {
+    const response = await store.getDocumentLetterheadWordTemplate(documentId.value, 'blob');
+
+    // No template configured for this document
+    if (!response) {
+      hasWordTemplate.value = false;
+      if (currentWordTemplateUrl.value) {
+        URL.revokeObjectURL(currentWordTemplateUrl.value);
+      }
+      currentWordTemplateUrl.value = null;
+      currentWordTemplateName.value = '';
+      currentWordTemplateSize.value = null;
+      return;
+    }
+
+    if (response && response.data) {
+      hasWordTemplate.value = true;
+
+      // Create blob URL for download
+      if (currentWordTemplateUrl.value) {
+        URL.revokeObjectURL(currentWordTemplateUrl.value);
+      }
+      currentWordTemplateUrl.value = URL.createObjectURL(response.data);
+
+      // Try to extract filename from headers
+      const disposition =
+        response.headers?.['content-disposition'] || response.headers?.['Content-Disposition'];
+      let filename = 'plantilla_word.docx';
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+      currentWordTemplateName.value = filename;
+      currentWordTemplateSize.value = response.data.size || null;
+    }
+  } catch (error) {
+    console.error('Error loading document Word template:', error);
+  }
+};
+
+const confirmDeleteWordTemplate = async () => {
+  const confirmed = await showConfirmationAlert(
+    '¿Estás seguro de que deseas eliminar la plantilla Word de membrete de este documento?'
+  );
+  if (!confirmed) return;
+  deleteWordTemplate();
+};
+
+const deleteWordTemplate = async () => {
+  if (!documentId.value) return;
+
+  deletingWordTemplate.value = true;
+
+  try {
+    await store.deleteDocumentLetterheadWordTemplate(documentId.value);
+
+    if (currentWordTemplateUrl.value) {
+      URL.revokeObjectURL(currentWordTemplateUrl.value);
+    }
+    currentWordTemplateUrl.value = null;
+    currentWordTemplateName.value = '';
+    currentWordTemplateSize.value = null;
+    hasWordTemplate.value = false;
+  } catch (error) {
+    console.error('Error deleting document Word template:', error);
+    alert('Error al eliminar la plantilla Word. Por favor intenta nuevamente.');
+  } finally {
+    deletingWordTemplate.value = false;
+  }
+};
+
+const downloadWordTemplate = () => {
+  if (currentWordTemplateUrl.value) {
+    const a = document.createElement('a');
+    a.href = currentWordTemplateUrl.value;
+    a.download = currentWordTemplateName.value || 'membrete-word.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 };
 
 const handleFileSelect = (event) => {
@@ -382,8 +637,9 @@ const handleFileSelect = (event) => {
 };
 
 const validateImageDimensions = (width, height) => {
-  const idealWidth = 612;
-  const idealHeight = 612;
+  // Tamaño carta a 300 DPI: 2550 x 3300 px
+  const idealWidth = 2550;
+  const idealHeight = 3300;
   const tolerance = 0.1; // 10% tolerance
   
   // Calculate proportion
@@ -393,7 +649,7 @@ const validateImageDimensions = (width, height) => {
   
   // Check if dimensions are exactly ideal
   if (width === idealWidth && height === idealHeight) {
-    warnings.value.push('✅ Dimensiones perfectas: 612 × 612 píxeles');
+    warnings.value.push('✅ Dimensiones perfectas: 2550 × 3300 píxeles');
     return;
   }
   
@@ -401,21 +657,21 @@ const validateImageDimensions = (width, height) => {
   if (ratioDiff <= tolerance) {
     warnings.value.push(`ℹ️ Buenas proporciones detectadas: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
     if (width !== idealWidth || height !== idealHeight) {
-      warnings.value.push('💡 Para mejores resultados, usa exactamente 612 × 612 píxeles');
+      warnings.value.push('💡 Para mejores resultados, usa exactamente 2550 × 3300 píxeles (tamaño carta, 8.5" × 11" a 300 DPI)');
     }
   } else {
     warnings.value.push(`⚠️ Proporciones no ideales: ${width} × ${height} píxeles (${imageRatio.toFixed(3)})`);
-    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:11)`);
-    warnings.value.push('📐 Considera redimensionar tu imagen a 612 × 612 píxeles');
+    warnings.value.push(`🎯 Proporciones recomendadas: ${idealRatio.toFixed(3)} (8.5:11, tamaño carta)`);
+    warnings.value.push('📐 Considera redimensionar tu imagen a 2550 × 3300 píxeles (tamaño carta)');
   }
   
   // Additional warnings based on dimensions
-  if (width < 300 || height < 300) {
-    warnings.value.push('⚠️ Imagen muy pequeña - puede verse pixelada en documentos');
+  if (width < 1200 || height < 1600) {
+    warnings.value.push('⚠️ Imagen muy pequeña - puede verse pixelada en documentos PDF tamaño carta');
   }
   
-  if (width > 1200 || height > 1600) {
-    warnings.value.push('ℹ️ Imagen muy grande - se redimensionará automáticamente');
+  if (width > 4000 || height > 5000) {
+    warnings.value.push('ℹ️ Imagen muy grande - se redimensionará automáticamente para ajustarse al tamaño carta');
   }
 };
 
@@ -543,12 +799,14 @@ const formatFileSize = (bytes) => {
 watch(() => props.isVisible, (newValue) => {
   if (newValue && documentId.value) {
     loadCurrentImage();
+    loadCurrentWordTemplate();
   }
 });
 
 watch(() => props.document, (newDocument) => {
   if (newDocument && props.isVisible) {
     loadCurrentImage();
+    loadCurrentWordTemplate();
   }
 });
 
@@ -560,12 +818,16 @@ const cleanup = () => {
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value);
   }
+  if (currentWordTemplateUrl.value) {
+    URL.revokeObjectURL(currentWordTemplateUrl.value);
+  }
 };
 
-// Load image when component mounts if modal is visible
+// Load data when component mounts if modal is visible
 onMounted(() => {
   if (props.isVisible && documentId.value) {
     loadCurrentImage();
+    loadCurrentWordTemplate();
   }
 });
 

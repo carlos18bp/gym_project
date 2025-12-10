@@ -1,3 +1,14 @@
+<!--
+@deprecated This component is deprecated. Use DocumentListTable from @/components/dynamic_document/common/DocumentListTable.vue instead.
+Migration example:
+  <DocumentListTable
+    card-type="client"
+    :show-state-filter="true"
+    :show-client-filter="false"
+    :show-associations-column="true"
+    context="my-documents"
+  />
+-->
 <template>
   <div class="document-list-client-table">
     <!-- Filter Bar -->
@@ -340,7 +351,7 @@
       :is-open="true"
       :document="activeModals.relationships.document"
       @close="closeModal('relationships')"
-      @refresh="emit('refresh')"
+      @update-count="handleUpdateRelationshipCount"
     />
     
     <DocumentActionsModal
@@ -420,6 +431,14 @@ const summaryDocument = ref(null);
 const openSummaryModal = (document) => {
   summaryDocument.value = document;
   showSummaryModal.value = true;
+};
+
+// Handle relationship count update (optimistic update)
+const handleUpdateRelationshipCount = ({ documentId, count }) => {
+  const document = documentStore.documents.find(doc => doc.id === documentId);
+  if (document) {
+    document.relationships_count = count;
+  }
 };
 
 // Watch activeModals changes

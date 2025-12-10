@@ -466,7 +466,6 @@ const cardConfigs = {
       const baseOptions = [
         { label: "Editar", action: "edit" },
         { label: "Permisos", action: "permissions" },
-        { label: "Administrar Asociaciones", action: "relationships" },
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
@@ -502,7 +501,8 @@ const cardConfigs = {
       }
 
       // Add signature-related options
-      if (document.requires_signature) {
+      // Only show for documents in signature workflow (PendingSignatures or FullySigned)
+      if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
         baseOptions.push({
           label: "Ver Firmas",
           action: "viewSignatures"

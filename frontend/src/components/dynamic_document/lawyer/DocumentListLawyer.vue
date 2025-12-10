@@ -1,3 +1,14 @@
+<!--
+@deprecated This component is deprecated. Use DocumentListTable from @/components/dynamic_document/common/DocumentListTable.vue instead.
+Migration example:
+  <DocumentListTable
+    card-type="lawyer"
+    :show-state-filter="true"
+    :show-client-filter="true"
+    :show-associations-column="true"
+    context="legal-documents"
+  />
+-->
 <template>
   <div>
     <!-- Filter Bar -->
@@ -419,7 +430,7 @@
         :is-open="activeModals.relationships.isOpen"
         :document="activeModals.relationships.document"
         @close="closeModal('relationships')"
-        @refresh="emit('refresh')"
+        @update-count="handleUpdateRelationshipCount"
       />
       
       <DocumentActionsModal
@@ -1036,6 +1047,14 @@ const forceHighlight = (documentId) => {
 
 // Expose the forceHighlight function globally for use by other components
 window.forceDocumentHighlight = forceHighlight;
+
+// Handle relationship count update (optimistic update)
+const handleUpdateRelationshipCount = ({ documentId, count }) => {
+  const document = documentStore.documents.find(doc => doc.id === documentId);
+  if (document) {
+    document.relationships_count = count;
+  }
+};
 
 // Initialize data when component mounts
 onMounted(async () => {

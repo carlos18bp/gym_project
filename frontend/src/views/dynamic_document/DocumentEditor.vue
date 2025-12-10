@@ -22,9 +22,10 @@ const route = useRoute();
 const store = useDynamicDocumentStore();
 const userStore = useUserStore();
 
-// Detect if user is a client (vs lawyer)
+// Detect if user is a client (vs lawyer) based solely on role
 const isClient = computed(() => {
-  return route.path.includes('/client/editor/') || userStore.currentUser?.role !== 'lawyer';
+  const role = userStore.currentUser?.role;
+  return role === 'client' || role === 'basic' || role === 'corporate_client';
 });
 
 // Detect if we're creating from a template (creator route) vs editing existing document (editor route)
@@ -461,9 +462,7 @@ function enforceCarlito(content) {
  */
 const editorConfig = computed(() => ({
   language: "es",
-  plugins: isClient.value 
-    ? "lists link image table code wordcount autolink searchreplace noneditable"
-    : "lists link image table code wordcount autolink searchreplace", 
+  plugins: "lists link image table code wordcount autolink searchreplace",
   menubar: "",
   toolbar: isClient.value 
     ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"

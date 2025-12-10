@@ -133,19 +133,31 @@
 
       <!-- Lawyer Tab Content -->
       <div v-if="activeLawyerTab === 'legal-documents'">
-        <DocumentListLawyer 
+        <DocumentListTable 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
-          @refresh="handleRefreshDocuments"
+          :is-loading="documentStore.isLoading"
+          card-type="lawyer"
+          :show-state-filter="true"
+          :show-client-filter="true"
+          :show-associations-column="true"
+          context="legal-documents"
+          @refresh="handleRefresh"
         />
       </div>
 
       <!-- My Documents Tab (Lawyer) -->
       <div v-if="activeLawyerTab === 'my-documents'">
-        <DocumentListClientTable 
+        <DocumentListTable 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
-          @open-electronic-signature="handleLawyerSignatureClick"
+          :is-loading="documentStore.isLoading"
+          card-type="client"
+          :show-state-filter="true"
+          :show-client-filter="false"
+          :show-associations-column="true"
+          context="my-documents"
+          @refresh="handleRefresh"
         />
       </div>
 
@@ -165,6 +177,7 @@
           state="PendingSignatures" 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
+          @refresh="handleRefresh"
           @open-electronic-signature="handleLawyerSignatureClick"
           @document-fully-signed="handleDocumentFullySigned"
           @document-rejected="handleDocumentRejected"
@@ -177,6 +190,7 @@
           state="FullySigned" 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
+          @refresh="handleRefresh"
           @open-electronic-signature="handleLawyerSignatureClick"
         />
       </div>
@@ -187,6 +201,7 @@
           state="Archived" 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
+          @refresh="handleRefresh"
           @open-electronic-signature="handleLawyerSignatureClick"
         />
       </div>
@@ -375,12 +390,18 @@
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
         />
-        <DocumentListClientTable
+        <DocumentListTable
           v-else-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
+          :is-loading="documentStore.isLoading"
+          card-type="client"
+          :show-state-filter="true"
+          :show-client-filter="false"
+          :show-associations-column="true"
+          context="my-documents"
           @refresh="handleRefresh"
-        ></DocumentListClientTable>
+        />
         <SignaturesListTable
           v-else-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"
@@ -491,12 +512,13 @@ import { showNotification } from "@/shared/notification_message";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import FolderManagement from "@/components/dynamic_document/common/folders/FolderManagement.vue";
 
+// Unified table component
+import DocumentListTable from "@/components/dynamic_document/common/DocumentListTable.vue";
+
 // Client components
-import DocumentListClientTable from "@/components/dynamic_document/client/DocumentListClientTable.vue";
 import UseDocumentTable from "@/components/dynamic_document/client/UseDocumentTable.vue";
 
 // Lawyer components
-import DocumentListLawyer from "@/components/dynamic_document/lawyer/DocumentListLawyer.vue";
 import DocumentFinishedByClientListTable from "@/components/dynamic_document/lawyer/DocumentFinishedByClientListTable.vue";
 import DocumentInProgressByClientListTable from "@/components/dynamic_document/lawyer/DocumentInProgressByClientListTable.vue";
 import SignaturesListTable from "@/components/dynamic_document/common/SignaturesListTable.vue";
@@ -689,21 +711,6 @@ const handleDocumentRejected = async (document) => {
  */
 const handleClientDocumentRejected = async (document) => {
   activeTab.value = 'archived-documents';
-};
-
-/**
- * Handle refresh documents - reload the document store to update relationships count
- */
-const handleRefreshDocuments = async () => {
-  try {
-    // Clear the store first to force a complete refresh
-    documentStore.documents = [];
-    documentStore.dataLoaded = false;
-    // Then reload all documents
-    await documentStore.init(true);
-  } catch (error) {
-    console.error('Error refreshing documents:', error);
-  }
 };
 
 /**

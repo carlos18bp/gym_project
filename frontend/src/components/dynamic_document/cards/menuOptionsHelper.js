@@ -49,14 +49,48 @@ function canSignDocument(document, userStore) {
 const cardConfigs = {
   lawyer: {
     getMenuOptions: (document, context, userStore) => {
-      const baseOptions = [
-        { label: "Editar", action: "edit" },
-        { label: "Permisos", action: "permissions" },
-        { label: "Eliminar", action: "delete" },
-        { label: "Previsualización", action: "preview" },
-        { label: "Crear una Copia", action: "copy" },
-        { label: "Gestionar Membrete", action: "letterhead" },
-      ];
+      let baseOptions;
+
+      // For Minutas (archivos jurídicos) in lawyer view, provide a submenu
+      // with three distinct edit actions: update name, document editor, and variables configuration.
+      if (context === 'legal-documents' && (document.state === 'Draft' || document.state === 'Published')) {
+        baseOptions = [
+          {
+            label: "Editar",
+            action: "edit-submenu",
+            isGroup: true,
+            children: [
+              {
+                label: "Actualizar nombre",
+                action: "edit"
+              },
+              {
+                label: "Editar documento",
+                action: "editDocument"
+              },
+              {
+                label: "Editar configuración de variables",
+                action: "editForm"
+              }
+            ]
+          },
+          { label: "Permisos", action: "permissions" },
+          { label: "Eliminar", action: "delete" },
+          { label: "Previsualización", action: "preview" },
+          { label: "Crear una Copia", action: "copy" },
+          { label: "Gestionar Membrete", action: "letterhead" },
+        ];
+      } else {
+        // Default behavior for other contexts/states
+        baseOptions = [
+          { label: "Editar", action: "edit" },
+          { label: "Permisos", action: "permissions" },
+          { label: "Eliminar", action: "delete" },
+          { label: "Previsualización", action: "preview" },
+          { label: "Crear una Copia", action: "copy" },
+          { label: "Gestionar Membrete", action: "letterhead" },
+        ];
+      }
       
       // Only add "Administrar Asociaciones" for documents that are NOT Draft or Published
       // Minutas (Draft/Published) should not have relationship management
@@ -88,7 +122,8 @@ const cardConfigs = {
       }
 
       // Add signature-related options
-      if (document.requires_signature) {
+      // Only show for documents in signature workflow (PendingSignatures or FullySigned)
+      if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
         baseOptions.push({
           label: "Ver Firmas",
           action: "viewSignatures"
@@ -110,9 +145,9 @@ const cardConfigs = {
   signatures: {
     getMenuOptions: (document, context, userStore) => {
       // For signatures context (documentos por firmar/firmados/archivados)
-      // we only show actions related to firma and visualización, not gestión de membrete.
       const options = [
-        { label: "Previsualizar", action: "preview" }
+        { label: "Previsualizar", action: "preview" },
+        { label: "Gestionar Membrete", action: "letterhead" }
       ];
 
       // Document relationships management (read-only in signatures context)
@@ -198,10 +233,6 @@ const cardConfigs = {
             {
               label: "Editar Formulario",
               action: "editForm"
-            },
-            {
-              label: "Editar Documento", 
-              action: "editDocument"
             }
           ]
         });
@@ -215,7 +246,7 @@ const cardConfigs = {
           });
         }
       } else if (document.state === 'Progress') {
-        // For in-progress documents, allow completing and show formalize disabled
+        // For in-progress documents, allow only completing the form
         options.push({
           label: "Completar",
           action: "editForm"
@@ -237,8 +268,8 @@ const cardConfigs = {
         });
       }
 
-      // Preview option for completed documents
-      if (document.state === 'Completed') {
+      // Preview option for completed and in-progress documents
+      if (document.state === 'Completed' || document.state === 'Progress') {
         options.push({
           label: "Previsualizar",
           action: "preview"
