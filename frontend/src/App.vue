@@ -5,7 +5,7 @@
 
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
-import { RouterView } from "vue-router";
+import { RouterView, useRouter } from "vue-router";
 import PWAInstallAlert from "@/components/pwa/PWAInstallAlert.vue";
 import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
@@ -14,9 +14,10 @@ import { useIdleLogout } from "@/composables/useIdleLogout";
 // State to control if initial setup was already executed
 const setupComplete = ref(false);
 
-// Store initialization - these references will be initialized when Pinia is ready
+// Store and router initialization - these references will be initialized when Pinia is ready
 const authStore = useAuthStore();
 const userStore = useUserStore();
+const router = useRouter();
 
 // Idle logout controller reference
 const idleController = ref(null);
@@ -28,7 +29,7 @@ const idleController = ref(null);
 const initializeIdleLogout = () => {
   if (authStore.token && !idleController.value) {
     try {
-      const controller = useIdleLogout(); // Default 15 minutes
+      const controller = useIdleLogout({ timeout: 15 * 60 * 1000, router, authStore });
       controller.subscribe();
       idleController.value = controller;
     } catch (error) {

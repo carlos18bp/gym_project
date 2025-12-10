@@ -30,28 +30,50 @@ class Command(BaseCommand):
         num_clients = options['num_clients']
         num_lawyers = options['num_lawyers']
 
-        # Create clients
+        # Create or reuse clients (idempotent by email)
         for i in range(num_clients):
-            client = User.objects.create(
-                email=f'client{i+1}@example.com',
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                role='client'
+            email = f'client{i+1}@example.com'
+            client, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'first_name': fake.first_name(),
+                    'last_name': fake.last_name(),
+                    'role': 'client',
+                },
             )
-            client.set_password('password')
-            client.save()
-            self.stdout.write(self.style.SUCCESS(f'Client created: {client.email}'))
 
-        # Create lawyers
+            if created:
+                client.set_password('password')
+                client.save()
+                self.stdout.write(self.style.SUCCESS(f'Client created: {client.email}'))
+            else:
+                # Ensure the role is at least client for existing test users
+                if client.role != 'client':
+                    client.role = 'client'
+                    client.save(update_fields=['role'])
+                self.stdout.write(self.style.WARNING(f'Client already exists: {client.email}'))
+
+        # Create or reuse lawyers (idempotent by email)
         for i in range(num_lawyers):
-            lawyer = User.objects.create(
-                email=f'lawyer{i+1}@example.com',
-                first_name=fake.first_name(),
-                last_name=fake.last_name(),
-                role='lawyer'
+            email = f'lawyer{i+1}@example.com'
+            lawyer, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'first_name': fake.first_name(),
+                    'last_name': fake.last_name(),
+                    'role': 'lawyer',
+                },
             )
-            lawyer.set_password('password')
-            lawyer.save()
-            self.stdout.write(self.style.SUCCESS(f'Lawyer created: {lawyer.email}'))
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully created {num_clients} clients and {num_lawyers} lawyers'))
+            if created:
+                lawyer.set_password('password')
+                lawyer.save()
+                self.stdout.write(self.style.SUCCESS(f'Lawyer created: {lawyer.email}'))
+            else:
+                # Ensure the role is at least lawyer for existing test users
+                if lawyer.role != 'lawyer':
+                    lawyer.role = 'lawyer'
+                    lawyer.save(update_fields=['role'])
+                self.stdout.write(self.style.WARNING(f'Lawyer already exists: {lawyer.email}'))
+
+        self.stdout.write(self.style.SUCCESS(f'Successfully ensured {num_clients} clients and {num_lawyers} lawyers'))

@@ -140,6 +140,9 @@
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Docs. Asociados
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
             </tr>
@@ -180,14 +183,29 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
+                <button
+                  type="button"
+                  class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                  @click.stop="openModal('relationships', document)"
+                >
+                  Ver asociaciones
+                </button>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <span
-                    v-for="tag in document.tags"
+                    v-for="tag in document.tags?.slice(0, 2)"
                     :key="tag.id"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                     :class="getTagClasses(tag)"
                   >
                     {{ tag.name }}
+                  </span>
+                  <span
+                    v-if="document.tags && document.tags.length > 2"
+                    class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600"
+                  >
+                    +{{ document.tags.length - 2 }}
                   </span>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
@@ -442,7 +460,12 @@ const filteredAndSortedDocuments = computed(() => {
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    docs.sort((a, b) => b.id - a.id);
+    // Sort by updated_at (most recent first)
+    docs.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at);
+      const dateB = new Date(b.updated_at || b.created_at);
+      return dateB - dateA;
+    });
   }
 
   return docs;
@@ -503,11 +526,10 @@ const sortLabel = computed(() => {
   }
 });
 
-// Get client name
+// Get client name (use backend summary field which already resolves full name/email del cliente)
 const getClientName = (document) => {
-  if (document.client_name) return document.client_name;
-  if (document.client) {
-    return `${document.client.first_name || ''} ${document.client.last_name || ''}`.trim();
+  if (document.summary_counterparty) {
+    return document.summary_counterparty;
   }
   return 'Cliente';
 };

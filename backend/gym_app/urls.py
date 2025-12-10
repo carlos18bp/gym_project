@@ -170,11 +170,13 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:document_id>/signatures/', signature_views.get_document_signatures, name='get-document-signatures'),
     path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
+    path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
     path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
     
     # User signature management
     path('dynamic-documents/user/<int:user_id>/pending-documents-full/', signature_views.get_user_pending_documents_full, name='get-user-pending-documents-full'),
     path('dynamic-documents/user/<int:user_id>/signed-documents/', signature_views.get_user_signed_documents, name='get-user-signed-documents'),
+    path('dynamic-documents/user/<int:user_id>/archived-documents/', signature_views.get_user_archived_documents, name='get-user-archived-documents'),
     path('users/<int:user_id>/signature/', signature_views.get_user_signature, name='get-user-signature'),
     
     # Signature PDF generation
@@ -214,10 +216,13 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:pk>/permissions/usability/grant-combined/', permission_views.grant_usability_permissions_combined, name='grant-usability-permissions-combined'),
     path('dynamic-documents/<int:pk>/permissions/revoke-combined/', permission_views.revoke_permissions_combined, name='revoke-permissions-combined'),
     
-    # Letterhead image management
+    # Letterhead image and Word template management per document
     path('dynamic-documents/<int:pk>/letterhead/upload/', document_views.upload_letterhead_image, name='upload-letterhead-image'),
     path('dynamic-documents/<int:pk>/letterhead/', document_views.get_letterhead_image, name='get-letterhead-image'),
     path('dynamic-documents/<int:pk>/letterhead/delete/', document_views.delete_letterhead_image, name='delete-letterhead-image'),
+    path('dynamic-documents/<int:pk>/letterhead/word-template/upload/', document_views.upload_document_letterhead_word_template, name='upload-document-letterhead-word-template'),
+    path('dynamic-documents/<int:pk>/letterhead/word-template/', document_views.get_document_letterhead_word_template, name='get-document-letterhead-word-template'),
+    path('dynamic-documents/<int:pk>/letterhead/word-template/delete/', document_views.delete_document_letterhead_word_template, name='delete-document-letterhead-word-template'),
     
     # Document relationship management
     path('dynamic-documents/<int:document_id>/relationships/', relationship_views.list_document_relationships, name='list-document-relationships'),

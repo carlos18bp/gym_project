@@ -41,6 +41,7 @@
           </button>
           <!-- Continue Button -->
           <button
+            v-if="showEditorActionButton"
             type="submit"
             class="p-2.5 text-sm font-medium rounded-md flex gap-2"
             :class="
@@ -73,6 +74,10 @@ const props = defineProps({
   userRole: {
     type: String,
     default: 'client' // 'client' or 'lawyer'
+  },
+  showEditorButton: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -137,6 +142,16 @@ const isTitleChanged = computed(() =>
   documentTitle.value.trim() !== originalTitle.value.trim() && 
   documentTitle.value.trim().length > 0
 );
+
+// Determine if the main action button (Editar Documento / Continuar) should be shown
+const showEditorActionButton = computed(() => {
+  // When creating a new document, always show the button
+  if (!isEditMode.value) {
+    return true;
+  }
+  // When editing an existing document, respect the prop
+  return props.showEditorButton;
+});
 
 /**
  * Updates only the document title without redirecting to editor.

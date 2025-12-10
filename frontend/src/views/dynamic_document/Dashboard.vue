@@ -133,7 +133,42 @@
 
       <!-- Lawyer Tab Content -->
       <div v-if="activeLawyerTab === 'legal-documents'">
-        <DocumentListLawyer :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        <DocumentListTable 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          :is-loading="documentStore.isLoading"
+          card-type="lawyer"
+          :show-state-filter="true"
+          :show-client-filter="true"
+          :show-associations-column="true"
+          context="legal-documents"
+          @refresh="handleRefresh"
+        />
+      </div>
+
+      <!-- My Documents Tab (Lawyer) -->
+      <div v-if="activeLawyerTab === 'my-documents'">
+        <DocumentListTable 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          :is-loading="documentStore.isLoading"
+          card-type="client"
+          :show-state-filter="true"
+          :show-client-filter="false"
+          :show-associations-column="true"
+          context="my-documents"
+          @refresh="handleRefresh"
+        />
+      </div>
+
+      <!-- Folders Tab (Lawyer) -->
+      <div v-if="activeLawyerTab === 'folders'">
+        <FolderManagement
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @navigate-to-main="handleNavigateToMain"
+        />
       </div>
 
       <!-- Pending Signatures Tab -->
@@ -142,8 +177,10 @@
           state="PendingSignatures" 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
+          @refresh="handleRefresh"
           @open-electronic-signature="handleLawyerSignatureClick"
           @document-fully-signed="handleDocumentFullySigned"
+          @document-rejected="handleDocumentRejected"
         />
       </div>
 
@@ -153,6 +190,18 @@
           state="FullySigned" 
           :searchQuery="searchQuery" 
           :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleLawyerSignatureClick"
+        />
+      </div>
+
+      <!-- Archived Documents Tab -->
+      <div v-if="activeLawyerTab === 'archived-documents'">
+        <SignaturesListTable 
+          state="Archived" 
+          :searchQuery="searchQuery" 
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
           @open-electronic-signature="handleLawyerSignatureClick"
         />
       </div>
@@ -341,12 +390,18 @@
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
         />
-        <DocumentListClientTable
+        <DocumentListTable
           v-else-if="activeTab === 'my-documents'"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
+          :is-loading="documentStore.isLoading"
+          card-type="client"
+          :show-state-filter="true"
+          :show-client-filter="false"
+          :show-associations-column="true"
+          context="my-documents"
           @refresh="handleRefresh"
-        ></DocumentListClientTable>
+        />
         <SignaturesListTable
           v-else-if="activeTab === 'pending-signatures'"
           state="PendingSignatures"
@@ -355,10 +410,19 @@
           @refresh="handleRefresh"
           @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           @document-fully-signed="handleClientDocumentFullySigned"
+          @document-rejected="handleClientDocumentRejected"
         />
         <SignaturesListTable
           v-else-if="activeTab === 'signed-documents'"
           state="FullySigned"
+          :searchQuery="searchQuery"
+          :selectedTags="selectedTags"
+          @refresh="handleRefresh"
+          @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
+        />
+        <SignaturesListTable
+          v-else-if="activeTab === 'archived-documents'"
+          state="Archived"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
@@ -448,12 +512,13 @@ import { showNotification } from "@/shared/notification_message";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import FolderManagement from "@/components/dynamic_document/common/folders/FolderManagement.vue";
 
+// Unified table component
+import DocumentListTable from "@/components/dynamic_document/common/DocumentListTable.vue";
+
 // Client components
-import DocumentListClientTable from "@/components/dynamic_document/client/DocumentListClientTable.vue";
 import UseDocumentTable from "@/components/dynamic_document/client/UseDocumentTable.vue";
 
 // Lawyer components
-import DocumentListLawyer from "@/components/dynamic_document/lawyer/DocumentListLawyer.vue";
 import DocumentFinishedByClientListTable from "@/components/dynamic_document/lawyer/DocumentFinishedByClientListTable.vue";
 import DocumentInProgressByClientListTable from "@/components/dynamic_document/lawyer/DocumentInProgressByClientListTable.vue";
 import SignaturesListTable from "@/components/dynamic_document/common/SignaturesListTable.vue";
@@ -634,6 +699,21 @@ const handleClientDocumentFullySigned = async (document) => {
 };
 
 /**
+ * Handle document rejected event for Lawyer (from signatures list)
+ */
+const handleDocumentRejected = async (document) => {
+  // After rejecting, show archived documents so the user sees the result
+  activeLawyerTab.value = 'archived-documents';
+};
+
+/**
+ * Handle document rejected event for Client/Corporate (from signatures list)
+ */
+const handleClientDocumentRejected = async (document) => {
+  activeTab.value = 'archived-documents';
+};
+
+/**
  * Handle global letterhead button click with basic user restriction
  */
 const handleGlobalLetterheadClick = () => {
@@ -780,14 +860,18 @@ const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
-  { name: 'signed-documents', label: 'Dcs. Firmados' }
+  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'archived-documents', label: 'Dcs. Archivados' }
 ];
 
 // Navigation tabs for lawyer users
 const lawyerNavigationTabs = [
   { name: 'legal-documents', label: 'Minutas' },
+  { name: 'folders', label: 'Carpetas' },
+  { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
   { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'archived-documents', label: 'Dcs. Archivados' },
   { name: 'finished-documents', label: 'Dcs. Clientes' },
   { name: 'in-progress-documents', label: 'Dcs. Clientes en Progreso' },
 ];
@@ -836,10 +920,16 @@ const selectClientTab = (tabName) => {
 
 // Load data when the component is mounted
 onMounted(async () => {
-  // Initialize store data
-  await userStore.init();
-  await documentStore.init();
-  await folderStore.init();
+  // Initialize core data in parallel to reduce initial load time
+  try {
+    await Promise.all([
+      userStore.init(),
+      documentStore.init(),
+      folderStore.init(),
+    ]);
+  } catch (error) {
+    console.error('Error initializing dynamic document dashboard:', error);
+  }
 
   documentStore.selectedDocument = null;
 

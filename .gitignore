@@ -8,5 +8,6 @@ backend/gym_project_env/
 backend/staticfiles/
 gym_project_env/
 backend/venv_gym_backend/
+backend/venv/
 frontend/.cursor/
 backend/debug.log

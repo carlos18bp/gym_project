@@ -466,7 +466,6 @@ const cardConfigs = {
       const baseOptions = [
         { label: "Editar", action: "edit" },
         { label: "Permisos", action: "permissions" },
-        { label: "Administrar Asociaciones", action: "relationships" },
         { label: "Eliminar", action: "delete" },
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
@@ -502,18 +501,22 @@ const cardConfigs = {
       }
 
       // Add signature-related options
+      // Only show for documents in signature workflow or archivados (PendingSignatures, FullySigned, Rejected, Expired)
       if (document.requires_signature) {
-        baseOptions.push({
-          label: "Ver Firmas",
-          action: "viewSignatures"
-        });
-
-        // Add sign option if the lawyer needs to sign
-        if (canSignDocument(document)) {
+        const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
+        if (signatureStates.includes(document.state)) {
           baseOptions.push({
-            label: "Firmar documento",
-            action: "sign"
+            label: "Ver Firmas",
+            action: "viewSignatures"
           });
+
+          // Add sign option if the lawyer needs to sign
+          if (canSignDocument(document)) {
+            baseOptions.push({
+              label: "Firmar documento",
+              action: "sign"
+            });
+          }
         }
       }
 

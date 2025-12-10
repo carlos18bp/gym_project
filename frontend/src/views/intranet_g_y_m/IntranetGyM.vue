@@ -137,10 +137,14 @@
         <!-- List of legal documents -->
         <ul class="flex-grow space-y-2 text-sm rounded-xl font-regular bg-white px-4 py-3 overflow-auto max-h-[500px]">
           <li v-for="(process, index) in filteredProcess" :key="index" class="cursor-pointer hover:bg-blue-100 rounded-lg p-2 transition-colors">
-            <a :href="process.file_url" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 text-primary font-regular">
+            <button
+              type="button"
+              @click="handleDownload(process)"
+              class="flex items-center space-x-2 text-primary font-regular w-full text-left"
+            >
               <DocumentTextIcon class="size-5 flex-shrink-0" />
               <HighlightText :text="process.name" :query="searchTerm" highlightClass="bg-blue-200" />
-            </a>
+            </button>
           </li>
         </ul>
       </div>
@@ -205,6 +209,8 @@ import ModalTransition from "@/components/layouts/animations/ModalTransition.vue
 import { useSearch } from '@/composables/useSearch.js';
 import HighlightText from '@/components/utils/HighlightText.vue';
 import FacturationForm from './FacturationForm.vue';
+import { downloadFile } from '@/shared/document_utils';
+import { showNotification } from '@/shared/notification_message';
 
 // Handlers for modals
 const showFacturationModal = ref(false);
@@ -227,4 +233,96 @@ onMounted(async () => {
   await intranetGymStore.init();
   legalDocuments.value = intranetGymStore.legalDocuments;
 });
+
+/**
+ * Sanitize filename by normalizing special characters
+ * @param {string} filename - Original filename
+ * @returns {string} - Sanitized filename
+ */
+const sanitizeFilename = (filename) => {
+  if (!filename) return 'documento';
+  
+  // Normalize unicode characters (converts á to a, ñ to n, etc.)
+  let sanitized = filename.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // Replace special characters with safe alternatives
+  sanitized = sanitized
+    .replace(/ñ/gi, 'n')
+    .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace any non-alphanumeric (except . _ -) with underscore
+    .replace(/_+/g, '_') // Replace multiple underscores with single
+    .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+  
+  return sanitized || 'documento';
+};
+
+/**
+ * Handle document download using blob to prevent blank screen in PWA.
+ * @param {Object} process - The document/process to download
+ */
+const handleDownload = async (process) => {
+  try {
+    if (!process.file_url) {
+      await showNotification('No se encontró el archivo para descargar', 'error');
+      return;
+    }
+
+    // Extract the last path segment from the URL (may be percent-encoded)
+    const urlParts = process.file_url.split('/');
+    let originalFilenameSegment = urlParts[urlParts.length - 1] || '';
+
+    // Decode percent-encoded characters if present (e.g. %C3%B3)
+    try {
+      originalFilenameSegment = decodeURIComponent(originalFilenameSegment);
+    } catch (e) {
+      // If decoding fails, keep the raw segment
+    }
+
+    // Detect file extension from the (possibly decoded) URL segment
+    const extensionMatch = originalFilenameSegment.match(/\.(docx?|pdf|xlsx?|txt)$/i);
+    const extension = extensionMatch ? extensionMatch[0] : '.docx';
+
+    // Use the human-readable process name as base for the download filename
+    const baseName = process.name || originalFilenameSegment.replace(/\.(docx?|pdf|xlsx?|txt)$/i, '');
+
+    // Sanitize the base name (remove tildes and special characters) and reconstruct filename
+    const sanitizedBaseName = sanitizeFilename(baseName);
+    const filename = `${sanitizedBaseName}${extension}`;
+    
+    // Determine MIME type based on file extension
+    let mimeType = 'application/octet-stream';
+    if (extension.toLowerCase() === '.docx') {
+      mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (extension.toLowerCase() === '.pdf') {
+      mimeType = 'application/pdf';
+    } else if (extension.toLowerCase() === '.doc') {
+      mimeType = 'application/msword';
+    } else if (extension.toLowerCase() === '.xlsx') {
+      mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    } else if (extension.toLowerCase() === '.xls') {
+      mimeType = 'application/vnd.ms-excel';
+    }
+
+    // Use the file_url directly as it's already a full URL from the backend
+    // We need to fetch it as blob to avoid navigation
+    const response = await fetch(process.file_url);
+    if (!response.ok) {
+      throw new Error('Error al descargar el archivo');
+    }
+    
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    const objectUrl = window.URL.createObjectURL(blob);
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
+    
+    await showNotification(`Documento "${process.name}" descargado exitosamente`, 'success');
+  } catch (error) {
+    console.error('Error downloading document:', error);
+    await showNotification('Error al descargar el documento', 'error');
+  }
+};
 </script>

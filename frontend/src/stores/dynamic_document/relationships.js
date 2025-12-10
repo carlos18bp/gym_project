@@ -3,6 +3,7 @@ import {
   create_request,
   delete_request,
 } from "../services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 /**
  * Document Relationships Store
@@ -50,7 +51,6 @@ export const documentRelationshipsActions = {
       const response = await get_request(`dynamic-documents/${documentId}/related-documents/`);
       return response.data || [];
     } catch (error) {
-      console.error('Error fetching related documents:', error);
       throw error;
     }
   },
@@ -80,7 +80,21 @@ export const documentRelationshipsActions = {
   async createDocumentRelationship(relationshipData) {
     try {
       const response = await create_request('dynamic-documents/relationships/create/', relationshipData);
-      return response.data;
+      const rel = response.data;
+
+      // Register activity for creating an association between documents
+      try {
+        const sourceTitle = rel.source_document_title || 'documento origen';
+        const targetTitle = rel.target_document_title || 'documento relacionado';
+        await registerUserActivity(
+          ACTION_TYPES.CREATE,
+          `Relacionaste el documento "${sourceTitle}" con "${targetTitle}"`
+        );
+      } catch (activityError) {
+        console.warn('No se pudo registrar la actividad de asociación:', activityError);
+      }
+
+      return rel;
     } catch (error) {
       console.error('Error creating document relationship:', error);
       throw error;
@@ -96,7 +110,21 @@ export const documentRelationshipsActions = {
     try {
       const response = await delete_request(`dynamic-documents/relationships/${relationshipId}/delete/`);
       // Handle both 200 OK and 204 No Content responses
-      return response.status === 200 || response.status === 204;
+      const success = response.status === 200 || response.status === 204;
+
+      if (success) {
+        // Register activity for removing an association between documents
+        try {
+          await registerUserActivity(
+            ACTION_TYPES.DELETE,
+            "Eliminaste una asociación entre documentos"
+          );
+        } catch (activityError) {
+          console.warn('No se pudo registrar la actividad al eliminar asociación:', activityError);
+        }
+      }
+
+      return success;
     } catch (error) {
       console.error('Error deleting document relationship:', error);
       // If it's a network error but the operation might have succeeded,

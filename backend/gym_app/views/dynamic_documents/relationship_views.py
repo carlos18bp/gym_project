@@ -72,27 +72,26 @@ def list_document_relationships(request, document_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def list_related_documents(request, document_id):
-    """
-    Get all documents related to a specific document.
-    
+    """Get all documents related to a specific document.
+
     Returns the actual documents that are related, filtered by user permissions.
     """
     try:
         document = DynamicDocument.objects.get(pk=document_id)
-        
+
         # Check if user can view this document
         if not document.can_view(request.user):
             return Response(
                 {'detail': 'You do not have permission to view this document.'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         # Get related documents using the model method
         related_documents = document.get_related_documents(user=request.user)
-        
-        serializer = DynamicDocumentSerializer(related_documents, many=True)
+
+        serializer = DynamicDocumentSerializer(related_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
     except DynamicDocument.DoesNotExist:
         return Response(
             {'detail': 'Document not found.'}, 
@@ -120,10 +119,13 @@ def list_available_documents_for_relationship(request, document_id):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get documents that belong to the user and are completed
+        # Get documents that belong to the user and are in final or pending signature states
+        # Business rule (updated): allow Completed, FullySigned, and PendingSignatures documents
+        # to be used when creating new relationships.
+        # PendingSignatures is included because these are formalized documents waiting for signatures.
         user_documents = DynamicDocument.objects.filter(
             Q(created_by=request.user) | Q(assigned_to=request.user),
-            state='Completed'
+            state__in=['Completed', 'FullySigned', 'PendingSignatures']
         )
         
         available_documents = []
@@ -146,7 +148,7 @@ def list_available_documents_for_relationship(request, document_id):
             if not existing_relationship:
                 available_documents.append(doc)
         
-        serializer = DynamicDocumentSerializer(available_documents, many=True)
+        serializer = DynamicDocumentSerializer(available_documents, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
         
     except DynamicDocument.DoesNotExist:
@@ -159,14 +161,11 @@ def list_available_documents_for_relationship(request, document_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_document_relationship(request):
-    """
-    Create a new relationship between two documents.
-    
-    Expected payload:
-    {
-        "source_document": 1,
-        "target_document": 2
-    }
+    """Create a new relationship between two documents.
+
+    Expected payload::
+
+        {"source_document": 1, "target_document": 2}
     """
     serializer = DocumentRelationshipSerializer(data=request.data, context={'request': request})
     
@@ -205,15 +204,22 @@ def create_document_relationship(request):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if source_document.state != 'Completed':
+        # Only allow relating documents in final or pending signature states
+        # Business rule (updated): allow Completed, FullySigned, and PendingSignatures documents
+        # PendingSignatures is allowed because these are formalized documents waiting for signatures
+        allowed_states = ['Completed', 'FullySigned', 'PendingSignatures']
+        source_is_valid = source_document.state in allowed_states
+        target_is_valid = target_document.state in allowed_states
+
+        if not source_is_valid:
             return Response(
-                {'detail': 'You can only relate completed documents.'}, 
+                {'detail': f'You can only relate documents in final state (Completed, FullySigned, or PendingSignatures). Source document is in state: {source_document.state}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        if target_document.state != 'Completed':
+
+        if not target_is_valid:
             return Response(
-                {'detail': 'You can only relate completed documents.'}, 
+                {'detail': f'You can only relate documents in final state (Completed, FullySigned, or PendingSignatures). Target document is in state: {target_document.state}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         

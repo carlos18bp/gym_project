@@ -686,6 +686,18 @@ const loadCurrentWordTemplate = async () => {
   try {
     const response = await store.getGlobalLetterheadWordTemplate('blob');
 
+    // No global template configured
+    if (!response) {
+      hasWordTemplate.value = false;
+      if (currentWordTemplateUrl.value) {
+        URL.revokeObjectURL(currentWordTemplateUrl.value);
+      }
+      currentWordTemplateUrl.value = null;
+      currentWordTemplateName.value = '';
+      currentWordTemplateSize.value = null;
+      return;
+    }
+
     if (response && response.data) {
       hasWordTemplate.value = true;
 
@@ -708,17 +720,7 @@ const loadCurrentWordTemplate = async () => {
       currentWordTemplateSize.value = response.data.size || null;
     }
   } catch (error) {
-    if (error.response?.status === 404) {
-      hasWordTemplate.value = false;
-      if (currentWordTemplateUrl.value) {
-        URL.revokeObjectURL(currentWordTemplateUrl.value);
-      }
-      currentWordTemplateUrl.value = null;
-      currentWordTemplateName.value = '';
-      currentWordTemplateSize.value = null;
-    } else {
-      console.error('Error loading global Word template:', error);
-    }
+    console.error('Error loading global Word template:', error);
   }
 };
 

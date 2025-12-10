@@ -94,12 +94,18 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex flex-wrap gap-1">
                         <span
-                          v-for="tag in document.tags"
+                          v-for="tag in document.tags?.slice(0, 2)"
                           :key="tag.id"
                           class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                           :class="getTagClasses(tag)"
                         >
                           {{ tag.name }}
+                        </span>
+                        <span
+                          v-if="document.tags && document.tags.length > 2"
+                          class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600"
+                        >
+                          +{{ document.tags.length - 2 }}
                         </span>
                         <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                       </div>

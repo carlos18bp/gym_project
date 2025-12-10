@@ -3,7 +3,7 @@ from gym_app.models import (
     Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, 
     LegalDiscipline, LegalRequestFiles, DynamicDocument, 
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
-    RecentDocument
+    RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost
 )
 
 class Command(BaseCommand):
@@ -69,8 +69,35 @@ class Command(BaseCommand):
             update.delete()
             self.stdout.write(self.style.SUCCESS(f'LegalUpdate "{update}" deleted'))
 
-        # Delete clients and lawyers
-        for user in User.objects.filter(role__in=['client', 'lawyer']):
+        # Delete organization posts
+        for post in OrganizationPost.objects.all():
+            post.delete()
+            self.stdout.write(self.style.SUCCESS(f'OrganizationPost "{post}" deleted'))
+
+        # Delete organization memberships
+        for membership in OrganizationMembership.objects.all():
+            membership.delete()
+            self.stdout.write(self.style.SUCCESS(f'OrganizationMembership "{membership}" deleted'))
+
+        # Delete organization invitations
+        for invitation in OrganizationInvitation.objects.all():
+            invitation.delete()
+            self.stdout.write(self.style.SUCCESS(f'OrganizationInvitation "{invitation}" deleted'))
+
+        # Delete organizations
+        for organization in Organization.objects.all():
+            organization.delete()
+            self.stdout.write(self.style.SUCCESS(f'Organization "{organization}" deleted'))
+
+        # Delete clients and lawyers, but keep fixed test users and admin.superuser
+        protected_emails = {
+            'admin@gmail.com',
+            'core.paginaswebscolombia@gmail.com',
+            'carlos18bp@gmail.com',
+            'info.montreal.studios@gmail.com',
+        }
+
+        for user in User.objects.filter(role__in=['client', 'lawyer']).exclude(email__in=protected_emails):
             user.delete()
             self.stdout.write(self.style.SUCCESS(f'User "{user}" deleted'))
 

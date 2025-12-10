@@ -550,18 +550,33 @@ export const documentActions = {
    * @returns {Promise<Object>} - Template response
    */
   async getGlobalLetterheadWordTemplate(responseType = 'blob') {
+    // Use axios directly so we can treat 404 (no template) as a normal case
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const token = localStorage.getItem('token');
+
+    const headers = {
+      'X-CSRFToken': csrfToken,
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
     try {
-      const response = await get_request(
-        `user/letterhead/word-template/`,
-        responseType
+      const response = await axios.get(
+        `/api/user/letterhead/word-template/`,
+        {
+          headers,
+          responseType,
+          // Treat 404 as expected (no template configured)
+          validateStatus: (status) => status === 200 || status === 404,
+        }
       );
+
+      if (response.status === 404) {
+        return null;
+      }
 
       return response;
     } catch (error) {
-      // 404 is expected when user doesn't have a template configured
-      if (error.response?.status !== 404) {
-        console.error(`Error fetching global Word letterhead template:`, error);
-      }
+      console.error(`Error fetching global Word letterhead template:`, error);
       throw error;
     }
   },
@@ -586,6 +601,98 @@ export const documentActions = {
       return response;
     } catch (error) {
       console.error(`Error deleting global Word letterhead template:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Upload Word letterhead template (.docx) for a specific dynamic document
+   *
+   * @param {number|string} documentId - ID of the document
+   * @param {File} templateFile - DOCX file to upload as document Word letterhead template
+   * @returns {Promise<Object>} - Upload response with template info
+   */
+  async uploadDocumentLetterheadWordTemplate(documentId, templateFile) {
+    try {
+      const formData = new FormData();
+      formData.append('template', templateFile);
+
+      const response = await upload_file_request(
+        `dynamic-documents/${documentId}/letterhead/word-template/upload/`,
+        formData
+      );
+
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Subiste plantilla Word de membrete para documento ID ${documentId}`
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`Error uploading Word letterhead template for document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get Word letterhead template (.docx) for a specific dynamic document
+   *
+   * @param {number|string} documentId - ID of the document
+   * @param {string} responseType - Axios response type (default: 'blob')
+   * @returns {Promise<Object>} - Template response
+   */
+  async getDocumentLetterheadWordTemplate(documentId, responseType = 'blob') {
+    // Use axios directly so we can treat 404 (no template) as a normal case
+    const csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+    const token = localStorage.getItem('token');
+
+    const headers = {
+      'X-CSRFToken': csrfToken,
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+
+    try {
+      const response = await axios.get(
+        `/api/dynamic-documents/${documentId}/letterhead/word-template/`,
+        {
+          headers,
+          responseType,
+          // Treat 404 as expected (no template configured)
+          validateStatus: (status) => status === 200 || status === 404,
+        }
+      );
+
+      if (response.status === 404) {
+        return null;
+      }
+
+      return response;
+    } catch (error) {
+      console.error(`Error fetching Word letterhead template for document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete Word letterhead template (.docx) for a specific dynamic document
+   *
+   * @param {number|string} documentId - ID of the document
+   * @returns {Promise<Object>} - Delete response
+   */
+  async deleteDocumentLetterheadWordTemplate(documentId) {
+    try {
+      const response = await delete_request(
+        `dynamic-documents/${documentId}/letterhead/word-template/delete/`
+      );
+
+      await registerUserActivity(
+        ACTION_TYPES.DELETE,
+        `Eliminaste plantilla Word de membrete para documento ID ${documentId}`
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`Error deleting Word letterhead template for document ID ${documentId}:`, error);
       throw error;
     }
   },

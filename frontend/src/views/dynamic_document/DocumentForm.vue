@@ -59,17 +59,41 @@
             rows="4"
           ></textarea>
 
-          <!-- Number input -->
-          <input
-            v-if="variable.field_type === 'number'"
-            type="number"
-            v-model="variable.value"
-            :id="'field-' + index"
-            step="any"
-            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary"
-            :class="{ 'ring-red-300': validationErrors[index] }"
-            @input="validateField(variable, index)"
-          />
+          <!-- Number input with currency -->
+          <div v-if="variable.field_type === 'number'" class="relative">
+            <div class="relative rounded-md shadow-sm">
+              <!-- Currency prefix if exists -->
+              <div 
+                v-if="variable.currency" 
+                class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+              >
+                <span class="text-gray-500 sm:text-sm font-medium">{{ variable.currency }}</span>
+              </div>
+              
+              <!-- Number input -->
+              <input
+                type="text"
+                v-model="variable.value"
+                :id="'field-' + index"
+                :class="[
+                  'block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-secondary',
+                  variable.currency ? 'pl-16' : 'pl-3',
+                  validationErrors[index] ? 'ring-red-300' : ''
+                ]"
+                :placeholder="variable.currency ? '0' : 'Ingrese un valor'"
+                @input="handleNumericInput(variable, index, $event)"
+                @blur="formatDisplayValue(variable)"
+              />
+            </div>
+            
+            <!-- Formatted preview hint -->
+            <p
+              v-if="variable.value && !validationErrors[index] && getNumericValue(variable.value)"
+              class="mt-1.5 text-xs text-gray-500 italic pl-1"
+            >
+              {{ formatNumericValueForDisplay(variable) }}
+            </p>
+          </div>
 
           <!-- Date input -->
           <input
@@ -123,34 +147,48 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="mt-6 flex space-x-4">
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 pt-6 border-t border-gray-200">
+        <!-- Save Progress button (only in non-formalize mode) -->
         <button
           v-if="route.params.mode !== 'formalize'"
           type="button"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-secondary text-white"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
           @click="saveDocument('Progress')"
         >
-          {{ isEditMode ? "Guardar cambios como Borrador" : "Guardar progreso" }}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          <span>{{ isEditMode ? "Guardar cambios como Borrador" : "Guardar progreso" }}</span>
         </button>
+        
+        <!-- Complete/Formalize button -->
         <button
           type="button"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200"
           :class="
             !allFieldsComplete || (route.params.mode === 'formalize' && selectedSigners.length === 0)
-              ? 'bg-gray-200 text-secondary border-2 border-dashed border-secondary cursor-not-allowed bg-opacity-50'
-              : 'bg-secondary text-white'
+              ? 'bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
           "
           :disabled="!allFieldsComplete || (route.params.mode === 'formalize' && selectedSigners.length === 0)"
           @click="saveDocument(route.params.mode === 'formalize' ? 'Published' : 'Completed')"
         >
-          {{ route.params.mode === 'formalize' ? 'Formalizar y Agregar Firmas' : (isEditMode ? "Completar y Generar" : "Generar") }}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{{ route.params.mode === 'formalize' ? 'Formalizar y Agregar Firmas' : (isEditMode ? "Completar y Generar" : "Generar") }}</span>
         </button>
+        
+        <!-- Cancel button -->
         <button
           @click="handleBack()"
           type="button"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 sm:ml-auto"
         >
-          Cancelar
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span>Cancelar</span>
         </button>
       </div>
 
@@ -209,12 +247,61 @@
             </li>
           </ul>
         </div>
+
+        <!-- Document Associations Management -->
+        <div class="mt-6 pt-6 border-t border-gray-200">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h4 class="text-sm font-medium text-gray-700">Asociaciones de documentos</h4>
+              <p class="text-xs text-gray-500 mt-1">Vincula este documento con otros documentos ya firmados</p>
+            </div>
+            <button
+              type="button"
+              @click="openAssociationsModal"
+              class="inline-flex items-center px-4 py-2 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Gestionar asociaciones
+            </button>
+          </div>
+          <p v-if="documentAssociationsCount > 0" class="text-sm text-gray-600">
+            <span class="font-semibold">{{ documentAssociationsCount }}</span> documento(s) asociado(s)
+          </p>
+          <p v-else class="text-sm text-gray-400">
+            Sin asociaciones
+          </p>
+        </div>
       </div>
     </div>
   </div>
   <div v-else class="text-center text-gray-500">
     <p>Cargando documento...</p>
   </div>
+
+  <!-- Document Relationships Modal -->
+  <teleport to="body">
+    <DocumentRelationshipsModal
+      v-if="showAssociationsModal && document"
+      :is-open="showAssociationsModal"
+      :document="document"
+      :filter-fully-signed="true"
+      :force-relate-tab="route.params.mode === 'formalize'"
+      :defer-save="route.params.mode === 'formalize'"
+      :pending-relationships="pendingRelationships"
+      @close="closeAssociationsModal"
+      @refresh="refreshAssociations"
+      @update-pending="updatePendingRelationships"
+    />
+  </teleport>
+
+  <!-- Global document preview modal (used by relationships modal "Ver documento" buttons) -->
+  <DocumentPreviewModal
+    :isVisible="showPreviewModal"
+    :documentData="previewDocumentData"
+    @close="showPreviewModal = false"
+  />
 </template>
 
 <script setup>
@@ -224,6 +311,9 @@ import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";
+import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 import Swal from "sweetalert2";
 
 const route = useRoute();
@@ -238,6 +328,9 @@ const showUserResults = ref(false);
 const filteredUsers = ref([]);
 const selectedSigners = ref([]);
 const validationErrors = ref([]);
+const showAssociationsModal = ref(false);
+const documentAssociationsCount = ref(0);
+const pendingRelationships = ref([]);  // Relaciones temporales en modo formalizar
 
 // Detect edit mode based on the presence of a document ID
 const isEditMode = ref(false);
@@ -441,6 +534,86 @@ const allFieldsComplete = computed(() => {
 });
 
 /**
+ * Get numeric value from a formatted string (removes commas, dots, etc.)
+ */
+const getNumericValue = (value) => {
+  if (!value) return null;
+  const cleaned = String(value).replace(/[^0-9.-]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? null : parsed;
+};
+
+/**
+ * Format numeric value for display with thousands separators
+ */
+const formatNumericValueForDisplay = (variable) => {
+  const numValue = getNumericValue(variable.value);
+  if (numValue === null) return '';
+  
+  try {
+    const formatted = new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(numValue);
+    
+    return variable.currency 
+      ? `${variable.currency} $ ${formatted}` 
+      : formatted;
+  } catch (e) {
+    return variable.value;
+  }
+};
+
+/**
+ * Handle numeric input with live formatting
+ */
+const handleNumericInput = (variable, index, event) => {
+  const input = event.target.value;
+  
+  // Allow empty input
+  if (!input || input.trim() === '') {
+    variable.value = '';
+    validateField(variable, index);
+    return;
+  }
+  
+  // Extract only numbers and decimal point
+  const cleaned = input.replace(/[^0-9.]/g, '');
+  
+  // Prevent multiple decimal points
+  const parts = cleaned.split('.');
+  let sanitized = parts[0];
+  if (parts.length > 1) {
+    sanitized += '.' + parts.slice(1).join('');
+  }
+  
+  // Update the value
+  variable.value = sanitized;
+  validateField(variable, index);
+};
+
+/**
+ * Format display value when user leaves the field
+ */
+const formatDisplayValue = (variable) => {
+  if (!variable.value) return;
+  
+  const numValue = getNumericValue(variable.value);
+  if (numValue !== null) {
+    // Format with thousands separators
+    try {
+      variable.value = new Intl.NumberFormat('es-CO', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+        useGrouping: true
+      }).format(numValue);
+    } catch (e) {
+      // Keep original value if formatting fails
+    }
+  }
+};
+
+/**
  * Saves the document based on its mode (edit or create).
  *
  * @param {String} state - The state of the document (e.g., "Completed", "Draft").
@@ -470,14 +643,25 @@ const saveDocument = async (state = 'Draft') => {
       state: finalState,
       // Assign to current user if creating from template or if document doesn't have assigned_to
       assigned_to: (isClientCreatingFromTemplate || !document.value.assigned_to) && userId ? userId : document.value.assigned_to,
-      variables: document.value.variables.map((variable) => ({
-        name_en: variable.name_en,
-        name_es: variable.name_es,
-        tooltip: variable.tooltip || "",
-        field_type: variable.field_type,
-        value: variable.value,
-        select_options: variable.field_type === 'select' ? variable.select_options : null
-      })),
+      variables: document.value.variables.map((variable) => {
+        // For numeric fields, clean the formatted value before sending to backend
+        let cleanValue = variable.value;
+        if (variable.field_type === 'number' && variable.value) {
+          const numValue = getNumericValue(variable.value);
+          cleanValue = numValue !== null ? String(numValue) : variable.value;
+        }
+        
+        return {
+          name_en: variable.name_en,
+          name_es: variable.name_es,
+          tooltip: variable.tooltip || "",
+          field_type: variable.field_type,
+          value: cleanValue,
+          select_options: variable.field_type === 'select' ? variable.select_options : null,
+          summary_field: variable.summary_field || 'none',
+          currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
+        };
+      }),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',
       signers: route.params.mode === 'formalize' ? (() => {
@@ -501,6 +685,45 @@ const saveDocument = async (state = 'Draft') => {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
         documentId = response.id;
+        
+        // Create pending relationships for the new document
+        if (pendingRelationships.value.length > 0) {
+          try {
+            const { documentRelationshipsActions } = await import('@/stores/dynamic_document/relationships');
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const targetDocId of pendingRelationships.value) {
+              try {
+                await documentRelationshipsActions.createDocumentRelationship({
+                  source_document: documentId,
+                  target_document: targetDocId
+                });
+                successCount++;
+              } catch (relError) {
+                console.error(`Error creating relationship with document ${targetDocId}:`, relError);
+                failCount++;
+              }
+            }
+            
+            if (successCount > 0) {
+              console.log(`Successfully created ${successCount} relationship(s)`);
+            }
+            if (failCount > 0) {
+              console.warn(`Failed to create ${failCount} relationship(s)`);
+              await showNotification(
+                `Documento formalizado, pero ${failCount} asociación(es) no pudieron crearse`,
+                'warning'
+              );
+            }
+          } catch (relError) {
+            console.error('Error importing relationships module:', relError);
+            await showNotification(
+              'Documento formalizado, pero las asociaciones no pudieron crearse',
+              'warning'
+            );
+          }
+        }
       }
     }
     // For other modes, update or create as needed
@@ -559,5 +782,50 @@ const saveDocument = async (state = 'Draft') => {
  */
 const handleBack = () => {
   router.push("/dynamic_document_dashboard");
+};
+
+/**
+ * Opens the associations modal
+ */
+const openAssociationsModal = () => {
+  showAssociationsModal.value = true;
+};
+
+/**
+ * Closes the associations modal
+ */
+const closeAssociationsModal = () => {
+  showAssociationsModal.value = false;
+};
+
+/**
+ * Updates pending relationships in formalize mode
+ */
+const updatePendingRelationships = (relationships) => {
+  pendingRelationships.value = relationships;
+  // Update count for display
+  documentAssociationsCount.value = relationships.length;
+};
+
+/**
+ * Refreshes associations count after changes
+ */
+const refreshAssociations = async () => {
+  // In formalize mode, just update the count from pending relationships
+  if (route.params.mode === 'formalize') {
+    documentAssociationsCount.value = pendingRelationships.value.length;
+    return;
+  }
+  
+  if (document.value?.id) {
+    try {
+      // Fetch updated relationships count using the relationships store
+      const { documentRelationshipsActions } = await import('@/stores/dynamic_document/relationships');
+      const relatedDocs = await documentRelationshipsActions.getRelatedDocuments(document.value.id);
+      documentAssociationsCount.value = relatedDocs?.length || 0;
+    } catch (error) {
+      console.error('Error refreshing associations:', error);
+    }
+  }
 };
 </script>

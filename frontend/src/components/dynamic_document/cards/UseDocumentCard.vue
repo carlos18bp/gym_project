@@ -103,6 +103,10 @@ const props = defineProps({
   showMenuOptions: {
     type: Boolean,
     default: null // null = auto-detect, true = force show, false = force hide
+  },
+  additionalClasses: {
+    type: String,
+    default: ''
   }
 });
 
@@ -125,7 +129,10 @@ const indicatorColor = computed(() => purpleColor.dark);
 
 // Card additional classes with purple border - overrides BaseDocumentCard green border
 const cardAdditionalClasses = computed(() => {
-  return 'group !border-purple-400 !bg-purple-50/50 !shadow-purple-100';
+  const base = 'group !border-purple-400 !bg-purple-50/50 !shadow-purple-100';
+  return props.additionalClasses
+    ? `${base} ${props.additionalClasses}`
+    : base;
 });
 
 // Menu options - always show menu with "Usar" and "Previsualización" options

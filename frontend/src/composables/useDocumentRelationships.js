@@ -34,7 +34,7 @@ import {
   documentRelationshipsActions
 } from '@/stores/dynamic_document/relationships'
 
-export function useDocumentRelationships(documentId) {
+export function useDocumentRelationships(documentId, options = {}) {
   // Reactive state
   const availableDocuments = ref([])
   const relatedDocuments = ref([])
@@ -48,17 +48,37 @@ export function useDocumentRelationships(documentId) {
 
   /**
    * Load documents available for creating relationships
+   * @param {Object} filterOptions - Optional filter criteria (e.g., { filterFullySigned: true })
    */
-  const loadAvailableDocuments = async () => {
+  const loadAvailableDocuments = async (filterOptions = {}) => {
     if (!documentId) return
 
     isLoadingAvailable.value = true
     try {
-      availableDocuments.value = await documentRelationshipsActions.getAvailableDocumentsForRelationship(documentId)
+      let docs = await documentRelationshipsActions.getAvailableDocumentsForRelationship(documentId)
+      
+      // Apply filter for Completed documents if requested
+      // Only show Completed documents for relationship creation in "Mis Documentos"
+      if (filterOptions.filterCompleted || options.filterCompleted) {
+        docs = docs.filter(doc => doc.state === 'Completed')
+      }
+      // Legacy support: also filter FullySigned if explicitly requested
+      else if (filterOptions.filterFullySigned || options.filterFullySigned) {
+        docs = docs.filter(doc => doc.state === 'FullySigned')
+      }
+      
+      availableDocuments.value = docs
     } catch (error) {
-      console.error('Error loading available documents:', error)
-      availableDocuments.value = []
-      throw error
+      // Handle 404 gracefully - document may have been deleted
+      if (error.response && error.response.status === 404) {
+        console.warn(`Document ${documentId} not found when loading available documents`)
+        availableDocuments.value = []
+        // Don't throw on 404, just set empty array
+      } else {
+        console.error('Error loading available documents:', error)
+        availableDocuments.value = []
+        throw error
+      }
     } finally {
       isLoadingAvailable.value = false
     }
@@ -72,11 +92,18 @@ export function useDocumentRelationships(documentId) {
 
     isLoadingRelated.value = true
     try {
-      relatedDocuments.value = await documentRelationshipsActions.getRelatedDocuments(documentId)
+      const docs = await documentRelationshipsActions.getRelatedDocuments(documentId)
+      relatedDocuments.value = docs
     } catch (error) {
-      console.error('Error loading related documents:', error)
-      relatedDocuments.value = []
-      throw error
+      // Handle 404 gracefully - document may have been deleted
+      if (error.response && error.response.status === 404) {
+        console.warn(`Document ${documentId} not found when loading related documents`)
+        relatedDocuments.value = []
+        // Don't throw on 404, just set empty array
+      } else {
+        relatedDocuments.value = []
+        throw error
+      }
     } finally {
       isLoadingRelated.value = false
     }
@@ -92,9 +119,16 @@ export function useDocumentRelationships(documentId) {
     try {
       relationships.value = await documentRelationshipsActions.getDocumentRelationships(documentId)
     } catch (error) {
-      console.error('Error loading relationships:', error)
-      relationships.value = []
-      throw error
+      // Handle 404 gracefully - document may have been deleted
+      if (error.response && error.response.status === 404) {
+        console.warn(`Document ${documentId} not found when loading relationships`)
+        relationships.value = []
+        // Don't throw on 404, just set empty array
+      } else {
+        console.error('Error loading relationships:', error)
+        relationships.value = []
+        throw error
+      }
     } finally {
       isLoadingRelationships.value = false
     }

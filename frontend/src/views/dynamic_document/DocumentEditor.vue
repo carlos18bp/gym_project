@@ -22,9 +22,10 @@ const route = useRoute();
 const store = useDynamicDocumentStore();
 const userStore = useUserStore();
 
-// Detect if user is a client (vs lawyer)
+// Detect if user is a client (vs lawyer) based solely on role
 const isClient = computed(() => {
-  return route.path.includes('/client/editor/') || userStore.currentUser?.role !== 'lawyer';
+  const role = userStore.currentUser?.role;
+  return role === 'client' || role === 'basic' || role === 'corporate_client';
 });
 
 // Detect if we're creating from a template (creator route) vs editing existing document (editor route)
@@ -143,7 +144,9 @@ const syncVariables = (variables) => {
       tooltip: existingVariable?.tooltip || "",
       field_type: existingVariable?.field_type || "input",
       value: existingVariable?.value || "",
-      select_options: existingVariable?.field_type === 'select' ? (existingVariable?.select_options || []) : null
+      select_options: existingVariable?.field_type === 'select' ? (existingVariable?.select_options || []) : null,
+      summary_field: existingVariable?.summary_field || 'none',
+      currency: existingVariable?.currency || null,
     };
   });
   store.selectedDocument.variables = updatedVariables;
@@ -213,7 +216,9 @@ const saveDocumentContent = async () => {
             tooltip: v.tooltip || '',
             field_type: v.field_type || 'input',
             value: v.value || '',
-            select_options: v.select_options || null
+            select_options: v.select_options || null,
+            summary_field: v.summary_field || 'none',
+            currency: v.summary_field === 'value' ? (v.currency || null) : null,
           })) : [],
           tag_ids: Array.isArray(document.tags) ? document.tags.map(t => {
             const tagId = typeof t === 'object' ? t.id : t;
@@ -457,9 +462,7 @@ function enforceCarlito(content) {
  */
 const editorConfig = computed(() => ({
   language: "es",
-  plugins: isClient.value 
-    ? "lists link image table code wordcount autolink searchreplace noneditable"
-    : "lists link image table code wordcount autolink searchreplace", 
+  plugins: "lists link image table code wordcount autolink searchreplace",
   menubar: "",
   toolbar: isClient.value 
     ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"

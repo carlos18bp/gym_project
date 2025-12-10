@@ -155,6 +155,16 @@
                 Estado Firma
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Información clave
+              </th>
+              <th
+                v-if="props.state === 'PendingSignatures' || props.state === 'FullySigned'"
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Docs. Asociados
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
             </tr>
@@ -192,14 +202,58 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="hasSummary(document)"
+                    type="button"
+                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    @click.stop="openSummaryModal(document)"
+                  >
+                    Ver detalle
+                  </button>
+                  <span v-else class="text-gray-400 text-xs">
+                    Sin clasificación
+                  </span>
+                </div>
+              </td>
+              <td
+                v-if="props.state === 'PendingSignatures' || props.state === 'FullySigned'"
+                class="px-6 py-4 whitespace-nowrap"
+              >
+                <button
+                  type="button"
+                  :disabled="!document.relationships_count || document.relationships_count === 0"
+                  :class="[
+                    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                    document.relationships_count && document.relationships_count > 0
+                      ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
+                      : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  @click.stop="openModal('relationships', document)"
+                >
+                  <span v-if="document.relationships_count && document.relationships_count > 0">
+                    Ver asociaciones ({{ document.relationships_count }})
+                  </span>
+                  <span v-else>
+                    Sin asociaciones
+                  </span>
+                </button>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
                   <span
-                    v-for="tag in document.tags"
+                    v-for="tag in document.tags?.slice(0, 2)"
                     :key="tag.id"
                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                     :class="getTagClasses(tag)"
                   >
                     {{ tag.name }}
+                  </span>
+                  <span
+                    v-if="document.tags && document.tags.length > 2"
+                    class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600"
+                  >
+                    +{{ document.tags.length - 2 }}
                   </span>
                   <span v-if="!document.tags || document.tags.length === 0" class="text-sm text-gray-400">-</span>
                 </div>
@@ -322,6 +376,7 @@
         :document-id="activeModals.signatures.document?.id"
         @close="closeModal('signatures')"
         @refresh="emit('refresh')"
+        @open-electronic-signature="emit('open-electronic-signature')"
       />
       
       <LetterheadModal
@@ -329,10 +384,9 @@
         :is-visible="activeModals.letterhead.isOpen"
         :document="activeModals.letterhead.document"
         @close="closeModal('letterhead')"
-        @uploaded="emit('refresh')"
-        @deleted="emit('refresh')"
+        @refresh="emit('refresh')"
       />
-      
+
       <DocumentActionsModal
         v-if="showActionsModal"
         :is-visible="showActionsModal"
@@ -343,6 +397,108 @@
         @close="showActionsModal = false"
         @action="handleModalAction"
       />
+
+      <DocumentRelationshipsModal
+        v-if="activeModals.relationships.isOpen"
+        :is-open="activeModals.relationships.isOpen"
+        :document="activeModals.relationships.document"
+        :readonly="props.state === 'PendingSignatures' || props.state === 'FullySigned'"
+        @close="closeModal('relationships')"
+        @refresh="emit('refresh')"
+      />
+
+      <DocumentSummaryModal
+        v-if="showSummaryModal"
+        :is-visible="showSummaryModal"
+        :document="summaryDocument"
+        @close="showSummaryModal = false"
+      />
+
+      <!-- Reject Document Modal -->
+      <div
+        v-if="showRejectModal && documentToReject"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      >
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+          <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-900">Rechazar documento</h2>
+            <button
+              type="button"
+              class="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              @click="closeRejectModal"
+            >
+              <XMarkIcon class="h-5 w-5" />
+            </button>
+          </div>
+          <div class="px-4 py-4 space-y-3 text-sm text-gray-700">
+            <p>
+              Estás a punto de rechazar el documento
+              <span class="font-semibold">"{{ documentToReject.title }}"</span>.
+            </p>
+            <p class="text-xs text-gray-500">
+              El rechazo devolverá el documento al abogado creador para que pueda revisarlo, editarlo o archivarlo.
+            </p>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">
+                Motivo del rechazo (opcional)
+              </label>
+              <textarea
+                v-model="rejectComment"
+                rows="4"
+                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-secondary focus:border-transparent resize-none"
+                placeholder="Describe brevemente por qué no estás de acuerdo con el documento..."
+              ></textarea>
+            </div>
+          </div>
+          <div class="px-4 py-3 border-t border-gray-100 flex justify-end gap-2 bg-gray-50">
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100"
+              @click="closeRejectModal"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              @click="confirmRejectDocument"
+            >
+              Rechazar documento
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rejection Reason Modal -->
+      <div
+        v-if="showRejectionReasonModal"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40"
+      >
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+          <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-900">Motivo del rechazo</h2>
+            <button
+              type="button"
+              class="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              @click="showRejectionReasonModal = false"
+            >
+              <XMarkIcon class="h-5 w-5" />
+            </button>
+          </div>
+          <div class="px-4 py-4 text-sm text-gray-700 whitespace-pre-line">
+            {{ rejectionReasonText || 'No se encontró un motivo de rechazo para este documento.' }}
+          </div>
+          <div class="px-4 py-3 border-t border-gray-100 flex justify-end bg-gray-50">
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100"
+              @click="showRejectionReasonModal = false"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
     </teleport>
   </div>
 </template>
@@ -365,21 +521,24 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
-import { get_request } from "@/stores/services/request_http";
+import { get_request, create_request } from "@/stores/services/request_http";
 import { showNotification } from "@/shared/notification_message";
+import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
 import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/menuOptionsHelper";
 import { useCardModals, useDocumentActions, SendDocumentModal, DocumentSignaturesModal } from "@/components/dynamic_document/cards";
-import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
+import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 
 // Props
 const props = defineProps({
   state: {
     type: String,
     required: true,
-    validator: (value) => ['PendingSignatures', 'FullySigned'].includes(value)
+    validator: (value) => ['PendingSignatures', 'FullySigned', 'Archived'].includes(value)
   },
   searchQuery: {
     type: String,
@@ -392,7 +551,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['refresh', 'document-fully-signed', 'open-electronic-signature']);
+const emit = defineEmits(['refresh', 'document-fully-signed', 'document-rejected', 'open-electronic-signature']);
 
 // Store instances
 const userStore = useUserStore();
@@ -416,21 +575,31 @@ const tagSearchQuery = ref("");
 const filterByTag = ref(null);
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
+const showSummaryModal = ref(false);
+const summaryDocument = ref(null);
 
 // Pagination state
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
 const emptyMessage = computed(() => {
-  return props.state === 'PendingSignatures'
-    ? 'No tienes documentos pendientes por firmar'
-    : 'No tienes documentos firmados';
+  if (props.state === 'PendingSignatures') {
+    return 'No tienes documentos pendientes por firmar';
+  }
+  if (props.state === 'FullySigned') {
+    return 'No tienes documentos firmados';
+  }
+  return 'No tienes documentos archivados';
 });
 
 const getDetailedEmptyMessage = computed(() => {
-  return props.state === 'PendingSignatures'
-    ? 'Cuando tengas documentos que requieran tu firma electrónica aparecerán aquí.'
-    : 'Una vez que firmes documentos electrónicamente, aparecerán aquí.';
+  if (props.state === 'PendingSignatures') {
+    return 'Cuando tengas documentos que requieran tu firma electrónica aparecerán aquí.';
+  }
+  if (props.state === 'FullySigned') {
+    return 'Una vez que firmes documentos electrónicamente, aparecerán aquí.';
+  }
+  return 'Aquí aparecerán los documentos rechazados o expirados relacionados contigo.';
 });
 
 const filteredDocuments = computed(() => {
@@ -449,13 +618,20 @@ const filteredDocuments = computed(() => {
         const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
         return isCreator || isSigner;
       });
-    } else {
+    } else if (props.state === 'FullySigned') {
       storeDocuments = documentStore.fullySignedDocuments.filter(doc => {
         // Show documents where lawyer is creator OR signer
         const isCreator = doc.created_by === userId;
         const isSigner = doc.signatures?.some(sig => 
           sig.signer_email === userEmail && sig.signed
         );
+        return isCreator || isSigner;
+      });
+    } else if (props.state === 'Archived') {
+      storeDocuments = documentStore.documents.filter(doc => {
+        if (doc.state !== 'Rejected' && doc.state !== 'Expired') return false;
+        const isCreator = doc.created_by === userId;
+        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
         return isCreator || isSigner;
       });
     }
@@ -468,13 +644,20 @@ const filteredDocuments = computed(() => {
         const isCreator = doc.created_by === userId;
         return isSigner || isCreator;
       });
-    } else {
+    } else if (props.state === 'FullySigned') {
       storeDocuments = documentStore.documents.filter(doc => {
         if (doc.state !== 'FullySigned') return false;
         // Show documents where user signed OR created the document
         const isSigner = doc.signatures?.some(sig => 
           sig.signer_email === userEmail && sig.signed
         );
+        const isCreator = doc.created_by === userId;
+        return isSigner || isCreator;
+      });
+    } else if (props.state === 'Archived') {
+      storeDocuments = documentStore.documents.filter(doc => {
+        if (doc.state !== 'Rejected' && doc.state !== 'Expired') return false;
+        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
         const isCreator = doc.created_by === userId;
         return isSigner || isCreator;
       });
@@ -512,7 +695,12 @@ const filteredAndSortedDocuments = computed(() => {
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    docs.sort((a, b) => b.id - a.id);
+    // Sort by updated_at (most recent first)
+    docs.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at);
+      const dateB = new Date(b.updated_at || b.created_at);
+      return dateB - dateA;
+    });
   }
 
   return docs;
@@ -616,6 +804,15 @@ const getSignatureStatusClasses = (document) => {
   if (props.state === 'FullySigned') {
     return 'bg-green-100 text-green-700 border border-green-200';
   }
+  if (props.state === 'Archived') {
+    if (document.state === 'Rejected') {
+      return 'bg-red-100 text-red-700 border border-red-200';
+    }
+    if (document.state === 'Expired') {
+      return 'bg-gray-100 text-gray-700 border border-gray-200';
+    }
+    return 'bg-gray-100 text-gray-700 border border-gray-200';
+  }
   return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
 };
 
@@ -623,6 +820,15 @@ const getSignatureStatusClasses = (document) => {
 const getSignatureStatusText = (document) => {
   if (props.state === 'FullySigned') {
     return 'Firmado';
+  }
+  if (props.state === 'Archived') {
+    if (document.state === 'Rejected') {
+      return 'Rechazado';
+    }
+    if (document.state === 'Expired') {
+      return 'Expirado';
+    }
+    return 'Archivado';
   }
   return 'Pendiente';
 };
@@ -756,6 +962,11 @@ const exportDocuments = () => {
 // Handle document click
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
+const showRejectModal = ref(false);
+const documentToReject = ref(null);
+const rejectComment = ref('');
+const showRejectionReasonModal = ref(false);
+const rejectionReasonText = ref('');
 
 const handleDocumentClick = (document) => {
   // Open actions modal instead of navigating
@@ -786,6 +997,10 @@ const handleMenuAction = async (action, document) => {
         openModal('letterhead', document);
         break;
         
+      case "relationships":
+        openModal('relationships', document);
+        break;
+        
       case "viewSignatures":
         openModal('signatures', document);
         break;
@@ -793,6 +1008,23 @@ const handleMenuAction = async (action, document) => {
       case "sign":
         await signDocument(document, openModal);
         break;
+        
+      case "reject":
+        documentToReject.value = document;
+        rejectComment.value = '';
+        showRejectModal.value = true;
+        break;
+
+      case "viewRejectionReason": {
+        const sigWithComment = (document.signatures || []).find(sig => sig.rejection_comment);
+        if (sigWithComment && sigWithComment.rejection_comment) {
+          rejectionReasonText.value = sigWithComment.rejection_comment;
+          showRejectionReasonModal.value = true;
+        } else {
+          await showNotification('Este documento no tiene un motivo de rechazo registrado.', 'info');
+        }
+        break;
+      }
         
       case "downloadSignedDocument":
         await downloadSignedDocument(document);
@@ -812,6 +1044,49 @@ const handleMenuAction = async (action, document) => {
 
 const handleSignDocument = (document) => {
   router.push({ name: 'sign_document', params: { id: document.id } });
+};
+
+const closeRejectModal = () => {
+  showRejectModal.value = false;
+  documentToReject.value = null;
+  rejectComment.value = '';
+};
+
+const confirmRejectDocument = async () => {
+  if (!documentToReject.value) {
+    return;
+  }
+  const rejectedDocument = documentToReject.value;
+  const documentId = rejectedDocument.id;
+  const userId = userStore.currentUser.id;
+  
+  try {
+    const url = `dynamic-documents/${documentId}/reject/${userId}/`;
+    const payload = rejectComment.value ? { comment: rejectComment.value } : {};
+    const response = await create_request(url, payload);
+    if (response && (response.status === 200 || response.status === 201)) {
+      // Close modal and switch tab IMMEDIATELY for instant UX
+      closeRejectModal();
+      emit('document-rejected', rejectedDocument);
+      
+      // Run notification, activity registration, and data refresh in parallel (non-blocking)
+      Promise.all([
+        showNotification('Documento rechazado correctamente.', 'success'),
+        registerUserActivity(
+          ACTION_TYPES.FINISH,
+          `Rechazaste el documento "${rejectedDocument.title}"`
+        ).catch(error => console.warn('No se pudo registrar la actividad de rechazo:', error)),
+        documentStore.init(true)
+      ]).then(() => {
+        emit('refresh');
+      });
+    } else {
+      await showNotification('Error al rechazar el documento.', 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting document:', error);
+    await showNotification('Error al rechazar el documento.', 'error');
+  }
 };
 
 // Refresh documents
@@ -840,6 +1115,37 @@ onMounted(async () => {
 defineExpose({
   refresh: handleRefresh
 });
+
+// Summary modal functions
+const openSummaryModal = (document) => {
+  summaryDocument.value = document;
+  showSummaryModal.value = true;
+};
+
+const getSummaryCounterparty = (document) => {
+  if (!document.summary_counterparty) return null;
+  const variable = document.variables?.find(v => v.summary_field === 'counterparty');
+  return variable?.value || document.summary_counterparty;
+};
+
+const getSummaryValue = (document) => {
+  if (!document.summary_value) return null;
+  const value = parseFloat(document.summary_value);
+  if (isNaN(value)) return null;
+  return value;
+};
+
+const hasSummary = (document) => {
+  return Boolean(
+    getSummaryCounterparty(document) ||
+    document.summary_object ||
+    getSummaryValue(document) ||
+    document.summary_term ||
+    document.summary_subscription_date ||
+    document.summary_start_date ||
+    document.summary_end_date
+  );
+};
 
 // Watch for changes
 watch(

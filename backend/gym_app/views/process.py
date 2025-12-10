@@ -91,11 +91,27 @@ def create_process(request):
 
         # Create and add stages to process
         for stage_data in stages_data:
-            if 'status' in stage_data:
-                stage = Stage.objects.create(
-                    status=stage_data.get('status')
-                )
-                process.stages.add(stage)
+            status = stage_data.get('status')
+            if not status:
+                continue
+
+            # Parse optional date for the stage; default to today if not provided
+            date_value = stage_data.get('date')
+            if date_value:
+                try:
+                    # Expecting ISO format YYYY-MM-DD from frontend
+                    from datetime import date as _date_cls
+                    stage_date = _date_cls.fromisoformat(date_value)
+                except Exception:
+                    stage_date = timezone.now().date()
+            else:
+                stage_date = timezone.now().date()
+
+            stage = Stage.objects.create(
+                status=status,
+                date=stage_date,
+            )
+            process.stages.add(stage)
 
         # Save process with associated stages
         process.save()
@@ -187,10 +203,23 @@ def update_process(request, pk):
     
     # Create and add new stages from frontend data
     for stage_data in stages_data:
-        if 'status' in stage_data and stage_data['status']:
-            stage_status = stage_data['status']
-            new_stage = Stage.objects.create(status=stage_status)
-            process.stages.add(new_stage)
+        stage_status = stage_data.get('status')
+        if not stage_status:
+            continue
+
+        # Parse optional date from frontend; default to today if missing/invalid
+        date_value = stage_data.get('date')
+        if date_value:
+            try:
+                from datetime import date as _date_cls
+                stage_date = _date_cls.fromisoformat(date_value)
+            except Exception:
+                stage_date = timezone.now().date()
+        else:
+            stage_date = timezone.now().date()
+
+        new_stage = Stage.objects.create(status=stage_status, date=stage_date)
+        process.stages.add(new_stage)
     
     # Handle case files
     case_file_ids = main_data.get('caseFileIds', [])

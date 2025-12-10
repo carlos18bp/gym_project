@@ -144,7 +144,7 @@
                   v-if="activeDocumentCategory === 'my-documents'"
                   :document="document"
                   :highlighted-doc-id="null"
-                  :show-tags="true"
+                  :show-tags="false"
                   :show-client-name="false"
                   :menu-options="[]"
                   :disable-internal-actions="true"
@@ -152,11 +152,11 @@
                   @click="toggleDocumentSelection(document.id)"
                 />
 
-                <!-- Use Documents -->
+                <!-- Use Documents (Minutas) -->
                 <UseDocumentCard
                   v-if="activeDocumentCategory === 'use-documents'"
                   :document="document"
-                  :show-tags="true"
+                  :show-tags="false"
                   :menu-options="[]"
                   :show-menu-options="false"
                   :disable-internal-actions="true"
@@ -169,7 +169,7 @@
                   v-if="activeDocumentCategory === 'pending-signatures'"
                   :document="document"
                   :highlighted-doc-id="null"
-                  :show-tags="true"
+                  :show-tags="false"
                   :menu-options="[]"
                   :disable-internal-actions="true"
                   :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
@@ -181,12 +181,22 @@
                   v-if="activeDocumentCategory === 'signed-documents'"
                   :document="document"
                   :highlighted-doc-id="null"
-                  :show-tags="true"
+                  :show-tags="false"
                   :menu-options="[]"
                   :disable-internal-actions="true"
                   :additional-classes="selectedDocuments.includes(document.id) ? 'ring-2 ring-primary bg-primary-50' : ''"
                   @click="toggleDocumentSelection(document.id)"
                 />
+
+                <!-- Etiquetas button -->
+                <button
+                  v-if="document.tags && document.tags.length > 0"
+                  type="button"
+                  class="absolute bottom-2 right-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 inline-flex items-center gap-1"
+                  @click.stop="openTagsModal(document)"
+                >
+                  <span>Etiquetas</span>
+                </button>
 
                 <!-- Selection indicator -->
                 <div
@@ -260,27 +270,81 @@
             </div>
           </div>
         </div>
+
+        <!-- Tags List Modal for selected document -->
+        <div
+          v-if="showTagsModal && tagsModalDocument"
+          class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
+        >
+          <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <div class="flex items-center gap-2">
+                <DocumentIcon class="h-5 w-5 text-gray-500" />
+                <h2 class="text-sm font-semibold text-gray-900">Etiquetas del documento</h2>
+              </div>
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100"
+                @click="closeTagsModal"
+              >
+                <XMarkIcon class="h-5 w-5" />
+              </button>
+            </div>
+            <div class="px-4 py-3 border-b border-gray-100 text-xs text-gray-500">
+              <span class="font-medium text-gray-700">Documento:</span>
+              <span class="ml-1">{{ tagsModalDocument.title || 'Sin título' }}</span>
+            </div>
+            <div class="px-4 py-3 overflow-y-auto">
+              <div
+                v-if="!tagsModalDocument.tags || tagsModalDocument.tags.length === 0"
+                class="text-sm text-gray-500"
+              >
+                Este documento no tiene etiquetas.
+              </div>
+              <ul v-else class="space-y-2 text-sm">
+                <li
+                  v-for="tag in tagsModalDocument.tags"
+                  :key="tag.id"
+                  class="flex items-center justify-between gap-2"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                      :class="getTagClasses(tag)"
+                    >
+                      {{ tag.name }}
+                    </span>
+                  </div>
+                  <span v-if="tag.description" class="text-xs text-gray-500 truncate max-w-[8rem]">
+                    {{ tag.description }}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div class="px-4 py-3 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                @click="closeTagsModal"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </ModalTransition>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { useDynamicDocumentStore } from '@/stores/dynamic_document';
-import { useUserStore } from '@/stores/auth/user';
-
-// Icons
-import { 
-  XMarkIcon, 
-  DocumentIcon,
-  CheckIcon 
-} from '@heroicons/vue/24/outline';
-
-// Components
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
+import { XMarkIcon, CheckIcon, DocumentIcon } from '@heroicons/vue/24/outline';
 import ModalTransition from '@/components/layouts/animations/ModalTransition.vue';
 import { DocumentCard, UseDocumentCard, SignatureDocumentCard } from '@/components/dynamic_document/cards';
 import TagFilter from '@/components/dynamic_document/common/TagFilter.vue';
+import { useDynamicDocumentStore } from '@/stores/dynamic_document';
+import { useUserStore } from '@/stores/auth/user';
 
 // Props
 const props = defineProps({
@@ -307,11 +371,13 @@ const selectedTags = ref([]);
 const activeDocumentCategory = ref('my-documents');
 const isSubmitting = ref(false);
 const showCategoryDropdown = ref(false);
+const showTagsModal = ref(false);
+const tagsModalDocument = ref(null);
 
 // Document categories for the add documents modal - matching Dashboard.vue tabs
 const documentCategories = [
   { name: 'my-documents', label: 'Mis Documentos' },
-  { name: 'use-documents', label: 'Formatos Disponibles' },
+  { name: 'use-documents', label: 'Minutas' },
   { name: 'pending-signatures', label: 'Firmas Pendientes' },
   { name: 'signed-documents', label: 'Documentos Firmados' }
 ];
@@ -345,7 +411,7 @@ const areAllFilteredSelected = computed(() => {
   return filteredDocs.every(doc => selectedDocuments.value.includes(doc.id));
 });
 
-// Methods - Base method to get available documents by category (same as before)
+// Base method to get available documents by category (same as before)
 const getAvailableDocumentsByCategory = (category) => {
   if (!props.folder) return [];
   
@@ -390,7 +456,7 @@ const getAvailableDocumentsByCategory = (category) => {
   return availableDocuments.filter(doc => !folderDocumentIds.includes(doc.id));
 };
 
-// New method that applies tag filtering to available documents
+// Method that applies tag filtering to available documents
 const getFilteredDocumentsByCategory = (category) => {
   const availableDocuments = getAvailableDocumentsByCategory(category);
   
@@ -470,4 +536,27 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
-</script> 
+
+// Simple tag color classes similar to other tag modals
+const getTagClasses = (tag) => {
+  const colors = [
+    'bg-blue-100 text-blue-700',
+    'bg-purple-100 text-purple-700',
+    'bg-pink-100 text-pink-700',
+    'bg-yellow-100 text-yellow-700',
+    'bg-green-100 text-green-700'
+  ];
+  const index = tag.id % colors.length;
+  return colors[index];
+};
+
+const openTagsModal = (document) => {
+  tagsModalDocument.value = document;
+  showTagsModal.value = true;
+};
+
+const closeTagsModal = () => {
+  showTagsModal.value = false;
+  tagsModalDocument.value = null;
+};
+</script>

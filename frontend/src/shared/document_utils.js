@@ -9,23 +9,39 @@ export const previewDocumentData = ref({ title: "", content: "" });
 const { registerView } = useRecentViews();
 
 /**
- * Opens the preview modal with processed document content.
- * @param {Object} document - The document to preview.
+ * Returns the document content with variables replaced by their values
+ * for final states (Completed, PendingSignatures, FullySigned).
+ * For other states, returns the raw content.
+ * @param {Object} document - The document whose content should be processed.
+ * @returns {string} Processed HTML content
  */
-export const openPreviewModal = (document) => {
-  let processedContent = document.content;
-  
+export const getProcessedDocumentContent = (document) => {
+  if (!document) return "";
+
+  let processedContent = document.content || "";
+
   // Only process variables for specific states
   const statesToProcess = ['Completed', 'PendingSignatures', 'FullySigned'];
   if (statesToProcess.includes(document.state) && document.variables && Array.isArray(document.variables)) {
     document.variables.forEach((variable) => {
-      const regex = new RegExp(`{{\s*${variable.name_en}\s*}}`, "g");
+      if (!variable || !variable.name_en) return;
+      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
       processedContent = processedContent.replace(regex, variable.value || "");
     });
   }
 
+  return processedContent;
+};
+
+/**
+ * Opens the preview modal with processed document content.
+ * @param {Object} document - The document to preview.
+ */
+export const openPreviewModal = (document) => {
+  const processedContent = getProcessedDocumentContent(document);
+
   previewDocumentData.value = {
-    title: document.title,
+    title: document?.title || "",
     content: processedContent,
   };
   showPreviewModal.value = true;

@@ -75,6 +75,51 @@
             </select>
           </div>
 
+          <!-- Summary field classification selector -->
+          <div class="col-span-4">
+            <label
+              :for="'summary_field_' + index"
+              class="block text-sm font-medium leading-6 text-primary"
+            >
+              Clasificar
+            </label>
+            <select
+              v-model="variable.summary_field"
+              :id="'summary_field_' + index"
+              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+              @change="() => handleSummaryFieldChange(variable)"
+            >
+              <option value="none">Sin clasificar</option>
+              <option value="counterparty">Usuario / Contraparte</option>
+              <option value="object">Objeto</option>
+              <option value="value">Valor</option>
+              <option value="term">Plazo</option>
+              <option value="subscription_date">Fecha suscripción</option>
+              <option value="start_date">Fecha inicio</option>
+              <option value="end_date">Fecha fin</option>
+            </select>
+          </div>
+
+          <!-- Currency selector (only for Valor classification) -->
+          <div v-if="variable.summary_field === 'value'" class="col-span-4">
+            <label
+              :for="'currency_' + index"
+              class="block text-sm font-medium leading-6 text-primary"
+            >
+              Moneda
+            </label>
+            <select
+              v-model="variable.currency"
+              :id="'currency_' + index"
+              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+            >
+              <option value="">Sin moneda</option>
+              <option value="COP">COP</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+
           <!-- Select options configuration -->
           <div v-if="variable.field_type === 'select'" class="col-span-12 mt-2">
             <label class="block text-sm font-medium leading-6 text-primary">
@@ -104,25 +149,41 @@
       />
 
       <!-- Action Buttons -->
-      <div class="mt-6 flex space-x-4">
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 pt-6 border-t border-gray-200">
+        <!-- Save as Draft button -->
         <button
           @click="validateAndSave('Draft')"
-          class="p-2.5 text-sm font-medium rounded-md bg-secondary text-white"
+          type="button"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
         >
-          Guardar como borrador
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          <span>Guardar como borrador</span>
         </button>
+        
+        <!-- Publish button -->
         <button
           @click="validateAndSave('Published')"
-          class="p-2.5 text-sm font-medium rounded-md bg-gray-200 text-secondary border-2"
+          type="button"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
         >
-          Publicar
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Publicar</span>
         </button>
+        
+        <!-- Cancel button -->
         <button
           @click="handleBack()"
           type="button"
-          class="p-2.5 text-sm font-medium rounded-md flex gap-2 bg-red-600/80 text-white cursor-pointer"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 sm:ml-auto"
         >
-          Cancelar
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span>Cancelar</span>
         </button>
       </div>
     </div>
@@ -190,6 +251,15 @@ onMounted(async () => {
         // Initialize the text representation
         variable.select_options_text = variable.select_options.join(', ');
       }
+
+      // Ensure summary_field and currency have sensible defaults
+      if (!variable.summary_field) {
+        variable.summary_field = 'none';
+      }
+      if (variable.summary_field !== 'value') {
+        // Currency only makes sense when variable is classified as Valor
+        variable.currency = variable.currency || null;
+      }
     });
   }
 });
@@ -236,6 +306,39 @@ const handleSelectOptionsInput = (event, variable) => {
   variable.select_options_text = value;
   // Convert text to array for select_options
   variable.select_options = value ? value.split(',').map(option => option.trim()).filter(option => option !== '') : [];
+};
+
+/**
+ * Handle summary field classification changes for a variable.
+ * Ensures only one variable per classification and adjusts field type when needed.
+ */
+const handleSummaryFieldChange = (changedVariable) => {
+  if (!store.selectedDocument?.variables) return;
+
+  const newValue = changedVariable.summary_field || 'none';
+
+  // Ensure uniqueness: only one variable per summary_field (except 'none')
+  if (newValue && newValue !== 'none') {
+    store.selectedDocument.variables.forEach(variable => {
+      if (variable !== changedVariable && variable.summary_field === newValue) {
+        variable.summary_field = 'none';
+      }
+    });
+  }
+
+  // Auto-adjust field type for specific classifications
+  if (newValue === 'value' && changedVariable.field_type !== 'number') {
+    changedVariable.field_type = 'number';
+  }
+
+  if ((newValue === 'subscription_date' || newValue === 'start_date' || newValue === 'end_date') && changedVariable.field_type !== 'date') {
+    changedVariable.field_type = 'date';
+  }
+
+  // Reset currency when classification is not value
+  if (newValue !== 'value') {
+    changedVariable.currency = null;
+  }
 };
 
 /**
@@ -335,7 +438,9 @@ const saveDocument = async (state) => {
         tooltip: variable.tooltip || "",
         field_type: variable.field_type,
         value: variable.value,
-        select_options: variable.field_type === 'select' ? variable.select_options : null
+        select_options: variable.field_type === 'select' ? variable.select_options : null,
+        summary_field: variable.summary_field || 'none',
+        currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
       })),
       // Add selected tags to the document data using tag_ids as expected by backend
       tag_ids: tagIds,

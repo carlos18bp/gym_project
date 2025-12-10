@@ -359,6 +359,9 @@ export const useProcessStore = defineStore("process", {
       const results = [];
 
       for (const file of files) {
+        if (!file || !file.file || typeof file.file === 'string') {
+          continue;
+        }
         try {
           const formData = new FormData();
           formData.append("file", file.file); // Attach the file

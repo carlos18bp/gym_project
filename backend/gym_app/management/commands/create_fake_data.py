@@ -20,6 +20,7 @@ class Command(BaseCommand):
         num_legal_requests = options['num_legal_requests']
         
         call_command('create_clients_lawyers')
+        call_command('create_organizations')
         call_command('create_legal_requests', '--number_of_requests', num_legal_requests)
         call_command('create_processes', '--number_of_processes', number_of_records)
         call_command('create_dynamic_documents', '--num_documents', num_documents)

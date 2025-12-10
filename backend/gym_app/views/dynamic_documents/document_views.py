@@ -75,7 +75,7 @@ def list_dynamic_documents(request):
     Get a list of all dynamic documents.
     """
     documents = DynamicDocument.objects.prefetch_related('variables', 'tags').all()
-    serializer = DynamicDocumentSerializer(documents, many=True)
+    serializer = DynamicDocumentSerializer(documents, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
@@ -414,9 +414,18 @@ def download_dynamic_document_word(request, pk):
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
-        # Create Word document, optionally using the user's global Word template
+        # Create Word document, optionally using a Word letterhead template
+        # Priority:
+        # 1. Document-specific Word template (document.letterhead_word_template)
+        # 2. User's global Word template (request.user.letterhead_word_template)
+        # 3. Blank document
         use_word_template = False
-        word_template = getattr(request.user, 'letterhead_word_template', None)
+
+        # First, try document-specific template
+        word_template = getattr(document, 'letterhead_word_template', None)
+        if not word_template:
+            # Fall back to user's global template
+            word_template = getattr(request.user, 'letterhead_word_template', None)
 
         if word_template and hasattr(word_template, 'path') and os.path.exists(word_template.path):
             try:
@@ -454,7 +463,9 @@ def download_dynamic_document_word(request, pk):
         first_body_paragraph_used = False
 
         # Process HTML content
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "hr"]):
+        # Include both <p> and <div> tags as paragraph blocks so that
+        # templates that wrap content in <div> elements are still rendered.
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 heading = doc.add_heading(tag.get_text().strip(), level=level)
@@ -463,7 +474,7 @@ def download_dynamic_document_word(request, pk):
                 for run in heading.runs:
                     run.font.name = font_name
 
-            elif tag.name == "p":
+            elif tag.name in ["p", "div"]:
                 if tag.get_text().strip() == "":
                     continue
 
@@ -738,18 +749,9 @@ def update_recent_document(request, document_id):
 @permission_classes([IsAuthenticated])
 @require_document_usability('usability')
 def upload_letterhead_image(request, pk):
-    """
-    Upload a letterhead image for a specific document.
-    
-    Accepts a PNG image file and saves it to the document's letterhead_image field.
-    The image should be in 8.5:14 ratio (612x792 pixels recommended) for best results.
-    
-    Parameters:
-        request (HttpRequest): The request object containing the image file
-        pk (int): The primary key of the document
-    
-    Returns:
-        Response: Success message with image info or error details
+    """Upload a PNG letterhead image for a specific document.
+
+    This image will be used as background when generating PDFs for this document.
     """
     try:
         document = DynamicDocument.objects.get(pk=pk)
@@ -850,17 +852,7 @@ def upload_letterhead_image(request, pk):
 @permission_classes([IsAuthenticated])
 @require_document_visibility
 def get_letterhead_image(request, pk):
-    """
-    Get the letterhead image for a specific document.
-    
-    Parameters:
-        request (HttpRequest): The request object
-        pk (int): The primary key of the document
-    
-    Returns:
-        FileResponse: The letterhead image file
-        Response: Error message if image not found
-    """
+    """Get the PNG letterhead image for a specific document."""
     try:
         document = DynamicDocument.objects.get(pk=pk)
         
@@ -902,16 +894,7 @@ def get_letterhead_image(request, pk):
 @permission_classes([IsAuthenticated])
 @require_document_usability('usability')
 def delete_letterhead_image(request, pk):
-    """
-    Delete the letterhead image for a specific document.
-    
-    Parameters:
-        request (HttpRequest): The request object
-        pk (int): The primary key of the document
-    
-    Returns:
-        Response: Success or error message
-    """
+    """Delete the PNG letterhead image for a specific document."""
     try:
         document = DynamicDocument.objects.get(pk=pk)
         
@@ -946,6 +929,155 @@ def delete_letterhead_image(request, pk):
     except Exception as e:
         return Response(
             {'detail': f'Error al eliminar la imagen: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_document_usability('usability')
+def upload_document_letterhead_word_template(request, pk):
+    """Upload a Word letterhead template (.docx) for a specific document.
+
+    This template has priority over the user's global Word letterhead template
+    when generating Word documents for this DynamicDocument.
+    """
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+
+        if 'template' not in request.FILES:
+            return Response(
+                {'detail': 'Se requiere un archivo de plantilla (.docx).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        template_file = request.FILES['template']
+
+        # Validate extension
+        if not template_file.name.lower().endswith('.docx'):
+            return Response(
+                {'detail': 'Solo se permiten archivos .docx para la plantilla de Word.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024
+        if template_file.size > max_size:
+            return Response(
+                {'detail': f'El archivo es demasiado grande. Tamaño máximo permitido: {max_size // (1024*1024)}MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Delete previous template if exists
+        if document.letterhead_word_template:
+            try:
+                if os.path.exists(document.letterhead_word_template.path):
+                    os.remove(document.letterhead_word_template.path)
+            except Exception:
+                pass
+
+        # Save new template
+        document.letterhead_word_template = template_file
+        document.save(update_fields=['letterhead_word_template'])
+
+        response_data = {
+            'message': 'Plantilla Word de membrete del documento subida exitosamente.',
+            'document_id': document.id,
+            'template_info': {
+                'filename': template_file.name,
+                'size_bytes': template_file.size,
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al subir la plantilla: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@require_document_visibility
+def get_document_letterhead_word_template(request, pk):
+    """Get the Word letterhead template (.docx) for a specific document."""
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+
+        if not document.letterhead_word_template:
+            return Response(
+                {'detail': 'Este documento no tiene una plantilla Word de membrete configurada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not os.path.exists(document.letterhead_word_template.path):
+            return Response(
+                {'detail': 'El archivo de plantilla no se encuentra en el servidor.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return FileResponse(
+            open(document.letterhead_word_template.path, 'rb'),
+            as_attachment=False,
+            filename=os.path.basename(document.letterhead_word_template.name),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al obtener la plantilla: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@require_document_usability('usability')
+def delete_document_letterhead_word_template(request, pk):
+    """Delete the Word letterhead template (.docx) for a specific document."""
+    try:
+        document = DynamicDocument.objects.get(pk=pk)
+
+        if not document.letterhead_word_template:
+            return Response(
+                {'detail': 'Este documento no tiene una plantilla Word de membrete para eliminar.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            if os.path.exists(document.letterhead_word_template.path):
+                os.remove(document.letterhead_word_template.path)
+        except Exception:
+            pass
+
+        document.letterhead_word_template = None
+        document.save(update_fields=['letterhead_word_template'])
+
+        return Response(
+            {'message': 'Plantilla Word de membrete del documento eliminada exitosamente.'},
+            status=status.HTTP_200_OK
+        )
+
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Error al eliminar la plantilla: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

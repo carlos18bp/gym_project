@@ -1,3 +1,14 @@
+<!--
+@deprecated This component is deprecated. Use DocumentListTable from @/components/dynamic_document/common/DocumentListTable.vue instead.
+Migration example:
+  <DocumentListTable
+    card-type="lawyer"
+    :show-state-filter="true"
+    :show-client-filter="true"
+    :show-associations-column="true"
+    context="legal-documents"
+  />
+-->
 <template>
   <div>
     <!-- Filter Bar -->
@@ -179,6 +190,12 @@
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Información clave
+              </th>
+              <th v-if="!isMinutasTab" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Docs. Asociados
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Etiqueta
               </th>
             </tr>
@@ -214,6 +231,41 @@
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getStatusBadgeClasses(document)">
                   {{ getStatusText(document) }}
                 </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="hasSummary(document)"
+                    type="button"
+                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                    @click.stop="openSummaryModal(document)"
+                  >
+                    Ver detalle
+                  </button>
+                  <span v-else class="text-gray-400 text-xs">
+                    Sin clasificación
+                  </span>
+                </div>
+              </td>
+              <td v-if="!isMinutasTab" class="px-6 py-4 whitespace-nowrap">
+                <button
+                  type="button"
+                  :disabled="!document.relationships_count || document.relationships_count === 0"
+                  :class="[
+                    'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                    document.relationships_count && document.relationships_count > 0
+                      ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
+                      : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                  ]"
+                  @click.stop="openModal('relationships', document)"
+                >
+                  <span v-if="document.relationships_count && document.relationships_count > 0">
+                    Ver asociaciones ({{ document.relationships_count }})
+                  </span>
+                  <span v-else>
+                    Sin asociaciones
+                  </span>
+                </button>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-wrap gap-1">
@@ -378,7 +430,7 @@
         :is-open="activeModals.relationships.isOpen"
         :document="activeModals.relationships.document"
         @close="closeModal('relationships')"
-        @refresh="emit('refresh')"
+        @update-count="handleUpdateRelationshipCount"
       />
       
       <DocumentActionsModal
@@ -390,6 +442,13 @@
         :user-store="userStore"
         @close="showActionsModal = false"
         @action="handleModalAction"
+      />
+
+      <DocumentSummaryModal
+        v-if="showSummaryModal"
+        :is-visible="showSummaryModal"
+        :document="summaryDocument"
+        @close="showSummaryModal = false"
       />
     </teleport>
   </div>
@@ -425,6 +484,7 @@ import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -474,6 +534,15 @@ const sortBy = ref('recent');
 
 // Selection state
 const selectedDocuments = ref([]);
+
+// Summary modal state
+const showSummaryModal = ref(false);
+const summaryDocument = ref(null);
+
+const openSummaryModal = (document) => {
+  summaryDocument.value = document;
+  showSummaryModal.value = true;
+};
 
 // Pagination state
 const currentPage = ref(1);
@@ -540,6 +609,40 @@ const getTagClasses = (tag) => {
   ];
   const index = tag.id % colors.length;
   return colors[index];
+};
+
+// --- Helpers for summary fields (clasificación) ---
+const getSummaryCounterparty = (document) => {
+  return document.summary_counterparty || '';
+};
+
+const getSummaryValue = (document) => {
+  if (!document.summary_value) return '';
+  const currency = document.summary_value_currency || '';
+  if (currency) {
+    return `${currency} ${document.summary_value}`;
+  }
+  return document.summary_value;
+};
+
+const formatDate = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    return value.split('T')[0];
+  }
+  return value;
+};
+
+const hasSummary = (document) => {
+  return Boolean(
+    getSummaryCounterparty(document) ||
+    document.summary_object ||
+    getSummaryValue(document) ||
+    document.summary_term ||
+    document.summary_subscription_date ||
+    document.summary_start_date ||
+    document.summary_end_date
+  );
 };
 
 /**
@@ -684,6 +787,17 @@ const filteredDocuments = computed(() => {
   return lawyerManagedNonFullySignedDocuments.value;
 });
 
+// Determine if we're showing the "Minutas" tab (Draft/Published documents only)
+// Minutas should not have the associations column
+const isMinutasTab = computed(() => {
+  // If all documents in the current view are Draft or Published, it's the Minutas tab
+  const docs = filteredDocuments.value;
+  if (docs.length === 0) return false;
+  
+  // Check if all documents are Draft or Published
+  return docs.every(doc => doc.state === 'Draft' || doc.state === 'Published');
+});
+
 // Filtered and sorted documents
 const filteredAndSortedDocuments = computed(() => {
   let documents = [...filteredDocuments.value];
@@ -718,7 +832,12 @@ const filteredAndSortedDocuments = computed(() => {
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
-    documents.sort((a, b) => b.id - a.id);
+    // Sort by updated_at (most recent first)
+    documents.sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at);
+      const dateB = new Date(b.updated_at || b.created_at);
+      return dateB - dateA;
+    });
   }
 
   return documents;
@@ -928,6 +1047,14 @@ const forceHighlight = (documentId) => {
 
 // Expose the forceHighlight function globally for use by other components
 window.forceDocumentHighlight = forceHighlight;
+
+// Handle relationship count update (optimistic update)
+const handleUpdateRelationshipCount = ({ documentId, count }) => {
+  const document = documentStore.documents.find(doc => doc.id === documentId);
+  if (document) {
+    document.relationships_count = count;
+  }
+};
 
 // Initialize data when component mounts
 onMounted(async () => {

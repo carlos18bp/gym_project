@@ -9,102 +9,106 @@
   <div class="py-10 px-4 sm:px-6 lg:px-8">
     <div
       v-if="process"
-      class="p-5 rounded-lg border-2 border-stroke bg-terciary"
+      class="space-y-6"
     >
-      <!-- Card header -->
-      <div class="col-span-2">
-        <div class="flex items-center justify-between gap-3">
+      <!-- Card: process header and information -->
+      <div class="p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <!-- Header with case type and client avatar -->
+        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
           <div class="flex items-center gap-3">
-            <img src="@/assets/icons/file-01.svg" class="h-6 w-6" />
-            <div class="grid">
-              <h1 class="text-base text-primary font-medium">
+            <img src="@/assets/icons/file-01.svg" class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+            <div class="min-w-0 flex-1">
+              <h1 class="text-base sm:text-xl font-semibold text-blue-600 break-words">
                 {{ process.case.type }}
               </h1>
-              <h2 class="text-sm text-gray-500 font-regular">
+              <p class="text-xs sm:text-sm text-gray-600 mt-1 break-words">
                 {{ process.subcase }}
-              </h2>
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-      <!-- Row for relevant information and timeline of process status -->
-      <div class="grid xl:grid-cols-2">
-        <!-- First column for relevant information -->
-        <div class="font-medium mt-4 space-y-1">
-          <!-- User information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Usuario:</h3>
-            <p class="text-gray-500">
-              {{ process.client.last_name }} {{ process.client.first_name }}
-            </p>
-          </div>
-          <!-- Authority information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Autoridad:</h3>
-            <p class="text-gray-500">
-              {{ process.authority }}
-            </p>
-          </div>
-          <!-- Plaintiff information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Dte./Accionante:</h3>
-            <p class="text-gray-500">{{ process.plaintiff }}</p>
-          </div>
-          <!-- Defendant information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Ddo./Accionado:</h3>
-            <p class="text-gray-500">{{ process.defendant }}</p>
-          </div>
-          <!-- Reference number information -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Radicado:</h3>
-            <p class="text-gray-500">{{ process.ref }}</p>
-          </div>
-          <!-- Last procedural stage -->
-          <div class="flex gap-2">
-            <h3 class="text-base text-primary">Etapa Procesal:</h3>
-            <p class="text-gray-500">
-              {{ process.stages[process.stages.length - 1].status }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Second column timeline of process status -->
-        <div class="hidden md:block relative mt-16">
-          <!-- Line -->
-          <div class="relative">
-            <div class="flex justify-between">
-              <div class="border-2 border-gray-500 h-4 w-0"></div>
-              <div class="border-2 border-gray-500 h-4 w-0"></div>
-            </div>
-            <div class="border-2 border-gray-500"></div>
-            <div class="flex justify-between">
-              <div class="border-2 border-gray-500 h-4 w-0"></div>
-              <div class="border-2 border-gray-500 h-4 w-0"></div>
-            </div>
-
-            <!-- Bubbles -->
-            <Bubbles
-              :length="process.stages.length"
-              :displayParam="'history'"
+          
+          <!-- Client avatar and info (avatar on the left, info on the right) -->
+          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <!-- Show photo_profile if available, otherwise show initials -->
+            <img 
+              v-if="process.client.photo_profile"
+              :src="process.client.photo_profile" 
+              :alt="process.client.first_name"
+              class="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
             />
-          </div>
-
-          <!-- Text of states -->
-          <div>
-            <TextStages :stages="process.stages" />
+            <div 
+              v-else
+              class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-base sm:text-lg shadow-md flex-shrink-0"
+            >
+              {{ getInitials(process.client.first_name, process.client.last_name) }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                {{ process.client.first_name }} {{ process.client.last_name }}
+              </p>
+              <p class="text-xs text-gray-500 truncate">{{ process.client.email || 'Cliente' }}</p>
+            </div>
           </div>
         </div>
+
+        <!-- Information sections -->
+        <div class="grid md:grid-cols-2 gap-6">
+        <!-- Left column: Process details -->
+        <div class="space-y-4">
+          <!-- Authority section -->
+          <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+            <h3 class="text-xs sm:text-sm font-semibold text-blue-600 mb-3 break-words">Oficina de Control Interno Disciplinario</h3>
+            <div class="space-y-2">
+              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Autoridad:</span>
+                <span class="text-xs sm:text-sm text-gray-900 break-words">{{ process.authority }}</span>
+              </div>
+              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Email:</span>
+                <span class="text-xs sm:text-sm text-blue-600 break-all">{{ process.authority.toLowerCase().replace(/\s+/g, '') }}@colpensiones.gov.co</span>
+              </div>
+              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Radicado:</span>
+                <span class="text-xs sm:text-sm text-gray-900 break-words">{{ process.ref }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parties section -->
+          <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+            <h3 class="text-xs sm:text-sm font-semibold text-blue-600 mb-3">Partes del Proceso</h3>
+            <div class="space-y-2">
+              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Dte./Accionante:</span>
+                <span class="text-xs sm:text-sm text-gray-900 break-words">{{ process.plaintiff }}</span>
+              </div>
+              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
+                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Ddo./Accionado:</span>
+                <span class="text-xs sm:text-sm text-gray-900 break-words">{{ process.defendant }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: Process stage progress -->
+        <div>
+          <ProcessStageProgress
+            :stages="process.stages"
+            :total-stages-expected="5"
+            @open-history="showHistoryModal = true"
+          />
+        </div>
+      </div>
       </div>
 
-      <!-- Process record/archive -->
-      <div class="mt-14">
+      <!-- Card: expediente and document list -->
+      <div class="p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
         <!-- Title and searchbar container -->
         <div
-          class="flex flex-col gap-3 justify-between font-medium md:flex-row"
+          class="flex flex-col gap-3 justify-between font-medium md:flex-row mb-4"
         >
           <!-- Title -->
-          <h3 class="text-base text-primary">Expendiente:</h3>
+          <h3 class="text-lg font-semibold text-blue-600">Expediente</h3>
           <!-- Search bar -->
           <div class="max-w-lg lg:max-w-xs">
             <label for="search" class="sr-only">Buscar</label>
@@ -129,7 +133,16 @@
           </div>
         </div>
         <!-- Archive/document table -->
-        <div class="flow-root overflow-y-auto max-h-[400px] whitespace-nowrap">
+        <div v-if="filteredCaseFiles.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="text-base font-medium text-gray-900 mb-1">No hay expedientes registrados</h3>
+          <p class="text-sm text-gray-500 max-w-sm">
+            Este proceso aún no tiene documentos de expediente asociados. Los archivos que se agreguen aparecerán aquí.
+          </p>
+        </div>
+        <div v-else class="flow-root overflow-y-auto max-h-[400px] whitespace-nowrap">
           <div class="-my-2 sm:-mx-6 lg:-mx-8">
             <div
               class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8"
@@ -237,11 +250,18 @@
       </div>
     </div>
   </div>
+
+  <!-- Process History Modal -->
+  <ProcessHistoryModal
+    :is-open="showHistoryModal"
+    :stages="process?.stages || []"
+    @close="showHistoryModal = false"
+  />
 </template>
 
 <script setup>
-import Bubbles from "@/components/process/Bubbles.vue";
-import TextStages from "@/components/process/TextStages.vue";
+import ProcessStageProgress from "@/components/process/ProcessStageProgress.vue";
+import ProcessHistoryModal from "@/components/process/ProcessHistoryModal.vue";
 import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
@@ -269,14 +289,21 @@ const process = computed(() => processStore.processById(processId));
  * Initializes process and user data before the component is mounted.
  */
 onBeforeMount(async () => {
-  await processStore.init();
-  await userStore.init();
+  try {
+    await Promise.all([
+      processStore.init(),
+      userStore.init(),
+    ]);
+  } catch (error) {
+    console.error('Error initializing process detail:', error);
+  }
 });
 
 // State variables for search and pagination
 const searchTerm = ref("");
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+const showHistoryModal = ref(false);
 
 /**
  * Watches for changes in the search term and resets the page to the first one.
@@ -437,5 +464,17 @@ const convertToBogotaTime = (isoDateString) => {
   const formattedDate = date.toLocaleString("en-CA", options);
 
   return formattedDate;
+};
+
+/**
+ * Gets initials from first and last name
+ * @param {string} firstName
+ * @param {string} lastName
+ * @returns {string} Initials
+ */
+const getInitials = (firstName, lastName) => {
+  const first = firstName?.charAt(0)?.toUpperCase() || '';
+  const last = lastName?.charAt(0)?.toUpperCase() || '';
+  return `${first}${last}`;
 };
 </script>

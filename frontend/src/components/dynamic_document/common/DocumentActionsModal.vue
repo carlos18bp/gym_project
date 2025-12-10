@@ -60,10 +60,37 @@
                   />
                 </button>
 
+                <!-- Tooltip for relationships disabled due to document state (Progress) -->
+                <div
+                  v-if="option.disabled && option.action === 'relationships' && !isBasicUser && document?.state === 'Progress'"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs w-max"
+                >
+                  Solo puedes administrar asociaciones cuando el documento está completado.
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                </div>
+
+                <!-- Tooltip for relationships disabled because there are no associations -->
+                <div
+                  v-else-if="option.disabled && option.action === 'relationships' && !isBasicUser"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs w-max"
+                >
+                  Este documento no tiene documentos asociados.
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                </div>
+
+                <!-- Tooltip for formalize disabled due to document state -->
+                <div
+                  v-else-if="option.disabled && option.action === 'formalize' && document?.state !== 'Completed'"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs w-max"
+                >
+                  Solo puedes formalizar y agregar firmas cuando el documento está completado.
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                </div>
+
                 <!-- Tooltip for restricted actions (Basic users) -->
                 <div
-                  v-if="option.disabled && isBasicUser && isRestrictedAction(option.action)"
-                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+                  v-else-if="option.disabled && isBasicUser && isRestrictedAction(option.action)"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs w-max"
                 >
                   Actualiza tu suscripción para usar esta funcionalidad
                   <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
@@ -111,7 +138,9 @@ import {
   NoSymbolIcon,
   DocumentTextIcon,
   PhotoIcon,
-  ShareIcon
+  ShareIcon,
+  XCircleIcon,
+  HandThumbDownIcon
 } from '@heroicons/vue/24/outline';
 import { getMenuOptionsForCardType } from '@/components/dynamic_document/cards/menuOptionsHelper.js';
 
@@ -217,15 +246,16 @@ const organizedOptions = computed(() => {
 
 // Helper function to categorize an action
 const categorizeAction = (option, action, categorized) => {
-  if (action.includes('edit') || action.includes('editar') || action === 'copy' || action === 'draft' || action === 'publish' || action === 'formalize' || action === 'completar') {
+  if (action.includes('edit') || action.includes('editar') || action === 'copy' || action === 'draft' || action === 'publish' || action === 'completar') {
     categorized.edit.push(option);
+  } else if (action.includes('signature') || action.includes('firma') || action.includes('sign') || action === 'reject') {
+    // Todas las acciones relacionadas con firmas (incluido rechazo) van al grupo "Firmas"
+    categorized.signatures.push(option);
   } else if (action.includes('view') || action.includes('preview') || action.includes('ver') || action.includes('previsualización')) {
     categorized.view.push(option);
   } else if (action.includes('download') || action.includes('email') || action.includes('enviar') || action.includes('descargar')) {
     categorized.share.push(option);
-  } else if (action.includes('signature') || action.includes('firma') || action.includes('sign')) {
-    categorized.signatures.push(option);
-  } else if (action.includes('permission') || action.includes('relationship') || action.includes('letterhead') || action.includes('permiso') || action.includes('asociación') || action.includes('membrete')) {
+  } else if (action.includes('permission') || action.includes('relationship') || action.includes('letterhead') || action.includes('permiso') || action.includes('asociación') || action.includes('membrete') || action === 'formalize') {
     categorized.manage.push(option);
   } else if (action.includes('delete') || action.includes('eliminar')) {
     categorized.delete.push(option);
@@ -239,6 +269,11 @@ const categorizeAction = (option, action, categorized) => {
 const getIcon = (action) => {
   const actionLower = action.toLowerCase();
   
+  // Specific icon for signing action
+  if (actionLower === 'sign' || actionLower.includes('firmar')) {
+    return CheckCircleIcon;
+  }
+
   if (actionLower === 'editform' || actionLower.includes('completar')) {
     return PencilSquareIcon;
   } else if (actionLower === 'editdocument' || actionLower.includes('editar documento')) {
@@ -261,6 +296,8 @@ const getIcon = (action) => {
     return LinkIcon;
   } else if (actionLower.includes('letterhead') || actionLower.includes('membrete')) {
     return PhotoIcon;
+  } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
+    return XCircleIcon;
   } else if (actionLower.includes('signature') || actionLower.includes('firma')) {
     return CheckCircleIcon;
   } else if (actionLower === 'publish' || actionLower.includes('publicar')) {
@@ -280,6 +317,10 @@ const getIconColor = (action) => {
   
   if (actionLower.includes('delete') || actionLower === 'eliminar') {
     return 'text-red-600';
+  } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
+    return 'text-red-600';
+  } else if (actionLower === 'sign' || actionLower.includes('firmar')) {
+    return 'text-green-600';
   } else if (actionLower.includes('download') || actionLower.includes('descargar')) {
     return 'text-blue-600';
   } else if (actionLower.includes('email') || actionLower.includes('enviar')) {
@@ -297,6 +338,10 @@ const getButtonClasses = (action) => {
   
   if (actionLower.includes('delete') || actionLower === 'eliminar') {
     return 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300';
+  } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
+    return 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300';
+  } else if (actionLower === 'sign' || actionLower.includes('firmar')) {
+    return 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300';
   } else if (actionLower.includes('download') || actionLower.includes('descargar')) {
     return 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300';
   } else if (actionLower.includes('email') || actionLower.includes('enviar')) {
