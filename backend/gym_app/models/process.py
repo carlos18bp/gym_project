@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Case(models.Model):
     """
@@ -86,6 +87,12 @@ class Process(models.Model):
         created_at (DateTimeField): The date the process was created.
     """
     authority = models.CharField(max_length=100, help_text="The authority handling the case.")
+    authority_email = models.EmailField(
+        max_length=254,
+        blank=True,
+        null=True,
+        help_text="Email address of the authority handling the case."
+    )
     plaintiff = models.CharField(max_length=100, help_text="The person initiating the legal action.")
     defendant = models.CharField(max_length=100, help_text="The person against whom the action is brought.")
     ref = models.CharField(max_length=100, help_text="The reference number")
@@ -95,6 +102,11 @@ class Process(models.Model):
     case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="The case type being processed.")
     subcase = models.CharField(max_length=100, help_text="The subcase classification.")
     lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.CASCADE, help_text="The lawyer handling the case.")
+    progress = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="The process completion percentage (0-100).",
+    )
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the process was created.")
 
     def __str__(self):

@@ -699,10 +699,11 @@ def generate_original_document_pdf(document, user=None):
             # Image file doesn't exist or path is invalid
             background_style = ""
 
-    # Define CSS styles for PDF
+    # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches, same as standard PDF download)
     styles = f"""
     <style>
     @page {{
+        size: letter;
         margin: 2cm;{background_style}
     }}
 

@@ -74,9 +74,18 @@ def create_process(request):
         except Case.DoesNotExist:
             return Response({'detail': 'Case type not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Normalise optional progress value (0-100)
+        progress_raw = main_data.get('progress', 0)
+        try:
+            progress_value = int(progress_raw)
+        except (TypeError, ValueError):
+            progress_value = 0
+        progress_value = max(0, min(progress_value, 100))
+
         # Create the Process instance
         process = Process.objects.create(
             authority=main_data.get('authority'),
+            authority_email=main_data.get('authorityEmail'),
             plaintiff=main_data.get('plaintiff'),
             defendant=main_data.get('defendant'),
             ref=main_data.get('ref'),
@@ -84,6 +93,7 @@ def create_process(request):
             lawyer=lawyer,
             case=case_type,
             subcase=main_data.get('subcase'),
+            progress=progress_value,
         )
 
         # Handle Stage instances
@@ -91,8 +101,8 @@ def create_process(request):
 
         # Create and add stages to process
         for stage_data in stages_data:
-            status = stage_data.get('status')
-            if not status:
+            stage_status = stage_data.get('status')
+            if not stage_status:
                 continue
 
             # Parse optional date for the stage; default to today if not provided
@@ -108,7 +118,7 @@ def create_process(request):
                 stage_date = timezone.now().date()
 
             stage = Stage.objects.create(
-                status=status,
+                status=stage_status,
                 date=stage_date,
             )
             process.stages.add(stage)
@@ -162,8 +172,21 @@ def update_process(request, pk):
     if 'authority' in main_data:
         process.authority = main_data['authority']
     
+    if 'authorityEmail' in main_data:
+        process.authority_email = main_data['authorityEmail']
+    
     if 'subcase' in main_data:
         process.subcase = main_data['subcase']
+
+    # Optional progress update (0-100)
+    if 'progress' in main_data:
+        progress_raw = main_data.get('progress')
+        try:
+            progress_value = int(progress_raw)
+        except (TypeError, ValueError):
+            progress_value = process.progress or 0
+        progress_value = max(0, min(progress_value, 100))
+        process.progress = progress_value
     
     # Update client
     client_id = main_data.get('clientId')

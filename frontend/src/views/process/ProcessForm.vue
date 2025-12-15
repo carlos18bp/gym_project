@@ -148,7 +148,7 @@
           </div>
         </div>
         <!-- Second row -->
-        <div class="grid md:grid-cols-3 gap-3">
+        <div class="grid md:grid-cols-4 gap-3">
           <!-- Ref form -->
           <div>
             <label
@@ -172,7 +172,7 @@
           <!-- Authority form -->
           <div>
             <label
-              for="plaintiff"
+              for="authority"
               class="block text-base font-medium leading-6 text-primary"
             >
               Autoridad
@@ -182,10 +182,29 @@
               <input
                 v-model="formData.authority"
                 type="text"
-                name="plaintiff"
-                id="plaintiff"
+                name="authority"
+                id="authority"
                 class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                 required
+              />
+            </div>
+          </div>
+          <!-- Authority Email form -->
+          <div>
+            <label
+              for="authorityEmail"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Email de Autoridad
+            </label>
+            <div class="mt-2">
+              <input
+                v-model="formData.authorityEmail"
+                type="email"
+                name="authorityEmail"
+                id="authorityEmail"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                placeholder="ejemplo@autoridad.gov.co"
               />
             </div>
           </div>
@@ -242,19 +261,36 @@
                     >
                       <div class="flex items-center">
                         <img
-                          :src="client.photo_profile || userAvatar"
+                          v-if="client.photo_profile"
+                          :src="client.photo_profile"
                           alt="Foto de perfil"
-                          class="h-6 w-6 flex-shrink-0 rounded-full"
+                          class="h-6 w-6 flex-shrink-0 rounded-full object-cover"
                         />
-
-                        <span
-                          :class="[
-                            'ml-3 truncate',
-                            selected && 'font-semibold',
-                          ]"
+                        <div
+                          v-else
+                          class="h-6 w-6 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-xs"
                         >
-                          {{ client.last_name }} {{ client.first_name }}
-                        </span>
+                          {{ getInitials(client.first_name, client.last_name) }}
+                        </div>
+
+                        <div class="ml-3 flex-1 min-w-0">
+                          <span
+                            :class="[
+                              'truncate block',
+                              selected && 'font-semibold',
+                            ]"
+                          >
+                            {{ client.last_name }} {{ client.first_name }}
+                          </span>
+                          <span
+                            :class="[
+                              'text-xs truncate block',
+                              active ? 'text-blue-200' : 'text-gray-500',
+                            ]"
+                          >
+                            {{ client.role === 'client' ? 'Cliente' : client.role === 'basic' ? 'Básico' : 'Corporativo' }}
+                          </span>
+                        </div>
                       </div>
 
                       <span
@@ -272,23 +308,30 @@
               </div>
             </Combobox>
           </div>
+          <!-- Progress form -->
+          <div>
+            <label
+              for="progress"
+              class="block text-base font-medium leading-6 text-primary"
+            >
+              Avance (%)
+            </label>
+            <div class="mt-2">
+              <input
+                v-model.number="formData.progress"
+                type="number"
+                name="progress"
+                id="progress"
+                min="0"
+                max="100"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                placeholder="0 - 100"
+              />
+            </div>
+          </div>
         </div>
         <!-- Third row -->
         <div>
-          <!-- Title and button add container -->
-          <div class="flex items-center gap-3 font-medium">
-            <p class="inline-block text-base text-primary">
-              Etapa procesal
-              <span class="text-red-500">*</span>
-            </p>
-            <button
-              @click="addStage"
-              class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background"
-            >
-              <PlusIcon class="h-5 w-5" />
-              Nuevo
-            </button>
-          </div>
           <!-- Stages table -->
           <div class="qflow-root">
             <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -303,13 +346,13 @@
                     <!-- Stage description -->
                     <div>
                       <label class="block text-xs font-medium text-gray-700 mb-1">
-                        Descripción
+                        Etapa Procesal
                       </label>
                       <input
                         v-model="stage.status"
                         type="text"
                         name="stage"
-                        placeholder="Descripción de la etapa"
+                        placeholder="Nombre de la etapa"
                         class="block w-full rounded-md border-0 py-2 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary text-sm"
                         required
                       />
@@ -356,7 +399,19 @@
                   <table class="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr class="text-left text-base font-regular text-primary">
-                        <th scope="col" class="py-3.5 pr-3 w-3/5">Descripción</th>
+                        <th scope="col" class="py-3.5 pr-3 w-3/5">
+                          <div class="flex items-center gap-3">
+                            <span>Etapa Procesal<span class="text-red-500 ml-1">*</span></span>
+                            <button
+                              @click="addStage"
+                              type="button"
+                              class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background hover:bg-blue-100 transition-colors"
+                            >
+                              <PlusIcon class="h-4 w-4" />
+                              <span class="ml-1">Nuevo</span>
+                            </button>
+                          </div>
+                        </th>
                         <th scope="col" class="px-3 py-3.5 w-1/5">Fecha</th>
                         <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
                       </tr>
@@ -416,17 +471,6 @@
         </div>
         <!-- Fourth row -->
         <div>
-          <!-- Title and button add container -->
-          <div class="flex items-center gap-3 font-medium">
-            <p class="inline-block text-base text-primary">Documento</p>
-            <button
-              @click="addCaseFile"
-              class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background"
-            >
-              <PlusIcon class="h-5 w-5" />
-              Nuevo
-            </button>
-          </div>
           <!-- Archive table -->
           <div class="qflow-root">
             <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -437,7 +481,17 @@
                   <thead>
                     <tr class="text-left text-base font-regular text-primary">
                       <th scope="col" class="py-3.5 pr-3 w-3/5">
-                        Documentos Cargados
+                        <div class="flex items-center gap-3">
+                          <span>Documento</span>
+                          <button
+                            @click="addCaseFile"
+                            type="button"
+                            class="flex items-center px-2 py-1 rounded-md text-sm text-secondary bg-selected-background hover:bg-blue-100 transition-colors"
+                          >
+                            <PlusIcon class="h-4 w-4" />
+                            <span class="ml-1">Nuevo</span>
+                          </button>
+                        </div>
                       </th>
                       <th scope="col" class="px-3 py-3.5 w-1/5">Acción</th>
                     </tr>
@@ -573,7 +627,6 @@ import { useCaseTypeStore } from "@/stores/legal/case_type";
 import { useUserStore } from "@/stores/auth/user";
 import { useAuthStore } from "@/stores/auth/auth";
 import { useProcessStore } from "@/stores/process";
-import userAvatar from "@/assets/images/user_avatar.jpg";
 
 const route = useRoute();
 const actionParam = ref("");
@@ -585,7 +638,7 @@ const caseTypeStore = useCaseTypeStore();
 const caseTypes = computed(() => caseTypeStore.caseTypes);
 
 const userStore = useUserStore();
-const clients = computed(() => userStore.clients);
+const clients = computed(() => userStore.allClientTypes);
 
 const authStore = useAuthStore();
 
@@ -596,8 +649,10 @@ const formData = reactive({
   subcase: "",
   ref: "",
   authority: "",
+  authorityEmail: "",
   clientId: "",
   lawyerId: "",
+  progress: 0,
   stages: [
     {
       status: "",
@@ -700,8 +755,10 @@ function assignProcessToFormData(process) {
   formData.subcase = process.subcase || "";
   formData.ref = process.ref || "";
   formData.authority = process.authority || "";
+  formData.authorityEmail = process.authority_email || "";
   selectedClient.value = process.client || "";
   formData.lawyerId = process.lawyer.id || "";
+  formData.progress = typeof process.progress === "number" ? process.progress : 0;
 
   // Assign stages
   formData.stages = process.stages.map((stage) => ({
@@ -912,10 +969,10 @@ const filteredCaseTypes = computed(() =>
 const selectedClient = ref(null);
 
 /**
- * Filters the list of clients based on the search query.
+ * Filters the list of users (clients, basic, and corporate_client) based on the search query.
  *
- * If the `query` is empty, all clients are returned.
- * Otherwise, it filters the clients to include only those whose `first_name`, `last_name`,
+ * If the `query` is empty, all users with client-type roles are returned.
+ * Otherwise, it filters the users to include only those whose `first_name`, `last_name`,
  * `identification`, or `email` match the query.
  *
  * @constant {ComputedRef<Array>}
@@ -1031,6 +1088,18 @@ const removeCaseFile = (index) => {
 };
 
 /**
+ * Gets initials from first and last name
+ * @param {string} firstName
+ * @param {string} lastName
+ * @returns {string} Initials
+ */
+const getInitials = (firstName, lastName) => {
+  const first = firstName?.charAt(0)?.toUpperCase() || '';
+  const last = lastName?.charAt(0)?.toUpperCase() || '';
+  return `${first}${last}` || '?';
+};
+
+/**
  * Resets the form fields to their default empty values.
  */
 const resetForm = () => {
@@ -1040,6 +1109,7 @@ const resetForm = () => {
   formData.subcase = ""; // Reset subcase field
   formData.ref = ""; // Reset reference field
   formData.authority = ""; // Reset authority field
+  formData.authorityEmail = ""; // Reset authority email field
   formData.clientId = ""; // Reset client ID field
   formData.lawyerId = ""; // Reset lawyer ID field
 

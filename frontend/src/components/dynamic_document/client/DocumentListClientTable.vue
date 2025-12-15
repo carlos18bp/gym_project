@@ -126,7 +126,19 @@ Migration example:
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Información clave
+                Contraparte
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Objeto
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Valor
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Plazo
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fechas
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Docs. Asociados
@@ -164,17 +176,44 @@ Migration example:
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <button
-                    v-if="hasSummary(document)"
-                    type="button"
-                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                    @click.stop="openSummaryModal(document)"
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryCounterparty(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+                  {{ document.summary_object || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryValue(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ document.summary_term || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-xs text-gray-900 space-y-0.5">
+                  <div v-if="document.summary_subscription_date">
+                    <span class="font-medium">Suscripción:</span>
+                    <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
+                  </div>
+                  <div v-if="document.summary_start_date || document.summary_end_date">
+                    <span class="font-medium">Vigencia:</span>
+                    <span class="ml-1">
+                      <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
+                      <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
+                      <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
+                    </span>
+                  </div>
+                  <span
+                    v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
+                    class="text-gray-400"
                   >
-                    Ver detalle
-                  </button>
-                  <span v-else class="text-gray-400 text-xs">
-                    Sin clasificación
+                    -
                   </span>
                 </div>
               </td>

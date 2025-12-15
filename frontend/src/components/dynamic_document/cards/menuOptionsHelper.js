@@ -327,22 +327,26 @@ const cardConfigs = {
         }
       }
 
-      // Options only for Completed state
-      if (document.state === 'Completed') {
+      // Download / share options for Completed and Progress.
+      // En estado Progress mostramos las mismas acciones pero deshabilitadas,
+      // con tooltips en el modal explicando que sólo aplican a documentos completados.
+      if (document.state === 'Completed' || document.state === 'Progress') {
+        const isCompleted = document.state === 'Completed';
         options.push(
           {
             label: "Descargar PDF",
-            action: "downloadPDF"
+            action: "downloadPDF",
+            disabled: !isCompleted
           },
           {
             label: "Descargar Word",
             action: "downloadWord",
-            disabled: isBasicUser
+            disabled: isBasicUser || !isCompleted
           },
           {
             label: "Enviar",
             action: "email",
-            disabled: isBasicUser
+            disabled: isBasicUser || !isCompleted
           }
         );
       }

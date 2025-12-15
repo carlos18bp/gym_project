@@ -9,219 +9,254 @@
     <div class="p-4 sm:p-6 lg:p-8">
     <!-- Documents for lawyers -->
     <div v-if="userRole === 'lawyer'">
-      <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
-      <div class="mb-6 border-b border-gray-200 pb-4">
-        <!-- Desktop Tabs -->
-        <div class="hidden md:block">
-          <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
-            <button
-              v-for="tab in lawyerNavigationTabs"
-              :key="tab.name"
-              @click.stop="selectLawyerTab(tab.name)"
-              :class="[
-                activeLawyerTab === tab.name
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
-              ]"
-            >
-              {{ tab.label }}
-            </button>
-          </nav>
-
-          <!-- Action Buttons -->
-          <div class="flex gap-3">
-            <button
-              @click.stop="handleLawyerSignatureClick"
-              :disabled="!currentUser"
-              :class="[
-                'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-sm font-medium transition-all duration-200',
-                currentUser
-                  ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
-                  : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
-              ]"
-            >
-              <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
-              <span>Firma Electrónica</span>
-            </button>
-            <button
-              @click.stop="showGlobalLetterheadModal = true"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
-            >
-              <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
-              <span>Membrete Global</span>
-            </button>
-            <button
-              @click.stop="showCreateDocumentModal = true"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
-            >
-              <PlusIcon class="size-5"></PlusIcon>
-              <span>Nueva Minuta</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Mobile Dropdown -->
-        <div class="md:hidden space-y-3 relative">
-          <button
-            @click.stop="showLawyerDropdown = !showLawyerDropdown"
-            class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-          >
-            <span>{{ lawyerNavigationTabs.find(tab => tab.name === activeLawyerTab)?.label || 'Seleccionar sección' }}</span>
-            <svg
-              :class="['ml-2 h-5 w-5 transition-transform duration-200', showLawyerDropdown ? 'transform rotate-180' : '']"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-
-          <!-- Dropdown Menu -->
-          <div
-            v-if="showLawyerDropdown"
-            class="absolute z-20 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden w-full"
-          >
-            <button
-              v-for="tab in lawyerNavigationTabs"
-              :key="tab.name"
-              @click.stop="selectLawyerTab(tab.name)"
-              :class="[
-                'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
-                activeLawyerTab === tab.name
-                  ? 'bg-primary text-white'
-                  : 'text-gray-700 hover:bg-gray-50'
-              ]"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-          
-          <!-- Action Buttons for Mobile -->
-          <div class="grid grid-cols-3 gap-2">
-            <button
-              @click.stop="handleLawyerSignatureClick"
-              :disabled="!currentUser"
-              :class="[
-                'flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 text-center transition-all duration-200',
-                currentUser
-                  ? 'bg-white hover:bg-purple-50'
-                  : 'bg-gray-50 cursor-not-allowed opacity-60'
-              ]"
-            >
-              <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
-              <span class="font-medium text-xs leading-tight">Firma</span>
-            </button>
-            <button
-              @click.stop="showGlobalLetterheadModal = true"
-              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
-            >
-              <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
-              <span class="font-medium text-xs leading-tight">Membrete</span>
-            </button>
-            <button
-              @click.stop="showCreateDocumentModal = true"
-              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
-            >
-              <PlusIcon class="size-6 mb-1"></PlusIcon>
-              <span class="font-medium text-xs leading-tight">Nueva</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lawyer Tab Content -->
-      <div v-if="activeLawyerTab === 'legal-documents'">
-        <DocumentListTable 
-          :searchQuery="searchQuery" 
-          :selectedTags="selectedTags"
-          :is-loading="documentStore.isLoading"
-          card-type="lawyer"
-          :show-state-filter="true"
-          :show-client-filter="true"
-          :show-associations-column="true"
-          context="legal-documents"
-          @refresh="handleRefresh"
-        />
-      </div>
-
-      <!-- My Documents Tab (Lawyer) -->
-      <div v-if="activeLawyerTab === 'my-documents'">
-        <DocumentListTable 
-          :searchQuery="searchQuery" 
-          :selectedTags="selectedTags"
-          :is-loading="documentStore.isLoading"
-          card-type="client"
-          :show-state-filter="true"
-          :show-client-filter="false"
-          :show-associations-column="true"
-          context="my-documents"
-          @refresh="handleRefresh"
-        />
-      </div>
-
-      <!-- Folders Tab (Lawyer) -->
-      <div v-if="activeLawyerTab === 'folders'">
-        <FolderManagement
+      <!-- Lawyer use-document section: select published minuta and create document -->
+      <div v-if="currentSection === 'useDocument'">
+        <UseDocumentTable
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-          @navigate-to-main="handleNavigateToMain"
+          @go-back="handleNavigateToMain"
         />
       </div>
 
-      <!-- Pending Signatures Tab -->
-      <div v-if="activeLawyerTab === 'pending-signatures'">
-        <SignaturesListTable 
-          state="PendingSignatures" 
-          :searchQuery="searchQuery" 
-          :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-          @open-electronic-signature="handleLawyerSignatureClick"
-          @document-fully-signed="handleDocumentFullySigned"
-          @document-rejected="handleDocumentRejected"
-        />
-      </div>
+      <!-- Default lawyer view: navigation tabs + tables -->
+      <div v-else>
+        <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
+        <div class="mb-6 border-b border-gray-200 pb-4">
+          <!-- Desktop Tabs -->
+          <div class="hidden md:block">
+            <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
+              <button
+                v-for="tab in lawyerNavigationTabs"
+                :key="tab.name"
+                @click.stop="selectLawyerTab(tab.name)"
+                :class="[
+                  activeLawyerTab === tab.name
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
+                ]"
+              >
+                {{ tab.label }}
+              </button>
+            </nav>
 
-      <!-- Signed Documents Tab -->
-      <div v-if="activeLawyerTab === 'signed-documents'">
-        <SignaturesListTable 
-          state="FullySigned" 
-          :searchQuery="searchQuery" 
-          :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-          @open-electronic-signature="handleLawyerSignatureClick"
-        />
-      </div>
+            <!-- Action Buttons -->
+            <div class="flex gap-3">
+              <button
+                @click.stop="handleLawyerSignatureClick"
+                :disabled="!currentUser"
+                :class="[
+                  'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-sm font-medium transition-all duration-200',
+                  currentUser
+                    ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
+                    : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                ]"
+              >
+                <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
+                <span>Firma Electrónica</span>
+              </button>
+              <button
+                @click.stop="showGlobalLetterheadModal = true"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+              >
+                <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
+                <span>Membrete Global</span>
+              </button>
+              <!-- Nueva Minuta button - only in legal-documents tab -->
+              <button
+                v-if="activeLawyerTab === 'legal-documents'"
+                @click.stop="handleCreateMinuta"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+              >
+                <PlusIcon class="size-5"></PlusIcon>
+                <span>Nueva Minuta</span>
+              </button>
+              <!-- Nuevo Documento button - only in my-documents tab -->
+              <button
+                v-if="activeLawyerTab === 'my-documents'"
+                @click.stop="handleCreateDocument"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+              >
+                <PlusIcon class="size-5"></PlusIcon>
+                <span>Nuevo Documento</span>
+              </button>
+            </div>
+          </div>
 
-      <!-- Archived Documents Tab -->
-      <div v-if="activeLawyerTab === 'archived-documents'">
-        <SignaturesListTable 
-          state="Archived" 
-          :searchQuery="searchQuery" 
-          :selectedTags="selectedTags"
-          @refresh="handleRefresh"
-          @open-electronic-signature="handleLawyerSignatureClick"
-        />
-      </div>
+          <!-- Mobile Dropdown -->
+          <div class="md:hidden space-y-3 relative">
+            <button
+              @click.stop="showLawyerDropdown = !showLawyerDropdown"
+              class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              <span>{{ lawyerNavigationTabs.find(tab => tab.name === activeLawyerTab)?.label || 'Seleccionar sección' }}</span>
+              <svg
+                :class="['ml-2 h-5 w-5 transition-transform duration-200', showLawyerDropdown ? 'transform rotate-180' : '']"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
 
-      <!-- Finished Documents Tab -->
-      <div v-if="activeLawyerTab === 'finished-documents'">
-        <DocumentFinishedByClientListTable :searchQuery="searchQuery" :selectedTags="selectedTags" />
-      </div>
+            <!-- Dropdown Menu -->
+            <div
+              v-if="showLawyerDropdown"
+              class="absolute z-20 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden w-full"
+            >
+              <button
+                v-for="tab in lawyerNavigationTabs"
+                :key="tab.name"
+                @click.stop="selectLawyerTab(tab.name)"
+                :class="[
+                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                  activeLawyerTab === tab.name
+                    ? 'bg-primary text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                ]"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+            
+            <!-- Action Buttons for Mobile -->
+            <div class="grid gap-2" :class="activeLawyerTab === 'legal-documents' || activeLawyerTab === 'my-documents' ? 'grid-cols-3' : 'grid-cols-2'">
+              <button
+                @click.stop="handleLawyerSignatureClick"
+                :disabled="!currentUser"
+                :class="[
+                  'flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 text-center transition-all duration-200',
+                  currentUser
+                    ? 'bg-white hover:bg-purple-50'
+                    : 'bg-gray-50 cursor-not-allowed opacity-60'
+                ]"
+              >
+                <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
+                <span class="font-medium text-xs leading-tight">Firma</span>
+              </button>
+              <button
+                @click.stop="showGlobalLetterheadModal = true"
+                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
+              >
+                <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
+                <span class="font-medium text-xs leading-tight">Membrete</span>
+              </button>
+              <!-- Nueva Minuta button - only in legal-documents tab -->
+              <button
+                v-if="activeLawyerTab === 'legal-documents'"
+                @click.stop="handleCreateMinuta"
+                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+              >
+                <PlusIcon class="size-6 mb-1"></PlusIcon>
+                <span class="font-medium text-xs leading-tight">Nueva Minuta</span>
+              </button>
+              <!-- Nuevo Documento button - only in my-documents tab -->
+              <button
+                v-if="activeLawyerTab === 'my-documents'"
+                @click.stop="handleCreateDocument"
+                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+              >
+                <PlusIcon class="size-6 mb-1"></PlusIcon>
+                <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-      <!-- In Progress Documents Tab -->
-      <div v-if="activeLawyerTab === 'in-progress-documents'">
-        <DocumentInProgressByClientListTable :searchQuery="searchQuery" :selectedTags="selectedTags" />
-      </div>
+        <!-- Lawyer Tab Content -->
+        <div v-if="activeLawyerTab === 'legal-documents'">
+          <DocumentListTable 
+            v-model:searchQuery="searchQuery" 
+            :selectedTags="selectedTags"
+            :is-loading="documentStore.isLoading"
+            card-type="lawyer"
+            :show-state-filter="true"
+            :show-client-filter="true"
+            :show-associations-column="true"
+            context="legal-documents"
+            @refresh="handleRefresh"
+          />
+        </div>
 
-      <!-- No documents message -->
-      <div
-        v-if="filteredDocuments.length === 0"
-        class="mt-6 text-center text-gray-400 font-regular"
-      >
-        <p>No hay documentos disponibles para mostrar.</p>
+        <!-- My Documents Tab (Lawyer) -->
+        <div v-if="activeLawyerTab === 'my-documents'">
+          <DocumentListTable 
+            v-model:searchQuery="searchQuery" 
+            :selectedTags="selectedTags"
+            :is-loading="documentStore.isLoading"
+            card-type="client"
+            :show-state-filter="true"
+            :show-client-filter="false"
+            :show-associations-column="true"
+            context="my-documents"
+            @refresh="handleRefresh"
+          />
+        </div>
+
+        <!-- Folders Tab (Lawyer) -->
+        <div v-if="activeLawyerTab === 'folders'">
+          <FolderManagement
+            :searchQuery="searchQuery"
+            :selectedTags="selectedTags"
+            @refresh="handleRefresh"
+            @navigate-to-main="handleNavigateToMain"
+            @navigate-to-document="handleNavigateToDocument"
+          />
+        </div>
+
+        <!-- Pending Signatures Tab -->
+        <div v-if="activeLawyerTab === 'pending-signatures'">
+          <SignaturesListTable 
+            state="PendingSignatures" 
+            :searchQuery="searchQuery" 
+            :selectedTags="selectedTags"
+            @refresh="handleRefresh"
+            @open-electronic-signature="handleLawyerSignatureClick"
+            @document-fully-signed="handleDocumentFullySigned"
+            @document-rejected="handleDocumentRejected"
+          />
+        </div>
+
+        <!-- Signed Documents Tab -->
+        <div v-if="activeLawyerTab === 'signed-documents'">
+          <SignaturesListTable 
+            state="FullySigned" 
+            :searchQuery="searchQuery" 
+            :selectedTags="selectedTags"
+            @refresh="handleRefresh"
+            @open-electronic-signature="handleLawyerSignatureClick"
+          />
+        </div>
+
+        <!-- Archived Documents Tab -->
+        <div v-if="activeLawyerTab === 'archived-documents'">
+          <SignaturesListTable 
+            state="Archived" 
+            :searchQuery="searchQuery" 
+            :selectedTags="selectedTags"
+            @refresh="handleRefresh"
+            @open-electronic-signature="handleLawyerSignatureClick"
+          />
+        </div>
+
+        <!-- Finished Documents Tab -->
+        <div v-if="activeLawyerTab === 'finished-documents'">
+          <DocumentFinishedByClientListTable :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        </div>
+
+        <!-- In Progress Documents Tab -->
+        <div v-if="activeLawyerTab === 'in-progress-documents'">
+          <DocumentInProgressByClientListTable :searchQuery="searchQuery" :selectedTags="selectedTags" />
+        </div>
+
+        <!-- No documents message -->
+        <div
+          v-if="filteredDocuments.length === 0"
+          class="mt-6 text-center text-gray-400 font-regular"
+        >
+          <p>No hay documentos disponibles para mostrar.</p>
+        </div>
       </div>
     </div>
 
@@ -392,7 +427,7 @@
         />
         <DocumentListTable
           v-else-if="activeTab === 'my-documents'"
-          :searchQuery="searchQuery"
+          v-model:searchQuery="searchQuery"
           :selectedTags="selectedTags"
           :is-loading="documentStore.isLoading"
           card-type="client"
@@ -702,7 +737,15 @@ const handleClientDocumentFullySigned = async (document) => {
  * Handle document rejected event for Lawyer (from signatures list)
  */
 const handleDocumentRejected = async (document) => {
-  // After rejecting, show archived documents so the user sees the result
+  try {
+    if (document && document.id) {
+      await documentStore.fetchDocumentById(document.id, true);
+    } else {
+      await documentStore.init(true);
+    }
+  } catch (error) {
+    console.error('Error refreshing rejected document for lawyer:', error);
+  }
   activeLawyerTab.value = 'archived-documents';
 };
 
@@ -710,7 +753,55 @@ const handleDocumentRejected = async (document) => {
  * Handle document rejected event for Client/Corporate (from signatures list)
  */
 const handleClientDocumentRejected = async (document) => {
+  try {
+    if (document && document.id) {
+      await documentStore.fetchDocumentById(document.id, true);
+    } else {
+      await documentStore.init(true);
+    }
+  } catch (error) {
+    console.error('Error refreshing rejected document for client:', error);
+  }
   activeTab.value = 'archived-documents';
+};
+
+/**
+ * Handle creating a new minuta (formato/template)
+ * Opens the CreateDocumentByLawyer modal
+ */
+const handleCreateMinuta = () => {
+  // Clear any selected document to ensure we're in create mode
+  documentStore.selectedDocument = null;
+  showCreateDocumentModal.value = true;
+};
+
+/**
+ * Handle creating a new document
+ * For lawyers, uses the same useDocument flow as clients:
+ * select a published minuta, name the document, then complete variables.
+ */
+const handleCreateDocument = () => {
+  // Reutilizar el flujo useDocument: mostrar tabla de minutas publicadas
+  handleSection('useDocument');
+};
+
+/**
+ * Handle navigation from folder to document's tab with search filter
+ * @param {Object} payload - Contains tab name and search query
+ */
+const handleNavigateToDocument = (payload) => {
+  const { tab, searchQuery: docTitle } = payload;
+  
+  // Switch to the appropriate tab
+  activeLawyerTab.value = tab;
+  
+  // Apply the search filter with the document title
+  searchQuery.value = docTitle;
+  
+  // Small delay to ensure the tab content is rendered before the filter is applied
+  setTimeout(() => {
+    // The searchQuery reactive variable will automatically filter the documents in the table
+  }, 100);
 };
 
 /**
@@ -788,12 +879,22 @@ const handleNavigateToMain = async () => {
   // If coming from useDocument section, go back to my-documents
   if (currentSection.value === 'useDocument') {
     currentSection.value = 'default';
-    activeTab.value = 'my-documents';
+    // Para abogados, volver al tab "Mis Documentos" de abogado
+    if (userRole.value === 'lawyer') {
+      activeLawyerTab.value = 'my-documents';
+    } else {
+      // Para clientes/básicos/corporativos, volver al tab "Mis Documentos" del cliente
+      activeTab.value = 'my-documents';
+    }
     return;
   }
   
   // Keep the folders tab active but ensure all modals are closed
-  activeTab.value = 'folders';
+  if (userRole.value === 'lawyer') {
+    activeLawyerTab.value = 'folders';
+  } else {
+    activeTab.value = 'folders';
+  }
   
   // Refresh folder data to ensure UI is up-to-date after adding documents
   try {
@@ -897,6 +998,8 @@ const closeDropdowns = () => {
  * @param {string} tabName - The name of the tab to select.
  */
 const selectLawyerTab = (tabName) => {
+  // Clear global search when manually changing lawyer tab
+  searchQuery.value = "";
   activeLawyerTab.value = tabName;
   showLawyerDropdown.value = false;
   // Ensure dropdowns are closed
@@ -911,6 +1014,8 @@ const selectLawyerTab = (tabName) => {
 const selectClientTab = (tabName) => {
   // Ensure we are in the main documents view when switching tabs
   currentSection.value = 'default';
+  // Clear global search when manually changing client tab
+  searchQuery.value = "";
   activeTab.value = tabName;
   showClientDropdown.value = false;
   // Ensure dropdowns are closed

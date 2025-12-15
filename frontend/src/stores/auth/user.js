@@ -35,13 +35,24 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
-     * Get users with role of 'client', 'basic' and 'lawyer'.
+     * Get all client types: 'client', 'basic', and 'corporate_client'.
      * @param {object} state - State.
-     * @returns {array} - List of users with 'client', 'basic' and 'lawyer' role.
+     * @returns {array} - List of users with client-type roles.
+     */
+    allClientTypes: (state) => {
+      return state.users.filter(
+        (user) => user.role === "client" || user.role === "basic" || user.role === "corporate_client"
+      );
+    },
+
+    /**
+     * Get users with role of 'client', 'basic', 'corporate_client' and 'lawyer'.
+     * @param {object} state - State.
+     * @returns {array} - List of users with 'client', 'basic', 'corporate_client' and 'lawyer' role.
      */
     clientsAndLawyers: (state) => {
       return state.users.filter(
-        (user) => user.role == "client" || user.role == "basic" || user.role == "lawyer"
+        (user) => user.role == "client" || user.role == "basic" || user.role == "corporate_client" || user.role == "lawyer"
       );
     },
 

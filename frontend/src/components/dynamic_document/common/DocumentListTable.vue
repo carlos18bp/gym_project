@@ -16,7 +16,7 @@
       </div>
 
       <!-- Filters Section -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
         <!-- State Filter -->
         <Menu v-if="showStateFilter" as="div" class="relative">
           <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -120,6 +120,28 @@
         </Menu>
       </div>
 
+      <!-- Date range filter row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha inicio</label>
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha inicio"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha fin</label>
+          <input
+            v-model="dateTo"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha fin"
+          />
+        </div>
+      </div>
+
       <!-- Sort and Actions -->
       <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <Menu as="div" class="relative w-full sm:w-auto">
@@ -147,6 +169,16 @@
           >
             <ArrowDownTrayIcon class="h-4 w-4" />
             <span>Exportar ({{ selectedDocuments.length }})</span>
+          </button>
+          <button
+            v-if="filterByState || filterByTag || filterByClient || dateFrom || dateTo"
+            @click="clearAllFilters"
+            class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-md bg-white text-xs font-medium text-gray-500 hover:bg-gray-50"
+            title="Limpiar filtros"
+            type="button"
+          >
+            <XMarkIcon class="h-4 w-4 flex-shrink-0" />
+            <span>Limpiar filtros</span>
           </button>
         </div>
       </div>
@@ -186,7 +218,19 @@
                 Estado
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Información clave
+                Contraparte
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Objeto
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Valor
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Plazo
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fechas
               </th>
               <th v-if="showAssociationsColumn && !isMinutasView" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Asociaciones
@@ -237,17 +281,44 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <button
-                    v-if="hasSummary(document)"
-                    type="button"
-                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                    @click.stop="openSummaryModal(document)"
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryCounterparty(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+                  {{ document.summary_object || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryValue(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ document.summary_term || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-xs text-gray-900 space-y-0.5">
+                  <div v-if="document.summary_subscription_date">
+                    <span class="font-medium">Suscripción:</span>
+                    <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
+                  </div>
+                  <div v-if="document.summary_start_date || document.summary_end_date">
+                    <span class="font-medium">Vigencia:</span>
+                    <span class="ml-1">
+                      <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
+                      <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
+                      <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
+                    </span>
+                  </div>
+                  <span
+                    v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
+                    class="text-gray-400"
                   >
-                    Ver detalle
-                  </button>
-                  <span v-else class="text-gray-400 text-xs">
-                    Sin clasificación
+                    -
                   </span>
                 </div>
               </td>
@@ -584,7 +655,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['refresh', 'open-electronic-signature']);
+const emit = defineEmits(['refresh', 'open-electronic-signature', 'update:searchQuery']);
 
 // Initialize centralized modal and actions system
 const { activeModals, openModal, closeModal } = useCardModals(documentStore, userStore);
@@ -620,6 +691,8 @@ const clientSearchQuery = ref("");
 const filterByState = ref(null);
 const filterByTag = ref(null);
 const filterByClient = ref(null);
+const dateFrom = ref("");
+const dateTo = ref("");
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 const showSummaryModal = ref(false);
@@ -739,7 +812,7 @@ const filteredDocuments = computed(() => {
   let docs = documentsToDisplay.value;
 
   // Apply search filter
-  const searchTerm = (props.searchQuery || localSearchQuery.value || '').toLowerCase();
+  const searchTerm = (localSearchQuery.value || '').toLowerCase();
   if (searchTerm) {
     docs = docs.filter(doc =>
       doc.title?.toLowerCase().includes(searchTerm) ||
@@ -750,6 +823,29 @@ const filteredDocuments = computed(() => {
   // Apply state filter
   if (filterByState.value) {
     docs = docs.filter(doc => doc.state === filterByState.value);
+  }
+
+  // Apply date range filter (using subscription date when available, otherwise created_at)
+  if (dateFrom.value || dateTo.value) {
+    docs = docs.filter(doc => {
+      const rawDate = doc.summary_subscription_date || doc.created_at || doc.updated_at;
+      if (!rawDate) return false;
+      const docDate = new Date(rawDate);
+      if (isNaN(docDate.getTime())) return false;
+
+      if (dateFrom.value) {
+        const from = new Date(dateFrom.value);
+        if (docDate < from) return false;
+      }
+
+      if (dateTo.value) {
+        const to = new Date(dateTo.value);
+        to.setHours(23, 59, 59, 999);
+        if (docDate > to) return false;
+      }
+
+      return true;
+    });
   }
 
   // Apply local tag filter (dropdown inside the table)
@@ -773,6 +869,15 @@ const filteredDocuments = computed(() => {
 
   return docs;
 });
+
+// Clear all local filters (state, tag, client, dates)
+const clearAllFilters = () => {
+  filterByState.value = null;
+  filterByTag.value = null;
+  filterByClient.value = null;
+  dateFrom.value = "";
+  dateTo.value = "";
+};
 
 // Computed: determine if current view is "Minutas" (Draft/Published only for lawyer legal-documents)
 const isMinutasView = computed(() => {
@@ -1207,6 +1312,18 @@ watch(() => filteredAndSortedDocuments.value.length, () => {
     currentPage.value = Math.max(1, totalPages.value);
   }
 });
+
+// Sync local search back to parent (two-way binding for searchQuery)
+watch(localSearchQuery, (newValue) => {
+  emit('update:searchQuery', newValue ?? '');
+});
+
+// Watch for external searchQuery changes (e.g., from parent component)
+watch(() => props.searchQuery, (newValue) => {
+  if (newValue !== undefined && newValue !== null) {
+    localSearchQuery.value = newValue;
+  }
+}, { immediate: true });
 
 // Initialize
 onMounted(async () => {

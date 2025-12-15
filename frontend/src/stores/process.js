@@ -203,8 +203,10 @@ export const useProcessStore = defineStore("process", {
         subcase: formData.subcase,
         ref: formData.ref,
         authority: formData.authority,
+        authorityEmail: formData.authorityEmail,
         clientId: formData.clientId,
         lawyerId: formData.lawyerId,
+        progress: formData.progress,
         stages: formData.stages,
       };
 
@@ -276,8 +278,10 @@ export const useProcessStore = defineStore("process", {
         subcase: formData.subcase,
         ref: formData.ref,
         authority: formData.authority,
+        authorityEmail: formData.authorityEmail,
         clientId: formData.clientId,
         lawyerId: formData.lawyerId,
+        progress: formData.progress,
         stages: formData.stages,
       };
 

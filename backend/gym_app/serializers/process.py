@@ -69,7 +69,9 @@ class ProcessSerializer(serializers.ModelSerializer):
         instance.defendant = validated_data.get('defendant', instance.defendant)
         instance.ref = validated_data.get('ref', instance.ref)
         instance.authority = validated_data.get('authority', instance.authority)
+        instance.authority_email = validated_data.get('authority_email', instance.authority_email)
         instance.subcase = validated_data.get('subcase', instance.subcase)
+        instance.progress = validated_data.get('progress', instance.progress)
 
         # Retrieve nested data for stages
         stages_data = validated_data.pop('stages', None)
