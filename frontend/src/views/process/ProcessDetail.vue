@@ -5,6 +5,97 @@
   >
     <slot></slot>
   </div>
+
+  <!-- Tabs Navigation -->
+  <div class="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between">
+      <!-- Desktop Tabs -->
+      <nav class="-mb-px hidden sm:flex space-x-8">
+        <button
+          @click="navigateToTab('my_processes')"
+          :class="[
+            activeTab === 'my_processes'
+              ? 'border-secondary text-secondary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Mis Procesos
+        </button>
+        <button
+          v-if="currentUser?.role === 'lawyer'"
+          @click="navigateToTab('all_processes')"
+          :class="[
+            activeTab === 'all_processes'
+              ? 'border-secondary text-secondary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Todos los Procesos
+        </button>
+        <button
+          @click="navigateToTab('archived_processes')"
+          :class="[
+            activeTab === 'archived_processes'
+              ? 'border-secondary text-secondary'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+          ]"
+        >
+          Procesos Archivados
+        </button>
+      </nav>
+
+      <!-- Mobile Dropdown -->
+      <div class="sm:hidden flex-1">
+        <Menu as="div" class="relative">
+          <MenuButton class="w-full inline-flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <span>{{ getActiveTabLabel() }}</span>
+            <ChevronDownIcon class="h-5 w-5 ml-2" />
+          </MenuButton>
+          <MenuItems class="absolute left-0 z-10 mt-2 w-full origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <div class="py-1">
+              <MenuItem v-slot="{ active }">
+                <button
+                  @click="navigateToTab('my_processes')"
+                  :class="[
+                    active ? 'bg-gray-100' : '',
+                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                  ]"
+                >
+                  Mis Procesos
+                </button>
+              </MenuItem>
+              <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                <button
+                  @click="navigateToTab('all_processes')"
+                  :class="[
+                    active ? 'bg-gray-100' : '',
+                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                  ]"
+                >
+                  Todos los Procesos
+                </button>
+              </MenuItem>
+              <MenuItem v-slot="{ active }">
+                <button
+                  @click="navigateToTab('archived_processes')"
+                  :class="[
+                    active ? 'bg-gray-100' : '',
+                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                  ]"
+                >
+                  Procesos Archivados
+                </button>
+              </MenuItem>
+            </div>
+          </MenuItems>
+        </Menu>
+      </div>
+    </div>
+  </div>
+
   <!-- Content -->
   <div class="py-10 px-4 sm:px-6 lg:px-8">
     <div
@@ -65,7 +156,7 @@
               </div>
               <div class="flex flex-col sm:flex-row sm:items-start gap-1">
                 <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Email:</span>
-                <span class="text-xs sm:text-sm text-blue-600 break-all">{{ process.authority.toLowerCase().replace(/\s+/g, '') }}@colpensiones.gov.co</span>
+                <span class="text-xs sm:text-sm text-blue-600 break-all">{{ process.authority_email || 'No especificado' }}</span>
               </div>
               <div class="flex flex-col sm:flex-row sm:items-start gap-1">
                 <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Radicado:</span>
@@ -95,6 +186,7 @@
           <ProcessStageProgress
             :stages="process.stages"
             :total-stages-expected="5"
+            :progress="process.progress"
             @open-history="showHistoryModal = true"
           />
         </div>
@@ -262,11 +354,13 @@
 <script setup>
 import ProcessStageProgress from "@/components/process/ProcessStageProgress.vue";
 import ProcessHistoryModal from "@/components/process/ProcessHistoryModal.vue";
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
 } from "@heroicons/vue/20/solid";
 import { EyeIcon } from "@heroicons/vue/24/outline";
 import { computed, onBeforeMount, ref, watch } from "vue";
@@ -304,6 +398,41 @@ const searchTerm = ref("");
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 const showHistoryModal = ref(false);
+
+// Active tab state - determine based on current route or default to 'my_processes'
+const activeTab = ref('my_processes');
+
+/**
+ * Get the label for the active tab
+ */
+const getActiveTabLabel = () => {
+  if (activeTab.value === 'my_processes') return 'Mis Procesos';
+  if (activeTab.value === 'all_processes') return 'Todos los Procesos';
+  if (activeTab.value === 'archived_processes') return 'Procesos Archivados';
+  return 'Mis Procesos';
+};
+
+/**
+ * Navigate to a different tab (process list view)
+ */
+const navigateToTab = (tab) => {
+  // Determine the display parameter based on tab
+  let display = '';
+  if (tab === 'all_processes') {
+    display = 'all';
+  } else if (tab === 'archived_processes') {
+    display = 'archived';
+  }
+  
+  // Navigate to process list with appropriate parameters
+  router.push({
+    name: 'process_list',
+    params: {
+      user_id: currentUser.value?.id || '',
+      display: display
+    }
+  });
+};
 
 /**
  * Watches for changes in the search term and resets the page to the first one.

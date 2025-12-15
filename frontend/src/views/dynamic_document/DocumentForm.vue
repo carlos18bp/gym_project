@@ -248,6 +248,21 @@
           </ul>
         </div>
 
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-primary mb-1">
+            Fecha límite para firmar (opcional)
+          </label>
+          <p class="text-xs text-gray-500 mb-2">
+            Después de esta fecha, el documento pasará automáticamente al estado "Expirado" si no ha sido firmado completamente.
+          </p>
+          <input
+            v-model="signatureDueDate"
+            type="date"
+            :min="minSignatureDate"
+            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+          />
+        </div>
+
         <!-- Document Associations Management -->
         <div class="mt-6 pt-6 border-t border-gray-200">
           <div class="flex items-center justify-between mb-3">
@@ -327,6 +342,7 @@ const userSearchQuery = ref("");
 const showUserResults = ref(false);
 const filteredUsers = ref([]);
 const selectedSigners = ref([]);
+const signatureDueDate = ref("");
 const validationErrors = ref([]);
 const showAssociationsModal = ref(false);
 const documentAssociationsCount = ref(0);
@@ -336,6 +352,8 @@ const pendingRelationships = ref([]);  // Relaciones temporales en modo formaliz
 const isEditMode = ref(false);
 
 // Validation rules for different field types
+const minSignatureDate = computed(() => new Date().toISOString().split("T")[0]);
+
 const validationRules = {
   input: (value) => value && value.trim().length > 0,
   text_area: (value) => value && value.trim().length > 0,
@@ -664,6 +682,7 @@ const saveDocument = async (state = 'Draft') => {
       }),
       // Add signature data if in formalize mode
       requires_signature: route.params.mode === 'formalize',
+      signature_due_date: route.params.mode === 'formalize' ? (signatureDueDate.value || null) : (document.value.signature_due_date || null),
       signers: route.params.mode === 'formalize' ? (() => {
         // Get selected signer IDs
         const signerIds = selectedSigners.value.map(user => user.id);

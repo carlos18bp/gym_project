@@ -16,7 +16,7 @@
       </div>
 
       <!-- Filters Section -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
         <Menu as="div" class="relative">
           <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
             <div class="flex items-center gap-2 min-w-0">
@@ -61,7 +61,7 @@
 
         <div class="flex items-center justify-stretch">
           <button
-            v-if="filterByTag"
+            v-if="filterByTag || dateFrom || dateTo"
             @click="clearFilters"
             class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             title="Limpiar filtros"
@@ -69,6 +69,28 @@
             <XMarkIcon class="h-4 w-4 flex-shrink-0" />
             <span>Limpiar</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Date range filter row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha inicio</label>
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha inicio"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha fin</label>
+          <input
+            v-model="dateTo"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha fin"
+          />
         </div>
       </div>
 
@@ -155,7 +177,26 @@
                 Estado Firma
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Información clave
+                Contraparte
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Objeto
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Valor
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Plazo
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fechas
+              </th>
+              <th
+                v-if="props.state === 'PendingSignatures'"
+                scope="col"
+                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Fecha Expiración
               </th>
               <th
                 v-if="props.state === 'PendingSignatures' || props.state === 'FullySigned'"
@@ -202,19 +243,63 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <button
-                    v-if="hasSummary(document)"
-                    type="button"
-                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100"
-                    @click.stop="openSummaryModal(document)"
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryCounterparty(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+                  {{ document.summary_object || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ getSummaryValue(document) || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ document.summary_term || '-' }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-xs text-gray-900 space-y-0.5">
+                  <div v-if="document.summary_subscription_date">
+                    <span class="font-medium">Suscripción:</span>
+                    <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
+                  </div>
+                  <div v-if="document.summary_start_date || document.summary_end_date">
+                    <span class="font-medium">Vigencia:</span>
+                    <span class="ml-1">
+                      <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
+                      <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
+                      <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
+                    </span>
+                  </div>
+                  <span
+                    v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
+                    class="text-gray-400"
                   >
-                    Ver detalle
-                  </button>
-                  <span v-else class="text-gray-400 text-xs">
-                    Sin clasificación
+                    -
                   </span>
                 </div>
+              </td>
+              <td
+                v-if="props.state === 'PendingSignatures'"
+                class="px-6 py-4 whitespace-nowrap"
+              >
+                <span
+                  v-if="document.signature_due_date"
+                  class="text-sm text-gray-900"
+                >
+                  {{ formatDate(document.signature_due_date) }}
+                </span>
+                <span
+                  v-else
+                  class="text-sm text-gray-400"
+                >
+                  -
+                </span>
               </td>
               <td
                 v-if="props.state === 'PendingSignatures' || props.state === 'FullySigned'"
@@ -573,6 +658,8 @@ const isLoading = ref(false);
 const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
 const filterByTag = ref(null);
+const dateFrom = ref("");
+const dateTo = ref("");
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 const showSummaryModal = ref(false);
@@ -687,6 +774,29 @@ const filteredAndSortedDocuments = computed(() => {
     );
   }
 
+  // Apply date range filter (using subscription date when available, otherwise created_at/updated_at)
+  if (dateFrom.value || dateTo.value) {
+    docs = docs.filter(doc => {
+      const rawDate = doc.summary_subscription_date || doc.created_at || doc.updated_at;
+      if (!rawDate) return false;
+      const docDate = new Date(rawDate);
+      if (isNaN(docDate.getTime())) return false;
+
+      if (dateFrom.value) {
+        const from = new Date(dateFrom.value);
+        if (docDate < from) return false;
+      }
+
+      if (dateTo.value) {
+        const to = new Date(dateTo.value);
+        to.setHours(23, 59, 59, 999);
+        if (docDate > to) return false;
+      }
+
+      return true;
+    });
+  }
+
   // Apply sorting
   if (sortBy.value === 'name') {
     docs.sort((a, b) => {
@@ -726,7 +836,7 @@ const paginationInfo = computed(() => {
 });
 
 // Reset to first page when filters change
-watch([localSearchQuery, filterByTag], () => {
+watch([localSearchQuery, filterByTag, dateFrom, dateTo], () => {
   currentPage.value = 1;
 });
 
@@ -867,6 +977,8 @@ const deselectAll = () => {
 // Clear filters
 const clearFilters = () => {
   filterByTag.value = null;
+  dateFrom.value = "";
+  dateTo.value = "";
 };
 
 // Pagination methods
@@ -886,6 +998,19 @@ const goToPage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
   }
+};
+
+/**
+ * Format date for display
+ * @param {string} value - Date string to format
+ * @returns {string} - Formatted date
+ */
+const formatDate = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    return value.split('T')[0];
+  }
+  return value;
 };
 
 // Visible pages for pagination (show max 7 pages)

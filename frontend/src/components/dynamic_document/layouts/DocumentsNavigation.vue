@@ -25,7 +25,7 @@
         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
       >
         <PlusIcon class="size-5"></PlusIcon>
-        <span>Nueva Minuta</span>
+        <span>Nuevo Documento</span>
       </button>
     </div>
 
@@ -50,7 +50,7 @@
         class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
       >
         <PlusIcon class="size-6 mb-1"></PlusIcon>
-        <span class="font-medium text-xs leading-tight">Nueva</span>
+        <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
       </button>
     </div>
   </div>

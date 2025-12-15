@@ -144,9 +144,11 @@ class Command(BaseCommand):
             lawyer = random.choice(lawyer_candidates)
             case = random.choice(cases)
 
-            # Create a new process with random data
+            # Create a new process with random data, including a random progress percentage (0-100)
+            authority_name = fake.company()
             process = Process.objects.create(
-                authority=fake.company(),
+                authority=authority_name,
+                authority_email=fake.company_email(),
                 plaintiff=fake.name(),
                 defendant=fake.name(),
                 ref=fake.uuid4(),
@@ -154,6 +156,7 @@ class Command(BaseCommand):
                 lawyer=lawyer,
                 case=case,
                 subcase=fake.bs(),
+                progress=random.randint(0, 100),
             )
 
             # Determine which stage set to use based on case type
@@ -220,6 +223,7 @@ class Command(BaseCommand):
         def create_simple_process(client_user, lawyer_user, label):
             process = Process.objects.create(
                 authority=fake.company(),
+                authority_email=fake.company_email(),
                 plaintiff=fake.name(),
                 defendant=fake.name(),
                 ref=fake.uuid4(),
@@ -227,6 +231,7 @@ class Command(BaseCommand):
                 lawyer=lawyer_user,
                 case=random.choice(cases),
                 subcase=fake.bs(),
+                progress=random.randint(0, 100),
             )
             self.stdout.write(
                 self.style.SUCCESS(

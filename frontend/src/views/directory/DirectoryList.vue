@@ -23,17 +23,17 @@
               :src="user.photo_profile"
               alt="Photo Profile"
             />
-            <img
-              class="h-12 w-12 flex-none rounded-full bg-gray-50"
+            <div
               v-else
-              src="@/assets/images/user_avatar.jpg"
-              alt="Photo Profile"
-            />
+              class="h-12 w-12 flex-none rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-lg shadow-sm"
+            >
+              {{ getInitials(user.first_name, user.last_name) }}
+            </div>
             <div class="min-w-0 flex-auto">
               <p class="text-sm font-semibold leading-6 text-gray-900">
                 <a>
                   <span class="absolute inset-x-0 -top-px bottom-0" />
-                  {{ user.last_name }} {{ user.first_name }}
+                  {{ user.first_name }} {{ user.last_name }}
                   <span class="text-gray-400">
                     ({{ user.role == "client" ? "Cliente" : user.role == "basic" ? "Básico" : user.role == "corporate_client" ? "Corporativo" : "Abogado" }})
                   </span>
@@ -100,5 +100,17 @@ const openUserModal = (user) => {
 const closeUserModal = () => {
   showUserModal.value = false;
   selectedUser.value = null;
+};
+
+/**
+ * Gets initials from first and last name
+ * @param {string} firstName
+ * @param {string} lastName
+ * @returns {string} Initials
+ */
+const getInitials = (firstName, lastName) => {
+  const first = firstName?.charAt(0)?.toUpperCase() || '';
+  const last = lastName?.charAt(0)?.toUpperCase() || '';
+  return `${first}${last}` || '?';
 };
 </script>

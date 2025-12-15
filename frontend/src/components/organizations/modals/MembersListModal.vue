@@ -76,10 +76,17 @@
                         <!-- Member Avatar -->
                         <div class="flex-shrink-0">
                           <img
-                            :src="member.user_info?.profile_image_url || userAvatar"
+                            v-if="member.user_info?.profile_image_url"
+                            :src="member.user_info.profile_image_url"
                             :alt="`Avatar de ${member.user_info?.full_name}`"
                             class="h-10 w-10 rounded-full object-cover border border-gray-200"
                           />
+                          <div
+                            v-else
+                            class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm"
+                          >
+                            {{ getInitials(member.user_info?.first_name, member.user_info?.last_name) }}
+                          </div>
                         </div>
 
                         <!-- Member Info -->
@@ -165,7 +172,6 @@ import {
 } from '@heroicons/vue/24/outline';
 import { useOrganizationsStore } from '@/stores/organizations';
 import { showNotification } from '@/shared/notification_message';
-import userAvatar from '@/assets/images/user_avatar.jpg';
 
 // Props
 const props = defineProps({
@@ -213,6 +219,15 @@ const formatDate = (dateString) => {
     month: 'short', 
     day: 'numeric' 
   });
+};
+
+/**
+ * Gets initials from first and last name
+ */
+const getInitials = (firstName, lastName) => {
+  const first = firstName?.charAt(0)?.toUpperCase() || '';
+  const last = lastName?.charAt(0)?.toUpperCase() || '';
+  return `${first}${last}` || '?';
 };
 
 // Watchers

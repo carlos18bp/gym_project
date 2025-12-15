@@ -105,7 +105,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['refresh', 'navigate-to-main']);
+const emit = defineEmits(['refresh', 'navigate-to-main', 'navigate-to-document']);
 
 // Stores
 const folderStore = useDocumentFolderStore();
@@ -147,7 +147,6 @@ watch(() => folderStore.folders, (newFolders) => {
       // Only update if there's actually a change to avoid unnecessary re-renders
       if (JSON.stringify(selectedFolder.value) !== JSON.stringify(updatedFolder)) {
         selectedFolder.value = { ...updatedFolder };
-        console.log(`🔄 FolderManagement: Synced selectedFolder "${updatedFolder.name}" with store. Documents: ${oldCount} → ${newCount}`);
       }
     }
   }
@@ -293,44 +292,45 @@ const handleAddSelectedDocumentsToFolder = async (selectedDocumentIds) => {
 };
 
 // Document Management Handlers
-const handleRemoveDocumentFromFolder = async (documentId) => {
+const handleRemoveDocumentFromFolder = async (payload) => {
   if (!selectedFolder.value) return;
-  
+
+  // El evento puede enviar solo el ID o un objeto { folderId, documentId }
+  const rawDocumentId = typeof payload === 'object' && payload !== null
+    ? payload.documentId
+    : payload;
+
   try {
     // Validate and parse document ID
-    const docIdToRemove = parseInt(documentId);
+    const docIdToRemove = parseInt(rawDocumentId);
     if (!Number.isInteger(docIdToRemove) || docIdToRemove <= 0) {
       throw new Error('ID de documento inválido');
     }
-    
+
     // Get current document IDs except the one to remove - ensure they are valid integers
     const updatedDocumentIds = selectedFolder.value.documents
       .map(doc => doc.id)
       .filter(id => id != null && !isNaN(parseInt(id)))
       .map(id => parseInt(id))
       .filter(id => id !== docIdToRemove);
-    
-    // Debug information
-    console.log('Removing document ID:', docIdToRemove);
-    console.log('Updated document IDs after removal:', updatedDocumentIds);
-    
+
     // Update folder with new document IDs
     await folderStore.updateFolder(selectedFolder.value.id, {
       document_ids: updatedDocumentIds
     });
-    
+
     // Show success message immediately after successful update
     showNotification('Documento removido de la carpeta', 'success');
-    
+
     // Close the folder details modal and navigate to main view.
     // updateFolder ya actualizó el store, así que la vista principal leerá datos frescos.
     selectedFolder.value = null;
     emit('navigate-to-main');
-    
+
   } catch (error) {
     console.error('Error removing document from folder:', error);
     console.error('Error details:', error.response?.data || error.message);
-    
+
     // Only show error if the main update operation failed
     if (error.response?.status) {
       showNotification(`Error al remover documento: ${error.response.data?.detail || error.message}`, 'error');
@@ -342,13 +342,44 @@ const handleRemoveDocumentFromFolder = async (documentId) => {
 
 // Document Action Handlers
 const handleViewDocument = (document) => {
-  // Handle document viewing - could emit an event or navigate
-  console.log('View document:', document);
+  // Determine the correct tab based on document state
+  let targetTab = 'legal-documents'; // default
+  
+  if (document.state === 'Published' || document.state === 'Draft') {
+    // Minutas/Formatos
+    targetTab = 'legal-documents';
+  } else if (document.state === 'PendingSignatures') {
+    // Documentos por firmar
+    targetTab = 'pending-signatures';
+  } else if (document.state === 'FullySigned') {
+    // Documentos firmados
+    targetTab = 'signed-documents';
+  } else if (document.state === 'Progress' || document.state === 'Completed') {
+    // Mis documentos
+    targetTab = 'my-documents';
+  } else if (document.state === 'Rejected' || document.state === 'Expired' || document.state === 'Archived') {
+    // Documentos archivados
+    targetTab = 'archived-documents';
+  }
+  
+  // Close the folder modal
+  selectedFolder.value = null;
+  
+  // Emit event to parent (Dashboard) with tab and search query
+  emit('navigate-to-document', {
+    tab: targetTab,
+    searchQuery: document.title
+  });
 };
 
 const handleUseDocument = (document) => {
-  // Handle using a document format
-  console.log('Use document:', document);
+  // For formats (Draft/Published), navigate to legal-documents tab
+  selectedFolder.value = null;
+  
+  emit('navigate-to-document', {
+    tab: 'legal-documents',
+    searchQuery: document.title
+  });
 };
 
 const handleDocumentAction = (action, document) => {

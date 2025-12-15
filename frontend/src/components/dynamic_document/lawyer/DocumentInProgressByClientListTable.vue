@@ -16,7 +16,7 @@
       </div>
 
       <!-- Filters Section -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
         <Menu as="div" class="relative">
           <MenuButton class="w-full inline-flex items-center justify-between gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
             <div class="flex items-center gap-2 min-w-0">
@@ -43,7 +43,7 @@
 
         <div class="flex items-center justify-stretch">
           <button
-            v-if="filterByTag"
+            v-if="filterByTag || dateFrom || dateTo"
             @click="clearFilters"
             class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             title="Limpiar filtros"
@@ -51,6 +51,28 @@
             <XMarkIcon class="h-4 w-4 flex-shrink-0" />
             <span>Limpiar</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Date range filter row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha inicio</label>
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha inicio"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-gray-600">Fecha fin</label>
+          <input
+            v-model="dateTo"
+            type="date"
+            class="w-full min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+            placeholder="Fecha fin"
+          />
         </div>
       </div>
 
@@ -405,6 +427,8 @@ const {
 // Local state
 const localSearchQuery = ref("");
 const filterByTag = ref(null);
+const dateFrom = ref("");
+const dateTo = ref("");
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 
@@ -452,6 +476,29 @@ const filteredAndSortedDocuments = computed(() => {
     );
   }
 
+  // Apply date range filter (using subscription date when available, otherwise created_at/updated_at)
+  if (dateFrom.value || dateTo.value) {
+    docs = docs.filter(doc => {
+      const rawDate = doc.summary_subscription_date || doc.created_at || doc.updated_at;
+      if (!rawDate) return false;
+      const docDate = new Date(rawDate);
+      if (isNaN(docDate.getTime())) return false;
+
+      if (dateFrom.value) {
+        const from = new Date(dateFrom.value);
+        if (docDate < from) return false;
+      }
+
+      if (dateTo.value) {
+        const to = new Date(dateTo.value);
+        to.setHours(23, 59, 59, 999);
+        if (docDate > to) return false;
+      }
+
+      return true;
+    });
+  }
+
   // Apply sorting
   if (sortBy.value === 'name') {
     docs.sort((a, b) => {
@@ -491,7 +538,7 @@ const paginationInfo = computed(() => {
 });
 
 // Reset to first page when filters change
-watch([localSearchQuery, filterByTag], () => {
+watch([localSearchQuery, filterByTag, dateFrom, dateTo], () => {
   currentPage.value = 1;
 });
 
@@ -581,6 +628,8 @@ const deselectAll = () => {
 // Clear filters
 const clearFilters = () => {
   filterByTag.value = null;
+  dateFrom.value = "";
+  dateTo.value = "";
 };
 
 // Pagination methods

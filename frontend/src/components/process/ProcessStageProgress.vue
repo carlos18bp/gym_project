@@ -20,7 +20,7 @@
       </button>
     </div>
 
-    <!-- Progress bar with chevron design -->
+    <!-- Progress bar with continuous fill -->
     <div class="relative">
       <!-- Labels -->
       <div class="flex justify-between mb-2 text-xs font-medium text-gray-600">
@@ -30,50 +30,48 @@
       </div>
 
       <!-- Chevron progress bar -->
-      <div class="flex items-center">
-        <!-- Progress segments -->
-        <div class="flex-1 flex items-center">
+      <div class="relative flex items-center">
+        <!-- Chevron segments -->
+        <div
+          v-for="(segment, index) in progressSegments"
+          :key="index"
+          class="relative h-10 flex-1"
+          :style="{ zIndex: totalStagesExpected - index }"
+        >
+          <!-- Chevron shape -->
           <div
-            v-for="(segment, index) in progressSegments"
-            :key="index"
-            class="relative flex-1 h-8 sm:h-10"
-            :style="{ zIndex: progressSegments.length - index }"
+            class="absolute inset-0 transition-all duration-500"
+            :style="{
+              clipPath: getChevronClipPath(index),
+              marginLeft: index === 0 ? '0' : '-12px'
+            }"
           >
-            <!-- Chevron shape -->
+            <!-- Background layer -->
             <div
-              class="absolute inset-0 flex items-center transition-all duration-300"
-              :class="[
-                segment.active ? 'opacity-100' : 'opacity-40'
-              ]"
+              class="absolute inset-0"
+              :class="segment.filled ? 'bg-blue-600' : 'bg-gray-200'"
             >
-              <!-- Main chevron body -->
+              <!-- Shine effect for filled segments -->
               <div
-                class="h-full flex-1 flex items-center justify-center relative"
-                :class="[
-                  segment.active ? 'bg-blue-600' : 'bg-gray-300'
-                ]"
-                :style="{
-                  clipPath: index === progressSegments.length - 1 
-                    ? 'polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%)'
-                    : 'polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%)',
-                  marginLeft: index === 0 ? '0' : '-15px'
-                }"
-              >
-                <!-- Segment label (optional, can be removed if not needed) -->
-                <span
-                  v-if="segment.active"
-                  class="text-white text-xs font-medium px-2 truncate"
-                  :style="{ marginLeft: index === 0 ? '0' : '15px' }"
-                >
-                  <!-- Empty for cleaner look, or add stage names if needed -->
-                </span>
-              </div>
+                v-if="segment.filled"
+                class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-10"
+              ></div>
             </div>
+            
+            <!-- White border/stroke effect -->
+            <div
+              class="absolute inset-0"
+              :style="{
+                clipPath: getChevronClipPath(index),
+                border: '4px solid white',
+                margin: '-4px'
+              }"
+            ></div>
           </div>
         </div>
       </div>
 
-      <!-- Progress percentage text -->
+      <!-- Progress status text -->
       <div class="mt-2 text-center sm:text-right">
         <span class="text-xs sm:text-sm font-medium text-gray-700">
           {{ progressPercentage }}% completado
@@ -94,6 +92,12 @@ const props = defineProps({
   totalStagesExpected: {
     type: Number,
     default: 5 // Default expected stages in a process
+  },
+  // Optional explicit progress percentage from the backend (0-100).
+  // When provided, it overrides the derived percentage based on stages.
+  progress: {
+    type: Number,
+    default: null
   }
 })
 
@@ -107,23 +111,51 @@ const currentStage = computed(() => {
 
 // Calculate progress percentage
 const progressPercentage = computed(() => {
+  // Prefer explicit progress value from props when available
+  if (typeof props.progress === 'number' && !Number.isNaN(props.progress)) {
+    const clamped = Math.min(Math.max(Math.round(props.progress), 0), 100)
+    return clamped
+  }
+
+  // Fallback: derive from number of stages vs expected total
   if (!props.stages || props.stages.length === 0) return 0
   const percentage = (props.stages.length / props.totalStagesExpected) * 100
   return Math.min(Math.round(percentage), 100)
 })
 
-// Create progress segments for the chevron bar
+// Create progress segments for chevron display
 const progressSegments = computed(() => {
   const segments = []
-  const numSegments = 5 // Fixed number of visual segments
-  const activeSegments = Math.ceil((progressPercentage.value / 100) * numSegments)
+  const numSegments = props.totalStagesExpected
+  const percentagePerSegment = 100 / numSegments
   
   for (let i = 0; i < numSegments; i++) {
-    segments.push({
-      active: i < activeSegments
-    })
+    const segmentStart = i * percentagePerSegment
+    const segmentEnd = (i + 1) * percentagePerSegment
+    
+    // A segment is filled if the progress percentage is greater than or equal to its end
+    const filled = progressPercentage.value >= segmentEnd
+    
+    segments.push({ filled })
   }
   
   return segments
 })
+
+/**
+ * Generate clip-path for chevron shape
+ * @param {number} index - Index of the chevron segment
+ * @returns {string} CSS clip-path value
+ */
+const getChevronClipPath = (index) => {
+  const isLast = index === props.totalStagesExpected - 1
+  
+  if (isLast) {
+    // Last chevron: has arrow on left, flat on right
+    return 'polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 12px 50%)'
+  } else {
+    // Regular chevron: has arrow on both sides
+    return 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)'
+  }
+}
 </script>

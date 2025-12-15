@@ -87,6 +87,15 @@
                   <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
                 </div>
 
+                <!-- Tooltip for download/share disabled due to document state -->
+                <div
+                  v-else-if="option.disabled && ['downloadPDF', 'downloadWord', 'email'].includes(option.action) && document?.state !== 'Completed'"
+                  class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 max-w-xs w-max"
+                >
+                  Solo puedes usar esta acción cuando el documento está completado.
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                </div>
+
                 <!-- Tooltip for restricted actions (Basic users) -->
                 <div
                   v-else-if="option.disabled && isBasicUser && isRestrictedAction(option.action)"
