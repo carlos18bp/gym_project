@@ -895,10 +895,15 @@ const archiveProcess = async () => {
     text: "Esta acción marcará el proceso como archivado. ¿Desea continuar?",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#BD93F9",
-    cancelButtonColor: "#d33",
     confirmButtonText: "Sí, archivar proceso",
-    cancelButtonText: "Cancelar"
+    cancelButtonText: "Cancelar",
+    buttonsStyling: false,
+    customClass: {
+      confirmButton:
+        "inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-amber-500 text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 mr-2",
+      cancelButton:
+        "inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 hover:text-gray-900 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500",
+    },
   });
 
   if (result.isConfirmed) {

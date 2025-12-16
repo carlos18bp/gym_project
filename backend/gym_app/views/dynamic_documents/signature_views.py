@@ -3,6 +3,7 @@ import io
 import os
 from django.utils import timezone
 from django.conf import settings
+from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -177,6 +178,7 @@ def get_pending_signatures(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_document_visibility_by_id
+@transaction.atomic
 def sign_document(request, document_id, user_id):
     """
     Sign a document using the user's signature.
@@ -322,6 +324,7 @@ def sign_document(request, document_id, user_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_document_visibility_by_id
+@transaction.atomic
 def reject_document(request, document_id, user_id):
     """Allow a signer to reject (devolver sin firmar) a document.
 

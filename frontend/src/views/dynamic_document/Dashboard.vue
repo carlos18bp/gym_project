@@ -266,7 +266,7 @@
       <div class="mb-6 border-b border-gray-200">
         
         <!-- Desktop Layout: Tabs + Action Buttons -->
-        <div class="hidden md:flex items-center justify-between">
+        <div class="hidden md:flex md:flex-col">
           <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
@@ -284,7 +284,7 @@
           </nav>
           
           <!-- Action Buttons (Desktop) -->
-          <div class="flex items-center gap-2 mb-4">
+          <div class="flex flex-wrap items-center gap-2 mt-3 mb-4 md:justify-end">
             <div class="relative">
               <button
                 @click.stop="handleElectronicSignatureClick"
