@@ -618,16 +618,8 @@ const formatDisplayValue = (variable) => {
   
   const numValue = getNumericValue(variable.value);
   if (numValue !== null) {
-    // Format with thousands separators
-    try {
-      variable.value = new Intl.NumberFormat('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-        useGrouping: true
-      }).format(numValue);
-    } catch (e) {
-      // Keep original value if formatting fails
-    }
+    // Normalize stored value to a plain numeric string without locale-specific separators
+    variable.value = String(numValue);
   }
 };
 
