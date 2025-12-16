@@ -202,7 +202,13 @@ Migration example:
                 Plazo
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fechas
+                Fecha Suscripción
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha Inicio
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha Terminación
               </th>
               <th v-if="!isMinutasTab" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Docs. Asociados
@@ -264,27 +270,23 @@ Migration example:
                   {{ document.summary_term || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-xs text-gray-900 space-y-0.5">
-                  <div v-if="document.summary_subscription_date">
-                    <span class="font-medium">Suscripción:</span>
-                    <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
-                  </div>
-                  <div v-if="document.summary_start_date || document.summary_end_date">
-                    <span class="font-medium">Vigencia:</span>
-                    <span class="ml-1">
-                      <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
-                      <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
-                      <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
-                    </span>
-                  </div>
-                  <span
-                    v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
-                    class="text-gray-400"
-                  >
-                    -
-                  </span>
-                </div>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_subscription_date">
+                  {{ formatDate(document.summary_subscription_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_start_date">
+                  {{ formatDate(document.summary_start_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_end_date">
+                  {{ formatDate(document.summary_end_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
               </td>
               <td v-if="!isMinutasTab" class="px-6 py-4 whitespace-nowrap">
                 <button

@@ -230,7 +230,13 @@
                 Plazo
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fechas
+                Fecha Suscripción
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha Inicio
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha Terminación
               </th>
               <th v-if="showAssociationsColumn && !isMinutasView" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Asociaciones
@@ -265,12 +271,11 @@
                 <div class="flex items-center gap-3">
                   <DocumentTextIcon class="h-5 w-5 flex-shrink-0" :class="getDocumentIconColor(document)" />
                   <div class="min-w-0">
-                    <button
-                      @click.stop="openSummaryModal(document)"
+                    <span
                       class="text-sm font-medium text-gray-900 hover:text-secondary truncate block max-w-xs text-left"
                     >
                       {{ document.title || 'Sin título' }}
-                    </button>
+                    </span>
                   </div>
                 </div>
               </td>
@@ -300,27 +305,23 @@
                   {{ document.summary_term || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-xs text-gray-900 space-y-0.5">
-                  <div v-if="document.summary_subscription_date">
-                    <span class="font-medium">Suscripción:</span>
-                    <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
-                  </div>
-                  <div v-if="document.summary_start_date || document.summary_end_date">
-                    <span class="font-medium">Vigencia:</span>
-                    <span class="ml-1">
-                      <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
-                      <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
-                      <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
-                    </span>
-                  </div>
-                  <span
-                    v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
-                    class="text-gray-400"
-                  >
-                    -
-                  </span>
-                </div>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_subscription_date">
+                  {{ formatDate(document.summary_subscription_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_start_date">
+                  {{ formatDate(document.summary_start_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+                <span v-if="document.summary_end_date">
+                  {{ formatDate(document.summary_end_date) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
               </td>
               <td v-if="showAssociationsColumn && !isMinutasView" class="px-6 py-4 whitespace-nowrap">
                 <button
@@ -507,13 +508,6 @@
       @action="handleModalAction"
     />
 
-    <DocumentSummaryModal
-      v-if="showSummaryModal"
-      :is-visible="showSummaryModal"
-      :document="summaryDocument"
-      @close="showSummaryModal = false"
-    />
-
     <!-- Tags List Modal -->
     <div
       v-if="showTagsModal && tagsModalDocument"
@@ -605,7 +599,6 @@ import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
-import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -695,8 +688,6 @@ const dateFrom = ref("");
 const dateTo = ref("");
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
-const showSummaryModal = ref(false);
-const summaryDocument = ref(null);
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
 const showTagsModal = ref(false);
@@ -1132,11 +1123,6 @@ const toggleAllDocuments = () => {
       .filter(id => !selectedDocuments.value.includes(id));
     selectedDocuments.value.push(...newSelections);
   }
-};
-
-const openSummaryModal = (document) => {
-  summaryDocument.value = document;
-  showSummaryModal.value = true;
 };
 
 // Handle row click: open the standard actions modal with all options

@@ -414,24 +414,33 @@ const getActiveTabLabel = () => {
 
 /**
  * Navigate to a different tab (process list view)
+ *
+ * This must stay in sync with the routing logic in ProcessList.vue:
+ * - archived_processes => route.params.display === 'history'
+ * - all_processes      => route.query.group === 'general'
+ * - my_processes       => route.query.group === 'default' (or omitted)
  */
 const navigateToTab = (tab) => {
-  // Determine the display parameter based on tab
-  let display = '';
-  if (tab === 'all_processes') {
-    display = 'all';
-  } else if (tab === 'archived_processes') {
-    display = 'archived';
-  }
-  
-  // Navigate to process list with appropriate parameters
-  router.push({
+  const routeConfig = {
     name: 'process_list',
     params: {
-      user_id: currentUser.value?.id || '',
-      display: display
-    }
-  });
+      user_id: currentUser.value?.id || ''
+    },
+    query: {}
+  };
+
+  if (tab === 'all_processes') {
+    // Show all active processes
+    routeConfig.query.group = 'general';
+  } else if (tab === 'archived_processes') {
+    // Show archived processes history
+    routeConfig.params.display = 'history';
+  } else {
+    // Default: my active processes
+    routeConfig.query.group = 'default';
+  }
+
+  router.push(routeConfig);
 };
 
 /**
