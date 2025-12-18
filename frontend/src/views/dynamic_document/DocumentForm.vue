@@ -150,7 +150,7 @@
       <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 pt-6 border-t border-gray-200">
         <!-- Save Progress button (only in non-formalize mode) -->
         <button
-          v-if="route.params.mode !== 'formalize'"
+          v-if="route.params.mode === 'editor' || route.params.mode === 'creator'"
           type="button"
           class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
           @click="saveDocument('Progress')"
@@ -176,7 +176,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>{{ route.params.mode === 'formalize' ? 'Formalizar y Agregar Firmas' : (isEditMode ? "Completar y Generar" : "Generar") }}</span>
+          <span>
+            {{
+              route.params.mode === 'formalize'
+                ? 'Formalizar y Agregar Firmas'
+                : route.params.mode === 'correction'
+                  ? 'Guardar y reenviar para firma'
+                  : (isEditMode ? "Completar y Generar" : "Generar")
+            }}
+          </span>
         </button>
         
         <!-- Cancel button -->
@@ -326,6 +334,7 @@ import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";
+import { create_request } from "@/stores/services/request_http";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
@@ -501,7 +510,7 @@ const validateForm = () => {
  */
 onMounted(async () => {
   const documentId = route.params.id;
-  isEditMode.value = route.params.mode === "editor" || route.params.mode === "formalize";
+  isEditMode.value = route.params.mode === "editor" || route.params.mode === "formalize" || route.params.mode === "correction";
   documentBase.value = await store.documentById(documentId);
 
   // Ensure we have users loaded for search
@@ -521,7 +530,7 @@ onMounted(async () => {
     };
   }
 
-  if (route.params.mode === "editor" || route.params.mode === "formalize") {
+  if (route.params.mode === "editor" || route.params.mode === "formalize" || route.params.mode === "correction") {
     // Create a deep copy to avoid modifying the original document in the store
     document.value = JSON.parse(JSON.stringify(documentBase.value));
     document.value.title = route.params.title;
@@ -644,8 +653,16 @@ const saveDocument = async (state = 'Draft') => {
                                          !document.value.assigned_to;
     
     // For clients creating from templates, always use 'Progress' state and assign to current user
-    const finalState = isClientCreatingFromTemplate ? 'Progress' : 
-                      (route.params.mode === 'formalize' ? 'PendingSignatures' : state);
+    const isFormalizeMode = route.params.mode === 'formalize';
+    const isCorrectionMode = route.params.mode === 'correction';
+
+    const finalState = isClientCreatingFromTemplate
+      ? 'Progress'
+      : isFormalizeMode
+        ? 'PendingSignatures'
+        : isCorrectionMode
+          ? document.value.state
+          : state;
     
     const documentData = {
       title: document.value.title,
@@ -673,7 +690,7 @@ const saveDocument = async (state = 'Draft') => {
         };
       }),
       // Add signature data if in formalize mode
-      requires_signature: route.params.mode === 'formalize',
+      requires_signature: route.params.mode === 'formalize' || route.params.mode === 'correction',
       signature_due_date: route.params.mode === 'formalize' ? (signatureDueDate.value || null) : (document.value.signature_due_date || null),
       signers: route.params.mode === 'formalize' ? (() => {
         // Get selected signer IDs
@@ -741,6 +758,24 @@ const saveDocument = async (state = 'Draft') => {
     else if (isEditMode.value && document.value.id) {
       await store.updateDocument(document.value.id, documentData);
       documentId = document.value.id;
+
+      // In correction mode, after updating the rejected document, reopen signatures
+      if (route.params.mode === 'correction' && documentId) {
+        try {
+          const reopenUrl = `dynamic-documents/${documentId}/reopen-signatures/`;
+          const response = await create_request(reopenUrl, {});
+          if (!response || (response.status !== 200 && response.status !== 201)) {
+            await showNotification('Error al reabrir el documento para firma.', 'error');
+            return;
+          }
+          // Refresh documents to reflect new PendingSignatures state
+          await store.init(true);
+        } catch (error) {
+          console.error('Error reopening document for signatures:', error);
+          await showNotification('Error al reabrir el documento para firma.', 'error');
+          return;
+        }
+      }
     } else {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
@@ -759,16 +794,18 @@ const saveDocument = async (state = 'Draft') => {
     await showNotification(
       route.params.mode === 'formalize'
         ? "Documento formalizado y listo para firmas"
-        : state === "Draft"
-          ? "Documento guardado como borrador"
-          : "Documento publicado exitosamente",
+        : route.params.mode === 'correction'
+          ? "Documento corregido y reenviado para firmas"
+          : state === "Draft"
+            ? "Documento guardado como borrador"
+            : "Documento publicado exitosamente",
       "success"
     );
     
     // Redirect to dashboard after a short delay
     setTimeout(() => {
       // If in formalize mode, redirect to pending signatures tab
-      if (route.params.mode === 'formalize') {
+      if (route.params.mode === 'formalize' || route.params.mode === 'correction') {
         const currentUser = userStore.currentUser;
         if (currentUser?.role === 'lawyer') {
           // For lawyers, use query param to set the tab

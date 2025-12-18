@@ -49,16 +49,17 @@ def case_file():
 @pytest.fixture
 def process(user_client, user_lawyer, case_type):
     """Create a process for testing"""
-    return Process.objects.create(
+    process = Process.objects.create(
         authority='Supreme Court',
         plaintiff='John Smith',
         defendant='Jane Doe',
         ref='CASE-123',
-        client=user_client,
         lawyer=user_lawyer,
         case=case_type,
         subcase='Theft'
     )
+    process.clients.add(user_client)
+    return process
 
 @pytest.mark.django_db
 class TestCase:
@@ -121,18 +122,19 @@ class TestProcess:
             plaintiff='Company Inc.',
             defendant='Other Company LLC',
             ref='CASE-456',
-            client=user_client,
             lawyer=user_lawyer,
             case=case_type,
             subcase='Contract Dispute'
         )
+        process.clients.add(user_client)
         
         assert process.id is not None
         assert process.authority == 'District Court'
         assert process.plaintiff == 'Company Inc.'
         assert process.defendant == 'Other Company LLC'
         assert process.ref == 'CASE-456'
-        assert process.client == user_client
+        assert process.clients.count() == 1
+        assert process.clients.first() == user_client
         assert process.lawyer == user_lawyer
         assert process.case == case_type
         assert process.subcase == 'Contract Dispute'

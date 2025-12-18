@@ -49,11 +49,11 @@ def process(client_user, lawyer_user, case_type, stage):
         plaintiff='John Smith',
         defendant='Jane Doe',
         ref='CASE-123',
-        client=client_user,
         lawyer=lawyer_user,
         case=case_type,
         subcase='Theft'
     )
+    process.clients.add(client_user)
     process.stages.add(stage)
     return process
 
@@ -94,10 +94,10 @@ class TestProcessViews:
             plaintiff='Other Person',
             defendant='Another Person',
             ref='CASE-456',
-            client=other_client,
             lawyer=process.lawyer,
             case=process.case
         )
+        other_process.clients.add(other_client)
         
         # Make the request again
         response = api_client.get(url)
@@ -131,10 +131,11 @@ class TestProcessViews:
             plaintiff='Other Person',
             defendant='Another Person',
             ref='CASE-456',
-            client=process.client,
             lawyer=other_lawyer,
             case=process.case
         )
+        # Share the same clients as the original process
+        other_process.clients.set(process.clients.all())
         
         # Make the request again
         response = api_client.get(url)
@@ -172,10 +173,10 @@ class TestProcessViews:
             plaintiff='Other Person',
             defendant='Another Person',
             ref='CASE-456',
-            client=other_client,
             lawyer=other_lawyer,
             case=process.case
         )
+        other_process.clients.add(other_client)
         
         # Make the request again
         response = api_client.get(url)
@@ -197,7 +198,7 @@ class TestProcessViews:
             'plaintiff': 'Company Inc.',
             'defendant': 'Other Company LLC',
             'ref': 'CASE-789',
-            'clientId': client_user.id,
+            'clientIds': [client_user.id],
             'lawyerId': lawyer_user.id,
             'caseTypeId': case_type.id,
             'subcase': 'Contract Dispute',
@@ -225,7 +226,8 @@ class TestProcessViews:
         
         # Verify the process was created in database
         created_process = Process.objects.get(ref='CASE-789')
-        assert created_process.client.id == client_user.id
+        assert created_process.clients.count() == 1
+        assert created_process.clients.first().id == client_user.id
         assert created_process.lawyer.id == lawyer_user.id
         assert created_process.case.id == case_type.id
         
@@ -246,7 +248,7 @@ class TestProcessViews:
             'plaintiff': 'Company Inc.',
             'defendant': 'Other Company LLC',
             'ref': 'CASE-789',
-            'clientId': 9999,  # Invalid ID
+            'clientIds': [9999],  # Invalid ID
             'lawyerId': lawyer_user.id,
             'caseTypeId': case_type.id,
             'subcase': 'Contract Dispute'
@@ -290,7 +292,6 @@ class TestProcessViews:
             'plaintiff': 'Updated Plaintiff',
             'defendant': 'Updated Defendant',
             'ref': 'UPDATED-REF',
-            'clientId': process.client.id,
             'caseTypeId': new_case_type.id,
             'subcase': 'Updated Subcase',
             'caseFileIds': [case_file.id]  # Keep this file

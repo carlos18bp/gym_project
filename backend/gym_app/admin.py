@@ -94,17 +94,26 @@ class ProcessAdmin(admin.ModelAdmin):
     """
     list_display = (
         'ref', 'authority', 'plaintiff', 'defendant', 
-        'client', 'lawyer', 'case', 'subcase', 'created_at'
+        'get_primary_client', 'lawyer', 'case', 'subcase', 'created_at'
     )
     filter_horizontal = ('stages', 'case_files')
     search_fields = (
         'ref', 'authority', 'plaintiff', 'defendant', 
-        'client__email', 'lawyer__email', 'case__type', 'subcase', 'created_at'
+        'clients__email', 'lawyer__email', 'case__type', 'subcase', 'created_at'
     )
     list_filter = (
         'ref', 'authority', 'plaintiff', 'defendant', 
-        'client', 'lawyer', 'case', 'subcase', 'created_at'
+        'clients', 'lawyer', 'case', 'subcase', 'created_at'
     )
+
+    def get_primary_client(self, obj):
+        clients_qs = obj.clients.all()
+        client = clients_qs.first()
+        if not client:
+            return None
+        full_name = f"{client.first_name} {client.last_name}".strip()
+        return f"{full_name} ({client.email})" if client.email else full_name
+    get_primary_client.short_description = 'Cliente'
 
 class CaseAdmin(admin.ModelAdmin):
     """

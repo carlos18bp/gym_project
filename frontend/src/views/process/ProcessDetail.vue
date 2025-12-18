@@ -119,25 +119,25 @@
           </div>
           
           <!-- Client avatar and info (avatar on the left, info on the right) -->
-          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="flex items-center gap-2 sm:gap-3 min-w-0" v-if="primaryClient">
             <!-- Show photo_profile if available, otherwise show initials -->
             <img 
-              v-if="process.client.photo_profile"
-              :src="process.client.photo_profile" 
-              :alt="process.client.first_name"
+              v-if="primaryClient.photo_profile"
+              :src="primaryClient.photo_profile" 
+              :alt="primaryClient.first_name"
               class="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
             />
             <div 
               v-else
               class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-base sm:text-lg shadow-md flex-shrink-0"
             >
-              {{ getInitials(process.client.first_name, process.client.last_name) }}
+              {{ getInitials(primaryClient.first_name, primaryClient.last_name) }}
             </div>
             <div class="min-w-0 flex-1">
               <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                {{ process.client.first_name }} {{ process.client.last_name }}
+                {{ primaryClient.first_name }} {{ primaryClient.last_name }}
               </p>
-              <p class="text-xs text-gray-500 truncate">{{ process.client.email || 'Cliente' }}</p>
+              <p class="text-xs text-gray-500 truncate">{{ primaryClient.email || 'Cliente' }}</p>
             </div>
           </div>
         </div>
@@ -148,12 +148,10 @@
         <div class="space-y-4">
           <!-- Authority section -->
           <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-            <h3 class="text-xs sm:text-sm font-semibold text-blue-600 mb-3 break-words">Oficina de Control Interno Disciplinario</h3>
+            <h3 class="text-xs sm:text-sm font-semibold text-blue-600 mb-3 break-words">
+              {{ process.authority }}
+            </h3>
             <div class="space-y-2">
-              <div class="flex flex-col sm:flex-row sm:items-start gap-1">
-                <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Autoridad:</span>
-                <span class="text-xs sm:text-sm text-gray-900 break-words">{{ process.authority }}</span>
-              </div>
               <div class="flex flex-col sm:flex-row sm:items-start gap-1">
                 <span class="text-xs sm:text-sm font-medium text-gray-600 sm:w-32 flex-shrink-0">Email:</span>
                 <span class="text-xs sm:text-sm text-blue-600 break-all">{{ process.authority_email || 'No especificado' }}</span>
@@ -378,6 +376,13 @@ const currentUser = computed(() => userStore.currentUser);
 // Get process ID from route and fetch process data
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
+
+// Primary client (first client) for display
+const primaryClient = computed(() => {
+  const p = process.value;
+  if (!p || !Array.isArray(p.clients)) return null;
+  return p.clients.length ? p.clients[0] : null;
+});
 
 /**
  * Initializes process and user data before the component is mounted.

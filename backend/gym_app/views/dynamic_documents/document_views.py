@@ -98,7 +98,7 @@ def get_dynamic_document(request, pk):
                 variable.select_options = []
                 variable.save()
         
-        serializer = DynamicDocumentSerializer(document)
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except DynamicDocument.DoesNotExist:
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)

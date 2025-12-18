@@ -202,8 +202,21 @@ const cardConfigs = {
         });
       }
 
-      // View rejection reason option for rejected documents
+      // Additional options for rejected documents
       if (document.state === 'Rejected') {
+        const currentUser = userStore?.currentUser;
+        const isLawyer = currentUser?.role === 'lawyer';
+        const isCreator = document.created_by === currentUser?.id;
+
+        // Allow creator or lawyer to edit and resend the document for signatures
+        if (isLawyer || isCreator) {
+          options.push({
+            label: "Editar y reenviar para firma",
+            action: "editAndResend"
+          });
+        }
+
+        // View rejection reason option for rejected documents when there is a comment
         const hasComment = Array.isArray(document.signatures) && document.signatures.some(sig => sig.rejection_comment);
         if (hasComment) {
           options.push({

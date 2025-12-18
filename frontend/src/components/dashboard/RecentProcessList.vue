@@ -26,7 +26,7 @@
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                   <h3 class="text-sm font-semibold text-gray-900 truncate group-hover:text-primary transition-colors duration-200">
-                    {{ process.process.client.first_name }} {{ process.process.client.last_name }}
+                    {{ process.process.clients?.[0]?.first_name }} {{ process.process.clients?.[0]?.last_name }}
                   </h3>
                   <p class="text-xs text-gray-500 truncate mt-0.5">
                     {{ process.process.case.type }}

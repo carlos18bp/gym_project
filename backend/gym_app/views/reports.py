@@ -124,7 +124,7 @@ def generate_active_processes_report(response, start_date, end_datetime):
     processes = Process.objects.filter(
         created_at__range=[start_date, end_datetime]
     ).prefetch_related(
-        'stages', 'client', 'lawyer', 'case'
+        'stages', 'clients', 'lawyer', 'case'
     )
     
     # Prepare data for Excel
@@ -140,8 +140,9 @@ def generate_active_processes_report(response, start_date, end_datetime):
         created_date = process.created_at.date()
         days_active = (today - created_date).days
         
-        # Client and lawyer names
-        client_name = f"{process.client.first_name or ''} {process.client.last_name or ''}".strip()
+        # Client and lawyer names (use the first associated client if any)
+        primary_client = next(iter(process.clients.all()), None)
+        client_name = f"{(primary_client.first_name or '') if primary_client else ''} {(primary_client.last_name or '') if primary_client else ''}".strip()
         lawyer_name = f"{process.lawyer.first_name or ''} {process.lawyer.last_name or ''}".strip()
         
         # Add process data to the list
@@ -221,7 +222,7 @@ def generate_processes_by_lawyer_report(response, start_date, end_datetime):
         processes = Process.objects.filter(
             lawyer=lawyer,
             created_at__range=[start_date, end_datetime]
-        ).prefetch_related('stages', 'client', 'case')
+        ).prefetch_related('stages', 'clients', 'case')
         
         # Skip lawyers with no processes in the date range
         if not processes.exists():
@@ -240,8 +241,9 @@ def generate_processes_by_lawyer_report(response, start_date, end_datetime):
             created_date = process.created_at.date()
             days_active = (today - created_date).days
             
-            # Client name
-            client_name = f"{process.client.first_name or ''} {process.client.last_name or ''}".strip()
+            # Client name (use the first associated client if any)
+            primary_client = next(iter(process.clients.all()), None)
+            client_name = f"{(primary_client.first_name or '') if primary_client else ''} {(primary_client.last_name or '') if primary_client else ''}".strip()
             
             # Add row to data
             data.append({
@@ -342,7 +344,7 @@ def generate_processes_by_client_report(response, start_date, end_datetime):
     for client in clients:
         # Get all processes for this client
         processes = Process.objects.filter(
-            client=client,
+            clients=client,
             created_at__range=[start_date, end_datetime]
         ).prefetch_related('stages', 'lawyer', 'case')
         

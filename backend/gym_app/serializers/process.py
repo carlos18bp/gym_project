@@ -36,13 +36,13 @@ class ProcessSerializer(serializers.ModelSerializer):
     - Stages (ManyToManyField)
     - Case (ForeignKey)
     - Case Files (ManyToManyField)
-    - Client (ForeignKey to User)
+    - Clients (ManyToManyField to User)
     - Lawyer (ForeignKey to User)
     """
     stages = StageSerializer(many=True)  # ManyToManyField for stages    
     case = CaseSerializer()  # ForeignKey for case
     case_files = CaseFileSerializer(many=True)  # ManyToManyField for case_files
-    client = UserSerializer()  # ForeignKey for client
+    clients = UserSerializer(many=True)  # ManyToManyField for clients
     lawyer = UserSerializer()  # ForeignKey for lawyer
 
     class Meta:

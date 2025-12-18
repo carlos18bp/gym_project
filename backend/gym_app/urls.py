@@ -171,6 +171,7 @@ dynamic_document_urls = [
     path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
     path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
+    path('dynamic-documents/<int:document_id>/reopen-signatures/', signature_views.reopen_document_signatures, name='reopen-document-signatures'),
     path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
     
     # User signature management
