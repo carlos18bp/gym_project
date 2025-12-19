@@ -7,6 +7,7 @@ from .organization import Organization, OrganizationInvitation, OrganizationMemb
 from .intranet_gym import LegalDocument, IntranetProfile
 from .dynamic_document import DynamicDocument, DocumentVariable, DocumentSignature, RecentDocument, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from .legal_update import LegalUpdate
+from .subscription import Subscription, PaymentHistory
 
 __all__ = [
     'User', 'Process', 'Stage', 'CaseFile', 'Case', 'ActivityFeed', 'UserSignature',
@@ -14,5 +15,6 @@ __all__ = [
     'CorporateRequest', 'CorporateRequestType', 'CorporateRequestFiles', 'CorporateRequestResponse',
     'Organization', 'OrganizationInvitation', 'OrganizationMembership', 'OrganizationPost',
     'LegalDocument', 'IntranetProfile', 'DynamicDocument', 'DocumentVariable', 'DocumentSignature', 'LegalUpdate', 'RecentDocument', 'RecentProcess',
-    'Tag', 'DocumentVisibilityPermission', 'DocumentUsabilityPermission', 'DocumentFolder', 'DocumentRelationship'
+    'Tag', 'DocumentVisibilityPermission', 'DocumentUsabilityPermission', 'DocumentFolder', 'DocumentRelationship',
+    'Subscription', 'PaymentHistory'
 ]

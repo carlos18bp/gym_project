@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    # 'django_celery_beat',  # Uncomment after installing: pip install celery redis django-celery-beat
     'gym_app',
 ]
 
@@ -160,6 +161,31 @@ DEFAULT_FROM_EMAIL = 'G&M Consultores Jurídicos <misfotoscmbp@gmail.com>'
 # Google reCAPTCHA configuration
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6Lc2AHgrAAAAAIflkJJNbK1c5Ts6pmY5uEQrFCZP')
 RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '6Lc2AHgrAAAAAJzeTQYbL02-PA3TXwS3QSxaTRqV')
+
+# Wompi Payment Gateway Configuration
+WOMPI_ENVIRONMENT = os.getenv('WOMPI_ENVIRONMENT', 'test')
+
+if WOMPI_ENVIRONMENT == 'production':
+    WOMPI_PUBLIC_KEY = 'pub_prod_5on0Y7aYooesvUVq6BNkzpH5TYptsxd8'
+    WOMPI_PRIVATE_KEY = 'prv_prod_O942ODqcMAJLnw53QlZ8VoZVqv5C7FDB'
+    WOMPI_EVENTS_KEY = 'prod_events_vXS2HwhfKN1GV3XlXtO3zj8mpReZWo9K'
+    WOMPI_INTEGRITY_KEY = 'prod_integrity_J0dir9BPePkW9jxxtwzVfLYkSMzhD3DG'
+else:
+    WOMPI_PUBLIC_KEY = 'pub_test_b3LGmVloYasfVNKpZOc5ND0MMyAgQxFG'
+    WOMPI_PRIVATE_KEY = 'prv_test_2vFBbzzJKWJNCtDa868RA3ptz1EG1JF7'
+    WOMPI_EVENTS_KEY = 'test_events_Pj2i2YxMOfLGXEUSvOIwBSrVeTLZU0GW'
+    WOMPI_INTEGRITY_KEY = 'test_integrity_0h9R8sLVKQd3khMyvveBwbS3Cchql6T9'
+
+WOMPI_API_URL = 'https://production.wompi.co/v1' if WOMPI_ENVIRONMENT == 'production' else 'https://sandbox.wompi.co/v1'
+
+# Celery Configuration
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Bogota'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Configuración de Logging
 LOGGING = {

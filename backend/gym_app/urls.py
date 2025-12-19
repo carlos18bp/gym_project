@@ -12,7 +12,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Recent processes (tracking and updates)
 - Reports (Excel report generation)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -257,6 +257,20 @@ google_captcha_urls = [
     path('google-captcha/verify/', captcha.verify_recaptcha, name='google-captcha-verify'),
 ]
 
+# Subscription URLs
+subscription_urls = [
+    path('subscriptions/wompi-config/', subscription.get_wompi_config, name='subscription-wompi-config'),
+    path('subscriptions/debug-signature/', subscription.debug_signature, name='subscription-debug-signature'),
+    path('subscriptions/generate-signature/', subscription.generate_signature, name='subscription-generate-signature'),
+    path('subscriptions/create/', subscription.create_subscription, name='subscription-create'),
+    path('subscriptions/current/', subscription.get_current_subscription, name='subscription-current'),
+    path('subscriptions/cancel/', subscription.cancel_subscription, name='subscription-cancel'),
+    path('subscriptions/update-payment-method/', subscription.update_payment_method, name='subscription-update-payment-method'),
+    path('subscriptions/payments/', subscription.get_payment_history, name='subscription-payments'),
+    path('subscriptions/webhook/', subscription.wompi_webhook, name='subscription-webhook'),
+    path('subscriptions/<int:subscription_id>/cancel/', subscription.cancel_subscription_view, name='subscription-cancel-by-id'),
+]
+
 # Combine all URL patterns
 urlpatterns = (
     sign_in_sign_on_urls +
@@ -271,5 +285,6 @@ urlpatterns = (
     google_captcha_urls +
     legal_update_urls +
     recent_process_urls +
-    reports_urls
+    reports_urls +
+    subscription_urls
 )
