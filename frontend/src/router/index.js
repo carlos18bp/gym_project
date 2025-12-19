@@ -73,6 +73,30 @@ const router = createRouter({
       meta: { requiresAuth: false, title: "Sin Conexión" },
     },
     {
+      path: "/subscriptions",
+      name: "subscriptions",
+      component: () => import(/* webpackChunkName: "subscriptions" */ "@/views/subscriptions/Subscriptions.vue"),
+      meta: { requiresAuth: false, title: "Planes de Suscripción" },
+    },
+    {
+      path: "/checkout/:plan",
+      name: "checkout",
+      component: () => import(/* webpackChunkName: "subscriptions" */ "@/views/subscriptions/Checkout.vue"),
+      meta: { requiresAuth: true, title: "Finalizar Suscripción" },
+    },
+    {
+      path: "/subscription/sign_in",
+      name: "subscription_sign_in",
+      component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SubscriptionSignIn.vue"),
+      meta: { requiresAuth: false, title: "Iniciar Sesión - Suscripción" },
+    },
+    {
+      path: "/subscription/sign_up",
+      name: "subscription_sign_up",
+      component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SubscriptionSignUp.vue"),
+      meta: { requiresAuth: false, title: "Registrarse - Suscripción" },
+    },
+    {
       path: "/dashboard",
       component: SlideBar,
       children: [
