@@ -23,21 +23,21 @@ def process_list(request):
     try:
         # Check the role of the authenticated user
         if user.role == 'Client':
-            processes = Process.objects.filter(client=user) \
-                .select_related('client', 'lawyer') \
-                .prefetch_related('stages', 'case_files') \
+            processes = Process.objects.filter(clients=user) \
+                .select_related('lawyer') \
+                .prefetch_related('clients', 'stages', 'case_files') \
                 .order_by('-created_at')
         
         elif user.role == 'Lawyer':
             processes = Process.objects.filter(lawyer=user) \
-                .select_related('client', 'lawyer') \
-                .prefetch_related('stages', 'case_files') \
+                .select_related('lawyer') \
+                .prefetch_related('clients', 'stages', 'case_files') \
                 .order_by('-created_at')
         else:
             # If the user has any other role, return all processes
             processes = Process.objects.all() \
-                .select_related('client', 'lawyer') \
-                .prefetch_related('stages', 'case_files') \
+                .select_related('lawyer') \
+                .prefetch_related('clients', 'stages', 'case_files') \
                 .order_by('-created_at')
 
         serializer = ProcessSerializer(processes, many=True, context={'request': request})
@@ -61,9 +61,16 @@ def create_process(request):
         # Parse the main data from the request
         main_data = json.loads(request.data.get('mainData', '{}'))
 
-        # Validate client and lawyer
+        # Validate clients and lawyer
+        client_ids = main_data.get('clientIds') or []
+        if not isinstance(client_ids, list):
+            client_ids = [client_ids]
+
+        clients_qs = User.objects.filter(pk__in=client_ids)
+        if not client_ids or clients_qs.count() != len(client_ids):
+            return Response({'detail': 'Client or Lawyer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
         try:
-            client = User.objects.get(pk=main_data.get('clientId'))
             lawyer = User.objects.get(pk=main_data.get('lawyerId'))
         except User.DoesNotExist:
             return Response({'detail': 'Client or Lawyer not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -89,12 +96,14 @@ def create_process(request):
             plaintiff=main_data.get('plaintiff'),
             defendant=main_data.get('defendant'),
             ref=main_data.get('ref'),
-            client=client,
             lawyer=lawyer,
             case=case_type,
             subcase=main_data.get('subcase'),
             progress=progress_value,
         )
+
+        # Associate clients with the process
+        process.clients.set(clients_qs)
 
         # Handle Stage instances
         stages_data = main_data.get('stages', [])
@@ -188,14 +197,15 @@ def update_process(request, pk):
         progress_value = max(0, min(progress_value, 100))
         process.progress = progress_value
     
-    # Update client
-    client_id = main_data.get('clientId')
-    if client_id:
-        try:
-            client = User.objects.get(id=client_id)
-            process.client = client
-        except User.DoesNotExist:
-            pass
+    # Update clients (ManyToMany)
+    client_ids = main_data.get('clientIds', None)
+    if client_ids is not None:
+        if not isinstance(client_ids, list):
+            client_ids = [client_ids]
+        # Only update if we have at least one valid client
+        clients_qs = User.objects.filter(id__in=client_ids)
+        if clients_qs.exists():
+            process.clients.set(clients_qs)
     
     # Update lawyer
     lawyer_id = main_data.get('lawyerId')

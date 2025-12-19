@@ -152,12 +152,14 @@ class Command(BaseCommand):
                 plaintiff=fake.name(),
                 defendant=fake.name(),
                 ref=fake.uuid4(),
-                client=client,
                 lawyer=lawyer,
                 case=case,
                 subcase=fake.bs(),
                 progress=random.randint(0, 100),
             )
+
+            # Associate at least one client with the process
+            process.clients.add(client)
 
             # Determine which stage set to use based on case type
             if any(term in case.type.lower() for term in ['penal', 'acusatorio']):
@@ -227,12 +229,12 @@ class Command(BaseCommand):
                 plaintiff=fake.name(),
                 defendant=fake.name(),
                 ref=fake.uuid4(),
-                client=client_user,
                 lawyer=lawyer_user,
                 case=random.choice(cases),
                 subcase=fake.bs(),
                 progress=random.randint(0, 100),
             )
+            process.clients.add(client_user)
             self.stdout.write(
                 self.style.SUCCESS(
                     f'Extra test process for {label}: {process.ref} (client={client_user.email}, lawyer={lawyer_user.email})'

@@ -1159,6 +1159,17 @@ const handleMenuAction = async (action, document) => {
         await downloadPDFDocument(document);
         break;
         
+      case "editAndResend": {
+        if (document && document.id && document.title) {
+          const encodedTitle = encodeURIComponent(document.title.trim());
+          const routePath = `/dynamic_document_dashboard/document/use/correction/${document.id}/${encodedTitle}`;
+          router.push(routePath);
+        } else {
+          console.warn("Cannot navigate to correction mode: invalid document data", document);
+        }
+        break;
+      }
+      
       default:
         console.warn("Unknown action:", action);
     }

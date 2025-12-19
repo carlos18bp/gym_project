@@ -426,6 +426,69 @@ def reject_document(request, document_id, user_id):
         )
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
+@transaction.atomic
+def reopen_document_signatures(request, document_id):
+    """Reopen the signature workflow for a rejected or expired document.
+
+    This endpoint is intended for the document creator or a lawyer. It allows
+    correcting a previously rejected/expired document and sending it back to
+    the *PendingSignatures* state while reusing the same document instance.
+
+    Effects:
+    - Only works for documents that require signatures.
+    - Only allowed when the document state is Rejected or Expired.
+    - Resets all related DocumentSignature records to pending status.
+    - Updates the document state to PendingSignatures and clears fully_signed.
+    """
+
+    try:
+        document = DynamicDocument.objects.select_for_update().get(pk=document_id)
+
+        if not document.requires_signature:
+            return Response(
+                {'detail': 'This document does not require signatures.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if document.state not in ['Rejected', 'Expired']:
+            return Response(
+                {'detail': 'Only rejected or expired documents can be reopened for signatures.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Reset all signature records for this document to pending state
+        DocumentSignature.objects.filter(document=document).update(
+            signed=False,
+            signed_at=None,
+            rejected=False,
+            rejected_at=None,
+            rejection_comment=None,
+        )
+
+        # Move document back to PendingSignatures state
+        document.state = 'PendingSignatures'
+        document.fully_signed = False
+        document.updated_at = timezone.now()
+        document.save(update_fields=['state', 'fully_signed', 'updated_at'])
+
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except DynamicDocument.DoesNotExist:
+        return Response(
+            {'detail': 'Document not found.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'An unexpected error occurred: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 @require_lawyer_or_owner_by_id

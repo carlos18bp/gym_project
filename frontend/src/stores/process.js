@@ -66,8 +66,15 @@ export const useProcessStore = defineStore("process", {
         const lastStage = process.stages[process.stages.length - 1];
         const isActive = lastStage && lastStage.status !== "Fallo";
         
-        if (currentUser.role === "client" || currentUser.role === "basic") {
-          return isActive && process.client.id === currentUser.id;
+        if (
+          currentUser.role === "client" ||
+          currentUser.role === "basic" ||
+          currentUser.role === "corporate_client"
+        ) {
+          const isClientOfProcess =
+            Array.isArray(process.clients) &&
+            process.clients.some((client) => client.id === currentUser.id);
+          return isActive && isClientOfProcess;
         } else if (currentUser.role === "lawyer") {
           return isActive && process.lawyer.id === currentUser.id;
         }
@@ -145,7 +152,9 @@ export const useProcessStore = defineStore("process", {
         // Check the role of the user and filter accordingly
         if (isClient) {
           processesToFilter = processesToFilter.filter(
-            (process) => process.client.id == userIdParam
+            (process) =>
+              Array.isArray(process.clients) &&
+              process.clients.some((client) => client.id == userIdParam)
           );
         } else {
           processesToFilter = processesToFilter.filter(
@@ -204,7 +213,7 @@ export const useProcessStore = defineStore("process", {
         ref: formData.ref,
         authority: formData.authority,
         authorityEmail: formData.authorityEmail,
-        clientId: formData.clientId,
+        clientIds: formData.clientIds,
         lawyerId: formData.lawyerId,
         progress: formData.progress,
         stages: formData.stages,
@@ -279,7 +288,7 @@ export const useProcessStore = defineStore("process", {
         ref: formData.ref,
         authority: formData.authority,
         authorityEmail: formData.authorityEmail,
-        clientId: formData.clientId,
+        clientIds: formData.clientIds,
         lawyerId: formData.lawyerId,
         progress: formData.progress,
         stages: formData.stages,

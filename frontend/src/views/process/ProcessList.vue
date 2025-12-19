@@ -340,27 +340,27 @@
                   <div class="flex items-center">
                     <div class="h-10 w-10 flex-shrink-0">
                       <img
-                        v-if="process.client.photo_profile"
+                        v-if="getPrimaryClient(process)?.photo_profile"
                         class="h-10 w-10 rounded-full object-cover"
-                        :src="process.client.photo_profile"
-                        :alt="process.client.first_name"
+                        :src="getPrimaryClient(process)?.photo_profile"
+                        :alt="getPrimaryClient(process)?.first_name"
                       />
                       <div
                         v-else
                         class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm"
                       >
-                        {{ getInitials(process.client.first_name, process.client.last_name) }}
+                        {{ getInitials(getPrimaryClient(process)?.first_name, getPrimaryClient(process)?.last_name) }}
                       </div>
                     </div>
                     <div class="ml-4">
                       <div class="text-sm font-medium text-gray-900">
-                        {{ process.client.first_name }} {{ process.client.last_name }}
+                        {{ getPrimaryClient(process)?.first_name }} {{ getPrimaryClient(process)?.last_name }}
                       </div>
                     </div>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{{ process.client.email }}</div>
+                  <div class="text-sm text-gray-900">{{ getPrimaryClient(process)?.email }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -652,6 +652,12 @@ const stages = computed(() => {
   return Array.from(stagesList).sort();
 });
 
+// Helper: get the primary client (first in clients array) for display/search
+const getPrimaryClient = (process) => {
+  if (!process || !Array.isArray(process.clients)) return null;
+  return process.clients.length ? process.clients[0] : null;
+};
+
 // Base filtered processes based on active tab
 const baseFilteredProcesses = computed(() => {
   let processes = [];
@@ -663,7 +669,9 @@ const baseFilteredProcesses = computed(() => {
     processes = processStore.processesWithClosedStatus;
     // Filter archived processes by user
     if (isClient) {
-      processes = processes.filter(p => p.client?.id === userId);
+      processes = processes.filter(p => {
+        return Array.isArray(p.clients) && p.clients.some(c => c.id === userId);
+      });
     } else if (currentUser.value?.role === 'lawyer') {
       processes = processes.filter(p => p.lawyer?.id === userId);
     }
@@ -675,7 +683,9 @@ const baseFilteredProcesses = computed(() => {
     if (activeTab.value === 'my_processes') {
       // My processes only
       if (isClient) {
-        processes = processes.filter(p => p.client?.id === userId);
+        processes = processes.filter(p => {
+          return Array.isArray(p.clients) && p.clients.some(c => c.id === userId);
+        });
       } else if (currentUser.value?.role === 'lawyer') {
         processes = processes.filter(p => p.lawyer?.id === userId);
       }
@@ -694,10 +704,11 @@ const filteredAndSortedProcesses = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     processes = processes.filter(process => {
+      const primaryClient = getPrimaryClient(process) || {};
       return (
-        process.client?.first_name?.toLowerCase().includes(query) ||
-        process.client?.last_name?.toLowerCase().includes(query) ||
-        process.client?.email?.toLowerCase().includes(query) ||
+        primaryClient.first_name?.toLowerCase().includes(query) ||
+        primaryClient.last_name?.toLowerCase().includes(query) ||
+        primaryClient.email?.toLowerCase().includes(query) ||
         process.case?.type?.toLowerCase().includes(query) ||
         process.subcase?.toLowerCase().includes(query) ||
         process.ref?.toLowerCase().includes(query) ||
@@ -730,8 +741,10 @@ const filteredAndSortedProcesses = computed(() => {
   // Apply sorting
   if (sortBy.value === 'name') {
     processes.sort((a, b) => {
-      const nameA = `${a.client?.first_name || ''} ${a.client?.last_name || ''}`.toLowerCase();
-      const nameB = `${b.client?.first_name || ''} ${b.client?.last_name || ''}`.toLowerCase();
+      const aClient = getPrimaryClient(a) || {};
+      const bClient = getPrimaryClient(b) || {};
+      const nameA = `${aClient.first_name || ''} ${aClient.last_name || ''}`.toLowerCase();
+      const nameB = `${bClient.first_name || ''} ${bClient.last_name || ''}`.toLowerCase();
       return nameA.localeCompare(nameB);
     });
   } else if (sortBy.value === 'recent') {
@@ -991,14 +1004,18 @@ const exportProcesses = () => {
 
   // Create CSV content
   const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Ddo./Accionado', 'Etapa'];
-  const rows = processesToExport.map(process => [
-    `${process.client?.first_name || ''} ${process.client?.last_name || ''}`,
-    process.client?.email || '',
-    process.case?.type || '',
-    process.plaintiff || '-',
-    process.defendant || '-',
-    process.stages?.[process.stages.length - 1]?.status || 'Sin estado'
-  ]);
+  const rows = processesToExport.map(process => {
+    const primaryClient = getPrimaryClient(process) || {};
+    const lastStage = process.stages?.[process.stages.length - 1] || null;
+    return [
+      `${primaryClient.first_name || ''} ${primaryClient.last_name || ''}`,
+      primaryClient.email || '',
+      process.case?.type || '',
+      process.plaintiff || '-',
+      process.defendant || '-',
+      lastStage?.status || ''
+    ];
+  });
 
   const csvContent = [
     headers.join(','),

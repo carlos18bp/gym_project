@@ -208,17 +208,41 @@
               />
             </div>
           </div>
-          <!-- Client form -->
+          <!-- Progress form -->
           <div>
-            <Combobox
-              as="div"
-              v-model="selectedClient"
-              @update:modelValue="query = ''"
+            <label
+              for="progress"
+              class="block text-base font-medium leading-6 text-primary"
             >
+              Avance (%)
+            </label>
+            <div class="mt-2">
+              <input
+                v-model.number="formData.progress"
+                type="number"
+                name="progress"
+                id="progress"
+                min="0"
+                max="100"
+                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                placeholder="0 - 100"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Clients row (full width) -->
+        <div>
+          <!-- Clients form (multi-select) -->
+          <Combobox
+            as="div"
+            v-model="selectedClient"
+            @update:modelValue="onClientSelected"
+          >
               <ComboboxLabel
                 class="block text-sm font-medium leading-6 text-primary"
               >
-                Usuario
+                Usuarios
                 <span class="text-red-500">*</span>
               </ComboboxLabel>
               <div class="relative mt-2">
@@ -226,12 +250,8 @@
                   class="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-12 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                   @change="query = $event.target.value"
                   @blur="query = ''"
-                  :display-value="
-                    (client) =>
-                      client?.last_name && client?.first_name
-                        ? `${client?.last_name} ${client?.first_name}`
-                        : ''
-                  "
+                  :display-value="() => ''"
+                  placeholder="Buscar y agregar usuarios"
                 />
                 <ComboboxButton
                   class="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none"
@@ -251,7 +271,7 @@
                     :key="client.id"
                     :value="client"
                     as="template"
-                    v-slot="{ active, selected }"
+                    v-slot="{ active }"
                   >
                     <li
                       :class="[
@@ -277,7 +297,7 @@
                           <span
                             :class="[
                               'truncate block',
-                              selected && 'font-semibold',
+                              isClientSelected(client) && 'font-semibold',
                             ]"
                           >
                             {{ client.last_name }} {{ client.first_name }}
@@ -294,7 +314,7 @@
                       </div>
 
                       <span
-                        v-if="selected"
+                        v-if="isClientSelected(client)"
                         :class="[
                           'absolute inset-y-0 right-0 flex items-center pr-4',
                           active ? 'text-white' : 'text-secondary',
@@ -306,31 +326,80 @@
                   </ComboboxOption>
                 </ComboboxOptions>
               </div>
+
+              <!-- Selected clients list (table-style similar to stages) -->
+              <div class="mt-4">
+                <div class="qflow-root">
+                  <div class="-my-2 overflow-x-auto sm:-mx-3 lg:-mx-4">
+                    <div class="inline-block min-w-full py-2 align-middle sm:px-3 lg:px-4">
+                      <table
+                        v-if="selectedClients.length"
+                        class="min-w-full divide-y divide-gray-200"
+                      >
+                        <thead>
+                          <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th scope="col" class="py-2 pr-3 w-2/5">Usuario</th>
+                            <th scope="col" class="px-3 py-2 w-2/5">Email</th>
+                            <th scope="col" class="px-3 py-2 w-1/5">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                          <tr
+                            v-for="client in selectedClients"
+                            :key="client.id"
+                          >
+                            <td class="py-2 pr-3 text-sm text-primary flex items-center gap-2">
+                              <img
+                                v-if="client.photo_profile"
+                                :src="client.photo_profile"
+                                alt="Foto de perfil"
+                                class="h-7 w-7 flex-shrink-0 rounded-full object-cover"
+                              />
+                              <div
+                                v-else
+                                class="h-7 w-7 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-xs"
+                              >
+                                {{ getInitials(client.first_name, client.last_name) }}
+                              </div>
+                              <div class="min-w-0">
+                                <div class="font-medium truncate">
+                                  {{ client.last_name }} {{ client.first_name }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                  {{ client.role === 'client' ? 'Cliente' : client.role === 'basic' ? 'Básico' : 'Corporativo' }}
+                                </div>
+                              </div>
+                            </td>
+                            <td class="px-3 py-2 text-sm text-gray-700 truncate">
+                              {{ client.email }}
+                            </td>
+                            <td class="px-3 py-2 text-sm text-primary">
+                              <button
+                                type="button"
+                                class="p-1 rounded-md text-red-600 hover:bg-red-50"
+                                @click.stop="removeClient(client.id)"
+                              >
+                                <TrashIcon class="h-5 w-5" />
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      <div
+                        v-else
+                        class="py-2 text-xs text-gray-500"
+                      >
+                        Selecciona al menos un usuario.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </Combobox>
-          </div>
-          <!-- Progress form -->
-          <div>
-            <label
-              for="progress"
-              class="block text-base font-medium leading-6 text-primary"
-            >
-              Avance (%)
-            </label>
-            <div class="mt-2">
-              <input
-                v-model.number="formData.progress"
-                type="number"
-                name="progress"
-                id="progress"
-                min="0"
-                max="100"
-                class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
-                placeholder="0 - 100"
-              />
-            </div>
-          </div>
         </div>
-        <!-- Third row -->
+
+        <!-- Third row: etapas procesales (restaurado) -->
         <div>
           <!-- Stages table -->
           <div class="qflow-root">
@@ -357,13 +426,24 @@
                         required
                       />
                     </div>
-                    
+
                     <!-- Date and delete button row -->
                     <div class="flex items-end gap-2">
                       <div class="flex-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4 inline mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                           </svg>
                           Fecha
                         </label>
@@ -374,7 +454,7 @@
                           class="block w-full rounded-md border-0 py-2 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary text-sm"
                         />
                       </div>
-                      
+
                       <!-- Delete button -->
                       <button
                         @click="deleteStage(index)"
@@ -395,13 +475,20 @@
 
               <!-- Desktop: Table layout -->
               <div class="hidden md:block">
-                <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                <div
+                  class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8"
+                >
                   <table class="min-w-full divide-y divide-gray-300">
                     <thead>
                       <tr class="text-left text-base font-regular text-primary">
                         <th scope="col" class="py-3.5 pr-3 w-3/5">
                           <div class="flex items-center gap-3">
-                            <span>Etapa Procesal<span class="text-red-500 ml-1">*</span></span>
+                            <span
+                              >Etapa Procesal<span
+                                class="text-red-500 ml-1"
+                                >*</span
+                              ></span
+                            >
                             <button
                               @click="addStage"
                               type="button"
@@ -469,6 +556,7 @@
             </div>
           </div>
         </div>
+
         <!-- Fourth row -->
         <div>
           <!-- Archive table -->
@@ -650,7 +738,7 @@ const formData = reactive({
   ref: "",
   authority: "",
   authorityEmail: "",
-  clientId: "",
+  clientIds: [],
   lawyerId: "",
   progress: 0,
   stages: [
@@ -756,7 +844,11 @@ function assignProcessToFormData(process) {
   formData.ref = process.ref || "";
   formData.authority = process.authority || "";
   formData.authorityEmail = process.authority_email || "";
-  selectedClient.value = process.client || "";
+  // Map clients from backend (ManyToMany) to local selection
+  selectedClients.value = Array.isArray(process.clients)
+    ? [...process.clients]
+    : [];
+  formData.clientIds = selectedClients.value.map((client) => client.id);
   formData.lawyerId = process.lawyer.id || "";
   formData.progress = typeof process.progress === "number" ? process.progress : 0;
 
@@ -795,7 +887,7 @@ const validateFormData = () => {
     "Sub Caso": formData.subcase,
     Radicado: formData.ref,
     Autoridad: formData.authority,
-    Cliente: formData.clientId,
+    Clientes: (formData.clientIds && formData.clientIds.length) || "",
     Abogado: formData.lawyerId,
   };
 
@@ -854,7 +946,7 @@ const validateFormData = () => {
  */
 const onSubmit = async () => {
   formData.caseTypeId = selectedCaseType.value?.id || "";
-  formData.clientId = selectedClient.value?.id || "";
+  formData.clientIds = selectedClients.value.map((client) => client.id);
   formData.lawyerId = authStore.userAuth?.id || "";
   
   // Ensure process ID is set for updates
@@ -913,7 +1005,7 @@ const archiveProcess = async () => {
     // Set the process ID for the update
     formData.processIdParam = programIdParam.value;
     formData.caseTypeId = selectedCaseType.value?.id || "";
-    formData.clientId = selectedClient.value?.id || "";
+    formData.clientIds = selectedClients.value.map((client) => client.id);
     formData.lawyerId = authStore.userAuth?.id || "";
     
     // Use the archive flag to differentiate this from regular updates
@@ -965,13 +1057,18 @@ const filteredCaseTypes = computed(() =>
 );
 
 /**
- * The currently selected client.
- *
- * This reactive reference stores the client selected by the user.
+ * The currently selected client in the combobox (last picked).
  *
  * @constant {Ref<Object|null>}
  */
 const selectedClient = ref(null);
+
+/**
+ * The list of selected clients for this process (multi-select).
+ *
+ * @constant {Ref<Array<object>>}
+ */
+const selectedClients = ref([]);
 
 /**
  * Filters the list of users (clients, basic, and corporate_client) based on the search query.
@@ -992,6 +1089,40 @@ const filteredClients = computed(() =>
         );
       })
 );
+
+/**
+ * Handle selecting a client from the combobox. Adds to selectedClients
+ * if not already present and clears the combobox selection.
+ */
+const onClientSelected = (client) => {
+  if (!client) return;
+  const alreadySelected = selectedClients.value.some(
+    (c) => c.id === client.id
+  );
+  if (!alreadySelected) {
+    selectedClients.value.push(client);
+  }
+  // Clear the combobox input after selection
+  selectedClient.value = null;
+};
+
+/**
+ * Check if a given client is already selected.
+ */
+const isClientSelected = (client) => {
+  if (!client) return false;
+  return selectedClients.value.some((c) => c.id === client.id);
+};
+
+/**
+ * Remove a client from the selection by id.
+ */
+const removeClient = (clientId) => {
+  selectedClients.value = selectedClients.value.filter(
+    (client) => client.id !== clientId
+  );
+  formData.clientIds = selectedClients.value.map((client) => client.id);
+};
 
 /**
  * Adds a new stage to the form data.
@@ -1115,7 +1246,7 @@ const resetForm = () => {
   formData.ref = ""; // Reset reference field
   formData.authority = ""; // Reset authority field
   formData.authorityEmail = ""; // Reset authority email field
-  formData.clientId = ""; // Reset client ID field
+  formData.clientIds = []; // Reset client IDs field
   formData.lawyerId = ""; // Reset lawyer ID field
 
   // Reset stages array with an empty status

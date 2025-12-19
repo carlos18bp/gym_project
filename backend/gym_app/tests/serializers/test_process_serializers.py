@@ -58,11 +58,11 @@ def process(user_client, user_lawyer, case, stage, case_file):
         plaintiff='John Smith',
         defendant='Jane Doe',
         ref='CASE-123',
-        client=user_client,
         lawyer=user_lawyer,
         case=case,
         subcase='Theft'
     )
+    process.clients.add(user_client)
     process.stages.add(stage)
     process.case_files.add(case_file)
     return process
@@ -152,8 +152,11 @@ class TestProcessSerializer:
         assert serializer.data['case']['id'] == process.case.id
         assert serializer.data['case']['type'] == process.case.type
         
-        assert serializer.data['client']['id'] == process.client.id
-        assert serializer.data['client']['email'] == process.client.email
+        # Verify clients list (use the first associated client)
+        primary_client = process.clients.first()
+        assert len(serializer.data['clients']) == 1
+        assert serializer.data['clients'][0]['id'] == primary_client.id
+        assert serializer.data['clients'][0]['email'] == primary_client.email
         
         assert serializer.data['lawyer']['id'] == process.lawyer.id
         assert serializer.data['lawyer']['email'] == process.lawyer.email

@@ -30,10 +30,24 @@
                 <span 
                   :class="[
                     'inline-block w-3 h-3 rounded-full mr-2',
-                    document.fully_signed ? 'bg-green-500' : 'bg-yellow-500'
+                    document.state === 'FullySigned'
+                      ? 'bg-green-500'
+                      : document.state === 'Rejected'
+                        ? 'bg-red-500'
+                        : document.state === 'Expired'
+                          ? 'bg-gray-400'
+                          : 'bg-yellow-500'
                   ]"
                 ></span>
-                {{ document.fully_signed ? 'Documento completamente firmado' : 'Pendiente de firmas' }}
+                {{
+                  document.state === 'FullySigned'
+                    ? 'Documento completamente firmado'
+                    : document.state === 'Rejected'
+                      ? 'Documento rechazado'
+                      : document.state === 'Expired'
+                        ? 'Documento expirado'
+                        : 'Pendiente de firmas'
+                }}
               </span>
             </p>
             <p v-if="document.creator" class="text-sm text-gray-500 mt-1">
@@ -71,16 +85,18 @@
                     <span 
                       :class="[
                         'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                        signer.signed 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
+                        signer.rejected
+                          ? 'bg-red-100 text-red-800'
+                          : signer.signed 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
                       ]"
                     >
-                      {{ signer.signed ? 'Firmado' : 'Pendiente' }}
+                      {{ signer.rejected ? 'Rechazado' : signer.signed ? 'Firmado' : 'Pendiente' }}
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ signer.signed_at ? formatDate(signer.signed_at) : '—' }}
+                    {{ signer.signed_at ? formatDate(signer.signed_at) : (signer.rejected_at ? formatDate(signer.rejected_at) : '—') }}
                   </td>
                 </tr>
                 
@@ -100,16 +116,18 @@
                     <span 
                       :class="[
                         'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                        signature.signed 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
+                        signature.rejected
+                          ? 'bg-red-100 text-red-800'
+                          : signature.signed 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
                       ]"
                     >
-                      {{ signature.signed ? 'Firmado' : 'Pendiente' }}
+                      {{ signature.rejected ? 'Rechazado' : signature.signed ? 'Firmado' : 'Pendiente' }}
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ signature.signed_at ? formatDate(signature.signed_at) : '—' }}
+                    {{ signature.signed_at ? formatDate(signature.signed_at) : (signature.rejected_at ? formatDate(signature.rejected_at) : '—') }}
                   </td>
                 </tr>
               </tbody>

@@ -127,6 +127,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     # Relationship with document variables
     variables = DocumentVariableSerializer(many=True, required=False)
     signatures = DocumentSignatureSerializer(many=True, required=False, read_only=True)
+    signers = serializers.SerializerMethodField(read_only=True)
     
     # Tags assigned to this document (read-only, nested serialization)
     tags = TagSerializer(many=True, read_only=True)
@@ -216,6 +217,30 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         the signers selection.
         """
         return [signature.signer_id for signature in obj.signatures.all()]
+    
+    def get_signers(self, obj):
+        request = self.context.get('request')
+        current_user = request.user if request and hasattr(request, 'user') else None
+        signers_data = []
+        for signature in obj.signatures.select_related('signer').all():
+            signer = signature.signer
+            if not signer:
+                continue
+            first_name = getattr(signer, 'first_name', '') or ""
+            last_name = getattr(signer, 'last_name', '') or ""
+            full_name = f"{first_name} {last_name}".strip() or signer.email
+            signers_data.append({
+                'signature_id': signature.id,
+                'signer_email': signer.email,
+                'signer_name': full_name,
+                'signed': signature.signed,
+                'signed_at': signature.signed_at,
+                'rejected': signature.rejected,
+                'rejected_at': signature.rejected_at,
+                'rejection_comment': signature.rejection_comment,
+                'is_current_user': bool(current_user and signer.id == current_user.id),
+            })
+        return signers_data
         
     def get_completed_signatures(self, obj):
         """
