@@ -356,6 +356,14 @@
                       <div class="text-sm font-medium text-gray-900">
                         {{ getPrimaryClient(process)?.first_name }} {{ getPrimaryClient(process)?.last_name }}
                       </div>
+                      <button
+                        v-if="process.clients && process.clients.length"
+                        type="button"
+                        class="mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                        @click.stop="openUsersModal(process)"
+                      >
+                        Ver usuarios
+                      </button>
                     </div>
                   </div>
                 </td>
@@ -521,6 +529,12 @@
           {{ activeTab === 'archived_processes' ? 'No hay procesos archivados para mostrar.' : 'Contacta a tu abogado para gestionar tus procesos.' }}
         </p>
       </div>
+      <!-- Users Modal -->
+      <ProcessUsersModal
+        :is-open="showUsersModal"
+        :users="usersForModal"
+        @close="closeUsersModal"
+      />
     </div>
   </div>
 </template>
@@ -544,6 +558,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/auth/user";
 import { useProcessStore } from "@/stores/process";
+import ProcessUsersModal from "@/components/process/ProcessUsersModal.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -574,6 +589,10 @@ const itemsPerPage = ref(10);
 const menuButtonRefs = ref({});
 const menuItemsRefs = ref({});
 const isAnyMenuOpen = ref(false);
+
+// Users modal state
+const showUsersModal = ref(false);
+const selectedProcessForUsers = ref(null);
 
 // Initialize
 onMounted(async () => {
@@ -651,6 +670,13 @@ const stages = computed(() => {
   });
   return Array.from(stagesList).sort();
 });
+
+// Users for modal (clients of the selected process)
+const usersForModal = computed(() => {
+  const p = selectedProcessForUsers.value
+  if (!p || !Array.isArray(p.clients)) return []
+  return p.clients
+})
 
 // Helper: get the primary client (first in clients array) for display/search
 const getPrimaryClient = (process) => {
@@ -863,6 +889,17 @@ const getInitials = (firstName, lastName) => {
   const last = lastName?.charAt(0)?.toUpperCase() || '';
   return `${first}${last}` || '?';
 };
+
+// Users modal handlers
+const openUsersModal = (process) => {
+  selectedProcessForUsers.value = process
+  showUsersModal.value = true
+}
+
+const closeUsersModal = () => {
+  showUsersModal.value = false
+  selectedProcessForUsers.value = null
+}
 
 const goToNewRequest = () => {
   router.push('/legal_request_create');

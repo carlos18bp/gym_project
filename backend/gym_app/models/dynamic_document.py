@@ -208,6 +208,10 @@ class DynamicDocument(models.Model):
         # Document creator always has access
         if self.created_by == user:
             return True
+        
+        # Assigned user (e.g. client owner) also has usability access
+        if self.assigned_to == user:
+            return True
             
         # Published documents without assigned_to are templates usable by all clients
         if self.state == 'Published' and self.assigned_to is None:
@@ -237,6 +241,10 @@ class DynamicDocument(models.Model):
         # Document creator is owner
         if self.created_by == user:
             return 'owner'
+        
+        # Assigned user (e.g. client copy owner) has usability access
+        if self.assigned_to == user:
+            return 'usability'
         
         # Published documents without assigned_to are templates usable by all clients
         if self.state == 'Published' and self.assigned_to is None:

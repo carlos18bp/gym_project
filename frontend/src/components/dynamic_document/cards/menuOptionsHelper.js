@@ -249,6 +249,10 @@ const cardConfigs = {
             {
               label: "Editar Formulario",
               action: "editForm"
+            },
+            {
+              label: "Editar Documento",
+              action: "editDocument"
             }
           ]
         });
