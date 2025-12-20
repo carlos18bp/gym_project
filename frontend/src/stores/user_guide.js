@@ -210,6 +210,8 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Creación y actualización de procesos',
                 'Firma de documentos',
                 'Creación de minutas',
+                'Edición de contenido de documentos jurídicos',
+                'Rechazo de documentos y correcciones reenviadas para firma',
                 'Actualización de perfil',
                 'Scroll infinito para ver más actividades'
               ]
@@ -382,7 +384,8 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Filtro por Etapa Procesal (Admisión, Pruebas, Alegatos, Sentencia)',
                 'Botón "Limpiar" para resetear todos los filtros',
                 'Ordenamiento por fecha (más recientes) o nombre (A-Z)',
-                'Contador de resultados encontrados'
+                'Contador de resultados encontrados',
+                'En la columna "Nombre" puedes usar el enlace "Ver usuarios" para consultar todos los clientes asociados a un proceso'
               ],
               steps: [
                 {
@@ -419,11 +422,12 @@ export const useUserGuideStore = defineStore('userGuide', {
               features: [
                 'Formulario completo con validación de campos',
                 'Combobox con búsqueda para Tipo de Proceso',
-                'Selección de Cliente desde base de datos',
+                'Selección de uno o varios Clientes desde base de datos (multi-selección)',
                 'Asignación de Abogado responsable',
                 'Subida de múltiples archivos adjuntos',
                 'Campos: Demandante, Demandado, Autoridad, Referencia, Subclase',
-                'Definición de etapa procesal inicial'
+                'Definición de etapa procesal inicial',
+                'Tabla con el listado de clientes seleccionados para revisar fácilmente las asociaciones del proceso'
               ],
               steps: [
                 {
@@ -440,7 +444,7 @@ export const useUserGuideStore = defineStore('userGuide', {
                 },
                 {
                   title: 'Asigna Cliente y Abogado',
-                  description: 'Selecciona el cliente asociado y el abogado responsable'
+                  description: 'Selecciona uno o varios clientes asociados y el abogado responsable del proceso'
                 },
                 {
                   title: 'Define Subclase y Etapa',
@@ -487,7 +491,7 @@ export const useUserGuideStore = defineStore('userGuide', {
                   },
                   {
                     title: 'Asignaciones',
-                    description: 'Cliente: Selecciona "Juan Pérez" de la lista, Abogado: Asigna el responsable'
+                    description: 'Clientes: Selecciona uno o varios clientes (por ejemplo, "Juan Pérez") de la lista. Abogado: Asigna el responsable del caso.'
                   },
                   {
                     title: 'Etapa y Archivos',
@@ -524,11 +528,14 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Expediente digital con tabla de archivos',
                 'Búsqueda de documentos en el expediente',
                 'Descarga individual de archivos',
-                'Paginación de archivos (10 por página)'
+                'Paginación de archivos (10 por página)',
+                'Botón "Ver usuarios" para abrir un modal con todos los clientes asociados al proceso (foto o iniciales y nombre completo)',
+                'Barra de progreso que refleja de forma continua el porcentaje de avance del proceso'
               ],
               tips: [
                 'Usa la búsqueda del expediente para encontrar documentos específicos',
-                'El timeline muestra visualmente el progreso del caso'
+                'El timeline muestra visualmente el progreso del caso',
+                'Si un proceso tiene varios clientes, utiliza "Ver usuarios" para confirmar todas las personas asociadas'
               ]
             },
             {
@@ -579,7 +586,7 @@ export const useUserGuideStore = defineStore('userGuide', {
               <li><strong>Carpetas:</strong> Organización de documentos en carpetas personalizadas</li>
               <li><strong>Documentos por Firmar:</strong> Pendientes de firma (PendingSignatures)</li>
               <li><strong>Documentos Firmados:</strong> Completamente firmados (FullySigned)</li>
-              <li><strong>Documentos Archivados:</strong> Documentos archivados (Archived)</li>
+              <li><strong>Documentos Archivados:</strong> Documentos rechazados o expirados (Rejected, Expired)</li>
               <li><strong>Documentos de Clientes (Completados):</strong> Finalizados por clientes</li>
               <li><strong>Documentos de Clientes (En Progreso):</strong> En proceso de completado</li>
             </ul>
@@ -612,7 +619,7 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Carpetas: Organizar documentos en carpetas personalizadas',
                 'Por Firmar: Ver documentos pendientes de firma',
                 'Firmados: Archivo de documentos completados',
-                'Archivados: Documentos archivados para referencia',
+                'Archivados: Documentos rechazados o expirados para referencia y corrección',
                 'Completados por Clientes: Revisar información llenada',
                 'En Progreso por Clientes: Ver avance de completado'
               ]
@@ -635,7 +642,9 @@ export const useUserGuideStore = defineStore('userGuide', {
                 '📄 Descargar PDF: Exportar versión final',
                 '📁 Mover a Carpeta: Organizar en carpetas',
                 '✍️ Firmar: Agregar firma electrónica',
-                '👀 Vista Previa: Ver sin editar'
+                '👀 Vista Previa: Ver sin editar',
+                '↩️ Editar y reenviar para firma (documentos rechazados): reabre documentos Rejected/Expired, permite corregirlos y volver a enviarlos al flujo de firmas',
+                '✏️ Editar contenido de documentos completados por clientes: abre el editor de contenido protegiendo variables subrayadas en amarillo para que no puedan modificarse'
               ],
               example: {
                 title: 'Ejemplo: Crear y Asignar una Minuta',
@@ -780,7 +789,9 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Trazabilidad completa: fecha, hora, IP, método',
                 'Registro en actividad del usuario',
                 'Ver progreso de firmas (X de Y firmadas)',
-                'Múltiples firmantes en un documento'
+                'Múltiples firmantes en un documento',
+                'Rechazo de documentos con comentario opcional de justificación',
+                'Reapertura de documentos rechazados para corrección y nuevo envío a firma (solo abogados)'
               ],
               restrictions: [
                 'NO disponible para usuarios básicos',
@@ -879,7 +890,8 @@ export const useUserGuideStore = defineStore('userGuide', {
                 'Validación en tiempo real',
                 'Guardar progreso (borrador)',
                 'Enviar completado al abogado',
-                'Indicadores de campos obligatorios'
+                'Indicadores de campos obligatorios',
+                'Editar contenido de documentos completados sin modificar variables protegidas (subrayadas en amarillo)'
               ],
               steps: [
                 {

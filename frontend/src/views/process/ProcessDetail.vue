@@ -104,7 +104,7 @@
     >
       <!-- Card: process header and information -->
       <div class="p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
-        <!-- Header with case type and client avatar -->
+        <!-- Header with case type and users button -->
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
           <div class="flex items-center gap-3">
             <img src="@/assets/icons/file-01.svg" class="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
@@ -118,27 +118,18 @@
             </div>
           </div>
           
-          <!-- Client avatar and info (avatar on the left, info on the right) -->
-          <div class="flex items-center gap-2 sm:gap-3 min-w-0" v-if="primaryClient">
-            <!-- Show photo_profile if available, otherwise show initials -->
-            <img 
-              v-if="primaryClient.photo_profile"
-              :src="primaryClient.photo_profile" 
-              :alt="primaryClient.first_name"
-              class="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
-            />
-            <div 
-              v-else
-              class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-base sm:text-lg shadow-md flex-shrink-0"
+          <!-- Users button: open modal with all associated users -->
+          <div
+            v-if="process?.clients && process.clients.length"
+            class="flex items-center justify-end"
+          >
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              @click="showUsersModal = true"
             >
-              {{ getInitials(primaryClient.first_name, primaryClient.last_name) }}
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                {{ primaryClient.first_name }} {{ primaryClient.last_name }}
-              </p>
-              <p class="text-xs text-gray-500 truncate">{{ primaryClient.email || 'Cliente' }}</p>
-            </div>
+              <span>Ver usuarios</span>
+            </button>
           </div>
         </div>
 
@@ -347,11 +338,19 @@
     :stages="process?.stages || []"
     @close="showHistoryModal = false"
   />
+
+  <!-- Process Users Modal -->
+  <ProcessUsersModal
+    :is-open="showUsersModal"
+    :users="process?.clients || []"
+    @close="showUsersModal = false"
+  />
 </template>
 
 <script setup>
 import ProcessStageProgress from "@/components/process/ProcessStageProgress.vue";
 import ProcessHistoryModal from "@/components/process/ProcessHistoryModal.vue";
+import ProcessUsersModal from "@/components/process/ProcessUsersModal.vue";
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 import {
   ArrowDownTrayIcon,
@@ -365,24 +364,19 @@ import { computed, onBeforeMount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 import { useUserStore } from "@/stores/auth/user";
+import { useRecentProcessStore } from "@/stores/dashboard/recentProcess";
 
 // Route and store instances
 const route = useRoute();
 const router = useRouter();
 const processStore = useProcessStore();
 const userStore = useUserStore();
+const recentProcessStore = useRecentProcessStore();
 const currentUser = computed(() => userStore.currentUser);
 
 // Get process ID from route and fetch process data
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
-
-// Primary client (first client) for display
-const primaryClient = computed(() => {
-  const p = process.value;
-  if (!p || !Array.isArray(p.clients)) return null;
-  return p.clients.length ? p.clients[0] : null;
-});
 
 /**
  * Initializes process and user data before the component is mounted.
@@ -393,6 +387,12 @@ onBeforeMount(async () => {
       processStore.init(),
       userStore.init(),
     ]);
+
+    try {
+      await recentProcessStore.updateRecentProcess(processId);
+    } catch (updateError) {
+      console.error('Error updating recent process entry:', updateError);
+    }
   } catch (error) {
     console.error('Error initializing process detail:', error);
   }
@@ -403,6 +403,7 @@ const searchTerm = ref("");
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 const showHistoryModal = ref(false);
+const showUsersModal = ref(false);
 
 // Active tab state - determine based on current route or default to 'my_processes'
 const activeTab = ref('my_processes');

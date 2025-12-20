@@ -335,6 +335,7 @@ import { useUserStore } from "@/stores/auth/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";
 import { create_request } from "@/stores/services/request_http";
+import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
@@ -770,6 +771,16 @@ const saveDocument = async (state = 'Draft') => {
           }
           // Refresh documents to reflect new PendingSignatures state
           await store.init(true);
+
+          // Register user activity for correction and resend to signatures
+          try {
+            await registerUserActivity(
+              ACTION_TYPES.UPDATE,
+              `Corregiste y reenviaste el documento "${document.value.title}" para firma`
+            );
+          } catch (activityError) {
+            console.warn('No se pudo registrar la actividad de corrección y reenvío:', activityError);
+          }
         } catch (error) {
           console.error('Error reopening document for signatures:', error);
           await showNotification('Error al reabrir el documento para firma.', 'error');
