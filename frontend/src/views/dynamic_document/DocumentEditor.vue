@@ -22,10 +22,26 @@ const route = useRoute();
 const store = useDynamicDocumentStore();
 const userStore = useUserStore();
 
-// Detect if user is a client (vs lawyer) based solely on role
+// Detect if we are in the client editor route (content editing of completed documents)
+const isClientEditorRoute = computed(() => {
+  return route.path.includes('/dynamic_document_dashboard/client/editor/edit/');
+});
+
+// Detect if user is a client-like editor for this view
+// When using the client editor route (used to editar contenido de documentos completados),
+// we want the same protected-variable behavior for any non-basic role (cliente, corporativo, abogado).
+// For template creation/edition (lawyer/editor/*), lawyers see raw {{variables}} as antes.
 const isClient = computed(() => {
   const role = userStore.currentUser?.role;
-  return role === 'client' || role === 'basic' || role === 'corporate_client';
+  const isBasic = role === 'basic';
+
+  // In the client editor route, treat all non-basic roles as "client" for variable protection
+  if (isClientEditorRoute.value && !isBasic) {
+    return true;
+  }
+
+  // Outside the client editor route, only actual clients/corporate act as "client" here
+  return role === 'client' || role === 'corporate_client';
 });
 
 // Detect if we're creating from a template (creator route) vs editing existing document (editor route)

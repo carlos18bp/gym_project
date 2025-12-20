@@ -241,20 +241,26 @@ const cardConfigs = {
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
+        const editChildren = [
+          {
+            label: "Editar Formulario",
+            action: "editForm"
+          }
+        ];
+
+        // Only non-basic users (client, corporate_client, lawyer) can access the raw document editor
+        if (!isBasicUser) {
+          editChildren.push({
+            label: "Editar Documento",
+            action: "editDocument"
+          });
+        }
+
         options.push({
           label: "Editar",
           action: "edit-submenu",
           isGroup: true,
-          children: [
-            {
-              label: "Editar Formulario",
-              action: "editForm"
-            },
-            {
-              label: "Editar Documento",
-              action: "editDocument"
-            }
-          ]
+          children: editChildren
         });
         
         // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles and show disabled for Basic
