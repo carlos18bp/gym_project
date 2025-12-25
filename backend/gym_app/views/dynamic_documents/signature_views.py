@@ -47,6 +47,25 @@ from cryptography.hazmat.primitives import hashes, serialization
 User = get_user_model()
 
 
+def get_client_ip(request):
+    """Best-effort retrieval of the client's IP address.
+
+    Checks common proxy headers first and falls back to REMOTE_ADDR.
+    """
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        # X-Forwarded-For may contain multiple IPs, client is usually the first
+        ip = x_forwarded_for.split(',')[0].strip()
+        if ip:
+            return ip
+
+    x_real_ip = request.META.get('HTTP_X_REAL_IP')
+    if x_real_ip:
+        return x_real_ip
+
+    return request.META.get('REMOTE_ADDR')
+
+
 def generate_encrypted_document_id(document_id, created_at):
     """
     Generates a unique encrypted identifier for a document combining ID, date and time.
@@ -76,6 +95,31 @@ def generate_encrypted_document_id(document_id, created_at):
     except Exception as e:
         # Fallback to simple format
         return f"DOC-{document_id:04d}-{created_at.strftime('%Y%m%d')}"
+
+
+SPANISH_MONTHS = {
+    1: "enero",
+    2: "febrero",
+    3: "marzo",
+    4: "abril",
+    5: "mayo",
+    6: "junio",
+    7: "julio",
+    8: "agosto",
+    9: "septiembre",
+    10: "octubre",
+    11: "noviembre",
+    12: "diciembre",
+}
+
+
+def format_datetime_spanish(dt):
+    """
+    Formatea un datetime en español, por ejemplo:
+    25 de diciembre de 2025 a las 14:30:15
+    """
+    month_name = SPANISH_MONTHS.get(dt.month, "")
+    return f"{dt.day:02d} de {month_name} de {dt.year} a las {dt.strftime('%H:%M:%S')}"
 
 
 def expire_overdue_documents():
@@ -246,7 +290,8 @@ def sign_document(request, document_id, user_id):
         try:
             signature_record.signed = True
             signature_record.signed_at = timezone.now()
-            signature_record.ip_address = request.META.get('REMOTE_ADDR')
+            # Capture client IP using helper (handles proxies and fallbacks)
+            signature_record.ip_address = get_client_ip(request)
             signature_record.save()
             
             # Verify the signature was saved
@@ -744,8 +789,10 @@ def generate_original_document_pdf(document, user=None):
 
     # Define background image style if letterhead exists
     background_style = ""
+    body_extra_top_padding = ""
     letterhead_image = get_letterhead_for_document(document, user)
     if letterhead_image:
+        body_extra_top_padding = "\n        padding-top: 1.5cm;"
         try:
             # Get the absolute path to the letterhead image
             letterhead_path = os.path.abspath(letterhead_image.path)
@@ -803,7 +850,7 @@ def generate_original_document_pdf(document, user=None):
 
     body {{
         font-family: 'Carlito', sans-serif !important;
-        font-size: 12pt;
+        font-size: 12pt;{body_extra_top_padding}
     }}
 
     p, span {{
@@ -857,39 +904,9 @@ def generate_original_document_pdf(document, user=None):
     if pisa_status.err:
         raise Exception("HTML to PDF conversion failed")
 
-    # Create a new buffer for the watermarked PDF
-    watermarked_buffer = BytesIO()
-
-    # Create PDF reader and writer objects
-    reader = PdfReader(temp_buffer)
-    writer = PdfWriter()
-
-    # Create watermark canvas
-    watermark_buffer = BytesIO()
-    c = canvas.Canvas(watermark_buffer, pagesize=letter)
-    c.saveState()
-    c.translate(300, 400)  # Move to center of page (adjusted for Letter size)
-    c.rotate(45)  # Rotate 45 degrees
-    c.setFont('Carlito-Bold', 60)
-    c.setFillColor(colors.lightgrey)
-    c.setFillAlpha(0.3)  # Set transparency to 30%
-    c.drawCentredString(0, 30, "ESTADO REGISTRO DIGITAL")
-    c.drawCentredString(0, -30, "VERIFICADO")
-    c.restoreState()
-    c.save()
-    watermark_buffer.seek(0)
-    watermark_pdf = PdfReader(watermark_buffer)
-
-    # Add watermark to each page
-    for page in reader.pages:
-        page.merge_page(watermark_pdf.pages[0])
-        writer.add_page(page)
-
-    # Write the watermarked PDF to the output buffer
-    writer.write(watermarked_buffer)
-    watermarked_buffer.seek(0)
-
-    return watermarked_buffer
+    # No watermark: return the generated PDF as-is
+    temp_buffer.seek(0)
+    return temp_buffer
 
 def create_signatures_pdf(document, request):
     """
@@ -917,19 +934,20 @@ def create_signatures_pdf(document, request):
     register_carlito_fonts()
     
     # Create custom styles optimized for single page
+    # Estilos para el nuevo diseño
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        alignment=0,  # Left alignment
-        fontSize=16,
-        spaceAfter=12,
+        alignment=1,  # Center alignment
+        fontSize=14,
+        spaceAfter=16,
         fontName='Carlito-Bold'
     )
     
     subtitle_style = ParagraphStyle(
         'CustomSubtitle',
         parent=styles['Heading2'],
-        alignment=0,  # Left alignment
+        alignment=1,  # Center alignment
         fontSize=12,
         spaceAfter=8,
         fontName='Carlito-Bold'
@@ -944,49 +962,80 @@ def create_signatures_pdf(document, request):
         fontName='Carlito'
     )
     
+    normal_center_style = ParagraphStyle(
+        'CustomNormalCenter',
+        parent=styles['Normal'],
+        alignment=1,  # Center alignment
+        fontSize=10,
+        spaceAfter=4,
+        fontName='Carlito'
+    )
+    
     detail_style = ParagraphStyle(
         'DetailStyle',
         parent=styles['Normal'],
         alignment=0,  # Left alignment
-        fontSize=9,
-        spaceAfter=3,
-        fontName='Carlito',
-        leftIndent=15
+        fontSize=10,
+        spaceAfter=2,
+        fontName='Carlito'
     )
     
     # Build the PDF content
     elements = []
     
-    # Add new headers as requested
-    elements.append(Paragraph("REGISTRO DE FIRMAS", title_style))
-    elements.append(Spacer(1, 3))
-    
-    elements.append(Paragraph("CONSTANCIA TRAZABILIDAD DE LAS FIRMAS", subtitle_style))
-    elements.append(Spacer(1, 6))
+    # Título principal centrado
+    elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
+    elements.append(Spacer(1, 12))
     
     # Generate encrypted document identifier
     encrypted_id = generate_encrypted_document_id(document.pk, document.created_at)
     
-    # Add document identification section
-    elements.append(Paragraph("I. IDENTIFICACIÓN DEL DOCUMENTO", subtitle_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(f"<b>Título del Documento:</b> {document.title}", normal_style))
-    elements.append(Paragraph(f"<b>Fecha de Creación:</b> {document.created_at.strftime('%d de %B de %Y a las %H:%M:%S')}", normal_style))
-    elements.append(Paragraph(f"<b>Identificador Único:</b> {encrypted_id}", normal_style))
+    # Tabla de Identificación del Documento
+    elements.append(Paragraph("<b>Identificación del Documento</b>", subtitle_style))
     elements.append(Spacer(1, 6))
     
-    # Add signature verification section
+    # Crear tabla con bordes para identificación del documento
+    from reportlab.lib import colors as rl_colors
+    table_data = [
+        [Paragraph("<b>Título del Documento</b>", normal_center_style), 
+         Paragraph("<b>Fecha de Creación</b>", normal_center_style), 
+         Paragraph("<b>Identificador Único</b>", normal_center_style)],
+        [Paragraph(document.title, normal_center_style), 
+         Paragraph(format_datetime_spanish(document.created_at), normal_center_style), 
+         Paragraph(encrypted_id, normal_center_style)]
+    ]
+    
+    doc_table = Table(table_data, colWidths=[180, 180, 140])
+    doc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), rl_colors.Color(0.95, 0.95, 0.95)),  # Header row light gray
+        ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Carlito-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Carlito'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, rl_colors.black),
+    ]))
+    elements.append(doc_table)
+    elements.append(Spacer(1, 20))
+    
+    # Resumen de Firmas centrado
     total_signatures = document.signatures.count()
     signed_count = document.signatures.filter(signed=True).count()
     
-    elements.append(Paragraph("II. RESUMEN DE FIRMAS", subtitle_style))
-    elements.append(Spacer(1, 4))
-    elements.append(Paragraph(f"<b>Firmas Requeridas:</b> {total_signatures} | <b>Firmas Completadas:</b> {signed_count} | <b>Estado:</b> {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}", normal_style))
+    elements.append(Paragraph("<b>Resumen Firmas</b>", subtitle_style))
     elements.append(Spacer(1, 6))
+    elements.append(Paragraph(
+        f"Firmas Requeridas: {total_signatures} | Firmas Completadas: {signed_count} | Estado: {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}",
+        normal_center_style
+    ))
+    elements.append(Spacer(1, 20))
     
-    # Add detailed signatures registry
-    elements.append(Paragraph("III. REGISTRO DETALLADO DE FIRMAS", subtitle_style))
-    elements.append(Spacer(1, 4))
+    # Registro de Firmas
+    elements.append(Paragraph("<b>Registro</b>", subtitle_style))
+    elements.append(Spacer(1, 10))
     
     signature_images_added = False
     for idx, signature in enumerate(document.signatures.all().order_by('created_at'), 1):
@@ -994,37 +1043,49 @@ def create_signatures_pdf(document, request):
             user = signature.signer
             user_signature = getattr(user, 'signature', None)
             
+            # Generate unique identifier for this signature
+            signature_id = f"{idx:02d}{signature.signed_at.strftime('%m%d%H%M') if signature.signed_at else '0000'}"
+            
+            # Firmante con nombre completo
+            elements.append(Paragraph(f"<b>Firmante:</b> {user.get_full_name() or user.email}", detail_style))
+            
+            # Email e ID Firma en la misma línea
+            elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
+            
+            # Identificación
+            id_info = []
+            if user.document_type:
+                id_info.append(f"{user.get_document_type_display()}")
+            if user.identification:
+                id_info.append(f"{user.identification}")
+            if id_info:
+                elements.append(Paragraph(f"<b>Identificación:</b> {' - '.join(id_info)}", detail_style))
+            
+            # Fecha y Hora
+            elements.append(Paragraph(f"<b>Fecha y Hora:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
+            
+            # IP de Registro - mostrar "No Registrada" si no hay IP
+            ip_text = signature.ip_address if signature.ip_address else "No Registrada"
+            elements.append(Paragraph(f"<b>IP de Registro:</b> {ip_text}", detail_style))
+            
+            # Imagen de firma alineada a la derecha
             if user_signature and user_signature.signature_image:
-                # Generate unique identifier for this signature
-                signature_id = f"{idx:02d}{signature.signed_at.strftime('%m%d%H%M') if signature.signed_at else '0000'}"
-                
-                # Add signature details (without role as requested)
-                elements.append(Paragraph(f"<b>Firmante:</b> {user.get_full_name() or user.email}", normal_style))
-                elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
-                
-                # Add identification information if available
-                id_info = []
-                if user.document_type:
-                    id_info.append(f"{user.get_document_type_display()}")
-                if user.identification:
-                    id_info.append(f"{user.identification}")
-                if id_info:
-                    elements.append(Paragraph(f"<b>Identificación:</b> {' - '.join(id_info)}", detail_style))
-                
-                elements.append(Paragraph(f"<b>Fecha y Hora:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
-                elements.append(Paragraph(f"<b>IP de Registro:</b> {signature.ip_address or 'No Registrada'}", detail_style))
-                
-                # Add signature image with smaller size for single page optimization
                 try:
                     img = Image(user_signature.signature_image.path)
-                    img.drawHeight = 40
-                    img.drawWidth = 160
-                    elements.append(img)
-                    elements.append(Spacer(1, 4))
+                    img.drawHeight = 50
+                    img.drawWidth = 180
+                    # Crear tabla para centrar imagen
+                    img_table = Table([[img]], colWidths=[500])
+                    img_table.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ]))
+                    elements.append(img_table)
                     signature_images_added = True
                 except Exception as e:
-                    elements.append(Paragraph("<b>Error:</b> al cargar la imagen de la firma", detail_style))
-                    elements.append(Spacer(1, 4))
+                    pass
+            
+            elements.append(Spacer(1, 15))
             
         except Exception as e:
             pass
@@ -1033,56 +1094,26 @@ def create_signatures_pdf(document, request):
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
         elements.append(Spacer(1, 4))
     
-    # Add constancia footer
-    elements.append(Spacer(1, 8))
-    elements.append(Paragraph("IV. CONSTANCIA", subtitle_style))
-    elements.append(Spacer(1, 4))
+    # Constancia final (texto justificado)
+    constancia_style = ParagraphStyle(
+        'ConstanciaStyle',
+        parent=styles['Normal'],
+        alignment=4,  # Justify
+        fontSize=10,
+        spaceAfter=4,
+        fontName='Carlito'
+    )
+    elements.append(Spacer(1, 10))
     elements.append(Paragraph(
         "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
         "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
         "generador(es) del documento como del(los) destinatario(s) firmante(s).",
-        normal_style
+        constancia_style
     ))
     elements.append(Spacer(1, 6))
     
-    # Add generation timestamp
-    from datetime import datetime
-    generation_time = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    elements.append(Paragraph(f"<b>Generado el:</b> {generation_time} | <b>Por:</b> {request.user.get_full_name() or request.user.email}", detail_style))
-    
-    # Build the PDF
-    
-    # Create a custom canvas class to add watermark
-    class WatermarkCanvas(canvas.Canvas):
-        def __init__(self, *args, **kwargs):
-            canvas.Canvas.__init__(self, *args, **kwargs)
-            self.pages = []
-            
-        def showPage(self):
-            self.pages.append(dict(self.__dict__))
-            self._startPage()
-            
-        def save(self):
-            page_count = len(self.pages)
-            for page in self.pages:
-                self.__dict__.update(page)
-                self.drawWatermark()
-                canvas.Canvas.showPage(self)
-            canvas.Canvas.save(self)
-            
-        def drawWatermark(self):
-            self.saveState()
-            self.translate(300, 400)  # Move to center of page
-            self.rotate(45)  # Rotate 45 degrees
-            self.setFont('Carlito-Bold', 50)
-            self.setFillColor(colors.lightgrey)
-            self.setFillAlpha(0.25)  # Set transparency to 25%
-            self.drawCentredString(0, 20, "REGISTRO DE FIRMAS")
-            self.drawCentredString(0, -20, "VERIFICADO")
-            self.restoreState()
-    
-    # Build the PDF with watermark
-    doc.build(elements, canvasmaker=WatermarkCanvas)
+    # Build the PDF sin marca de agua ni línea 'Generado el'
+    doc.build(elements)
     
     # Get the value of the BytesIO buffer
     buffer.seek(0)
@@ -1113,6 +1144,39 @@ def combine_pdfs(pdf1_buffer, pdf2_buffer):
     output.write(output_buffer)
     output_buffer.seek(0)
     
+    return output_buffer
+
+
+def add_identifier_footer(pdf_buffer, identifier):
+    """
+    Añade el identificador único en la esquina inferior derecha de todas las páginas.
+    Devuelve un nuevo BytesIO con el PDF modificado.
+    """
+    reader = PdfReader(pdf_buffer)
+    writer = PdfWriter()
+
+    # Crear un PDF de una sola página con el texto del identificador como footer
+    footer_buffer = BytesIO()
+    c = canvas.Canvas(footer_buffer, pagesize=letter)
+    c.setFont('Carlito', 9)
+    c.setFillColor(colors.grey)
+
+    margin_x = 40  # margen desde la derecha
+    margin_y = 60  # margen desde abajo (suficiente para no solapar con footer del membrete)
+    c.drawRightString(letter[0] - margin_x, margin_y, identifier)
+    c.save()
+
+    footer_buffer.seek(0)
+    footer_pdf = PdfReader(footer_buffer)
+
+    # Mezclar el footer en cada página
+    for page in reader.pages:
+        page.merge_page(footer_pdf.pages[0])
+        writer.add_page(page)
+
+    output_buffer = BytesIO()
+    writer.write(output_buffer)
+    output_buffer.seek(0)
     return output_buffer
 
 @api_view(['GET'])
@@ -1161,6 +1225,12 @@ def generate_signatures_pdf(request, pk):
         
         # Combine both PDFs
         combined_pdf_buffer = combine_pdfs(original_pdf_buffer, signatures_pdf_buffer)
+        
+        # Generar el mismo identificador único
+        encrypted_id = generate_encrypted_document_id(document.pk, document.created_at)
+        
+        # Añadir el identificador como pie de página en todas las hojas
+        combined_pdf_buffer = add_identifier_footer(combined_pdf_buffer, encrypted_id)
         
         # Create the HTTP response with proper headers
         response = HttpResponse(content_type='application/pdf')

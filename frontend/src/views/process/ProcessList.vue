@@ -13,7 +13,7 @@
           <!-- Desktop Tabs -->
           <nav class="-mb-px hidden sm:flex space-x-8">
             <button
-              @click="activeTab = 'my_processes'"
+              @click="navigateTab('my_processes')"
               :class="[
                 activeTab === 'my_processes'
                   ? 'border-secondary text-secondary'
@@ -25,7 +25,7 @@
             </button>
             <button
               v-if="currentUser?.role === 'lawyer'"
-              @click="activeTab = 'all_processes'"
+              @click="navigateTab('all_processes')"
               :class="[
                 activeTab === 'all_processes'
                   ? 'border-secondary text-secondary'
@@ -36,7 +36,7 @@
               Todos los Procesos
             </button>
             <button
-              @click="activeTab = 'archived_processes'"
+              @click="navigateTab('archived_processes')"
               :class="[
                 activeTab === 'archived_processes'
                   ? 'border-secondary text-secondary'
@@ -59,7 +59,7 @@
                 <div class="py-1">
                   <MenuItem v-slot="{ active }">
                     <button
-                      @click="activeTab = 'my_processes'"
+                      @click="navigateTab('my_processes')"
                       :class="[
                         active ? 'bg-gray-100' : '',
                         'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
@@ -70,7 +70,7 @@
                   </MenuItem>
                   <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
                     <button
-                      @click="activeTab = 'all_processes'"
+                      @click="navigateTab('all_processes')"
                       :class="[
                         active ? 'bg-gray-100' : '',
                         'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
@@ -81,7 +81,7 @@
                   </MenuItem>
                   <MenuItem v-slot="{ active }">
                     <button
-                      @click="activeTab = 'archived_processes'"
+                      @click="navigateTab('archived_processes')"
                       :class="[
                         active ? 'bg-gray-100' : '',
                         'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
@@ -615,25 +615,23 @@ onMounted(async () => {
   }
 });
 
-// Watch for route changes
+// Watch for route changes - use a single watcher to avoid race conditions
 watch(
-  () => route.params.display,
-  (newDisplay) => {
-    if (newDisplay === 'history') {
+  () => ({ display: route.params.display, group: route.query.group }),
+  (newRoute) => {
+    // Priority: display param takes precedence over query param
+    if (newRoute.display === 'history') {
       activeTab.value = 'archived_processes';
-    }
-  }
-);
-
-watch(
-  () => route.query.group,
-  (newGroup) => {
-    if (newGroup === 'general') {
+    } else if (newRoute.group === 'general') {
       activeTab.value = 'all_processes';
-    } else if (newGroup === 'default') {
+    } else if (newRoute.group === 'default') {
+      activeTab.value = 'my_processes';
+    } else {
+      // Default to my_processes if no specific route params
       activeTab.value = 'my_processes';
     }
-  }
+  },
+  { deep: true }
 );
 
 // Get unique values for filters
@@ -670,6 +668,38 @@ const stages = computed(() => {
   });
   return Array.from(stagesList).sort();
 });
+
+// Navigation between tabs: keep URL in sync and ensure `/history` only appears for archived_processes
+const navigateTab = (tab) => {
+  const currentUserId = currentUser.value?.id || '';
+  const userIdFromRoute = route.params.user_id;
+
+  // Prefer the user_id that ya esté en la URL; si no hay, usamos el del usuario actual
+  const userId = userIdFromRoute || currentUserId;
+
+  let path = '/process_list';
+  if (userId) {
+    path += `/${userId}`;
+  }
+
+  // Solo agregamos `/history` cuando vamos a Procesos Archivados
+  if (tab === 'archived_processes') {
+    path += '/history';
+  }
+
+  const query = { ...route.query };
+
+  if (tab === 'all_processes') {
+    query.group = 'general';
+  } else if (tab === 'my_processes') {
+    query.group = 'default';
+  } else {
+    // Para procesos archivados no necesitamos grupo
+    delete query.group;
+  }
+
+  router.push({ path, query });
+};
 
 // Users for modal (clients of the selected process)
 const usersForModal = computed(() => {
