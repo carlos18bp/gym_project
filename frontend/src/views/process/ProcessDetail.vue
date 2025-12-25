@@ -5,99 +5,100 @@
   >
     <slot></slot>
   </div>
+  
+  <!-- Main content -->
+  <div class="py-6 px-4 sm:px-6 lg:px-8">
+    <!-- Tabs Navigation -->
+    <div class="border-b border-gray-200 mb-6">
+      <div class="flex items-center justify-between">
+        <!-- Desktop Tabs -->
+        <nav class="-mb-px hidden sm:flex space-x-8">
+          <button
+            @click="navigateToTab('my_processes')"
+            :class="[
+              activeTab === 'my_processes'
+                ? 'border-secondary text-secondary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            Mis Procesos
+          </button>
+          <button
+            v-if="currentUser?.role === 'lawyer'"
+            @click="navigateToTab('all_processes')"
+            :class="[
+              activeTab === 'all_processes'
+                ? 'border-secondary text-secondary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            Todos los Procesos
+          </button>
+          <button
+            @click="navigateToTab('archived_processes')"
+            :class="[
+              activeTab === 'archived_processes'
+                ? 'border-secondary text-secondary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            Procesos Archivados
+          </button>
+        </nav>
 
-  <!-- Tabs Navigation -->
-  <div class="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between">
-      <!-- Desktop Tabs -->
-      <nav class="-mb-px hidden sm:flex space-x-8">
-        <button
-          @click="navigateToTab('my_processes')"
-          :class="[
-            activeTab === 'my_processes'
-              ? 'border-secondary text-secondary'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
-          ]"
-        >
-          Mis Procesos
-        </button>
-        <button
-          v-if="currentUser?.role === 'lawyer'"
-          @click="navigateToTab('all_processes')"
-          :class="[
-            activeTab === 'all_processes'
-              ? 'border-secondary text-secondary'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
-          ]"
-        >
-          Todos los Procesos
-        </button>
-        <button
-          @click="navigateToTab('archived_processes')"
-          :class="[
-            activeTab === 'archived_processes'
-              ? 'border-secondary text-secondary'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
-          ]"
-        >
-          Procesos Archivados
-        </button>
-      </nav>
-
-      <!-- Mobile Dropdown -->
-      <div class="sm:hidden flex-1">
-        <Menu as="div" class="relative">
-          <MenuButton class="w-full inline-flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-            <span>{{ getActiveTabLabel() }}</span>
-            <ChevronDownIcon class="h-5 w-5 ml-2" />
-          </MenuButton>
-          <MenuItems class="absolute left-0 z-10 mt-2 w-full origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-            <div class="py-1">
-              <MenuItem v-slot="{ active }">
-                <button
-                  @click="navigateToTab('my_processes')"
-                  :class="[
-                    active ? 'bg-gray-100' : '',
-                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                  ]"
-                >
-                  Mis Procesos
-                </button>
-              </MenuItem>
-              <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
-                <button
-                  @click="navigateToTab('all_processes')"
-                  :class="[
-                    active ? 'bg-gray-100' : '',
-                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                  ]"
-                >
-                  Todos los Procesos
-                </button>
-              </MenuItem>
-              <MenuItem v-slot="{ active }">
-                <button
-                  @click="navigateToTab('archived_processes')"
-                  :class="[
-                    active ? 'bg-gray-100' : '',
-                    'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                  ]"
-                >
-                  Procesos Archivados
-                </button>
-              </MenuItem>
-            </div>
-          </MenuItems>
-        </Menu>
+        <!-- Mobile Dropdown -->
+        <div class="sm:hidden flex-1">
+          <Menu as="div" class="relative">
+            <MenuButton class="w-full inline-flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+              <span>{{ getActiveTabLabel() }}</span>
+              <ChevronDownIcon class="h-5 w-5 ml-2" />
+            </MenuButton>
+            <MenuItems class="absolute left-0 z-10 mt-2 w-full origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div class="py-1">
+                <MenuItem v-slot="{ active }">
+                  <button
+                    @click="navigateToTab('my_processes')"
+                    :class="[
+                      active ? 'bg-gray-100' : '',
+                      'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                    ]"
+                  >
+                    Mis Procesos
+                  </button>
+                </MenuItem>
+                <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                  <button
+                    @click="navigateToTab('all_processes')"
+                    :class="[
+                      active ? 'bg-gray-100' : '',
+                      'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                    ]"
+                  >
+                    Todos los Procesos
+                  </button>
+                </MenuItem>
+                <MenuItem v-slot="{ active }">
+                  <button
+                    @click="navigateToTab('archived_processes')"
+                    :class="[
+                      active ? 'bg-gray-100' : '',
+                      'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                    ]"
+                  >
+                    Procesos Archivados
+                  </button>
+                </MenuItem>
+              </div>
+            </MenuItems>
+          </Menu>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Content -->
-  <div class="py-10 px-4 sm:px-6 lg:px-8">
+    <!-- Content -->
     <div
       v-if="process"
       class="space-y-6"
@@ -118,18 +119,39 @@
             </div>
           </div>
           
-          <!-- Users button: open modal with all associated users -->
+          <!-- Client avatar and users button -->
           <div
             v-if="process?.clients && process.clients.length"
             class="flex items-center justify-end"
           >
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              @click="showUsersModal = true"
-            >
-              <span>Ver usuarios</span>
-            </button>
+            <div class="flex items-center">
+              <div class="h-10 w-10 flex-shrink-0">
+                <img
+                  v-if="getPrimaryClient(process)?.photo_profile"
+                  class="h-10 w-10 rounded-full object-cover"
+                  :src="getPrimaryClient(process)?.photo_profile"
+                  :alt="getPrimaryClient(process)?.first_name"
+                />
+                <div
+                  v-else
+                  class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm"
+                >
+                  {{ getInitials(getPrimaryClient(process)?.first_name, getPrimaryClient(process)?.last_name) }}
+                </div>
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">
+                  {{ getPrimaryClient(process)?.first_name }} {{ getPrimaryClient(process)?.last_name }}
+                </div>
+                <button
+                  type="button"
+                  class="mt-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  @click="showUsersModal = true"
+                >
+                  Ver usuarios
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -405,8 +427,8 @@ const itemsPerPage = ref(10);
 const showHistoryModal = ref(false);
 const showUsersModal = ref(false);
 
-// Active tab state - determine based on current route or default to 'my_processes'
-const activeTab = ref('my_processes');
+// Active tab state - no tab selected by default in the detail view
+const activeTab = ref(null);
 
 /**
  * Get the label for the active tab
@@ -415,7 +437,7 @@ const getActiveTabLabel = () => {
   if (activeTab.value === 'my_processes') return 'Mis Procesos';
   if (activeTab.value === 'all_processes') return 'Todos los Procesos';
   if (activeTab.value === 'archived_processes') return 'Procesos Archivados';
-  return 'Mis Procesos';
+  return 'Selecciona una vista';
 };
 
 /**
@@ -427,26 +449,27 @@ const getActiveTabLabel = () => {
  * - my_processes       => route.query.group === 'default' (or omitted)
  */
 const navigateToTab = (tab) => {
-  const routeConfig = {
-    name: 'process_list',
-    params: {
-      user_id: currentUser.value?.id || ''
-    },
-    query: {}
-  };
+  const userId = currentUser.value?.id || '';
 
-  if (tab === 'all_processes') {
-    // Show all active processes
-    routeConfig.query.group = 'general';
-  } else if (tab === 'archived_processes') {
-    // Show archived processes history
-    routeConfig.params.display = 'history';
-  } else {
-    // Default: my active processes
-    routeConfig.query.group = 'default';
+  // Base path for process list: /process_list or /process_list/:user_id
+  let path = '/process_list';
+  if (userId) {
+    path += `/${userId}`;
   }
 
-  router.push(routeConfig);
+  // Only append /history when going to archived_processes
+  if (tab === 'archived_processes') {
+    path += '/history';
+  }
+
+  const query = {};
+  if (tab === 'all_processes') {
+    query.group = 'general';
+  } else if (tab === 'my_processes') {
+    query.group = 'default';
+  }
+
+  router.push({ path, query });
 };
 
 /**
@@ -620,5 +643,10 @@ const getInitials = (firstName, lastName) => {
   const first = firstName?.charAt(0)?.toUpperCase() || '';
   const last = lastName?.charAt(0)?.toUpperCase() || '';
   return `${first}${last}`;
+};
+
+const getPrimaryClient = (p) => {
+  if (!p || !Array.isArray(p.clients)) return null;
+  return p.clients.length ? p.clients[0] : null;
 };
 </script>
