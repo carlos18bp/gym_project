@@ -773,10 +773,17 @@ def generate_original_document_pdf(document, user=None):
         document: DynamicDocument instance
         user: User instance (optional, for global letterhead fallback)
     """
-    # Replace variables within the content
+    # Replace variables within the content (use formatted values when available)
     processed_content = document.content
     for variable in document.variables.all():
-        processed_content = processed_content.replace(f"{{{{{variable.name_en}}}}}", variable.value or "")
+        try:
+            replacement_value = variable.get_formatted_value()
+        except AttributeError:
+            replacement_value = variable.value or ""
+        processed_content = processed_content.replace(
+            f"{{{{{variable.name_en}}}}}",
+            replacement_value or ""
+        )
 
     # Convert HTML to XHTML using BeautifulSoup
     soup = BeautifulSoup(processed_content, 'html.parser')

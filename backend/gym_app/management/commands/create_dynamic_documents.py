@@ -345,14 +345,17 @@ class Command(BaseCommand):
                 summary_field='none'
             )
 
+            # Honorarios (también tratados como valor con moneda, igual que contract_value)
+            fee_amount = random.randint(500_000, 10_000_000)
             DocumentVariable.objects.create(
                 document=document,
                 name_en='fee_amount',
                 name_es='Honorarios',
                 tooltip='Monto de honorarios profesionales',
                 field_type='number',
-                value=str(random.randint(500_000, 10_000_000)) if should_fill_values else '',
-                summary_field='none'
+                value=str(fee_amount) if should_fill_values else '',
+                summary_field='value',
+                currency=currency if should_fill_values else None
             )
 
             DocumentVariable.objects.create(

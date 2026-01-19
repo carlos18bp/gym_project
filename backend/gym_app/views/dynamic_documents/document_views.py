@@ -198,10 +198,17 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
-        # Replace variables within the content
+        # Replace variables within the content (use formatted values when available)
         processed_content = document.content
         for variable in document.variables.all():
-            processed_content = processed_content.replace(f"{{{{{variable.name_en}}}}}", variable.value or "")
+            try:
+                replacement_value = variable.get_formatted_value()
+            except AttributeError:
+                replacement_value = variable.value or ""
+            processed_content = processed_content.replace(
+                f"{{{{{variable.name_en}}}}}",
+                replacement_value or ""
+            )
 
         # Convert HTML to XHTML using BeautifulSoup
         soup = BeautifulSoup(processed_content, 'html.parser')
@@ -399,7 +406,11 @@ def download_dynamic_document_word(request, pk):
             processed_text = text
             for variable in document.variables.all():
                 pattern = re.compile(rf"{{{{{variable.name_en}}}}}")
-                processed_text = pattern.sub(variable.value or "", processed_text)
+                try:
+                    replacement_value = variable.get_formatted_value()
+                except AttributeError:
+                    replacement_value = variable.value or ""
+                processed_text = pattern.sub(replacement_value or "", processed_text)
             return processed_text
 
         processed_content = replace_variables(document.content)

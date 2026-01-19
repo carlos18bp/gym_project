@@ -238,6 +238,56 @@ const cardConfigs = {
                                    userStore?.currentUser?.role === 'client';
       const isLawyer = userStore?.currentUser?.role === 'lawyer';
       const isProgress = document.state === 'Progress';
+      const isMyDocuments = context === 'my-documents';
+      const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
+      const isSignatureState = signatureStates.includes(document.state);
+      
+      // Special handling for documents in the signature workflow when shown in "Mis Documentos"
+      if (isMyDocuments && document.requires_signature && isSignatureState) {
+        // For PendingSignatures, FullySigned and Expired, lock the document: only lectura/descarga
+        if (document.state === 'PendingSignatures' || document.state === 'FullySigned' || document.state === 'Expired') {
+          // Previsualización
+          options.push({
+            label: "Previsualizar",
+            action: "preview",
+          });
+
+          // Descargar PDF siempre disponible
+          options.push({
+            label: "Descargar PDF",
+            action: "downloadPDF",
+          });
+
+          // Descargar Word respetando restricciones de usuario básico
+          if (!isBasicUser) {
+            options.push({
+              label: "Descargar Word",
+              action: "downloadWord",
+            });
+          } else {
+            options.push({
+              label: "Descargar Word",
+              action: "downloadWord",
+              disabled: true,
+            });
+          }
+
+          // Para documentos totalmente firmados, exponer también la descarga del documento firmado
+          if (document.state === 'FullySigned') {
+            options.push({
+              label: "Descargar Documento firmado",
+              action: "downloadSignedDocument",
+            });
+          }
+
+          // No se exponen opciones de edición, formalización ni eliminación
+          return options;
+        }
+
+        // Para Rejected mantenemos la semántica de edición/eliminación; el reenvío de firmas
+        // se gestiona desde el contexto de firmas (cardType "signatures"), donde ya existe
+        // la opción "Editar y reenviar".
+      }
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {

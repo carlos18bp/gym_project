@@ -121,66 +121,135 @@ export function useDocumentPermissions() {
 
   /**
    * Initialize permissions from permissions data
+   *
+   * This method now distinguishes between role-based permissions and
+   * individual user permissions. Users that belong to an active role
+   * (reported in permissionsData.active_roles) are NOT added to the
+   * selectedVisibilityUsers/selectedUsabilityUsers lists, so that
+   * unchecking a role truly removes its permissions.
    */
-     const initializeExistingPermissions = (permissionsData) => {
-     if (!permissionsData || !isLawyer.value) {
-       return;
-     }
-     
-      // Reset permissions to default state first
-      selectedVisibilityUsers.value = [];
-      selectedUsabilityUsers.value = [];
-      selectedRolesVisibility.value = [];
-      selectedRolesUsability.value = [];
-      isPublicDocument.value = false;
-     
-     // Initialize public access state
-     if (typeof permissionsData.is_public === 'boolean') {
-       isPublicDocument.value = permissionsData.is_public;
-     }
-     
-      // Only initialize permissions if document is not public
-      if (!isPublicDocument.value) {
-        // Initialize role-based permissions from active_roles
-        if (permissionsData.active_roles) {
-          // Set visibility roles
-          if (permissionsData.active_roles.visibility_roles && Array.isArray(permissionsData.active_roles.visibility_roles)) {
-            selectedRolesVisibility.value = [...permissionsData.active_roles.visibility_roles];
-          }
-          
-          // Set usability roles
-          if (permissionsData.active_roles.usability_roles && Array.isArray(permissionsData.active_roles.usability_roles)) {
-            selectedRolesUsability.value = [...permissionsData.active_roles.usability_roles];
-          }
-        }
-
-        // Initialize individual permissions
-        if (permissionsData.visibility_permissions && Array.isArray(permissionsData.visibility_permissions)) {
-          const filtered = permissionsData.visibility_permissions
-            .filter(permission => permission.user_id && permission.email && permission.full_name);
-          
-          selectedVisibilityUsers.value = filtered.map(permission => ({
-            id: permission.user_id,
-            user_id: permission.user_id,
-            email: permission.email,
-            full_name: permission.full_name
-          }));
+  const initializeExistingPermissions = (permissionsData) => {
+    if (!permissionsData || !isLawyer.value) {
+      return;
+    }
+    
+    // Reset permissions to default state first
+    selectedVisibilityUsers.value = [];
+    selectedUsabilityUsers.value = [];
+    selectedRolesVisibility.value = [];
+    selectedRolesUsability.value = [];
+    isPublicDocument.value = false;
+    
+    // Initialize public access state
+    if (typeof permissionsData.is_public === 'boolean') {
+      isPublicDocument.value = permissionsData.is_public;
+    }
+    
+    // Only initialize permissions if document is not public
+    if (!isPublicDocument.value) {
+      // Initialize role-based permissions from active_roles
+      let activeVisibilityRoles = [];
+      let activeUsabilityRoles = [];
+      
+      if (permissionsData.active_roles) {
+        // Set visibility roles
+        if (
+          permissionsData.active_roles.visibility_roles &&
+          Array.isArray(permissionsData.active_roles.visibility_roles)
+        ) {
+          selectedRolesVisibility.value = [
+            ...permissionsData.active_roles.visibility_roles,
+          ];
+          activeVisibilityRoles = [...permissionsData.active_roles.visibility_roles];
         }
         
-        // Initialize usability permissions
-        if (permissionsData.usability_permissions && Array.isArray(permissionsData.usability_permissions)) {
-          const filtered = permissionsData.usability_permissions
-            .filter(permission => permission.user_id && permission.email && permission.full_name);
-          
-          selectedUsabilityUsers.value = filtered.map(permission => ({
-            id: permission.user_id,
-            user_id: permission.user_id,
-            email: permission.email,
-            full_name: permission.full_name
-          }));
+        // Set usability roles
+        if (
+          permissionsData.active_roles.usability_roles &&
+          Array.isArray(permissionsData.active_roles.usability_roles)
+        ) {
+          selectedRolesUsability.value = [
+            ...permissionsData.active_roles.usability_roles,
+          ];
+          activeUsabilityRoles = [...permissionsData.active_roles.usability_roles];
         }
       }
-   };
+
+      // Helper to find a client by user_id using availableClients list
+      const findClientByUserId = (userId) => {
+        if (!Array.isArray(availableClients.value)) {
+          return null;
+        }
+        return (
+          availableClients.value.find(
+            (client) => client.user_id === userId || client.id === userId
+          ) || null
+        );
+      };
+
+      // Initialize individual visibility permissions (excluding those
+      // that belong to active visibility roles)
+      if (
+        permissionsData.visibility_permissions &&
+        Array.isArray(permissionsData.visibility_permissions)
+      ) {
+        const filtered = permissionsData.visibility_permissions
+          .filter(
+            (permission) =>
+              permission.user_id && permission.email && permission.full_name
+          )
+          .filter((permission) => {
+            if (!activeVisibilityRoles.length) {
+              return true;
+            }
+            const client = findClientByUserId(permission.user_id);
+            if (!client || !client.role) {
+              return true;
+            }
+            // Skip users whose role is already covered by an active role
+            return !activeVisibilityRoles.includes(client.role);
+          });
+
+        selectedVisibilityUsers.value = filtered.map((permission) => ({
+          id: permission.user_id,
+          user_id: permission.user_id,
+          email: permission.email,
+          full_name: permission.full_name,
+        }));
+      }
+
+      // Initialize individual usability permissions (excluding those
+      // that belong to active usability roles)
+      if (
+        permissionsData.usability_permissions &&
+        Array.isArray(permissionsData.usability_permissions)
+      ) {
+        const filtered = permissionsData.usability_permissions
+          .filter(
+            (permission) =>
+              permission.user_id && permission.email && permission.full_name
+          )
+          .filter((permission) => {
+            if (!activeUsabilityRoles.length) {
+              return true;
+            }
+            const client = findClientByUserId(permission.user_id);
+            if (!client || !client.role) {
+              return true;
+            }
+            // Skip users whose role is already covered by an active role
+            return !activeUsabilityRoles.includes(client.role);
+          });
+
+        selectedUsabilityUsers.value = filtered.map((permission) => ({
+          id: permission.user_id,
+          user_id: permission.user_id,
+          email: permission.email,
+          full_name: permission.full_name,
+        }));
+      }
+    }
+  };
 
   /**
    * Toggle visibility permission for a user
@@ -256,21 +325,67 @@ export function useDocumentPermissions() {
 
   /**
    * Toggle visibility permission for a role
+   *
+   * When a role is enabled, all clients with that role are marked as having
+   * visibility in the UI. When the role is disabled, all corresponding
+   * client permissions (visibility and usability) are removed. This ensures
+   * that unchecking a role truly revokes access for that role.
    */
   const toggleRoleVisibilityPermission = (roleCode) => {
-    
     const index = selectedRolesVisibility.value.indexOf(roleCode);
-    
+
+    const getClientUserIdsForRole = () => {
+      if (!Array.isArray(availableClients.value)) {
+        return [];
+      }
+      return availableClients.value
+        .filter((client) => client.role === roleCode)
+        .map((client) => client.user_id ?? client.id)
+        .filter(Boolean);
+    };
+
     if (index >= 0) {
-      // Remove from visibility and also from usability (cascade removal)
+      // Removing role: also remove corresponding client permissions
       selectedRolesVisibility.value.splice(index, 1);
       const usabilityIndex = selectedRolesUsability.value.indexOf(roleCode);
       if (usabilityIndex >= 0) {
         selectedRolesUsability.value.splice(usabilityIndex, 1);
       }
+
+      const idsToRemove = new Set(getClientUserIdsForRole());
+
+      if (idsToRemove.size > 0) {
+        selectedVisibilityUsers.value = selectedVisibilityUsers.value.filter(
+          (user) => !idsToRemove.has(user.user_id ?? user.id)
+        );
+        selectedUsabilityUsers.value = selectedUsabilityUsers.value.filter(
+          (user) => !idsToRemove.has(user.user_id ?? user.id)
+        );
+      }
     } else {
-      // Add to visibility
+      // Adding role: mark all clients with this role as having visibility
       selectedRolesVisibility.value.push(roleCode);
+
+      const idsForRole = new Set(getClientUserIdsForRole());
+      if (idsForRole.size > 0) {
+        const existingIds = new Set(
+          selectedVisibilityUsers.value.map((user) => user.user_id ?? user.id)
+        );
+
+        availableClients.value
+          .filter((client) => client.role === roleCode)
+          .forEach((client) => {
+            const userId = client.user_id ?? client.id;
+            if (userId && !existingIds.has(userId)) {
+              selectedVisibilityUsers.value.push({
+                id: userId,
+                user_id: userId,
+                email: client.email,
+                full_name: client.full_name,
+              });
+            }
+          });
+      }
     }
   };
 
@@ -321,6 +436,48 @@ export function useDocumentPermissions() {
   /**
    * Get permissions data for saving (new unified format)
    */
+  /**
+   * Get permissions data with roles expanded to user IDs (for update endpoint)
+   */
+  const getPermissionsDataExpanded = () => {
+    if (!isLawyer.value) return {};
+    
+    // Expand roles to user IDs
+    const expandRolesToUserIds = (roles) => {
+      if (!roles || roles.length === 0) return [];
+      
+      const userIds = new Set();
+      
+      roles.forEach(roleCode => {
+        const usersWithRole = availableClients.value.filter(client => client.role === roleCode);
+        usersWithRole.forEach(user => {
+          userIds.add(user.user_id);
+        });
+      });
+      
+      return Array.from(userIds);
+    };
+    
+    // Get user IDs from selected users
+    const visibilityUserIds = selectedVisibilityUsers.value.map(user => user.user_id);
+    const usabilityUserIds = selectedUsabilityUsers.value.map(user => user.user_id);
+    
+    // Expand roles to user IDs
+    const visibilityRoleUserIds = expandRolesToUserIds(selectedRolesVisibility.value);
+    const usabilityRoleUserIds = expandRolesToUserIds(selectedRolesUsability.value);
+    
+    // Combine and deduplicate
+    const allVisibilityUserIds = [...new Set([...visibilityUserIds, ...visibilityRoleUserIds])];
+    const allUsabilityUserIds = [...new Set([...usabilityUserIds, ...usabilityRoleUserIds])];
+    
+    return {
+      is_public: isPublicDocument.value,
+      visibility_user_ids: isPublicDocument.value ? [] : allVisibilityUserIds,
+      usability_user_ids: isPublicDocument.value ? [] : allUsabilityUserIds
+    };
+  };
+
+
   const getPermissionsData = () => {
     if (!isLawyer.value) return {};
     
@@ -389,6 +546,7 @@ export function useDocumentPermissions() {
     hasRoleUsabilityPermission,
     getRoleDisplayName,
     getPermissionsData,
+    getPermissionsDataExpanded,
     initializePermissions
   };
 } 

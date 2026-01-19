@@ -21,7 +21,8 @@ export const permissionActions = {
         id: client.user_id, // Normalize user_id to id
         user_id: client.user_id,
         email: client.email,
-        full_name: client.full_name
+        full_name: client.full_name,
+        role: client.role,
       }));
       
       return normalizedClients;
