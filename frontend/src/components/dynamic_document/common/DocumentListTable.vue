@@ -1064,12 +1064,36 @@ const getSummaryCounterparty = (document) => {
 };
 
 const getSummaryValue = (document) => {
-  if (!document.summary_value) return '';
-  const currency = document.summary_value_currency || '';
-  if (currency) {
-    return `${currency} ${document.summary_value}`;
+  if (document.summary_value === null || document.summary_value === undefined || document.summary_value === '') {
+    return '';
   }
-  return document.summary_value;
+
+  // Parse numeric value safely
+  const numericValue = Number(String(document.summary_value).replace(/[^0-9.,-]/g, '').replace(/\./g, '').replace(',', '.'));
+  if (Number.isNaN(numericValue)) {
+    // Fallback: return raw value if parsing fails
+    return document.summary_value;
+  }
+
+  // Format number with thousands separators (locale-style: 1.234.567,89)
+  const formattedNumber = numericValue.toLocaleString('es-CO', {
+    maximumFractionDigits: 2,
+  });
+
+  const currencyCode = document.summary_value_currency || '';
+  const currencyLabelMap = {
+    COP: 'COP $',
+    USD: 'US $',
+    EUR: 'EUR €',
+  };
+
+  const currencyLabel = currencyLabelMap[currencyCode] || currencyCode || '';
+
+  if (currencyLabel) {
+    return `${currencyLabel} ${formattedNumber}`;
+  }
+
+  return formattedNumber;
 };
 
 const hasSummary = (document) => {

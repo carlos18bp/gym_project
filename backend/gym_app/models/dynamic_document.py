@@ -155,8 +155,7 @@ class DynamicDocument(models.Model):
         Check if user has visibility permissions for this document.
         
         Lawyers always have access. Public documents are accessible to all users.
-        Published documents without assigned_to are templates visible to all clients.
-        For other users, check visibility permissions.
+        For other users, check explicit visibility permissions.
         
         Args:
             user: User instance to check
@@ -176,14 +175,10 @@ class DynamicDocument(models.Model):
         if self.signatures.filter(signer=user).exists():
             return True
             
-        # Published documents without assigned_to are templates visible to all clients
-        if self.state == 'Published' and self.assigned_to is None:
-            return True
-            
         # Public documents are accessible to all authenticated users
         if self.is_public:
             return True
-            
+        
         # Check if user has explicit visibility permission
         return self.visibility_permissions.filter(user=user).exists()
 
@@ -192,8 +187,7 @@ class DynamicDocument(models.Model):
         Check if user has usability permissions for this document.
         
         Lawyers always have access. Public documents grant edit access to all users.
-        Published documents without assigned_to are templates usable by all clients.
-        For other users, check usability permissions.
+        For other users, check explicit usability permissions.
         
         Args:
             user: User instance to check
@@ -213,14 +207,10 @@ class DynamicDocument(models.Model):
         if self.assigned_to == user:
             return True
             
-        # Published documents without assigned_to are templates usable by all clients
-        if self.state == 'Published' and self.assigned_to is None:
-            return True
-            
         # Public documents grant edit access to all authenticated users
         if self.is_public:
             return True
-            
+        
         # Check if user has explicit usability permission
         return self.usability_permissions.filter(user=user).exists()
 
@@ -705,6 +695,56 @@ class DocumentVariable(models.Model):
         blank=True,
         help_text="Moneda asociada al valor cuando la variable está clasificada como Valor."
     )
+
+    def get_formatted_value(self):
+        """Return a human-friendly representation of the variable value.
+
+        For variables classified as "value" (e.g., contract amounts), format the
+        number with thousands separators and optional currency label, mirroring
+        the frontend behavior:
+
+        - 1234567      -> 1.234.567
+        - 1234567.89   -> 1.234.567,89
+        - With currency: "COP $ 1.234.567"
+        """
+
+        if self.value in (None, ''):
+            return ''
+
+        # Apply special formatting for value-classified fields
+        if self.summary_field == 'value':
+            try:
+                # Normalize possible thousand/decimal separators to a float
+                value_str = str(self.value).strip()
+                # Remove thousand separators and normalize decimal comma to dot
+                value_str = value_str.replace('.', '').replace(',', '.')
+                numeric_value = float(value_str)
+            except (ValueError, TypeError):
+                # Fallback: return raw value if parsing fails
+                return str(self.value)
+
+            # Format with thousands separators and up to 2 decimals
+            formatted = f"{numeric_value:,.2f}".replace(',', '.')
+            # If there are no decimal digits (",00"), drop them to match frontend behavior
+            if formatted.endswith(',00'):
+                formatted = formatted[:-3]
+
+            currency_labels = {
+                'COP': 'COP $',
+                'USD': 'US $',
+                'EUR': 'EUR €',
+            }
+
+            label = None
+            if self.currency:
+                label = currency_labels.get(self.currency, self.currency)
+
+            if label:
+                return f"{label} {formatted}"
+            return formatted
+
+        # Default behavior: return raw value
+        return str(self.value)
 
     def clean(self):
         """

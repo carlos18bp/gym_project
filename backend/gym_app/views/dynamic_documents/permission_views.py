@@ -74,12 +74,52 @@ def get_document_permissions(request, pk):
             }
             usability_users.append(user_data)
         
+        # Group users by role for role-based permissions display
+        visibility_roles = set()
+        usability_roles = set()
+        
+        for perm in visibility_permissions:
+            if perm.user.role and perm.user.role != 'lawyer':
+                visibility_roles.add(perm.user.role)
+        
+        for perm in usability_permissions:
+            if perm.user.role and perm.user.role != 'lawyer':
+                usability_roles.add(perm.user.role)
+        
+        # Check if all users of a role have the permission (to determine if it's a role-based permission)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        active_visibility_roles = []
+        active_usability_roles = []
+        
+        for role in visibility_roles:
+            # Count users with this role
+            total_users_with_role = User.objects.filter(role=role).exclude(role='lawyer').count()
+            # Count users with this role that have permission
+            users_with_permission = visibility_permissions.filter(user__role=role).count()
+            
+            # If all users of this role have permission, consider it a role-based permission
+            if total_users_with_role > 0 and users_with_permission == total_users_with_role:
+                active_visibility_roles.append(role)
+        
+        for role in usability_roles:
+            total_users_with_role = User.objects.filter(role=role).exclude(role='lawyer').count()
+            users_with_permission = usability_permissions.filter(user__role=role).count()
+            
+            if total_users_with_role > 0 and users_with_permission == total_users_with_role:
+                active_usability_roles.append(role)
+        
         response_data = {
             'document_id': document.id,
             'document_title': document.title,
             'is_public': document.is_public,
             'visibility_permissions': visibility_users,
             'usability_permissions': usability_users,
+            'active_roles': {
+                'visibility_roles': active_visibility_roles,
+                'usability_roles': active_usability_roles
+            },
             'summary': {
                 'total_visibility_users': len(visibility_users),
                 'total_usability_users': len(usability_users)
@@ -712,7 +752,7 @@ def get_available_clients(request):
     """
     clients = User.objects.filter(
         role__in=['client', 'corporate_client', 'basic']
-    ).values('id', 'email', 'first_name', 'last_name').order_by('email')
+    ).values('id', 'email', 'first_name', 'last_name', 'role').order_by('email')
     
     # Format the response
     client_list = []
@@ -720,7 +760,8 @@ def get_available_clients(request):
         client_list.append({
             'user_id': client['id'],
             'email': client['email'],
-            'full_name': f"{client['first_name']} {client['last_name']}".strip()
+            'full_name': f"{client['first_name']} {client['last_name']}".strip(),
+            'role': client['role'],
         })
     
     return Response({

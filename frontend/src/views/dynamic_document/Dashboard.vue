@@ -581,6 +581,13 @@ const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
 // Reactive state
 const searchQuery = ref("");
 const currentSection = ref("default");
+const isNavigatingToUseDocument = ref(false);
+
+// Watcher for currentSection (kept for potential future use)
+watch(currentSection, (newVal, oldVal) => {
+  // No-op: debug logging removed after fixing navigation issues
+});
+
 const showCreateDocumentModal = ref(false);
 const activeTab = ref('folders');
 const activeLawyerTab = ref('legal-documents');
@@ -651,6 +658,11 @@ const filteredDocuments = computed(() => {
  */
 const handleSection = async (message) => {
   currentSection.value = message;
+  
+  // Set flag when navigating to useDocument
+  if (message === 'useDocument') {
+    isNavigatingToUseDocument.value = true;
+  }
   // Clear any selected document when changing sections
   documentStore.selectedDocument = null;
   
@@ -660,6 +672,11 @@ const handleSection = async (message) => {
       await documentStore.init(true); // Force refresh to get latest published documents
     } catch (error) {
       console.error('Error loading documents for useDocument section:', error);
+    } finally {
+      // Clear flag after loading completes
+      if (message === 'useDocument') {
+        isNavigatingToUseDocument.value = false;
+      }
     }
   }
 };
@@ -670,7 +687,9 @@ const handleSection = async (message) => {
 const closeModal = () => {
   showCreateDocumentModal.value = false;
   // Ensure we're showing the default section
-  currentSection.value = "default";
+  if (currentSection.value !== 'useDocument') {
+    currentSection.value = "default";
+  }
   // Clear any selected document
   documentStore.selectedDocument = null;
 };
@@ -876,9 +895,13 @@ const closeRelationshipsModal = () => {
  * Handles navigation to main view (folders tab without modals).
  */
 const handleNavigateToMain = async () => {
+  // Prevent navigation if we're in the middle of navigating to useDocument
+  if (isNavigatingToUseDocument.value) {
+    return;
+  }
   // If coming from useDocument section, go back to my-documents
   if (currentSection.value === 'useDocument') {
-    currentSection.value = 'default';
+    currentSection.value = "default";
     // Para abogados, volver al tab "Mis Documentos" de abogado
     if (userRole.value === 'lawyer') {
       activeLawyerTab.value = 'my-documents';
@@ -918,7 +941,10 @@ watch(
       const lastExecutionTime = Date.now();
       if (!watch.lastExecutionTime || lastExecutionTime - watch.lastExecutionTime > 100) {
         watch.lastExecutionTime = lastExecutionTime;
-        currentSection.value = "default";
+        // Do not reset currentSection if we are in useDocument section
+        if (currentSection.value !== 'useDocument') {
+          // Already protected by outer condition
+        }
       }
     }
   },
@@ -1012,9 +1038,7 @@ const selectLawyerTab = (tabName) => {
  * @param {string} tabName - The name of the tab to select.
  */
 const selectClientTab = (tabName) => {
-  // Ensure we are in the main documents view when switching tabs
-  currentSection.value = 'default';
-  // Clear global search when manually changing client tab
+  // Do NOT reset currentSection here - tabs only control content within default section
   searchQuery.value = "";
   activeTab.value = tabName;
   showClientDropdown.value = false;
@@ -1039,7 +1063,10 @@ onMounted(async () => {
   documentStore.selectedDocument = null;
 
   // Make sure we are in the default section when loading
-  currentSection.value = "default";
+  // Do not reset currentSection if we are navigating to useDocument
+  if (currentSection.value !== 'useDocument') {
+    currentSection.value = "default";
+  }
 
   // Check localStorage for saved document ID to highlight
   const savedId = localStorage.getItem('lastUpdatedDocumentId');

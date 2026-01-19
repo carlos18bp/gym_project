@@ -26,7 +26,36 @@ export const getProcessedDocumentContent = (document) => {
     document.variables.forEach((variable) => {
       if (!variable || !variable.name_en) return;
       const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
-      processedContent = processedContent.replace(regex, variable.value || "");
+      let replacement = variable.value || "";
+
+      // Apply numeric + currency formatting for value-type summary fields
+      if (variable.summary_field === 'value' && replacement !== "") {
+        const raw = String(replacement);
+        // Normalize to a plain number (remove thousands separators, normalize decimal comma)
+        const normalized = raw
+          .replace(/[^0-9.,-]/g, '')
+          .replace(/\./g, '')
+          .replace(',', '.');
+        const numericValue = Number(normalized);
+
+        if (!Number.isNaN(numericValue)) {
+          const formattedNumber = numericValue.toLocaleString('es-CO', {
+            maximumFractionDigits: 2,
+          });
+
+          const currencyCode = variable.currency || '';
+          const currencyLabelMap = {
+            COP: 'COP $',
+            USD: 'US $',
+            EUR: 'EUR €',
+          };
+          const currencyLabel = currencyLabelMap[currencyCode] || currencyCode || '';
+
+          replacement = currencyLabel ? `${currencyLabel} ${formattedNumber}` : formattedNumber;
+        }
+      }
+
+      processedContent = processedContent.replace(regex, replacement);
     });
   }
 

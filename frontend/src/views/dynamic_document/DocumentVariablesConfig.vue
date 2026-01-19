@@ -423,7 +423,49 @@ const validateAndSave = (state) => {
 const saveDocument = async (state) => {
   try {
     // Get permissions data from the permissions manager component
-    const permissionsData = permissionsManagerRef.value?.getPermissionsData() || {};
+    // Try getPermissionsDataExpanded first, fallback to getPermissionsData
+    let permissionsData;
+    if (permissionsManagerRef.value?.getPermissionsDataExpanded) {
+      permissionsData = permissionsManagerRef.value.getPermissionsDataExpanded();
+    } else if (permissionsManagerRef.value?.getPermissionsData) {
+      const rawPermissions = permissionsManagerRef.value.getPermissionsData();
+      
+      // Manually expand roles to user_ids
+      const expandRoles = (roles, clients) => {
+        if (!roles || roles.length === 0) return [];
+        const userIds = new Set();
+        roles.forEach(roleCode => {
+          clients.filter(c => c.role === roleCode).forEach(c => {
+            const userId = c.user_id || c.id;
+            if (userId) userIds.add(userId);
+          });
+        });
+        return Array.from(userIds);
+      };
+      
+      let clients = permissionsManagerRef.value?.availableClients?.value || permissionsManagerRef.value?.availableClients || [];
+      
+      // If no clients loaded, try to get from userStore
+      if (clients.length === 0) {
+        const userStore = useUserStore();
+        if (userStore && userStore.users) {
+          clients = userStore.users.filter(u => u.role !== 'lawyer') || [];
+        }
+      }
+      const visibilityUserIds = rawPermissions.visibility?.user_ids || [];
+      const usabilityUserIds = rawPermissions.usability?.user_ids || [];
+      const visibilityRoleUserIds = expandRoles(rawPermissions.visibility?.roles || [], clients);
+      const usabilityRoleUserIds = expandRoles(rawPermissions.usability?.roles || [], clients);
+      
+      permissionsData = {
+        is_public: rawPermissions.is_public || false,
+        visibility_user_ids: [...new Set([...visibilityUserIds, ...visibilityRoleUserIds])],
+        usability_user_ids: [...new Set([...usabilityUserIds, ...usabilityRoleUserIds])]
+      };
+    } else {
+      permissionsData = {};
+    }
+    
     
     // Get tag IDs from the tags manager component
     const tagIds = tagsManagerRef.value?.getTagIds() || [];
