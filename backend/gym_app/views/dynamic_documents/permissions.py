@@ -5,6 +5,7 @@ This module provides decorators to control access to dynamic documents based on
 visibility and usability permissions. Lawyers automatically have full access to all documents.
 """
 
+import math
 from functools import wraps
 from rest_framework.response import Response
 from rest_framework import status
@@ -279,24 +280,39 @@ def filter_documents_by_visibility(view_func):
         user = request.user
         filtered_documents = []
 
+        # Batch-fetch all documents in a single query with prefetched
+        # relations so can_view_prefetched() evaluates in Python without
+        # extra DB hits.  Reduces ~30-40 queries to 3 per page.
+        doc_ids = [d.get('id') for d in documents_payload if d.get('id')]
+        docs_by_id = {
+            doc.pk: doc
+            for doc in DynamicDocument.objects.filter(pk__in=doc_ids)
+                .select_related('created_by')
+                .prefetch_related('signatures', 'visibility_permissions')
+        } if doc_ids else {}
+
         for doc_data in documents_payload:
             doc_id = doc_data.get('id')
-
             if not doc_id:
                 continue
 
-            try:
-                document = DynamicDocument.objects.prefetch_related('tags').get(pk=doc_id)
-
-                # Use can_view() method which handles all permission logic
-                # including templates, explicit permissions, public access, etc.
-                if document.can_view(user):
-                    filtered_documents.append(doc_data)
-            except DynamicDocument.DoesNotExist:
-                continue
+            document = docs_by_id.get(doc_id)
+            if document and document.can_view_prefetched(user):
+                filtered_documents.append(doc_data)
 
         if wraps_items:
+            original_count = len(documents_payload)
+            removed_count = original_count - len(filtered_documents)
             data['items'] = filtered_documents
+            if removed_count > 0:
+                # Adjust totalItems by the number of items removed on this page.
+                # This is an approximation — the decorator cannot know how many
+                # items would be filtered on other pages.
+                original_total = data.get('totalItems', original_count)
+                data['totalItems'] = max(0, original_total - removed_count)
+                # Recalculate totalPages based on the page size used by the view.
+                page_size = original_count if original_count > 0 else 10
+                data['totalPages'] = max(1, math.ceil(data['totalItems'] / page_size))
             response.data = data
         else:
             response.data = filtered_documents

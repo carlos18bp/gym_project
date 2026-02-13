@@ -181,7 +181,7 @@ describe("DynamicDocument Dashboard.vue", () => {
 
     await wrapper.vm.$.setupState.handleSection("useDocument");
 
-    expect(mockDocumentStore.init).toHaveBeenCalledWith(true);
+    // documentStore.init is no longer called — UseDocumentTable loads its own data via fetchTabData
     expect(wrapper.vm.$.setupState.currentSection).toBe("useDocument");
     expect(wrapper.vm.$.setupState.activeTab).toBe(null);
     expect(wrapper.vm.$.setupState.isNavigatingToUseDocument).toBe(false);

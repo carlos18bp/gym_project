@@ -324,10 +324,16 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="filteredAndSortedDocuments.length === 0" class="text-center py-12">
+    <div v-if="filteredAndSortedDocuments.length === 0 && !isLoading" class="text-center py-12">
       <CubeTransparentIcon class="mx-auto h-12 w-12 text-gray-400" />
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay documentos en progreso</h3>
       <p class="mt-1 text-sm text-gray-500">Los documentos en progreso por clientes aparecerán aquí.</p>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="isLoading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+      <p class="mt-2 text-sm text-gray-500">Cargando documentos...</p>
     </div>
 
     <!-- Modals using centralized system -->
@@ -432,28 +438,47 @@ const dateTo = ref("");
 const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 
-// Pagination state
+// Per-tab pagination state (independent of shared store)
+const tabDocuments = ref([]);
+const tabPagination = ref({ totalItems: 0, totalPages: 0, currentPage: 1 });
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+const isLoading = ref(false);
 
-onMounted(() => {
-  documentStore.init();
-  userStore.init();
+/**
+ * Fetch Progress documents from the backend for this tab.
+ * No user_related needed — lawyers see all documents.
+ */
+const fetchTabData = async (page = 1) => {
+  isLoading.value = true;
+  try {
+    const data = await documentStore.fetchDocumentsForTab({
+      state: 'Progress',
+      page,
+      limit: itemsPerPage.value
+    });
+    tabDocuments.value = data.items || [];
+    tabPagination.value = {
+      totalItems: data.totalItems || 0,
+      totalPages: data.totalPages || 0,
+      currentPage: data.currentPage || page
+    };
+  } catch (error) {
+    console.error('Error fetching progress documents:', error);
+    tabDocuments.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(async () => {
+  await userStore.init();
+  await fetchTabData(1);
 });
 
-// Filtered progress documents
+// Documents come directly from the backend via fetchTabData
 const filteredProgressDocuments = computed(() => {
-  const allProgressDocuments = documentStore.progressDocumentsByClient;
-  const selectedTagIds = props.selectedTags ? props.selectedTags.map(tag => tag.id) : [];
-  const searchAndTagFiltered = documentStore.filteredDocumentsBySearchAndTags(
-    props.searchQuery, 
-    userStore, 
-    selectedTagIds
-  );
-  
-  return searchAndTagFiltered.filter((doc) =>
-    allProgressDocuments.some((progressDoc) => progressDoc.id === doc.id)
-  );
+  return tabDocuments.value;
 });
 
 // Filtered and sorted documents
@@ -518,28 +543,32 @@ const filteredAndSortedDocuments = computed(() => {
   return docs;
 });
 
-// Paginated documents
+// Paginated documents — backend already paginates
 const paginatedDocuments = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedDocuments.value.slice(start, end);
+  return filteredAndSortedDocuments.value;
 });
 
-// Total pages
+// Total pages — from backend pagination metadata
 const totalPages = computed(() => {
-  return Math.ceil(filteredAndSortedDocuments.value.length / itemsPerPage.value);
+  return tabPagination.value.totalPages || 1;
 });
 
-// Pagination info
+// Pagination info — based on backend metadata
 const paginationInfo = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
-  const end = Math.min(currentPage.value * itemsPerPage.value, filteredAndSortedDocuments.value.length);
-  return { start, end, total: filteredAndSortedDocuments.value.length };
+  const total = tabPagination.value.totalItems || 0;
+  const start = total > 0 ? (currentPage.value - 1) * itemsPerPage.value + 1 : 0;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return { start, end, total };
 });
 
 // Reset to first page when filters change
 watch([localSearchQuery, filterByTag, dateFrom, dateTo], () => {
   currentPage.value = 1;
+});
+
+// Watch for page changes — fetch the new page from the server
+watch(currentPage, (newPage) => {
+  fetchTabData(newPage);
 });
 
 // Available tags

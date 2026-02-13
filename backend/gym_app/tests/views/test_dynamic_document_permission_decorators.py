@@ -430,11 +430,46 @@ class TestFilterDocumentsByVisibility:
 
         @filter_documents_by_visibility
         def view(_request):
-            return Response({"items": [{"id": visible_doc.id}, {"id": hidden_doc.id}], "count": 2})
+            return Response({"items": [{"id": visible_doc.id}, {"id": hidden_doc.id}], "totalItems": 2, "totalPages": 1})
 
         response = view(request)
         ids = {doc["id"] for doc in response.data["items"]}
         assert ids == {visible_doc.id}
+        assert response.data["totalItems"] == 1
+        assert response.data["totalPages"] == 1
+
+    def test_filter_visibility_paginated_shows_signed_docs_for_signer(self, factory, client_user, lawyer_user):
+        """Regression: FullySigned documents must be visible to their signers."""
+        from gym_app.models.dynamic_document import DocumentSignature
+
+        doc = DynamicDocument.objects.create(
+            title="Signed Doc",
+            content="<p>signed</p>",
+            state="FullySigned",
+            created_by=lawyer_user,
+            assigned_to=client_user,
+        )
+        DocumentSignature.objects.create(
+            document=doc,
+            signer=client_user,
+            signed=True,
+        )
+
+        request = factory.get("/")
+        request.user = client_user
+
+        @filter_documents_by_visibility
+        def view(_request):
+            return Response({
+                "items": [{"id": doc.id}],
+                "totalItems": 1,
+                "totalPages": 1,
+            })
+
+        response = view(request)
+        ids = {d["id"] for d in response.data["items"]}
+        assert doc.id in ids, "Signer should see their FullySigned document"
+        assert response.data["totalItems"] == 1
 
     def test_filter_documents_by_visibility_passthrough_for_lawyer(self, factory, lawyer_user, client_user):
         doc = DynamicDocument.objects.create(

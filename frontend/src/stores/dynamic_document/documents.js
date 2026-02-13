@@ -130,6 +130,59 @@ export const documentActions = {
   },
   
   /**
+   * Fetch documents for a specific tab without overwriting the shared store.
+   * Returns the paginated result directly so each component can manage its own local state.
+   *
+   * @param {Object} options - Query parameters
+   * @param {number} options.page - Page number (default 1)
+   * @param {number} options.limit - Items per page (default 10)
+   * @param {string} options.state - Single state filter
+   * @param {Array<string>} options.states - Multiple states filter
+   * @param {number} options.clientId - Filter by client ID
+   * @param {number} options.lawyerId - Filter by lawyer ID
+   * @param {boolean} options.userRelated - Filter by creator/signer relationship
+   * @param {boolean} options.signerSigned - Require signed=True on signer (used with userRelated)
+   * @param {boolean} options.unassigned - Only docs without assigned_to
+   * @returns {Promise<Object>} { items, totalItems, totalPages, currentPage }
+   */
+  async fetchDocumentsForTab(options = {}) {
+    const {
+      page = 1, limit = 10, state = '', states = null,
+      clientId = null, lawyerId = null,
+      userRelated = false, signerSigned = false,
+      unassigned = false
+    } = options;
+
+    const params = new URLSearchParams();
+    params.append('page', page);
+    params.append('limit', limit);
+    if (state) params.append('state', state);
+    if (Array.isArray(states) && states.length > 0) {
+      params.append('states', states.join(','));
+    }
+    if (clientId) params.append('client_id', clientId);
+    if (lawyerId) params.append('lawyer_id', lawyerId);
+    if (userRelated) params.append('user_related', 'true');
+    if (signerSigned) params.append('signer_signed', 'true');
+    if (unassigned) params.append('unassigned', 'true');
+
+    const response = await get_request(`dynamic-documents/?${params.toString()}`);
+    let data = response.data;
+
+    // Handle different API response formats
+    if (!data.items && Array.isArray(data)) {
+      data = {
+        items: data,
+        totalItems: data.length,
+        totalPages: 1,
+        currentPage: 1
+      };
+    }
+
+    return data;
+  },
+
+  /**
    * Load more documents (next page)
    * @returns {Promise<Object>} Pagination data
    */

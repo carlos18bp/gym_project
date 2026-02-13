@@ -133,7 +133,7 @@ export async function installDynamicDocumentApiMocks(
 
   const folderList = folders || defaultFolders;
 
-  await mockApi(page, async ({ apiPath }) => {
+  await mockApi(page, async ({ route, apiPath }) => {
     if (apiPath === "validate_token/") {
       return { status: 200, contentType: "application/json", body: "{}" };
     }
@@ -162,13 +162,42 @@ export async function installDynamicDocumentApiMocks(
       };
     }
 
-    // NOTE: mockApi() extracts apiPath from URL.pathname, so query params are NOT included.
-    // fetchDocuments() hits `/api/dynamic-documents/?page=...`, which arrives here as `dynamic-documents/`.
+    // Document list endpoint — supports query-param filtering and paginated response format.
+    // fetchDocumentsForTab() sends params like state, states, unassigned, user_related, page, limit.
     if (apiPath === "dynamic-documents/") {
+      const url = new URL(route.request().url());
+      const params = url.searchParams;
+      let filtered = [...docs];
+
+      const stateParam = params.get("state");
+      const statesParam = params.get("states");
+      const unassigned = params.get("unassigned") === "true";
+
+      if (statesParam) {
+        const statesList = statesParam.split(",").map((s) => s.trim());
+        filtered = filtered.filter((d) => statesList.includes(d.state));
+      } else if (stateParam) {
+        filtered = filtered.filter((d) => d.state === stateParam);
+      }
+
+      if (unassigned) {
+        filtered = filtered.filter((d) => !d.assigned_to);
+      }
+
+      const page = parseInt(params.get("page") || "1", 10);
+      const limit = parseInt(params.get("limit") || "10", 10);
+      const start = (page - 1) * limit;
+      const paged = filtered.slice(start, start + limit);
+
       return {
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(docs),
+        body: JSON.stringify({
+          items: paged,
+          totalItems: filtered.length,
+          totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+          currentPage: page,
+        }),
       };
     }
 

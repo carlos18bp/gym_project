@@ -3,6 +3,7 @@ import re
 import os
 import logging
 from django.conf import settings
+from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.template.loader import get_template
 from PIL import Image
@@ -101,6 +102,24 @@ def list_dynamic_documents(request):
 
     if lawyer_id:
         queryset = queryset.filter(created_by_id=lawyer_id)
+
+    # When true, restrict results to documents where the requesting user is
+    # the creator (created_by) OR a signer (has a DocumentSignature row).
+    user_related = request.query_params.get('user_related', '').lower() in ('true', '1')
+    # When true (only meaningful with user_related), require the signer to
+    # have signed=True.  Used by the FullySigned tab to exclude unsigned signers.
+    signer_signed = request.query_params.get('signer_signed', '').lower() in ('true', '1')
+    # When true, return only documents without an assigned client.
+    unassigned = request.query_params.get('unassigned', '').lower() in ('true', '1')
+
+    if user_related:
+        signer_q = Q(signatures__signer=request.user)
+        if signer_signed:
+            signer_q = Q(signatures__signer=request.user, signatures__signed=True)
+        queryset = queryset.filter(Q(created_by=request.user) | signer_q).distinct()
+
+    if unassigned:
+        queryset = queryset.filter(assigned_to__isnull=True)
 
     # Pagination parameters (fallback to sensible defaults)
     try:

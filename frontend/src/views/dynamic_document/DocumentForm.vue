@@ -511,7 +511,7 @@ const validateForm = () => {
 onMounted(async () => {
   const documentId = route.params.id;
   isEditMode.value = route.params.mode === "editor" || route.params.mode === "formalize" || route.params.mode === "correction";
-  documentBase.value = await store.documentById(documentId);
+  documentBase.value = await store.fetchDocumentById(documentId);
 
   // Ensure we have users loaded for search
   if (!userStore.users || userStore.users.length === 0) {

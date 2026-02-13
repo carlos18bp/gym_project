@@ -737,7 +737,7 @@ const documentsToDisplay = computed(() => {
 
   const currentUser = userStore.currentUser;
 
-  // Lawyer main legal documents view: mirror previous DocumentListLawyer behavior
+  // Lawyer main legal documents view
   if (props.cardType === 'lawyer' && props.context === 'legal-documents') {
     if (!currentUser?.id || typeof documentStore.getDocumentsByLawyerId !== 'function') {
       return [];

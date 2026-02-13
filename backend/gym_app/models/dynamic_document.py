@@ -182,6 +182,28 @@ class DynamicDocument(models.Model):
         # Check if user has explicit visibility permission
         return self.visibility_permissions.filter(user=user).exists()
 
+    def can_view_prefetched(self, user):
+        """
+        Like can_view(), but iterates over already-prefetched relations
+        instead of issuing .filter().exists() queries. Use this when the
+        queryset was built with prefetch_related('signatures', 'visibility_permissions').
+        
+        Args:
+            user: User instance to check
+            
+        Returns:
+            bool: True if user can view the document, False otherwise
+        """
+        if self.is_lawyer(user):
+            return True
+        if self.created_by_id == user.pk:
+            return True
+        if any(sig.signer_id == user.pk for sig in self.signatures.all()):
+            return True
+        if self.is_public:
+            return True
+        return any(perm.user_id == user.pk for perm in self.visibility_permissions.all())
+
     def can_use(self, user):
         """
         Check if user has usability permissions for this document.

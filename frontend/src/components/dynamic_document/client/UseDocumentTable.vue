@@ -206,8 +206,65 @@
       </div>
     </div>
 
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="bg-white rounded-b-lg border-t border-gray-200 px-4 py-3 sm:px-6">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-sm text-gray-700">
+          Mostrando <span class="font-medium">{{ paginationInfo.start }}</span> a
+          <span class="font-medium">{{ paginationInfo.end }}</span> de
+          <span class="font-medium">{{ paginationInfo.total }}</span> plantillas
+        </div>
+        <div>
+          <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            <button
+              @click="previousPage"
+              :disabled="currentPage === 1"
+              :class="[
+                'relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+              ]"
+            >
+              <span class="sr-only">Anterior</span>
+              <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
+            </button>
+            <template v-for="page in visiblePages" :key="page">
+              <button
+                v-if="page !== '...'"
+                @click="goToPage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 focus:outline-offset-0',
+                  currentPage === page
+                    ? 'z-10 bg-secondary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary'
+                    : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <span
+                v-else
+                class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700"
+              >
+                ...
+              </span>
+            </template>
+            <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages"
+              :class="[
+                'relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0',
+                currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+              ]"
+            >
+              <span class="sr-only">Siguiente</span>
+              <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty State -->
-    <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+    <div v-if="filteredAndSortedDocuments.length === 0 && !isLoading" class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
       <CubeTransparentIcon class="mx-auto h-12 w-12 text-gray-400" />
       <h3 class="mt-2 text-sm font-medium text-gray-900">No hay plantillas disponibles</h3>
       <p class="mt-1 text-sm text-gray-500">{{ getEmptyStateMessage }}</p>
@@ -216,6 +273,12 @@
           💡 <strong>Tip:</strong> Las plantillas son creadas por los abogados
         </div>
       </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="isLoading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+      <p class="mt-2 text-sm text-gray-500">Cargando plantillas...</p>
     </div>
 
     <!-- Modal para nombrar el documento antes de usar la plantilla -->
@@ -231,7 +294,7 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   MagnifyingGlassIcon,
@@ -241,15 +304,15 @@ import {
   CubeTransparentIcon,
   XMarkIcon,
   DocumentTextIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
-import { useUserStore } from "@/stores/auth/user";
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 
 const documentStore = useDynamicDocumentStore();
-const userStore = useUserStore();
 const router = useRouter();
 
 const props = defineProps({
@@ -267,6 +330,7 @@ const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
 const filterByTag = ref(null);
 const sortBy = ref("recent");
+const isLoading = ref(false);
 
 // Modal state for naming document before use
 const showUseModal = ref(false);
@@ -278,9 +342,42 @@ const menuItemsRefs = ref({});
 const isAnyMenuOpen = ref(false);
 const openMenuIndex = ref(-1);
 
-// Get published documents
+// Per-tab pagination state (independent of shared store)
+const tabDocuments = ref([]);
+const tabPagination = ref({ totalItems: 0, totalPages: 0, currentPage: 1 });
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
+/**
+ * Fetch Published templates from the backend.
+ * Uses unassigned=true to get only templates (no assigned_to).
+ */
+const fetchTabData = async (page = 1) => {
+  isLoading.value = true;
+  try {
+    const data = await documentStore.fetchDocumentsForTab({
+      states: ['Published'],
+      unassigned: true,
+      page,
+      limit: itemsPerPage.value
+    });
+    tabDocuments.value = data.items || [];
+    tabPagination.value = {
+      totalItems: data.totalItems || 0,
+      totalPages: data.totalPages || 0,
+      currentPage: data.currentPage || page
+    };
+  } catch (error) {
+    console.error('Error fetching published templates:', error);
+    tabDocuments.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Documents come directly from the backend via fetchTabData
 const publishedDocuments = computed(() => {
-  return documentStore.publishedDocumentsUnassigned || [];
+  return tabDocuments.value;
 });
 
 // Filtered and sorted documents
@@ -443,12 +540,59 @@ const goBack = () => {
   emit('go-back');
 };
 
-// Initialize store when component mounts
-onMounted(async () => {
-  // Ensure documents are loaded
-  if (!documentStore.documents || documentStore.documents.length === 0) {
-    await documentStore.init(true);
+// Pagination computeds
+const totalPages = computed(() => {
+  return tabPagination.value.totalPages || 1;
+});
+
+const paginationInfo = computed(() => {
+  const total = tabPagination.value.totalItems || 0;
+  const start = total > 0 ? (currentPage.value - 1) * itemsPerPage.value + 1 : 0;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return { start, end, total };
+});
+
+const visiblePages = computed(() => {
+  const pages = [];
+  const total = totalPages.value;
+  const current = currentPage.value;
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (current > 3) pages.push('...');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
   }
+  return pages;
+});
+
+// Pagination methods
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const previousPage = () => {
+  if (currentPage.value > 1) currentPage.value--;
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++;
+};
+
+// Watch for page changes — fetch the new page from the server
+watch(currentPage, (newPage) => {
+  fetchTabData(newPage);
+});
+
+// Initialize: fetch first page on mount
+onMounted(async () => {
+  await fetchTabData(1);
 });
 
 // Get dynamic minHeight based on open menu index

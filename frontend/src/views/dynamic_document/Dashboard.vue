@@ -250,13 +250,7 @@
           <DocumentInProgressByClientListTable :searchQuery="searchQuery" :selectedTags="selectedTags" />
         </div>
 
-        <!-- No documents message -->
-        <div
-          v-if="filteredDocuments.length === 0"
-          class="mt-6 text-center text-gray-400 font-regular"
-        >
-          <p>No hay documentos disponibles para mostrar.</p>
-        </div>
+        <!-- Each tab component handles its own empty state message -->
       </div>
     </div>
 
@@ -629,30 +623,6 @@ const userRole = computed(() => {
   return currentUser.value.role;
 });
 
-// Get filtered documents using the store getter, ensuring role-specific documents
-const filteredDocuments = computed(() => {
-  let allDocuments = [];
-
-  if (userRole.value === "lawyer") {
-    allDocuments = documentStore.draftAndPublishedDocumentsUnassigned;
-  } else if (userRole.value === "client" || userRole.value === "basic" || userRole.value === "corporate_client") {
-    allDocuments = documentStore.progressAndCompletedDocumentsByClient(
-      currentUser.value.id
-    );
-  }
-
-  // Get selected tag IDs
-  const selectedTagIds = selectedTags.value && Array.isArray(selectedTags.value)
-    ? selectedTags.value.map(tag => tag.id)
-    : [];
-
-  return documentStore
-    .filteredDocumentsBySearchAndTags(searchQuery.value, userStore, selectedTagIds)
-    .filter((doc) =>
-      allDocuments.some((filteredDoc) => filteredDoc.id === doc.id)
-    );
-});
-
 /**
  * Handles section updates from the navigation.
  *
@@ -673,18 +643,10 @@ const handleSection = async (message) => {
   // Clear any selected document when changing sections
   documentStore.selectedDocument = null;
   
-  // If switching to useDocument section, ensure documents are loaded
+  // UseDocumentTable now loads its own data in onMounted via fetchTabData.
+  // Clear the navigation flag if applicable.
   if (message === 'useDocument') {
-    try {
-      await documentStore.init(true); // Force refresh to get latest published documents
-    } catch (error) {
-      console.error('Error loading documents for useDocument section:', error);
-    } finally {
-      // Clear flag after loading completes
-      if (message === 'useDocument') {
-        isNavigatingToUseDocument.value = false;
-      }
-    }
+    isNavigatingToUseDocument.value = false;
   }
 };
 

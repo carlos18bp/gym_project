@@ -34,6 +34,8 @@ jest.mock("@heroicons/vue/24/outline", () => ({
   XMarkIcon: { template: "<span />" },
   DocumentTextIcon: { template: "<span />" },
   ArrowLeftIcon: { template: "<span />" },
+  ChevronLeftIcon: { template: "<span />" },
+  ChevronRightIcon: { template: "<span />" },
 }));
 
 const MenuItemStub = {
@@ -75,17 +77,23 @@ describe("UseDocumentTable.vue", () => {
     mockDocumentStore = {
       documents: [],
       init: jest.fn().mockResolvedValue(),
+      fetchDocumentsForTab: jest.fn().mockResolvedValue({
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: 1,
+      }),
       publishedDocumentsUnassigned: [],
       selectedDocument: { id: 99 },
     };
   });
 
-  test("initializes store when documents are empty", async () => {
+  test("initializes tab data via fetchDocumentsForTab on mount", async () => {
     const wrapper = mountView();
 
     await flushPromises();
 
-    expect(mockDocumentStore.init).toHaveBeenCalledWith(true);
+    expect(mockDocumentStore.fetchDocumentsForTab).toHaveBeenCalled();
     expect(wrapper.exists()).toBe(true);
   });
 
@@ -98,9 +106,12 @@ describe("UseDocumentTable.vue", () => {
   });
 
   test("opens use modal for published template", async () => {
-    mockDocumentStore.publishedDocumentsUnassigned = [
-      { id: 1, title: "Plantilla", state: "Published", assigned_to: null },
-    ];
+    mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
+      items: [{ id: 1, title: "Plantilla", state: "Published", assigned_to: null }],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    });
 
     const wrapper = mountView();
     await flushPromises();
@@ -113,9 +124,12 @@ describe("UseDocumentTable.vue", () => {
   });
 
   test("navigates to editor for non-template documents", async () => {
-    mockDocumentStore.publishedDocumentsUnassigned = [
-      { id: 2, title: "Borrador", state: "Draft" },
-    ];
+    mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
+      items: [{ id: 2, title: "Borrador", state: "Draft" }],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    });
 
     const wrapper = mountView();
     await flushPromises();

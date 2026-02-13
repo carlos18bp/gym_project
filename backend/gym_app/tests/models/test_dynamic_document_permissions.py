@@ -211,6 +211,90 @@ def test_get_user_permission_level_usability_precedes_public(user_factory, docum
     assert document.get_user_permission_level(usability_user) == "usability"
 
 
+###############################################################################
+# can_view_prefetched – mirrors the can_view tests above but exercises the
+# prefetch-aware code path that iterates .all() instead of .filter().exists().
+###############################################################################
+
+
+def test_can_view_prefetched_lawyer_has_access(user_factory, document_factory):
+    creator = user_factory("creator_pf1@example.com")
+    lawyer = user_factory("lawyer_pf1@example.com", role="lawyer")
+    document = document_factory(created_by=creator)
+
+    assert document.can_view_prefetched(lawyer) is True
+
+
+def test_can_view_prefetched_creator_and_signer(user_factory, document_factory):
+    creator = user_factory("creator_pf2@example.com")
+    signer = user_factory("signer_pf2@example.com")
+    document = document_factory(created_by=creator)
+    DocumentSignature.objects.create(document=document, signer=signer)
+
+    # Refetch with prefetch to exercise the prefetched path
+    doc = DynamicDocument.objects.prefetch_related(
+        "signatures", "visibility_permissions"
+    ).get(pk=document.pk)
+
+    assert doc.can_view_prefetched(creator) is True
+    assert doc.can_view_prefetched(signer) is True
+
+
+def test_can_view_prefetched_public_visibility_and_no_permission(user_factory, document_factory):
+    creator = user_factory("creator_pf3@example.com")
+    public_user = user_factory("public_pf3@example.com")
+    visibility_user = user_factory("viewer_pf3@example.com")
+    no_access_user = user_factory("noaccess_pf3@example.com")
+
+    public_doc = document_factory(created_by=creator, is_public=True)
+    visibility_doc = document_factory(created_by=creator)
+    DocumentVisibilityPermission.objects.create(
+        document=visibility_doc,
+        user=visibility_user,
+        granted_by=creator,
+    )
+    private_doc = document_factory(created_by=creator)
+
+    # Prefetch for all three
+    public_doc = DynamicDocument.objects.prefetch_related(
+        "signatures", "visibility_permissions"
+    ).get(pk=public_doc.pk)
+    visibility_doc = DynamicDocument.objects.prefetch_related(
+        "signatures", "visibility_permissions"
+    ).get(pk=visibility_doc.pk)
+    private_doc = DynamicDocument.objects.prefetch_related(
+        "signatures", "visibility_permissions"
+    ).get(pk=private_doc.pk)
+
+    assert public_doc.can_view_prefetched(public_user) is True
+    assert visibility_doc.can_view_prefetched(visibility_user) is True
+    assert private_doc.can_view_prefetched(no_access_user) is False
+
+
+def test_can_view_prefetched_matches_can_view(user_factory, document_factory):
+    """can_view_prefetched must return the same result as can_view for every scenario."""
+    creator = user_factory("creator_pf4@example.com")
+    lawyer = user_factory("lawyer_pf4@example.com", role="lawyer")
+    signer = user_factory("signer_pf4@example.com")
+    viewer = user_factory("viewer_pf4@example.com")
+    stranger = user_factory("stranger_pf4@example.com")
+
+    doc = document_factory(created_by=creator)
+    DocumentSignature.objects.create(document=doc, signer=signer)
+    DocumentVisibilityPermission.objects.create(
+        document=doc, user=viewer, granted_by=creator,
+    )
+
+    prefetched = DynamicDocument.objects.prefetch_related(
+        "signatures", "visibility_permissions"
+    ).select_related("created_by").get(pk=doc.pk)
+
+    for user in (creator, lawyer, signer, viewer, stranger):
+        assert prefetched.can_view_prefetched(user) == doc.can_view(user), (
+            f"Mismatch for {user.email}"
+        )
+
+
 def test_document_usability_permission_clean_requires_visibility_raises(user_factory, document_factory):
     creator = user_factory("creator@example.com")
     client = user_factory("client@example.com")

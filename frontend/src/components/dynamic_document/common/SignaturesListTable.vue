@@ -654,7 +654,6 @@ const {
 } = useDocumentActions(documentStore, userStore, emit);
 
 // Reactive state
-const documents = ref([]);
 const isLoading = ref(false);
 const localSearchQuery = ref("");
 const tagSearchQuery = ref("");
@@ -666,9 +665,44 @@ const selectedDocuments = ref([]);
 const showSummaryModal = ref(false);
 const summaryDocument = ref(null);
 
-// Pagination state
+// Per-tab pagination state (independent of shared store)
+const tabDocuments = ref([]);
+const tabPagination = ref({ totalItems: 0, totalPages: 0, currentPage: 1 });
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+
+/**
+ * Fetch data for this specific tab from the backend.
+ * Uses fetchDocumentsForTab which does NOT overwrite store.documents.
+ */
+const fetchTabData = async (page = 1) => {
+  isLoading.value = true;
+  try {
+    const options = { page, limit: itemsPerPage.value, userRelated: true };
+
+    if (props.state === 'PendingSignatures') {
+      options.state = 'PendingSignatures';
+    } else if (props.state === 'FullySigned') {
+      options.state = 'FullySigned';
+      options.signerSigned = true;
+    } else if (props.state === 'Archived') {
+      options.states = ['Rejected', 'Expired'];
+    }
+
+    const data = await documentStore.fetchDocumentsForTab(options);
+    tabDocuments.value = data.items || [];
+    tabPagination.value = {
+      totalItems: data.totalItems || 0,
+      totalPages: data.totalPages || 0,
+      currentPage: data.currentPage || page
+    };
+  } catch (error) {
+    console.error('Error fetching tab data:', error);
+    tabDocuments.value = [];
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 const emptyMessage = computed(() => {
   if (props.state === 'PendingSignatures') {
@@ -690,74 +724,9 @@ const getDetailedEmptyMessage = computed(() => {
   return 'Aquí aparecerán los documentos rechazados o expirados relacionados contigo.';
 });
 
-const filteredDocuments = computed(() => {
-  const userRole = userStore.currentUser.role;
-  const userId = userStore.currentUser.id;
-  const userEmail = userStore.currentUser.email;
-  
-  let storeDocuments = [];
-  
-  // Role-specific logic
-  if (userRole === 'lawyer') {
-    if (props.state === 'PendingSignatures') {
-      storeDocuments = documentStore.pendingSignatureDocuments.filter(doc => {
-        // Show documents where lawyer is creator OR signer
-        const isCreator = doc.created_by === userId;
-        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
-        return isCreator || isSigner;
-      });
-    } else if (props.state === 'FullySigned') {
-      storeDocuments = documentStore.fullySignedDocuments.filter(doc => {
-        // Show documents where lawyer is creator OR signer
-        const isCreator = doc.created_by === userId;
-        const isSigner = doc.signatures?.some(sig => 
-          sig.signer_email === userEmail && sig.signed
-        );
-        return isCreator || isSigner;
-      });
-    } else if (props.state === 'Archived') {
-      storeDocuments = documentStore.documents.filter(doc => {
-        if (doc.state !== 'Rejected' && doc.state !== 'Expired') return false;
-        const isCreator = doc.created_by === userId;
-        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
-        return isCreator || isSigner;
-      });
-    }
-  } else {
-    if (props.state === 'PendingSignatures') {
-      storeDocuments = documentStore.documents.filter(doc => {
-        if (doc.state !== 'PendingSignatures') return false;
-        // Show documents where user is a signer OR created the document
-        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
-        const isCreator = doc.created_by === userId;
-        return isSigner || isCreator;
-      });
-    } else if (props.state === 'FullySigned') {
-      storeDocuments = documentStore.documents.filter(doc => {
-        if (doc.state !== 'FullySigned') return false;
-        // Show documents where user signed OR created the document
-        const isSigner = doc.signatures?.some(sig => 
-          sig.signer_email === userEmail && sig.signed
-        );
-        const isCreator = doc.created_by === userId;
-        return isSigner || isCreator;
-      });
-    } else if (props.state === 'Archived') {
-      storeDocuments = documentStore.documents.filter(doc => {
-        if (doc.state !== 'Rejected' && doc.state !== 'Expired') return false;
-        const isSigner = doc.signatures?.some(sig => sig.signer_email === userEmail);
-        const isCreator = doc.created_by === userId;
-        return isSigner || isCreator;
-      });
-    }
-  }
-  
-  return storeDocuments;
-});
-
 // Filtered and sorted documents
 const filteredAndSortedDocuments = computed(() => {
-  let docs = [...filteredDocuments.value];
+  let docs = [...tabDocuments.value];
 
   // Apply search filter
   const query = localSearchQuery.value.toLowerCase();
@@ -817,23 +786,24 @@ const filteredAndSortedDocuments = computed(() => {
   return docs;
 });
 
-// Paginated documents
+// Paginated documents — backend already paginates, so we show the full
+// filteredAndSortedDocuments (local search/tag/date filters still apply
+// to the current page, matching the DocumentListTable pattern).
 const paginatedDocuments = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedDocuments.value.slice(start, end);
+  return filteredAndSortedDocuments.value;
 });
 
-// Total pages
+// Total pages — from backend pagination metadata
 const totalPages = computed(() => {
-  return Math.ceil(filteredAndSortedDocuments.value.length / itemsPerPage.value);
+  return tabPagination.value.totalPages || 1;
 });
 
-// Pagination info
+// Pagination info — based on backend metadata
 const paginationInfo = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value + 1;
-  const end = Math.min(currentPage.value * itemsPerPage.value, filteredAndSortedDocuments.value.length);
-  return { start, end, total: filteredAndSortedDocuments.value.length };
+  const total = tabPagination.value.totalItems || 0;
+  const start = total > 0 ? (currentPage.value - 1) * itemsPerPage.value + 1 : 0;
+  const end = Math.min(currentPage.value * itemsPerPage.value, total);
+  return { start, end, total };
 });
 
 // Reset to first page when filters change
@@ -844,7 +814,7 @@ watch([localSearchQuery, filterByTag, dateFrom, dateTo], () => {
 // Available tags
 const availableTags = computed(() => {
   const tagsMap = new Map();
-  filteredDocuments.value.forEach(doc => {
+  tabDocuments.value.forEach(doc => {
     if (doc.tags && doc.tags.length > 0) {
       doc.tags.forEach(tag => {
         if (!tagsMap.has(tag.id)) {
@@ -1213,7 +1183,7 @@ const confirmRejectDocument = async () => {
           ACTION_TYPES.FINISH,
           `Rechazaste el documento "${rejectedDocument.title}"`
         ).catch(error => console.warn('No se pudo registrar la actividad de rechazo:', error)),
-        documentStore.init(true)
+        fetchTabData(currentPage.value)
       ]).then(() => {
         emit('refresh');
       });
@@ -1228,15 +1198,7 @@ const confirmRejectDocument = async () => {
 
 // Refresh documents
 const refreshDocuments = async () => {
-  isLoading.value = true;
-  try {
-    await documentStore.init(true);
-  } catch (error) {
-    console.error('Error refreshing documents:', error);
-    showNotification('Error al actualizar documentos', 'error');
-  } finally {
-    isLoading.value = false;
-  }
+  await fetchTabData(currentPage.value);
 };
 
 const handleRefresh = async () => {
@@ -1245,7 +1207,7 @@ const handleRefresh = async () => {
 };
 
 onMounted(async () => {
-  await refreshDocuments();
+  await fetchTabData(1);
 });
 
 // Expose refresh function
@@ -1281,11 +1243,16 @@ const hasSummary = (document) => {
   );
 };
 
-// Watch for changes
+// Watch for changes — re-fetch tab data when user changes
 watch(
   () => userStore.currentUser,
   () => {
-    handleRefresh();
+    fetchTabData(1);
   }
 );
+
+// Watch for page changes — fetch the new page from the server
+watch(currentPage, (newPage) => {
+  fetchTabData(newPage);
+});
 </script>

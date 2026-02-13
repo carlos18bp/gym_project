@@ -144,6 +144,12 @@ describe("SignaturesListTable.vue", () => {
       fullySignedDocuments: [],
       documents: [],
       init: jest.fn().mockResolvedValue(),
+      fetchDocumentsForTab: jest.fn().mockResolvedValue({
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: 1,
+      }),
     };
     mockCreateRequest.mockResolvedValue({ status: 200 });
     mockShowNotification.mockResolvedValue();
@@ -151,17 +157,23 @@ describe("SignaturesListTable.vue", () => {
   });
 
   test("filters pending signatures for lawyer", async () => {
-    mockDocumentStore.pendingSignatureDocuments = [
+    const pendingDocs = [
       { id: 1, title: "Doc 1", created_by: 1, signatures: [] },
       { id: 2, title: "Doc 2", created_by: 2, signatures: [{ signer_email: "lawyer@example.com" }] },
-      { id: 3, title: "Doc 3", created_by: 2, signatures: [{ signer_email: "other@example.com" }] },
     ];
+    mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
+      items: pendingDocs,
+      totalItems: 2,
+      totalPages: 1,
+      currentPage: 1,
+    });
 
     const wrapper = mountView({ state: "PendingSignatures" });
 
     await flushPromises();
 
-    expect(wrapper.vm.$.setupState.filteredDocuments).toHaveLength(2);
+    expect(mockDocumentStore.fetchDocumentsForTab).toHaveBeenCalled();
+    expect(wrapper.vm.$.setupState.tabDocuments).toHaveLength(2);
   });
 
   test("delegates preview action to document actions", async () => {
@@ -188,6 +200,6 @@ describe("SignaturesListTable.vue", () => {
       { comment: "Motivo" }
     );
     expect(wrapper.emitted("document-rejected")[0][0]).toEqual(document);
-    expect(mockDocumentStore.init).toHaveBeenCalledWith(true);
+    expect(mockDocumentStore.fetchDocumentsForTab).toHaveBeenCalled();
   });
 });

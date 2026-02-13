@@ -46,7 +46,7 @@
             >
               {{ category.label }}
               <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                {{ getFilteredDocumentsByCategory(category.name).length }}
+                {{ activeDocumentCategory === category.name ? categoryTotalItems : '-' }}
               </span>
             </button>
           </nav>
@@ -60,7 +60,7 @@
               <div class="flex items-center">
                 <span>{{ documentCategories.find(cat => cat.name === activeDocumentCategory)?.label || 'Seleccionar categoría' }}</span>
                 <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
-                  {{ getFilteredDocumentsByCategory(activeDocumentCategory).length }}
+                  {{ categoryTotalItems }}
                 </span>
               </div>
               <svg 
@@ -96,7 +96,7 @@
                     ? 'bg-white/20 text-white'
                     : 'bg-gray-100 text-gray-600'
                 ]">
-                  {{ getFilteredDocumentsByCategory(category.name).length }}
+                  {{ activeDocumentCategory === category.name ? categoryTotalItems : '-' }}
                 </span>
               </button>
             </div>
@@ -115,9 +115,9 @@
             </div>
             
             <!-- Select All Button -->
-            <div v-if="getFilteredDocumentsByCategory(activeDocumentCategory).length > 0" class="flex items-center gap-3">
+            <div v-if="categoryTotalItems > 0" class="flex items-center gap-3">
               <span class="text-sm text-gray-600">
-                {{ getFilteredDocumentsByCategory(activeDocumentCategory).length }} documento(s) disponible(s)
+                {{ categoryTotalItems }} documento(s) disponible(s)
               </span>
               <button
                 @click="toggleSelectAllFiltered"
@@ -209,8 +209,31 @@
             </template>
           </div>
 
+          <!-- Pagination controls -->
+          <div v-if="categoryTotalPages > 1" class="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+            <p class="text-sm text-gray-700">
+              Página <span class="font-medium">{{ categoryPage }}</span> de <span class="font-medium">{{ categoryTotalPages }}</span>
+            </p>
+            <nav class="flex items-center gap-2">
+              <button
+                @click="categoryPage > 1 && fetchCategoryDocuments(activeDocumentCategory, categoryPage - 1)"
+                :disabled="categoryPage <= 1 || isCategoryLoading"
+                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Anterior
+              </button>
+              <button
+                @click="categoryPage < categoryTotalPages && fetchCategoryDocuments(activeDocumentCategory, categoryPage + 1)"
+                :disabled="categoryPage >= categoryTotalPages || isCategoryLoading"
+                class="px-3 py-1.5 text-sm font-medium rounded-md border transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Siguiente
+              </button>
+            </nav>
+          </div>
+
           <!-- No documents available message -->
-          <div v-if="getFilteredDocumentsByCategory(activeDocumentCategory).length === 0" class="text-center py-8 sm:py-12">
+          <div v-if="getFilteredDocumentsByCategory(activeDocumentCategory).length === 0 && !isCategoryLoading" class="text-center py-8 sm:py-12">
             <DocumentIcon class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
             <h4 class="text-lg font-medium text-gray-900 mb-2">
               {{ selectedTags.length > 0 ? 'No hay documentos que coincidan con el filtro' : 'No hay documentos disponibles' }}
@@ -373,6 +396,11 @@ const isSubmitting = ref(false);
 const showCategoryDropdown = ref(false);
 const showTagsModal = ref(false);
 const tagsModalDocument = ref(null);
+const categoryDocuments = ref([]);
+const isCategoryLoading = ref(false);
+const categoryPage = ref(1);
+const categoryTotalPages = ref(0);
+const categoryTotalItems = ref(0);
 
 // Document categories for the add documents modal - matching Dashboard.vue tabs
 const documentCategories = [
@@ -385,18 +413,71 @@ const documentCategories = [
 // Computed
 const currentUser = computed(() => userStore.currentUser);
 
+/**
+ * Fetch documents for the active category from the backend.
+ * Uses fetchDocumentsForTab which does NOT overwrite store.documents.
+ */
+const fetchCategoryDocuments = async (category, page = 1) => {
+  isCategoryLoading.value = true;
+  try {
+    let options = { limit: 10, page };
+
+    switch (category) {
+      case 'my-documents':
+        options.states = ['Progress', 'Completed'];
+        if (currentUser.value?.id) {
+          options.clientId = currentUser.value.id;
+        }
+        break;
+      case 'use-documents':
+        options.states = ['Published'];
+        options.unassigned = true;
+        break;
+      case 'pending-signatures':
+        options.state = 'PendingSignatures';
+        options.userRelated = true;
+        break;
+      case 'signed-documents':
+        options.state = 'FullySigned';
+        options.userRelated = true;
+        options.signerSigned = true;
+        break;
+      default:
+        categoryDocuments.value = [];
+        return;
+    }
+
+    const data = await documentStore.fetchDocumentsForTab(options);
+    categoryDocuments.value = data.items || [];
+    categoryTotalItems.value = data.totalItems || 0;
+    categoryTotalPages.value = data.totalPages || 0;
+    categoryPage.value = data.currentPage || page;
+  } catch (error) {
+    console.error('Error fetching documents for category:', error);
+    categoryDocuments.value = [];
+    categoryTotalItems.value = 0;
+    categoryTotalPages.value = 0;
+  } finally {
+    isCategoryLoading.value = false;
+  }
+};
+
 // Watch for visibility changes
 watch(() => props.isVisible, (isVisible) => {
   if (isVisible) {
     selectedDocuments.value = [];
     selectedTags.value = [];
     activeDocumentCategory.value = 'my-documents';
+    categoryPage.value = 1;
+    fetchCategoryDocuments('my-documents', 1);
   }
 });
 
-// Watch for category changes to clear selections
-watch(activeDocumentCategory, () => {
+// Watch for category changes to clear selections and fetch new data
+watch(activeDocumentCategory, (newCategory) => {
   selectedDocuments.value = [];
+  categoryPage.value = 1;
+  fetchCategoryDocuments(newCategory, 1);
 });
 
 // Watch for tag filter changes to clear selections
@@ -411,49 +492,14 @@ const areAllFilteredSelected = computed(() => {
   return filteredDocs.every(doc => selectedDocuments.value.includes(doc.id));
 });
 
-// Base method to get available documents by category (same as before)
+// Base method to get available documents by category.
+// Documents come from categoryDocuments (fetched via fetchCategoryDocuments).
+// Excludes documents already in the folder.
 const getAvailableDocumentsByCategory = (category) => {
   if (!props.folder) return [];
   
   const folderDocumentIds = props.folder.documents.map(doc => doc.id);
-  let availableDocuments = [];
-  
-  switch (category) {
-    case 'my-documents':
-      // Same logic as Dashboard.vue DocumentListClient
-      availableDocuments = documentStore.progressAndCompletedDocumentsByClient(currentUser.value?.id);
-      break;
-      
-    case 'use-documents':
-      // Same logic as Dashboard.vue UseDocument section
-      availableDocuments = documentStore.publishedDocumentsUnassigned;
-      break;
-      
-    case 'pending-signatures':
-      // Same logic as Dashboard.vue SignaturesList with state="PendingSignatures"
-      availableDocuments = documentStore.documents.filter(doc => 
-        doc.state === 'PendingSignatures' && (
-          doc.assigned_to === currentUser.value?.id ||
-          doc.signatures?.some(sig => sig.signer_email === currentUser.value?.email)
-        )
-      );
-      break;
-      
-    case 'signed-documents':
-      // Same logic as Dashboard.vue SignaturesList with state="FullySigned"
-      availableDocuments = documentStore.documents.filter(doc => 
-        doc.state === 'FullySigned' && (
-          doc.assigned_to === currentUser.value?.id ||
-          doc.signatures?.some(sig => sig.signer_email === currentUser.value?.email)
-        )
-      );
-      break;
-      
-    default:
-      availableDocuments = [];
-  }
-  
-  return availableDocuments.filter(doc => !folderDocumentIds.includes(doc.id));
+  return categoryDocuments.value.filter(doc => !folderDocumentIds.includes(doc.id));
 };
 
 // Method that applies tag filtering to available documents
@@ -465,7 +511,7 @@ const getFilteredDocumentsByCategory = (category) => {
     return availableDocuments;
   }
   
-  // Filter by selected tags (same logic as DocumentListClient.vue)
+  // Filter by selected tags
   const selectedTagIds = selectedTags.value.map(tag => tag.id);
   return availableDocuments.filter(doc => {
     if (!doc.tags || doc.tags.length === 0) return false;

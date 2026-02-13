@@ -77,7 +77,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useDocumentFolderStore } from '@/stores/dynamic_document/folders';
-import { useDynamicDocumentStore } from '@/stores/dynamic_document';
 import { useUserStore } from '@/stores/auth/user';
 import { showNotification } from '@/shared/notification_message';
 
@@ -109,7 +108,6 @@ const emit = defineEmits(['refresh', 'navigate-to-main', 'navigate-to-document']
 
 // Stores
 const folderStore = useDocumentFolderStore();
-const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
 
 // Reactive data
@@ -127,7 +125,6 @@ const currentUser = computed(() => userStore.currentUser);
 // Initialize data
 onMounted(async () => {
   await folderStore.init();
-  await documentStore.init();
 });
 
 // Watch for refresh events
