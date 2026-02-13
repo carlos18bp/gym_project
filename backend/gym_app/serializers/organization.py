@@ -141,26 +141,41 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['title', 'description', 'profile_image', 'cover_image']
 
-    def create(self, validated_data):
-        """Create organization with current user as corporate client"""
+    def validate(self, attrs):
+        """Validate that only authenticated corporate clients can create organizations."""
         request = self.context.get('request')
-        if request and request.user:
-            if request.user.role != 'corporate_client':
-                raise serializers.ValidationError("Solo los clientes corporativos pueden crear organizaciones")
-            
-            validated_data['corporate_client'] = request.user
-            organization = super().create(validated_data)
-            
-            # Create leadership membership for the corporate client
-            OrganizationMembership.objects.create(
-                organization=organization,
-                user=request.user,
-                role='LEADER'
-            )
-            
-            return organization
-        
-        raise serializers.ValidationError("Usuario no autenticado")
+        user = getattr(request, 'user', None) if request else None
+
+        if not user:
+            raise serializers.ValidationError("Usuario no autenticado")
+
+        if user.role != 'corporate_client':
+            raise serializers.ValidationError("Solo los clientes corporativos pueden crear organizaciones")
+
+        return attrs
+
+    def create(self, validated_data):
+        """Create organization with current user as corporate client.
+
+        Assumes validation has already ensured an authenticated corporate_client user.
+        """
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+
+        if not user:
+            raise serializers.ValidationError("Usuario no autenticado")
+
+        validated_data['corporate_client'] = user
+        organization = super().create(validated_data)
+
+        # Create leadership membership for the corporate client
+        OrganizationMembership.objects.create(
+            organization=organization,
+            user=user,
+            role='LEADER',
+        )
+
+        return organization
 
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     """
@@ -225,37 +240,59 @@ class OrganizationInvitationCreateSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError("No se encontró un cliente normal o usuario básico con este email")
 
+    def validate(self, attrs):
+        """Additional validation for membership and pending invitations.
+
+        Ensures that the invited user is not already an active member and does not
+        have a pending invitation for the same organization.
+        """
+        organization = self.context['organization']
+        invited_email = attrs.get('invited_user_email')
+
+        # We already validated that the user exists and has an allowed role
+        invited_user = User.objects.get(
+            email=invited_email,
+            role__in=['client', 'basic'],
+        )
+
+        # Check if user is already a member
+        existing_membership = OrganizationMembership.objects.filter(
+            organization=organization,
+            user=invited_user,
+            is_active=True,
+        ).exists()
+
+        if existing_membership:
+            raise serializers.ValidationError("El usuario ya es miembro de esta organización")
+
+        # Check for existing pending invitation
+        existing_invitation = OrganizationInvitation.objects.filter(
+            organization=organization,
+            invited_user=invited_user,
+            status='PENDING',
+        ).exists()
+
+        if existing_invitation:
+            raise serializers.ValidationError("Ya existe una invitación pendiente para este usuario")
+
+        # Cache invited_user for use in create()
+        self._invited_user = invited_user
+
+        return attrs
+
     def create(self, validated_data):
         """Create invitation for the specified organization"""
         organization = self.context['organization']
         request = self.context['request']
         
-        # Get the invited user
-        invited_user = User.objects.get(
-            email=validated_data['invited_user_email'],
-            role__in=['client', 'basic']
-        )
-        
-        # Check if user is already a member
-        existing_membership = OrganizationMembership.objects.filter(
-            organization=organization,
-            user=invited_user,
-            is_active=True
-        ).exists()
-        
-        if existing_membership:
-            raise serializers.ValidationError("El usuario ya es miembro de esta organización")
-        
-        # Check for existing pending invitation
-        existing_invitation = OrganizationInvitation.objects.filter(
-            organization=organization,
-            invited_user=invited_user,
-            status='PENDING'
-        ).exists()
-        
-        if existing_invitation:
-            raise serializers.ValidationError("Ya existe una invitación pendiente para este usuario")
-        
+        # Use invited_user computed during validation when available
+        invited_user = getattr(self, '_invited_user', None)
+        if invited_user is None:
+            invited_user = User.objects.get(
+                email=validated_data['invited_user_email'],
+                role__in=['client', 'basic'],
+            )
+
         # Create invitation
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
@@ -416,14 +453,14 @@ class OrganizationPostCreateSerializer(serializers.ModelSerializer):
         link_url = data.get('link_url')
         
         if link_name and not link_url:
-            raise serializers.ValidationError(
-                "Si se proporciona un nombre de enlace, también debe proporcionar la URL"
-            )
+            raise serializers.ValidationError({
+                'link_url': ["Si se proporciona un nombre de enlace, también debe proporcionar la URL"]
+            })
         
         if link_url and not link_name:
-            raise serializers.ValidationError(
-                "Si se proporciona una URL, también debe proporcionar un nombre para el enlace"
-            )
+            raise serializers.ValidationError({
+                'link_name': ["Si se proporciona una URL, también debe proporcionar un nombre para el enlace"]
+            })
         
         # Validate that user is leader of the organization
         request = self.context.get('request')
@@ -455,13 +492,13 @@ class OrganizationPostUpdateSerializer(serializers.ModelSerializer):
         link_url = data.get('link_url')
         
         if link_name and not link_url:
-            raise serializers.ValidationError(
-                "Si se proporciona un nombre de enlace, también debe proporcionar la URL"
-            )
+            raise serializers.ValidationError({
+                'link_url': ["Si se proporciona un nombre de enlace, también debe proporcionar la URL"]
+            })
         
         if link_url and not link_name:
-            raise serializers.ValidationError(
-                "Si se proporciona una URL, también debe proporcionar un nombre para el enlace"
-            )
+            raise serializers.ValidationError({
+                'link_name': ["Si se proporciona una URL, también debe proporcionar un nombre para el enlace"]
+            })
         
         return data

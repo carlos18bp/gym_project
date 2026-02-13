@@ -470,12 +470,14 @@
 
   <!-- Modals -->
   <ModalTransition v-if="showCreateDocumentModal">
-    <CreateDocumentByLawyer @close="closeModal" />
+    <div class="w-full h-full flex items-center justify-center p-4" @click.self="closeModal">
+      <CreateDocumentByLawyer @close="closeModal" />
+    </div>
   </ModalTransition>
 
   <!-- Electronic Signature Modal for Lawyers -->
   <ModalTransition v-if="showSignatureModal && currentUser">
-    <div class="p-4 sm:p-6">
+    <div class="w-full h-full flex items-center justify-center p-4 sm:p-6" @click.self="showSignatureModal = false">
       <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
         <div class="flex justify-between items-center p-4 border-b">
           <h2 class="text-lg font-medium text-primary">Firma Electrónica</h2>
@@ -497,7 +499,7 @@
 
   <!-- Electronic Signature Modal for Clients -->
   <ModalTransition v-if="showElectronicSignatureModal && currentUser">
-    <div class="p-4 sm:p-6">
+    <div class="w-full h-full flex items-center justify-center p-4 sm:p-6" @click.self="showElectronicSignatureModal = false">
       <div class="bg-white rounded-xl shadow-xl max-w-3xl w-full mx-auto">
         <div class="flex justify-between items-center p-4 border-b">
           <h2 class="text-lg font-medium text-primary">Firma Electrónica</h2>
@@ -662,6 +664,11 @@ const handleSection = async (message) => {
   // Set flag when navigating to useDocument
   if (message === 'useDocument') {
     isNavigatingToUseDocument.value = true;
+    // When entering the useDocument section for clients/basic/corporate
+    // users, clear the active client tab so no tab appears selected
+    if (userRole.value !== 'lawyer') {
+      activeTab.value = null;
+    }
   }
   // Clear any selected document when changing sections
   documentStore.selectedDocument = null;
@@ -895,10 +902,6 @@ const closeRelationshipsModal = () => {
  * Handles navigation to main view (folders tab without modals).
  */
 const handleNavigateToMain = async () => {
-  // Prevent navigation if we're in the middle of navigating to useDocument
-  if (isNavigatingToUseDocument.value) {
-    return;
-  }
   // If coming from useDocument section, go back to my-documents
   if (currentSection.value === 'useDocument') {
     currentSection.value = "default";
@@ -909,6 +912,11 @@ const handleNavigateToMain = async () => {
       // Para clientes/básicos/corporativos, volver al tab "Mis Documentos" del cliente
       activeTab.value = 'my-documents';
     }
+    return;
+  }
+  
+  // Prevent navigation if we're in the middle of navigating to useDocument
+  if (isNavigatingToUseDocument.value) {
     return;
   }
   
@@ -1029,6 +1037,10 @@ const selectLawyerTab = (tabName) => {
   activeLawyerTab.value = tabName;
   showLawyerDropdown.value = false;
   // Ensure dropdowns are closed
+  // If the user was in the useDocument section, return to the default section
+  if (currentSection.value === 'useDocument') {
+    currentSection.value = 'default';
+  }
   closeDropdowns();
 };
 
@@ -1043,6 +1055,12 @@ const selectClientTab = (tabName) => {
   activeTab.value = tabName;
   showClientDropdown.value = false;
   // Ensure dropdowns are closed
+   // However, if the user is currently in the useDocument section (after clicking
+   // "Nuevo Documento"), selecting a tab should take them back to the default
+   // section so that tab content becomes visible again.
+   if (currentSection.value === 'useDocument') {
+     currentSection.value = 'default';
+   }
   closeDropdowns();
 };
 
@@ -1053,7 +1071,6 @@ onMounted(async () => {
   try {
     await Promise.all([
       userStore.init(),
-      documentStore.init(),
       folderStore.init(),
     ]);
   } catch (error) {

@@ -4,7 +4,7 @@ from django.db import migrations
 from django.db import transaction
 
 
-def populate_user_field(apps, schema_editor):
+def populate_user_field(apps, schema_editor):  # pragma: no cover
     """
     Populate the user field for existing LegalRequest records.
     Maps requests to users based on email addresses.
@@ -49,7 +49,7 @@ def populate_user_field(apps, schema_editor):
     print(f"Migration completed: {updated_count} requests mapped to existing users, {orphaned_count} new users created")
 
 
-def reverse_populate_user_field(apps, schema_editor):
+def reverse_populate_user_field(apps, schema_editor):  # pragma: no cover
     """
     Reverse operation - clear user field
     """

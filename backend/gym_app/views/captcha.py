@@ -33,14 +33,22 @@ def verify_recaptcha(request: HttpRequest) -> JsonResponse:
     The request body can be JSON or form-encoded and must contain the field ``token``.
     Returns a JSON payload: ``{"success": bool}`` indicating whether validation succeeded.
     """
-    # Try to fetch the token from different possible locations
-    token = request.POST.get("token")
-    if not token and request.body:
+    # Try to fetch the token from different possible locations without
+    # triggering RawPostDataException (avoid mixing POST and raw body access).
+    token = None
+    content_type = request.META.get("CONTENT_TYPE", "")
+
+    # If the request is JSON, read the body directly.
+    if content_type.startswith("application/json"):
         try:
-            body_data = json.loads(request.body.decode())
+            raw_body = request.body.decode() or "{}"
+            body_data = json.loads(raw_body)
             token = body_data.get("token")
         except json.JSONDecodeError:
-            pass
+            token = None
+    else:
+        # For form-encoded/multipart requests, rely on POST data only.
+        token = request.POST.get("token")
 
     if not token:
         return _build_response({"success": False, "error": "Token not provided."}, status=400)
@@ -59,6 +67,6 @@ def verify_recaptcha(request: HttpRequest) -> JsonResponse:
         success = result.get("success", False)
         # You can inspect score or action here if you are using reCAPTCHA v3.
         return _build_response({"success": success, "result": result})
-    except requests.RequestException as exc:
+    except Exception as exc:
         logger.error("Error verifying reCAPTCHA token: %s", exc, exc_info=True)
         return _build_response({"success": False, "error": "Error verifying token."}, status=500) 

@@ -106,14 +106,10 @@ const closeModal = () => {
   emit('close')
 }
 
-// Sort stages by logical stage date (newest first), falling back to created_at
+// Preserve the original array order to match the edit form (ProcessForm.vue)
 const sortedStages = computed(() => {
   if (!props.stages) return []
-  return [...props.stages].sort((a, b) => {
-    const aDate = a.date || a.created_at
-    const bDate = b.date || b.created_at
-    return new Date(bDate) - new Date(aDate)
-  })
+  return [...props.stages]
 })
 
 /**

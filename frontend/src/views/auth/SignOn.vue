@@ -257,7 +257,7 @@ onMounted(async () => {
  * @throws Will display an error notification if the API request fails for any reason.
  */
 const sendVerificationPasscode = async () => {
-  checkInputs();
+  if (!checkInputs()) return;
   if (!privacyAccepted.value) {
     showNotification("Debes aceptar las políticas de privacidad", "warning");
     return;
@@ -292,7 +292,7 @@ const sendVerificationPasscode = async () => {
  * Handles user sign on process
  */
 const signOnUser = async () => {
-  checkInputs();
+  if (!checkInputs()) return;
   if (emailUsedToSentPasscode.value !== userForm.email) {
     showNotification(
       "Has cambiado el correo electrónico de verificación, tendrás que generar un nuevo código nuevamente",
@@ -340,27 +340,24 @@ const signOnUser = async () => {
 const checkInputs = () => {
   if (!userForm.email) {
     showNotification("El correo electrónico es obligatorio", "warning");
-    return;
+    return false;
   }
   if (!userForm.password) {
     showNotification("La contraseña es obligatoria", "warning");
-    return;
+    return false;
   }
   if (!userForm.confirmPassword) {
     showNotification(
       "La confirmación de la contraseña es obligatoria",
       "warning"
     );
-    return;
+    return false;
   }
   if (userForm.password !== userForm.confirmPassword) {
     showNotification("¡Las contraseñas no coinciden!", "warning");
-    return;
+    return false;
   }
-  if (userForm.password !== userForm.confirmPassword) {
-    showNotification("¡Las contraseñas no coinciden!", "warning");
-    return;
-  }
+  return true;
 };
 
 /**

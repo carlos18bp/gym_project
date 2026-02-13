@@ -1,9 +1,10 @@
 <template>
   <ModalTransition v-show="isVisible">
+    <div class="w-full h-full flex items-center justify-center p-4" @click.self="closeModal">
     <div
-      class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full overflow-auto max-h-[80vh]"
+      class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col"
     >
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center px-6 pt-6 pb-4 flex-shrink-0">
         <h2 class="text-lg font-bold">
           Previsualización del Documento: {{ documentData.title }}
         </h2>
@@ -11,7 +12,8 @@
           <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
         </button>
       </div>
-      <div class="prose max-w-none" v-html="documentData.content"></div>
+      <div class="px-6 pb-6 overflow-y-auto flex-1 prose max-w-none" v-html="documentData.content"></div>
+    </div>
     </div>
   </ModalTransition>
 </template>

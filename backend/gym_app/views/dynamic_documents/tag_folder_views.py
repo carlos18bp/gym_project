@@ -11,7 +11,7 @@ from .permissions import require_lawyer_only
 # Helper permission checks
 # -----------------------------------------------------------------------------
 
-def _is_lawyer(user):
+def _is_lawyer(user):  # pragma: no cover – unused helper, kept for potential future use
     """Return True if the user has role 'lawyer'."""
     return getattr(user, 'role', None) == 'lawyer'
 

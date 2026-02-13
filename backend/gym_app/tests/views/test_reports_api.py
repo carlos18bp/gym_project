@@ -54,17 +54,17 @@ def basic_data():
     # Create a case type
     case = Case.objects.create(type='Civil')
     
-    # Create a process
+    # Create a process and associate client via ManyToMany field
     process = Process.objects.create(
         authority='Test Court',
         plaintiff='Test Plaintiff',
         defendant='Test Defendant',
         ref='API-TEST',
-        client=client,
         lawyer=lawyer,
         case=case,
-        subcase='API Test Case'
+        subcase='API Test Case',
     )
+    process.clients.add(client)
     
     # Add a stage
     stage = Stage.objects.create(status='Initial Review')

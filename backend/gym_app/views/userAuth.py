@@ -268,7 +268,7 @@ def google_login(request):
         except Exception as e:
             # Handle unexpected exceptions
             return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
+    else:  # pragma: no cover – @api_view(['POST']) rejects non-POST before entering view
         # Handle invalid request methods
         return Response({'status': 'error', 'error_message': 'Invalid request method.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
@@ -447,7 +447,7 @@ def verify_passcode_and_reset_password(request):
 
         return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
 
-    except User.DoesNotExist:
+    except User.DoesNotExist:  # pragma: no cover – code uses filter().first(), never raises DoesNotExist
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['GET'])

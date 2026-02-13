@@ -40,7 +40,8 @@ export const documentActions = {
    * @param {Object} options - Options for the request
    * @param {number} options.page - Page number to fetch
    * @param {number} options.limit - Items per page
-   * @param {string} options.state - Filter by document state
+   * @param {string} options.state - Filter by a single document state
+   * @param {Array<string>} options.states - Optional list of states to filter by (comma-separated in query)
    * @param {number} options.clientId - Filter by client ID
    * @param {number} options.lawyerId - Filter by lawyer ID
    * @param {boolean} options.forceRefresh - Whether to bypass cache
@@ -52,6 +53,7 @@ export const documentActions = {
       page = 1, 
       limit = this.pagination.itemsPerPage,
       state = '',
+      states = null,
       clientId = null,
       lawyerId = null,
       forceRefresh = false,
@@ -74,11 +76,14 @@ export const documentActions = {
       params.append('limit', limit);
       
       if (state) params.append('state', state);
+      if (Array.isArray(states) && states.length > 0) {
+        params.append('states', states.join(','));
+      }
       if (clientId) params.append('client_id', clientId);
       if (lawyerId) params.append('lawyer_id', lawyerId);
       
       const endpoint = `dynamic-documents/?${params.toString()}`;
-      
+
       const response = await get_request(endpoint);
       let responseData = response.data;
       
@@ -108,7 +113,7 @@ export const documentActions = {
       } else {
         this.documents = responseData.items || [];
       }
-      
+
       this.dataLoaded = true;
       this.lastFetchTime = Date.now();
       

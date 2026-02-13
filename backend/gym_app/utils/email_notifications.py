@@ -90,13 +90,21 @@ def send_new_response_notification(legal_request, response, recipient_email, rec
         user_type_choices = dict(response._meta.get_field('user_type').choices)
         response_user_type_display = user_type_choices.get(response.user_type, response.user_type)
         
+        # Derive a human-readable author name for the response
+        author_name = getattr(response, 'user_name', None)
+        if not author_name and getattr(response, 'user', None):
+            first_name = getattr(response.user, 'first_name', '') or ""
+            last_name = getattr(response.user, 'last_name', '') or ""
+            full_name = f"{first_name} {last_name}".strip()
+            author_name = full_name or getattr(response.user, 'email', '')
+
         # Prepare email context
         context = {
             'recipient_name': recipient_name,
             'request_number': legal_request.request_number,
             'request_type': legal_request.request_type.name if legal_request.request_type else 'N/A',
             'current_status': current_status_display,
-            'response_author': response.user_name,
+            'response_author': author_name,
             'response_user_type': response.user_type,
             'response_user_type_display': response_user_type_display,
             'response_text': response.response_text,

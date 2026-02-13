@@ -1,13 +1,36 @@
-backend/db.sqlite3
+# IDE / tooling
+frontend/.cursor/
+
+# Python bytecode
+*.pyc
 backend/__pycache__/
 backend/**/__pycache__/
-backend/*.pyc
-backend/media/
-!backend/media/example_files/
+
+# Backend – database
+backend/db.sqlite3
+backend/db.sqlite3-journal
+
+# Backend – virtual environments
 backend/gym_project_env/
-backend/staticfiles/
 gym_project_env/
 backend/venv_gym_backend/
 backend/venv/
-frontend/.cursor/
+backend/.venv/
+
+# Backend – static & media
+backend/staticfiles/
+backend/media/
+!backend/media/example_files/
+
+# Backend – coverage & test artifacts
+backend/.coverage
+backend/htmlcov/
+backend/.pytest_cache/
+backend/test-reports/
 backend/debug.log
+
+# Frontend – temp files
+frontend/tmp/
+
+# Root-level test results (Playwright)
+test-results/

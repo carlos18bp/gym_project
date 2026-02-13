@@ -252,26 +252,53 @@ def filter_documents_by_visibility(view_func):
             return response
         
         # For non-lawyers, we need to filter the response data
-        # This assumes the view returns documents in response.data
-        if hasattr(response, 'data') and isinstance(response.data, list):
-            # Filter documents based on visibility
-            user = request.user
-            filtered_documents = []
-            
-            for doc_data in response.data:
-                doc_id = doc_data.get('id')
-                
-                if doc_id:
-                    try:
-                        document = DynamicDocument.objects.prefetch_related('tags').get(pk=doc_id)
-                        
-                        # Use can_view() method which handles all permission logic
-                        # including templates, explicit permissions, public access, etc.
-                        if document.can_view(user):
-                            filtered_documents.append(doc_data)
-                    except DynamicDocument.DoesNotExist:
-                        continue
-            
+        # The view can return either a plain list of documents or a
+        # paginated structure with an 'items' list.
+        if not hasattr(response, 'data'):  # pragma: no cover – DRF Response always has .data
+            return response
+
+        data = response.data
+
+        # Determine the list of document payloads we need to filter
+        documents_payload = None
+        wraps_items = False
+
+        if isinstance(data, dict) and isinstance(data.get('items'), list):
+            # Paginated response: filter only the items while keeping
+            # the outer pagination metadata untouched.
+            documents_payload = data.get('items') or []
+            wraps_items = True
+        elif isinstance(data, list):
+            # Legacy behaviour: plain list of documents
+            documents_payload = data
+
+        if documents_payload is None:
+            # Unsupported shape, nothing to filter
+            return response
+
+        user = request.user
+        filtered_documents = []
+
+        for doc_data in documents_payload:
+            doc_id = doc_data.get('id')
+
+            if not doc_id:
+                continue
+
+            try:
+                document = DynamicDocument.objects.prefetch_related('tags').get(pk=doc_id)
+
+                # Use can_view() method which handles all permission logic
+                # including templates, explicit permissions, public access, etc.
+                if document.can_view(user):
+                    filtered_documents.append(doc_data)
+            except DynamicDocument.DoesNotExist:
+                continue
+
+        if wraps_items:
+            data['items'] = filtered_documents
+            response.data = data
+        else:
             response.data = filtered_documents
         
         return response

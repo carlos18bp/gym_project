@@ -184,10 +184,10 @@ class Command(BaseCommand):
 
             # Create the document
             # Business rule for fake data:
-            # - Draft / Published are treated as templates (minutas)
-            #   -> variables should NOT have values (only definitions)
-            # - Progress / Completed are documents in uso real
-            #   -> variables MAY have values
+            # - All documents always have values for: objeto, valor, plazo,
+            #   fecha de expiración (end_date) and 1-2 etiquetas (tags).
+            # - Other variables (client_name, lawyer_name, etc.) are only
+            #   filled for Progress / Completed documents.
             document_state = random.choice(['Draft', 'Published', 'Progress', 'Completed'])
 
             document = DynamicDocument.objects.create(
@@ -214,10 +214,9 @@ class Command(BaseCommand):
                 tag, _ = Tag.objects.get_or_create(name=name)
                 available_tags.append(tag)
 
-            # Assign 0-3 random tags
-            num_tags = random.randint(0, 3)
-            if num_tags > 0 and available_tags:
-                document.tags.set(random.sample(available_tags, k=num_tags))
+            # Always assign 1-2 tags so every document has etiquetas
+            num_tags = random.randint(1, 2)
+            document.tags.set(random.sample(available_tags, k=num_tags))
 
             # Determine if this document should have variable values
             # Only Progress / Completed documents represent datos llenados
@@ -256,18 +255,18 @@ class Command(BaseCommand):
                 summary_field='counterparty'
             )
 
-            # Objeto
+            # Objeto (always populated)
             DocumentVariable.objects.create(
                 document=document,
                 name_en='contract_object',
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8) if should_fill_values else '',
+                value=fake.sentence(nb_words=8),
                 summary_field='object'
             )
 
-            # Valor (with currency)
+            # Valor (with currency – always populated)
             amount = random.randint(1_000_000, 50_000_000)
             currency = random.choice(['COP', 'USD', 'EUR'])
             DocumentVariable.objects.create(
@@ -276,12 +275,12 @@ class Command(BaseCommand):
                 name_es='Valor del contrato',
                 tooltip='Valor económico principal del documento',
                 field_type='number',
-                value=str(amount) if should_fill_values else '',
+                value=str(amount),
                 summary_field='value',
-                currency=currency if should_fill_values else None
+                currency=currency
             )
 
-            # Plazo
+            # Plazo (always populated)
             term_text = random.choice([
                 '12 meses',
                 '6 meses',
@@ -294,7 +293,7 @@ class Command(BaseCommand):
                 name_es='Plazo del contrato',
                 tooltip='Duración o plazo del documento',
                 field_type='input',
-                value=term_text if should_fill_values else '',
+                value=term_text,
                 summary_field='term'
             )
 
@@ -322,6 +321,7 @@ class Command(BaseCommand):
                 summary_field='start_date'
             )
 
+            # Fecha de expiración / terminación (always populated)
             end_date = base_date + timedelta(days=random.randint(60, 365))
             DocumentVariable.objects.create(
                 document=document,
@@ -329,7 +329,7 @@ class Command(BaseCommand):
                 name_es='Fecha de terminación',
                 tooltip='Fecha de terminación de vigencia',
                 field_type='date',
-                value=end_date.strftime('%Y-%m-%d') if should_fill_values else '',
+                value=end_date.strftime('%Y-%m-%d'),
                 summary_field='end_date'
             )
 
@@ -398,9 +398,10 @@ class Command(BaseCommand):
             """Create an extra dynamic document with the same structure and variables as the main ones.
 
             Business rule:
-            - When as_template=True (minutas): variables are created **without** values (empty strings),
-              so the template behaves como un formato en blanco.
-            - When as_template=False: variables are created with realistic fake values.
+            - All documents always have values for: objeto, valor, plazo,
+              fecha de expiración (end_date) and 1-2 etiquetas (tags).
+            - Other variables (client_name, lawyer_name, etc.) are only
+              filled when as_template=False.
             """
             base_template = random.choice(document_templates)
             created_at = timezone.now()
@@ -456,12 +457,13 @@ class Command(BaseCommand):
             for name in tag_names:
                 tag, _ = Tag.objects.get_or_create(name=name)
                 available_tags.append(tag)
-            num_tags = random.randint(0, 3)
-            if num_tags > 0 and available_tags:
-                doc.tags.set(random.sample(available_tags, k=num_tags))
+            # Always assign 1-2 tags so every document has etiquetas
+            num_tags = random.randint(1, 2)
+            doc.tags.set(random.sample(available_tags, k=num_tags))
 
-            # Determine if this document should have variable values.
-            # Templates (as_template=True) should keep variables without values.
+            # Determine if this document should have variable values for non-core fields.
+            # Templates (as_template=True) keep non-core variables without values.
+            # Core fields (objeto, valor, plazo, end_date) are ALWAYS populated.
             should_fill_values = not as_template
 
             # client_name / lawyer_name
@@ -507,18 +509,18 @@ class Command(BaseCommand):
                 summary_field='counterparty'
             )
 
-            # Objeto
+            # Objeto (always populated)
             DocumentVariable.objects.create(
                 document=doc,
                 name_en='contract_object',
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8) if should_fill_values else '',
+                value=fake.sentence(nb_words=8),
                 summary_field='object'
             )
 
-            # Valor (with currency)
+            # Valor (with currency – always populated)
             amount = random.randint(1_000_000, 50_000_000)
             currency = random.choice(['COP', 'USD', 'EUR'])
             DocumentVariable.objects.create(
@@ -527,12 +529,12 @@ class Command(BaseCommand):
                 name_es='Valor del contrato',
                 tooltip='Valor económico principal del documento',
                 field_type='number',
-                value=str(amount) if should_fill_values else '',
+                value=str(amount),
                 summary_field='value',
-                currency=currency if should_fill_values else None
+                currency=currency
             )
 
-            # Plazo
+            # Plazo (always populated)
             term_text = random.choice(['12 meses', '6 meses', 'Indefinido', 'Hasta nueva orden'])
             DocumentVariable.objects.create(
                 document=doc,
@@ -540,7 +542,7 @@ class Command(BaseCommand):
                 name_es='Plazo del contrato',
                 tooltip='Duración o plazo del documento',
                 field_type='input',
-                value=term_text if should_fill_values else '',
+                value=term_text,
                 summary_field='term'
             )
 
@@ -565,6 +567,7 @@ class Command(BaseCommand):
                 value=start_date.strftime('%Y-%m-%d') if should_fill_values else '',
                 summary_field='start_date'
             )
+            # Fecha de expiración / terminación (always populated)
             end_date = base_date + timedelta(days=random.randint(60, 365))
             DocumentVariable.objects.create(
                 document=doc,
@@ -572,7 +575,7 @@ class Command(BaseCommand):
                 name_es='Fecha de terminación',
                 tooltip='Fecha de terminación de vigencia',
                 field_type='date',
-                value=end_date.strftime('%Y-%m-%d') if should_fill_values else '',
+                value=end_date.strftime('%Y-%m-%d'),
                 summary_field='end_date'
             )
 
@@ -639,18 +642,42 @@ class Command(BaseCommand):
                 requires_signature=requires_signature,
             )
 
-            # Copy tags from template
-            if template_doc.tags.exists():
-                doc.tags.set(template_doc.tags.all())
+            # Copy tags from template; ensure at least 1-2 tags
+            template_tags = list(template_doc.tags.all())
+            if template_tags:
+                doc.tags.set(template_tags)
+            # Backfill: guarantee 1-2 tags even if template had none
+            if doc.tags.count() == 0:
+                tag_names_fallback = ['Urgente', 'Renovación', 'Alto valor', 'Cliente nuevo', 'Confidencial']
+                fallback_tags = []
+                for tn in tag_names_fallback:
+                    t, _ = Tag.objects.get_or_create(name=tn)
+                    fallback_tags.append(t)
+                doc.tags.set(random.sample(fallback_tags, k=random.randint(1, 2)))
 
-            # Clone variables, adapting party names when aplica
+            # Clone variables, adapting party names and ensuring core fields are always populated
+            base_date = created_at.date()
             for var in template_doc.variables.all():
                 value = var.value
+                var_currency = var.currency
 
                 if var.name_en == 'client_name':
                     value = assigned_to_user.get_full_name() or assigned_to_user.email
                 elif var.name_en == 'lawyer_name' and template_doc.created_by:
                     value = template_doc.created_by.get_full_name() or template_doc.created_by.email
+
+                # Backfill core fields if empty (e.g. cloned from a template with no values)
+                if not value:
+                    if var.summary_field == 'object':
+                        value = fake.sentence(nb_words=8)
+                    elif var.summary_field == 'value':
+                        value = str(random.randint(1_000_000, 50_000_000))
+                        if not var_currency:
+                            var_currency = random.choice(['COP', 'USD', 'EUR'])
+                    elif var.summary_field == 'term':
+                        value = random.choice(['12 meses', '6 meses', 'Indefinido', 'Hasta nueva orden'])
+                    elif var.summary_field == 'end_date':
+                        value = (base_date + timedelta(days=random.randint(60, 365))).strftime('%Y-%m-%d')
 
                 DocumentVariable.objects.create(
                     document=doc,
@@ -661,7 +688,7 @@ class Command(BaseCommand):
                     select_options=var.select_options,
                     value=value,
                     summary_field=var.summary_field,
-                    currency=var.currency,
+                    currency=var_currency,
                 )
 
             # Optionally create a pending signature for the client

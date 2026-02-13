@@ -725,10 +725,6 @@ class DocumentVariable(models.Model):
 
             # Format with thousands separators and up to 2 decimals
             formatted = f"{numeric_value:,.2f}".replace(',', '.')
-            # If there are no decimal digits (",00"), drop them to match frontend behavior
-            if formatted.endswith(',00'):
-                formatted = formatted[:-3]
-
             currency_labels = {
                 'COP': 'COP $',
                 'USD': 'US $',

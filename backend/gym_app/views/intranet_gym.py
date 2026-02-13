@@ -106,14 +106,14 @@ def create_report(request):
         email_subject = f"Cuenta de Cobro/Factura - {full_name}"
         recipient_email = "facturacion@gymconsultoresjuridicos.com"
 
-        # Extract the user email provided by the requester
+        # Extract the user email provided by the requester (optional confirmation)
         user_email_raw = request.data.get("userEmail")
         if isinstance(user_email_raw, list):
             # If the value comes as a list (e.g., ['user@example.com']), grab the first element
             user_email = user_email_raw[0] if user_email_raw else None
         else:
             user_email = user_email_raw
-        
+
         context = {
             "full_name": full_name,
             "contract": contract,
@@ -124,7 +124,7 @@ def create_report(request):
             "request_date": timezone.now().strftime("%Y-%m-%d %H:%M"),
         }
 
-        # Send the email using the helper utility
+        # Send the main email using the helper utility
         send_template_email(
             template_name="facturation",
             subject=email_subject,

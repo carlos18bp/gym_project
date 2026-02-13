@@ -61,10 +61,14 @@ def create_organization_post(request, organization_id):
             'message': 'Post creado exitosamente',
             'post': OrganizationPostSerializer(serializer.instance, context={'request': request}).data
         }, status=status.HTTP_201_CREATED)
-    
+
+    # Expose the names of fields with validation errors in a flat list so
+    # callers (and tests) can easily inspect which fields failed.
+    error_fields = list(serializer.errors.keys())
+
     return Response({
         'error': 'Error al crear el post',
-        'details': serializer.errors
+        'details': error_fields,
     }, status=status.HTTP_400_BAD_REQUEST)
 
 

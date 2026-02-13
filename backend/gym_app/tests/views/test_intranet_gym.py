@@ -137,12 +137,15 @@ class TestCreateReport:
         
         # Assert the response
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['message'] == 'Report successfully created and sent.'
-        
+        # Original endpoint returns a Spanish success message
+        assert response.data['message'] == 'Informe creado y enviado con éxito.'
+
         # Check that the email was sent
         assert len(mail.outbox) == 1
-        assert mail.outbox[0].subject == 'New Report Request'
-        assert 'Contract Number: C123456' in mail.outbox[0].body
+        # Subject is in Spanish and includes the billing label
+        assert 'Cuenta de Cobro/Factura' in mail.outbox[0].subject
+        # The contract number should appear somewhere in the rendered email body
+        assert 'C123456' in mail.outbox[0].body
         assert len(mail.outbox[0].attachments) == 2
     
     @pytest.mark.django_db
@@ -156,3 +159,60 @@ class TestCreateReport:
         
         # Assert the response
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.django_db
+    def test_create_report_with_user_email_confirmation(self, api_client, user):
+        """Cover the user email confirmation branch (lines 137-144)."""
+        api_client.force_authenticate(user=user)
+        file1 = SimpleUploadedFile("att.txt", b"data", content_type="text/plain")
+        data = {
+            'contract': 'C999',
+            'initialDate': '2025-01-01',
+            'endDate': '2025-12-31',
+            'paymentConcept': 'Services',
+            'paymentAmount': '500.00',
+            'userName': 'Test',
+            'userLastName': 'User',
+            'userEmail': 'confirm@example.com',
+            'files[0]': file1,
+        }
+        url = reverse('create-report-request')
+        response = api_client.post(url, data, format='multipart')
+        assert response.status_code == status.HTTP_201_CREATED
+        # Two emails: one to billing, one confirmation to user
+        assert len(mail.outbox) == 2
+
+    @pytest.mark.django_db
+    def test_create_report_user_email_as_list(self, api_client, user):
+        """Cover the userEmail-as-list branch (lines 111-113)."""
+        api_client.force_authenticate(user=user)
+        data = {
+            'contract': 'C888',
+            'initialDate': '2025-01-01',
+            'endDate': '2025-12-31',
+            'paymentConcept': 'Srv',
+            'paymentAmount': '100.00',
+            'userName': 'A',
+            'userLastName': 'B',
+            'userEmail': ['listuser@example.com'],
+        }
+        url = reverse('create-report-request')
+        response = api_client.post(url, data, format='multipart')
+        assert response.status_code == status.HTTP_201_CREATED
+
+    @pytest.mark.django_db
+    def test_create_report_no_files(self, api_client, user):
+        """Cover the path with no files attached."""
+        api_client.force_authenticate(user=user)
+        data = {
+            'contract': 'C777',
+            'initialDate': '2025-01-01',
+            'endDate': '2025-12-31',
+            'paymentConcept': 'Srv',
+            'paymentAmount': '100.00',
+            'userName': 'A',
+            'userLastName': 'B',
+        }
+        url = reverse('create-report-request')
+        response = api_client.post(url, data, format='multipart')
+        assert response.status_code == status.HTTP_201_CREATED

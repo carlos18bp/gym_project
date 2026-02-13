@@ -86,9 +86,6 @@ export const useLegalRequestStore = defineStore("legalRequest", {
           // Store the created request ID for later file processing
           this.lastCreatedRequestId = legalRequestId;
           
-          // Show immediate success message to user
-          console.log("Legal request received successfully:", response.data.message);
-
           // Get the request type name for the activity description
           const requestTypeName = formData.requestTypeId.name || "legal";
           const disciplineName = formData.disciplineId.name || "";
@@ -185,7 +182,6 @@ export const useLegalRequestStore = defineStore("legalRequest", {
           if (retryCount < maxRetries) {
             // Exponential backoff with jitter
             const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 1000;
-            console.log(`Retry ${retryCount + 1}/${maxRetries} for file upload after ${delay}ms`);
             
             await new Promise(resolve => setTimeout(resolve, delay));
             return uploadWithRetry(formData, retryCount + 1);
@@ -205,13 +201,10 @@ export const useLegalRequestStore = defineStore("legalRequest", {
           formData.append(`files`, file); // Using 'files' key for multiple files
         });
         
-        console.log(`Starting upload of ${files.length} files for legal request ${legalRequestId}`);
-        
         // Upload all files with retry logic
         const response = await uploadWithRetry(formData);
         
         if (response.status === 201) {
-          console.log('Files uploaded successfully:', response.data);
         } else {
           console.warn('Some files may have failed to upload:', response.data);
         }
@@ -246,7 +239,6 @@ export const useLegalRequestStore = defineStore("legalRequest", {
         );
         
         if (response.status === 200) {
-          console.log(`Confirmation email sent for legal request ${legalRequestId}`);
         } else {
           console.warn(`Failed to send confirmation email for legal request ${legalRequestId}`);
         }

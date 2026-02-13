@@ -382,13 +382,34 @@
           </div>
           <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <p class="text-sm text-gray-700">
+              <p v-if="props.promptDocuments" class="text-sm text-gray-700">
                 Mostrando
                 <span class="font-medium">{{ (currentPage - 1) * itemsPerPage + 1 }}</span>
                 a
                 <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredAndSortedDocuments.length) }}</span>
                 de
                 <span class="font-medium">{{ filteredAndSortedDocuments.length }}</span>
+                resultados
+              </p>
+              <p v-else class="text-sm text-gray-700">
+                Mostrando
+                <span class="font-medium">
+                  {{
+                    filteredAndSortedDocuments.length === 0
+                      ? 0
+                      : (documentStore.pagination.currentPage - 1) * documentStore.pagination.itemsPerPage + 1
+                  }}
+                </span>
+                a
+                <span class="font-medium">
+                  {{
+                    (documentStore.pagination.currentPage - 1) * documentStore.pagination.itemsPerPage + filteredAndSortedDocuments.length
+                  }}
+                </span>
+                de
+                <span class="font-medium">
+                  {{ documentStore.pagination.totalItems }}
+                </span>
                 resultados
               </p>
             </div>
@@ -599,6 +620,7 @@ import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
+import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -693,7 +715,7 @@ const selectedDocumentForActions = ref(null);
 const showTagsModal = ref(false);
 const tagsModalDocument = ref(null);
 const currentPage = ref(1);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(10);
 
 // Computed: Show selection (checkbox) column
 // Solo existía originalmente en la tabla de abogado (Documentos legales)
@@ -882,6 +904,15 @@ const isMinutasView = computed(() => {
   return docs.every(doc => doc.state === 'Draft' || doc.state === 'Published');
 });
 
+// Context helpers for server-side filters
+const isLawyerMinutasContext = computed(() => {
+  return props.cardType === 'lawyer' && props.context === 'legal-documents';
+});
+
+const isClientMyDocumentsContext = computed(() => {
+  return props.cardType === 'client' && props.context === 'my-documents';
+});
+
 
 // Computed: Sorted documents
 const filteredAndSortedDocuments = computed(() => {
@@ -903,14 +934,25 @@ const filteredAndSortedDocuments = computed(() => {
 
 // Computed: Paginated documents
 const paginatedDocuments = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedDocuments.value.slice(start, end);
+  // When using promptDocuments, pagination is handled entirely on the client
+  // by slicing the filtered list.
+  if (props.promptDocuments) {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return filteredAndSortedDocuments.value.slice(start, end);
+  }
+
+  // When documents come from the central store, the backend already paginates
+  // the list, so we simply display all filtered documents for the current page.
+  return filteredAndSortedDocuments.value;
 });
 
 // Computed: Total pages
 const totalPages = computed(() => {
-  return Math.ceil(filteredAndSortedDocuments.value.length / itemsPerPage.value);
+  if (props.promptDocuments) {
+    return Math.ceil(filteredAndSortedDocuments.value.length / itemsPerPage.value);
+  }
+  return documentStore.pagination?.totalPages || 1;
 });
 
 // Computed: Displayed pages
@@ -1064,36 +1106,7 @@ const getSummaryCounterparty = (document) => {
 };
 
 const getSummaryValue = (document) => {
-  if (document.summary_value === null || document.summary_value === undefined || document.summary_value === '') {
-    return '';
-  }
-
-  // Parse numeric value safely
-  const numericValue = Number(String(document.summary_value).replace(/[^0-9.,-]/g, '').replace(/\./g, '').replace(',', '.'));
-  if (Number.isNaN(numericValue)) {
-    // Fallback: return raw value if parsing fails
-    return document.summary_value;
-  }
-
-  // Format number with thousands separators (locale-style: 1.234.567,89)
-  const formattedNumber = numericValue.toLocaleString('es-CO', {
-    maximumFractionDigits: 2,
-  });
-
-  const currencyCode = document.summary_value_currency || '';
-  const currencyLabelMap = {
-    COP: 'COP $',
-    USD: 'US $',
-    EUR: 'EUR €',
-  };
-
-  const currencyLabel = currencyLabelMap[currencyCode] || currencyCode || '';
-
-  if (currencyLabel) {
-    return `${currencyLabel} ${formattedNumber}`;
-  }
-
-  return formattedNumber;
+  return formatSummaryValue(document);
 };
 
 const hasSummary = (document) => {
@@ -1228,8 +1241,15 @@ const handleMenuAction = async (action, document) => {
     case 'editDocument':
       {
         // Editar contenido del documento en el editor adecuado
-        const userRole = userStore.currentUser?.role || 'client';
-        const isLawyerTemplateContext = userRole === 'lawyer' && props.cardType === 'lawyer';
+        // Para el contexto de Minutas de abogado (archivos jurídicos),
+        // usar siempre el editor de abogado, independientemente de cómo
+        // esté inicializado el userStore en ese momento. Esto evita que
+        // el flujo use accidentalmente el editor de cliente (que crea una
+        // copia) y garantiza que las ediciones se apliquen sobre la minuta
+        // original.
+        const isLawyerTemplateContext =
+          props.cardType === 'lawyer' && props.context === 'legal-documents';
+
         if (isLawyerTemplateContext) {
           // Editor de abogado para plantillas/minutas
           router.push(`/dynamic_document_dashboard/lawyer/editor/edit/${document.id}`);
@@ -1316,7 +1336,48 @@ const handleUpdateRelationshipCount = ({ documentId, count }) => {
   }
 };
 
-// Watch for page changes
+// Watch for backend pagination page changes triggered by the UI controls
+watch(currentPage, async (newPage, oldPage) => {
+  // For promptDocuments we only paginate locally, no backend calls are needed
+  if (props.promptDocuments) {
+    return;
+  }
+
+  // Avoid unnecessary requests on initialisation or when the page did not change
+  if (newPage === oldPage || !newPage) {
+    return;
+  }
+
+  try {
+    const currentUser = userStore.currentUser;
+
+    const options = {
+      page: newPage,
+      limit: itemsPerPage.value,
+      forceRefresh: true,
+    };
+
+    // For lawyer Minutas, restrict results to documents created by this lawyer
+    // and already filtered by Draft/Published at the backend level
+    if (isLawyerMinutasContext.value && currentUser?.id) {
+      options.lawyerId = currentUser.id;
+      options.states = ['Draft', 'Published'];
+    }
+
+    // For client-style "my-documents" views, restrict to documents assigned to this user
+    // and filter by Progress and Completed states
+    if (isClientMyDocumentsContext.value && currentUser?.id) {
+      options.clientId = currentUser.id;
+      options.states = ['Progress', 'Completed'];
+    }
+
+    await documentStore.fetchDocuments(options);
+  } catch (error) {
+    console.error('Error fetching documents for page change:', error);
+  }
+});
+
+// Keep current page within bounds when the filtered result set shrinks
 watch(() => filteredAndSortedDocuments.value.length, () => {
   if (currentPage.value > totalPages.value) {
     currentPage.value = Math.max(1, totalPages.value);
@@ -1337,9 +1398,38 @@ watch(() => props.searchQuery, (newValue) => {
 
 // Initialize
 onMounted(async () => {
-  if (!props.promptDocuments) {
-    await documentStore.init();
-  }
   await userStore.init();
+
+  if (props.promptDocuments) {
+    return;
+  }
+
+  try {
+    const currentUser = userStore.currentUser;
+
+    const options = {
+      page: 1,
+      limit: itemsPerPage.value,
+      forceRefresh: true,
+    };
+
+    // For lawyer Minutas, request only documents created by this lawyer
+    // and already filtered by Draft/Published at the backend level
+    if (isLawyerMinutasContext.value && currentUser?.id) {
+      options.lawyerId = currentUser.id;
+      options.states = ['Draft', 'Published'];
+    }
+
+    // For client-style "my-documents" views, request only documents assigned to this user
+    // and filter by Progress and Completed states
+    if (isClientMyDocumentsContext.value && currentUser?.id) {
+      options.clientId = currentUser.id;
+      options.states = ['Progress', 'Completed'];
+    }
+
+    await documentStore.fetchDocuments(options);
+  } catch (error) {
+    console.error('Error initializing documents for table:', error);
+  }
 });
 </script>

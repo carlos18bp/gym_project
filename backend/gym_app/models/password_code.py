@@ -18,7 +18,7 @@ class PasswordCode(models.Model):
     # The reset code, restricted to a maximum length of 6 digits
     code = models.CharField(
         max_length=6,
-        validators=[RegexValidator(regex='^\d{6}$', message='Code must be 6 digits', code='invalid_code')]
+        validators=[RegexValidator(regex=r'^\d{6}$', message='Code must be 6 digits', code='invalid_code')]
     )
     
     # Timestamp of when the password code was created

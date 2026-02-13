@@ -1,10 +1,20 @@
 import pytest
+from datetime import date
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.hashers import make_password
 from rest_framework.test import APIRequestFactory
-from gym_app.models.user import User
-from gym_app.serializers.user import UserSerializer
-from datetime import date
+from gym_app.models.user import User, UserSignature, ActivityFeed
+from gym_app.serializers.user import (
+    UserSerializer,
+    UserSignatureSerializer,
+    ActivityFeedSerializer,
+)
+
+@pytest.fixture
+def api_rf():
+    """APIRequestFactory para pruebas de serializers con request en contexto"""
+    return APIRequestFactory()
+
 
 @pytest.fixture
 def user_data():
@@ -219,3 +229,105 @@ class TestUserSerializer:
         # Django adds a prefix (profile_photos/) and a random suffix (_xyz123) to the name
         assert 'profile' in existing_user.photo_profile.name
         assert existing_user.photo_profile.name.endswith('.jpg')
+
+
+@pytest.mark.django_db
+class TestUserSignatureSerializer:
+
+    def test_signature_serializer_builds_absolute_url(self, api_rf):
+        """La representación incluye URL absoluta de la firma cuando hay request en contexto"""
+        user = User.objects.create_user(
+            email='signature-serializer@example.com',
+            password='testpassword'
+        )
+
+        test_signature = SimpleUploadedFile(
+            "signature.png",
+            b"file_content",
+            content_type="image/png"
+        )
+
+        signature = UserSignature.objects.create(
+            user=user,
+            signature_image=test_signature,
+            method='upload',
+            ip_address='127.0.0.1'
+        )
+
+        request = api_rf.get('/api/signatures/')
+        serializer = UserSignatureSerializer(signature, context={'request': request})
+        data = serializer.data
+
+        assert data['id'] == signature.id
+        assert data['user'] == user.id
+        assert data['method'] == 'upload'
+        # La URL debe ser absoluta (con dominio de test) y terminar en el nombre de archivo
+        assert data['signature_image'].startswith('http://testserver/')
+        assert data['signature_image'].endswith('.png')
+
+    def test_signature_serializer_handles_absolute_url_error(self, user):
+        test_signature = SimpleUploadedFile(
+            "signature.png",
+            b"file_content",
+            content_type="image/png"
+        )
+        signature = UserSignature.objects.create(
+            user=user,
+            signature_image=test_signature,
+            method='upload',
+            ip_address='127.0.0.1'
+        )
+
+        class BrokenRequest:
+            def __init__(self):
+                self._calls = 0
+
+            def build_absolute_uri(self, url):
+                self._calls += 1
+                if self._calls > 1:
+                    raise RuntimeError("boom")
+                return f"http://testserver{url}"
+
+        serializer = UserSignatureSerializer(signature, context={'request': BrokenRequest()})
+        data = serializer.data
+
+        assert data['signature_image'] is None
+
+
+@pytest.mark.django_db
+class TestActivityFeedSerializer:
+
+    def test_activity_feed_serializer_includes_time_ago_and_action_display(self, user):
+        """La representación del ActivityFeed incluye campos derivados time_ago y action_display"""
+        activity = ActivityFeed.objects.create(
+            user=user,
+            action_type='create',
+            description='Created a resource'
+        )
+
+        serializer = ActivityFeedSerializer(activity)
+        data = serializer.data
+
+        assert data['id'] == activity.id
+        assert data['user'] == user.id
+        assert data['action_type'] == 'create'
+        # Debe usar el display legible definido en ACTION_TYPE_CHOICES
+        assert data['action_display'] == 'Create'
+        assert data['description'] == 'Created a resource'
+        assert 'created_at' in data
+        # time_ago debe ser una cadena no vacía (no comprobamos el valor exacto por ser relativo al tiempo)
+        assert 'time_ago' in data
+        assert isinstance(data['time_ago'], str)
+        assert data['time_ago'] != ''
+
+    def test_activity_feed_serializer_action_display_fallback(self, user):
+        activity = ActivityFeed.objects.create(
+            user=user,
+            action_type='custom',
+            description='Custom action'
+        )
+
+        serializer = ActivityFeedSerializer(activity)
+        data = serializer.data
+
+        assert data['action_display'] == 'custom'

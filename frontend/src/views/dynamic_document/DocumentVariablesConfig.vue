@@ -232,7 +232,19 @@ onMounted(async () => {
   // Fetch the complete document data with tags and permissions if we only have basic info
   if (store.selectedDocument.id && (!store.selectedDocument.tags || store.selectedDocument.tags.length === 0)) {
     try {
+      // Preserve any unsaved content that may have been set in the lawyer editor
+      // (e.g. when coming from DocumentEditor.handleContinue) before refreshing
+      // the document from the backend. Otherwise, the fresh fetch would
+      // overwrite the new content with the old version from the server and
+      // later save the stale content again when publishing.
+      const previousContent = store.selectedDocument.content;
+
       const fullDocument = await store.fetchDocumentById(store.selectedDocument.id, true);
+
+      if (previousContent && previousContent !== fullDocument.content) {
+        fullDocument.content = previousContent;
+      }
+
       store.selectedDocument = fullDocument;
     } catch (error) {
       console.error('Error fetching full document:', error);

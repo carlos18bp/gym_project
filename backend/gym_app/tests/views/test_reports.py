@@ -86,12 +86,12 @@ def sample_processes(sample_users, sample_case_types):
         plaintiff='Company Inc.',
         defendant='Other Company LLC',
         ref='PROCESS-001',
-        client=sample_users['client'],
         lawyer=sample_users['lawyer'],
         case=sample_case_types['civil'],
         subcase='Contract Dispute',
-        created_at=timezone.now() - datetime.timedelta(days=30)
+        created_at=timezone.now() - datetime.timedelta(days=30),
     )
+    process1.clients.add(sample_users['client'])
     
     # Add stages to process1
     stage1 = Stage.objects.create(
@@ -110,12 +110,12 @@ def sample_processes(sample_users, sample_case_types):
         plaintiff='Person A',
         defendant='Person B',
         ref='PROCESS-002',
-        client=sample_users['client'],
         lawyer=sample_users['lawyer'],
         case=sample_case_types['family'],
         subcase='Custody Case',
-        created_at=timezone.now() - datetime.timedelta(days=15)
+        created_at=timezone.now() - datetime.timedelta(days=15),
     )
+    process2.clients.add(sample_users['client'])
     
     # Add stages to process2
     stage3 = Stage.objects.create(
@@ -218,45 +218,62 @@ def sample_legal_requests():
     criminal = LegalDiscipline.objects.create(name="Criminal Law")
     
     requests = []
-    
-    # Create legal requests
-    request1 = LegalRequest.objects.create(
+
+    # Create users for each legal request to match expected report values
+    user1 = User.objects.create_user(
+        email="john.doe@example.com",
+        password="password123",
         first_name="John",
         last_name="Doe",
-        email="john.doe@example.com",
+        role="client",
+    )
+    user2 = User.objects.create_user(
+        email="jane.smith@example.com",
+        password="password123",
+        first_name="Jane",
+        last_name="Smith",
+        role="client",
+    )
+    user3 = User.objects.create_user(
+        email="bob.brown@example.com",
+        password="password123",
+        first_name="Bob",
+        last_name="Brown",
+        role="client",
+    )
+
+    # Create legal requests associated to users
+    request1 = LegalRequest.objects.create(
+        user=user1,
         request_type=consultation,
         discipline=civil,
         description="I need advice on contract law",
-        created_at=timezone.now() - datetime.timedelta(days=20)
+        created_at=timezone.now() - datetime.timedelta(days=20),
     )
-    
+
     # Create and attach a file
     test_file = SimpleUploadedFile(
         "document.pdf",
         b"File content",
-        content_type="application/pdf"
+        content_type="application/pdf",
     )
     file_obj = LegalRequestFiles.objects.create(file=test_file)
     request1.files.add(file_obj)
-    
+
     request2 = LegalRequest.objects.create(
-        first_name="Jane",
-        last_name="Smith",
-        email="jane.smith@example.com",
+        user=user2,
         request_type=representation,
         discipline=family,
         description="I need representation in a custody case",
-        created_at=timezone.now() - datetime.timedelta(days=10)
+        created_at=timezone.now() - datetime.timedelta(days=10),
     )
-    
+
     request3 = LegalRequest.objects.create(
-        first_name="Bob",
-        last_name="Brown",
-        email="bob.brown@example.com",
+        user=user3,
         request_type=consultation,
         discipline=criminal,
         description="I need advice on my criminal case",
-        created_at=timezone.now() - datetime.timedelta(days=5)
+        created_at=timezone.now() - datetime.timedelta(days=5),
     )
     
     return {
@@ -468,7 +485,6 @@ class TestReportViews:
         assert sample_users['lawyer'].email in df['Email'].values
         assert sample_users['admin'].email in df['Email'].values
     
-    @pytest.mark.skip(reason="Issue with timezone in Excel export needs fixing at the function level")
     def test_user_activity_report(self, api_client, sample_users, sample_activities):
         """Test generating user activity report"""
         # Authenticate
@@ -605,7 +621,7 @@ class TestReportViews:
         assert "Family Law" in df['Disciplina Legal'].values
     
     @pytest.mark.skip(reason="Chart creation causes issues in test environment")
-    def test_requests_by_type_discipline_report(self, api_client, sample_users, sample_legal_requests):
+    def test_requests_by_type_discipline_report(self, api_client, sample_users, sample_legal_requests):  # pragma: no cover
         """Test generating requests by type and discipline report"""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])

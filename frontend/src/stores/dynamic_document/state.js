@@ -19,7 +19,7 @@ export const initialState = () => ({
   // Pagination state
   pagination: {
     currentPage: 1,
-    itemsPerPage: 20,
+    itemsPerPage: 10,
     totalItems: 0,
     totalPages: 0,
     hasMore: false

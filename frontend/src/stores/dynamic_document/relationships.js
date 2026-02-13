@@ -60,9 +60,15 @@ export const documentRelationshipsActions = {
    * @param {number} documentId - The ID of the source document
    * @returns {Promise<Array>} Array of available document objects
    */
-  async getAvailableDocumentsForRelationship(documentId) {
+  async getAvailableDocumentsForRelationship(documentId, options = {}) {
     try {
-      const response = await get_request(`dynamic-documents/${documentId}/available-for-relationship/`);
+      const params = new URLSearchParams();
+      if (options.allowPendingSignatures) {
+        params.set('allow_pending_signatures', 'true');
+      }
+      const query = params.toString();
+      const url = `dynamic-documents/${documentId}/available-for-relationship/${query ? `?${query}` : ''}`;
+      const response = await get_request(url);
       return response.data || [];
     } catch (error) {
       console.error('Error fetching available documents:', error);

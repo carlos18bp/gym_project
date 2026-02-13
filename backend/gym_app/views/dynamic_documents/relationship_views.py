@@ -19,7 +19,9 @@ Available Endpoints:
 - DELETE /api/dynamic-documents/relationships/{id}/delete/ - Delete relationship
 
 Business Rules:
-- Only documents in 'Completed' state can be related
+- By default, only documents in 'Completed' state can be related
+- Documents in 'PendingSignatures' can only add relationships during formalization
+- Documents in 'PendingSignatures' or 'FullySigned' cannot change relationships afterward
 - Users can only relate documents they own (created_by or assigned_to)
 - Relationships are bidirectional (A->B implies B->A)
 - No duplicate relationships allowed
@@ -119,13 +121,18 @@ def list_available_documents_for_relationship(request, document_id):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get documents that belong to the user and are in final or pending signature states
-        # Business rule (updated): allow Completed, FullySigned, and PendingSignatures documents
-        # to be used when creating new relationships.
-        # PendingSignatures is included because these are formalized documents waiting for signatures.
+        allow_pending_signatures = str(
+            request.query_params.get('allow_pending_signatures', '')
+        ).lower() in {'1', 'true', 'yes'}
+
+        allowed_states = ['Completed']
+        if allow_pending_signatures:
+            allowed_states.extend(['PendingSignatures', 'FullySigned'])
+
+        # Get documents that belong to the user and are in allowed states.
         user_documents = DynamicDocument.objects.filter(
             Q(created_by=request.user) | Q(assigned_to=request.user),
-            state__in=['Completed', 'FullySigned', 'PendingSignatures']
+            state__in=allowed_states
         )
         
         available_documents = []
@@ -166,12 +173,19 @@ def create_document_relationship(request):
     Expected payload::
 
         {"source_document": 1, "target_document": 2}
+
+    Optional payload::
+
+        {"allow_pending_signatures": true}
     """
     serializer = DocumentRelationshipSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
         source_document = serializer.validated_data['source_document']
         target_document = serializer.validated_data['target_document']
+
+        allow_pending_signatures = bool(request.data.get('allow_pending_signatures'))
+        allow_locked_targets = allow_pending_signatures and source_document.state == 'PendingSignatures'
         
         # Check if user can view both documents
         if not source_document.can_view(request.user):
@@ -203,23 +217,46 @@ def create_document_relationship(request):
                 {'detail': 'You can only create relationships with your own documents.'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        if source_document.state == 'PendingSignatures' and not allow_pending_signatures:
+            return Response(
+                {'detail': 'You cannot modify relationships for documents pending signatures.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if source_document.state == 'FullySigned':
+            return Response(
+                {'detail': 'You cannot modify relationships for fully signed documents.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not allow_locked_targets and target_document.state in ['PendingSignatures', 'FullySigned']:
+            return Response(
+                {'detail': 'You cannot modify relationships for documents pending signatures or already signed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         
         # Only allow relating documents in final or pending signature states
-        # Business rule (updated): allow Completed, FullySigned, and PendingSignatures documents
-        # PendingSignatures is allowed because these are formalized documents waiting for signatures
-        allowed_states = ['Completed', 'FullySigned', 'PendingSignatures']
-        source_is_valid = source_document.state in allowed_states
-        target_is_valid = target_document.state in allowed_states
+        allowed_source_states = ['Completed']
+        if allow_pending_signatures:
+            allowed_source_states.append('PendingSignatures')
+        allowed_target_states = ['Completed']
+        if allow_locked_targets:
+            allowed_target_states.extend(['PendingSignatures', 'FullySigned'])
+        source_is_valid = source_document.state in allowed_source_states
+        target_is_valid = target_document.state in allowed_target_states
 
         if not source_is_valid:
+            allowed_label = ", ".join(allowed_source_states)
             return Response(
-                {'detail': f'You can only relate documents in final state (Completed, FullySigned, or PendingSignatures). Source document is in state: {source_document.state}'}, 
+                {'detail': f'You can only relate documents in final state ({allowed_label}). Source document is in state: {source_document.state}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if not target_is_valid:
+            allowed_label = ", ".join(allowed_target_states)
             return Response(
-                {'detail': f'You can only relate documents in final state (Completed, FullySigned, or PendingSignatures). Target document is in state: {target_document.state}'}, 
+                {'detail': f'You can only relate documents in final state ({allowed_label}). Target document is in state: {target_document.state}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -242,7 +279,21 @@ def create_document_relationship(request):
             status=status.HTTP_201_CREATED
         )
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # If serializer is invalid, normalize duplicate-relationship errors so
+    # callers (and tests) can always read a human-friendly message from
+    # the "detail" field instead of DRF's non_field_errors structure.
+    errors = serializer.errors
+    non_field_errors = errors.get('non_field_errors')
+    if non_field_errors:
+        # Convert any list/array of messages to a single string
+        joined = " ".join([str(e) for e in non_field_errors])
+        if 'already exists' in joined.lower() or 'must make a unique set' in joined.lower():
+            return Response(
+                {'detail': 'A relationship between these documents already exists.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['DELETE'])
@@ -264,6 +315,16 @@ def delete_document_relationship(request, relationship_id):
             return Response(
                 {'detail': 'You do not have permission to delete this relationship.'}, 
                 status=status.HTTP_403_FORBIDDEN
+            )
+
+        locked_states = ['PendingSignatures', 'FullySigned']
+        if (
+            relationship.source_document.state in locked_states
+            or relationship.target_document.state in locked_states
+        ):
+            return Response(
+                {'detail': 'You cannot modify relationships for documents pending signatures or already signed.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         
         relationship.delete()

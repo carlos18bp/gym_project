@@ -345,27 +345,36 @@ def cancel_subscription(request):
         Response: JSON with cancelled subscription details
     """
     try:
-        subscription = Subscription.objects.filter(
+        # Look for an active subscription first
+        active_subscription = Subscription.objects.filter(
             user=request.user,
-            status='active'
+            status='active',
         ).first()
-        
-        if not subscription:
+
+        # If there is no active subscription, check if there is a cancelled one
+        if not active_subscription:
+            cancelled_subscription = Subscription.objects.filter(
+                user=request.user,
+                status='cancelled',
+            ).first()
+
+            if cancelled_subscription:
+                return Response(
+                    {'error': 'Subscription is already cancelled'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             return Response(
                 {'error': 'No active subscription found'},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND,
             )
-        
-        if subscription.status == 'cancelled':
-            return Response(
-                {'error': 'Subscription is already cancelled'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
+        subscription = active_subscription
         
         # Cancel the subscription
         subscription.status = 'cancelled'
         subscription.save()
-        
+
         # Update user role to basic
         request.user.role = 'basic'
         request.user.save()

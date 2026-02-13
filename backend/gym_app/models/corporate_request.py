@@ -166,22 +166,27 @@ class CorporateRequest(models.Model):
     def clean(self):
         """Validate corporate request constraints"""
         from django.core.exceptions import ValidationError
-        
+
+        errors = []
+
         # Ensure client is a member of the organization
         if self.client and self.organization:
             from .organization import OrganizationMembership
             is_member = OrganizationMembership.objects.filter(
                 organization=self.organization,
                 user=self.client,
-                is_active=True
+                is_active=True,
             ).exists()
             if not is_member:
-                raise ValidationError('El cliente debe ser miembro de la organización')
-        
+                errors.append('El cliente debe ser miembro de la organización')
+
         # Ensure corporate_client is the leader of the organization
         if self.organization and self.corporate_client:
             if self.organization.corporate_client != self.corporate_client:
-                raise ValidationError('El cliente corporativo debe ser el líder de la organización')
+                errors.append('El cliente corporativo debe ser el líder de la organización')
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         """

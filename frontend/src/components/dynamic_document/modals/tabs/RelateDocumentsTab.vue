@@ -7,7 +7,7 @@
         Selecciona documentos para asociar con "{{ document.title }}"
       </p>
       <p class="text-xs text-blue-600 mt-1">
-        Solo se muestran documentos completados que te pertenecen
+        Solo se muestran documentos disponibles que te pertenecen
       </p>
     </div>
 

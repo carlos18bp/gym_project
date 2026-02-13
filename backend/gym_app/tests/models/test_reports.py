@@ -68,18 +68,18 @@ def sample_data(sample_users):
     # Create case type
     case = Case.objects.create(type='Civil')
     
-    # Create process
+    # Create process and associate client via ManyToMany field
     process = Process.objects.create(
         authority='District Court',
         plaintiff='Company Inc.',
         defendant='Other Company LLC',
         ref='TEST-123',
-        client=sample_users['client'],
         lawyer=sample_users['lawyer'],
         case=case,
         subcase='Contract Dispute',
-        created_at=timezone.now() - datetime.timedelta(days=10)
+        created_at=timezone.now() - datetime.timedelta(days=10),
     )
+    process.clients.add(sample_users['client'])
     
     # Create stages for the process
     stage1 = Stage.objects.create(
@@ -113,16 +113,23 @@ def sample_data(sample_users):
     # Create legal request types and disciplines
     request_type = LegalRequestType.objects.create(name="Consultation")
     discipline = LegalDiscipline.objects.create(name="Civil Law")
-    
-    # Create legal request
-    legal_request = LegalRequest.objects.create(
+
+    # Create a dedicated user for this legal request to match expected report values
+    request_user = User.objects.create_user(
+        email="john.doe@example.com",
+        password="password123",
         first_name="John",
         last_name="Doe",
-        email="john.doe@example.com",
+        role="client",
+    )
+
+    # Create legal request associated to the user
+    legal_request = LegalRequest.objects.create(
+        user=request_user,
         request_type=request_type,
         discipline=discipline,
         description="I need advice on a civil matter",
-        created_at=timezone.now() - datetime.timedelta(days=7)
+        created_at=timezone.now() - datetime.timedelta(days=7),
     )
     
     # Create and attach a file to the legal request

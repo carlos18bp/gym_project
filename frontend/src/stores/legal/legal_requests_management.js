@@ -187,7 +187,6 @@ export const useLegalRequestsStore = defineStore('legalRequestsManagement', {
         const response = await delete_request(
           `legal_requests/${requestId}/delete/`
         )
-        console.log(`✅ Delete response status: ${response.status}`, response.data)
 
         if (response.status === 200 || response.status === 204) {
           // Remove from local state

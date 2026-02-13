@@ -84,6 +84,10 @@ async function makeRequest(method, url, params = {}, config = {}) {
   }
 }
 
+export async function __makeRequest(method, url, params = {}, config = {}) {
+  return await makeRequest(method, url, params, config);
+}
+
 /**
  * Get request with optional responseType.
  * @param {string} url - Endpoint.
@@ -152,8 +156,6 @@ export async function upload_file_request(url, formData) {
   };
   
   try {
-    console.log("Uploading file to:", url);
-    
     const response = await axios.post(`/api/${url}`, formData, {
       headers,
       // Important for properly handling files in FormData

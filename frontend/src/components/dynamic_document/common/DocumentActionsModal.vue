@@ -1,5 +1,6 @@
 <template>
   <ModalTransition v-show="isVisible">
+    <div class="w-full h-full flex items-center justify-center p-4" @click.self="close">
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
@@ -121,6 +122,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
   </ModalTransition>
 </template>

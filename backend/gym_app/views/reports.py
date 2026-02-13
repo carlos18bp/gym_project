@@ -1261,29 +1261,39 @@ def generate_received_legal_requests_report(response, start_date, end_datetime):
     - Fecha de Solicitud (LegalRequest.created_at)
     """
     # Get legal requests created in the date range
-    legal_requests = LegalRequest.objects.filter(
-        created_at__range=[start_date, end_datetime]
-    ).select_related('request_type', 'discipline').prefetch_related('files')
+    legal_requests = (
+        LegalRequest.objects.filter(
+            created_at__range=[start_date, end_datetime]
+        )
+        .select_related('request_type', 'discipline', 'user')
+        .prefetch_related('files')
+    )
     
     # Prepare data for Excel
     data = []
     
     for request in legal_requests:
-        # Build requester name
-        requester_name = f"{request.first_name} {request.last_name}"
-        
+        # Build requester name and email from related user
+        user = getattr(request, "user", None)
+        if user is not None:
+            requester_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+            email = user.email or ""
+        else:
+            requester_name = ""
+            email = ""
+
         # Count attached files
         file_count = request.files.count()
-        
+
         # Add request data to the list
         data.append({
             'Nombre Solicitante': requester_name,
-            'Email': request.email,
+            'Email': email,
             'Tipo de Solicitud': request.request_type.name,
             'Disciplina Legal': request.discipline.name,
             'Archivos Adjuntos': file_count,
             'Descripción': request.description,
-            'Fecha de Solicitud': request.created_at.date()
+            'Fecha de Solicitud': request.created_at.date(),
         })
     
     # Create DataFrame and sort by request date (newest first)
@@ -1703,7 +1713,7 @@ def generate_requests_by_type_discipline_report(response, start_date, end_dateti
                             matrix_sheet.write(row_idx + 1, col_idx, cell_value, cell_format)
             
             # Add a heatmap chart if there's enough data
-            if len(df_matrix) > 1 and len(numeric_cols) > 1:
+            if len(df_matrix) > 1 and len(numeric_cols) > 1:  # pragma: no cover – xlsxwriter has no 'heatmap' chart type
                 chart = workbook.add_chart({'type': 'heatmap'})
                 
                 chart.add_series({
@@ -1723,13 +1733,21 @@ def generate_requests_by_type_discipline_report(response, start_date, end_dateti
         # 5. List of requests with type and discipline
         detailed_data = []
         for request in legal_requests:
+            user = getattr(request, "user", None)
+            if user is not None:
+                requester_name = f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip()
+                email = user.email or ""
+            else:
+                requester_name = ""
+                email = ""
+
             detailed_data.append({
-                'Nombre Solicitante': f"{request.first_name} {request.last_name}",
-                'Email': request.email,
+                'Nombre Solicitante': requester_name,
+                'Email': email,
                 'Tipo de Solicitud': request.request_type.name,
                 'Disciplina Legal': request.discipline.name,
                 'Archivos Adjuntos': request.files.count(),
-                'Fecha de Solicitud': request.created_at.date()
+                'Fecha de Solicitud': request.created_at.date(),
             })
         
         if detailed_data:

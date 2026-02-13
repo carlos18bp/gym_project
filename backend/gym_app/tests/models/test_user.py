@@ -2,7 +2,8 @@ import pytest
 from datetime import date
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models.user import User, UserManager
+from django.db import IntegrityError
+from gym_app.models.user import User, UserManager, UserSignature, ActivityFeed
 
 @pytest.mark.django_db
 class TestUserManager:
@@ -23,7 +24,7 @@ class TestUserManager:
         assert user.last_name == 'User'
         assert user.is_staff is False
         assert user.is_superuser is False
-        assert user.role == 'client'  # Default role
+        assert user.role == 'basic'  # Default role for new users
     
     def test_create_user_without_email(self):
         """Test that creating a user without an email raises an error"""
@@ -87,7 +88,7 @@ class TestUser:
         assert user.birthday is None
         assert user.identification is None
         assert user.document_type is None
-        assert user.role == 'client'  # Default role
+        assert user.role == 'basic'  # Default role
         assert user.is_gym_lawyer is False  # Default value
         assert user.is_profile_completed is False  # Default value
     
@@ -243,3 +244,114 @@ class TestUser:
         assert user.photo_profile is not None
         assert 'profile' in user.photo_profile.name
         assert user.photo_profile.name.endswith('.jpg')
+
+
+@pytest.mark.django_db
+class TestUserSignature:
+
+    def test_create_user_signature_upload_method(self):
+        """Test creating a user signature using the upload method"""
+        user = User.objects.create_user(
+            email='signature@example.com',
+            password='testpassword'
+        )
+
+        test_signature = SimpleUploadedFile(
+            "signature.png",
+            b"file_content",
+            content_type="image/png"
+        )
+
+        signature = UserSignature.objects.create(
+            user=user,
+            signature_image=test_signature,
+            method='upload',
+            ip_address='127.0.0.1'
+        )
+
+        assert signature.id is not None
+        assert signature.user == user
+        assert signature.method == 'upload'
+        assert signature.signature_image is not None
+        assert signature.signature_image.name.startswith('signatures/')
+        assert str(signature) == f"Signature for {user.email} (upload)"
+
+    def test_user_signature_one_to_one_constraint(self):
+        """Test that a user cannot have more than one signature (OneToOne constraint)"""
+        user = User.objects.create_user(
+            email='signature2@example.com',
+            password='testpassword'
+        )
+
+        first_signature = SimpleUploadedFile(
+            "signature1.png",
+            b"file_content_1",
+            content_type="image/png"
+        )
+
+        UserSignature.objects.create(
+            user=user,
+            signature_image=first_signature,
+            method='upload'
+        )
+
+        second_signature = SimpleUploadedFile(
+            "signature2.png",
+            b"file_content_2",
+            content_type="image/png"
+        )
+
+        with pytest.raises(IntegrityError):
+            UserSignature.objects.create(
+                user=user,
+                signature_image=second_signature,
+                method='draw'
+            )
+
+
+@pytest.mark.django_db
+class TestActivityFeed:
+
+    def test_activity_feed_str_representation(self):
+        """Test string representation of an activity feed entry"""
+        user = User.objects.create_user(
+            email='activity@example.com',
+            password='testpassword'
+        )
+
+        activity = ActivityFeed.objects.create(
+            user=user,
+            action_type='create',
+            description='Created a resource'
+        )
+
+        result = str(activity)
+        assert user.email in result
+        assert 'create' in result
+
+    def test_activity_feed_keeps_maximum_20_entries_per_user(self):
+        """Test that only the 20 most recent activities per user are kept"""
+        user = User.objects.create_user(
+            email='activity-limit@example.com',
+            password='testpassword'
+        )
+
+        # Create 21 activities to trigger the pruning logic
+        for i in range(21):
+            ActivityFeed.objects.create(
+                user=user,
+                action_type='create',
+                description=f'Action {i}'
+            )
+
+        activities = ActivityFeed.objects.filter(user=user).order_by('-created_at')
+
+        # Only 20 activities should remain for this user
+        assert activities.count() == 20
+
+        descriptions = list(activities.values_list('description', flat=True))
+
+        # Oldest activity (Action 0) should have been deleted
+        assert 'Action 0' not in descriptions
+        # Newest activity should be present
+        assert 'Action 20' in descriptions

@@ -102,6 +102,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { formatSummaryValue } from '@/components/dynamic_document/common/formatSummaryValue';
 
 const props = defineProps({
   isVisible: {
@@ -122,29 +123,8 @@ const summaryCounterparty = computed(() => {
 });
 
 const summaryValue = computed(() => {
-  if (!props.document || !props.document.summary_value) return '';
-  
-  const value = props.document.summary_value;
-  const currency = props.document.summary_value_currency || '';
-  
-  // Format number with thousand separators
-  const formattedNumber = new Intl.NumberFormat('es-CO', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-  
-  // Add currency symbol
-  if (currency === 'USD') {
-    return `USD $${formattedNumber}`;
-  } else if (currency === 'EUR') {
-    return `€${formattedNumber}`;
-  } else if (currency === 'COP') {
-    return `$${formattedNumber} COP`;
-  } else if (currency) {
-    return `${currency} ${formattedNumber}`;
-  }
-  
-  return `$${formattedNumber}`;
+  if (!props.document) return '';
+  return formatSummaryValue(props.document);
 });
 
 const hasAnyDate = computed(() => {

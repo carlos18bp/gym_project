@@ -147,6 +147,7 @@ class CorporateRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CorporateRequest
         fields = '__all__'
+        read_only_fields = ['client']
 
     def get_days_since_created(self, obj):
         """Calculate days since the request was created"""
@@ -158,29 +159,36 @@ class CorporateRequestSerializer(serializers.ModelSerializer):
         """Get the number of responses for this request"""
         return obj.responses.count()
 
-    def create(self, validated_data):
-        """
-        Create a new corporate request.
-        """
-        # Set the client from the request context (must be a normal client)
+    def validate(self, attrs):
+        """Validate role and membership for creation/update when used with request context."""
         request = self.context.get('request')
         if request and request.user:
-            if request.user.role not in ['client', 'basic']:
-                raise serializers.ValidationError("Solo los clientes normales y usuarios bsicos pueden crear solicitudes corporativas.")
-            validated_data['client'] = request.user
-            
+            user = request.user
+
+            # Only normal clients/basic users can create corporate requests
+            if user.role not in ['client', 'basic']:
+                raise serializers.ValidationError(
+                    "Solo los clientes normales y usuarios b\x1fsicos pueden crear solicitudes corporativas."
+                )
+
+            # For create flows, bind client to the request user
+            # (client field is read-only so it won't be required in input)
+            attrs['client'] = user
+
             # Validate that client is member of the organization
-            organization = validated_data.get('organization')
+            organization = attrs.get('organization')
             if organization:
                 is_member = OrganizationMembership.objects.filter(
                     organization=organization,
-                    user=request.user,
-                    is_active=True
+                    user=user,
+                    is_active=True,
                 ).exists()
                 if not is_member:
-                    raise serializers.ValidationError("Debes ser miembro de la organización para crear solicitudes.")
-        
-        return super().create(validated_data)
+                    raise serializers.ValidationError(
+                        "Debes ser miembro de la organización para crear solicitudes."
+                    )
+
+        return super().validate(attrs)
 
     def validate_corporate_client(self, value):
         """
@@ -248,29 +256,34 @@ class CorporateRequestCreateSerializer(serializers.ModelSerializer):
             'priority', 'files'
         ]
 
-    def create(self, validated_data):
-        """
-        Create a new corporate request.
-        """
-        # Set the client from the request context
+    def validate(self, attrs):
+        """Validate role and membership before creating the request."""
         request = self.context.get('request')
         if request and request.user:
-            if request.user.role not in ['client', 'basic']:
-                raise serializers.ValidationError("Solo los clientes normales y usuarios bsicos pueden crear solicitudes corporativas.")
-            validated_data['client'] = request.user
-            
+            user = request.user
+
+            if user.role not in ['client', 'basic']:
+                raise serializers.ValidationError(
+                    "Solo los clientes normales y usuarios b\x1fsicos pueden crear solicitudes corporativas."
+                )
+
+            # Bind client to request user so input does not require client field
+            attrs['client'] = user
+
             # Validate that client is member of the organization
-            organization = validated_data.get('organization')
+            organization = attrs.get('organization')
             if organization:
                 is_member = OrganizationMembership.objects.filter(
                     organization=organization,
-                    user=request.user,
-                    is_active=True
+                    user=user,
+                    is_active=True,
                 ).exists()
                 if not is_member:
-                    raise serializers.ValidationError("Debes ser miembro de la organización para crear solicitudes.")
-        
-        return super().create(validated_data)
+                    raise serializers.ValidationError(
+                        "Debes ser miembro de la organización para crear solicitudes."
+                    )
+
+        return super().validate(attrs)
 
 class CorporateRequestUpdateSerializer(serializers.ModelSerializer):
     """

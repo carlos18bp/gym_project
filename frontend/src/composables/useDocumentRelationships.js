@@ -55,11 +55,15 @@ export function useDocumentRelationships(documentId, options = {}) {
 
     isLoadingAvailable.value = true
     try {
-      let docs = await documentRelationshipsActions.getAvailableDocumentsForRelationship(documentId)
+      const allowPendingSignatures = filterOptions.allowPendingSignatures || options.allowPendingSignatures
+      let docs = await documentRelationshipsActions.getAvailableDocumentsForRelationship(
+        documentId,
+        { allowPendingSignatures }
+      )
       
       // Apply filter for Completed documents if requested
       // Only show Completed documents for relationship creation in "Mis Documentos"
-      if (filterOptions.filterCompleted || options.filterCompleted) {
+      if ((filterOptions.filterCompleted || options.filterCompleted) && !allowPendingSignatures) {
         docs = docs.filter(doc => doc.state === 'Completed')
       }
       // Legacy support: also filter FullySigned if explicitly requested

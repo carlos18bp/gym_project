@@ -1,7 +1,7 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models.intranet_gym import LegalDocument
-from gym_app.serializers.intranet_gym import LegalDocumentSerializer
+from gym_app.models.intranet_gym import LegalDocument, IntranetProfile
+from gym_app.serializers.intranet_gym import LegalDocumentSerializer, IntranetProfileSerializer
 
 @pytest.fixture
 def legal_document():
@@ -14,6 +14,24 @@ def legal_document():
     return LegalDocument.objects.create(
         name="Test Legal Document",
         file=test_file
+    )
+
+
+@pytest.fixture
+def intranet_profile():
+    cover = SimpleUploadedFile(
+        "cover.jpg",
+        b"cover-content",
+        content_type="image/jpeg",
+    )
+    profile = SimpleUploadedFile(
+        "profile.jpg",
+        b"profile-content",
+        content_type="image/jpeg",
+    )
+    return IntranetProfile.objects.create(
+        cover_image=cover,
+        profile_image=profile,
     )
 
 @pytest.mark.django_db
@@ -145,3 +163,29 @@ class TestLegalDocumentSerializer:
         serializer = LegalDocumentSerializer(data=invalid_data)
         assert not serializer.is_valid()
         assert 'file' in serializer.errors
+
+
+@pytest.mark.django_db
+class TestIntranetProfileSerializer:
+    def test_profile_serializer_with_request(self, intranet_profile):
+        class MockRequest:
+            def build_absolute_uri(self, url):
+                return f"http://testserver{url}"
+
+        serializer = IntranetProfileSerializer(
+            intranet_profile,
+            context={"request": MockRequest()},
+        )
+        data = serializer.data
+
+        assert data["cover_image_url"].startswith("http://testserver")
+        assert intranet_profile.cover_image.name in data["cover_image_url"]
+        assert data["profile_image_url"].startswith("http://testserver")
+        assert intranet_profile.profile_image.name in data["profile_image_url"]
+
+    def test_profile_serializer_without_request(self, intranet_profile):
+        serializer = IntranetProfileSerializer(intranet_profile)
+        data = serializer.data
+
+        assert data["cover_image_url"] == intranet_profile.cover_image.url
+        assert data["profile_image_url"] == intranet_profile.profile_image.url

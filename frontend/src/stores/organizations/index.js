@@ -171,7 +171,6 @@ export const useOrganizationsStore = defineStore("organizations", {
         });
         
         const url = `organizations/my-organizations/${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-        console.log('Making request to URL:', url);
         const response = await get_request(url);
         
         if (response.status === 200) {

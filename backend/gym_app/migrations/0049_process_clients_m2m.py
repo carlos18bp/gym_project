@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import migrations, models
 
 
-def forwards_copy_client_to_clients(apps, schema_editor):
+def forwards_copy_client_to_clients(apps, schema_editor):  # pragma: no cover
     Process = apps.get_model('gym_app', 'Process')
     # For each existing process, copy the single client FK into the new clients M2M
     for process in Process.objects.all():
@@ -11,7 +11,7 @@ def forwards_copy_client_to_clients(apps, schema_editor):
             process.clients.add(client_id)
 
 
-def reverse_noop(apps, schema_editor):
+def reverse_noop(apps, schema_editor):  # pragma: no cover
     # We don't attempt to reconstruct the old client FK when rolling back
     pass
 

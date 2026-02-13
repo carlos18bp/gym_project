@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+  <div v-if="isOpen" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" @click.self="closeModal">
     <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
       <!-- Header - Fixed at top -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6 rounded-t-lg flex-shrink-0">
@@ -16,7 +16,7 @@
                 {{ document.title }}
               </p>
               <p class="text-blue-200 text-xs mt-1">
-                {{ filterFullySigned ? 'Solo documentos firmados disponibles para asociar' : 'Solo documentos completados de tu propiedad' }}
+                {{ relationshipsHint }}
               </p>
             </div>
           </div>
@@ -91,7 +91,7 @@
             :related-documents="relatedDocuments"
             :relationships="relationships"
             :is-loading="isLoadingRelated"
-            :readonly="readonly"
+            :readonly="isReadOnlyEffective"
             :defer-save="deferSave"
             :pending-relationships="pendingRelationships"
             :available-documents="availableDocuments"
@@ -204,6 +204,16 @@ const {
 
 // Derived state: whether the source document allows editing relationships
 const isSourceCompleted = computed(() => props.document?.state === 'Completed')
+const isSourceLocked = computed(() => ['PendingSignatures', 'FullySigned'].includes(props.document?.state))
+const relationshipsHint = computed(() => {
+  if (props.forceRelateTab || props.deferSave) {
+    return 'Solo documentos completados, firmados o pendientes de firma de tu propiedad'
+  }
+  if (props.filterFullySigned) {
+    return 'Solo documentos firmados disponibles para asociar'
+  }
+  return 'Solo documentos completados de tu propiedad'
+})
 const isReadOnlyEffective = computed(() => {
   // In formalize mode (forceRelateTab), we allow managing associations even if
   // the local copy of the document is not in state 'Completed'. The backend
@@ -211,7 +221,7 @@ const isReadOnlyEffective = computed(() => {
   if (props.forceRelateTab) {
     return props.readonly
   }
-  return props.readonly || !isSourceCompleted.value
+  return props.readonly || !isSourceCompleted.value || isSourceLocked.value
 })
 
 // Tab management
@@ -300,9 +310,11 @@ const loadData = async () => {
     // Only load availableDocuments when the user is allowed to create relationships
     if (!isReadOnlyEffective.value) {
       // Use filterCompleted for "Mis Documentos" context, filterFullySigned for signature workflows
-      const filterOptions = props.filterFullySigned 
-        ? { filterFullySigned: true } 
-        : { filterCompleted: true }
+      const filterOptions = (props.forceRelateTab || props.deferSave)
+        ? { allowPendingSignatures: true }
+        : (props.filterFullySigned
+          ? { filterFullySigned: true }
+          : { filterCompleted: true })
       promises.push(loadAvailableDocuments(filterOptions))
     }
 
@@ -323,7 +335,14 @@ const handleRelateDocument = async (targetDocument) => {
     // Safety guard: avoid calling the API if the document is not Completed in normal mode
     // In formalize mode (forceRelateTab), we rely on backend validation instead.
     if (!isSourceCompleted.value && !props.forceRelateTab) {
-      await showNotification('Solo puedes crear asociaciones para documentos completados.', 'warning')
+      if (isSourceLocked.value) {
+        await showNotification(
+          'No puedes modificar asociaciones cuando el documento está pendiente de firma o firmado.',
+          'warning'
+        )
+      } else {
+        await showNotification('Solo puedes crear asociaciones para documentos completados.', 'warning')
+      }
       return
     }
 

@@ -526,6 +526,7 @@ import DocumentActionsModal from "@/components/dynamic_document/common/DocumentA
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
+import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
 
 // Store instance
 const documentStore = useDynamicDocumentStore();
@@ -658,12 +659,7 @@ const getSummaryCounterparty = (document) => {
 };
 
 const getSummaryValue = (document) => {
-  if (!document.summary_value) return '';
-  const currency = document.summary_value_currency || '';
-  if (currency) {
-    return `${currency} ${document.summary_value}`;
-  }
-  return document.summary_value;
+  return formatSummaryValue(document);
 };
 
 const formatDate = (value) => {

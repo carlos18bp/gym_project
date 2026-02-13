@@ -1,11 +1,12 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models import Case, CaseFile, Stage, Process, User
+from gym_app.models import Case, CaseFile, Stage, Process, RecentProcess, User
 from gym_app.serializers.process import (
     CaseSerializer,
     CaseFileSerializer, 
     StageSerializer,
-    ProcessSerializer
+    ProcessSerializer,
+    RecentProcessSerializer,
 )
 
 @pytest.fixture
@@ -66,6 +67,12 @@ def process(user_client, user_lawyer, case, stage, case_file):
     process.stages.add(stage)
     process.case_files.add(case_file)
     return process
+
+
+@pytest.fixture
+def recent_process(user_client, process):
+    """Create a RecentProcess entry for testing"""
+    return RecentProcess.objects.create(user=user_client, process=process)
 
 @pytest.mark.django_db
 class TestCaseSerializer:
@@ -252,3 +259,23 @@ class TestProcessSerializer:
         
         # Verify that stages did not change
         assert updated_process.stages.count() == initial_stages_count
+
+
+@pytest.mark.django_db
+class TestRecentProcessSerializer:
+
+    def test_serialize_recent_process(self, recent_process):
+        """Test the serialization of a RecentProcess with nested ProcessSerializer"""
+        serializer = RecentProcessSerializer(recent_process)
+        data = serializer.data
+
+        assert data['id'] == recent_process.id
+        assert 'process' in data
+
+        # Nested process data should include at least the id and ref
+        assert data['process']['id'] == recent_process.process.id
+        assert data['process']['ref'] == recent_process.process.ref
+
+        # last_viewed should be present as an ISO-formatted string
+        assert 'last_viewed' in data
+        assert isinstance(data['last_viewed'], str)

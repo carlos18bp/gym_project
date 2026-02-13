@@ -43,11 +43,9 @@ def update_profile(request, pk):
     if request.user.id != pk:
         return Response({'error': 'You do not have permission to update this profile'}, status=status.HTTP_403_FORBIDDEN)
 
-    try:
-        # Retrieve the user by their ID (pk)
-        user = User.objects.get(pk=pk)
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    # The permission check above guarantees pk == request.user.id,
+    # so the authenticated user is always valid — no DoesNotExist possible.
+    user = request.user
 
     # Serialize the request data with the retrieved user instance
     serializer = UserSerializer(instance=user, data=request.data, partial=True)

@@ -1,11 +1,15 @@
 import pytest
 import json
+from io import BytesIO
+from unittest.mock import patch
+from datetime import date
+from PIL import Image
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIClient
 from gym_app.models import User
-from datetime import date
+from gym_app.models.user import ActivityFeed, UserSignature
 
 @pytest.fixture
 def api_client():
@@ -32,6 +36,13 @@ def another_user():
         first_name='Another',
         last_name='User'
     )
+
+
+def _png_file(name='sig.png'):
+    buffer = BytesIO()
+    Image.new('RGB', (1, 1), color='white').save(buffer, format='PNG')
+    buffer.seek(0)
+    return SimpleUploadedFile(name, buffer.read(), content_type='image/png')
 
 @pytest.mark.django_db
 class TestUserViews:
@@ -205,3 +216,127 @@ class TestUserViews:
         original_first_name = user.first_name
         user.refresh_from_db()
         assert user.first_name == original_first_name  # Unchanged
+
+    def test_update_profile_invalid_email_returns_400(self, api_client, user):
+        """Invalid email should return serializer errors."""
+        api_client.force_authenticate(user=user)
+
+        url = reverse('update_profile', kwargs={'pk': user.id})
+        response = api_client.put(url, {'email': 'not-an-email'}, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'email' in response.data
+
+    def test_get_user_activities_returns_only_authenticated_user(self, api_client, user, another_user):
+        """Activities should be filtered by the authenticated user."""
+        ActivityFeed.objects.create(user=user, action_type='create', description='User action')
+        ActivityFeed.objects.create(user=another_user, action_type='delete', description='Other action')
+
+        api_client.force_authenticate(user=user)
+
+        url = reverse('user-activities')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]['description'] == 'User action'
+
+    def test_create_activity_success(self, api_client, user):
+        """Authenticated users can create activities and they are linked to the user."""
+        api_client.force_authenticate(user=user)
+
+        url = reverse('create-activity')
+        response = api_client.post(
+            url,
+            {'action_type': 'create', 'description': 'Created something'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert ActivityFeed.objects.filter(user=user).count() == 1
+
+    def test_create_activity_invalid_payload(self, api_client, user):
+        """Invalid payload should return 400 errors."""
+        api_client.force_authenticate(user=user)
+
+        url = reverse('create-activity')
+        response = api_client.post(url, {}, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_signature_forbidden_for_other_user(self, api_client, user, another_user):
+        """Users cannot update another user's signature."""
+        api_client.force_authenticate(user=user)
+
+        url = reverse('update-signature', kwargs={'user_id': another_user.id})
+        response = api_client.post(url, {}, format='multipart')
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert 'permission' in response.data['error'].lower()
+
+    def test_update_signature_user_not_found(self, api_client, user):
+        """If the user does not exist, return 404."""
+        ghost_user = User(id=9999, email='ghost@example.com')
+        api_client.force_authenticate(user=ghost_user)
+
+        url = reverse('update-signature', kwargs={'user_id': ghost_user.id})
+        response = api_client.post(url, {}, format='multipart')
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data['error'] == 'User not found'
+
+    def test_update_signature_missing_image(self, api_client, user):
+        """Signature image is required."""
+        api_client.force_authenticate(user=user)
+
+        url = reverse('update-signature', kwargs={'user_id': user.id})
+        response = api_client.post(url, {'method': 'upload'}, format='multipart')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data['error'] == 'No signature image provided'
+
+    @patch('django.core.files.storage.FileSystemStorage.save', return_value='signatures/test.png')
+    def test_update_signature_creates_new_signature(self, mock_save, api_client, user):
+        """If no signature exists, it should create one and return 201."""
+        api_client.force_authenticate(user=user)
+
+        signature_image = _png_file('sig.png')
+        url = reverse('update-signature', kwargs={'user_id': user.id})
+
+        response = api_client.post(
+            url,
+            {'method': 'upload', 'signature_image': signature_image},
+            format='multipart',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['message'] == 'Signature created successfully'
+        assert UserSignature.objects.filter(user=user).count() == 1
+
+    @patch('django.core.files.storage.FileSystemStorage.save', return_value='signatures/test.png')
+    @patch('gym_app.views.user.default_storage.exists', return_value=True)
+    @patch('gym_app.views.user.default_storage.delete')
+    def test_update_signature_updates_existing(self, mock_delete, mock_exists, mock_save, api_client, user):
+        """Updating an existing signature should return 200 and keep one record."""
+        # Create an existing signature
+        existing_signature = UserSignature.objects.create(
+            user=user,
+            signature_image=_png_file('old.png'),
+            method='upload',
+        )
+
+        api_client.force_authenticate(user=user)
+
+        signature_image = _png_file('new.png')
+        url = reverse('update-signature', kwargs={'user_id': user.id})
+
+        response = api_client.post(
+            url,
+            {'method': 'draw', 'signature_image': signature_image},
+            format='multipart',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['message'] == 'Signature updated successfully'
+        assert UserSignature.objects.filter(user=user).count() == 1
+        mock_delete.assert_called_once()

@@ -1,7 +1,12 @@
-import pytest
 import os
+
+import pytest
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models.process import Case, CaseFile, Stage, Process
+from django.db import IntegrityError
+from django.utils import timezone
+
+from gym_app.models.process import Case, CaseFile, Stage, Process, RecentProcess
 from gym_app.models.user import User  # Asumiendo que User está en este módulo
 
 @pytest.fixture
@@ -96,6 +101,18 @@ class TestCaseFile:
         """Test string representation of case file"""
         file_name = os.path.basename(case_file.file.name)
         assert str(case_file) == file_name
+
+    def test_delete_case_file_removes_physical_file(self, case_file):
+        """Deleting a CaseFile instance should remove the underlying file from the filesystem"""
+        file_path = case_file.file.path
+
+        # Aseguramos que el archivo exista antes de borrar
+        assert os.path.exists(file_path)
+
+        case_file.delete()
+
+        # El archivo físico debe haberse eliminado por la señal post_delete
+        assert not os.path.exists(file_path)
 
 @pytest.mark.django_db
 class TestStage:
@@ -196,3 +213,90 @@ class TestProcess:
         lawyer_processes = user_lawyer.lawyer_processes.all()
         assert lawyer_processes.count() == 1
         assert lawyer_processes.first() == process
+
+    def test_process_progress_within_valid_range(self, user_client, user_lawyer, case_type):
+        """Process.progress debe aceptar valores entre 0 y 100 inclusive"""
+        process = Process(
+            authority='Court',
+            plaintiff='A',
+            defendant='B',
+            ref='CASE-PROGRESS',
+            lawyer=user_lawyer,
+            case=case_type,
+            subcase='Subcase',
+            progress=50,
+        )
+
+        # full_clean debería pasar sin errores
+        process.full_clean()
+
+    def test_process_progress_below_zero_raises_validation_error(self, user_client, user_lawyer, case_type):
+        """Process.progress < 0 debe lanzar ValidationError por el validador de rango"""
+        process = Process(
+            authority='Court',
+            plaintiff='A',
+            defendant='B',
+            ref='CASE-PROGRESS-NEG',
+            lawyer=user_lawyer,
+            case=case_type,
+            subcase='Subcase',
+            progress=-1,
+        )
+
+        with pytest.raises(ValidationError):
+            process.full_clean()
+
+    def test_process_progress_above_hundred_raises_validation_error(self, user_client, user_lawyer, case_type):
+        """Process.progress > 100 debe lanzar ValidationError por el validador de rango"""
+        process = Process(
+            authority='Court',
+            plaintiff='A',
+            defendant='B',
+            ref='CASE-PROGRESS-OVER',
+            lawyer=user_lawyer,
+            case=case_type,
+            subcase='Subcase',
+            progress=101,
+        )
+
+        with pytest.raises(ValidationError):
+            process.full_clean()
+
+
+@pytest.mark.django_db
+class TestRecentProcess:
+
+    def test_recent_process_unique_per_user_and_process(self, user_lawyer, process):
+        """Solo debe existir un RecentProcess por combinación (user, process)"""
+        RecentProcess.objects.create(user=user_lawyer, process=process)
+
+        with pytest.raises(IntegrityError):
+            RecentProcess.objects.create(user=user_lawyer, process=process)
+
+    def test_recent_process_ordering_by_last_viewed(self, user_lawyer, process, case_type):
+        """Las instancias de RecentProcess deben ordenarse por last_viewed descendente"""
+        other_process = Process.objects.create(
+            authority='District Court',
+            plaintiff='X',
+            defendant='Y',
+            ref='CASE-OTHER',
+            lawyer=user_lawyer,
+            case=case_type,
+            subcase='Other',
+        )
+
+        recent_first = RecentProcess.objects.create(user=user_lawyer, process=process)
+        recent_second = RecentProcess.objects.create(user=user_lawyer, process=other_process)
+
+        # Ajustamos manualmente las fechas para simular un acceso más reciente
+        recent_first.last_viewed = timezone.now() - timezone.timedelta(days=1)
+        recent_first.save(update_fields=['last_viewed'])
+
+        recent_second.last_viewed = timezone.now()
+        recent_second.save(update_fields=['last_viewed'])
+
+        recents = list(RecentProcess.objects.filter(user=user_lawyer))
+
+        # Por Meta.ordering = ['-last_viewed'], el más reciente debe ir primero
+        assert recents[0].process == recent_second.process
+        assert recents[1].process == recent_first.process

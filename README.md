@@ -34,7 +34,7 @@ The application is built with a **role-based system** where users are either cli
 ## Core Models
 
 ### 1. **Users**
-   The `User` model handles the application’s role-based access system. Users can be either:
+   The `User` model handles the application's role-based access system. Users can be either:
    - **Clients**: Users who have cases in the system and can monitor their progress.
    - **Lawyers**: Users who manage the cases, update the status, and upload case files.
 
@@ -56,9 +56,17 @@ The application is built with a **role-based system** where users are either cli
    - **Description**: A brief description of the contents of the file.
    - **Date Uploaded**: When the file was uploaded.
 
-## How to Run the Project
+## Development Quickstart
 
-### Install required dependencies:
+This repository is organized as:
+
+```
+backend/   # Django project
+frontend/  # Vue 3 project
+```
+
+### System dependencies (Linux)
+
 ```bash
 sudo apt install python3-pip
 sudo apt install python3-virtualenv
@@ -67,77 +75,290 @@ sudo apt install silversearcher-ag
 sudo apt install libpangocairo-1.0-0 libpangoft2-1.0-0 libffi-dev libcairo2
 ```
 
-### Clone the repository:
+### Clone the repository
+
 ```bash
 git clone git@github.com:carlos18bp/gym_project.git
 cd gym_project
 ```
 
-### Install virtualenv:
+### Backend (Django)
+
+Create and activate a virtual environment, then install dependencies:
+
 ```bash
-pip install virtualenv
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install -r backend/requirements.txt
 ```
 
-### Create virtual env:
+Run migrations and create a superuser:
+
 ```bash
-virtualenv gym_project_env
+python backend/manage.py migrate
+python backend/manage.py createsuperuser
 ```
 
-### Activate virtual env:
+Create and delete fake data:
+
 ```bash
-source gym_project_env/bin/activate
+python backend/manage.py create_fake_data
+python backend/manage.py delete_fake_data --confirm
 ```
 
-### Install dependencies:
+Run backend tests:
+
 ```bash
-pip install -r requirements.txt
+cd backend
+pytest
 ```
 
-### Deactivate virtual env:
+Run backend tests in blocks (low RAM, markers + test groups):
+
 ```bash
-deactivate
+python backend/scripts/run-tests-blocks.py
 ```
 
-### Run makemigrations:
+Tip: the examples below assume repo root. If you are already inside `backend/`, drop the
+`backend/` prefix (e.g. `python scripts/run-tests-blocks.py`).
+
+How blocks are built:
+
+- Marker blocks: `edge`, `contract`, `integration`, `rest`.
+- `rest` means tests without `edge`, `contract`, or `integration` markers.
+- Groups are discovered from `gym_app/tests/` (models, serializers, tasks, utils, views, root, ...).
+- Final blocks are `marker x group` combinations (views can be split further).
+
+Definitions (from pytest output):
+
+- **EMPTY**: pytest collected 0 tests in a block (exit code 5 or "collected 0 items").
+- **deselected**: tests were found but excluded by filters (`-m`, `-k`, etc.).
+
+Usage:
+
 ```bash
-python3 manage.py makemigrations
+python backend/scripts/run-tests-blocks.py [options] -- [pytest args]
 ```
 
-### Run migrations:
+Option manual (with examples):
+
+Selection / discovery
+
+- `--markers edge,contract,integration,rest`: filter marker blocks.
+  Example: `python backend/scripts/run-tests-blocks.py --markers edge,contract`
+- `--no-markers`: run all tests without marker filtering (mutually exclusive with `--markers`).
+  Generates one block per group/chunk instead of one per marker.
+  Example: `python backend/scripts/run-tests-blocks.py --no-markers --groups models,serializers`
+- `--groups models,serializers,tasks,utils,views,root`: filter test groups.
+  Example: `python backend/scripts/run-tests-blocks.py --groups models,serializers`
+- `--list`: list all blocks and exit.
+  Example: `python backend/scripts/run-tests-blocks.py --list`
+- `--status-and-run`: show block completion status before running.
+  Auto-enabled when `--run-id` is set.
+
+Chunking / views splitting
+
+- `--chunk-size N`: split blocks by number of test files (0 = no chunking).
+  Chunks are **balanced by file size** (round-robin): each chunk gets a similar total load.
+  Recommended value: **30 or less**.
+  Example: `python backend/scripts/run-tests-blocks.py --chunk-size 30`
+- `--views-per-file`: one views block per file (before chunking).
+  Example: `python backend/scripts/run-tests-blocks.py --groups views --views-per-file`
+- `--views-fast-start`: shortcut for views-heavy runs (default to `rest` markers).
+  Example: `python backend/scripts/run-tests-blocks.py --groups views --views-fast-start`
+- `--no-skip-empty-markers`: disable automatic skipping of empty marker blocks
+  (enabled by default; useful for debugging marker detection).
+  Example: `python backend/scripts/run-tests-blocks.py --no-skip-empty-markers`
+- `--no-views-rest-default`: disable defaulting to `rest` when only views are selected.
+  Example: `python backend/scripts/run-tests-blocks.py --groups views --no-views-rest-default`
+
+Execution controls
+
+- `--sleep SECS`: wait between blocks to reduce RAM/CPU spikes (default: 2).
+  Example: `python backend/scripts/run-tests-blocks.py --chunk-size 30 --sleep 3`
+- `--block-timeout SECS`: max seconds per block before terminating it (0 = no timeout).
+  Example: `python backend/scripts/run-tests-blocks.py --block-timeout 900`
+- `--timeout-grace SECS`: grace period before killing a timed-out block.
+  Example: `python backend/scripts/run-tests-blocks.py --block-timeout 900 --timeout-grace 15`
+- `--max-blocks N`: run only the next N blocks.
+  Example: `python backend/scripts/run-tests-blocks.py --max-blocks 5`
+
+Reports / resume
+
+- `--run-id ID`: name the report folder (required for `--resume`). Auto-enables `--status-and-run`.
+  Example: `python backend/scripts/run-tests-blocks.py --run-id backend-20260207`
+- `--report-dir PATH`: override base report directory.
+  Example: `python backend/scripts/run-tests-blocks.py --report-dir /tmp/backend-blocks`
+- `--resume`: skip blocks already `ok/empty` in summary.
+  Example: `python backend/scripts/run-tests-blocks.py --run-id backend-20260207 --resume`
+- `--resume-all`: skip any block already recorded in summary (including failed/timeout).
+  Useful with `--max-blocks` to continue with never-run blocks.
+  Example: `python backend/scripts/run-tests-blocks.py --run-id backend-20260207 --resume-all`
+
+Database behavior
+
+- `--reuse-db`: reuse pytest DB (default).
+- `--no-reuse-db`: recreate DB per block.
+  Example: `python backend/scripts/run-tests-blocks.py --no-reuse-db`
+
+Passing extra pytest arguments
+
+- `-- <pytest args>`: everything after `--` is forwarded to pytest.
+  Example: `python backend/scripts/run-tests-blocks.py -- --maxfail=1 -q`
+
+Reports are stored under `backend/test-reports/backend-blocks/<run-id>/`:
+
+- `summary.jsonl` contains one JSON line per block
+- `blocks/` contains per-block logs
+
+Internal behavior notes:
+
+- Files are always sorted by size (largest first) before distribution.
+- When `--chunk-size > 0`, files are distributed across chunks using round-robin to balance load.
+- Empty marker blocks are skipped by default; use `--no-skip-empty-markers` to disable.
+- When running only views without `--markers`, the runner defaults to `rest` markers
+  (use `--no-views-rest-default` to disable).
+- Using the same `--run-id` appends new entries to `summary.jsonl` (no deletion).
+- Timed-out blocks are recorded with `status=timeout`; rerun them with `--resume` to complete coverage.
+- For a clean report, delete the run-id folder or use a new run id.
+
+Recommended command (run all backend tests with coverage):
+
 ```bash
-python3 manage.py migrate
+RUN_ID=backend-$(date +%Y%m%d)
+BLOCK_TIMEOUT=900     # 15 min per block
+TIMEOUT_GRACE=15      # 15s before kill
+
+python backend/scripts/run-tests-blocks.py --run-id $RUN_ID \
+  --chunk-size 30 --sleep 3 \
+  --block-timeout $BLOCK_TIMEOUT --timeout-grace $TIMEOUT_GRACE \
+  -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
 ```
 
-### Create superuser:
+Common recipes:
+
 ```bash
-python3 manage.py createsuperuser
+# List blocks
+python backend/scripts/run-tests-blocks.py --list
+
+# List blocks with chunking
+python backend/scripts/run-tests-blocks.py --list --chunk-size 30
+
+# Run all tests without marker filtering (fastest for groups without markers)
+python backend/scripts/run-tests-blocks.py --no-markers --groups models,serializers,tasks,utils
+
+# Narrow by markers/groups
+python backend/scripts/run-tests-blocks.py --markers edge,contract --groups models,serializers
+
+# Resume interrupted run
+python backend/scripts/run-tests-blocks.py --run-id $RUN_ID --resume \
+  --chunk-size 30 --sleep 3 \
+  --block-timeout $BLOCK_TIMEOUT --timeout-grace $TIMEOUT_GRACE \
+  -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
+
+# Views by file
+python backend/scripts/run-tests-blocks.py --run-id $RUN_ID \
+  --groups views --views-per-file --chunk-size 1 --sleep 3 \
+  -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
+
+# Views in batches of 10 blocks (repeat with --resume until done)
+python backend/scripts/run-tests-blocks.py --run-id $RUN_ID \
+  --groups views --views-per-file --chunk-size 1 --sleep 3 \
+  --max-blocks 10 \
+  --block-timeout $BLOCK_TIMEOUT --timeout-grace $TIMEOUT_GRACE \
+  -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
+
+# Marker-specific: edge-only for views
+python backend/scripts/run-tests-blocks.py --run-id $RUN_ID \
+  --groups views --markers edge --chunk-size 30 --sleep 3 \
+  -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
 ```
 
-### Create fake data:
+Run the backend dev server:
+
 ```bash
-python3 manage.py create_fake_data
+python backend/manage.py runserver
 ```
 
-### Start the server:
-```bash
-python3 manage.py runserver
-```
+### Frontend (Vue 3)
 
-### Delete fake data:
-```bash
-python3 manage.py delete_fake_data
-```
+Install dependencies and start dev server:
 
-### Frontend setup:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Run test:
+Build the frontend for production:
+
 ```bash
 cd frontend
-npm install
+npm run build
+```
+
+Run frontend unit tests:
+
+```bash
+cd frontend
 npm run test
 ```
+
+Run E2E tests (Playwright):
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run e2e
+```
+
+Run E2E coverage (Playwright + V8):
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run e2e:coverage
+```
+
+Run the full test suite in blocks (backend blocks + frontend unit + E2E with coverage):
+
+```bash
+python scripts/run-tests-all-blocks.py
+```
+
+This generates log files in `test-reports/` and prints a final summary (coverage included). Optional flags:
+
+```bash
+python scripts/run-tests-all-blocks.py --skip-e2e
+python scripts/run-tests-all-blocks.py --backend-markers edge,contract
+python scripts/run-tests-all-blocks.py --backend-groups models,serializers
+python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 2 --sleep 2"
+```
+
+Coverage output:
+
+- Raw coverage JSON: `frontend/.nyc_output/`
+- HTML report: `frontend/coverage-e2e/lcov-report/index.html`
+- Console summary: printed after the run
+
+To collect coverage for a single spec, run Playwright with `E2E_COVERAGE=1` and then build the report:
+
+```bash
+cd frontend
+E2E_COVERAGE=1 npm run e2e -- e2e/subscriptions-flow.spec.js
+nyc report --temp-dir .nyc_output --report-dir coverage-e2e --reporter=lcov --reporter=text-summary
+```
+
+Run only the Organizations E2E suite:
+
+```bash
+cd frontend
+npm run e2e -- e2e/organizations*.spec.js
+```
+
+### Project change guidelines
+
+Before implementing changes, review:
+
+- `guidelines.md`
+- `CHANGE_GUIDELINES.md`

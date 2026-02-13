@@ -128,7 +128,7 @@ def get_document_permissions(request, pk):
         
         return Response(response_data, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -401,7 +401,7 @@ def manage_document_permissions_unified(request, pk):
         
         return Response(response_data, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -462,7 +462,7 @@ def toggle_public_access(request, pk):
             'message': f'Document access {action_text} {status_text}.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -543,7 +543,7 @@ def grant_visibility_permissions(request, pk):
             'message': f'Visibility permissions granted to {len(created_permissions)} users.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -636,7 +636,7 @@ def grant_usability_permissions(request, pk):
             'message': f'Usability permissions granted to {len(created_permissions)} users.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -684,7 +684,7 @@ def revoke_visibility_permission(request, pk, user_id):
             'warning': warning
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -731,7 +731,7 @@ def revoke_usability_permission(request, pk, user_id):
             'warning': warning
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -902,7 +902,7 @@ def grant_visibility_permissions_by_role(request, pk):
             'message': f'Visibility permissions granted to {len(created_permissions)} users across roles: {target_roles}.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -1006,7 +1006,7 @@ def grant_usability_permissions_by_role(request, pk):
             'message': f'Usability permissions granted to {len(created_permissions)} users across roles: {target_roles}.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -1110,7 +1110,7 @@ def revoke_permissions_by_role(request, pk):
             'message': f'Revoked {permission_type} permissions for {len(affected_users)} users across roles: {target_roles}.'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -1229,7 +1229,7 @@ def grant_visibility_permissions_combined(request, pk):
             'message': f'Visibility permissions granted to {len(created_permissions)} users (from {len(user_ids)} specific users + roles: {roles}).'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -1367,7 +1367,7 @@ def grant_usability_permissions_combined(request, pk):
             'message': f'Usability permissions granted to {len(created_permissions)} users (from {len(user_ids)} specific users + roles: {roles}).'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND
@@ -1503,7 +1503,7 @@ def revoke_permissions_combined(request, pk):
             'message': f'Revoked {permission_type} permissions for {len(affected_users)} users (from {len(user_ids)} specific users + roles: {roles}).'
         }, status=status.HTTP_200_OK)
         
-    except DynamicDocument.DoesNotExist:
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response(
             {'detail': 'Document not found.'}, 
             status=status.HTTP_404_NOT_FOUND

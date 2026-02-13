@@ -4,8 +4,10 @@
 const originalEmitWarning = process.emitWarning;
 
 process.emitWarning = function(warning, type, code, ...args) {
+  const warningCode = (typeof type === 'object' && type && type.code) ? type.code : code;
+
   // Suppress the specific util._extend deprecation warning
-  if (code === 'DEP0060') {
+  if (warningCode === 'DEP0060' || warningCode === 'DEP0040') {
     return; // Suppress this specific warning
   }
   

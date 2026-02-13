@@ -309,7 +309,6 @@
       v-if="showAssociationsModal && document"
       :is-open="showAssociationsModal"
       :document="document"
-      :filter-fully-signed="true"
       :force-relate-tab="route.params.mode === 'formalize'"
       :defer-save="route.params.mode === 'formalize'"
       :pending-relationships="pendingRelationships"
@@ -726,7 +725,8 @@ const saveDocument = async (state = 'Draft') => {
               try {
                 await documentRelationshipsActions.createDocumentRelationship({
                   source_document: documentId,
-                  target_document: targetDocId
+                  target_document: targetDocId,
+                  allow_pending_signatures: true
                 });
                 successCount++;
               } catch (relError) {

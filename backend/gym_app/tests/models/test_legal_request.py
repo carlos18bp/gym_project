@@ -1,12 +1,16 @@
 import pytest
 import os
+from datetime import timedelta
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from gym_app.models.legal_request import (
-    LegalRequestType, 
-    LegalDiscipline, 
-    LegalRequestFiles, 
-    LegalRequest
+    LegalRequestType,
+    LegalDiscipline,
+    LegalRequestFiles,
+    LegalRequest,
+    LegalRequestResponse,
 )
+from gym_app.models import User
 
 @pytest.fixture
 def legal_request_type():
@@ -17,6 +21,17 @@ def legal_request_type():
 def legal_discipline():
     """Create a legal discipline for testing"""
     return LegalDiscipline.objects.create(name="Corporate Law")
+
+
+@pytest.fixture
+def user():
+    """Create a user associated with legal requests for testing"""
+    return User.objects.create_user(
+        email="john.doe@example.com",
+        password="password123",
+        first_name="John",
+        last_name="Doe",
+    )
 
 @pytest.fixture
 def legal_request_file():
@@ -29,15 +44,13 @@ def legal_request_file():
     return LegalRequestFiles.objects.create(file=test_file)
 
 @pytest.fixture
-def legal_request(legal_request_type, legal_discipline):
+def legal_request(legal_request_type, legal_discipline, user):
     """Create a legal request for testing"""
     return LegalRequest.objects.create(
-        first_name="John",
-        last_name="Doe",
-        email="john.doe@example.com",
+        user=user,
         request_type=legal_request_type,
         discipline=legal_discipline,
-        description="I need legal advice for my company formation."
+        description="I need legal advice for my company formation.",
     )
 
 @pytest.mark.django_db
@@ -102,27 +115,24 @@ class TestLegalRequestFiles:
 
 @pytest.mark.django_db
 class TestLegalRequest:
-    
-    def test_create_legal_request(self, legal_request_type, legal_discipline):
+
+    def test_create_legal_request(self, legal_request_type, legal_discipline, user):
         """Test creating a legal request"""
         request = LegalRequest.objects.create(
-            first_name="Jane",
-            last_name="Smith",
-            email="jane.smith@example.com",
+            user=user,
             request_type=legal_request_type,
             discipline=legal_discipline,
-            description="I need advice on intellectual property."
+            description="I need advice on intellectual property.",
         )
-        
+
         assert request.id is not None
-        assert request.first_name == "Jane"
-        assert request.last_name == "Smith"
-        assert request.email == "jane.smith@example.com"
+        assert request.user == user
         assert request.request_type == legal_request_type
         assert request.discipline == legal_discipline
         assert request.description == "I need advice on intellectual property."
         assert request.created_at is not None
-        assert request.files.count() == 0  # No files added yet
+        # No files added yet
+        assert request.files.count() == 0
     
     def test_add_files_to_legal_request(self, legal_request, legal_request_file):
         """Test adding files to a legal request"""
@@ -164,5 +174,32 @@ class TestLegalRequest:
     
     def test_str_representation(self, legal_request):
         """Test string representation of legal request"""
-        expected = f"{legal_request.first_name} {legal_request.last_name} - {legal_request.request_type.name}"
+        expected = f"{legal_request.request_number} - {legal_request.user.first_name} {legal_request.user.last_name}"
         assert str(legal_request) == expected
+
+
+@pytest.mark.django_db
+class TestLegalRequestResponse:
+    def test_response_ordering_by_created_at(self, legal_request, user):
+        older = LegalRequestResponse.objects.create(
+            legal_request=legal_request,
+            response_text="Primera",
+            user=user,
+            user_type="client",
+        )
+        newer = LegalRequestResponse.objects.create(
+            legal_request=legal_request,
+            response_text="Segunda",
+            user=user,
+            user_type="client",
+        )
+
+        older_time = timezone.now() - timedelta(days=1)
+        newer_time = timezone.now()
+        LegalRequestResponse.objects.filter(pk=older.pk).update(created_at=older_time)
+        LegalRequestResponse.objects.filter(pk=newer.pk).update(created_at=newer_time)
+
+        responses = list(LegalRequestResponse.objects.all())
+
+        assert responses[0].id == older.id
+        assert responses[1].id == newer.id

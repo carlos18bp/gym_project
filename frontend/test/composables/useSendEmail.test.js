@@ -1,0 +1,157 @@
+const mockCreateRequest = jest.fn();
+const mockShowNotification = jest.fn();
+const mockShowLoading = jest.fn();
+const mockHideLoading = jest.fn();
+
+jest.mock("@/stores/services/request_http", () => ({
+  __esModule: true,
+  create_request: (...args) => mockCreateRequest(...args),
+}));
+
+jest.mock("@/shared/notification_message", () => ({
+  __esModule: true,
+  showNotification: (...args) => mockShowNotification(...args),
+}));
+
+jest.mock("@/shared/loading_message", () => ({
+  __esModule: true,
+  showLoading: (...args) => mockShowLoading(...args),
+  hideLoading: (...args) => mockHideLoading(...args),
+}));
+
+import { useSendEmail } from "@/composables/useSendEmail";
+
+describe("useSendEmail", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockShowNotification.mockResolvedValue();
+    mockCreateRequest.mockResolvedValue({ data: { ok: true } });
+  });
+
+  test("sendEmail: throws and notifies when toEmail is missing", async () => {
+    const { sendEmail, isLoading, errorMessage } = useSendEmail();
+
+    await expect(sendEmail("some-endpoint/", "")).rejects.toThrow(
+      "Recipient email is required."
+    );
+
+    expect(errorMessage.value).toBe("Recipient email is required.");
+    expect(isLoading.value).toBe(false);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "Recipient email is required.",
+      "error"
+    );
+
+    expect(mockShowLoading).not.toHaveBeenCalled();
+    expect(mockHideLoading).not.toHaveBeenCalled();
+    expect(mockCreateRequest).not.toHaveBeenCalled();
+  });
+
+  test("sendEmail: sends FormData with attachments + extra params and notifies success", async () => {
+    const { sendEmail, isLoading, errorMessage } = useSendEmail();
+
+    const file1 = new File(["hello"], "hello.txt", { type: "text/plain" });
+
+    const resultPromise = sendEmail(
+      "dynamic-documents/send_email_with_attachments/",
+      "to@test.com",
+      "Subject",
+      "Body",
+      [file1],
+      { extra_key: "extra_value" }
+    );
+
+    expect(isLoading.value).toBe(true);
+
+    const result = await resultPromise;
+
+    expect(result).toEqual({ ok: true });
+
+    expect(mockShowLoading).toHaveBeenCalledWith(
+      "Sending email...",
+      "Please wait while we send the email."
+    );
+    expect(mockHideLoading).toHaveBeenCalled();
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "Email sent successfully.",
+      "success"
+    );
+
+    expect(errorMessage.value).toBe("");
+    expect(isLoading.value).toBe(false);
+
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+
+    const [endpointArg, formDataArg] = mockCreateRequest.mock.calls[0];
+    expect(endpointArg).toBe("dynamic-documents/send_email_with_attachments/");
+
+    expect(formDataArg).toBeInstanceOf(FormData);
+    expect(formDataArg.get("to_email")).toBe("to@test.com");
+    expect(formDataArg.get("subject")).toBe("Subject");
+    expect(formDataArg.get("body")).toBe("Body");
+    expect(formDataArg.get("extra_key")).toBe("extra_value");
+
+    expect(formDataArg.get("attachments[0]")).toBe(file1);
+  });
+
+  test("sendEmail: hides loading, notifies error, sets errorMessage and rethrows when request fails", async () => {
+    const { sendEmail, isLoading, errorMessage } = useSendEmail();
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const error = new Error("fail");
+
+    mockCreateRequest.mockRejectedValueOnce(error);
+
+    await expect(sendEmail("some-endpoint/", "to@test.com")).rejects.toBe(error);
+
+    expect(mockShowLoading).toHaveBeenCalled();
+    expect(mockHideLoading).toHaveBeenCalled();
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "An error occurred while sending the email. Please try again.",
+      "error"
+    );
+
+    expect(errorMessage.value).toBe(
+      "An error occurred while sending the email. Please try again."
+    );
+
+    expect(isLoading.value).toBe(false);
+
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  test("sendEmail: handles failure when success notification rejects", async () => {
+    const { sendEmail, isLoading, errorMessage } = useSendEmail();
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const notifyError = new Error("notify fail");
+
+    mockCreateRequest.mockResolvedValueOnce({ data: { ok: true } });
+    mockShowNotification
+      .mockRejectedValueOnce(notifyError)
+      .mockResolvedValueOnce();
+
+    await expect(sendEmail("some-endpoint/", "to@test.com")).rejects.toBe(
+      notifyError
+    );
+
+    expect(mockShowLoading).toHaveBeenCalled();
+    expect(mockHideLoading).toHaveBeenCalled();
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "An error occurred while sending the email. Please try again.",
+      "error"
+    );
+    expect(errorMessage.value).toBe(
+      "An error occurred while sending the email. Please try again."
+    );
+    expect(isLoading.value).toBe(false);
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+});

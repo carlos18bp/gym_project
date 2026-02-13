@@ -7,7 +7,15 @@
     "dev": "node -r ./suppress-warnings.cjs node_modules/.bin/vite",
     "build": "node -r ./suppress-warnings.cjs node_modules/.bin/vite build",
     "preview": "node -r ./suppress-warnings.cjs node_modules/.bin/vite preview",
-    "test": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs"
+    "test": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs",
+    "test:coverage": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs --coverage",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report",
+    "e2e:coverage": "E2E_COVERAGE=1 playwright test; EXIT_CODE=$?; mkdir -p coverage-e2e; FORCE_COLOR=1 nyc report --temp-dir .nyc_output --report-dir coverage-e2e --reporter=text-summary --reporter=text --reporter=lcov | tee coverage-e2e/coverage-raw.txt; sed 's/\\x1b\\[[0-9;]*m//g' coverage-e2e/coverage-raw.txt > coverage-e2e/coverage.txt; node ./scripts/coverage-color-report.cjs; exit $EXIT_CODE",
+    "e2e:coverage:report": "node ./scripts/coverage-color-report.cjs",
+    "e2e:clean": "node ./scripts/e2e-clean.cjs"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
@@ -35,6 +43,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.4",
+    "@playwright/test": "^1.41.2",
     "@testing-library/jest-dom": "^6.5.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.6",
@@ -42,10 +51,12 @@
     "autoprefixer": "^10.4.19",
     "axios-mock-adapter": "^2.0.0",
     "babel-jest": "^29.7.0",
+    "babel-plugin-istanbul": "^6.1.1",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-transform-stub": "^2.0.0",
+    "nyc": "^15.1.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "vite": "^5.2.0",

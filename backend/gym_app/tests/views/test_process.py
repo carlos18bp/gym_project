@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIClient
-from gym_app.models import User, Process, Stage, Case, CaseFile
+from gym_app.models import User, Process, Stage, Case, CaseFile, RecentProcess
 
 @pytest.fixture
 def api_client():
@@ -56,15 +56,6 @@ def process(client_user, lawyer_user, case_type, stage):
     process.clients.add(client_user)
     process.stages.add(stage)
     return process
-
-@pytest.fixture
-def case_file():
-    test_file = SimpleUploadedFile(
-        "test_file.txt", 
-        b"This is a test file content", 
-        content_type="text/plain"
-    )
-    return CaseFile.objects.create(file=test_file)
 
 @pytest.mark.django_db
 class TestProcessViews:
@@ -461,3 +452,92 @@ class TestProcessViews:
         file_url = reverse('update-file')
         file_response = api_client.post(file_url, {}, format='multipart')
         assert file_response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_recent_processes_returns_only_user_entries(self, api_client, client_user, process):
+        """recent-processes debe devolver solo los procesos recientes del usuario autenticado"""
+        # Crear entradas de procesos recientes para el usuario
+        RecentProcess.objects.create(user=client_user, process=process)
+
+        # Crear otra entrada para un usuario distinto
+        other_user = User.objects.create_user(
+            email='other.user@example.com',
+            password='testpassword',
+            role='Client'
+        )
+        other_process = Process.objects.create(
+            authority='Other Court',
+            plaintiff='Other',
+            defendant='Other',
+            ref='CASE-OTHER',
+            lawyer=process.lawyer,
+            case=process.case
+        )
+        RecentProcess.objects.create(user=other_user, process=other_process)
+
+        api_client.force_authenticate(user=client_user)
+
+        url = reverse('recent-processes')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert response.data[0]['process']['id'] == process.id
+
+    def test_get_recent_processes_limits_to_10_and_orders_by_last_viewed(self, api_client, client_user, case_type, lawyer_user):
+        """recent-processes debe devolver máximo 10 elementos ordenados por last_viewed desc"""
+        # Crear 12 procesos y entradas de RecentProcess con last_viewed creciente
+        for i in range(12):
+            p = Process.objects.create(
+                authority='Court',
+                plaintiff=f'P{i}',
+                defendant=f'D{i}',
+                ref=f'CASE-{i}',
+                lawyer=lawyer_user,
+                case=case_type
+            )
+            rp = RecentProcess.objects.create(user=client_user, process=p)
+            # Forzar un orden consistente incrementando last_viewed
+            rp.last_viewed = rp.last_viewed.replace(microsecond=i)
+            rp.save(update_fields=['last_viewed'])
+
+        api_client.force_authenticate(user=client_user)
+        url = reverse('recent-processes')
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 10
+
+        # Comprobar que están ordenados por last_viewed descendente
+        timestamps = [item['last_viewed'] for item in response.data]
+        assert timestamps == sorted(timestamps, reverse=True)
+
+    def test_update_recent_process_creates_or_updates_entry(self, api_client, client_user, process):
+        """update-recent-process debe crear o actualizar la entrada de RecentProcess"""
+        api_client.force_authenticate(user=client_user)
+
+        url = reverse('update-recent-process', kwargs={'process_id': process.id})
+
+        # Primera llamada: debe crear la entrada
+        response = api_client.post(url, {})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == 'success'
+
+        rp = RecentProcess.objects.get(user=client_user, process=process)
+        first_last_viewed = rp.last_viewed
+
+        # Segunda llamada: debe actualizar last_viewed
+        response = api_client.post(url, {})
+        assert response.status_code == status.HTTP_200_OK
+
+        rp.refresh_from_db()
+        assert rp.last_viewed >= first_last_viewed
+
+    def test_update_recent_process_not_found(self, api_client, client_user):
+        """update-recent-process debe responder 404 si el proceso no existe"""
+        api_client.force_authenticate(user=client_user)
+
+        url = reverse('update-recent-process', kwargs={'process_id': 9999})
+        response = api_client.post(url, {})
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data['error'] == 'Process not found'
