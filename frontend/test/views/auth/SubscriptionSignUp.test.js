@@ -89,7 +89,7 @@ describe("SubscriptionSignUp.vue", () => {
       "Se ha enviado un código de acceso a tu correo electrónico",
       "info"
     );
-    expect(wrapper.vm.$.setupState.passcodeSent).toBe("111");
+    expect(wrapper.vm.$.setupState.passcodeSent).toBe(true);
   });
 
   test("creates account when passcode matches", async () => {
@@ -145,7 +145,7 @@ describe("SubscriptionSignUp.vue", () => {
     });
   });
 
-  test("warns when passcode mismatches", async () => {
+  test("rejects sign on when passcode is empty", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
     jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
@@ -171,14 +171,14 @@ describe("SubscriptionSignUp.vue", () => {
     wrapper.vm.$.setupState.userForm.lastName = "Lopez";
     wrapper.vm.$.setupState.userForm.password = "Secret123";
     wrapper.vm.$.setupState.userForm.confirmPassword = "Secret123";
-    wrapper.vm.$.setupState.passcodeSent = "999";
-    wrapper.vm.$.setupState.passcode = "123";
+    wrapper.vm.$.setupState.passcodeSent = true;
+    wrapper.vm.$.setupState.passcode = "";
     wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
     await wrapper.vm.$.setupState.onCaptchaVerified("token");
 
     await wrapper.vm.$.setupState.signOnUser();
 
-    expect(mockShowNotification).toHaveBeenCalledWith("El código no es válido", "warning");
+    expect(mockShowNotification).toHaveBeenCalledWith("El código de verificación es obligatorio", "warning");
     expect(axios.post).not.toHaveBeenCalled();
   });
 

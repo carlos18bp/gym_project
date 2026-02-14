@@ -100,6 +100,7 @@ describe("ForgetPassword.vue", () => {
 
     await flushPromises();
 
+    wrapper.vm.$.setupState.email = "user@test.com";
     wrapper.vm.$.setupState.passcode = "123";
     wrapper.vm.$.setupState.newPassword = "Secret123";
     wrapper.vm.$.setupState.confirmPassword = "Secret123";
@@ -110,6 +111,7 @@ describe("ForgetPassword.vue", () => {
     expect(axios.post).toHaveBeenCalledWith("/api/verify_passcode_and_reset_password/", {
       passcode: "123",
       new_password: "Secret123",
+      email: "user@test.com",
       captcha_token: "token",
     });
     expect(mockShowNotification).toHaveBeenCalledWith(

@@ -72,6 +72,8 @@ describe("SignOn.vue", () => {
     await flushPromises();
 
     wrapper.vm.$.setupState.userForm.email = "user@test.com";
+    wrapper.vm.$.setupState.userForm.firstName = "Ana";
+    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
     wrapper.vm.$.setupState.userForm.password = "secret";
     wrapper.vm.$.setupState.userForm.confirmPassword = "secret";
     wrapper.vm.$.setupState.privacyAccepted = true;
@@ -87,7 +89,7 @@ describe("SignOn.vue", () => {
       "Se ha enviado un código de acceso a tu correo electrónico",
       "info"
     );
-    expect(wrapper.vm.$.setupState.passcodeSent).toBe("123");
+    expect(wrapper.vm.$.setupState.passcodeSent).toBe(true);
   });
 
   test("completes sign on when passcode matches", async () => {
@@ -133,14 +135,14 @@ describe("SignOn.vue", () => {
       captcha_token: "token",
     });
     expect(authStore.login).toHaveBeenCalled();
-    expect(mockShowNotification).toHaveBeenCalledWith("¡Inicio de sesión exitoso!", "success");
+    expect(mockShowNotification).toHaveBeenCalledWith("¡Registro exitoso!", "success");
     expect(mockRouterPush).toHaveBeenCalledWith({
       name: "dashboard",
       params: { user_id: "", display: "" },
     });
   });
 
-  test("warns when passcode does not match", async () => {
+  test("rejects sign on when passcode is empty", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
     jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
@@ -159,16 +161,18 @@ describe("SignOn.vue", () => {
     await flushPromises();
 
     wrapper.vm.$.setupState.userForm.email = "user@test.com";
+    wrapper.vm.$.setupState.userForm.firstName = "Ana";
+    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
     wrapper.vm.$.setupState.userForm.password = "secret";
     wrapper.vm.$.setupState.userForm.confirmPassword = "secret";
-    wrapper.vm.$.setupState.passcodeSent = "123";
-    wrapper.vm.$.setupState.passcode = "999";
+    wrapper.vm.$.setupState.passcodeSent = true;
+    wrapper.vm.$.setupState.passcode = "";
     wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
     await wrapper.vm.$.setupState.onCaptchaVerified("token");
 
     await wrapper.vm.$.setupState.signOnUser();
 
-    expect(mockShowNotification).toHaveBeenCalledWith("El código no es válido", "warning");
+    expect(mockShowNotification).toHaveBeenCalledWith("El código de verificación es obligatorio", "warning");
     expect(axios.post).not.toHaveBeenCalled();
   });
 
