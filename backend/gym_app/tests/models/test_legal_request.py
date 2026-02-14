@@ -1,6 +1,7 @@
 import pytest
 import os
 from datetime import timedelta
+from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from gym_app.models.legal_request import (

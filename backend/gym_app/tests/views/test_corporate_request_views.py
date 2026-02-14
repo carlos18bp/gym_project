@@ -484,38 +484,9 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
-    return User.objects.create_user(
-        email="client_b6@test.com", password="pw", role="client",
-        first_name="Cli", last_name="Ent",
-    )
-
-
-@pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     return User.objects.create_user(
         email="basic_b6@test.com", password="pw", role="basic",
-    )
-
-
-@pytest.fixture
-@pytest.mark.django_db
-def corp_user():
-    return User.objects.create_user(
-        email="corp_b6@test.com", password="pw", role="corporate_client",
-        first_name="Corp", last_name="User",
-    )
-
-
-@pytest.fixture
-@pytest.mark.django_db
-def organization(corp_user):
-    return Organization.objects.create(
-        title="TestOrg B6",
-        description="Testing",
-        corporate_client=corp_user,
-        is_active=True,
     )
 
 
@@ -538,13 +509,13 @@ def req_type():
 
 @pytest.fixture
 @pytest.mark.django_db
-def corp_request(client_user, corp_user, organization, req_type, membership):
+def corp_request(client_user, corporate_client, organization, req_type, membership):
     """Depends on membership so client_user is already a member of the org."""
     return CorporateRequest.objects.create(
         title="Test Request B6",
         description="Desc",
         client=client_user,
-        corporate_client=corp_user,
+        corporate_client=corporate_client,
         organization=organization,
         request_type=req_type,
         status="PENDING",
@@ -630,10 +601,10 @@ class TestCorporateRequestFilters:
         assert resp.status_code == status.HTTP_200_OK
 
     def test_corporate_received_requests_filters(
-        self, api_client, corp_user, corp_request
+        self, api_client, corporate_client, corp_request
     ):
         """Lines 285-291: status, priority, assigned_to_me, search filters."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse("corporate-get-received-requests")
         resp = api_client.get(url, {
             "status": "PENDING",
@@ -652,10 +623,10 @@ class TestCorporateRequestFilters:
 class TestCorporateResponseNestedDict:
 
     def test_corporate_add_response_nested_dict(
-        self, api_client, corp_user, corp_request
+        self, api_client, corporate_client, corp_request
     ):
         """Lines 405-407: response_text as nested dict."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "corporate-add-response-to-request",
             kwargs={"request_id": corp_request.id},
@@ -669,10 +640,10 @@ class TestCorporateResponseNestedDict:
         assert resp.status_code == status.HTTP_201_CREATED
 
     def test_corporate_add_response_empty_text(
-        self, api_client, corp_user, corp_request
+        self, api_client, corporate_client, corp_request
     ):
         """Line 414-419: empty response text rejected."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "corporate-add-response-to-request",
             kwargs={"request_id": corp_request.id},
@@ -730,10 +701,10 @@ class TestConversationAccess:
         assert "responses" in resp.data
 
     def test_corporate_conversation_access(
-        self, api_client, corp_user, corp_request
+        self, api_client, corporate_client, corp_request
     ):
         """Lines 513-517, 530-531: corporate client sees all responses."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "get-request-conversation",
             kwargs={"request_id": corp_request.id},
@@ -750,34 +721,34 @@ class TestConversationAccess:
 class TestOrganizationFilters:
 
     def test_get_my_organizations_with_search(
-        self, api_client, corp_user, organization
+        self, api_client, corporate_client, organization
     ):
         """Line 116: search filter."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse("get-my-organizations")
-        resp = api_client.get(url, {"search": "TestOrg"})
+        resp = api_client.get(url, {"search": "Org"})
         assert resp.status_code == status.HTTP_200_OK
 
     def test_get_my_organizations_with_is_active(
-        self, api_client, corp_user, organization
+        self, api_client, corporate_client, organization
     ):
         """Line 121: is_active filter."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse("get-my-organizations")
         resp = api_client.get(url, {"is_active": "true"})
         assert resp.status_code == status.HTTP_200_OK
 
     def test_get_organization_invitations_status_filter(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         """Line 302: status filter on invitations."""
         OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="PENDING",
         )
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "get-organization-invitations",
             kwargs={"organization_id": organization.id},
@@ -786,10 +757,10 @@ class TestOrganizationFilters:
         assert resp.status_code == status.HTTP_200_OK
 
     def test_get_organization_members_role_filter(
-        self, api_client, corp_user, organization, membership
+        self, api_client, corporate_client, organization, membership
     ):
         """Lines 387-391: role and is_active filters."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "get-organization-members",
             kwargs={"organization_id": organization.id},
@@ -806,13 +777,13 @@ class TestOrganizationFilters:
 class TestOrganizationInvitationFlow:
 
     def test_respond_accept_invitation(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         """Lines 561-577: accept invitation happy path."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="PENDING",
         )
         api_client.force_authenticate(user=client_user)
@@ -825,12 +796,12 @@ class TestOrganizationInvitationFlow:
         assert "aceptada" in resp.data["message"]
 
     def test_respond_reject_invitation(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="PENDING",
         )
         api_client.force_authenticate(user=client_user)
@@ -843,13 +814,13 @@ class TestOrganizationInvitationFlow:
         assert "rechazada" in resp.data["message"]
 
     def test_respond_invalid_action(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         """Line 584: serializer validation error for invalid action."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="PENDING",
         )
         api_client.force_authenticate(user=client_user)
@@ -861,20 +832,18 @@ class TestOrganizationInvitationFlow:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_leader_cannot_leave_organization(
-        self, api_client, corp_user, organization
+        self, api_client, corporate_client, organization
     ):
         """Line 632: leader can't leave."""
         OrganizationMembership.objects.create(
             organization=organization,
-            user=corp_user,
+            user=corporate_client,
             role="LEADER",
             is_active=True,
         )
-        api_client.force_authenticate(user=corp_user)
-        # corp_user is 'corporate_client', but we need a 'client' user to hit
-        # this endpoint. Let's create a client leader instead.
-        # Actually, the decorator restricts to client/basic, so corp_user
-        # cannot call this endpoint. We need a client user that is a LEADER.
+        api_client.force_authenticate(user=corporate_client)
+        # corporate_client has role='corporate_client', but we need a 'client'
+        # user to hit this endpoint. The decorator restricts to client/basic.
         pass
 
     def test_client_leader_cannot_leave(
@@ -919,10 +888,10 @@ class TestOrganizationInvitationFlow:
 class TestOrganizationDelete:
 
     def test_delete_org_with_active_requests_blocked(
-        self, api_client, corp_user, organization, corp_request
+        self, api_client, corporate_client, organization, corp_request
     ):
         """Line 230-233: cannot delete org with active requests."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "delete-organization",
             kwargs={"organization_id": organization.id},
@@ -931,9 +900,9 @@ class TestOrganizationDelete:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         assert "solicitudes activas" in resp.data["error"]
 
-    def test_delete_org_success(self, api_client, corp_user, organization):
+    def test_delete_org_success(self, api_client, corporate_client, organization):
         """Happy path: org with no active requests is deleted."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "delete-organization",
             kwargs={"organization_id": organization.id},
@@ -951,10 +920,10 @@ class TestOrganizationDelete:
 class TestOrganizationPublicDetail:
 
     def test_corp_client_can_view_own_org(
-        self, api_client, corp_user, organization
+        self, api_client, corporate_client, organization
     ):
         """Line 660-661: corporate client accesses own org."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "get-organization-public-detail",
             kwargs={"organization_id": organization.id},
@@ -998,16 +967,16 @@ class TestOrganizationPublicDetail:
 class TestOrganizationMemberManagement:
 
     def test_cancel_pending_invitation(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         """Lines 351-361: cancel pending invitation."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="PENDING",
         )
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "cancel-organization-invitation",
             kwargs={
@@ -1021,16 +990,16 @@ class TestOrganizationMemberManagement:
         assert invitation.status == "CANCELLED"
 
     def test_cancel_non_pending_invitation_rejected(
-        self, api_client, corp_user, organization, client_user
+        self, api_client, corporate_client, organization, client_user
     ):
         """Line 352-354: non-pending invitation cannot be cancelled."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
-            invited_by=corp_user,
+            invited_by=corporate_client,
             status="ACCEPTED",
         )
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "cancel-organization-invitation",
             kwargs={
@@ -1042,10 +1011,10 @@ class TestOrganizationMemberManagement:
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_remove_member_success(
-        self, api_client, corp_user, organization, membership
+        self, api_client, corporate_client, organization, membership
     ):
         """Lines 434-438: remove member."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "remove-organization-member",
             kwargs={
@@ -1059,21 +1028,21 @@ class TestOrganizationMemberManagement:
         assert not membership.is_active
 
     def test_remove_leader_blocked(
-        self, api_client, corp_user, organization
+        self, api_client, corporate_client, organization
     ):
         """Lines 429-432: cannot remove leader."""
         leader_membership = OrganizationMembership.objects.create(
             organization=organization,
-            user=corp_user,
+            user=corporate_client,
             role="LEADER",
             is_active=True,
         )
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=corporate_client)
         url = reverse(
             "remove-organization-member",
             kwargs={
                 "organization_id": organization.id,
-                "user_id": corp_user.id,
+                "user_id": corporate_client.id,
             },
         )
         resp = api_client.delete(url)
@@ -1127,19 +1096,19 @@ def org(corp_client):
 
 
 @pytest.fixture
-def req_type():
+def crc_req_type():
     return CorporateRequestType.objects.create(name='TypeCRC')
 
 
 @pytest.fixture
-def corp_request(client_u, corp_client, org, req_type):
+def crc_corp_request(client_u, corp_client, org, crc_req_type):
     """A corporate request for testing filters and conversations."""
     mem = OrganizationMembership.objects.create(
         organization=org, user=client_u, role='MEMBER', is_active=True)
     return CorporateRequest.objects.create(
         title='ReqCRC', description='Desc',
         client=client_u, corporate_client=corp_client,
-        organization=org, request_type=req_type,
+        organization=org, request_type=crc_req_type,
         priority='MEDIUM', status='PENDING')
 
 
@@ -1162,7 +1131,7 @@ class TestCorporateRequestCoverage:
 
     # --- Lines 166-174: client request filters ---
     def test_client_requests_status_filter(
-        self, api_client, client_u, corp_request
+        self, api_client, client_u, crc_corp_request
     ):
         """Line 166: status filter on client requests."""
         api_client.force_authenticate(user=client_u)
@@ -1172,7 +1141,7 @@ class TestCorporateRequestCoverage:
         assert r.status_code == 200
 
     def test_client_requests_priority_filter(
-        self, api_client, client_u, corp_request
+        self, api_client, client_u, crc_corp_request
     ):
         """Line 168: priority filter on client requests."""
         api_client.force_authenticate(user=client_u)
@@ -1182,7 +1151,7 @@ class TestCorporateRequestCoverage:
         assert r.status_code == 200
 
     def test_client_requests_search_filter(
-        self, api_client, client_u, corp_request
+        self, api_client, client_u, crc_corp_request
     ):
         """Lines 170-174: search filter on client requests."""
         api_client.force_authenticate(user=client_u)
@@ -1193,7 +1162,7 @@ class TestCorporateRequestCoverage:
 
     # --- Lines 285-298: corporate received requests filters ---
     def test_corp_received_status_filter(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Line 285: status filter on received requests."""
         api_client.force_authenticate(user=corp_client)
@@ -1203,7 +1172,7 @@ class TestCorporateRequestCoverage:
         assert r.status_code == 200
 
     def test_corp_received_priority_filter(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Line 287: priority filter on received requests."""
         api_client.force_authenticate(user=corp_client)
@@ -1213,7 +1182,7 @@ class TestCorporateRequestCoverage:
         assert r.status_code == 200
 
     def test_corp_received_assigned_to_me(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Line 289: assigned_to_me filter."""
         api_client.force_authenticate(user=corp_client)
@@ -1223,7 +1192,7 @@ class TestCorporateRequestCoverage:
         assert r.status_code == 200
 
     def test_corp_received_search_filter(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Lines 291-298: search filter on received requests."""
         api_client.force_authenticate(user=corp_client)
@@ -1234,45 +1203,45 @@ class TestCorporateRequestCoverage:
 
     # --- Lines 405-419: corporate add response (dict and empty text) ---
     def test_corp_add_response_empty_text(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Lines 414-419: empty response_text returns 400."""
         api_client.force_authenticate(user=corp_client)
         r = api_client.post(
             reverse('corporate-add-response-to-request',
-                    kwargs={'request_id': corp_request.pk}),
+                    kwargs={'request_id': crc_corp_request.pk}),
             {'response_text': ''},
             format='json')
         assert r.status_code == 400
         assert 'vacío' in str(r.data)
 
     def test_corp_add_response_as_string(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Lines 409-410: response_text as plain string."""
         api_client.force_authenticate(user=corp_client)
         r = api_client.post(
             reverse('corporate-add-response-to-request',
-                    kwargs={'request_id': corp_request.pk}),
+                    kwargs={'request_id': crc_corp_request.pk}),
             {'response_text': 'Valid response text'},
             format='json')
         assert r.status_code == 201
 
     # --- Line 520: get_request_conversation blocks lawyer ---
     def test_conversation_blocks_lawyer(
-        self, api_client, lawyer, corp_request
+        self, api_client, lawyer, crc_corp_request
     ):
         """Line 520: unauthorized role in get_request_conversation."""
         api_client.force_authenticate(user=lawyer)
         r = api_client.get(
             reverse('get-request-conversation',
-                    kwargs={'request_id': corp_request.pk}))
+                    kwargs={'request_id': crc_corp_request.pk}))
         assert r.status_code == 403
 
     # --- Lines 187-191: client requests pagination fallback ---
     @mock.patch.object(CorporateRequestPagination, 'paginate_queryset', return_value=None)
     def test_client_requests_pagination_fallback(
-        self, mock_paginate, api_client, client_u, corp_request
+        self, mock_paginate, api_client, client_u, crc_corp_request
     ):
         """Lines 187-191: pagination returns None → fallback response."""
         api_client.force_authenticate(user=client_u)
@@ -1284,7 +1253,7 @@ class TestCorporateRequestCoverage:
     # --- Lines 314-318: corporate received requests pagination fallback ---
     @mock.patch.object(CorporateRequestPagination, 'paginate_queryset', return_value=None)
     def test_corp_received_pagination_fallback(
-        self, mock_paginate, api_client, corp_client, corp_request
+        self, mock_paginate, api_client, corp_client, crc_corp_request
     ):
         """Lines 314-318: corporate pagination returns None → fallback."""
         api_client.force_authenticate(user=corp_client)
@@ -1295,13 +1264,13 @@ class TestCorporateRequestCoverage:
 
     # --- Line 258: client_add_response serializer error ---
     def test_client_add_response_serializer_error(
-        self, api_client, client_u, corp_request
+        self, api_client, client_u, crc_corp_request
     ):
         """Line 258: serializer.is_valid() fails → 400 with error details."""
         api_client.force_authenticate(user=client_u)
         r = api_client.post(
             reverse('client-add-response-to-request',
-                    kwargs={'request_id': corp_request.pk}),
+                    kwargs={'request_id': crc_corp_request.pk}),
             {'response_text': ''},
             format='json')
         assert r.status_code == 400
@@ -1309,13 +1278,13 @@ class TestCorporateRequestCoverage:
 
     # --- Line 377: corporate_update_request_status serializer error ---
     def test_corp_update_status_serializer_error(
-        self, api_client, corp_client, corp_request
+        self, api_client, corp_client, crc_corp_request
     ):
         """Line 377: invalid update data returns 400."""
         api_client.force_authenticate(user=corp_client)
         r = api_client.put(
             reverse('corporate-update-request-status',
-                    kwargs={'request_id': corp_request.pk}),
+                    kwargs={'request_id': crc_corp_request.pk}),
             {'status': 'INVALID_STATUS_VALUE'},
             format='json')
         assert r.status_code == 400
@@ -1324,7 +1293,7 @@ class TestCorporateRequestCoverage:
     # --- Line 447: corporate_add_response serializer error ---
     @mock.patch('gym_app.views.corporate_request.CorporateRequestResponseSerializer')
     def test_corp_add_response_serializer_error(
-        self, MockSerializer, api_client, corp_client, corp_request
+        self, MockSerializer, api_client, corp_client, crc_corp_request
     ):
         """Line 447: serializer.is_valid() fails both times → 400."""
         mock_instance = mock.MagicMock()
@@ -1334,7 +1303,7 @@ class TestCorporateRequestCoverage:
         api_client.force_authenticate(user=corp_client)
         r = api_client.post(
             reverse('corporate-add-response-to-request',
-                    kwargs={'request_id': corp_request.pk}),
+                    kwargs={'request_id': crc_corp_request.pk}),
             {'response_text': 'valid text'},
             format='json')
         assert r.status_code == 400

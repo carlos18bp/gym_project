@@ -519,7 +519,7 @@ class TestCorporateRequestResponseSerializerEdges:
         )
         request = rf.get("/")
         serializer = CorporateRequestResponseSerializer(resp, context={"request": request})
-        assert serializer.data["user_name"] == "Client User"
+        assert serializer.data["user_name"] == f"{client_user.first_name} {client_user.last_name}"
 
     def test_get_user_name_no_user(self, corporate_request, client_user, rf):
         """Cover line 65: user obj is None → return None."""

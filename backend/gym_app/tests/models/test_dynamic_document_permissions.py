@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from gym_app.models import (
     DynamicDocument,
+    DocumentFolder,
     DocumentSignature,
     DocumentUsabilityPermission,
     DocumentVisibilityPermission,
