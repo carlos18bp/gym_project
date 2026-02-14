@@ -279,3 +279,66 @@ class TestRecentProcessSerializer:
         # last_viewed should be present as an ISO-formatted string
         assert 'last_viewed' in data
         assert isinstance(data['last_viewed'], str)
+
+
+@pytest.mark.django_db
+class TestProcessSerializerUpdate:
+    def test_update_simple_fields(self, process, rf):
+        """Cover lines 68-74: update simple fields."""
+        request = rf.get("/")
+        serializer = ProcessSerializer(
+            process,
+            data={
+                "plaintiff": "New P",
+                "defendant": "New D",
+                "ref": "NEW-REF",
+                "authority": "New Auth",
+                "authority_email": "auth@example.com",
+                "subcase": "New Sub",
+                "progress": 80,
+            },
+            partial=True,
+            context={"request": request},
+        )
+        # ProcessSerializer has nested read-only fields, so update must be called directly
+        validated = {
+            "plaintiff": "New P",
+            "defendant": "New D",
+            "ref": "NEW-REF",
+            "authority": "New Auth",
+            "authority_email": "auth@example.com",
+            "subcase": "New Sub",
+            "progress": 80,
+        }
+        updated = serializer.update(process, validated)
+        assert updated.plaintiff == "New P"
+        assert updated.progress == 80
+
+    def test_update_stages_remove_and_add(self, process, rf):
+        """Cover lines 77-102: stage update logic (remove old, update existing, add new)."""
+        existing_stage = process.stages.first()
+        validated = {
+            "stages": [
+                {"id": existing_stage.id, "status": "Updated Stage"},  # update existing
+                {"status": "Brand New Stage"},  # create new (no id)
+            ]
+        }
+        updated = serializer_update_helper(process, validated)
+        # The second original stage should have been removed
+        stage_statuses = list(updated.stages.values_list("status", flat=True))
+        assert "Updated Stage" in stage_statuses
+        assert "Brand New Stage" in stage_statuses
+
+    def test_update_stages_none_skips(self, process, rf):
+        """Cover line 80: stages_data is None → skip stage update."""
+        original_count = process.stages.count()
+        validated = {"plaintiff": "Keep stages"}
+        updated = serializer_update_helper(process, validated)
+        assert updated.stages.count() == original_count
+
+
+def serializer_update_helper(process, validated_data):
+    """Helper to call ProcessSerializer.update directly."""
+    serializer = ProcessSerializer()
+    return serializer.update(process, validated_data)
+

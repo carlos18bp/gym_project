@@ -189,3 +189,88 @@ class TestIntranetProfileSerializer:
 
         assert data["cover_image_url"] == intranet_profile.cover_image.url
         assert data["profile_image_url"] == intranet_profile.profile_image.url
+
+
+@pytest.mark.django_db
+class TestIntranetProfileSerializerEdges:
+    def test_cover_image_url_no_image(self, rf):
+        """Cover line 49: cover_image is falsy → return None."""
+        profile = IntranetProfile.objects.create()
+        request = rf.get("/")
+        serializer = IntranetProfileSerializer(profile, context={"request": request})
+        data = serializer.data
+        assert data["cover_image_url"] is None
+
+    def test_profile_image_url_no_image(self, rf):
+        """Cover line 60: profile_image is falsy → return None."""
+        profile = IntranetProfile.objects.create()
+        request = rf.get("/")
+        serializer = IntranetProfileSerializer(profile, context={"request": request})
+        data = serializer.data
+        assert data["profile_image_url"] is None
+
+    def test_cover_image_url_no_request(self):
+        """Cover line 48: cover_image exists but no request → return raw url."""
+        img = SimpleUploadedFile("cover.png", b"\x89PNG", content_type="image/png")
+        profile = IntranetProfile.objects.create(cover_image=img)
+        serializer = IntranetProfileSerializer(profile)
+        data = serializer.data
+        assert data["cover_image_url"] is not None
+        assert "http" not in data["cover_image_url"]  # raw url, not absolute
+
+    def test_profile_image_url_no_request(self):
+        """Cover line 59: profile_image exists but no request → return raw url."""
+        img = SimpleUploadedFile("profile.png", b"\x89PNG", content_type="image/png")
+        profile = IntranetProfile.objects.create(profile_image=img)
+        serializer = IntranetProfileSerializer(profile)
+        data = serializer.data
+        assert data["profile_image_url"] is not None
+
+    def test_cover_image_url_with_request(self, rf):
+        """Cover lines 45-47: cover_image exists with request → absolute URI."""
+        img = SimpleUploadedFile("cover2.png", b"\x89PNG", content_type="image/png")
+        profile = IntranetProfile.objects.create(cover_image=img)
+        request = rf.get("/")
+        serializer = IntranetProfileSerializer(profile, context={"request": request})
+        data = serializer.data
+        assert data["cover_image_url"] is not None
+        assert "http" in data["cover_image_url"]
+
+    def test_profile_image_url_with_request(self, rf):
+        """Cover lines 56-58: profile_image exists with request → absolute URI."""
+        img = SimpleUploadedFile("prof2.png", b"\x89PNG", content_type="image/png")
+        profile = IntranetProfile.objects.create(profile_image=img)
+        request = rf.get("/")
+        serializer = IntranetProfileSerializer(profile, context={"request": request})
+        data = serializer.data
+        assert data["profile_image_url"] is not None
+        assert "http" in data["profile_image_url"]
+
+
+# ---------------------------------------------------------------------------
+# LegalDocumentSerializer edges (line 26: no request)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestLegalDocumentSerializerEdges:
+    def test_file_url_without_request(self):
+        """Cover line 26: no request in context → return raw file.url."""
+        f = SimpleUploadedFile("doc.pdf", b"%PDF", content_type="application/pdf")
+        doc = LegalDocument.objects.create(name="Doc", file=f)
+        serializer = LegalDocumentSerializer(doc)
+        data = serializer.data
+        assert data["file_url"] is not None
+        assert "http" not in data["file_url"]
+
+    def test_file_url_with_request(self, rf):
+        """Cover line 25: with request → absolute URI."""
+        f = SimpleUploadedFile("doc2.pdf", b"%PDF", content_type="application/pdf")
+        doc = LegalDocument.objects.create(name="Doc2", file=f)
+        request = rf.get("/")
+        serializer = LegalDocumentSerializer(doc, context={"request": request})
+        data = serializer.data
+        assert "http" in data["file_url"]
+

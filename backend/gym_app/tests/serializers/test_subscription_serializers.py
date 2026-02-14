@@ -79,3 +79,46 @@ class TestSubscriptionSerializer:
         assert data["amount"] == str(sub.amount)
         assert "created_at" in data
         assert "updated_at" in data
+
+
+@pytest.mark.django_db
+class TestSubscriptionSerializerEdges:
+    def test_user_name_fallback_to_email(self):
+        user = User.objects.create_user(
+            email="noname-sub@example.com", password="p",
+            first_name="", last_name="",
+        )
+        sub = Subscription.objects.create(
+            user=user, plan_type="basico", status="active",
+            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            amount=Decimal("0.00"),
+        )
+        s = SubscriptionSerializer(sub)
+        assert s.data["user_name"] == user.email
+
+    def test_read_only_fields(self):
+        user = User.objects.create_user(
+            email="ro@example.com", password="p", role="client",
+        )
+        sub = Subscription.objects.create(
+            user=user, plan_type="cliente", status="active",
+            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            amount=Decimal("50000.00"),
+        )
+        s = SubscriptionSerializer(sub)
+        assert "id" in s.data
+        assert "created_at" in s.data
+        assert "updated_at" in s.data
+
+    def test_get_user_name_with_names(self, subscription_user):
+        """Cover line 46: user has first and last name."""
+        sub = Subscription.objects.create(
+            user=subscription_user,
+            plan_type="cliente",
+            status="active",
+            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            amount=Decimal("50000.00"),
+        )
+        serializer = SubscriptionSerializer(sub)
+        data = serializer.data
+        assert data["user_name"] == "Sub User"

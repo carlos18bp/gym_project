@@ -1,25 +1,33 @@
 import pytest
+from unittest.mock import MagicMock, patch, PropertyMock
+
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import RequestFactory
 from django.utils import timezone
+from rest_framework import serializers as drf_serializers
 
 from gym_app.models import (
-    CorporateRequestType,
-    CorporateRequestFiles,
     CorporateRequest,
+    CorporateRequestFiles,
     CorporateRequestResponse,
+    CorporateRequestType,
     Organization,
     OrganizationMembership,
     User,
 )
 from gym_app.serializers.corporate_request import (
+    CorporateRequestCreateSerializer,
     CorporateRequestFilesSerializer,
+    CorporateRequestListSerializer,
     CorporateRequestResponseSerializer,
     CorporateRequestSerializer,
-    CorporateRequestListSerializer,
-    CorporateRequestCreateSerializer,
-    UserBasicInfoSerializer,
+    CorporateRequestUpdateSerializer,
     OrganizationBasicInfoSerializer,
+    UserBasicInfoSerializer,
 )
+
+factory = RequestFactory()
 
 
 @pytest.fixture
@@ -447,3 +455,314 @@ class TestCorporateRequestCreateSerializer:
             context={"request": MockRequest(lawyer)},
         )
         assert not serializer.is_valid()
+
+
+@pytest.mark.django_db
+class TestCorporateRequestFilesSerializerEdges:
+    def test_file_url_no_file(self, rf):
+        """Cover line 31: no file → return None."""
+        obj = CorporateRequestFiles.objects.create()
+        request = rf.get("/")
+        serializer = CorporateRequestFilesSerializer(obj, context={"request": request})
+        data = serializer.data
+        assert data["file_url"] is None
+
+    def test_file_name_no_file(self, rf):
+        """Cover line 37: no file → file_name is None."""
+        obj = CorporateRequestFiles.objects.create()
+        request = rf.get("/")
+        serializer = CorporateRequestFilesSerializer(obj, context={"request": request})
+        assert serializer.data["file_name"] is None
+
+    def test_file_size_no_file(self, rf):
+        """Cover line 46: no file → file_size is None."""
+        obj = CorporateRequestFiles.objects.create()
+        request = rf.get("/")
+        serializer = CorporateRequestFilesSerializer(obj, context={"request": request})
+        assert serializer.data["file_size"] is None
+
+    def test_file_size_exception(self, rf):
+        """Cover lines 44-45: .size raises → return None."""
+        f = SimpleUploadedFile("doc.txt", b"content", content_type="text/plain")
+        obj = CorporateRequestFiles.objects.create(file=f)
+        request = rf.get("/")
+        with patch.object(type(obj.file), "size", new_callable=PropertyMock, side_effect=Exception("broken")):
+            serializer = CorporateRequestFilesSerializer(obj, context={"request": request})
+            assert serializer.data["file_size"] is None
+
+    def test_file_url_no_request(self):
+        """Cover line 30: file exists but no request → raw url."""
+        f = SimpleUploadedFile("doc2.txt", b"content", content_type="text/plain")
+        obj = CorporateRequestFiles.objects.create(file=f)
+        serializer = CorporateRequestFilesSerializer(obj)
+        data = serializer.data
+        assert data["file_url"] is not None
+        assert "http" not in str(data["file_url"])
+
+
+# ---------------------------------------------------------------------------
+# CorporateRequestResponseSerializer.get_user_name (line 65)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestResponseSerializerEdges:
+    def test_get_user_name_with_user(self, corporate_request, client_user, rf):
+        """Cover lines 63-64: user with name."""
+        resp = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            user=client_user,
+            user_type="client",
+            response_text="Response text",
+        )
+        request = rf.get("/")
+        serializer = CorporateRequestResponseSerializer(resp, context={"request": request})
+        assert serializer.data["user_name"] == "Client User"
+
+    def test_get_user_name_no_user(self, corporate_request, client_user, rf):
+        """Cover line 65: user obj is None → return None."""
+        resp = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            user=client_user,
+            user_type="client",
+            response_text="Response",
+        )
+        request = rf.get("/")
+        # Directly call get_user_name with a mock obj whose user is None
+        serializer = CorporateRequestResponseSerializer(context={"request": request})
+        mock_obj = MagicMock()
+        mock_obj.user = None
+        assert serializer.get_user_name(mock_obj) is None
+
+
+# ---------------------------------------------------------------------------
+# CorporateRequestCreateSerializer.validate (lines 265-284)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestCreateSerializerEdges:
+    def test_validate_non_client_role_raises(self, corporate_user, organization, request_type, rf):
+        """Cover lines 265-268: non-client role raises."""
+        request = rf.post("/")
+        request.user = corporate_user  # corporate_client, not client
+        serializer = CorporateRequestCreateSerializer(
+            data={
+                "organization": organization.id,
+                "request_type": request_type.id,
+                "title": "T",
+                "description": "D",
+                "priority": "medium",
+            },
+            context={"request": request},
+        )
+        assert not serializer.is_valid()
+
+    def test_validate_non_member_raises(self, client_user, organization, request_type, rf):
+        """Cover lines 276-283: client not member of organization raises."""
+        request = rf.post("/")
+        request.user = client_user
+        serializer = CorporateRequestCreateSerializer(
+            data={
+                "organization": organization.id,
+                "request_type": request_type.id,
+                "title": "T",
+                "description": "D",
+                "priority": "medium",
+            },
+            context={"request": request},
+        )
+        assert not serializer.is_valid()
+
+
+# ---------------------------------------------------------------------------
+# CorporateRequestUpdateSerializer.validate_assigned_to (lines 303-307)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestUpdateSerializerEdges:
+    def test_validate_assigned_to_none(self):
+        """Cover lines 303-307: assigned_to is None → pass."""
+        serializer = CorporateRequestUpdateSerializer(
+            data={"status": "in_progress"},
+            partial=True,
+        )
+        result = serializer.validate_assigned_to(None)
+        assert result is None
+
+    def test_validate_assigned_to_with_value(self, client_user):
+        """Cover lines 303-306: assigned_to has value → pass."""
+        serializer = CorporateRequestUpdateSerializer(
+            data={"status": "in_progress", "assigned_to": client_user.id},
+            partial=True,
+        )
+        result = serializer.validate_assigned_to(client_user)
+        assert result == client_user
+
+@pytest.fixture
+def lawyer(db):
+    return User.objects.create_user(
+        email="dds-lawyer@example.com",
+        password="testpassword",
+        first_name="Doc",
+        last_name="Lawyer",
+        role="lawyer",
+    )
+
+
+@pytest.fixture
+def client_user(db):
+    return User.objects.create_user(
+        email="dds-client@example.com",
+        password="testpassword",
+        first_name="Doc",
+        last_name="Client",
+        role="client",
+    )
+
+
+@pytest.fixture
+def client_user2(db):
+    return User.objects.create_user(
+        email="dds-client2@example.com",
+        password="testpassword",
+        first_name="Second",
+        last_name="Client",
+        role="client",
+    )
+
+
+@pytest.fixture
+def document(db, lawyer):
+    return DynamicDocument.objects.create(
+        title="Test Doc",
+        content="<p>Content</p>",
+        state="Progress",
+        created_by=lawyer,
+    )
+
+
+@pytest.fixture
+def tag(db, lawyer):
+    return Tag.objects.create(name="TestTag", color_id=1, created_by=lawyer)
+
+
+# ---------------------------------------------------------------------------
+# DocumentVariableSerializer validation edges
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestValidateCorporateClient:
+    def test_validate_corporate_client_rejects_non_corporate_role(
+        self, normal_client, corporate_client, organization, request_type
+    ):
+        """
+        validate_corporate_client raises ValidationError when the user
+        is not a corporate_client (line 198).
+        """
+        OrganizationMembership.objects.create(
+            organization=organization, user=normal_client, role="MEMBER",
+        )
+        request = factory.post("/fake/")
+        request.user = normal_client
+
+        serializer = CorporateRequestSerializer(
+            data={
+                "corporate_client": normal_client.pk,  # not a corporate_client role
+                "organization": organization.pk,
+                "request_type": request_type.pk,
+                "title": "Test",
+                "description": "Desc",
+            },
+            context={"request": request},
+        )
+
+        is_valid = serializer.is_valid()
+
+        assert is_valid is False
+        assert "corporate_client" in serializer.errors
+
+
+# ---------------------------------------------------------------------------
+# corporate_request.py – lines 205-209: validate_assigned_to
+# ---------------------------------------------------------------------------
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestValidateAssignedTo:
+    def test_validate_assigned_to_with_instance_having_corporate_client(
+        self, corporate_request, corporate_client
+    ):
+        """
+        validate_assigned_to passes through when value is truthy and
+        instance has corporate_client attribute (lines 205-209).
+        """
+        request = factory.patch("/fake/")
+        request.user = corporate_client
+
+        serializer = CorporateRequestSerializer(
+            instance=corporate_request,
+            data={"assigned_to": corporate_client.pk},
+            partial=True,
+            context={"request": request},
+        )
+
+        # The validator on assigned_to should run the branch and return value
+        assert serializer.is_valid() or "assigned_to" not in serializer.errors
+
+
+# ---------------------------------------------------------------------------
+# corporate_request.py – line 235: get_client_name on CorporateRequestListSerializer
+# ---------------------------------------------------------------------------
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestListSerializerGetClientName:
+    def test_get_client_name_returns_full_name(self, corporate_request):
+        """
+        get_client_name returns 'first_name last_name' (line 235).
+        Note: This method exists on CorporateRequestListSerializer but
+        may not be in `fields`. We call it directly.
+        """
+        serializer = CorporateRequestListSerializer()
+
+        result = serializer.get_client_name(corporate_request)
+
+        assert result == "Normal Client"
+
+
+# ---------------------------------------------------------------------------
+# dynamic_document.py – line 402: get_summary_creation_date returns None
+# ---------------------------------------------------------------------------
+
+
+
+@pytest.mark.django_db
+class TestCorporateRequestValidateCorporateClientDirect:
+    def test_validate_corporate_client_direct_call_rejects_non_corp(self, normal_client):
+        """
+        Call validate_corporate_client directly (bypassing DRF's
+        limit_choices_to queryset filter) to exercise line 198.
+        """
+        serializer = CorporateRequestSerializer()
+
+        with pytest.raises(drf_serializers.ValidationError, match="corporativo"):
+            serializer.validate_corporate_client(normal_client)
+
+
+# ---------------------------------------------------------------------------
+# dynamic_document.py – line 607: creator skipped in visibility update
+# ---------------------------------------------------------------------------
+

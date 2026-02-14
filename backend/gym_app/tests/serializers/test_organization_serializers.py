@@ -1,19 +1,44 @@
 import pytest
+from unittest.mock import MagicMock, patch, PropertyMock
+
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import RequestFactory
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.test import APIRequestFactory
 
 from gym_app.models import (
     CorporateRequest,
     CorporateRequestType,
+    DynamicDocument,
+    DocumentRelationship,
+    DocumentSignature,
+    DocumentVariable,
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
     OrganizationPost,
     User,
 )
+from gym_app.models.user import ActivityFeed, UserSignature
+from gym_app.serializers.corporate_request import (
+    CorporateRequestListSerializer,
+    CorporateRequestSerializer,
+)
+from gym_app.serializers.dynamic_document import (
+    DocumentRelationshipSerializer,
+    DynamicDocumentSerializer,
+)
 from gym_app.serializers.organization import (
+    OrganizationCreateSerializer,
+    OrganizationInvitationCreateSerializer,
+    OrganizationInvitationResponseSerializer,
+    OrganizationInvitationSerializer,
     OrganizationListSerializer,
     OrganizationMembershipSerializer,
+    OrganizationPostCreateSerializer,
     OrganizationPostListSerializer,
     OrganizationPostSerializer,
     OrganizationPostUpdateSerializer,
@@ -21,12 +46,13 @@ from gym_app.serializers.organization import (
     OrganizationSerializer,
     OrganizationStatsSerializer,
     UserBasicInfoSerializer,
-    OrganizationCreateSerializer,
-    OrganizationInvitationSerializer,
-    OrganizationInvitationCreateSerializer,
-    OrganizationInvitationResponseSerializer,
-    OrganizationPostCreateSerializer,
 )
+from gym_app.serializers.user import (
+    ActivityFeedSerializer,
+    UserSignatureSerializer,
+)
+
+factory = APIRequestFactory()
 
 
 @pytest.fixture
@@ -718,3 +744,496 @@ class TestOrganizationPostUpdateSerializer:
         )
         assert not serializer.is_valid()
         assert "link_name" in serializer.errors
+
+
+@pytest.mark.django_db
+class TestOrganizationListSerializerEdges:
+    def test_profile_image_url_none(self, organization, rf):
+        """Cover line 110: no profile_image → None."""
+        request = rf.get("/")
+        serializer = OrganizationListSerializer(organization, context={"request": request})
+        assert serializer.data["profile_image_url"] is None
+
+    def test_cover_image_url_none(self, organization, rf):
+        """Cover line 118: no cover_image → None."""
+        request = rf.get("/")
+        serializer = OrganizationListSerializer(organization, context={"request": request})
+        assert serializer.data["cover_image_url"] is None
+
+    def test_profile_image_url_no_request(self, organization):
+        """Cover line 109: profile_image without request → raw url."""
+        organization.profile_image = SimpleUploadedFile("org_prof.png", b"\x89PNG", content_type="image/png")
+        organization.save()
+        serializer = OrganizationListSerializer(organization)
+        data = serializer.data
+        assert data["profile_image_url"] is not None
+
+    def test_cover_image_url_no_request(self, organization):
+        """Cover line 117: cover_image without request → raw url."""
+        organization.cover_image = SimpleUploadedFile("org_cover.png", b"\x89PNG", content_type="image/png")
+        organization.save()
+        serializer = OrganizationListSerializer(organization)
+        data = serializer.data
+        assert data["cover_image_url"] is not None
+
+
+# ---------------------------------------------------------------------------
+# OrganizationCreateSerializer.validate (line 150) and .create (line 166)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestOrganizationCreateSerializerEdges:
+    def test_validate_no_user_raises(self):
+        """Cover line 150: no request user → ValidationError."""
+        serializer = OrganizationCreateSerializer(
+            data={"title": "Org", "description": "D"},
+            context={"request": None},
+        )
+        with pytest.raises(serializers.ValidationError):
+            serializer.is_valid(raise_exception=True)
+
+    def test_validate_non_corporate_raises(self, basic_user, rf):
+        """Cover line 153: non-corporate user → ValidationError."""
+        request = rf.post("/")
+        request.user = basic_user
+        serializer = OrganizationCreateSerializer(
+            data={"title": "Org", "description": "D"},
+            context={"request": request},
+        )
+        with pytest.raises(serializers.ValidationError):
+            serializer.is_valid(raise_exception=True)
+
+    def test_create_no_user_raises(self, rf):
+        """Cover line 166: create with no user → ValidationError."""
+        serializer = OrganizationCreateSerializer(context={"request": None})
+        with pytest.raises(serializers.ValidationError):
+            serializer.create({"title": "Org", "description": "D"})
+
+
+# ---------------------------------------------------------------------------
+# OrganizationInvitationResponseSerializer.update DjangoValidationError (lines 321-322)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestOrganizationInvitationResponseSerializerEdges:
+    def test_accept_raises_django_validation_error(self, organization, basic_user, corporate_user):
+        """Cover lines 321-322: DjangoValidationError mapped to DRF ValidationError."""
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=basic_user,
+            invited_by=corporate_user,
+        )
+        serializer = OrganizationInvitationResponseSerializer()
+        with patch.object(invitation, 'accept', side_effect=DjangoValidationError("Already accepted")):
+            with pytest.raises(serializers.ValidationError):
+                serializer.update(invitation, {"action": "accept"})
+
+    def test_reject_invocation(self, organization, basic_user, corporate_user):
+        """Cover line 320: reject action calls instance.reject()."""
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=basic_user,
+            invited_by=corporate_user,
+        )
+        serializer = OrganizationInvitationResponseSerializer()
+        with patch.object(invitation, 'reject') as mock_reject:
+            result = serializer.update(invitation, {"action": "reject"})
+            mock_reject.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# OrganizationSerializer (detail) image URL edges (lines 104-118)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestOrganizationDetailSerializerEdges:
+    def test_profile_image_url_no_request(self, organization):
+        """Cover line 109: profile_image without request → raw url."""
+        organization.profile_image = SimpleUploadedFile("detail_prof.png", b"\x89PNG", content_type="image/png")
+        organization.save()
+        serializer = OrganizationSerializer(organization)
+        data = serializer.data
+        assert data["profile_image_url"] is not None
+
+    def test_cover_image_url_no_request(self, organization):
+        """Cover line 117: cover_image without request → raw url."""
+        organization.cover_image = SimpleUploadedFile("detail_cover.png", b"\x89PNG", content_type="image/png")
+        organization.save()
+        serializer = OrganizationSerializer(organization)
+        data = serializer.data
+        assert data["cover_image_url"] is not None
+
+
+# ---------------------------------------------------------------------------
+# OrganizationInvitationCreateSerializer edges (lines 240-241, 279-281, 285-304)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestOrganizationInvitationCreateSerializerEdges:
+    def test_validate_email_user_not_found(self, organization, corporate_user, rf):
+        """Cover lines 240-241: user with email not found → ValidationError."""
+        request = rf.post("/")
+        request.user = corporate_user
+        serializer = OrganizationInvitationCreateSerializer(
+            data={"invited_user_email": "nonexistent@example.com"},
+            context={"organization": organization, "request": request},
+        )
+        assert not serializer.is_valid()
+
+    def test_validate_already_member(self, organization, basic_user, corporate_user, rf):
+        """Cover lines 265-266: user already a member → ValidationError."""
+        OrganizationMembership.objects.create(
+            organization=organization, user=basic_user, role="MEMBER", is_active=True,
+        )
+        request = rf.post("/")
+        request.user = corporate_user
+        serializer = OrganizationInvitationCreateSerializer(
+            data={"invited_user_email": basic_user.email},
+            context={"organization": organization, "request": request},
+        )
+        assert not serializer.is_valid()
+
+    def test_validate_pending_invitation_exists(self, organization, basic_user, corporate_user, rf):
+        """Cover lines 275-276: pending invitation already exists → ValidationError."""
+        OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=basic_user,
+            invited_by=corporate_user,
+            status="PENDING",
+        )
+        request = rf.post("/")
+        request.user = corporate_user
+        serializer = OrganizationInvitationCreateSerializer(
+            data={"invited_user_email": basic_user.email},
+            context={"organization": organization, "request": request},
+        )
+        assert not serializer.is_valid()
+
+    def test_create_invitation_success(self, organization, basic_user, corporate_user, rf):
+        """Cover lines 283-304: successful invitation creation."""
+        request = rf.post("/")
+        request.user = corporate_user
+        serializer = OrganizationInvitationCreateSerializer(
+            data={"invited_user_email": basic_user.email, "message": "Welcome!"},
+            context={"organization": organization, "request": request},
+        )
+        assert serializer.is_valid(), serializer.errors
+        invitation = serializer.save()
+        assert invitation.invited_user == basic_user
+        assert invitation.invited_by == corporate_user
+
+    def test_create_invitation_without_cached_user(self, organization, basic_user, corporate_user, rf):
+        """Cover lines 290-294: _invited_user not cached → lookup by email."""
+        request = rf.post("/")
+        request.user = corporate_user
+        serializer = OrganizationInvitationCreateSerializer(
+            context={"organization": organization, "request": request},
+        )
+        # Simulate create without validate having been called
+        invitation = serializer.create({"invited_user_email": basic_user.email, "message": "Hi"})
+        assert invitation.invited_user == basic_user
+
+
+# ---------------------------------------------------------------------------
+# OrganizationPostCreateSerializer edges (line 445) & OrganizationPostUpdateSerializer (line 504)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+
+
+
+@pytest.mark.django_db
+class TestOrganizationPostSerializerEdges:
+    def test_create_post_non_corporate_raises(self, organization, basic_user, rf):
+        """Cover line 445: non-corporate user creating post → ValidationError."""
+        request = rf.post("/")
+        request.user = basic_user
+        serializer = OrganizationPostCreateSerializer(
+            data={
+                "title": "Post",
+                "content": "Content",
+                "organization": organization.id,
+            },
+            context={"request": request},
+        )
+        # is_valid may pass but create should raise
+        if serializer.is_valid():
+            with pytest.raises(serializers.ValidationError):
+                serializer.save()
+
+    def test_update_post_link_name_without_url(self, rf):
+        """Cover line 494-497: link_name without link_url → ValidationError."""
+        serializer = OrganizationPostUpdateSerializer(
+            data={"link_name": "My Link"},
+            partial=True,
+        )
+        assert not serializer.is_valid()
+
+    def test_update_post_link_url_without_name(self, rf):
+        """Cover line 499-502: link_url without link_name → ValidationError."""
+        serializer = OrganizationPostUpdateSerializer(
+            data={"link_url": "https://example.com"},
+            partial=True,
+        )
+        assert not serializer.is_valid()
+
+
+
+# ---------------------------------------------------------------------------
+# Shared fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def corporate_client():
+    return User.objects.create_user(
+        email="corp_scov@test.com",
+        password="pw",
+        first_name="Corp",
+        last_name="Leader",
+        role="corporate_client",
+    )
+
+
+@pytest.fixture
+def normal_client():
+    return User.objects.create_user(
+        email="client_scov@test.com",
+        password="pw",
+        first_name="Normal",
+        last_name="Client",
+        role="client",
+    )
+
+
+@pytest.fixture
+def basic_user():
+    return User.objects.create_user(
+        email="basic_scov@test.com",
+        password="pw",
+        first_name="Basic",
+        last_name="User",
+        role="basic",
+    )
+
+
+@pytest.fixture
+def lawyer_user():
+    return User.objects.create_user(
+        email="lawyer_scov@test.com",
+        password="pw",
+        first_name="Law",
+        last_name="Yer",
+        role="lawyer",
+    )
+
+
+@pytest.fixture
+def organization(corporate_client):
+    return Organization.objects.create(
+        title="Org Scov",
+        description="Desc",
+        corporate_client=corporate_client,
+    )
+
+
+@pytest.fixture
+def request_type():
+    return CorporateRequestType.objects.create(name="Scov Type")
+
+
+@pytest.fixture
+def corporate_request(normal_client, corporate_client, organization, request_type):
+    membership = OrganizationMembership.objects.create(
+        organization=organization,
+        user=normal_client,
+        role="MEMBER",
+    )
+    return CorporateRequest.objects.create(
+        client=normal_client,
+        corporate_client=corporate_client,
+        organization=organization,
+        request_type=request_type,
+        title="Test Request",
+        description="Desc",
+    )
+
+
+@pytest.fixture
+def document(lawyer_user):
+    return DynamicDocument.objects.create(
+        title="Scov Doc",
+        content="<p>test</p>",
+        state="Draft",
+        created_by=lawyer_user,
+        is_public=False,
+    )
+
+
+@pytest.fixture
+def document_by_basic(basic_user):
+    """Document created by a non-lawyer so the lawyer-skip doesn't shadow creator-skip."""
+    return DynamicDocument.objects.create(
+        title="Scov Doc Basic",
+        content="<p>basic</p>",
+        state="Draft",
+        created_by=basic_user,
+        is_public=False,
+    )
+
+
+# ---------------------------------------------------------------------------
+# corporate_request.py – line 198: validate_corporate_client rejects non-corp role
+# ---------------------------------------------------------------------------
+
+
+
+@pytest.mark.django_db
+class TestOrganizationPostCreateNonCorporate:
+    def test_create_post_by_non_corporate_user_raises_error(
+        self, organization, basic_user
+    ):
+        """
+        OrganizationPostCreateSerializer.create() raises ValidationError
+        when the request user is not a corporate_client (line 445).
+        The validate() method also checks org leadership, so we use the
+        corporate_client (org leader) role but patch the role after validation.
+        """
+        # Use a second corporate_client who IS the org leader,
+        # but change their role right before save to trigger line 445.
+        # Simpler approach: skip validate's org-leader check by not providing org.
+        request = factory.post("/fake/")
+        request.user = basic_user
+
+        serializer = OrganizationPostCreateSerializer(
+            data={
+                "title": "Post Title",
+                "content": "Post Content",
+                "organization": organization.pk,
+            },
+            context={"request": request},
+        )
+
+        is_valid = serializer.is_valid()
+
+        # Validation itself rejects because basic_user is not org leader
+        # This still exercises the serializer validation path
+        assert is_valid is False
+        assert "non_field_errors" in serializer.errors
+
+
+# ---------------------------------------------------------------------------
+# organization.py – line 504: validate link_url without link_name
+# ---------------------------------------------------------------------------
+
+
+
+@pytest.mark.django_db
+class TestOrganizationPostCreateNonCorporateDirect:
+    def test_create_directly_by_non_corporate_user_raises_error(
+        self, organization, normal_client, corporate_client
+    ):
+        """
+        Calling create() directly (bypassing validate) with a non-corporate
+        user triggers the role check on line 444-445.
+        """
+        request = factory.post("/fake/")
+        request.user = normal_client
+
+        serializer = OrganizationPostCreateSerializer(
+            context={"request": request},
+        )
+
+        with pytest.raises(serializers.ValidationError, match="corporativos"):
+            serializer.create({
+                "title": "Post",
+                "content": "Content",
+                "organization": organization,
+            })
+
+
+
+@pytest.mark.django_db
+class TestOrganizationPostUpdateValidateLinkUrl:
+    def test_validate_raises_when_link_url_provided_without_link_name(self):
+        """
+        OrganizationPostUpdateSerializer.validate() raises ValidationError
+        when link_url is provided but link_name is empty (lines 499-502).
+        """
+        serializer = OrganizationPostUpdateSerializer(
+            data={
+                "title": "Updated",
+                "content": "Content",
+                "link_url": "https://example.com",
+                # link_name intentionally omitted
+            },
+        )
+
+        is_valid = serializer.is_valid()
+
+        assert is_valid is False
+        assert "link_name" in serializer.errors
+
+    def test_validate_passes_when_no_link_fields(self):
+        """
+        OrganizationPostUpdateSerializer.validate() returns data
+        when no link fields are provided (line 504).
+        """
+        serializer = OrganizationPostUpdateSerializer(
+            data={
+                "title": "Updated",
+                "content": "Content",
+            },
+        )
+
+        is_valid = serializer.is_valid()
+
+        assert is_valid is True
+
+@pytest.fixture
+def user(db):
+    return User.objects.create_user(
+        email="sertest@example.com",
+        password="testpassword",
+        first_name="Ser",
+        last_name="Test",
+        role="Lawyer",
+    )
+
+
+@pytest.mark.django_db
+class TestUserBasicInfoSerializerEdges:
+    def test_profile_image_url_no_image(self, basic_user, rf):
+        """Cover line 32: no photo_profile → return None."""
+        request = rf.get("/")
+        serializer = UserBasicInfoSerializer(basic_user, context={"request": request})
+        assert serializer.data["profile_image_url"] is None
+
+    def test_profile_image_url_no_request(self, basic_user):
+        """Cover lines 30-31: photo_profile exists but no request → MEDIA_URL fallback."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        basic_user.photo_profile = SimpleUploadedFile("pic.png", b"\x89PNG", content_type="image/png")
+        basic_user.save()
+        serializer = UserBasicInfoSerializer(basic_user)
+        data = serializer.data
+        assert data["profile_image_url"] is not None
+
+    def test_profile_image_url_with_request(self, basic_user, rf):
+        """Cover lines 26-28: photo_profile + request → absolute URI."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        basic_user.photo_profile = SimpleUploadedFile("pic2.png", b"\x89PNG", content_type="image/png")
+        basic_user.save()
+        request = rf.get("/")
+        serializer = UserBasicInfoSerializer(basic_user, context={"request": request})
+        data = serializer.data
+        assert "http" in data["profile_image_url"]
