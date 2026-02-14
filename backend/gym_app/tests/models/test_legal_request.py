@@ -203,3 +203,114 @@ class TestLegalRequestResponse:
 
         assert responses[0].id == older.id
         assert responses[1].id == newer.id
+
+
+# ======================================================================
+# Tests moved from test_model_consolidated.py
+# ======================================================================
+
+# ── LegalRequest ─────────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestLegalRequestEdges:
+    def test_request_number_auto_generated(self, client_user):
+        rt = LegalRequestType.objects.create(name="Consulta")
+        ld = LegalDiscipline.objects.create(name="Civil")
+        lr = LegalRequest.objects.create(
+            user=client_user, request_type=rt, discipline=ld,
+            description="Desc",
+        )
+        year = timezone.now().year
+        assert lr.request_number.startswith(f"SOL-{year}-")
+
+    def test_request_number_increments(self, client_user):
+        rt = LegalRequestType.objects.create(name="Consulta")
+        ld = LegalDiscipline.objects.create(name="Civil")
+        lr1 = LegalRequest.objects.create(
+            user=client_user, request_type=rt, discipline=ld, description="D1",
+        )
+        lr2 = LegalRequest.objects.create(
+            user=client_user, request_type=rt, discipline=ld, description="D2",
+        )
+        seq1 = int(lr1.request_number.split("-")[-1])
+        seq2 = int(lr2.request_number.split("-")[-1])
+        assert seq2 == seq1 + 1
+
+    def test_legal_request_str_with_user(self, client_user):
+        rt = LegalRequestType.objects.create(name="Consulta")
+        ld = LegalDiscipline.objects.create(name="Civil")
+        lr = LegalRequest.objects.create(
+            user=client_user, request_type=rt, discipline=ld, description="D",
+        )
+        s = str(lr)
+        assert lr.request_number in s
+        assert client_user.first_name in s
+
+    def test_legal_request_response_str(self, client_user):
+        rt = LegalRequestType.objects.create(name="Consulta")
+        ld = LegalDiscipline.objects.create(name="Civil")
+        lr = LegalRequest.objects.create(
+            user=client_user, request_type=rt, discipline=ld, description="D",
+        )
+        resp = LegalRequestResponse.objects.create(
+            legal_request=lr, response_text="R", user=client_user, user_type="client",
+        )
+        s = str(resp)
+        assert lr.request_number in s
+        assert "client response" in s
+
+    def test_legal_request_files_str(self):
+        f = SimpleUploadedFile("legal.pdf", b"x", content_type="application/pdf")
+        lrf = LegalRequestFiles.objects.create(file=f)
+        assert "legal" in str(lrf)
+
+    def test_legal_request_files_delete_signal(self):
+        f = SimpleUploadedFile("del.pdf", b"x", content_type="application/pdf")
+        lrf = LegalRequestFiles.objects.create(file=f)
+        path = lrf.file.path
+        assert os.path.isfile(path)
+        lrf.delete()
+        assert not os.path.isfile(path)
+
+
+# ── Organization ─────────────────────────────────────────────────────────────
+
+
+# ---------------------------------------------------------------------------
+# legal_request.py – line 121: __str__ when self.user is None
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestLegalRequestStrWithoutUser:
+    def test_str_returns_request_number_only_when_user_is_none(self):
+        """
+        LegalRequest.__str__() should return just the request_number
+        when the user field is None (line 121).
+
+        The user FK is NOT NULL at DB level, so we temporarily replace
+        the FK descriptor with None to simulate the branch.
+        """
+        req_type = LegalRequestType.objects.create(name="Cov100 Type")
+        discipline = LegalDiscipline.objects.create(name="Cov100 Disc")
+        temp_user = User.objects.create_user(
+            email="temp_lr_cov100@test.com", password="pw"
+        )
+        lr = LegalRequest.objects.create(
+            user=temp_user,
+            request_type=req_type,
+            discipline=discipline,
+            description="Test",
+        )
+
+        # Temporarily replace the FK descriptor so self.user returns None
+        with patch.object(LegalRequest, "user", new=None):
+            result = str(lr)
+
+        assert result == lr.request_number
+
+
+# ---------------------------------------------------------------------------
+# organization.py – line 214: accept() on non-respondable invitation
+# ---------------------------------------------------------------------------
+
+

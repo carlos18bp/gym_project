@@ -231,3 +231,48 @@ class TestCorporateRequestResponse:
         s = str(response)
         assert request.request_number in s
         assert "corporate_client response" in s
+
+
+# ======================================================================
+# Tests moved from test_model_consolidated.py
+# ======================================================================
+
+# ── CorporateRequestFiles str and signal ─────────────────────────────────────
+
+@pytest.mark.django_db
+class TestCorporateRequestFilesEdges:
+    def test_files_str(self):
+        f = SimpleUploadedFile("corp.pdf", b"x", content_type="application/pdf")
+        crf = CorporateRequestFiles.objects.create(file=f)
+        assert "corp" in str(crf)
+
+    def test_delete_signal_removes_file(self):
+        f = SimpleUploadedFile("rmcorp.pdf", b"x", content_type="application/pdf")
+        crf = CorporateRequestFiles.objects.create(file=f)
+        path = crf.file.path
+        assert os.path.isfile(path)
+        crf.delete()
+        assert not os.path.isfile(path)
+
+
+# ── CorporateRequest __str__ ────────────────────────────────────────────────
+
+
+# ── CorporateRequest __str__ ────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestCorporateRequestStr:
+    def test_str(self, client_user, corporate_user, organization):
+        OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+        )
+        rt = CorporateRequestType.objects.create(name="Consulta")
+        cr = CorporateRequest.objects.create(
+            client=client_user, organization=organization,
+            request_type=rt, title="Titulo", description="D",
+        )
+        s = str(cr)
+        assert cr.request_number in s
+        assert client_user.email in s
+
+

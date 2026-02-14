@@ -1,6 +1,6 @@
 import pytest
 from decimal import Decimal
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.utils import timezone
 
@@ -134,3 +134,41 @@ class TestPaymentHistory:
 
         assert payments[0].id == newer.id
         assert payments[1].id == older.id
+
+
+# ======================================================================
+# Tests moved from test_model_consolidated.py
+# ======================================================================
+
+# ── Subscription & PaymentHistory ────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestSubscriptionEdges:
+    def test_subscription_str(self, client_user):
+        sub = Subscription.objects.create(
+            user=client_user, plan_type="cliente", status="active",
+            next_billing_date=date.today() + timedelta(days=30),
+            amount=Decimal("50000.00"),
+        )
+        s = str(sub)
+        assert client_user.email in s
+        assert "Cliente" in s
+
+    def test_payment_history_str(self, client_user):
+        sub = Subscription.objects.create(
+            user=client_user, plan_type="basico", status="active",
+            next_billing_date=date.today() + timedelta(days=30),
+            amount=Decimal("0.00"),
+        )
+        ph = PaymentHistory.objects.create(
+            subscription=sub, amount=Decimal("50000.00"),
+            status="approved", reference="REF-001",
+        )
+        s = str(ph)
+        assert "approved" in s
+        assert client_user.email in s
+
+
+# ── CorporateRequestFiles str and signal ─────────────────────────────────────
+
+

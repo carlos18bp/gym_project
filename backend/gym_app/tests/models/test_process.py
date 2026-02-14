@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -300,3 +301,99 @@ class TestRecentProcess:
         # Por Meta.ordering = ['-last_viewed'], el más reciente debe ir primero
         assert recents[0].process == recent_second.process
         assert recents[1].process == recent_first.process
+
+
+# ======================================================================
+@pytest.fixture
+def lawyer():
+    return User.objects.create_user(
+        email="lawyer-b1@example.com", password="testpassword",
+        first_name="Lawyer", last_name="B1", role="lawyer",
+    )
+
+
+# Tests moved from test_model_consolidated.py
+# ======================================================================
+
+# ── Stage edge-cases ────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestStageEdges:
+    def test_stage_with_explicit_date(self):
+        stage = Stage.objects.create(status="Filed", date=date(2024, 6, 15))
+        assert stage.date == date(2024, 6, 15)
+
+    def test_stage_date_defaults_to_null(self):
+        stage = Stage.objects.create(status="Open")
+        assert stage.date is None
+
+
+# ── CaseFile signal edge-case ───────────────────────────────────────────────
+
+
+# ── CaseFile signal edge-case ───────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestCaseFileSignalEdge:
+    def test_delete_casefile_no_physical_file_does_not_raise(self):
+        """Signal should not fail when file was already removed from disk."""
+        f = SimpleUploadedFile("gone.pdf", b"x", content_type="application/pdf")
+        cf = CaseFile.objects.create(file=f)
+        path = cf.file.path
+        if os.path.isfile(path):
+            os.remove(path)
+        cf.delete()  # should not raise
+
+
+# ── Process edge-cases ──────────────────────────────────────────────────────
+
+
+# ── Process edge-cases ──────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestProcessEdges:
+    def test_process_multiple_clients(self, lawyer, case_type):
+        c1 = User.objects.create_user(email="c1@x.com", password="p", role="client")
+        c2 = User.objects.create_user(email="c2@x.com", password="p", role="client")
+        proc = Process.objects.create(
+            authority="A", plaintiff="P", defendant="D",
+            ref="MULTI-C", lawyer=lawyer, case=case_type, subcase="S",
+        )
+        proc.clients.set([c1, c2])
+        assert proc.clients.count() == 2
+
+    def test_process_authority_email_nullable(self, lawyer, case_type, client_user):
+        proc = Process.objects.create(
+            authority="A", plaintiff="P", defendant="D",
+            ref="NO-EMAIL", lawyer=lawyer, case=case_type, subcase="S",
+        )
+        assert proc.authority_email is None
+
+    def test_process_progress_default_zero(self, lawyer, case_type):
+        proc = Process.objects.create(
+            authority="A", plaintiff="P", defendant="D",
+            ref="PROG-0", lawyer=lawyer, case=case_type, subcase="S",
+        )
+        assert proc.progress == 0
+
+
+# ── RecentProcess str ────────────────────────────────────────────────────────
+
+
+# ── RecentProcess str ────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestRecentProcessStr:
+    def test_str_contains_ref_and_user(self, lawyer, case_type):
+        proc = Process.objects.create(
+            authority="A", plaintiff="P", defendant="D",
+            ref="REF-STR", lawyer=lawyer, case=case_type, subcase="S",
+        )
+        rp = RecentProcess.objects.create(user=lawyer, process=proc)
+        s = str(rp)
+        assert "REF-STR" in s
+
+
+# ── DynamicDocument permission helpers ───────────────────────────────────────
+
+

@@ -1,4 +1,6 @@
 import os
+from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -443,3 +445,278 @@ class TestOrganizationPost:
         s = str(post)
         assert organization.title in s
         assert "📌" in s
+
+
+# ======================================================================
+# Tests moved from test_model_consolidated.py
+# ======================================================================
+
+# ── Organization ─────────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestOrganizationEdges:
+    def test_organization_clean_invalid_leader_role(self, client_user):
+        org = Organization(
+            title="Bad", description="D", corporate_client=client_user,
+        )
+        with pytest.raises(ValidationError, match="cliente corporativo"):
+            org.clean()
+
+    def test_get_member_count(self, organization, client_user):
+        OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+        )
+        assert organization.get_member_count() == 1
+
+    def test_get_pending_invitations_count(self, organization, client_user, corporate_user):
+        OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            status="PENDING",
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        assert organization.get_pending_invitations_count() == 1
+
+    def test_organization_str(self, organization, corporate_user):
+        s = str(organization)
+        assert "TestOrg" in s
+        assert corporate_user.email in s
+
+
+# ── OrganizationInvitation ───────────────────────────────────────────────────
+
+
+# ── OrganizationInvitation ───────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestOrganizationInvitationEdges:
+    def test_invitation_is_expired(self, organization, client_user, corporate_user):
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+        assert inv.is_expired() is True
+
+    def test_invitation_can_be_responded_false_when_expired(
+        self, organization, client_user, corporate_user
+    ):
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+        assert inv.can_be_responded() is False
+
+    def test_invitation_accept_creates_membership(
+        self, organization, client_user, corporate_user
+    ):
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        inv.accept()
+        assert OrganizationMembership.objects.filter(
+            organization=organization, user=client_user, is_active=True,
+        ).exists()
+        inv.refresh_from_db()
+        assert inv.status == "ACCEPTED"
+
+    def test_invitation_reject(self, organization, client_user, corporate_user):
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        inv.reject()
+        inv.refresh_from_db()
+        assert inv.status == "REJECTED"
+
+    def test_accept_already_member_raises(
+        self, organization, client_user, corporate_user
+    ):
+        OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+        )
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        with pytest.raises(ValidationError, match="ya es miembro"):
+            inv.accept()
+
+    def test_invitation_str(self, organization, client_user, corporate_user):
+        inv = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client_user,
+            invited_by=corporate_user,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+        s = str(inv)
+        assert organization.title in s
+        assert client_user.email in s
+
+
+# ── OrganizationMembership ───────────────────────────────────────────────────
+
+
+# ── OrganizationMembership ───────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestOrganizationMembershipEdges:
+    def test_deactivate(self, organization, client_user):
+        m = OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+        )
+        m.deactivate()
+        m.refresh_from_db()
+        assert m.is_active is False
+        assert m.deactivated_at is not None
+
+    def test_reactivate(self, organization, client_user):
+        m = OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+            is_active=False,
+        )
+        m.reactivate()
+        m.refresh_from_db()
+        assert m.is_active is True
+        assert m.deactivated_at is None
+
+    def test_only_one_leader(self, organization, client_user, corporate_user):
+        OrganizationMembership.objects.create(
+            organization=organization, user=corporate_user, role="LEADER",
+        )
+        m2 = OrganizationMembership(
+            organization=organization, user=client_user, role="LEADER",
+        )
+        with pytest.raises(ValidationError, match="un líder"):
+            m2.clean()
+
+    def test_membership_str(self, organization, client_user):
+        m = OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER",
+        )
+        s = str(m)
+        assert client_user.email in s
+        assert organization.title in s
+
+
+# ── OrganizationPost ─────────────────────────────────────────────────────────
+
+
+# ── OrganizationPost ─────────────────────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestOrganizationPostEdges:
+    def test_toggle_pin(self, organization, corporate_user):
+        post = OrganizationPost.objects.create(
+            title="P", content="C", organization=organization, author=corporate_user,
+        )
+        assert post.is_pinned is False
+        post.toggle_pin()
+        post.refresh_from_db()
+        assert post.is_pinned is True
+
+    def test_deactivate_and_reactivate(self, organization, corporate_user):
+        post = OrganizationPost.objects.create(
+            title="P", content="C", organization=organization, author=corporate_user,
+        )
+        post.deactivate()
+        post.refresh_from_db()
+        assert post.is_active is False
+        post.reactivate()
+        post.refresh_from_db()
+        assert post.is_active is True
+
+    def test_has_link_property(self, organization, corporate_user):
+        post = OrganizationPost.objects.create(
+            title="P", content="C", organization=organization, author=corporate_user,
+            link_name="Google", link_url="https://google.com",
+        )
+        assert post.has_link is True
+
+    def test_has_link_false_when_no_link(self, organization, corporate_user):
+        post = OrganizationPost.objects.create(
+            title="P", content="C", organization=organization, author=corporate_user,
+        )
+        assert post.has_link is False
+
+    def test_clean_link_name_without_url(self, organization, corporate_user):
+        post = OrganizationPost(
+            title="P", content="C", organization=organization, author=corporate_user,
+            link_name="Name",
+        )
+        with pytest.raises(ValidationError):
+            post.clean()
+
+    def test_clean_link_url_without_name(self, organization, corporate_user):
+        post = OrganizationPost(
+            title="P", content="C", organization=organization, author=corporate_user,
+            link_url="https://google.com",
+        )
+        with pytest.raises(ValidationError):
+            post.clean()
+
+    def test_post_str_contains_title(self, organization, corporate_user):
+        post = OrganizationPost.objects.create(
+            title="MyPost", content="C", organization=organization,
+            author=corporate_user,
+        )
+        assert "MyPost" in str(post)
+
+
+# ── Subscription & PaymentHistory ────────────────────────────────────────────
+
+
+# ---------------------------------------------------------------------------
+# organization.py – line 214: accept() on non-respondable invitation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestOrganizationInvitationAcceptReject:
+    def test_accept_raises_when_invitation_already_accepted(
+        self, organization, corporate_client, basic_user
+    ):
+        """
+        Calling accept() on an already-accepted invitation raises
+        ValidationError (line 214).
+        """
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=basic_user,
+            invited_by=corporate_client,
+            status="ACCEPTED",
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+
+        with pytest.raises(ValidationError, match="no puede ser aceptada"):
+            invitation.accept()
+
+    def test_reject_raises_when_invitation_expired(
+        self, organization, corporate_client, basic_user
+    ):
+        """
+        Calling reject() on an expired invitation raises
+        ValidationError (line 241).
+        """
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=basic_user,
+            invited_by=corporate_client,
+            status="PENDING",
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+
+        with pytest.raises(ValidationError, match="no puede ser rechazada"):
+            invitation.reject()
+
+
