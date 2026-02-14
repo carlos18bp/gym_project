@@ -1,1 +1,0 @@
-import{E as o}from"./index.js";function a(){return{registerView:async(e,t)=>{if(!t)return;const n={process:`update-recent-process/${t}/`,document:`dynamic-documents/${t}/update-recent/`}[e];if(!n){console.warn(`No endpoint configured for resource type: ${e}`);return}try{await o(n,"POST")}catch(r){console.error(`Error registering ${e} view:`,r)}}}}export{a as useRecentViews};
