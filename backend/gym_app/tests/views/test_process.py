@@ -1,5 +1,6 @@
 import pytest
 import json
+from unittest.mock import patch, MagicMock
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
@@ -536,3 +537,340 @@ class TestProcessViews:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data['error'] == 'Process not found'
+
+
+# ======================================================================
+# Tests merged from test_process_views.py (coverage + edge cases)
+# ======================================================================
+
+@pytest.fixture
+def _pv_lawyer():
+    return User.objects.create_user(
+        email='law_pc@e.com', password='p', role='lawyer',
+        first_name='L', last_name='P')
+
+
+@pytest.fixture
+def _pv_lawyer2():
+    return User.objects.create_user(
+        email='law2_pc@e.com', password='p', role='lawyer',
+        first_name='L2', last_name='P')
+
+
+@pytest.fixture
+def _pv_client():
+    return User.objects.create_user(
+        email='cli_pc@e.com', password='p', role='client',
+        first_name='C', last_name='P')
+
+
+@pytest.fixture
+def _pv_ctype():
+    return Case.objects.create(type='CivPC')
+
+
+@pytest.fixture
+def _pv_proc(_pv_lawyer, _pv_client, _pv_ctype):
+    p = Process.objects.create(
+        authority='A', plaintiff='P', defendant='D', ref='PC1',
+        lawyer=_pv_lawyer, case=_pv_ctype, subcase='S')
+    p.clients.add(_pv_client)
+    return p
+
+
+@pytest.mark.django_db
+class TestProcessCoverage:
+
+    def test_update_process_changes_lawyer(self, api_client, _pv_lawyer, _pv_lawyer2, _pv_proc):
+        """Line 215: updating lawyerId assigns new lawyer to process."""
+        api_client.force_authenticate(user=_pv_lawyer)
+        url = reverse('update-process', kwargs={'pk': _pv_proc.pk})
+        data = {'mainData': json.dumps({'lawyerId': _pv_lawyer2.id})}
+        r = api_client.put(url, data, format='multipart')
+        assert r.status_code == status.HTTP_200_OK
+        _pv_proc.refresh_from_db()
+        assert _pv_proc.lawyer_id == _pv_lawyer2.id
+
+
+# --- Edge-case fixtures ---
+
+@pytest.fixture
+def _edge_lawyer():
+    return User.objects.create_user(
+        email="lawyer-edge@example.com", password="testpassword",
+        first_name="Lawyer", last_name="Edge", role="Lawyer",
+    )
+
+
+@pytest.fixture
+def _edge_client():
+    return User.objects.create_user(
+        email="client-edge@example.com", password="testpassword",
+        first_name="Client", last_name="Edge", role="Client",
+    )
+
+
+@pytest.fixture
+def _edge_admin():
+    return User.objects.create_user(
+        email="admin-edge@example.com", password="testpassword",
+        first_name="Admin", last_name="Edge", role="Admin",
+    )
+
+
+@pytest.fixture
+def _edge_ctype():
+    return Case.objects.create(type="Civil")
+
+
+@pytest.fixture
+def _edge_proc(_edge_lawyer, _edge_client, _edge_ctype):
+    proc = Process.objects.create(
+        authority="Juzgado 1", plaintiff="Plaintiff", defendant="Defendant",
+        ref="REF-001", lawyer=_edge_lawyer, case=_edge_ctype, progress=50,
+    )
+    proc.clients.add(_edge_client)
+    stage = Stage.objects.create(status="Initial stage")
+    proc.stages.add(stage)
+    return proc
+
+
+# ---------------------------------------------------------------------------
+# process_list – exception handler (lines 46-47)
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+class TestProcessListEdges:
+    def test_process_list_exception_returns_500(self, api_client, _edge_client):
+        """Cover the except block in process_list (lines 46-47)."""
+        api_client.force_authenticate(user=_edge_client)
+        url = reverse("process-list")
+        with patch("gym_app.views.process.Process.objects") as mock_qs:
+            mock_qs.filter.side_effect = Exception("DB error")
+            response = api_client.get(url)
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert "DB error" in response.data["detail"]
+
+    def test_process_list_admin_returns_all(self, api_client, _edge_admin, _edge_proc):
+        """Cover the else branch (non-client, non-lawyer role) in process_list."""
+        api_client.force_authenticate(user=_edge_admin)
+        url = reverse("process-list")
+        response = api_client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+
+
+# ---------------------------------------------------------------------------
+# create_process – edge cases
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+class TestCreateProcessEdges:
+    def _build_main_data(self, **overrides):
+        defaults = {
+            "clientIds": [], "lawyerId": None, "caseTypeId": None,
+            "authority": "Auth", "plaintiff": "P", "defendant": "D",
+            "ref": "R-1", "subcase": "Sub-civil", "stages": [],
+        }
+        defaults.update(overrides)
+        return defaults
+
+    def test_create_process_single_client_id_not_list(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover line 67: client_ids converted from scalar to list."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=_edge_client.id, lawyerId=_edge_lawyer.id, caseTypeId=_edge_ctype.id,
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_process_invalid_lawyer(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 75-76: lawyer DoesNotExist."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=99999, caseTypeId=_edge_ctype.id,
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_create_process_invalid_case_type(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 81-82: case type DoesNotExist."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id, caseTypeId=99999,
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_create_process_non_numeric_progress(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 88-89: progress that can't be cast to int."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
+            caseTypeId=_edge_ctype.id, progress="not-a-number",
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["progress"] == 0
+
+    def test_create_process_stage_without_status_skipped(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover line 115: stage with empty status is skipped."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
+            caseTypeId=_edge_ctype.id, stages=[{"status": ""}, {"status": "Filed"}],
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_201_CREATED
+        proc = Process.objects.get(pk=response.data["id"])
+        assert proc.stages.count() == 1
+
+    def test_create_process_stage_with_valid_date(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 120-123: stage with valid ISO date."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
+            caseTypeId=_edge_ctype.id, stages=[{"status": "Filed", "date": "2025-06-15"}],
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_201_CREATED
+        proc = Process.objects.get(pk=response.data["id"])
+        stage = proc.stages.first()
+        assert str(stage.date) == "2025-06-15"
+
+    def test_create_process_stage_with_invalid_date_falls_back(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 124-125: invalid date falls back to today."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
+            caseTypeId=_edge_ctype.id, stages=[{"status": "Filed", "date": "not-a-date"}],
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_process_unexpected_exception(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+        """Cover lines 142-144: unexpected exception returns 500."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id, caseTypeId=_edge_ctype.id,
+        )
+        with patch("gym_app.views.process.Process.objects.create", side_effect=Exception("unexpected")):
+            response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    def test_create_process_empty_client_ids(self, api_client, _edge_lawyer, _edge_ctype):
+        """Cover line 71: empty clientIds returns 404."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("create-process")
+        main_data = self._build_main_data(
+            clientIds=[], lawyerId=_edge_lawyer.id, caseTypeId=_edge_ctype.id,
+        )
+        response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# update_process – edge cases
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+class TestUpdateProcessEdges:
+    def test_update_process_json_body_directly(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover line 161: request.data is dict without 'mainData' key."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"plaintiff": "New Plaintiff", "authorityEmail": "auth@example.com"}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.plaintiff == "New Plaintiff"
+        assert _edge_proc.authority_email == "auth@example.com"
+
+    def test_update_process_invalid_json_maindata_fallback(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover lines 167-169: mainData is not valid JSON, fallback to request.data."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        response = api_client.put(url, {"mainData": "not-json{{"}, format="multipart")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_update_process_progress_non_numeric(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover lines 192-198: progress update with non-numeric value."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"progress": "abc"}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.progress in (50, 0)
+
+    def test_update_process_progress_clamped(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover line 197: progress clamped to 0-100."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"progress": 150}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.progress == 100
+
+    def test_update_process_client_ids_scalar(self, api_client, _edge_lawyer, _edge_proc, _edge_client):
+        """Cover lines 203-208: clientIds as scalar, not list."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"clientIds": _edge_client.id}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_update_process_invalid_lawyer_id(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover lines 213-217: lawyerId that doesn't exist (DoesNotExist caught)."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"lawyerId": 99999}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.lawyer == _edge_lawyer
+
+    def test_update_process_invalid_case_type_id(self, api_client, _edge_lawyer, _edge_proc, _edge_ctype):
+        """Cover lines 225-226: caseTypeId that doesn't exist."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {"caseTypeId": 99999}
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.case == _edge_ctype
+
+    def test_update_process_replaces_stages(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover lines 239-255: stage replacement with valid/invalid dates."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        data = {
+            "stages": [
+                {"status": "New stage", "date": "2025-03-01"},
+                {"status": ""},
+                {"status": "Another stage", "date": "bad-date"},
+                {"status": "No date stage"},
+            ]
+        }
+        response = api_client.put(url, data, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.stages.count() == 3
+        dates = list(_edge_proc.stages.values_list("date", flat=True))
+        from datetime import date
+        assert date(2025, 3, 1) in dates
+
+    def test_update_process_with_maindata_multipart(self, api_client, _edge_lawyer, _edge_proc):
+        """Cover lines 163-166: mainData as valid JSON string in multipart."""
+        api_client.force_authenticate(user=_edge_lawyer)
+        url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        main_data = json.dumps({"defendant": "Updated Defendant"})
+        response = api_client.put(url, {"mainData": main_data}, format="multipart")
+        assert response.status_code == status.HTTP_200_OK
+        _edge_proc.refresh_from_db()
+        assert _edge_proc.defendant == "Updated Defendant"

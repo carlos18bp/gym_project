@@ -390,3 +390,53 @@ class TestFolderViews:
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch36 (tag/folder domain)
+# ======================================================================
+
+@pytest.mark.django_db
+class TestTagViewsBasic:
+
+    def test_list_tags(self, api_client, lawyer_user):
+        Tag.objects.create(name="Tag36", created_by=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.get(reverse("list-tags"))
+        assert resp.status_code == 200
+
+    def test_create_tag(self, api_client, lawyer_user):
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.post(reverse("create-tag"), {"name": "NewTag36"}, format="json")
+        assert resp.status_code == 201
+        assert Tag.objects.filter(name="NewTag36").exists()
+
+    def test_delete_tag(self, api_client, lawyer_user):
+        tag = Tag.objects.create(name="DelTag36", created_by=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.delete(reverse("delete-tag", args=[tag.id]))
+        assert resp.status_code in (200, 204)
+        assert not Tag.objects.filter(id=tag.id).exists()
+
+
+@pytest.mark.django_db
+class TestFolderViewsBasic:
+
+    def test_list_folders(self, api_client, lawyer_user):
+        DocumentFolder.objects.create(name="Folder36", owner=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.get(reverse("list-folders"))
+        assert resp.status_code == 200
+
+    def test_create_folder(self, api_client, lawyer_user):
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.post(reverse("create-folder"), {"name": "NewFolder36"}, format="json")
+        assert resp.status_code == 201
+        assert DocumentFolder.objects.filter(name="NewFolder36").exists()
+
+    def test_delete_folder(self, api_client, lawyer_user):
+        folder = DocumentFolder.objects.create(name="DelFolder36", owner=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.delete(reverse("delete-folder", args=[folder.id]))
+        assert resp.status_code in (200, 204)
+        assert not DocumentFolder.objects.filter(id=folder.id).exists()

@@ -644,3 +644,138 @@ class TestVerifyPasscode:
         url = reverse("verify_passcode_and_reset_password")
         resp = c.post(url, {"passcode": "000000", "new_password": "newpw", "captcha_token": "tok"}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch14 (organization posts domain)
+# ======================================================================
+
+@pytest.fixture
+@pytest.mark.django_db
+def _b14_corp_user():
+    return User.objects.create_user(
+        email="corp_b14@test.com", password="pw", role="corporate_client",
+        first_name="Corp", last_name="Client",
+    )
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def _b14_org(_b14_corp_user):
+    return Organization.objects.create(
+        title="Org B14", corporate_client=_b14_corp_user, is_active=True,
+    )
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def _b14_client():
+    return User.objects.create_user(
+        email="client_b14@test.com", password="pw", role="client",
+        first_name="Cli", last_name="Ent",
+    )
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def _b14_membership(_b14_org, _b14_client):
+    return OrganizationMembership.objects.create(
+        organization=_b14_org, user=_b14_client, role="MEMBER", is_active=True,
+    )
+
+
+@pytest.mark.django_db
+class TestOrganizationPostsBatch14:
+
+    def test_create_post_success(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 42-63: create post."""
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("create-organization-post", kwargs={"organization_id": _b14_org.id})
+        resp = api_client.post(url, {
+            "title": "Test Post",
+            "content": "Post content here",
+        }, format="json")
+        assert resp.status_code == status.HTTP_201_CREATED
+
+    def test_create_post_missing_title(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 65-72: validation error on missing title."""
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("create-organization-post", kwargs={"organization_id": _b14_org.id})
+        resp = api_client.post(url, {"content": "No title"}, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_get_posts(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 78-120: list posts with filters."""
+        OrganizationPost.objects.create(
+            organization=_b14_org, author=_b14_corp_user,
+            title="P1", content="C1",
+        )
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("get-organization-posts", kwargs={"organization_id": _b14_org.id})
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_200_OK
+
+    def test_get_posts_public_member(self, api_client, _b14_client, _b14_org, _b14_membership):
+        """Lines 125-172: public posts for member."""
+        OrganizationPost.objects.create(
+            organization=_b14_org, author=_b14_org.corporate_client,
+            title="Public P1", content="C1", is_active=True,
+        )
+        api_client.force_authenticate(user=_b14_client)
+        url = reverse("get-organization-posts-public", kwargs={"organization_id": _b14_org.id})
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_200_OK
+
+    def test_get_posts_public_non_member_forbidden(self, api_client, _b14_org):
+        """Lines 144-147: non-member forbidden."""
+        outsider = User.objects.create_user(
+            email="outsider_b14@test.com", password="pw", role="client",
+        )
+        api_client.force_authenticate(user=outsider)
+        url = reverse("get-organization-posts-public", kwargs={"organization_id": _b14_org.id})
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_toggle_pin(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 272-294: toggle pin status."""
+        post = OrganizationPost.objects.create(
+            organization=_b14_org, author=_b14_corp_user,
+            title="Pin Post", content="C", is_pinned=False,
+        )
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("toggle-organization-post-pin", kwargs={
+            "organization_id": _b14_org.id, "post_id": post.id,
+        })
+        resp = api_client.post(url, {}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        post.refresh_from_db()
+        assert post.is_pinned is True
+
+    def test_toggle_status(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 300-327: toggle active status."""
+        post = OrganizationPost.objects.create(
+            organization=_b14_org, author=_b14_corp_user,
+            title="Status Post", content="C", is_active=True,
+        )
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("toggle-organization-post-status", kwargs={
+            "organization_id": _b14_org.id, "post_id": post.id,
+        })
+        resp = api_client.post(url, {}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        post.refresh_from_db()
+        assert post.is_active is False
+
+    def test_delete_post(self, api_client, _b14_corp_user, _b14_org):
+        """Lines 245-266: delete post."""
+        post = OrganizationPost.objects.create(
+            organization=_b14_org, author=_b14_corp_user,
+            title="Del Post", content="C",
+        )
+        api_client.force_authenticate(user=_b14_corp_user)
+        url = reverse("delete-organization-post", kwargs={
+            "organization_id": _b14_org.id, "post_id": post.id,
+        })
+        resp = api_client.delete(url)
+        assert resp.status_code == status.HTTP_200_OK
+        assert not OrganizationPost.objects.filter(id=post.id).exists()

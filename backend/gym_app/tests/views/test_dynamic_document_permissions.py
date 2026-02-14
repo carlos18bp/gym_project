@@ -2411,3 +2411,37 @@ class TestCorporateRequestSerializerValidation:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Error al añadir la respuesta"
         assert "details" in response.data
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch36 (permission views domain)
+# ======================================================================
+
+@pytest.mark.django_db
+class TestPermissionViewsBatch36:
+
+    def test_get_document_permissions(self, api_client, lawyer_user):
+        doc = DynamicDocument.objects.create(title="Perm36", content="<p>x</p>", state="Draft", created_by=lawyer_user)
+        doc.visibility_permissions.create(user=lawyer_user, granted_by=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.get(reverse("get-document-permissions", args=[doc.id]))
+        assert resp.status_code == 200
+
+    def test_toggle_public_access(self, api_client, lawyer_user):
+        doc = DynamicDocument.objects.create(title="Pub36", content="<p>x</p>", state="Draft", created_by=lawyer_user, is_public=False)
+        doc.usability_permissions.create(user=lawyer_user, granted_by=lawyer_user)
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.post(reverse("toggle-public-access", args=[doc.id]))
+        assert resp.status_code == 200
+        doc.refresh_from_db()
+        assert doc.is_public is True
+
+    def test_get_available_clients(self, api_client, lawyer_user):
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.get(reverse("get-available-clients"))
+        assert resp.status_code == 200
+
+    def test_get_available_roles(self, api_client, lawyer_user):
+        api_client.force_authenticate(user=lawyer_user)
+        resp = api_client.get(reverse("get-available-roles"))
+        assert resp.status_code == 200

@@ -1308,3 +1308,32 @@ class TestCorporateRequestCoverage:
             format='json')
         assert r.status_code == 400
         assert 'error' in r.data
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch14 (corporate request domain)
+# ======================================================================
+
+@pytest.mark.django_db
+class TestCorporateRequestViewsBatch14:
+
+    def test_dashboard_stats(self, api_client, corporate_client, organization):
+        """Lines covering corporate_get_dashboard_stats."""
+        api_client.force_authenticate(user=corporate_client)
+        url = reverse("corporate-get-dashboard-stats")
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_200_OK
+
+    def test_dashboard_stats_non_corp_forbidden(self, api_client, client_user):
+        """Decorator: require_corporate_client_only."""
+        api_client.force_authenticate(user=client_user)
+        url = reverse("corporate-get-dashboard-stats")
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_conversation_not_found(self, api_client, client_user):
+        """get_request_conversation – request not found."""
+        api_client.force_authenticate(user=client_user)
+        url = reverse("get-request-conversation", kwargs={"request_id": 99999})
+        resp = api_client.get(url)
+        assert resp.status_code == status.HTTP_404_NOT_FOUND

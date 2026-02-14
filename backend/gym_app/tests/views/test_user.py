@@ -420,3 +420,134 @@ class TestUserViewsCoverage:
             {'signature_image': sig_img, 'method': 'INVALID'},
             format='multipart')
         assert r.status_code == 400
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py (misplaced – user profile domain)
+# ======================================================================
+
+@pytest.fixture
+def _simple_user():
+    """Simple user without extra profile fields, for profile update tests."""
+    return User.objects.create_user(
+        email='profile_move@example.com',
+        password='testpassword',
+        first_name='Test',
+        last_name='User'
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestUpdateProfile:
+
+    @pytest.mark.contract
+    def test_update_profile_success(self, api_client, _simple_user):
+        """Test successfully updating a user's own profile"""
+        api_client.force_authenticate(user=_simple_user)
+
+        test_photo = SimpleUploadedFile(
+            "profile.jpg",
+            b"file_content",
+            content_type="image/jpeg"
+        )
+
+        data = {
+            'first_name': 'Updated',
+            'last_name': 'Name',
+            'contact': '9876543210',
+            'email': _simple_user.email,
+        }
+
+        url = reverse('update_profile', kwargs={'pk': _simple_user.id})
+        response = api_client.put(url, data, format='json')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['message'] == 'Profile updated successfully'
+
+        _simple_user.refresh_from_db()
+        assert _simple_user.first_name == 'Updated'
+        assert _simple_user.last_name == 'Name'
+        assert _simple_user.contact == '9876543210'
+
+        assert not _simple_user.is_profile_completed
+
+    @patch('gym_app.views.user.default_storage.save')
+    @pytest.mark.contract
+    def test_update_profile_with_photo(self, mock_save, api_client, _simple_user):
+        """Test updating profile with photo (multipart)"""
+        buf = BytesIO()
+        Image.new('RGB', (100, 100), color='red').save(buf, format='JPEG')
+        buf.seek(0)
+        test_photo = SimpleUploadedFile(
+            "profile.jpg",
+            buf.read(),
+            content_type="image/jpeg"
+        )
+
+        api_client.force_authenticate(user=_simple_user)
+        mock_save.return_value = 'profile_photos/saved_profile.jpg'
+
+        data = {
+            'first_name': 'Updated',
+            'last_name': 'Photo',
+            'contact': '1234567890',
+            'email': _simple_user.email,
+            'photo_profile': test_photo,
+        }
+
+        url = reverse('update_profile', kwargs={'pk': _simple_user.id})
+        response = api_client.put(url, data, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        _simple_user.refresh_from_db()
+        assert 'profile_photos' in str(_simple_user.photo_profile)
+        assert mock_save.call_count >= 1
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch36 (user views domain)
+# ======================================================================
+
+@pytest.fixture
+def _b36_lawyer():
+    return User.objects.create_user(
+        email="law36_moved@t.com", password="pw", role="lawyer",
+        first_name="L", last_name="W",
+    )
+
+
+@pytest.mark.django_db
+class TestUserViewsBatch36:
+
+    def test_user_list(self, api_client, _b36_lawyer):
+        api_client.force_authenticate(user=_b36_lawyer)
+        resp = api_client.get(reverse("user-list"))
+        assert resp.status_code == 200
+
+    def test_update_profile(self, api_client, _b36_lawyer):
+        api_client.force_authenticate(user=_b36_lawyer)
+        resp = api_client.put(
+            reverse("update_profile", args=[_b36_lawyer.id]),
+            {"first_name": "Updated", "last_name": "Name"},
+            format="json",
+        )
+        assert resp.status_code == 200
+        _b36_lawyer.refresh_from_db()
+        assert _b36_lawyer.first_name == "Updated"
+
+    def test_get_user_activities(self, api_client, _b36_lawyer):
+        ActivityFeed.objects.create(user=_b36_lawyer, action_type="login", description="Logged in")
+        api_client.force_authenticate(user=_b36_lawyer)
+        resp = api_client.get(reverse("user-activities"))
+        assert resp.status_code == 200
+
+    def test_create_activity(self, api_client, _b36_lawyer):
+        api_client.force_authenticate(user=_b36_lawyer)
+        resp = api_client.post(
+            reverse("create-activity"),
+            {"action_type": "create", "description": "Test activity"},
+            format="json",
+        )
+        assert resp.status_code == 201
+        assert ActivityFeed.objects.filter(user=_b36_lawyer, action_type="create").exists()

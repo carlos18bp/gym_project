@@ -545,3 +545,17 @@ def test_recent_document_unique_together(user_factory, document_factory):
             RecentDocument.objects.create(user=user, document=document)
 
 
+# ======================================================================
+# Tests moved from test_user_auth.py – batch36 (model edge case)
+# ======================================================================
+
+@pytest.mark.django_db
+class TestDocumentVariableStr:
+
+    def test_variable_str(self, user):
+        doc = DynamicDocument.objects.create(title="V36", content="<p>x</p>", state="Draft", created_by=user)
+        v = DocumentVariable.objects.create(document=doc, name_en="full_name", name_es="Nombre", field_type="input", value="John")
+        s = str(v)
+        assert s  # verify no crash and non-empty string
+
+

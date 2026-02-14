@@ -225,3 +225,21 @@ class TestLegalUpdateRest:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         legal_update_active.refresh_from_db()
         assert legal_update_active.is_active is False
+
+
+# ======================================================================
+# Tests moved from test_user_auth.py – batch36 (legal update domain)
+# ======================================================================
+
+@pytest.mark.django_db
+class TestLegalUpdatesViewsBatch36:
+
+    def test_list_legal_updates(self, api_client, user):
+        LegalUpdate.objects.create(title="LU36", content="Body", is_active=True)
+        api_client.force_authenticate(user=user)
+        resp = api_client.get(reverse("legal-updates-list"))
+        assert resp.status_code == 200
+
+    def test_list_legal_updates_unauthenticated(self, api_client):
+        resp = api_client.get(reverse("legal-updates-list"))
+        assert resp.status_code in (401, 403)

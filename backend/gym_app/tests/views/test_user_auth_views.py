@@ -153,6 +153,46 @@ class TestSignOn:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Invalid or expired verification code"
 
+    def test_sign_on_expired_passcode(self, api_client, monkeypatch):
+        """T12: sign_on rejects expired verification code (>30 min)."""
+        _mock_captcha_success(monkeypatch)
+        code = EmailVerificationCode.objects.create(email="expired@example.com", code="777888")
+        from django.utils import timezone
+        from datetime import timedelta
+        EmailVerificationCode.objects.filter(pk=code.pk).update(
+            created_at=timezone.now() - timedelta(minutes=31)
+        )
+        url = reverse("sign_on")
+        data = {
+            "email": "expired@example.com",
+            "password": "SecurePass123!",
+            "first_name": "Expired",
+            "last_name": "Code",
+            "passcode": "777888",
+            "captcha_token": "tok",
+        }
+        response = api_client.post(url, data, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["error"] == "Invalid or expired verification code"
+        assert not User.objects.filter(email="expired@example.com").exists()
+
+    def test_sign_on_email_with_whitespace(self, api_client, monkeypatch):
+        """T6: sign_on normalizes email with leading/trailing whitespace."""
+        _mock_captcha_success(monkeypatch)
+        EmailVerificationCode.objects.create(email="spaces@example.com", code="111222")
+        url = reverse("sign_on")
+        data = {
+            "email": "  spaces@example.com  ",
+            "password": "SecurePass123!",
+            "first_name": "Space",
+            "last_name": "User",
+            "passcode": "111222",
+            "captcha_token": "tok",
+        }
+        response = api_client.post(url, data, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert User.objects.filter(email="spaces@example.com").exists()
+
 
 # =========================================================================
 # send_verification_code
@@ -280,6 +320,19 @@ class TestSignIn:
         response = api_client.post(
             url,
             {"email": user.email, "password": "testpassword", "captcha_token": "tok"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        assert "refresh" in response.data
+
+    def test_sign_in_email_with_whitespace(self, api_client, user, monkeypatch):
+        """T7: sign_in normalizes email with leading/trailing whitespace and finds user."""
+        _mock_captcha_success(monkeypatch)
+        url = reverse("sign_in")
+        response = api_client.post(
+            url,
+            {"email": "  " + user.email + "  ", "password": "testpassword", "captcha_token": "tok"},
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
@@ -788,62 +841,3 @@ class TestResetPasswordWeakPassword:
         assert code.used is False
 
 
-# =========================================================================
-# T16: verify_captcha utility tests
-# =========================================================================
-@pytest.mark.django_db
-class TestVerifyCaptchaUtility:
-    def test_missing_token(self):
-        """verify_captcha returns error when token is None."""
-        from gym_app.utils.captcha import verify_captcha
-        success, error_response = verify_captcha(None, "127.0.0.1")
-        assert success is False
-        assert error_response.status_code == status.HTTP_400_BAD_REQUEST
-        assert error_response.data["error"] == "Captcha verification is required"
-
-    def test_empty_token(self):
-        """verify_captcha returns error when token is empty string."""
-        from gym_app.utils.captcha import verify_captcha
-        success, error_response = verify_captcha("", "127.0.0.1")
-        assert success is False
-        assert error_response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_success(self, monkeypatch):
-        """verify_captcha returns (True, None) on success."""
-        from gym_app.utils.captcha import verify_captcha
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"success": True}
-        mock_resp.raise_for_status = MagicMock()
-        monkeypatch.setattr(
-            "gym_app.utils.captcha.requests.post", lambda *a, **kw: mock_resp
-        )
-        success, error_response = verify_captcha("valid_token", "127.0.0.1")
-        assert success is True
-        assert error_response is None
-
-    def test_google_rejects(self, monkeypatch):
-        """verify_captcha returns error when Google rejects token."""
-        from gym_app.utils.captcha import verify_captcha
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"success": False}
-        mock_resp.raise_for_status = MagicMock()
-        monkeypatch.setattr(
-            "gym_app.utils.captcha.requests.post", lambda *a, **kw: mock_resp
-        )
-        success, error_response = verify_captcha("bad_token", "127.0.0.1")
-        assert success is False
-        assert error_response.status_code == status.HTTP_400_BAD_REQUEST
-        assert error_response.data["error"] == "Captcha verification failed"
-
-    def test_timeout(self, monkeypatch):
-        """verify_captcha returns 500 on request timeout."""
-        import requests as req_lib
-        from gym_app.utils.captcha import verify_captcha
-        monkeypatch.setattr(
-            "gym_app.utils.captcha.requests.post",
-            MagicMock(side_effect=req_lib.RequestException("timeout")),
-        )
-        success, error_response = verify_captcha("tok", "127.0.0.1")
-        assert success is False
-        assert error_response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert error_response.data["error"] == "Error verifying captcha"
