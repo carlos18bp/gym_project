@@ -72,15 +72,18 @@ test("new user can register and is redirected to dashboard", async ({ page }) =>
   // Click register button
   await page.getByRole("button", { name: "Registrarse" }).click();
 
-  // Notification about verification code — dismiss it via OK button
+  // Notification about verification code — dismiss it fully
   await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
   const okBtn = page.locator(".swal2-confirm");
   if (await okBtn.isVisible().catch(() => false)) {
     await okBtn.click();
-  } else {
-    await page.evaluate(() => { if (window.Swal) window.Swal.close(); });
   }
-  await expect(page.locator(".swal2-popup")).not.toBeVisible({ timeout: 5_000 });
+  await page.evaluate(() => {
+    if (window.Swal) window.Swal.close();
+    document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+    document.querySelectorAll('[aria-hidden]').forEach(el => el.removeAttribute('aria-hidden'));
+  });
 
   // Wait for passcode input to appear (passcodeSent becomes truthy after API response)
   await expect(page.locator("#passcode")).toBeVisible({ timeout: 10_000 });

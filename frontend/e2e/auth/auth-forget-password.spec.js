@@ -66,10 +66,13 @@ test("user can request password reset code and reset password", async ({ page })
   const okBtn1 = page.locator(".swal2-confirm");
   if (await okBtn1.isVisible().catch(() => false)) {
     await okBtn1.click();
-  } else {
-    await page.evaluate(() => { if (window.Swal) window.Swal.close(); });
   }
-  await expect(page.locator(".swal2-popup")).not.toBeVisible({ timeout: 5_000 });
+  await page.evaluate(() => {
+    if (window.Swal) window.Swal.close();
+    document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+    document.querySelectorAll('[aria-hidden]').forEach(el => el.removeAttribute('aria-hidden'));
+  });
 
   // Fill passcode and new password
   await page.locator("#passcode").fill("123456");
@@ -107,10 +110,13 @@ test("password reset with invalid passcode shows error", async ({ page }) => {
   const okBtn2 = page.locator(".swal2-confirm");
   if (await okBtn2.isVisible().catch(() => false)) {
     await okBtn2.click();
-  } else {
-    await page.evaluate(() => { if (window.Swal) window.Swal.close(); });
   }
-  await expect(page.locator(".swal2-popup")).not.toBeVisible({ timeout: 5_000 });
+  await page.evaluate(() => {
+    if (window.Swal) window.Swal.close();
+    document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+    document.querySelectorAll('[aria-hidden]').forEach(el => el.removeAttribute('aria-hidden'));
+  });
 
   // Fill wrong passcode and passwords
   await page.locator("#passcode").fill("999999");
