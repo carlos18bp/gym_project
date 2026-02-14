@@ -3,13 +3,6 @@ from unittest.mock import mock_open, patch
 from django.test import RequestFactory
 
 from gym_app.views.spa import SPAView
-
-
-@pytest.fixture
-def rf():
-    return RequestFactory()
-
-
 def test_spa_view_serves_index_html_when_found(rf):
     request = rf.get('/some/route')
 

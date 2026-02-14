@@ -12,13 +12,6 @@ from gym_app.models import (
     LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
 )
 from django.core.files.uploadedfile import SimpleUploadedFile
-
-
-@pytest.fixture
-def api_client():
-    return APIClient()
-
-
 @pytest.fixture
 def admin_user():
     """Create an admin user for API authentication"""

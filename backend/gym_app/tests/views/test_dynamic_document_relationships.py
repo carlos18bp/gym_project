@@ -8,14 +8,6 @@ from gym_app.models import DynamicDocument, DocumentRelationship
 
 
 User = get_user_model()
-
-
-@pytest.fixture
-@pytest.mark.django_db
-def api_client():
-    return APIClient()
-
-
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():

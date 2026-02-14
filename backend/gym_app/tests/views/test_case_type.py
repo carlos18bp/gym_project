@@ -5,11 +5,6 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from gym_app.models import Case, User
-
-@pytest.fixture
-def api_client():
-    return APIClient()
-
 @pytest.fixture
 def user():
     return User.objects.create_user(

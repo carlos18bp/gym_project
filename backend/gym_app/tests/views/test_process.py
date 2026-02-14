@@ -5,11 +5,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIClient
 from gym_app.models import User, Process, Stage, Case, CaseFile, RecentProcess
-
-@pytest.fixture
-def api_client():
-    return APIClient()
-
 @pytest.fixture
 def client_user():
     return User.objects.create_user(

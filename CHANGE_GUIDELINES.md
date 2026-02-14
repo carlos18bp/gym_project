@@ -21,13 +21,25 @@ This document describes the standard steps to follow whenever a change is made t
 
 3. **Add or update automated tests**
 
-   - For any new behavior, add tests that cover:
-     - Happy path.
-     - Relevant edge cases and error conditions.
-   - When changing existing behavior:
-     - Update tests so they describe the **intended** new behavior.
-     - Avoid weakening assertions unless that is a deliberate design choice.
-   - Run the full relevant test suite (backend and/or frontend) and ensure it passes before merging.
+  - Every change must be covered by automated tests. No exceptions.
+  Any modification to backend or frontend code must include new tests or updates to existing  tests that validate the intended behavior and protect against regressions.
+  - Choose the right test level (at least one must apply):
+    - Backend: unit tests and/or integration tests for business logic, services, serializers, views, permissions, tasks, etc.
+    - Frontend: unit/component tests for UI behavior, state, validations, and rendering logic.
+    - E2E / Flow tests: for user journeys, multi-step workflows, and behavior spanning FE+BE.
+  - Minimum expectations for coverage:
+    - Happy path.
+    - Relevant edge cases.
+    - Error conditions (validation errors, permission failures, API failures, etc.).
+  - If tests are hard to write:
+    - Treat it as a design problem. Refactor the code to make it testable.
+    - If a change genuinely cannot be tested automatically, it must be explicitly justified in the PR description, including:
+      - Why it can’t be tested,
+      - What manual verification was performed,
+      - What follow-up ticket will add automated coverage.
+  - Before merging:
+    - Run the relevant backend/frontend suites (and E2E when applicable).
+    - Ensure all tests pass and do not reduce coverage unintentionally.
 
 4. **Verify and maintain test data**
 
