@@ -229,7 +229,7 @@ const userForm = reactive({
 });
 
 const passcode = ref("");
-const passcodeSent = ref("");
+const passcodeSent = ref(false);
 const emailUsedToSentPasscode = ref("");
 
 onMounted(async () => {
@@ -253,23 +253,24 @@ const sendVerificationPasscode = async () => {
     return;
   }
   
-  showNotification(
-    "Se ha enviado un código de acceso a tu correo electrónico",
-    "info"
-  );
-  
   try {
     emailUsedToSentPasscode.value = userForm.email;
-    const response = await axios.post("/api/sign_on/send_verification_code/", {
+    await axios.post("/api/sign_on/send_verification_code/", {
       email: userForm.email,
       captcha_token: captchaToken.value,
     });
 
-    passcodeSent.value = response.data.passcode;
+    passcodeSent.value = true;
+    showNotification(
+      "Se ha enviado un código de acceso a tu correo electrónico",
+      "info"
+    );
   } catch (error) {
     console.error("Error during verification code process:", error);
     if (error.response && error.response.status === 409) {
       showNotification("El correo electrónico ya está registrado", "error");
+    } else if (error.response && error.response.data && error.response.data.error) {
+      showNotification(error.response.data.error, "error");
     } else {
       showNotification("Error al enviar el código", "error");
     }
@@ -289,30 +290,37 @@ const signOnUser = async () => {
     showNotification("Por favor verifica que no eres un robot", "warning");
     return;
   }
+  if (!passcode.value) {
+    showNotification("El código de verificación es obligatorio", "warning");
+    return;
+  }
 
-  if (passcodeSent.value == passcode.value) {
-    try {
-      const response = await axios.post("/api/sign_on/", {
-        email: emailUsedToSentPasscode.value,
-        password: userForm.password,
-        first_name: userForm.firstName,
-        last_name: userForm.lastName,
-        passcode: passcode.value,
-        captcha_token: captchaToken.value,
-      });
-      authStore.login(response.data);
+  try {
+    const response = await axios.post("/api/sign_on/", {
+      email: emailUsedToSentPasscode.value,
+      password: userForm.password,
+      first_name: userForm.firstName,
+      last_name: userForm.lastName,
+      passcode: passcode.value,
+      captcha_token: captchaToken.value,
+    });
+    authStore.login(response.data);
 
-      showNotification("¡Registro exitoso!", "success");
-      
-      // Redirect to checkout with the plan
-      const plan = route.query.plan || 'basico';
-      router.push({ name: 'checkout', params: { plan } });
-    } catch (error) {
-      console.error("Error during sign on process:", error);
+    showNotification("¡Registro exitoso!", "success");
+    
+    // Redirect to checkout with the plan
+    const plan = route.query.plan || 'basico';
+    router.push({ name: 'checkout', params: { plan } });
+  } catch (error) {
+    console.error("Error during sign on process:", error);
+    if (error.response && error.response.data && error.response.data.error) {
+      const errMsg = Array.isArray(error.response.data.error)
+        ? error.response.data.error.join(" ")
+        : error.response.data.error;
+      showNotification(errMsg, "error");
+    } else {
       showNotification("Error en el registro", "error");
     }
-  } else {
-    showNotification("El código no es válido", "warning");
   }
 };
 

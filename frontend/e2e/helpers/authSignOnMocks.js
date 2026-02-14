@@ -70,7 +70,7 @@ export async function installAuthSignOnApiMocks(
         return {
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ passcode }),
+          body: JSON.stringify({ message: "Verification code sent successfully." }),
         };
       }
     }

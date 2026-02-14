@@ -228,7 +228,7 @@ const userForm = reactive({
 });
 
 const passcode = ref("");
-const passcodeSent = ref("");
+const passcodeSent = ref(false);
 const emailUsedToSentPasscode = ref("");
 
 onMounted(async () => {
@@ -266,22 +266,24 @@ const sendVerificationPasscode = async () => {
     showNotification("Por favor verifica que no eres un robot", "warning");
     return;
   }
-  showNotification(
-    "Se ha enviado un código de acceso a tu correo electrónico",
-    "info"
-  );
   try {
     emailUsedToSentPasscode.value = userForm.email;
-    const response = await axios.post("/api/sign_on/send_verification_code/", {
+    await axios.post("/api/sign_on/send_verification_code/", {
       email: userForm.email,
       captcha_token: captchaToken.value,
     });
 
-    passcodeSent.value = response.data.passcode;
+    passcodeSent.value = true;
+    showNotification(
+      "Se ha enviado un código de acceso a tu correo electrónico",
+      "info"
+    );
   } catch (error) {
     console.error("Error during verification code process:", error);
     if (error.response && error.response.status === 409) {
       showNotification("El correo electrónico ya está registrado", "error");
+    } else if (error.response && error.response.data && error.response.data.error) {
+      showNotification(error.response.data.error, "error");
     } else {
       showNotification("¡Error al enviar el código!", "error");
     }
@@ -304,8 +306,12 @@ const signOnUser = async () => {
     showNotification("Por favor verifica que no eres un robot", "warning");
     return;
   }
+  if (!passcode.value) {
+    showNotification("El código de verificación es obligatorio", "warning");
+    return;
+  }
 
-  if (passcodeSent.value == passcode.value) {
+  try {
     const response = await axios.post("/api/sign_on/", {
       email: emailUsedToSentPasscode.value,
       password: userForm.password,
@@ -314,23 +320,26 @@ const signOnUser = async () => {
       passcode: passcode.value,
       captcha_token: captchaToken.value,
     });
-    authStore.login(response.data); // Log in the user
+    authStore.login(response.data);
 
-    showNotification("¡Inicio de sesión exitoso!", "success");
+    showNotification("¡Registro exitoso!", "success");
     router.push({
       name: "dashboard",
       params: {
         user_id: "",
         display: "",
       },
-    }); // Redirect to dashboard
-  } else {
-    showNotification("El código no es válido", "warning");
-  }
-  try {
+    });
   } catch (error) {
     console.error("Error during sign on process:", error);
-    showNotification("¡Fallo en el inicio de sesión!", "error");
+    if (error.response && error.response.data && error.response.data.error) {
+      const errMsg = Array.isArray(error.response.data.error)
+        ? error.response.data.error.join(" ")
+        : error.response.data.error;
+      showNotification(errMsg, "error");
+    } else {
+      showNotification("¡Fallo en el registro!", "error");
+    }
   }
 };
 
@@ -338,6 +347,14 @@ const signOnUser = async () => {
  * Check input fields to avoid empty data
  */
 const checkInputs = () => {
+  if (!userForm.firstName || !userForm.firstName.trim()) {
+    showNotification("El nombre es obligatorio", "warning");
+    return false;
+  }
+  if (!userForm.lastName || !userForm.lastName.trim()) {
+    showNotification("El apellido es obligatorio", "warning");
+    return false;
+  }
   if (!userForm.email) {
     showNotification("El correo electrónico es obligatorio", "warning");
     return false;

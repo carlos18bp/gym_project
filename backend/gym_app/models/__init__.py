@@ -1,6 +1,7 @@
 from .user import User, ActivityFeed, UserSignature
 from .process import Case, Stage, CaseFile, Process, RecentProcess
 from .password_code import PasswordCode
+from .email_verification_code import EmailVerificationCode
 from .legal_request import LegalRequest, LegalRequestFiles, LegalRequestType, LegalDiscipline, LegalRequestResponse
 from .corporate_request import CorporateRequest, CorporateRequestFiles, CorporateRequestType, CorporateRequestResponse
 from .organization import Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost
@@ -16,5 +17,6 @@ __all__ = [
     'Organization', 'OrganizationInvitation', 'OrganizationMembership', 'OrganizationPost',
     'LegalDocument', 'IntranetProfile', 'DynamicDocument', 'DocumentVariable', 'DocumentSignature', 'LegalUpdate', 'RecentDocument', 'RecentProcess',
     'Tag', 'DocumentVisibilityPermission', 'DocumentUsabilityPermission', 'DocumentFolder', 'DocumentRelationship',
-    'Subscription', 'PaymentHistory'
+    'Subscription', 'PaymentHistory',
+    'EmailVerificationCode'
 ]

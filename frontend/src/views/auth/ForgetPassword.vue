@@ -301,6 +301,7 @@ const handleResetPassword = async () => {
     await axios.post("/api/verify_passcode_and_reset_password/", {
       passcode: passcode.value,
       new_password: newPassword.value,
+      email: email.value,
       captcha_token: captchaToken.value,
     });
 

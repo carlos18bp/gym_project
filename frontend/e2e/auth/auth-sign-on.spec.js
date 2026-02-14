@@ -111,6 +111,8 @@ test("registration with mismatched passwords shows warning", async ({ page }) =>
 
   await page.goto("/sign_on");
 
+  await page.locator("#first_name").fill("Test");
+  await page.locator("#last_name").fill("User");
   await page.locator("#email").fill("newuser@example.com");
   await page.locator("#password").fill("SecurePass1!");
   await page.locator("#confirm_password").fill("DifferentPass!");
