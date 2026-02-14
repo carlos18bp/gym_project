@@ -162,6 +162,12 @@ DEFAULT_FROM_EMAIL = 'G&M Consultores Jurídicos <misfotoscmbp@gmail.com>'
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6Lc2AHgrAAAAAIflkJJNbK1c5Ts6pmY5uEQrFCZP')
 RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '6Lc2AHgrAAAAAJzeTQYbL02-PA3TXwS3QSxaTRqV')
 
+# Google OAuth Client ID (used to verify Google ID tokens server-side)
+GOOGLE_CLIENT_ID = os.getenv(
+    'GOOGLE_CLIENT_ID',
+    '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com',
+)
+
 # Wompi Payment Gateway Configuration
 WOMPI_ENVIRONMENT = os.getenv('WOMPI_ENVIRONMENT', 'test')
 

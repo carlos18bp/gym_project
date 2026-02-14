@@ -7,8 +7,6 @@ import { useAuthStore } from "@/stores/auth/auth";
 const mockRouterPush = jest.fn();
 const mockShowNotification = jest.fn();
 const mockFetchSiteKey = jest.fn();
-const mockDecodeCredential = jest.fn();
-
 let mockRoute;
 let pinia;
 
@@ -39,11 +37,6 @@ jest.mock("vue3-recaptcha2", () => ({
   default: { template: "<div />" },
 }));
 
-jest.mock("vue3-google-login", () => ({
-  __esModule: true,
-  decodeCredential: (...args) => mockDecodeCredential(...args),
-}));
-
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("SubscriptionSignIn.vue", () => {
@@ -53,12 +46,6 @@ describe("SubscriptionSignIn.vue", () => {
     jest.clearAllMocks();
     mockFetchSiteKey.mockResolvedValue("site-key");
     mockRoute = { params: {}, query: { plan: "cliente" } };
-    mockDecodeCredential.mockReturnValue({
-      email: "user@test.com",
-      given_name: "User",
-      family_name: "Test",
-      picture: "avatar",
-    });
   });
 
   test("submits credentials and redirects to checkout", async () => {
@@ -212,10 +199,7 @@ describe("SubscriptionSignIn.vue", () => {
     await wrapper.vm.$.setupState.handleLoginWithGoogle({ credential: "token" });
 
     expect(axios.post).toHaveBeenCalledWith("/api/google_login/", {
-      email: "user@test.com",
-      given_name: "User",
-      family_name: "Test",
-      picture: "avatar",
+      credential: "token",
     });
     expect(authStore.login).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith(

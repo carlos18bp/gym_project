@@ -212,90 +212,109 @@ def sign_in(request):
     return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
 
-from django.http import JsonResponse
 from urllib.request import urlopen
 from django.core.files.base import ContentFile
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 @api_view(['POST'])
 def google_login(request):
     """
-    Handle user login via Google data.
+    Handle user login via Google ID token verification.
 
-    This view processes POST requests containing user information from Google,
-    and uses it to authenticate the user. If the user does not exist, it creates a new one
-    with the provided information, then returns a JWT token.
+    This view processes POST requests containing a Google credential (ID token).
+    The token is verified server-side against Google's servers using the project's
+    GOOGLE_CLIENT_ID. User information (email, name, picture) is extracted from
+    the verified token payload — never trusted from the client directly.
 
     Args:
-        request (Request): The HTTP request object containing user data from Google.
+        request (Request): The HTTP request object containing the Google credential.
 
     Returns:
-        JsonResponse: A JsonResponse object with JWT tokens if authentication is successful,
-                      or an error message if authentication fails.
+        Response: A Response object with JWT tokens if authentication is successful,
+                  or an error message if authentication fails.
     """
-    if request.method == 'POST':
-        # Extract user data from the request body
-        email = request.data.get('email')
-        if email:
-            email = email.strip().lower()
-        given_name = request.data.get('given_name', '')  # Default to empty string if missing
-        family_name = request.data.get('family_name', '')  # Default to empty string if missing
-        picture_url = request.data.get('picture')  # Optional picture URL
+    credential = request.data.get('credential')
 
-        # Validate that the email is present
-        if not email:
-            return Response({'status': 'error', 'error_message': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not credential:
+        return Response(
+            {'status': 'error', 'error_message': 'Google credential is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-        try:
-            # Get or create the user based on the email
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults={
-                    'first_name': given_name,
-                    'last_name': family_name,
-                    'role': 'basic',
-                }
-            )
+    # Verify the Google ID token server-side
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        return Response(
+            {'status': 'error', 'error_message': 'Invalid Google token.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
 
-            if created:
-                # If the user was created, handle the optional profile picture
-                if picture_url:
-                    try:
-                        # Fetch image from the URL
-                        response = urlopen(picture_url, timeout=1)
-                        image_data = response.read()
+    # Extract verified user data from the token payload
+    email = idinfo.get('email', '').strip().lower()
+    given_name = idinfo.get('given_name', '')
+    family_name = idinfo.get('family_name', '')
+    picture_url = idinfo.get('picture')
 
-                        # Create a unique filename for the profile photo
-                        filename = f"profile_photos/{user.id}_profile.jpg"
+    if not email:
+        return Response(
+            {'status': 'error', 'error_message': 'Email not found in Google token.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-                        # Save the image data to the user's photo_profile field
-                        user.photo_profile.save(filename, ContentFile(image_data), save=True)
-                    except Exception as e:
-                        print(f"Error saving profile image: {e}")
-                else:
-                    # If no picture is provided, leave the field as null (frontend handles default image)
-                    user.photo_profile = None
-                    user.save()
+    try:
+        # Get or create the user based on the verified email
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'first_name': given_name,
+                'last_name': family_name,
+                'role': 'basic',
+            }
+        )
 
-            # Serialize the user data
-            serializer = UserSerializer(user)
+        if created:
+            # If the user was created, handle the optional profile picture
+            if picture_url:
+                try:
+                    # Fetch image from the URL
+                    response = urlopen(picture_url, timeout=1)
+                    image_data = response.read()
 
-            # Generate authentication token
-            tokens = generate_auth_tokens(user)
+                    # Create a unique filename for the profile photo
+                    filename = f"profile_photos/{user.id}_profile.jpg"
 
-            # Return the generated authentication tokens and user data
-            return Response({
-                'refresh': tokens['refresh'],
-                'access': tokens['access'],
-                'user': serializer.data,
-                'created': created
-            }, status=status.HTTP_200_OK)
+                    # Save the image data to the user's photo_profile field
+                    user.photo_profile.save(filename, ContentFile(image_data), save=True)
+                except Exception as e:
+                    print(f"Error saving profile image: {e}")
+            else:
+                # If no picture is provided, leave the field as null (frontend handles default image)
+                user.photo_profile = None
+                user.save()
 
-        except Exception as e:
-            # Handle unexpected exceptions
-            return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:  # pragma: no cover – @api_view(['POST']) rejects non-POST before entering view
-        # Handle invalid request methods
-        return Response({'status': 'error', 'error_message': 'Invalid request method.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        # Serialize the user data
+        serializer = UserSerializer(user)
+
+        # Generate authentication token
+        tokens = generate_auth_tokens(user)
+
+        # Return the generated authentication tokens and user data
+        return Response({
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
+            'user': serializer.data,
+            'created': created
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Handle unexpected exceptions
+        return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 from django.contrib.auth.models import update_last_login

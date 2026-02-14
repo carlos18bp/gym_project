@@ -145,7 +145,6 @@ import { loginWithGoogle } from "@/shared/login_with_google";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
-import { decodeCredential } from "vue3-google-login";
 
 const router = useRouter();
 const route = useRoute();
@@ -239,13 +238,8 @@ const signInUser = async () => {
 const handleLoginWithGoogle = async (response) => {
   // Custom handler that redirects to checkout instead of dashboard
   try {
-    const decodedCredential = decodeCredential(response.credential);
-
     const res = await axios.post("/api/google_login/", {
-      email: decodedCredential.email,
-      given_name: decodedCredential.given_name,
-      family_name: decodedCredential.family_name,
-      picture: decodedCredential.picture,
+      credential: response.credential,
     });
     
     authStore.login(res.data);

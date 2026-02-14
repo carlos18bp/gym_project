@@ -1,6 +1,5 @@
 const mockAxiosPost = jest.fn();
 const mockShowNotification = jest.fn();
-const mockDecodeCredential = jest.fn();
 
 jest.mock("axios", () => ({
   __esModule: true,
@@ -15,22 +14,11 @@ jest.mock("@/shared/notification_message", () => ({
   showNotification: (...args) => mockShowNotification(...args),
 }));
 
-jest.mock("vue3-google-login", () => ({
-  __esModule: true,
-  decodeCredential: (...args) => mockDecodeCredential(...args),
-}));
-
 import { loginWithGoogle } from "@/shared/login_with_google";
 
 describe("login_with_google.js", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDecodeCredential.mockReturnValue({
-      email: "user@test.com",
-      given_name: "User",
-      family_name: "Test",
-      picture: "avatar",
-    });
   });
 
   test("logs in and notifies when user is created", async () => {
@@ -41,12 +29,8 @@ describe("login_with_google.js", () => {
 
     await loginWithGoogle({ credential: "token" }, router, authStore);
 
-    expect(mockDecodeCredential).toHaveBeenCalledWith("token");
     expect(mockAxiosPost).toHaveBeenCalledWith("/api/google_login/", {
-      email: "user@test.com",
-      given_name: "User",
-      family_name: "Test",
-      picture: "avatar",
+      credential: "token",
     });
     expect(authStore.login).toHaveBeenCalledWith({ token: "t", created: true });
     expect(mockShowNotification).toHaveBeenCalledWith("¡Registro exitoso!", "success");

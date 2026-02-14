@@ -389,59 +389,78 @@ class TestSignInGoogleUser:
 
 
 # =========================================================================
-# google_login
+# google_login (server-side ID token verification)
 # =========================================================================
+
+def _mock_google_token(monkeypatch, payload):
+    """Helper: mock google_id_token.verify_oauth2_token to return *payload*."""
+    monkeypatch.setattr(
+        "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+        lambda *a, **kw: payload,
+    )
+
+
 @pytest.mark.django_db
 class TestGoogleLogin:
-    def test_missing_email(self, api_client):
+    def test_missing_credential(self, api_client):
         url = reverse("google_login")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["error_message"] == "Google credential is required."
 
-    def test_create_new_user(self, api_client):
-        url = reverse("google_login")
-        response = api_client.post(
-            url,
-            {"email": "google@example.com", "given_name": "G", "family_name": "U"},
-            format="json",
+    def test_invalid_token(self, api_client, monkeypatch):
+        """Invalid/expired Google token returns 401."""
+        monkeypatch.setattr(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            MagicMock(side_effect=ValueError("Invalid token")),
         )
+        url = reverse("google_login")
+        response = api_client.post(url, {"credential": "bad_token"}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data["error_message"] == "Invalid Google token."
+
+    def test_create_new_user(self, api_client, monkeypatch):
+        _mock_google_token(monkeypatch, {
+            "email": "google@example.com",
+            "given_name": "G",
+            "family_name": "U",
+        })
+        url = reverse("google_login")
+        response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is True
         assert "access" in response.data
         assert User.objects.filter(email="google@example.com").exists()
 
-    def test_existing_user(self, api_client, user):
+    def test_existing_user(self, api_client, user, monkeypatch):
+        _mock_google_token(monkeypatch, {"email": user.email})
         url = reverse("google_login")
-        response = api_client.post(
-            url, {"email": user.email}, format="json"
-        )
+        response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is False
 
-    def test_create_user_with_picture_error(self, api_client):
+    def test_create_user_with_picture_error(self, api_client, monkeypatch):
         """Profile picture fetch failure should not break user creation."""
+        _mock_google_token(monkeypatch, {
+            "email": "picfail@example.com",
+            "given_name": "Pic",
+            "family_name": "Fail",
+            "picture": "http://example.com/pic.jpg",
+        })
         url = reverse("google_login")
         with patch("gym_app.views.userAuth.urlopen", side_effect=Exception("fail")):
-            response = api_client.post(
-                url,
-                {
-                    "email": "picfail@example.com",
-                    "given_name": "Pic",
-                    "family_name": "Fail",
-                    "picture": "http://example.com/pic.jpg",
-                },
-                format="json",
-            )
+            response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is True
 
-    def test_create_user_without_picture(self, api_client):
+    def test_create_user_without_picture(self, api_client, monkeypatch):
+        _mock_google_token(monkeypatch, {
+            "email": "nopic@example.com",
+            "given_name": "No",
+            "family_name": "Pic",
+        })
         url = reverse("google_login")
-        response = api_client.post(
-            url,
-            {"email": "nopic@example.com", "given_name": "No", "family_name": "Pic"},
-            format="json",
-        )
+        response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         u = User.objects.get(email="nopic@example.com")
         assert u.photo_profile == "" or u.photo_profile is None

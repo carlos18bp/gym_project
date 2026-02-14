@@ -385,57 +385,50 @@ class TestSignIn:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestGoogleLogin:
-    
-    @patch('gym_app.views.userAuth.urlopen')
+
     @pytest.mark.contract
-    def test_google_login_existing_user(self, mock_urlopen, api_client, existing_user):
+    def test_google_login_existing_user(self, api_client, existing_user, monkeypatch):
         """Test Google login with an existing user"""
-        # Prepare data
-        data = {
-            'email': existing_user.email,
-            'given_name': 'Google',
-            'family_name': 'User'
-        }
-        
-        # Make the request
+        monkeypatch.setattr(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            lambda *a, **kw: {"email": existing_user.email, "given_name": "Google", "family_name": "User"},
+        )
+
         url = reverse('google_login')
-        response = api_client.post(url, data, format='json')
-        
-        # Assert the response
+        response = api_client.post(url, {'credential': 'valid_token'}, format='json')
+
         assert response.status_code == status.HTTP_200_OK
         assert 'refresh' in response.data
         assert 'access' in response.data
         assert 'user' in response.data
         assert response.data['user']['email'] == existing_user.email
-    
+
     @patch('gym_app.views.userAuth.urlopen')
     @pytest.mark.contract
-    def test_google_login_new_user(self, mock_urlopen, api_client):
+    def test_google_login_new_user(self, mock_urlopen, api_client, monkeypatch):
         """Test Google login creating a new user"""
-        # Mock the urlopen response for the profile image
         mock_response = MagicMock()
         mock_response.read.return_value = b'fake_image_data'
         mock_urlopen.return_value = mock_response
-        
-        # Prepare data for a new user
-        data = {
-            'email': 'google.user@example.com',
-            'given_name': 'Google',
-            'family_name': 'User',
-            'picture': 'http://example.com/picture.jpg'
-        }
-        
-        # Make the request
+
+        monkeypatch.setattr(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            lambda *a, **kw: {
+                "email": "google.user@example.com",
+                "given_name": "Google",
+                "family_name": "User",
+                "picture": "http://example.com/picture.jpg",
+            },
+        )
+
         url = reverse('google_login')
-        response = api_client.post(url, data, format='json')
-        
-        # Assert the response
+        response = api_client.post(url, {'credential': 'valid_token'}, format='json')
+
         assert response.status_code == status.HTTP_200_OK
         assert 'refresh' in response.data
         assert 'access' in response.data
         assert 'user' in response.data
-        
-        # Verify new user was created
+
         assert User.objects.filter(email='google.user@example.com').exists()
         user = User.objects.get(email='google.user@example.com')
         assert user.first_name == 'Google'
@@ -443,33 +436,48 @@ class TestGoogleLogin:
 
     @patch('gym_app.views.userAuth.urlopen', side_effect=Exception('urlopen failed'))
     @pytest.mark.edge
-    def test_google_login_profile_image_exception(self, mock_urlopen, api_client):
+    def test_google_login_profile_image_exception(self, mock_urlopen, api_client, monkeypatch):
         """Test Google login when profile image urlopen fails"""
-        data = {
-            'email': 'google.error@example.com',
-            'given_name': 'Google',
-            'family_name': 'Error',
-            'picture': 'http://example.com/broken.jpg'
-        }
+        monkeypatch.setattr(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            lambda *a, **kw: {
+                "email": "google.error@example.com",
+                "given_name": "Google",
+                "family_name": "Error",
+                "picture": "http://example.com/broken.jpg",
+            },
+        )
 
         url = reverse('google_login')
-        response = api_client.post(url, data, format='json')
+        response = api_client.post(url, {'credential': 'valid_token'}, format='json')
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['created'] is True
         assert User.objects.filter(email='google.error@example.com').exists()
         mock_urlopen.assert_called_once()
-    
+
     @pytest.mark.edge
-    def test_google_login_no_email(self, api_client):
-        """Test Google login without providing email"""
-        # Make the request with missing email
+    def test_google_login_no_credential(self, api_client):
+        """Test Google login without providing credential"""
         url = reverse('google_login')
         response = api_client.post(url, {'given_name': 'Test'}, format='json')
-        
-        # Assert the response
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'error' in response.data['status']
+        assert response.data['error_message'] == 'Google credential is required.'
+
+    @pytest.mark.edge
+    def test_google_login_invalid_token(self, api_client, monkeypatch):
+        """Test Google login with invalid/tampered token returns 401"""
+        monkeypatch.setattr(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            MagicMock(side_effect=ValueError("Invalid token")),
+        )
+
+        url = reverse('google_login')
+        response = api_client.post(url, {'credential': 'tampered_token'}, format='json')
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data['error_message'] == 'Invalid Google token.'
 
 @pytest.mark.django_db
 @pytest.mark.integration
