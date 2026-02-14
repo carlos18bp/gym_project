@@ -164,6 +164,7 @@ export default defineConfig({
     // Coloca los archivos generados físicamente en ../backend/static/frontend
     // (ojo: es una ruta relativa a donde está tu vite.config.js)
     outDir: '../backend/static/frontend',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
@@ -171,12 +172,12 @@ export default defineConfig({
             return 'img/[name][extname]';
           }
           if (/\.css$/.test(assetInfo.name)) {
-            return 'css/[name][extname]';
+            return 'css/[name]-[hash][extname]';
           }
-          return 'assets/[name][extname]';
+          return 'assets/[name]-[hash][extname]';
         },
-        entryFileNames: 'js/[name].js',
-        chunkFileNames: 'js/[name].js',
+        entryFileNames: 'js/[name]-[hash].js',
+        chunkFileNames: 'js/[name]-[hash].js',
       },
     },
   },

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node -r ./suppress-warnings.cjs node_modules/.bin/vite",
-    "build": "node -r ./suppress-warnings.cjs node_modules/.bin/vite build",
+    "build": "node -r ./suppress-warnings.cjs node_modules/.bin/vite build && node scripts/generate-django-template.cjs",
     "preview": "node -r ./suppress-warnings.cjs node_modules/.bin/vite preview",
     "test": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs",
     "test:coverage": "node -r ./suppress-warnings.cjs node_modules/.bin/jest --config jest.config.cjs --coverage",
