@@ -232,7 +232,7 @@ def lawyer():
 
 
 @pytest.mark.django_db
-class TestIntranetGymCoverage:
+class TestIntranetGymRegressionScenarios:
 
     def test_list_docs_no_intranet_profile(self, api_client, lawyer):
         """Lines 28-32: no IntranetProfile → profile_data is None."""

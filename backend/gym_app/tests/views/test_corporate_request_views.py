@@ -1113,7 +1113,7 @@ def crc_corp_request(client_u, corp_client, org, crc_req_type):
 
 
 @pytest.mark.django_db
-class TestCorporateRequestCoverage:
+class TestCorporateRequestRegressionScenarios:
 
     # --- Line 31: require_client_only blocks lawyer ---
     def test_client_only_blocks_lawyer(self, api_client, lawyer):
@@ -1315,7 +1315,7 @@ class TestCorporateRequestCoverage:
 # ======================================================================
 
 @pytest.mark.django_db
-class TestCorporateRequestViewsBatch14:
+class TestCorporateRequestViewsAdditionalScenarios:
 
     def test_dashboard_stats(self, api_client, corporate_client, organization):
         """Lines covering corporate_get_dashboard_stats."""

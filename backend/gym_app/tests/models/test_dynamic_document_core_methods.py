@@ -1,6 +1,7 @@
 import pytest
 from datetime import timedelta
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from gym_app.models import (

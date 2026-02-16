@@ -356,7 +356,7 @@ def client_u():
 
 
 @pytest.mark.django_db
-class TestUserViewsCoverage:
+class TestUserViewsRegressionScenarios:
 
     def test_update_profile_with_photo(self, api_client, client_u):
         """Lines 60-64: profile update with photo_profile file."""
@@ -518,7 +518,7 @@ def _b36_lawyer():
 
 
 @pytest.mark.django_db
-class TestUserViewsBatch36:
+class TestUserViewsAdditionalScenarios:
 
     def test_user_list(self, api_client, _b36_lawyer):
         api_client.force_authenticate(user=_b36_lawyer)

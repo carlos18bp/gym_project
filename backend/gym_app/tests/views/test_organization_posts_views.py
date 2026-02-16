@@ -494,23 +494,23 @@ from gym_app.models import Organization, OrganizationPost
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def _b17_lawyer_user():
     return User.objects.create_user(email="law_b17@t.com", password="pw", role="lawyer", first_name="L", last_name="Y")
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def _b17_client_user():
     return User.objects.create_user(email="cli_b17@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
 @pytest.mark.django_db
-def corp_user():
+def _b17_corp_user():
     return User.objects.create_user(email="corp_b17@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Cl")
 
 @pytest.fixture
 @pytest.mark.django_db
-def organization(corp_user):
-    return Organization.objects.create(title="OrgB17", corporate_client=corp_user, is_active=True)
+def _b17_organization(_b17_corp_user):
+    return Organization.objects.create(title="OrgB17", corporate_client=_b17_corp_user, is_active=True)
 
 # === 1. validate_file_security ===
 @pytest.mark.django_db
@@ -583,44 +583,44 @@ class TestGyMAdminSite:
 # === 4. org posts CRUD ===
 @pytest.mark.django_db
 class TestOrgPostsCRUD:
-    def test_get_detail(self, api_client, corp_user, organization):
-        p = OrganizationPost.objects.create(organization=organization, author=corp_user, title="D", content="C", is_active=True)
-        api_client.force_authenticate(user=corp_user)
-        url = reverse("get-organization-post-detail", kwargs={"organization_id": organization.id, "post_id": p.id})
+    def test_get_detail(self, api_client, _b17_corp_user, _b17_organization):
+        p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="D", content="C", is_active=True)
+        api_client.force_authenticate(user=_b17_corp_user)
+        url = reverse("get-organization-post-detail", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
         assert api_client.get(url).status_code == status.HTTP_200_OK
 
-    def test_update(self, api_client, corp_user, organization):
-        p = OrganizationPost.objects.create(organization=organization, author=corp_user, title="U", content="C", is_active=True)
-        api_client.force_authenticate(user=corp_user)
-        url = reverse("update-organization-post", kwargs={"organization_id": organization.id, "post_id": p.id})
+    def test_update(self, api_client, _b17_corp_user, _b17_organization):
+        p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="U", content="C", is_active=True)
+        api_client.force_authenticate(user=_b17_corp_user)
+        url = reverse("update-organization-post", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
         resp = api_client.put(url, {"title": "Updated"}, format="json")
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_delete(self, api_client, corp_user, organization):
-        p = OrganizationPost.objects.create(organization=organization, author=corp_user, title="X", content="C", is_active=True)
-        api_client.force_authenticate(user=corp_user)
-        url = reverse("delete-organization-post", kwargs={"organization_id": organization.id, "post_id": p.id})
+    def test_delete(self, api_client, _b17_corp_user, _b17_organization):
+        p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="X", content="C", is_active=True)
+        api_client.force_authenticate(user=_b17_corp_user)
+        url = reverse("delete-organization-post", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
         assert api_client.delete(url).status_code == status.HTTP_200_OK
 
 # === 5. reports user_id filters ===
 @pytest.mark.django_db
 class TestReportsUserFilters:
-    def test_processes_by_lawyer_with_user_id(self, api_client, lawyer_user):
-        api_client.force_authenticate(user=lawyer_user)
+    def test_processes_by_lawyer_with_user_id(self, api_client, _b17_lawyer_user):
+        api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
-        resp = api_client.post(url, {"report_type": "processes_by_lawyer", "user_id": lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
+        resp = api_client.post(url, {"report_type": "processes_by_lawyer", "user_id": _b17_lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
         assert resp.status_code in (200, 400)
 
-    def test_processes_by_client_with_user_id(self, api_client, lawyer_user, client_user):
-        api_client.force_authenticate(user=lawyer_user)
+    def test_processes_by_client_with_user_id(self, api_client, _b17_lawyer_user, _b17_client_user):
+        api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
-        resp = api_client.post(url, {"report_type": "processes_by_client", "user_id": client_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
+        resp = api_client.post(url, {"report_type": "processes_by_client", "user_id": _b17_client_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
         assert resp.status_code in (200, 400)
 
-    def test_lawyers_workload_with_user_id(self, api_client, lawyer_user):
-        api_client.force_authenticate(user=lawyer_user)
+    def test_lawyers_workload_with_user_id(self, api_client, _b17_lawyer_user):
+        api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
-        resp = api_client.post(url, {"report_type": "lawyers_workload", "user_id": lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
+        resp = api_client.post(url, {"report_type": "lawyers_workload", "user_id": _b17_lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
         assert resp.status_code in (200, 400)
 
 # === 6. userAuth verify_passcode User.DoesNotExist ===
@@ -632,9 +632,18 @@ class TestVerifyPasscode:
         mock_post.return_value = mock_resp
         c = APIClient()
         url = reverse("verify_passcode_and_reset_password")
-        resp = c.post(url, {"passcode": "000000", "new_password": "newpw", "captcha_token": "tok"}, format="json")
+        resp = c.post(
+            url,
+            {
+                "passcode": "000000",
+                "new_password": "newpw",
+                "email": "client@example.com",
+                "captcha_token": "tok",
+            },
+            format="json",
+        )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid" in resp.data.get("error", "")
+        assert "invalid" in resp.data.get("error", "").lower()
 
     @patch("gym_app.views.userAuth.requests.post")
     def test_captcha_failure(self, mock_post):
@@ -642,7 +651,16 @@ class TestVerifyPasscode:
         mock_post.return_value = mock_resp
         c = APIClient()
         url = reverse("verify_passcode_and_reset_password")
-        resp = c.post(url, {"passcode": "000000", "new_password": "newpw", "captcha_token": "tok"}, format="json")
+        resp = c.post(
+            url,
+            {
+                "passcode": "000000",
+                "new_password": "newpw",
+                "email": "client@example.com",
+                "captcha_token": "tok",
+            },
+            format="json",
+        )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -685,7 +703,7 @@ def _b14_membership(_b14_org, _b14_client):
 
 
 @pytest.mark.django_db
-class TestOrganizationPostsBatch14:
+class TestOrganizationPostsAdditionalScenarios:
 
     def test_create_post_success(self, api_client, _b14_corp_user, _b14_org):
         """Lines 42-63: create post."""

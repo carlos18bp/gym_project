@@ -1900,7 +1900,7 @@ def pending_doc(lawyer, signer):
 
 
 @pytest.mark.django_db
-class TestSignatureViewsCoverage:
+class TestSignatureViewsRegressionScenarios:
 
     # --- Helper: get_client_ip with X-Forwarded-For ---
     def test_get_client_ip_forwarded_for(self):

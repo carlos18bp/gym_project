@@ -1072,7 +1072,7 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def b12_lawyer_user():
     return User.objects.create_user(
         email="lawyer_b12@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -1081,7 +1081,7 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def b12_client_user():
     return User.objects.create_user(
         email="client_b12@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -1090,7 +1090,7 @@ def client_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def corp_user():
+def b12_corp_user():
     return User.objects.create_user(
         email="corp_b12@test.com", password="pw", role="corporate_client",
         first_name="Corp", last_name="Client",
@@ -1099,23 +1099,23 @@ def corp_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def legal_request_type():
+def b12_legal_request_type():
     return LegalRequestType.objects.create(name="Consulta General")
 
 
 @pytest.fixture
 @pytest.mark.django_db
-def legal_discipline():
+def b12_legal_discipline():
     return LegalDiscipline.objects.create(name="Civil")
 
 
 @pytest.fixture
 @pytest.mark.django_db
-def legal_req(client_user, legal_request_type, legal_discipline):
+def b12_legal_req(b12_client_user, b12_legal_request_type, b12_legal_discipline):
     return LegalRequest.objects.create(
-        user=client_user,
-        request_type=legal_request_type,
-        discipline=legal_discipline,
+        user=b12_client_user,
+        request_type=b12_legal_request_type,
+        discipline=b12_legal_discipline,
         description="Test legal request",
         status="OPEN",
     )
@@ -1123,21 +1123,21 @@ def legal_req(client_user, legal_request_type, legal_discipline):
 
 @pytest.fixture
 @pytest.mark.django_db
-def organization(corp_user):
+def b12_organization(b12_corp_user):
     return Organization.objects.create(
         title="Test Org B12",
         description="Org description",
-        corporate_client=corp_user,
+        corporate_client=b12_corp_user,
         is_active=True,
     )
 
 
 @pytest.fixture
 @pytest.mark.django_db
-def membership(organization, client_user):
+def b12_membership(b12_organization, b12_client_user):
     return OrganizationMembership.objects.create(
-        organization=organization,
-        user=client_user,
+        organization=b12_organization,
+        user=b12_client_user,
         role="MEMBER",
         is_active=True,
     )
@@ -1150,7 +1150,7 @@ def membership(organization, client_user):
 @pytest.mark.django_db
 class TestDownloadLegalRequestFile:
 
-    def test_download_file_permission_denied(self, api_client, lawyer_user, client_user, legal_req):
+    def test_download_file_permission_denied(self, api_client, b12_lawyer_user, b12_client_user, b12_legal_req):
         """Lines 833-838: non-owner non-lawyer denied."""
         other_client = User.objects.create_user(
             email="other_b12@test.com", password="pw", role="client",
@@ -1159,49 +1159,49 @@ class TestDownloadLegalRequestFile:
         lr_file = LegalRequestFiles.objects.create(
             file=SimpleUploadedFile("test.pdf", b"fake-pdf"),
         )
-        legal_req.files.add(lr_file)
+        b12_legal_req.files.add(lr_file)
 
         api_client.force_authenticate(user=other_client)
         url = reverse("download-legal-request-file", kwargs={
-            "request_id": legal_req.id, "file_id": lr_file.id,
+            "request_id": b12_legal_req.id, "file_id": lr_file.id,
         })
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_download_file_not_found(self, api_client, lawyer_user, legal_req):
+    def test_download_file_not_found(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 843-845: file does not exist."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b12_lawyer_user)
         url = reverse("download-legal-request-file", kwargs={
-            "request_id": legal_req.id, "file_id": 99999,
+            "request_id": b12_legal_req.id, "file_id": 99999,
         })
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_download_file_not_belonging_to_request(self, api_client, lawyer_user, legal_req):
+    def test_download_file_not_belonging_to_request(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 848-853: file exists but not linked to request."""
         lr_file = LegalRequestFiles.objects.create(
             file=SimpleUploadedFile("orphan.pdf", b"fake"),
         )
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b12_lawyer_user)
         url = reverse("download-legal-request-file", kwargs={
-            "request_id": legal_req.id, "file_id": lr_file.id,
+            "request_id": b12_legal_req.id, "file_id": lr_file.id,
         })
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_download_file_missing_on_disk(self, api_client, lawyer_user, legal_req):
+    def test_download_file_missing_on_disk(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 856-861: file record exists but physical file missing."""
         lr_file = LegalRequestFiles.objects.create(
             file=SimpleUploadedFile("missing.pdf", b"content"),
         )
-        legal_req.files.add(lr_file)
+        b12_legal_req.files.add(lr_file)
         # Delete the physical file
         if os.path.exists(lr_file.file.path):
             os.remove(lr_file.file.path)
 
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b12_lawyer_user)
         url = reverse("download-legal-request-file", kwargs={
-            "request_id": legal_req.id, "file_id": lr_file.id,
+            "request_id": b12_legal_req.id, "file_id": lr_file.id,
         })
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
@@ -1214,42 +1214,42 @@ class TestDownloadLegalRequestFile:
 @pytest.mark.django_db
 class TestAddFilesToLegalRequest:
 
-    def test_add_files_non_owner_forbidden(self, api_client, lawyer_user, legal_req):
+    def test_add_files_non_owner_forbidden(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 753-758: non-owner cannot add files."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("add-files-to-legal-request", kwargs={"request_id": legal_req.id})
+        api_client.force_authenticate(user=b12_lawyer_user)
+        url = reverse("add-files-to-legal-request", kwargs={"request_id": b12_legal_req.id})
         f = SimpleUploadedFile("doc.pdf", b"content", content_type="application/pdf")
         resp = api_client.post(url, {"files": [f]}, format="multipart")
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_add_files_non_client_forbidden(self, api_client, legal_req):
+    def test_add_files_non_client_forbidden(self, api_client, b12_legal_req):
         """Lines 761-766: non-client role forbidden."""
         # Change owner to lawyer temporarily — but they have wrong role
         lawyer = User.objects.create_user(
             email="law2_b12@test.com", password="pw", role="lawyer",
         )
-        legal_req.user = lawyer
-        legal_req.save()
+        b12_legal_req.user = lawyer
+        b12_legal_req.save()
         api_client.force_authenticate(user=lawyer)
-        url = reverse("add-files-to-legal-request", kwargs={"request_id": legal_req.id})
+        url = reverse("add-files-to-legal-request", kwargs={"request_id": b12_legal_req.id})
         f = SimpleUploadedFile("doc.pdf", b"content", content_type="application/pdf")
         resp = api_client.post(url, {"files": [f]}, format="multipart")
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_add_files_closed_request(self, api_client, client_user, legal_req):
+    def test_add_files_closed_request(self, api_client, b12_client_user, b12_legal_req):
         """Lines 769-773: closed request rejects files."""
-        legal_req.status = "CLOSED"
-        legal_req.save()
-        api_client.force_authenticate(user=client_user)
-        url = reverse("add-files-to-legal-request", kwargs={"request_id": legal_req.id})
+        b12_legal_req.status = "CLOSED"
+        b12_legal_req.save()
+        api_client.force_authenticate(user=b12_client_user)
+        url = reverse("add-files-to-legal-request", kwargs={"request_id": b12_legal_req.id})
         f = SimpleUploadedFile("doc.pdf", b"content", content_type="application/pdf")
         resp = api_client.post(url, {"files": [f]}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_add_files_no_files(self, api_client, client_user, legal_req):
+    def test_add_files_no_files(self, api_client, b12_client_user, b12_legal_req):
         """Lines 777-778: no files provided."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("add-files-to-legal-request", kwargs={"request_id": legal_req.id})
+        api_client.force_authenticate(user=b12_client_user)
+        url = reverse("add-files-to-legal-request", kwargs={"request_id": b12_legal_req.id})
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -1261,20 +1261,20 @@ class TestAddFilesToLegalRequest:
 @pytest.mark.django_db
 class TestDeleteLegalRequest:
 
-    def test_delete_by_non_lawyer(self, api_client, client_user, legal_req):
+    def test_delete_by_non_lawyer(self, api_client, b12_client_user, b12_legal_req):
         """Lines 711-715: non-lawyer forbidden."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("delete-legal-request", kwargs={"request_id": legal_req.id})
+        api_client.force_authenticate(user=b12_client_user)
+        url = reverse("delete-legal-request", kwargs={"request_id": b12_legal_req.id})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete_success(self, api_client, lawyer_user, legal_req):
+    def test_delete_success(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 718-728: successful deletion."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("delete-legal-request", kwargs={"request_id": legal_req.id})
+        api_client.force_authenticate(user=b12_lawyer_user)
+        url = reverse("delete-legal-request", kwargs={"request_id": b12_legal_req.id})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_200_OK
-        assert not LegalRequest.objects.filter(id=legal_req.id).exists()
+        assert not LegalRequest.objects.filter(id=b12_legal_req.id).exists()
 
 
 # ===========================================================================
@@ -1284,18 +1284,18 @@ class TestDeleteLegalRequest:
 @pytest.mark.django_db
 class TestOrganizationStats:
 
-    def test_get_stats(self, api_client, corp_user, organization):
+    def test_get_stats(self, api_client, b12_corp_user, b12_organization):
         """Lines 447-493: organization dashboard stats."""
-        api_client.force_authenticate(user=corp_user)
+        api_client.force_authenticate(user=b12_corp_user)
         url = reverse("get-organization-stats")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
         assert "total_organizations" in resp.data
         assert "total_members" in resp.data
 
-    def test_get_stats_non_corp_forbidden(self, api_client, client_user):
+    def test_get_stats_non_corp_forbidden(self, api_client, b12_client_user):
         """Decorator: require_corporate_client_only."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=b12_client_user)
         url = reverse("get-organization-stats")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
@@ -1304,40 +1304,40 @@ class TestOrganizationStats:
 @pytest.mark.django_db
 class TestOrganizationInvitationsAndMemberships:
 
-    def test_get_my_invitations(self, api_client, client_user, organization, corp_user):
+    def test_get_my_invitations(self, api_client, b12_client_user, b12_organization, b12_corp_user):
         """Lines 502-540: client gets their invitations."""
         OrganizationInvitation.objects.create(
-            organization=organization,
-            invited_user=client_user,
-            invited_by=corp_user,
+            organization=b12_organization,
+            invited_user=b12_client_user,
+            invited_by=b12_corp_user,
             status="PENDING",
         )
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=b12_client_user)
         url = reverse("get-my-invitations")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_get_my_memberships(self, api_client, client_user, membership):
+    def test_get_my_memberships(self, api_client, b12_client_user, b12_membership):
         """Lines 592-613: client gets memberships."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=b12_client_user)
         url = reverse("get-my-memberships")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_leave_organization_success(self, api_client, client_user, membership):
+    def test_leave_organization_success(self, api_client, b12_client_user, b12_membership):
         """Lines 618-641: member leaves organization."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("leave-organization", kwargs={"organization_id": membership.organization.id})
+        api_client.force_authenticate(user=b12_client_user)
+        url = reverse("leave-organization", kwargs={"organization_id": b12_membership.organization.id})
         resp = api_client.post(url, {}, format="json")
         assert resp.status_code == status.HTTP_200_OK
-        membership.refresh_from_db()
-        assert membership.is_active is False
+        b12_membership.refresh_from_db()
+        assert b12_membership.is_active is False
 
-    def test_leave_organization_leader_forbidden(self, api_client, corp_user, organization):
+    def test_leave_organization_leader_forbidden(self, api_client, b12_corp_user, b12_organization):
         """Lines 631-634: leader cannot leave."""
         leader_membership = OrganizationMembership.objects.create(
-            organization=organization,
-            user=corp_user,
+            organization=b12_organization,
+            user=b12_corp_user,
             role="LEADER",
             is_active=True,
         )
@@ -1347,13 +1347,13 @@ class TestOrganizationInvitationsAndMemberships:
             email="clientleader@test.com", password="pw", role="client",
         )
         leader_mem = OrganizationMembership.objects.create(
-            organization=organization,
+            organization=b12_organization,
             user=client_leader,
             role="LEADER",
             is_active=True,
         )
         api_client.force_authenticate(user=client_leader)
-        url = reverse("leave-organization", kwargs={"organization_id": organization.id})
+        url = reverse("leave-organization", kwargs={"organization_id": b12_organization.id})
         resp = api_client.post(url, {}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -1361,27 +1361,27 @@ class TestOrganizationInvitationsAndMemberships:
 @pytest.mark.django_db
 class TestOrganizationPublicDetail:
 
-    def test_public_detail_corp_owner(self, api_client, corp_user, organization):
+    def test_public_detail_corp_owner(self, api_client, b12_corp_user, b12_organization):
         """Lines 660-661: corp client who owns org can view."""
-        api_client.force_authenticate(user=corp_user)
-        url = reverse("get-organization-public-detail", kwargs={"organization_id": organization.id})
+        api_client.force_authenticate(user=b12_corp_user)
+        url = reverse("get-organization-public-detail", kwargs={"organization_id": b12_organization.id})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_public_detail_member(self, api_client, client_user, membership):
+    def test_public_detail_member(self, api_client, b12_client_user, b12_membership):
         """Lines 662-667: member client can view."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("get-organization-public-detail", kwargs={"organization_id": membership.organization.id})
+        api_client.force_authenticate(user=b12_client_user)
+        url = reverse("get-organization-public-detail", kwargs={"organization_id": b12_membership.organization.id})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_public_detail_no_access(self, api_client, organization):
+    def test_public_detail_no_access(self, api_client, b12_organization):
         """Lines 669-672: non-member client forbidden."""
         outsider = User.objects.create_user(
             email="outsider_b12@test.com", password="pw", role="client",
         )
         api_client.force_authenticate(user=outsider)
-        url = reverse("get-organization-public-detail", kwargs={"organization_id": organization.id})
+        url = reverse("get-organization-public-detail", kwargs={"organization_id": b12_organization.id})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
@@ -1594,27 +1594,27 @@ def client_u():
 
 
 @pytest.fixture
-def req_type():
+def lrc_req_type():
     return LegalRequestType.objects.create(name="ConsLRC")
 
 
 @pytest.fixture
-def discipline():
+def lrc_discipline():
     return LegalDiscipline.objects.create(name="CivLRC")
 
 
 @pytest.fixture
-def legal_req(client_u, req_type, discipline):
+def lrc_legal_req(client_u, lrc_req_type, lrc_discipline):
     return LegalRequest.objects.create(
-        user=client_u, request_type=req_type, discipline=discipline,
+        user=client_u, request_type=lrc_req_type, discipline=lrc_discipline,
         description="Test request")
 
 
 @pytest.mark.django_db
-class TestLegalRequestCoverage:
+class TestLegalRequestRegressionScenarios:
 
     # --- File validation: file too large (line 47) ---
-    def test_upload_file_too_large(self, api_client, client_u, legal_req):
+    def test_upload_file_too_large(self, api_client, client_u, lrc_legal_req):
         """Line 47: file exceeding MAX_FILE_SIZE is rejected."""
         api_client.force_authenticate(user=client_u)
         big_file = SimpleUploadedFile(
@@ -1622,7 +1622,7 @@ class TestLegalRequestCoverage:
             content_type="application/pdf")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': big_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': big_file},
             format='multipart')
         assert r.status_code == status.HTTP_201_CREATED or r.status_code == status.HTTP_400_BAD_REQUEST
         # If file validation triggers, there should be failed_files
@@ -1630,7 +1630,7 @@ class TestLegalRequestCoverage:
             assert 'failed_files' in r.data or 'detail' in r.data
 
     # --- File validation: disallowed extension (line 51-52) ---
-    def test_upload_disallowed_extension(self, api_client, client_u, legal_req):
+    def test_upload_disallowed_extension(self, api_client, client_u, lrc_legal_req):
         """Line 51: file with disallowed extension is rejected."""
         api_client.force_authenticate(user=client_u)
         exe_file = SimpleUploadedFile(
@@ -1638,14 +1638,14 @@ class TestLegalRequestCoverage:
             content_type="application/octet-stream")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': exe_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': exe_file},
             format='multipart')
         # Should have failed_files entry
         assert r.data.get('failed_uploads', 0) >= 0 or 'detail' in r.data
 
     # --- File validation: MIME type not allowed (line 79) ---
     @mock.patch('gym_app.views.legal_request.magic')
-    def test_upload_mime_not_allowed(self, mock_magic, api_client, client_u, legal_req):
+    def test_upload_mime_not_allowed(self, mock_magic, api_client, client_u, lrc_legal_req):
         """Line 79: MIME type not in ALLOWED_FILE_TYPES."""
         mock_magic.from_buffer.return_value = 'application/x-executable'
         api_client.force_authenticate(user=client_u)
@@ -1653,13 +1653,13 @@ class TestLegalRequestCoverage:
             "doc.pdf", b"%PDF-1.4 fake", content_type="application/pdf")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': pdf_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': pdf_file},
             format='multipart')
         assert r.data.get('failed_uploads', 0) > 0 or r.status_code == status.HTTP_400_BAD_REQUEST
 
     # --- File validation: extension/MIME mismatch (line 83) ---
     @mock.patch('gym_app.views.legal_request.magic')
-    def test_upload_ext_mime_mismatch(self, mock_magic, api_client, client_u, legal_req):
+    def test_upload_ext_mime_mismatch(self, mock_magic, api_client, client_u, lrc_legal_req):
         """Line 83: extension doesn't match detected MIME type."""
         mock_magic.from_buffer.return_value = 'image/png'
         api_client.force_authenticate(user=client_u)
@@ -1667,13 +1667,13 @@ class TestLegalRequestCoverage:
             "doc.pdf", b"%PDF fake", content_type="application/pdf")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': pdf_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': pdf_file},
             format='multipart')
         assert r.data.get('failed_uploads', 0) > 0 or r.status_code == status.HTTP_400_BAD_REQUEST
 
     # --- File validation: magic exception (lines 88-90) ---
     @mock.patch('gym_app.views.legal_request.magic')
-    def test_upload_magic_exception(self, mock_magic, api_client, client_u, legal_req):
+    def test_upload_magic_exception(self, mock_magic, api_client, client_u, lrc_legal_req):
         """Lines 88-90: exception during MIME detection."""
         mock_magic.from_buffer.side_effect = RuntimeError("magic failed")
         api_client.force_authenticate(user=client_u)
@@ -1681,13 +1681,13 @@ class TestLegalRequestCoverage:
             "doc.pdf", b"%PDF fake", content_type="application/pdf")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': pdf_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': pdf_file},
             format='multipart')
         assert r.data.get('failed_uploads', 0) > 0 or r.status_code == status.HTTP_400_BAD_REQUEST
 
     # --- .docx detected as ZIP (lines 65-75) ---
     @mock.patch('gym_app.views.legal_request.magic')
-    def test_upload_docx_as_zip(self, mock_magic, api_client, client_u, legal_req):
+    def test_upload_docx_as_zip(self, mock_magic, api_client, client_u, lrc_legal_req):
         """Lines 65-75: .docx file detected as application/zip is validated."""
         mock_magic.from_buffer.return_value = 'application/zip'
         # Create content with PK signature and word/ marker
@@ -1697,7 +1697,7 @@ class TestLegalRequestCoverage:
             "doc.docx", content, content_type="application/zip")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': docx_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': docx_file},
             format='multipart')
         # Should succeed since it's a valid .docx structure
         assert r.status_code in (status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST)
@@ -1706,7 +1706,7 @@ class TestLegalRequestCoverage:
     @mock.patch('gym_app.views.legal_request.validate_file_security')
     @mock.patch('gym_app.views.legal_request.sanitize_filename')
     def test_upload_generic_exception(self, mock_sanitize, mock_validate,
-                                      api_client, client_u, legal_req):
+                                      api_client, client_u, lrc_legal_req):
         """Lines 150-153: generic exception in process_file_upload."""
         mock_validate.return_value = True
         mock_sanitize.side_effect = RuntimeError("unexpected")
@@ -1715,7 +1715,7 @@ class TestLegalRequestCoverage:
             "doc.pdf", b"%PDF", content_type="application/pdf")
         r = api_client.post(
             reverse('upload-legal-request-file'),
-            {'legalRequestId': legal_req.id, 'file': pdf_file},
+            {'legalRequestId': lrc_legal_req.id, 'file': pdf_file},
             format='multipart')
         assert r.data['failed_uploads'] >= 1
 
@@ -1746,15 +1746,15 @@ class TestLegalRequestCoverage:
     # --- create_legal_request ValidationError (lines 239-240) ---
     @mock.patch('gym_app.views.legal_request.LegalRequest.objects')
     def test_create_legal_request_validation_error(
-        self, mock_qs, api_client, client_u, req_type, discipline
+        self, mock_qs, api_client, client_u, lrc_req_type, lrc_discipline
     ):
         """Lines 239-240: ValidationError in create_legal_request → 400."""
         mock_qs.create.side_effect = ValidationError("invalid field")
         api_client.force_authenticate(user=client_u)
         import json
         main_data = json.dumps({
-            'requestTypeId': req_type.id,
-            'disciplineId': discipline.id,
+            'requestTypeId': lrc_req_type.id,
+            'disciplineId': lrc_discipline.id,
             'description': 'Test description'
         })
         r = api_client.post(
@@ -1784,15 +1784,15 @@ class TestLegalRequestCoverage:
     # --- create_legal_request generic exception (lines 241-242) ---
     @mock.patch('gym_app.views.legal_request.LegalRequest.objects')
     def test_create_legal_request_generic_exception(
-        self, mock_qs, api_client, client_u, req_type, discipline
+        self, mock_qs, api_client, client_u, lrc_req_type, lrc_discipline
     ):
         """Lines 241-242: generic exception in create_legal_request."""
         mock_qs.create.side_effect = RuntimeError("db exploded")
         api_client.force_authenticate(user=client_u)
         import json
         main_data = json.dumps({
-            'requestTypeId': req_type.id,
-            'disciplineId': discipline.id,
+            'requestTypeId': lrc_req_type.id,
+            'disciplineId': lrc_discipline.id,
             'description': 'Test description'
         })
         r = api_client.post(
@@ -1822,14 +1822,14 @@ class TestLegalRequestCoverage:
     # --- get_or_delete_legal_request generic exception (lines 553-555) ---
     @mock.patch('gym_app.views.legal_request.LegalRequestSerializer')
     def test_get_or_delete_generic_exception(
-        self, mock_ser, api_client, lawyer, legal_req
+        self, mock_ser, api_client, lawyer, lrc_legal_req
     ):
         """Lines 553-555: generic exception in get_or_delete_legal_request."""
         mock_ser.side_effect = RuntimeError("serializer boom")
         api_client.force_authenticate(user=lawyer)
         r = api_client.get(
             reverse('get-or-delete-legal-request',
-                    kwargs={'request_id': legal_req.pk}))
+                    kwargs={'request_id': lrc_legal_req.pk}))
         assert r.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in r.data['detail'].lower()
 
@@ -1856,7 +1856,7 @@ from rest_framework.test import APIClient
 
 from gym_app.models import User, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
 @pytest.fixture
-def client_user(db):
+def lre_client_user(db):
     return User.objects.create_user(
         email="lre-client@example.com",
         password="testpassword",
@@ -1867,7 +1867,7 @@ def client_user(db):
 
 
 @pytest.fixture
-def lawyer_user(db):
+def lre_lawyer_user(db):
     return User.objects.create_user(
         email="lre-lawyer@example.com",
         password="testpassword",
@@ -1878,21 +1878,21 @@ def lawyer_user(db):
 
 
 @pytest.fixture
-def req_type(db):
+def lre_req_type(db):
     return LegalRequestType.objects.create(name="LRE-Type")
 
 
 @pytest.fixture
-def discipline(db):
+def lre_discipline(db):
     return LegalDiscipline.objects.create(name="LRE-Disc")
 
 
 @pytest.fixture
-def legal_request(db, client_user, req_type, discipline):
+def lre_legal_request(db, lre_client_user, lre_req_type, lre_discipline):
     return LegalRequest.objects.create(
-        user=client_user,
-        request_type=req_type,
-        discipline=discipline,
+        user=lre_client_user,
+        request_type=lre_req_type,
+        discipline=lre_discipline,
         description="LRE test request",
     )
 
@@ -1902,9 +1902,9 @@ def legal_request(db, client_user, req_type, discipline):
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestValidateFileSecurityEdges:
-    def test_file_exceeds_max_size(self, api_client, client_user, legal_request):
+    def test_file_exceeds_max_size(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 47: file size > MAX_FILE_SIZE."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         # Create a file that claims to be > 30MB
         big_file = SimpleUploadedFile("big.pdf", b"%PDF-1.4\n", content_type="application/pdf")
         big_file.size = 31 * 1024 * 1024  # 31MB
@@ -1912,21 +1912,21 @@ class TestValidateFileSecurityEdges:
         url = reverse("upload-legal-request-file")
         response = api_client.post(
             url,
-            {"legalRequestId": legal_request.id, "file": big_file},
+            {"legalRequestId": lre_legal_request.id, "file": big_file},
             format="multipart",
         )
         # File validation failure results in failed_files
         assert response.status_code in (status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST)
 
-    def test_file_extension_not_allowed(self, api_client, client_user, legal_request):
+    def test_file_extension_not_allowed(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 52: disallowed file extension."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         bad_file = SimpleUploadedFile("script.exe", b"\x00\x00", content_type="application/octet-stream")
 
         url = reverse("upload-legal-request-file")
         response = api_client.post(
             url,
-            {"legalRequestId": legal_request.id, "file": bad_file},
+            {"legalRequestId": lre_legal_request.id, "file": bad_file},
             format="multipart",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -1937,25 +1937,25 @@ class TestValidateFileSecurityEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCreateLegalRequestEdges:
-    def test_empty_main_data(self, api_client, client_user):
+    def test_empty_main_data(self, api_client, lre_client_user):
         """Cover line 175: empty mainData."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("create-legal-request")
         response = api_client.post(url, {"mainData": ""}, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Main data is required" in response.data["detail"]
 
-    def test_invalid_json_main_data(self, api_client, client_user):
+    def test_invalid_json_main_data(self, api_client, lre_client_user):
         """Cover lines 179-181: invalid JSON."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("create-legal-request")
         response = api_client.post(url, {"mainData": "{invalid json"}, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Invalid JSON format" in response.data["detail"]
 
-    def test_missing_required_fields(self, api_client, client_user):
+    def test_missing_required_fields(self, api_client, lre_client_user):
         """Cover lines 187-188: missing required fields."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("create-legal-request")
         response = api_client.post(
             url,
@@ -1965,13 +1965,13 @@ class TestCreateLegalRequestEdges:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Missing required fields" in response.data["detail"]
 
-    def test_unexpected_exception(self, api_client, client_user, req_type, discipline):
+    def test_unexpected_exception(self, api_client, lre_client_user, lre_req_type, lre_discipline):
         """Cover lines 241-243: unexpected exception returns 500."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("create-legal-request")
         main_data = json.dumps({
-            "requestTypeId": req_type.id,
-            "disciplineId": discipline.id,
+            "requestTypeId": lre_req_type.id,
+            "disciplineId": lre_discipline.id,
             "description": "Test",
         })
         with patch("gym_app.views.legal_request.LegalRequest.objects.create", side_effect=Exception("DB boom")):
@@ -1984,18 +1984,18 @@ class TestCreateLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestUploadLegalRequestFileEdges:
-    def test_missing_legal_request_id(self, api_client, client_user):
+    def test_missing_legal_request_id(self, api_client, lre_client_user):
         """Cover line 262: missing legalRequestId."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("upload-legal-request-file")
         response = api_client.post(url, {}, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Legal request ID is required" in response.data["detail"]
 
     @patch("gym_app.views.legal_request.process_file_upload")
-    def test_upload_with_failed_files(self, mock_upload, api_client, client_user, legal_request):
+    def test_upload_with_failed_files(self, mock_upload, api_client, lre_client_user, lre_legal_request):
         """Cover line 288: failed_files path."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         mock_upload.return_value = {
             "success": False,
             "error": {"name": "bad.pdf", "message": "Invalid"},
@@ -2004,21 +2004,21 @@ class TestUploadLegalRequestFileEdges:
         url = reverse("upload-legal-request-file")
         response = api_client.post(
             url,
-            {"legalRequestId": legal_request.id, "file": file},
+            {"legalRequestId": lre_legal_request.id, "file": file},
             format="multipart",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["failed_uploads"] == 1
 
-    def test_upload_outer_exception(self, api_client, client_user, legal_request):
+    def test_upload_outer_exception(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 315-317: outer exception returns 500."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         file = SimpleUploadedFile("test.pdf", b"%PDF", content_type="application/pdf")
         url = reverse("upload-legal-request-file")
         with patch("gym_app.views.legal_request.LegalRequest.objects.get", side_effect=Exception("unexpected")):
             response = api_client.post(
                 url,
-                {"legalRequestId": legal_request.id, "file": file},
+                {"legalRequestId": lre_legal_request.id, "file": file},
                 format="multipart",
             )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2029,29 +2029,29 @@ class TestUploadLegalRequestFileEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestGetOrDeleteLegalRequestEdges:
-    def test_get_forbidden_for_unrelated_client(self, api_client, legal_request):
+    def test_get_forbidden_for_unrelated_client(self, api_client, lre_legal_request):
         """Cover lines 521-522: client cannot access others' request."""
         other = User.objects.create_user(
             email="lre-other@example.com", password="tp",
             first_name="Oth", last_name="Er", role="client",
         )
         api_client.force_authenticate(user=other)
-        url = reverse("get-or-delete-legal-request", args=[legal_request.id])
+        url = reverse("get-or-delete-legal-request", args=[lre_legal_request.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete_by_lawyer(self, api_client, lawyer_user, legal_request):
+    def test_delete_by_lawyer(self, api_client, lre_lawyer_user, lre_legal_request):
         """Cover lines 534-555: DELETE method by lawyer."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("get-or-delete-legal-request", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_lawyer_user)
+        url = reverse("get-or-delete-legal-request", args=[lre_legal_request.id])
         response = api_client.delete(url)
         assert response.status_code == status.HTTP_200_OK
         assert "deleted successfully" in response.data["message"]
 
-    def test_delete_forbidden_for_client(self, api_client, client_user, legal_request):
+    def test_delete_forbidden_for_client(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 536-540: client cannot delete."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("get-or-delete-legal-request", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("get-or-delete-legal-request", args=[lre_legal_request.id])
         response = api_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -2061,17 +2061,17 @@ class TestGetOrDeleteLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDeleteLegalRequestEdges:
-    def test_delete_forbidden_for_non_lawyer(self, api_client, client_user, legal_request):
+    def test_delete_forbidden_for_non_lawyer(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 712: non-lawyer cannot delete."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("delete-legal-request", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("delete-legal-request", args=[lre_legal_request.id])
         response = api_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete_exception(self, api_client, lawyer_user, legal_request):
+    def test_delete_exception(self, api_client, lre_lawyer_user, lre_legal_request):
         """Cover lines 730-732: exception returns 500."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("delete-legal-request", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_lawyer_user)
+        url = reverse("delete-legal-request", args=[lre_legal_request.id])
         with patch("gym_app.views.legal_request.get_object_or_404", side_effect=Exception("boom")):
             response = api_client.delete(url)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2082,9 +2082,9 @@ class TestDeleteLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestSendConfirmationEmailEdges:
-    def test_outer_exception(self, api_client, client_user):
+    def test_outer_exception(self, api_client, lre_client_user):
         """Cover lines 407-409: outer exception returns 500."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("send-confirmation-email")
         with patch.object(LegalRequest.objects, "get", side_effect=Exception("unexpected")):
             response = api_client.post(url, {"legal_request_id": 1}, format="json")
@@ -2096,16 +2096,16 @@ class TestSendConfirmationEmailEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestListLegalRequestsEdges:
-    def test_date_to_filter(self, api_client, client_user, legal_request):
+    def test_date_to_filter(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 477-478: date_to filter applied."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("list-legal-requests")
         response = api_client.get(url, {"date_to": "2099-12-31"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_exception_returns_500(self, api_client, client_user):
+    def test_exception_returns_500(self, api_client, lre_client_user):
         """Cover lines 494-496: exception returns 500."""
-        api_client.force_authenticate(user=client_user)
+        api_client.force_authenticate(user=lre_client_user)
         url = reverse("list-legal-requests")
         with patch("gym_app.views.legal_request.LegalRequest.objects.select_related", side_effect=Exception("boom")):
             response = api_client.get(url)
@@ -2117,10 +2117,10 @@ class TestListLegalRequestsEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestUpdateStatusEdges:
-    def test_exception_returns_500(self, api_client, lawyer_user, legal_request):
+    def test_exception_returns_500(self, api_client, lre_lawyer_user, lre_legal_request):
         """Cover lines 618-620: exception returns 500."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("update-legal-request-status", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_lawyer_user)
+        url = reverse("update-legal-request-status", args=[lre_legal_request.id])
         with patch("gym_app.views.legal_request.get_object_or_404", side_effect=Exception("boom")):
             response = api_client.put(url, {"status": "IN_REVIEW"}, format="json")
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2131,10 +2131,10 @@ class TestUpdateStatusEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCreateResponseEdges:
-    def test_exception_returns_500(self, api_client, client_user, legal_request):
+    def test_exception_returns_500(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 692-694: exception returns 500."""
-        api_client.force_authenticate(user=client_user)
-        url = reverse("create-legal-request-response", args=[legal_request.id])
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("create-legal-request-response", args=[lre_legal_request.id])
         with patch("gym_app.views.legal_request.get_object_or_404", side_effect=Exception("boom")):
             response = api_client.post(url, {"response_text": "test"}, format="json")
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2145,81 +2145,81 @@ class TestCreateResponseEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDownloadContentTypeEdges:
-    def _create_file(self, legal_request, name, content=b"content"):
+    def _create_file(self, lre_legal_request, name, content=b"content"):
         """Helper to create and attach a file."""
         f = SimpleUploadedFile(name, content, content_type="application/octet-stream")
         file_obj = LegalRequestFiles.objects.create(file=f)
-        legal_request.files.add(file_obj)
+        lre_legal_request.files.add(file_obj)
         return file_obj
 
-    def test_download_pdf(self, api_client, client_user, legal_request):
+    def test_download_pdf(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 872: .pdf content type."""
-        file_obj = self._create_file(legal_request, "doc.pdf", b"%PDF-1.4")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "doc.pdf", b"%PDF-1.4")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
 
-    def test_download_doc(self, api_client, client_user, legal_request):
+    def test_download_doc(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 874: .doc content type."""
-        file_obj = self._create_file(legal_request, "doc.doc")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "doc.doc")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/msword"
 
-    def test_download_docx(self, api_client, client_user, legal_request):
+    def test_download_docx(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 876: .docx content type."""
-        file_obj = self._create_file(legal_request, "doc.docx")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "doc.docx")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert "wordprocessingml" in response["Content-Type"]
 
-    def test_download_jpg(self, api_client, client_user, legal_request):
+    def test_download_jpg(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 878: .jpg content type."""
-        file_obj = self._create_file(legal_request, "img.jpg")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "img.jpg")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "image/jpeg"
 
-    def test_download_png(self, api_client, client_user, legal_request):
+    def test_download_png(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 880: .png content type."""
-        file_obj = self._create_file(legal_request, "img.png")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "img.png")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "image/png"
 
-    def test_download_xlsx(self, api_client, client_user, legal_request):
+    def test_download_xlsx(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 883-884: .xlsx content type."""
-        file_obj = self._create_file(legal_request, "sheet.xlsx")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "sheet.xlsx")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert "spreadsheetml" in response["Content-Type"]
 
-    def test_download_unknown_extension(self, api_client, client_user, legal_request):
+    def test_download_unknown_extension(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 885-886: unknown extension → octet-stream."""
-        file_obj = self._create_file(legal_request, "data.xyz")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "data.xyz")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         response = api_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/octet-stream"
 
-    def test_download_outer_exception(self, api_client, client_user, legal_request):
+    def test_download_outer_exception(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 917-919: outer exception returns 500."""
-        file_obj = self._create_file(legal_request, "test.pdf")
-        api_client.force_authenticate(user=client_user)
-        url = reverse("download-legal-request-file", args=[legal_request.id, file_obj.id])
+        file_obj = self._create_file(lre_legal_request, "test.pdf")
+        api_client.force_authenticate(user=lre_client_user)
+        url = reverse("download-legal-request-file", args=[lre_legal_request.id, file_obj.id])
         with patch("gym_app.views.legal_request.os.path.exists", side_effect=Exception("boom")):
             response = api_client.get(url)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

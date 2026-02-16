@@ -232,7 +232,7 @@ class TestLegalUpdateRest:
 # ======================================================================
 
 @pytest.mark.django_db
-class TestLegalUpdatesViewsBatch36:
+class TestLegalUpdatesViewsAdditionalScenarios:
 
     def test_list_legal_updates(self, api_client, user):
         LegalUpdate.objects.create(title="LU36", content="Body", is_active=True)

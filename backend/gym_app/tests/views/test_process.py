@@ -579,7 +579,7 @@ def _pv_proc(_pv_lawyer, _pv_client, _pv_ctype):
 
 
 @pytest.mark.django_db
-class TestProcessCoverage:
+class TestProcessRegressionScenarios:
 
     def test_update_process_changes_lawyer(self, api_client, _pv_lawyer, _pv_lawyer2, _pv_proc):
         """Line 215: updating lawyerId assigns new lawyer to process."""

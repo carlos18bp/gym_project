@@ -411,6 +411,35 @@ class TestFilterDocumentsByVisibility:
         ids = {doc["id"] for doc in response.data}
         assert ids == {visible_doc.id, public_doc.id}
 
+    def test_filter_documents_by_visibility_skips_items_without_id(self, factory, client_user, other_user):
+        visible_doc = DynamicDocument.objects.create(
+            title="Visible",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=client_user,
+        )
+        DynamicDocument.objects.create(
+            title="Hidden",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=other_user,
+        )
+
+        request = factory.get("/")
+        request.user = client_user
+
+        @filter_documents_by_visibility
+        def view(_request):
+            return Response([
+                {"id": visible_doc.id},
+                {"title": "missing-id"},
+                {},
+            ])
+
+        response = view(request)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == [{"id": visible_doc.id}]
+
     def test_filter_documents_by_visibility_paginated(self, factory, client_user, other_user):
         visible_doc = DynamicDocument.objects.create(
             title="Visible",

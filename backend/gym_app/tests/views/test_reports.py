@@ -1172,7 +1172,7 @@ def lr_data():
 
 
 @pytest.mark.django_db
-class TestReportsCoverage:
+class TestReportsRegressionScenarios:
     """Tests for uncovered branches in reports.py."""
 
     def test_lawyer_uid_filter(self, api_client, admin, procs2, dr):

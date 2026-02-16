@@ -419,6 +419,14 @@ class TestGoogleLogin:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data["error_message"] == "Invalid Google token."
 
+    def test_token_without_email(self, api_client, monkeypatch):
+        """Google token without email returns 400."""
+        _mock_google_token(monkeypatch, {"given_name": "No", "family_name": "Email"})
+        url = reverse("google_login")
+        response = api_client.post(url, {"credential": "valid_token"}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["error_message"] == "Email not found in Google token."
+
     def test_create_new_user(self, api_client, monkeypatch):
         _mock_google_token(monkeypatch, {
             "email": "google@example.com",
@@ -439,6 +447,15 @@ class TestGoogleLogin:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is False
 
+    def test_google_login_exception(self, api_client, monkeypatch):
+        """Unexpected exception during user creation path returns 500."""
+        _mock_google_token(monkeypatch, {"email": "exc@test.com", "given_name": "Exc", "family_name": "User"})
+        url = reverse("google_login")
+        with patch("gym_app.views.userAuth.User.objects.get_or_create", side_effect=Exception("DB error")):
+            response = api_client.post(url, {"credential": "valid_token"}, format="json")
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.data["error_message"] == "DB error"
+
     def test_create_user_with_picture_error(self, api_client, monkeypatch):
         """Profile picture fetch failure should not break user creation."""
         _mock_google_token(monkeypatch, {
@@ -452,6 +469,27 @@ class TestGoogleLogin:
             response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is True
+
+    def test_create_user_with_picture_success(self, api_client, monkeypatch):
+        """Profile picture is fetched and save() is triggered when picture URL exists."""
+        _mock_google_token(monkeypatch, {
+            "email": "picsuccess@example.com",
+            "given_name": "Pic",
+            "family_name": "Success",
+            "picture": "http://example.com/pic.jpg",
+        })
+        url = reverse("google_login")
+        mock_http_response = MagicMock()
+        mock_http_response.read.return_value = b"image-bytes"
+
+        with patch("gym_app.views.userAuth.urlopen", return_value=mock_http_response), patch(
+            "django.db.models.fields.files.FieldFile.save"
+        ) as mock_file_save:
+            response = api_client.post(url, {"credential": "valid_token"}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] is True
+        mock_file_save.assert_called_once()
 
     def test_create_user_without_picture(self, api_client, monkeypatch):
         _mock_google_token(monkeypatch, {
@@ -504,6 +542,19 @@ class TestUpdatePassword:
         assert response.status_code == status.HTTP_200_OK
         user.refresh_from_db()
         assert user.check_password("newpass123")
+
+    def test_weak_new_password(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        url = reverse("update_password")
+        response = api_client.post(
+            url,
+            {"current_password": "testpassword", "new_password": "1"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+        user.refresh_from_db()
+        assert user.check_password("testpassword")
 
 
 # =========================================================================

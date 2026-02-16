@@ -1701,7 +1701,7 @@ def doc_empty(lawyer):
 
 
 @pytest.mark.django_db
-class TestDocViewsCoverage:
+class TestDocViewsRegressionScenarios:
 
     # --- Pagination: non-integer limit (lines 113-114) ---
     def test_list_non_integer_limit(self, api_client, lawyer, doc):

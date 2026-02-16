@@ -805,7 +805,7 @@ def active_sub(client_u):
 
 
 @pytest.mark.django_db
-class TestSubscriptionCoverage:
+class TestSubscriptionRegressionScenarios:
 
     # --- create_subscription: Wompi merchant fetch fails (lines 198-203) ---
     def test_create_sub_wompi_merchant_error(self, api_client, client_u):

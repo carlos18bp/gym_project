@@ -877,7 +877,7 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def b10_lawyer_user():
     return User.objects.create_user(
         email="lawyer_b10@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -886,7 +886,7 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def basic_user():
+def b10_basic_user():
     return User.objects.create_user(
         email="basic_b10@test.com", password="pw", role="basic",
     )
@@ -894,10 +894,10 @@ def basic_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def document(lawyer_user):
+def b10_document(b10_lawyer_user):
     return DynamicDocument.objects.create(
         title="Doc B10", content="<p>Hello</p>", state="Draft",
-        created_by=lawyer_user, is_public=True,
+        created_by=b10_lawyer_user, is_public=True,
     )
 
 
@@ -908,38 +908,38 @@ def document(lawyer_user):
 @pytest.mark.django_db
 class TestDocumentLetterheadImage:
 
-    def test_upload_letterhead_doc_not_found(self, api_client, lawyer_user):
+    def test_upload_letterhead_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 925-931: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": 99999})
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_letterhead_doc_not_found(self, api_client, lawyer_user):
+    def test_get_letterhead_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 967-973: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("get-letterhead-image", kwargs={"pk": 99999})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_letterhead_no_image(self, api_client, lawyer_user, document):
+    def test_get_letterhead_no_image(self, api_client, b10_lawyer_user, b10_document):
         """Line 946-950: document has no letterhead image."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("get-letterhead-image", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("get-letterhead-image", kwargs={"pk": b10_document.id})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_letterhead_doc_not_found(self, api_client, lawyer_user):
+    def test_delete_letterhead_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 1010-1016: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("delete-letterhead-image", kwargs={"pk": 99999})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_letterhead_no_image(self, api_client, lawyer_user, document):
+    def test_delete_letterhead_no_image(self, api_client, b10_lawyer_user, b10_document):
         """Line 988-992: document has no letterhead to delete."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("delete-letterhead-image", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("delete-letterhead-image", kwargs={"pk": b10_document.id})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
@@ -951,62 +951,62 @@ class TestDocumentLetterheadImage:
 @pytest.mark.django_db
 class TestDocumentWordTemplate:
 
-    def test_upload_word_template_doc_not_found(self, api_client, lawyer_user):
+    def test_upload_word_template_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 1080-1086: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": 99999})
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_upload_word_template_no_file(self, api_client, lawyer_user, document):
+    def test_upload_word_template_no_file(self, api_client, b10_lawyer_user, b10_document):
         """Line 1034-1038: no template file provided."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": b10_document.id})
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_upload_word_template_wrong_extension(self, api_client, lawyer_user, document):
+    def test_upload_word_template_wrong_extension(self, api_client, b10_lawyer_user, b10_document):
         """Line 1043-1047: non-docx extension."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": b10_document.id})
         f = SimpleUploadedFile("test.txt", b"content", content_type="text/plain")
         resp = api_client.post(url, {"template": f}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_upload_word_template_too_large(self, api_client, lawyer_user, document):
+    def test_upload_word_template_too_large(self, api_client, b10_lawyer_user, b10_document):
         """Line 1050-1055: file too large."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("upload-document-letterhead-word-template", kwargs={"pk": b10_document.id})
         # Create a file > 10MB
         f = SimpleUploadedFile("big.docx", b"x" * (11 * 1024 * 1024), content_type="application/octet-stream")
         resp = api_client.post(url, {"template": f}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_get_word_template_doc_not_found(self, api_client, lawyer_user):
+    def test_get_word_template_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 1119-1125: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("get-document-letterhead-word-template", kwargs={"pk": 99999})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_get_word_template_no_template(self, api_client, lawyer_user, document):
+    def test_get_word_template_no_template(self, api_client, b10_lawyer_user, b10_document):
         """Line 1100-1104: no template configured."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("get-document-letterhead-word-template", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("get-document-letterhead-word-template", kwargs={"pk": b10_document.id})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_word_template_doc_not_found(self, api_client, lawyer_user):
+    def test_delete_word_template_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 1159-1165: document not found."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("delete-document-letterhead-word-template", kwargs={"pk": 99999})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_word_template_no_template(self, api_client, lawyer_user, document):
+    def test_delete_word_template_no_template(self, api_client, b10_lawyer_user, b10_document):
         """Line 1139-1143: no template to delete."""
-        api_client.force_authenticate(user=lawyer_user)
-        url = reverse("delete-document-letterhead-word-template", kwargs={"pk": document.id})
+        api_client.force_authenticate(user=b10_lawyer_user)
+        url = reverse("delete-document-letterhead-word-template", kwargs={"pk": b10_document.id})
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
@@ -1018,46 +1018,46 @@ class TestDocumentWordTemplate:
 @pytest.mark.django_db
 class TestUserWordTemplate:
 
-    def test_upload_user_word_template_no_file(self, api_client, lawyer_user):
+    def test_upload_user_word_template_no_file(self, api_client, b10_lawyer_user):
         """Line 1183-1187: no template file provided."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("upload-user-letterhead-word-template")
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_upload_user_word_template_wrong_ext(self, api_client, lawyer_user):
+    def test_upload_user_word_template_wrong_ext(self, api_client, b10_lawyer_user):
         """Line 1192-1196: non-docx extension."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("upload-user-letterhead-word-template")
         f = SimpleUploadedFile("test.pdf", b"content", content_type="application/pdf")
         resp = api_client.post(url, {"template": f}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_upload_user_word_template_too_large(self, api_client, lawyer_user):
+    def test_upload_user_word_template_too_large(self, api_client, b10_lawyer_user):
         """Line 1200-1204: file too large."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("upload-user-letterhead-word-template")
         f = SimpleUploadedFile("big.docx", b"x" * (11 * 1024 * 1024), content_type="application/octet-stream")
         resp = api_client.post(url, {"template": f}, format="multipart")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_get_user_word_template_no_template(self, api_client, lawyer_user):
+    def test_get_user_word_template_no_template(self, api_client, b10_lawyer_user):
         """Line 1243-1247: no template configured."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("get-user-letterhead-word-template")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_user_word_template_no_template(self, api_client, lawyer_user):
+    def test_delete_user_word_template_no_template(self, api_client, b10_lawyer_user):
         """Line 1281-1285: no template to delete."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("delete-user-letterhead-word-template")
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_user_word_template_basic_forbidden(self, api_client, basic_user):
+    def test_delete_user_word_template_basic_forbidden(self, api_client, b10_basic_user):
         """Line 1273-1276: basic user forbidden."""
-        api_client.force_authenticate(user=basic_user)
+        api_client.force_authenticate(user=b10_basic_user)
         url = reverse("delete-user-letterhead-word-template")
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
@@ -1070,30 +1070,30 @@ class TestUserWordTemplate:
 @pytest.mark.django_db
 class TestUserLetterheadImage:
 
-    def test_upload_user_letterhead_basic_forbidden(self, api_client, basic_user):
+    def test_upload_user_letterhead_basic_forbidden(self, api_client, b10_basic_user):
         """Line 1359-1362: basic user forbidden."""
-        api_client.force_authenticate(user=basic_user)
+        api_client.force_authenticate(user=b10_basic_user)
         url = reverse("upload-user-letterhead-image")
         resp = api_client.post(url, {}, format="multipart")
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_get_user_letterhead_no_image(self, api_client, lawyer_user):
+    def test_get_user_letterhead_no_image(self, api_client, b10_lawyer_user):
         """Line 1469-1473: no letterhead image."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("get-user-letterhead-image")
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_user_letterhead_basic_forbidden(self, api_client, basic_user):
+    def test_delete_user_letterhead_basic_forbidden(self, api_client, b10_basic_user):
         """Line 1507-1510: basic user forbidden."""
-        api_client.force_authenticate(user=basic_user)
+        api_client.force_authenticate(user=b10_basic_user)
         url = reverse("delete-user-letterhead-image")
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete_user_letterhead_no_image(self, api_client, lawyer_user):
+    def test_delete_user_letterhead_no_image(self, api_client, b10_lawyer_user):
         """Line 1515-1519: no letterhead to delete."""
-        api_client.force_authenticate(user=lawyer_user)
+        api_client.force_authenticate(user=b10_lawyer_user)
         url = reverse("delete-user-letterhead-image")
         resp = api_client.delete(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
@@ -1117,7 +1117,7 @@ from gym_app.models import DynamicDocument
 User = get_user_model()
 
 @pytest.fixture
-def api():
+def b20_api():
     return APIClient()
 
 @pytest.fixture
@@ -1127,7 +1127,7 @@ def lawyer():
 
 @pytest.fixture
 @pytest.mark.django_db
-def basic_user():
+def b20_basic_user():
     return User.objects.create_user(email="basic_b20@t.com", password="pw", role="basic", first_name="B", last_name="U")
 
 def _png(w=100, h=100):
@@ -1143,94 +1143,94 @@ def _docx():
 
 @pytest.mark.django_db
 class TestUploadUserLetterhead:
-    def test_success(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 201
+    def test_success(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 201
 
-    def test_no_file(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-image"), {}, format="multipart").status_code == 400
+    def test_no_file(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {}, format="multipart").status_code == 400
 
-    def test_bad_ext(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.jpg", b"d", content_type="image/jpeg")}, format="multipart").status_code == 400
+    def test_bad_ext(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.jpg", b"d", content_type="image/jpeg")}, format="multipart").status_code == 400
 
-    def test_too_large(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"x"*(11*1024*1024), content_type="image/png")}, format="multipart").status_code == 400
+    def test_too_large(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"x"*(11*1024*1024), content_type="image/png")}, format="multipart").status_code == 400
 
-    def test_invalid_img(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"bad", content_type="image/png")}, format="multipart").status_code == 400
+    def test_invalid_img(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"bad", content_type="image/png")}, format="multipart").status_code == 400
 
-    def test_basic_forbidden(self, api, basic_user):
-        api.force_authenticate(user=basic_user)
-        assert api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 403
+    def test_basic_forbidden(self, b20_api, b20_basic_user):
+        b20_api.force_authenticate(user=b20_basic_user)
+        assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 403
 
-    def test_aspect_warning(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        r = api.post(reverse("upload-user-letterhead-image"), {"image": _png(500, 100)}, format="multipart")
+    def test_aspect_warning(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        r = b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png(500, 100)}, format="multipart")
         assert r.status_code == 201 and "warnings" in r.data
 
 @pytest.mark.django_db
 class TestGetUserLetterhead:
-    def test_no_image(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.get(reverse("get-user-letterhead-image")).status_code == 404
+    def test_no_image(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.get(reverse("get-user-letterhead-image")).status_code == 404
 
 @pytest.mark.django_db
 class TestDeleteUserLetterhead:
-    def test_no_image(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.delete(reverse("delete-user-letterhead-image")).status_code == 404
+    def test_no_image(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 404
 
-    def test_basic_forbidden(self, api, basic_user):
-        api.force_authenticate(user=basic_user)
-        assert api.delete(reverse("delete-user-letterhead-image")).status_code == 403
+    def test_basic_forbidden(self, b20_api, b20_basic_user):
+        b20_api.force_authenticate(user=b20_basic_user)
+        assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 403
 
-    def test_success(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart")
-        assert api.delete(reverse("delete-user-letterhead-image")).status_code == 200
+    def test_success(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart")
+        assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 200
 
 @pytest.mark.django_db
 class TestUploadUserWordTpl:
-    def test_success(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 201
+    def test_success(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 201
 
-    def test_no_file(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-word-template"), {}, format="multipart").status_code == 400
+    def test_no_file(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-word-template"), {}, format="multipart").status_code == 400
 
-    def test_bad_ext(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.post(reverse("upload-user-letterhead-word-template"), {"template": SimpleUploadedFile("b.txt", b"d")}, format="multipart").status_code == 400
+    def test_bad_ext(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": SimpleUploadedFile("b.txt", b"d")}, format="multipart").status_code == 400
 
-    def test_basic_forbidden(self, api, basic_user):
-        api.force_authenticate(user=basic_user)
-        assert api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 403
+    def test_basic_forbidden(self, b20_api, b20_basic_user):
+        b20_api.force_authenticate(user=b20_basic_user)
+        assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 403
 
 @pytest.mark.django_db
 class TestGetUserWordTpl:
-    def test_no_tpl(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.get(reverse("get-user-letterhead-word-template")).status_code == 404
+    def test_no_tpl(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.get(reverse("get-user-letterhead-word-template")).status_code == 404
 
 @pytest.mark.django_db
 class TestDeleteUserWordTpl:
-    def test_no_tpl(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        assert api.delete(reverse("delete-user-letterhead-word-template")).status_code == 404
+    def test_no_tpl(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 404
 
-    def test_basic_forbidden(self, api, basic_user):
-        api.force_authenticate(user=basic_user)
-        assert api.delete(reverse("delete-user-letterhead-word-template")).status_code == 403
+    def test_basic_forbidden(self, b20_api, b20_basic_user):
+        b20_api.force_authenticate(user=b20_basic_user)
+        assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 403
 
-    def test_success(self, api, lawyer):
-        api.force_authenticate(user=lawyer)
-        api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart")
-        assert api.delete(reverse("delete-user-letterhead-word-template")).status_code == 200
+    def test_success(self, b20_api, lawyer):
+        b20_api.force_authenticate(user=lawyer)
+        b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart")
+        assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 200
 
 
 # ======================================================================

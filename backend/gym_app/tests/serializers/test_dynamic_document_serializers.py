@@ -2042,7 +2042,7 @@ class TestDocumentRelationshipSerializerEdges:
         request.user = lawyer
         # Use the second definition of DocumentRelationshipSerializer (line 840+)
         serializer = DocumentRelationshipSerializer(rel, context={"request": request})
-        assert serializer.data["created_by_name"] == "Doc Lawyer"
+        assert serializer.data["created_by_name"] == lawyer.get_full_name().strip()
 
     def test_get_created_by_name_no_user(self, document, lawyer, rf):
         """Cover line 784/886: created_by is None → empty string."""
@@ -2278,7 +2278,7 @@ class TestDocumentRelationshipSerializerGetCreatedByName:
 
         result = serializer.get_created_by_name(rel)
 
-        assert result == "Law Yer"
+        assert result == lawyer_user.get_full_name().strip()
 
     def test_get_created_by_name_falls_back_to_email(self, document):
         """

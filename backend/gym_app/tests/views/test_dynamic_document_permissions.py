@@ -720,7 +720,7 @@ def doc(lawyer):
     return DynamicDocument.objects.create(title="DocB22", content="<p>x</p>", state="Draft", created_by=lawyer)
 
 
-class TestPermViewsEdgesBatch22:
+class TestPermViewsEdgeScenarios:
 
     # 1. get_document_permissions – generic exception
     def test_get_perms_internal_error(self, api, lawyer, doc):
@@ -2418,7 +2418,7 @@ class TestCorporateRequestSerializerValidation:
 # ======================================================================
 
 @pytest.mark.django_db
-class TestPermissionViewsBatch36:
+class TestPermissionViewsAdditionalScenarios:
 
     def test_get_document_permissions(self, api_client, lawyer_user):
         doc = DynamicDocument.objects.create(title="Perm36", content="<p>x</p>", state="Draft", created_by=lawyer_user)

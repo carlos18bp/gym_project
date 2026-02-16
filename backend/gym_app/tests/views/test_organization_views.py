@@ -829,7 +829,7 @@ def org(corp_client):
 
 
 @pytest.mark.django_db
-class TestOrganizationViewsCoverage:
+class TestOrganizationViewsRegressionScenarios:
 
     # --- Line 57: require_client_or_corporate_client blocks lawyer ---
     def test_public_detail_blocked_for_lawyer(self, api_client, lawyer, org):

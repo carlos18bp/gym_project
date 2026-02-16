@@ -460,9 +460,12 @@ class TestUserAuthB16:
 
     def test_google_login_exception(self, api_client):
         """Lines 268-273: google_login exception path."""
-        with patch("gym_app.views.userAuth.User.objects.get_or_create", side_effect=Exception("DB error")):
+        with patch(
+            "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
+            return_value={"email": "exc@test.com", "given_name": "Exc", "family_name": "User"},
+        ), patch("gym_app.views.userAuth.User.objects.get_or_create", side_effect=Exception("DB error")):
             url = reverse("google_login")
-            resp = api_client.post(url, {"email": "exc@test.com"}, format="json")
+            resp = api_client.post(url, {"credential": "token"}, format="json")
             assert resp.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_send_passcode_missing_email(self, api_client):
