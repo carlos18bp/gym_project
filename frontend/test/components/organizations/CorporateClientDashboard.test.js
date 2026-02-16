@@ -623,7 +623,7 @@ describe("CorporateClientDashboard.vue", () => {
     );
   });
 
-  test("formatRelativeDate covers day/week/month branches", async () => {
+  test("formatRelativeDate handles day/week/month branches", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 

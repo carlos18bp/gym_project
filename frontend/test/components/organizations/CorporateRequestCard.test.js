@@ -143,7 +143,7 @@ describe("CorporateRequestCard.vue", () => {
     expect(images[1].attributes("src")).toBe("avatar.jpg");
   });
 
-  test("formatRelativeDate covers hoy/ayer/dias/semanas and long date", async () => {
+  test("formatRelativeDate handles hoy/ayer/dias/semanas and long date", async () => {
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);

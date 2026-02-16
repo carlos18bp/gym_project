@@ -388,7 +388,7 @@ describe("FolderCard.vue", () => {
     expect(wrapper.emitted("click")).toBeFalsy();
   });
 
-  test("formatDate covers hoy/ayer/dias/semanas/meses/fecha", async () => {
+  test("formatDate handles hoy/ayer/dias/semanas/meses/fecha", async () => {
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);

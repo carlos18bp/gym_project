@@ -97,7 +97,7 @@ describe("Organization Posts Store", () => {
     expect(store.sortedManagementPosts.map((post) => post.id)).toEqual([2, 1]);
   });
 
-  test("sortedManagementPosts covers unpinned vs pinned comparator branch", () => {
+  test("sortedManagementPosts handles unpinned vs pinned comparator branch", () => {
     const store = useOrganizationPostsStore();
     const originalSort = Array.prototype.sort;
 
@@ -153,7 +153,7 @@ describe("Organization Posts Store", () => {
     expect(store.sortedPublicPosts.map((post) => post.id)).toEqual([21, 20]);
   });
 
-  test("sortedPublicPosts covers pinned comparator and date fallback branch", () => {
+  test("sortedPublicPosts handles pinned comparator and date fallback branch", () => {
     const store = useOrganizationPostsStore();
     const originalSort = Array.prototype.sort;
 

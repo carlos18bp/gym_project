@@ -8,7 +8,7 @@ import * as activityFeed from "@/stores/dashboard/activity_feed";
 
 const mock = new AxiosMockAdapter(axios);
 
-describe("Process Store - full coverage", () => {
+describe("Process Store behaviors", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     mock.reset();

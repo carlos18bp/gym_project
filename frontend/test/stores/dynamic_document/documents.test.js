@@ -13,7 +13,7 @@ import * as requestHttp from "@/stores/services/request_http";
 
 const mock = new AxiosMockAdapter(axios);
 
-describe("Dynamic Document Store - documents.js full coverage", () => {
+describe("Dynamic Document Store - documents module behaviors", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     mock.reset();
@@ -834,5 +834,123 @@ describe("Dynamic Document Store - documents.js full coverage", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
 
     nowSpy.mockRestore();
+  });
+
+  // ── fetchDocumentsForTab behavioral scenarios (lines 154-182) ──
+
+  test("fetchDocumentsForTab returns paginated response when API returns items object", async () => {
+    const store = useDynamicDocumentStore();
+
+    const apiResponse = {
+      items: [{ id: 1, title: "Doc1" }],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    };
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, apiResponse);
+
+    const result = await store.fetchDocumentsForTab({ page: 1, limit: 10 });
+
+    expect(result).toEqual(apiResponse);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe(1);
+  });
+
+  test("fetchDocumentsForTab wraps plain array response into paginated format", async () => {
+    const store = useDynamicDocumentStore();
+
+    const plainArray = [{ id: 2, title: "Doc2" }, { id: 3, title: "Doc3" }];
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, plainArray);
+
+    const result = await store.fetchDocumentsForTab();
+
+    expect(result.items).toEqual(plainArray);
+    expect(result.totalItems).toBe(2);
+    expect(result.totalPages).toBe(1);
+    expect(result.currentPage).toBe(1);
+  });
+
+  test("fetchDocumentsForTab sends state param when provided", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({ state: "Draft" });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("state=Draft");
+  });
+
+  test("fetchDocumentsForTab sends states param as comma-separated list", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({ states: ["Draft", "Progress"] });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("states=Draft%2CProgress");
+  });
+
+  test("fetchDocumentsForTab sends clientId and lawyerId params", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({ clientId: 5, lawyerId: 10 });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("client_id=5");
+    expect(url).toContain("lawyer_id=10");
+  });
+
+  test("fetchDocumentsForTab sends userRelated, signerSigned, and unassigned params", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({
+      userRelated: true,
+      signerSigned: true,
+      unassigned: true,
+    });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("user_related=true");
+    expect(url).toContain("signer_signed=true");
+    expect(url).toContain("unassigned=true");
+  });
+
+  test("fetchDocumentsForTab does not send optional params when falsy", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({});
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("page=1");
+    expect(url).toContain("limit=10");
+    expect(url).not.toContain("state=");
+    expect(url).not.toContain("states=");
+    expect(url).not.toContain("client_id=");
+    expect(url).not.toContain("lawyer_id=");
+    expect(url).not.toContain("user_related=");
+    expect(url).not.toContain("signer_signed=");
+    expect(url).not.toContain("unassigned=");
+  });
+
+  test("fetchDocumentsForTab does not mutate store documents", async () => {
+    const store = useDynamicDocumentStore();
+
+    store.$patch({ documents: [{ id: 99, title: "Existing" }] });
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, [{ id: 1, title: "Tab" }]);
+
+    await store.fetchDocumentsForTab();
+
+    expect(store.documents).toEqual([{ id: 99, title: "Existing" }]);
   });
 });

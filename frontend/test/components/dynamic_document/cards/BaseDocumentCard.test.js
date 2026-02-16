@@ -690,7 +690,7 @@ describe("BaseDocumentCard.vue", () => {
     expect(wrapper.vm.organizedMenuItems).toEqual([]);
   });
 
-  test("status text/classes cover progress/completed/fully signed and unknown", async () => {
+  test("status text/classes handle progress/completed/fully signed and unknown", async () => {
     const wrapper = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
         document: { id: 1, title: "Doc", state: "Progress", tags: [] },
@@ -1012,7 +1012,7 @@ describe("BaseDocumentCard.vue", () => {
     expect(textsNoUser).not.toContain("Firmar documento");
   });
 
-  test("covers useDocument/use branches and unknown-action warn", async () => {
+  test("handles useDocument/use branches and unknown-action warn", async () => {
     const doc = { id: 30, title: "Default", state: "Draft", tags: [] };
 
     const wrapperDefault = mount(BaseDocumentCard, {

@@ -72,7 +72,7 @@ describe("ClientPostCard.vue", () => {
     expect(wrapper.find("a").exists()).toBe(false);
   });
 
-  test("formatRelativeDate covers minutes/hours/days/weeks/months and long dates", async () => {
+  test("formatRelativeDate handles minutes/hours/days/weeks/months and long dates", async () => {
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);
