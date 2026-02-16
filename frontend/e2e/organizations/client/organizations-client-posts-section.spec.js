@@ -28,6 +28,7 @@ test("client posts section: renders pinned post and link", async ({ page }) => {
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();

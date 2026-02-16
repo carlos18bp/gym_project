@@ -23,6 +23,7 @@ test("dashboard loads and sidebar navigation works (processes, legal requests, d
   });
 
   await page.goto("/dashboard");
+  await page.waitForLoadState("networkidle");
 
   // Smoke: dashboard should render welcome card
   await expect(page.getByText("Procesos activos")).toBeVisible();

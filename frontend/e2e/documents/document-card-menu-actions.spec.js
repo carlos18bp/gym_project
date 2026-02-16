@@ -22,7 +22,7 @@ const lawyerAuth = (userId) => ({
   userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
 });
 
-test("Published document actions show download, email, draft options (covers menuOptionsHelper Published path)", async ({ page }) => {
+test("Published document actions show download, email, and draft options in published path", async ({ page }) => {
   const userId = 9810;
 
   const doc = buildMockDocument({
@@ -101,7 +101,7 @@ test("Draft document with signature shows edit, publish, permissions, copy, prev
   await expect(page.getByRole("button", { name: "Gestionar Membrete" })).toBeVisible();
 });
 
-test("folder detail modal shows document cards inside folder (covers FolderCard, folder detail rendering)", async ({ page }) => {
+test("folder detail modal shows document cards inside folder and folder detail rendering", async ({ page }) => {
   const userId = 9812;
 
   const docs = [
@@ -142,7 +142,7 @@ test("folder detail modal shows document cards inside folder (covers FolderCard,
   await expect(page.getByRole("button", { name: "Agregar documentos" }).first()).toBeVisible();
 });
 
-test("client Completed doc shows edit submenu, download, formalize, delete, preview options (full menu coverage)", async ({ page }) => {
+test("client Completed doc shows edit submenu, download, formalize, delete, and preview options", async ({ page }) => {
   const userId = 9813;
 
   const doc = buildMockDocument({

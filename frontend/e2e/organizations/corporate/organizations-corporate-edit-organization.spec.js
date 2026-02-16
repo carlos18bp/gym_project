@@ -26,6 +26,7 @@ test("corporate_client can edit an organization", async ({ page }) => {
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
   await expect(page.locator('h3:has-text("Acme Corp")')).toBeVisible();

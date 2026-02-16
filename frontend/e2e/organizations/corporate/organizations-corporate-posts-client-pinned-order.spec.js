@@ -32,6 +32,7 @@ test("corporate_client pins an older post and client sees pinned posts first", a
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
   const createPost = async ({ title, content }) => {

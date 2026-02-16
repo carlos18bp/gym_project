@@ -41,7 +41,7 @@ async function installDashboardDeepMocks(page, { userId, role, activities = [], 
   });
 }
 
-test("activity feed renders entries with varied time ranges — covers formatTimeAgo branches", async ({ page }) => {
+test("activity feed renders entries with varied time ranges and formatTimeAgo branches", async ({ page }) => {
   const userId = 4010;
   const now = Date.now();
 

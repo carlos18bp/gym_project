@@ -27,6 +27,7 @@ test("client create request modal: submit disabled until form valid", async ({ p
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
 
   // Open modal
@@ -81,6 +82,7 @@ test("client create request modal: shows validation errors on 400 and stays open
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
 
   // Open modal

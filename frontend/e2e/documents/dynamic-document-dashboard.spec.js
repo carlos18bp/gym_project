@@ -21,6 +21,7 @@ test("lawyer can open Dynamic Documents dashboard and switch to Folders tab", as
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible();

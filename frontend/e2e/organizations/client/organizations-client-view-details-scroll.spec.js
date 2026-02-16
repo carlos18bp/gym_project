@@ -27,6 +27,7 @@ test("client can use 'Ver Detalles' to highlight organization posts section", as
   });
 
   await page.goto("/organizations_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
 
