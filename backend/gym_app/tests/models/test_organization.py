@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +15,10 @@ from gym_app.models.organization import (
     OrganizationPost,
 )
 from gym_app.models.user import User
+
+
+FUTURE_EXPIRY = datetime(2099, 1, 1, tzinfo=dt_timezone.utc)
+PAST_EXPIRY = datetime(2000, 1, 1, tzinfo=dt_timezone.utc)
 
 
 @pytest.fixture
@@ -104,7 +108,7 @@ class TestOrganizationModel:
             invited_user=client_user,
             invited_by=organization.corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
         OrganizationInvitation.objects.create(
             organization=organization,
@@ -115,7 +119,7 @@ class TestOrganizationModel:
             ),
             invited_by=organization.corporate_client,
             status="ACCEPTED",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         assert organization.get_member_count() == 1
@@ -163,7 +167,7 @@ class TestOrganizationInvitation:
 
         assert invitation.expires_at is not None
         # Debe estar aproximadamente 30 días en el futuro
-        delta = invitation.expires_at - timezone.now()
+        delta = invitation.expires_at - invitation.created_at
         assert 25 <= delta.days <= 35
 
     def test_invitation_clean_invalid_invited_role(self, organization):
@@ -171,7 +175,7 @@ class TestOrganizationInvitation:
         invalid_invited = User.objects.create_user(email="lawyer@example.com", password="testpassword", role="lawyer")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=invalid_invited, invited_by=organization.corporate_client,
-            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
+            status="PENDING", expires_at=FUTURE_EXPIRY,
         )
         with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
@@ -182,7 +186,7 @@ class TestOrganizationInvitation:
         invalid_inviter = User.objects.create_user(email="notcorp@example.com", password="testpassword", role="client")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=client_user, invited_by=invalid_inviter,
-            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
+            status="PENDING", expires_at=FUTURE_EXPIRY,
         )
         with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
@@ -193,7 +197,7 @@ class TestOrganizationInvitation:
         other_corp = User.objects.create_user(email="othercorp@example.com", password="testpassword", role="corporate_client")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=client_user, invited_by=other_corp,
-            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
+            status="PENDING", expires_at=FUTURE_EXPIRY,
         )
         with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
@@ -205,7 +209,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         invitation = OrganizationInvitation(
@@ -213,7 +217,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         with pytest.raises(ValidationError) as exc_info:
@@ -227,7 +231,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() - timezone.timedelta(days=1),
+            expires_at=PAST_EXPIRY,
         )
 
         assert expired.is_expired() is True
@@ -242,7 +246,7 @@ class TestOrganizationInvitation:
             ),
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         assert active.is_expired() is False
@@ -254,7 +258,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         invitation.accept()
@@ -276,7 +280,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         with pytest.raises(ValidationError) as exc_info:
@@ -291,7 +295,7 @@ class TestOrganizationInvitation:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            expires_at=FUTURE_EXPIRY,
         )
 
         invitation.reject()
@@ -474,7 +478,7 @@ class TestOrganizationEdges:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
         assert organization.get_pending_invitations_count() == 1
 
@@ -496,7 +500,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() - timedelta(days=1),
+            expires_at=PAST_EXPIRY,
         )
         assert inv.is_expired() is True
 
@@ -507,7 +511,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() - timedelta(days=1),
+            expires_at=PAST_EXPIRY,
         )
         assert inv.can_be_responded() is False
 
@@ -518,7 +522,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
         inv.accept()
         assert OrganizationMembership.objects.filter(
@@ -532,7 +536,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
         inv.reject()
         inv.refresh_from_db()
@@ -548,7 +552,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
         with pytest.raises(ValidationError, match="ya es miembro") as exc_info:
             inv.accept()
@@ -561,7 +565,7 @@ class TestOrganizationInvitationEdges:
             organization=organization,
             invited_user=client_user,
             invited_by=corporate_client,
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
         s = str(inv)
         assert organization.title in s
@@ -702,7 +706,7 @@ class TestOrganizationInvitationAcceptReject:
             invited_user=basic_user,
             invited_by=corporate_client,
             status="ACCEPTED",
-            expires_at=timezone.now() + timedelta(days=30),
+            expires_at=FUTURE_EXPIRY,
         )
 
         with pytest.raises(ValidationError, match="no puede ser aceptada") as exc_info:
@@ -721,7 +725,7 @@ class TestOrganizationInvitationAcceptReject:
             invited_user=basic_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() - timedelta(days=1),
+            expires_at=PAST_EXPIRY,
         )
 
         with pytest.raises(ValidationError, match="no puede ser rechazada") as exc_info:

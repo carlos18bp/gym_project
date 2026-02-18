@@ -2,6 +2,7 @@ import json
 import hashlib
 import hmac
 import unittest.mock as mock
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -16,6 +17,9 @@ from gym_app.models import Subscription, PaymentHistory
 
 
 User = get_user_model()
+FIXED_BILLING_DATE = date(2099, 1, 1)
+
+
 @pytest.fixture
 @pytest.mark.django_db
 def subscription_user():
@@ -341,7 +345,7 @@ class TestSubscriptionManagement:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         api_client.force_authenticate(user=subscription_user)
@@ -367,7 +371,7 @@ class TestSubscriptionManagement:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         api_client.force_authenticate(user=subscription_user)
@@ -386,7 +390,7 @@ class TestSubscriptionManagement:
             user=subscription_user,
             plan_type="cliente",
             status="cancelled",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         api_client.force_authenticate(user=subscription_user)
@@ -420,7 +424,7 @@ class TestSubscriptionManagement:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
             payment_source_id="src_old",
         )
@@ -440,7 +444,7 @@ class TestSubscriptionManagement:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         PaymentHistory.objects.create(
@@ -458,7 +462,7 @@ class TestSubscriptionManagement:
             user=other_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         PaymentHistory.objects.create(
@@ -553,7 +557,7 @@ class TestWompiWebhook:
             user=subscription_user,
             plan_type="cliente",
             status="expired",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
 
@@ -596,7 +600,7 @@ class TestWompiWebhook:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
 
@@ -638,7 +642,7 @@ class TestWompiWebhook:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
 
@@ -738,7 +742,7 @@ class TestCancelSubscriptionById:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         api_client.force_authenticate(user=subscription_user)
@@ -767,7 +771,7 @@ class TestCancelSubscriptionById:
             user=subscription_user,
             plan_type="cliente",
             status="cancelled",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         api_client.force_authenticate(user=subscription_user)
@@ -808,7 +812,7 @@ def active_sub(client_u):
     return Subscription.objects.create(
         user=client_u, plan_type='cliente', status='active',
         amount=Decimal('50000.00'),
-        next_billing_date=datetime.now().date() + timedelta(days=30))
+        next_billing_date=FIXED_BILLING_DATE + timedelta(days=30))
 
 
 @pytest.mark.django_db
