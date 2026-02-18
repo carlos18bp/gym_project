@@ -977,7 +977,8 @@ def print_final_report(results: list[BlockResult], totals: Counter[str], duratio
         print("⚠️ Coverage may be incomplete for timed-out blocks; rerun with --resume to refresh coverage.")
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI parser for the backend block runner."""
     parser = argparse.ArgumentParser(
         description=(
             "Run backend pytest in blocks by marker + test group to reduce RAM usage. "
@@ -1012,10 +1013,10 @@ def main() -> int:
     parser.add_argument(
         "--chunk-size",
         type=int,
-        default=0,
+        default=22,
         help=(
             "Split groups into smaller blocks by test file count. "
-            "0 means no chunking (default)."
+            "Default is 22 (use 0 to disable chunking)."
         ),
     )
     parser.add_argument(
@@ -1111,6 +1112,11 @@ def main() -> int:
         help="Extra args passed to pytest after '--'.",
     )
 
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
     args = parser.parse_args()
     backend_root = Path(__file__).resolve().parents[1]
 

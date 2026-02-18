@@ -158,7 +158,7 @@ Selection / discovery
 
 Chunking / views splitting
 
-- `--chunk-size N`: split blocks by number of test files (0 = no chunking).
+- `--chunk-size N`: split blocks by number of test files (default: 22, use 0 to disable).
   Chunks are **balanced by file size** (round-robin): each chunk gets a similar total load.
   Recommended value: **30 or less**.
   Example: `python backend/scripts/run-tests-blocks.py --chunk-size 30`
@@ -344,115 +344,43 @@ This repository includes a modular **test quality gate** that audits test qualit
 
 The gate is an analysis tool for test quality patterns and **does not change production business logic**.
 
-Behavior notes:
+Detailed architecture, algorithm, rule semantics, and complete CLI options are documented in:
 
-- If the JavaScript AST bridge is unavailable, frontend analyzers now emit a `PARSE_ERROR` finding (explicit failure instead of a silent empty analysis).
-- Frontend E2E fragile selector findings are reported as `fragile_locator`.
-- Hardcoded timeout detection in E2E is AST-driven to avoid duplicate findings from overlapping checks.
+- `TEST_QUALITY_GATE_REFERENCE.md`
 
-#### Architecture
+#### Practical commands (most common)
 
-```text
-scripts/
-├── test_quality_gate.py            # Orchestrator
-└── quality/
-    ├── base.py                     # Shared dataclasses/enums/config
-    ├── patterns.py                 # Shared patterns
-    ├── backend_analyzer.py         # Python AST analyzer
-    ├── js_ast_bridge.py            # Python <-> Node bridge
-    ├── frontend_unit_analyzer.py   # Jest analyzer
-    └── frontend_e2e_analyzer.py    # Playwright analyzer
-
-frontend/scripts/
-└── ast-parser.cjs                  # Babel parser for JS/TS tests
-```
-
-#### Prerequisites
-
-1. **Python dependencies** (recommended: backend virtual env)
+Run from repository root:
 
 ```bash
-python3 -m venv backend/.venv
-source backend/.venv/bin/activate
-pip install -r backend/requirements-dev.txt
-```
+# 1) Staged test files only (local pre-commit behavior)
+pre-commit run test-quality-gate
 
-`backend/requirements-dev.txt` includes runtime dependencies plus developer tools (for example, `pre-commit`).
+# 2) All tracked test files via pre-commit hook
+pre-commit run test-quality-gate --all-files
 
-2. **Frontend dependencies** (required for Babel AST parser)
-
-```bash
-cd frontend
-npm install
-```
-
-> `@babel/parser` and `@babel/traverse` are installed from `frontend/package.json`.
-
-#### Run the quality gate
-
-From repository root:
-
-```bash
+# 3) All suites directly (backend + frontend unit + frontend E2E)
 python3 scripts/test_quality_gate.py --repo-root .
-```
 
-Useful variants:
-
-```bash
-# Analyze a single suite
+# 4) One suite only
 python3 scripts/test_quality_gate.py --repo-root . --suite backend
 python3 scripts/test_quality_gate.py --repo-root . --suite frontend-unit
 python3 scripts/test_quality_gate.py --repo-root . --suite frontend-e2e
 
-# Verbose output
-python3 scripts/test_quality_gate.py --repo-root . --verbose --show-all
-
-# Strict mode (warnings fail the command)
-python3 scripts/test_quality_gate.py --repo-root . --strict
-
-# Analyze only a specific test file
+# 5) Scoped run by one file (example)
 python3 scripts/test_quality_gate.py --repo-root . --suite backend \
   --include-file backend/gym_app/tests/models/test_dynamic_document.py
-
-# Analyze only files matching a glob
-python3 scripts/test_quality_gate.py --repo-root . --suite backend \
-  --include-glob 'backend/gym_app/tests/models/test_dynamic_document*.py'
 ```
 
-#### Output and exit codes
+Behavior notes:
 
-- Default report: `test-results/test-quality-report.json`
-- Exit codes:
-  - `0`: passed (or only info-level findings in non-strict mode)
-  - `1`: errors found (or warnings in strict mode)
-  - `2`: configuration/runtime error
+- Default semantic rollout mode is `soft`.
+- `--semantic-rules off` suppresses semantic findings across backend, frontend unit, and frontend E2E suites.
+- Exception markers require documented justification: `quality: disable ... (reason)` and `quality: allow-* (reason)`.
 
-#### Pre-commit integration
-
-Install and enable pre-commit in your local environment:
-
-```bash
-# Recommended with backend virtual environment active
-pip install -r backend/requirements-dev.txt
-
-# From repository root
-pre-commit install
-pre-commit run --all-files
-```
-
-Notes:
-
-- `pre-commit` is a developer tool; install it in your active Python environment.
-- It does **not** need to be installed inside a specific folder, but commands should be run from repo root.
-- Hook config lives in `.pre-commit-config.yaml`.
-
-#### CI integration
-
-Quality gate runs in CI via:
+Quality gate CI workflow:
 
 - `.github/workflows/test-quality-gate.yml`
-
-The workflow sets up Python + Node, installs frontend dependencies, runs the gate, and uploads the JSON report artifact.
 
 Run the full test suite in blocks (backend blocks + frontend unit + E2E with coverage):
 
@@ -460,13 +388,24 @@ Run the full test suite in blocks (backend blocks + frontend unit + E2E with cov
 python scripts/run-tests-all-blocks.py
 ```
 
-This generates log files in `test-reports/` and prints a final summary (coverage included). Optional flags:
+This generates log files in `test-reports/` and prints a final summary (coverage included).
+
+Defaults per suite:
+
+- **Backend**: runs `backend/scripts/run-tests-blocks.py` with default marker blocks
+  (edge, contract, integration, rest), default chunk size **22**, and default sleep **2s**.
+- **Frontend unit**: runs `npm run test -- --coverage --runInBand`.
+- **Frontend E2E**: runs `npx playwright test --workers=1` with `E2E_COVERAGE=1`,
+  then generates coverage via `npx nyc report`.
+
+Optional flags:
 
 ```bash
 python scripts/run-tests-all-blocks.py --skip-e2e
 python scripts/run-tests-all-blocks.py --backend-markers edge,contract
 python scripts/run-tests-all-blocks.py --backend-groups models,serializers
-python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 2 --sleep 2"
+python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 12"
+python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 22 --sleep 2"
 ```
 
 Coverage output:

@@ -19,6 +19,7 @@ from .base import (
     SuiteResult,
     Config,
     Colors,
+    SEMANTIC_RULE_IDS,
 )
 from .patterns import Patterns
 from .js_ast_bridge import JSASTBridge, JSFileResult, JSIssueInfo
@@ -37,6 +38,23 @@ ISSUE_TYPE_MAP = {
     "HARDCODED_TIMEOUT": (IssueCategory.SLEEP_CALL, Severity.WARNING),
     "TOO_MANY_ASSERTIONS": (IssueCategory.TOO_MANY_ASSERTIONS, Severity.WARNING),
     "TEST_TOO_LONG": (IssueCategory.TEST_TOO_LONG, Severity.INFO),
+    "IMPLEMENTATION_COUPLING": (IssueCategory.IMPLEMENTATION_COUPLING, Severity.WARNING),
+    "FRAGILE_SELECTOR": (IssueCategory.FRAGILE_LOCATOR, Severity.WARNING),
+    "MULTI_RENDER": (IssueCategory.MULTI_RENDER, Severity.INFO),
+    "NETWORK_DEPENDENCY": (IssueCategory.NETWORK_DEPENDENCY, Severity.WARNING),
+    "NONDETERMINISTIC": (IssueCategory.NONDETERMINISTIC, Severity.INFO),
+    "GLOBAL_STATE_LEAK": (IssueCategory.GLOBAL_STATE_LEAK, Severity.WARNING),
+    "SNAPSHOT_OVERRELIANCE": (IssueCategory.SNAPSHOT_OVERRELIANCE, Severity.INFO),
+}
+
+ISSUE_RULE_ID_MAP = {
+    "IMPLEMENTATION_COUPLING": "implementation_coupling",
+    "FRAGILE_SELECTOR": "fragile_locator",
+    "MULTI_RENDER": "multi_render",
+    "NETWORK_DEPENDENCY": "network_dependency",
+    "NONDETERMINISTIC": "nondeterministic",
+    "GLOBAL_STATE_LEAK": "global_state_leak",
+    "SNAPSHOT_OVERRELIANCE": "snapshot_overreliance",
 }
 
 
@@ -54,11 +72,13 @@ class FrontendUnitAnalyzer:
         config: Config,
         patterns: Patterns,
         verbose: bool = False,
+        semantic_rules: str = "soft",
     ):
         self.repo_root = repo_root
         self.config = config
         self.patterns = patterns
         self.verbose = verbose
+        self.semantic_rules = semantic_rules
         self.bridge = JSASTBridge(repo_root, verbose)
     
     def discover_files(
@@ -90,12 +110,22 @@ class FrontendUnitAnalyzer:
         self, 
         js_issue: JSIssueInfo, 
         file_path: str,
-    ) -> Issue:
+    ) -> Issue | None:
         """Convert a JS parser issue to our Issue format."""
         category, severity = ISSUE_TYPE_MAP.get(
             js_issue.issue_type, 
             (IssueCategory.PARSE_ERROR, Severity.WARNING),
         )
+        rule_id = ISSUE_RULE_ID_MAP.get(js_issue.issue_type, category.name.lower())
+
+        if (
+            js_issue.issue_type == "NETWORK_DEPENDENCY"
+            and "without observable outcome" in js_issue.message.lower()
+        ):
+            severity = Severity.INFO
+
+        if self.semantic_rules == "off" and rule_id in SEMANTIC_RULE_IDS:
+            return None
         
         return Issue(
             file=file_path,
@@ -105,6 +135,7 @@ class FrontendUnitAnalyzer:
             line=js_issue.line,
             identifier=js_issue.identifier,
             suggestion=js_issue.suggestion or self._get_suggestion(category),
+            rule_id=rule_id,
         )
     
     def _get_suggestion(self, category: IssueCategory) -> str:
@@ -120,6 +151,13 @@ class FrontendUnitAnalyzer:
             IssueCategory.SLEEP_CALL: "Use waitFor() or findBy* instead of fixed timeouts",
             IssueCategory.TOO_MANY_ASSERTIONS: "Split into multiple focused tests",
             IssueCategory.TEST_TOO_LONG: "Extract setup to beforeEach or helper functions",
+            IssueCategory.IMPLEMENTATION_COUPLING: "Prefer user-observable assertions instead of wrapper.vm internals",
+            IssueCategory.FRAGILE_LOCATOR: "Avoid class/id/querySelector selectors when resilient queries are possible",
+            IssueCategory.MULTI_RENDER: "Split into focused tests or add quality: allow-multi-render (reason)",
+            IssueCategory.NETWORK_DEPENDENCY: "Isolate network boundaries and assert behavior/state, not only call contracts",
+            IssueCategory.NONDETERMINISTIC: "Control time/randomness via fake timers, setSystemTime, or deterministic mocks",
+            IssueCategory.GLOBAL_STATE_LEAK: "Restore global state (storage/timers/mocks) to avoid cross-test leaks",
+            IssueCategory.SNAPSHOT_OVERRELIANCE: "Add semantic assertions and keep snapshots small/focused",
         }
         return suggestions.get(category, "")
     
@@ -170,7 +208,9 @@ class FrontendUnitAnalyzer:
         
         # Convert parser issues to our format
         for js_issue in parse_result.issues:
-            issues.append(self._convert_issue(js_issue, rel_path))
+            converted = self._convert_issue(js_issue, rel_path)
+            if converted is not None:
+                issues.append(converted)
         
         # Check file location
         issues.extend(self._check_file_location(file_path))

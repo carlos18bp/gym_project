@@ -19,6 +19,7 @@ module.exports = {
     transformIgnorePatterns: ['/node_modules/'],
     coveragePathIgnorePatterns: [
       '/node_modules/',
+      '/e2e/',
       'src/components/dynamic_document/common/folders/index\\.js$',
     ],
     setupFilesAfterEnv: ['./jest.setup.js']

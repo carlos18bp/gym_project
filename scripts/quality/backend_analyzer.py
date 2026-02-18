@@ -12,6 +12,7 @@ Analyzes Python test files using AST for comprehensive quality checks:
 from __future__ import annotations
 
 import ast
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,6 +30,12 @@ from .base import (
 if TYPE_CHECKING:
     from .base import Config
     from .patterns import Patterns
+
+
+ALLOW_CALL_CONTRACT_PATTERN = re.compile(
+    r"quality:\s*allow-call-contract\s*\(([^)]*)\)",
+    re.IGNORECASE,
+)
 
 
 class ASTAnalyzer:
@@ -253,6 +260,148 @@ class ASTAnalyzer:
         
         return vague_lines
 
+    @classmethod
+    def _call_name(cls, call: ast.Call) -> str:
+        """Return dotted call path for a Call node (best effort)."""
+        parts: list[str] = []
+        current: ast.AST = call.func
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            parts.append(current.id)
+        return ".".join(reversed(parts))
+
+    @classmethod
+    def _first_string_arg_contains(cls, call: ast.Call, *needles: str) -> bool:
+        """Check if first call argument is a string containing any needle."""
+        if not call.args:
+            return False
+        first = call.args[0]
+        if not isinstance(first, ast.Constant) or not isinstance(first.value, str):
+            return False
+        lowered = first.value.lower()
+        return any(needle in lowered for needle in needles)
+
+    @classmethod
+    def get_nondeterministic_signals(cls, node: ast.FunctionDef) -> set[str]:
+        """Collect non-deterministic sources used inside a test function."""
+        signals: set[str] = set()
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Call):
+                continue
+            call_name = cls._call_name(child)
+            if call_name in {"datetime.now", "datetime.utcnow", "timezone.now", "time.time", "uuid.uuid4"}:
+                signals.add(call_name)
+            elif call_name.startswith("random.") and call_name != "random.seed":
+                signals.add(call_name)
+        return signals
+
+    @classmethod
+    def has_determinism_control(cls, node: ast.FunctionDef) -> bool:
+        """Detect explicit deterministic controls (freeze_time, seed, monkeypatch setattr)."""
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Call):
+                continue
+            call_name = cls._call_name(child)
+            if call_name in {"freeze_time", "freezegun.freeze_time", "random.seed"}:
+                return True
+            if call_name.endswith("setattr") and cls._first_string_arg_contains(
+                child,
+                "timezone.now",
+                "datetime",
+                "time.time",
+                "uuid.uuid4",
+                "random.",
+            ):
+                return True
+        return False
+
+    @classmethod
+    def get_network_io_signals(cls, node: ast.FunctionDef) -> set[str]:
+        """Collect direct network/IO dependency calls inside a test function."""
+        signals: set[str] = set()
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Call):
+                continue
+            call_name = cls._call_name(child)
+            if call_name == "open":
+                signals.add("open")
+            elif call_name.startswith(("requests.", "httpx.", "boto3.", "urllib.")):
+                signals.add(call_name)
+        return signals
+
+    @classmethod
+    def has_mock_call_contract_only(cls, node: ast.FunctionDef) -> bool:
+        """Detect tests asserting only mock call contracts without observable-effect assertions."""
+        has_mock_assertion = False
+        observable_assertions = 0
+
+        for child in ast.walk(node):
+            if isinstance(child, ast.Assert):
+                observable_assertions += 1
+            elif isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+                if child.func.attr in cls.MOCK_ASSERTIONS:
+                    has_mock_assertion = True
+                if child.func.attr in cls.ASSERTION_PATTERNS:
+                    observable_assertions += 1
+
+        return has_mock_assertion and observable_assertions == 0
+
+    @classmethod
+    def get_inline_payload_lines(cls, node: ast.FunctionDef) -> list[int]:
+        """Return lines where large inline dict/list payloads are detected."""
+        lines: set[int] = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Dict) and len(child.keys) >= 8:
+                lines.add(child.lineno)
+            elif isinstance(child, (ast.List, ast.Tuple)) and len(child.elts) >= 12:
+                lines.add(child.lineno)
+        return sorted(lines)
+
+    @classmethod
+    def _is_os_environ_node(cls, node: ast.AST) -> bool:
+        """Check whether node references os.environ."""
+        return (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "os"
+            and node.attr == "environ"
+        )
+
+    @classmethod
+    def get_global_state_signals(cls, node: ast.FunctionDef) -> set[str]:
+        """Collect global-state mutation signals within test function body."""
+        signals: set[str] = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Assign):
+                for target in child.targets:
+                    if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
+                        signals.add("os.environ mutation")
+                    elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                        signals.add(f"settings.{target.attr} mutation")
+            elif isinstance(child, ast.AnnAssign):
+                target = child.target
+                if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
+                    signals.add("os.environ mutation")
+                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                    signals.add(f"settings.{target.attr} mutation")
+            elif isinstance(child, ast.AugAssign):
+                target = child.target
+                if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
+                    signals.add("os.environ mutation")
+                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                    signals.add(f"settings.{target.attr} mutation")
+
+            if isinstance(child, ast.Call):
+                call_name = cls._call_name(child)
+                if call_name in {"os.putenv", "os.unsetenv"}:
+                    signals.add(call_name)
+                if call_name.startswith("os.environ.") and call_name.split(".")[-1] in {"update", "setdefault", "pop", "clear"}:
+                    signals.add(call_name)
+
+        return signals
+
 
 class PythonAnalyzer:
     """
@@ -277,6 +426,20 @@ class PythonAnalyzer:
     def _log(self, msg: str) -> None:
         if self.verbose:
             print(f"  {Colors.DIM}→{Colors.RESET} {msg}")
+
+    @staticmethod
+    def _has_allow_call_contract(node: ast.FunctionDef, source: str | None) -> bool:
+        """Check inline allow marker with required non-empty reason."""
+        if not source:
+            return False
+        lines = source.splitlines()
+        start = max((node.lineno or 1) - 1, 0)
+        end = node.end_lineno or node.lineno or start + 1
+        snippet = "\n".join(lines[start:end])
+        marker = ALLOW_CALL_CONTRACT_PATTERN.search(snippet)
+        if marker is None:
+            return False
+        return bool((marker.group(1) or "").strip())
     
     def analyze_suite(
         self,
@@ -359,7 +522,7 @@ class PythonAnalyzer:
         for node in tree.body:
             if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
                 module_names.setdefault(node.name, []).append(node.lineno)
-                test_info = self._analyze_test_function(node, rel_path, file_result)
+                test_info = self._analyze_test_function(node, rel_path, file_result, source=source)
                 file_result.tests.append(test_info)
         
         # Check for module-level duplicates
@@ -388,6 +551,7 @@ class PythonAnalyzer:
         file: str, 
         result: FileResult,
         class_name: str | None = None,
+        source: str | None = None,
     ) -> TestInfo:
         """Analyze a single test function for quality issues."""
         full_name = f"{class_name}.{node.name}" if class_name else node.name
@@ -594,6 +758,81 @@ class PythonAnalyzer:
                 identifier=full_name,
                 suggestion="Add docstring explaining what is being tested.",
             ))
+
+        # 16. Non-deterministic sources without explicit control
+        nondeterministic_signals = ASTAnalyzer.get_nondeterministic_signals(node)
+        if nondeterministic_signals and not ASTAnalyzer.has_determinism_control(node):
+            detected = ", ".join(sorted(nondeterministic_signals))
+            result.issues.append(Issue(
+                file=file,
+                message=f"Non-deterministic source(s) without explicit control: {detected}",
+                severity=Severity.WARNING,
+                category=IssueCategory.NONDETERMINISTIC,
+                rule_id="nondeterministic",
+                line=node.lineno,
+                identifier=full_name,
+                suggestion="Use freezegun/monkeypatch/random.seed or equivalent deterministic control.",
+            ))
+
+        # 17. Direct network/IO dependency
+        network_io_signals = ASTAnalyzer.get_network_io_signals(node)
+        if network_io_signals:
+            detected = ", ".join(sorted(network_io_signals))
+            result.issues.append(Issue(
+                file=file,
+                message=f"Direct network/IO dependency in test: {detected}",
+                severity=Severity.WARNING,
+                category=IssueCategory.NETWORK_DEPENDENCY,
+                rule_id="network_dependency",
+                line=node.lineno,
+                identifier=full_name,
+                suggestion="Isolate external boundaries and assert observable outcomes.",
+            ))
+
+        # 18. Mock call-contract-only assertions (contextual signal)
+        if ASTAnalyzer.has_mock_call_contract_only(node) and not self._has_allow_call_contract(node, source):
+            result.issues.append(Issue(
+                file=file,
+                message="Mock call-contract assertions without observable-effect assertions",
+                severity=Severity.INFO,
+                category=IssueCategory.UNVERIFIED_MOCK,
+                rule_id="mock_call_contract_only",
+                line=node.lineno,
+                identifier=full_name,
+                suggestion=(
+                    "Add assertions on returned state/side effects, or document exception with "
+                    "quality: allow-call-contract (reason)."
+                ),
+            ))
+
+        # 19. Large inline payload
+        inline_payload_lines = ASTAnalyzer.get_inline_payload_lines(node)
+        if inline_payload_lines:
+            result.issues.append(Issue(
+                file=file,
+                message="Large inline payload detected in test",
+                severity=Severity.INFO,
+                category=IssueCategory.INLINE_PAYLOAD,
+                rule_id="inline_payload",
+                line=inline_payload_lines[0],
+                identifier=full_name,
+                suggestion="Prefer factory/data-builder fixtures for complex payload setup.",
+            ))
+
+        # 20. Global-state mutation signal
+        global_state_signals = ASTAnalyzer.get_global_state_signals(node)
+        if global_state_signals:
+            detected = ", ".join(sorted(global_state_signals))
+            result.issues.append(Issue(
+                file=file,
+                message=f"Potential global-state mutation in test: {detected}",
+                severity=Severity.INFO,
+                category=IssueCategory.GLOBAL_STATE_LEAK,
+                rule_id="global_state_mutation",
+                line=node.lineno,
+                identifier=full_name,
+                suggestion="Use scoped fixtures/monkeypatch and ensure cleanup to avoid leaking state.",
+            ))
         
         return test_info
     
@@ -622,7 +861,7 @@ class PythonAnalyzer:
         for node in cls.body:
             if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
                 method_names.setdefault(node.name, []).append(node.lineno)
-                test_info = self._analyze_test_function(node, file, result, cls.name)
+                test_info = self._analyze_test_function(node, file, result, cls.name, source)
                 result.tests.append(test_info)
         
         # Check for duplicates within class

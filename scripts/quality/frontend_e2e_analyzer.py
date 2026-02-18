@@ -32,13 +32,39 @@ ISSUE_TYPE_MAP = {
     "EMPTY_TEST": (IssueCategory.EMPTY_TEST, Severity.ERROR),
     "NO_ASSERTIONS": (IssueCategory.NO_ASSERTIONS, Severity.WARNING),  # E2E may rely on implicit assertions
     "USELESS_ASSERTION": (IssueCategory.USELESS_ASSERTION, Severity.WARNING),
+    "VAGUE_ASSERTION": (IssueCategory.VAGUE_ASSERTION, Severity.INFO),
     "FORBIDDEN_TOKEN": (IssueCategory.FORBIDDEN_TOKEN, Severity.ERROR),
     "POOR_NAMING": (IssueCategory.POOR_NAMING, Severity.WARNING),
     "DUPLICATE_NAME": (IssueCategory.DUPLICATE_NAME, Severity.ERROR),
     "CONSOLE_LOG": (IssueCategory.PRINT_STATEMENT, Severity.INFO),  # Less critical in E2E
     "HARDCODED_TIMEOUT": (IssueCategory.SLEEP_CALL, Severity.ERROR),  # Critical in E2E
+    "WAIT_FOR_TIMEOUT": (IssueCategory.SLEEP_CALL, Severity.WARNING),
+    "SERIAL_WITHOUT_REASON": (IssueCategory.SERIAL_DEPENDENCY, Severity.WARNING),
+    "EXCESSIVE_STEPS": (IssueCategory.EXCESSIVE_STEPS, Severity.INFO),
+    "FRAGILE_TEST_DATA": (IssueCategory.FRAGILE_TEST_DATA, Severity.INFO),
+    "DATA_ISOLATION": (IssueCategory.DATA_ISOLATION, Severity.INFO),
     "TOO_MANY_ASSERTIONS": (IssueCategory.TOO_MANY_ASSERTIONS, Severity.INFO),
     "TEST_TOO_LONG": (IssueCategory.TEST_TOO_LONG, Severity.INFO),
+}
+
+ISSUE_RULE_ID_MAP = {
+    "PARSE_ERROR": "parse_error",
+    "EMPTY_TEST": "empty_test",
+    "NO_ASSERTIONS": "no_assertions",
+    "USELESS_ASSERTION": "useless_assertion",
+    "VAGUE_ASSERTION": "vague_assertion",
+    "FORBIDDEN_TOKEN": "forbidden_token",
+    "POOR_NAMING": "poor_naming",
+    "DUPLICATE_NAME": "duplicate_name",
+    "CONSOLE_LOG": "print_statement",
+    "HARDCODED_TIMEOUT": "sleep_call",
+    "WAIT_FOR_TIMEOUT": "wait_for_timeout",
+    "SERIAL_WITHOUT_REASON": "serial_dependency",
+    "EXCESSIVE_STEPS": "excessive_steps",
+    "FRAGILE_TEST_DATA": "fragile_test_data",
+    "DATA_ISOLATION": "data_isolation",
+    "TOO_MANY_ASSERTIONS": "too_many_assertions",
+    "TEST_TOO_LONG": "test_too_long",
 }
 
 # Patterns for fragile selectors
@@ -50,6 +76,11 @@ FRAGILE_SELECTOR_PATTERNS = [
     (re.compile(r'\.first\s*\(\s*\)'), "first() positional"),
     (re.compile(r'\.last\s*\(\s*\)'), "last() positional"),
 ]
+
+ALLOW_FRAGILE_SELECTOR_PATTERN = re.compile(
+    r"quality:\s*allow-fragile-selector\s*\(([^)]*)\)",
+    re.IGNORECASE,
+)
 
 # Recommended selector patterns
 GOOD_SELECTOR_PATTERNS = [
@@ -77,11 +108,13 @@ class FrontendE2EAnalyzer:
         config: Config,
         patterns: Patterns,
         verbose: bool = False,
+        semantic_rules: str = "soft",
     ):
         self.repo_root = repo_root
         self.config = config
         self.patterns = patterns
         self.verbose = verbose
+        self.semantic_rules = semantic_rules
         self.bridge = JSASTBridge(repo_root, verbose)
     
     def discover_files(
@@ -113,6 +146,12 @@ class FrontendE2EAnalyzer:
             js_issue.issue_type, 
             (IssueCategory.PARSE_ERROR, Severity.WARNING),
         )
+        rule_id = ISSUE_RULE_ID_MAP.get(js_issue.issue_type, category.name.lower())
+
+        if js_issue.issue_type == "WAIT_FOR_TIMEOUT":
+            severity = Severity.ERROR if self.semantic_rules == "strict" else Severity.WARNING
+        elif js_issue.issue_type == "VAGUE_ASSERTION":
+            severity = Severity.WARNING if self.semantic_rules == "strict" else Severity.INFO
         
         return Issue(
             file=file_path,
@@ -122,6 +161,7 @@ class FrontendE2EAnalyzer:
             line=js_issue.line,
             identifier=js_issue.identifier,
             suggestion=js_issue.suggestion or self._get_suggestion(category),
+            rule_id=rule_id,
         )
     
     def _get_suggestion(self, category: IssueCategory) -> str:
@@ -130,15 +170,32 @@ class FrontendE2EAnalyzer:
             IssueCategory.EMPTY_TEST: "Add user flow actions and expect() assertions",
             IssueCategory.NO_ASSERTIONS: "Add expect() to verify page state or element visibility",
             IssueCategory.USELESS_ASSERTION: "Replace with meaningful assertions on page state",
+            IssueCategory.VAGUE_ASSERTION: "Use strict assertions that verify concrete UI state instead of truthy/falsy checks",
             IssueCategory.POOR_NAMING: "Use descriptive name: 'user can <action> from <page>'",
             IssueCategory.DUPLICATE_NAME: "Rename to be unique within test file",
             IssueCategory.FORBIDDEN_TOKEN: "Remove forbidden token from name",
             IssueCategory.PRINT_STATEMENT: "Remove console.log (use Playwright trace/video)",
             IssueCategory.SLEEP_CALL: "Use page.waitForSelector() or expect().toBeVisible()",
+            IssueCategory.SERIAL_DEPENDENCY: "Avoid test.describe.serial or document why ordering is required",
+            IssueCategory.EXCESSIVE_STEPS: "Split the flow or add stronger checkpoints for long scenarios",
+            IssueCategory.FRAGILE_TEST_DATA: "Use stable fixtures/factories instead of brittle hardcoded identifiers",
+            IssueCategory.DATA_ISOLATION: "Ensure data setup has cleanup/reset strategy to keep scenarios isolated",
             IssueCategory.TOO_MANY_ASSERTIONS: "Consider splitting into multiple test cases",
             IssueCategory.TEST_TOO_LONG: "Extract page object patterns or helper functions",
         }
         return suggestions.get(category, "")
+
+    def _selector_issue_severity(self) -> Severity:
+        """Severity for fragile selector findings by semantic rollout mode."""
+        return Severity.WARNING if self.semantic_rules == "strict" else Severity.INFO
+
+    @staticmethod
+    def _has_allow_fragile_selector_with_reason(line: str) -> bool:
+        """Return true when fragile-selector allow marker includes a non-empty reason."""
+        marker = ALLOW_FRAGILE_SELECTOR_PATTERN.search(line)
+        if marker is None:
+            return False
+        return bool((marker.group(1) or "").strip())
     
     def _check_file_location(self, file_path: Path) -> list[Issue]:
         """Check if file is in correct location."""
@@ -176,18 +233,25 @@ class FrontendE2EAnalyzer:
             stripped = line.strip()
             if stripped.startswith("//") or stripped.startswith("/*"):
                 continue
-            
+
+            allow_marker = self._has_allow_fragile_selector_with_reason(stripped)
+            if not allow_marker and line_num > 1:
+                allow_marker = self._has_allow_fragile_selector_with_reason(
+                    lines[line_num - 2].strip()
+                )
+
             # Check for fragile selectors
             for pattern, selector_type in FRAGILE_SELECTOR_PATTERNS:
                 if pattern.search(line):
                     # Check if there's a good selector pattern on the same line
                     has_good = any(p.search(line) for p in GOOD_SELECTOR_PATTERNS)
-                    if not has_good and "data-testid" not in line.lower():
+                    if not has_good and "data-testid" not in line.lower() and not allow_marker:
                         issues.append(Issue(
                             file=rel_path,
                             message=f"Fragile selector ({selector_type}): consider using getByRole/getByTestId",
-                            severity=Severity.INFO,
+                            severity=self._selector_issue_severity(),
                             category=IssueCategory.FRAGILE_LOCATOR,
+                            rule_id="fragile_locator",
                             line=line_num,
                             suggestion="Use getByRole(), getByTestId(), or getByText() for resilient selectors",
                         ))

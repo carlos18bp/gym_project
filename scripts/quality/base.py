@@ -54,6 +54,47 @@ class IssueCategory(Enum):
     HARDCODED_TIMEOUT = auto()
     FRAGILE_LOCATOR = auto()
     MISSING_DESCRIBE = auto()
+    IMPLEMENTATION_COUPLING = auto()
+    MULTI_RENDER = auto()
+    NETWORK_DEPENDENCY = auto()
+    NONDETERMINISTIC = auto()
+    INLINE_PAYLOAD = auto()
+    GLOBAL_STATE_LEAK = auto()
+    SNAPSHOT_OVERRELIANCE = auto()
+    SERIAL_DEPENDENCY = auto()
+    EXCESSIVE_STEPS = auto()
+    FRAGILE_TEST_DATA = auto()
+    DATA_ISOLATION = auto()
+    EXTERNAL_LINT = auto()
+    LINTER_MISCONFIGURED = auto()
+    TOOL_UNAVAILABLE = auto()
+    PERFORMANCE_BUDGET = auto()
+
+
+# Centralized semantic rule identifiers used for rollout gating and reporting.
+SEMANTIC_RULE_IDS: frozenset[str] = frozenset(
+    {
+        # Backend semantics
+        "nondeterministic",
+        "network_dependency",
+        "mock_call_contract_only",
+        "inline_payload",
+        "global_state_mutation",
+        # Frontend unit semantics
+        "implementation_coupling",
+        "fragile_locator",
+        "multi_render",
+        "global_state_leak",
+        "snapshot_overreliance",
+        # Frontend E2E semantics
+        "serial_dependency",
+        "wait_for_timeout",
+        "excessive_steps",
+        "fragile_test_data",
+        "data_isolation",
+        "vague_assertion",
+    }
+)
 
 
 class Colors:
@@ -186,6 +227,9 @@ class Issue:
     line: int | None = None
     identifier: str | None = None
     suggestion: str | None = None
+    rule_id: str | None = None
+    source: str = "internal"
+    fingerprint: str | None = None
     
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -201,7 +245,28 @@ class Issue:
             result["identifier"] = self.identifier
         if self.suggestion:
             result["suggestion"] = self.suggestion
+        if self.rule_id:
+            result["rule_id"] = self.rule_id
+        if self.source and self.source != "internal":
+            result["source"] = self.source
+        if self.fingerprint:
+            result["fingerprint"] = self.fingerprint
         return result
+
+
+@dataclass(frozen=True)
+class ExternalLintFinding:
+    """Normalized finding produced by external lint tooling (Ruff/ESLint)."""
+
+    source: str  # ruff | eslint
+    file: str
+    line: int | None
+    col: int | None
+    external_rule_id: str
+    message: str
+    severity_raw: str
+    normalized_rule_id: str
+    fingerprint: str
 
 
 @dataclass
@@ -265,6 +330,7 @@ class SuiteResult:
     
     suite_name: str
     files: list[FileResult] = field(default_factory=list)
+    suite_findings: dict[str, Any] = field(default_factory=dict)
     
     def add_file(self, file_result: FileResult) -> None:
         """Add a file result to the suite."""
@@ -303,6 +369,7 @@ class SuiteResult:
             "warnings": self.warning_count,
             "info": self.info_count,
             "issues": [i.to_dict() for i in self.all_issues],
+            "suite_findings": self.suite_findings,
             "file_details": [
                 {
                     "file": f.file,
