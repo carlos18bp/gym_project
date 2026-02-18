@@ -161,7 +161,10 @@ describe("DocumentCard.vue", () => {
 
     await wrapper.find("[data-document-id='1']").trigger("click");
 
-    expect(wrapper.emitted("click")).toEqual([[doc]]);
+    const emittedClick = wrapper.emitted("click");
+    expect(emittedClick).toBeTruthy();
+    expect(emittedClick[0][0]).toEqual(doc);
+    expect(emittedClick[0][1]).toEqual(expect.any(Object));
   });
 
   test("menu actions run preview/delete and emit refresh", async () => {

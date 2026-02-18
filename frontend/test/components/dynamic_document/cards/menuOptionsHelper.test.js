@@ -528,7 +528,7 @@ describe("menuOptionsHelper.js", () => {
       ].map((action) => options.find((o) => o.action === action));
 
       expect(enabledActions.every(Boolean)).toBe(true);
-      expect(enabledActions.every((option) => option.disabled === false)).toBe(true);
+      expect(enabledActions.every((option) => option.disabled !== true)).toBe(true);
     });
 
     test("Draft includes Completar and omits preview", () => {

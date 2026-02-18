@@ -377,6 +377,7 @@ describe("PostFormModal.vue", () => {
   test("resetForm shows link inputs for editing post", async () => {
     const wrapper = await mountModal({
       props: {
+        visible: false,
         post: buildPost({
           title: "Editing",
           content: "Editing content",
@@ -387,6 +388,9 @@ describe("PostFormModal.vue", () => {
         }),
       },
     });
+
+    await wrapper.setProps({ visible: true });
+    await flushPromises();
 
     expect(wrapper.find("input#link_name").exists()).toBe(true);
   });

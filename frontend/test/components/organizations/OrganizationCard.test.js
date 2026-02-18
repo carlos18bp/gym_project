@@ -158,10 +158,24 @@ describe("OrganizationCard.vue", () => {
   });
 
   test("leave flow: confirm calls store, notifies, emits left, and closes modal", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
     const store = useOrganizationsStore();
     const leaveSpy = jest.spyOn(store, "leaveOrganization").mockResolvedValue({ ok: true });
 
-    const wrapper = await mountOrganizationCard({ id: 22, title: "Org 22" });
+    const wrapper = mount(OrganizationCard, {
+      props: {
+        organization: buildOrg({ id: 22, title: "Org 22" }),
+      },
+      global: {
+        plugins: [pinia],
+        stubs: {
+          ConfirmationModal: ConfirmationModalStub,
+        },
+      },
+    });
+
+    await flushPromises();
 
     await openLeaveModal(wrapper);
     await wrapper.find("[data-test='confirm']").trigger("click");
