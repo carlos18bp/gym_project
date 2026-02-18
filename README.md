@@ -110,7 +110,8 @@ Run backend tests:
 
 ```bash
 cd backend
-pytest
+pytest gym_app/tests/<domain>/test_<feature>.py -v
+pytest gym_app/tests/<domain>/test_<feature>.py gym_app/tests/<domain>/test_<feature>_regression.py -v
 ```
 
 Run backend tests in blocks (low RAM, markers + test groups):
@@ -297,19 +298,21 @@ cd frontend
 npm run build
 ```
 
-Run frontend unit tests:
+Run frontend unit tests (targeted):
 
 ```bash
 cd frontend
-npm run test
+npm run test -- test/stores/<store>.test.js
+npm run test -- test/components/<component>.test.js test/composables/<composable>.test.js
 ```
 
-Run E2E tests (Playwright):
+Run E2E tests (Playwright, targeted):
 
 ```bash
 cd frontend
 npx playwright install chromium
-npm run e2e
+npm run e2e -- e2e/<flow>.spec.js
+npm run e2e -- e2e/<flow>.spec.js e2e/<related-flow>.spec.js
 ```
 
 Optional: enable Playwright console/page error logs (silenced by default):
@@ -370,13 +373,25 @@ python3 scripts/test_quality_gate.py --repo-root . --suite frontend-e2e
 # 5) Scoped run by one file (example)
 python3 scripts/test_quality_gate.py --repo-root . --suite backend \
   --include-file backend/gym_app/tests/models/test_dynamic_document.py
+
+# 6) Strict semantic mode + external lint integration
+python3 scripts/test_quality_gate.py --repo-root . \
+  --semantic-rules strict --external-lint run --strict --verbose
+
+# 7) Optional performance budgets (warning findings when exceeded)
+python3 scripts/test_quality_gate.py --repo-root . \
+  --suite-time-budget-seconds 30 --total-time-budget-seconds 120
 ```
 
 Behavior notes:
 
 - Default semantic rollout mode is `soft`.
 - `--semantic-rules off` suppresses semantic findings across backend, frontend unit, and frontend E2E suites.
+- `--semantic-rules strict` escalates selected semantic findings (for example `waitForTimeout` in E2E).
+- `--external-lint run` executes Ruff (curated PT checks) and ESLint, then normalizes/merges findings.
 - Exception markers require documented justification: `quality: disable ... (reason)` and `quality: allow-* (reason)`.
+- Supported `allow-*` markers are: `quality: allow-call-contract`, `quality: allow-fragile-selector`, `quality: allow-serial`, and `quality: allow-multi-render` (always with reason).
+- For other justified exceptions, use `quality: disable RULE_ID (reason)`.
 
 Quality gate CI workflow:
 

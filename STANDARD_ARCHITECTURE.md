@@ -5,12 +5,13 @@
 
 This document consolidates and standardizes architecture best practices for fullstack projects, unifying three reference templates into a single corporate standard.
 
-**Version 1.0 - January 2026**
+**Version 1.1 - February 2026**
 
 ---
 
 ## Table of Contents
 
+0. [Current Implementation Snapshot (gym_project)](#0-current-implementation-snapshot-gym_project)
 1. [Architecture Overview](#1-architecture-overview)
 2. [Backend - Django REST Framework](#2-backend---django-rest-framework)
    - 2.1 [Standard Folder Structure](#21-standard-folder-structure)
@@ -23,7 +24,7 @@ This document consolidates and standardizes architecture best practices for full
    - 2.8 [Management Commands (Fake Data)](#28-management-commands-fake-data)
    - 2.9 [Services and Integrations](#29-services-and-integrations)
    - 2.10 [Documentation Conventions](#210-documentation-conventions)
-   - 2.11 [Image Gallery (django_attachments)](#211-image-gallery-django_attachments)
+   - 2.11 [Media and File Handling](#211-media-and-file-handling)
    - 2.12 [Testing (Backend)](#212-testing-backend)
 3. [Frontend - Vue 3 + Vite + Pinia](#3-frontend---vue-3--vite--pinia)
    - 3.1 [Folder Structure](#31-folder-structure)
@@ -31,13 +32,48 @@ This document consolidates and standardizes architecture best practices for full
    - 3.3 [HTTP Service (Axios + JWT)](#33-http-service-axios--jwt)
    - 3.4 [Pinia Stores (CRUD)](#34-pinia-stores-crud)
    - 3.5 [Router and Guards](#35-router-and-guards)
-   - 3.6 [Internationalization (i18n)](#36-internationalization-i18n)
+   - 3.6 [Localization Strategy (Current State)](#36-localization-strategy-current-state)
    - 3.7 [Testing (Frontend)](#37-testing-frontend)
 4. [Standard Dependencies](#4-standard-dependencies)
 5. [Execution Commands](#5-execution-commands)
 6. [New Project Checklist](#6-new-project-checklist)
 
 ---
+
+## 0. Current Implementation Snapshot (gym_project)
+
+This section reflects the architecture currently implemented in this repository (`gym_project`).
+
+### 0.1 Backend snapshot
+
+- Django project package: `backend/gym_project/`
+- Main app package: `backend/gym_app/`
+- Root API wiring: `backend/gym_project/urls.py` mounts `path('api/', include('gym_app.urls'))`
+- SPA fallback routing is served by Django (`SPAView`) for non-API routes.
+- Domain code is organized by package:
+  - `gym_app/models/`
+  - `gym_app/serializers/`
+  - `gym_app/views/` (including `views/dynamic_documents/`)
+  - `gym_app/management/commands/`
+  - `gym_app/utils/`
+- Async/scheduled infrastructure is configured through Celery (`backend/gym_project/celery.py`) and app tasks (`backend/gym_app/tasks.py`).
+
+### 0.2 Frontend snapshot
+
+- SPA stack: Vue 3 + Vite (`frontend/src/`)
+- Router and guards: `frontend/src/router/index.js`
+- Domain stores: `frontend/src/stores/` (`auth/`, `legal/`, `organizations/`, `dynamic_document/`, `subscriptions/`, etc.)
+- Shared HTTP client wrapper: `frontend/src/stores/services/request_http.js`
+- PWA integration via Vite plugin (`frontend/vite.config.js` + `virtual:pwa-register` in `main.js`).
+
+### 0.3 Testing and quality snapshot
+
+- Backend tests: `backend/gym_app/tests/**` with pytest config in `backend/pytest.ini`
+- Segmented backend execution: `backend/scripts/run-tests-blocks.py`
+- Frontend unit tests: Jest (`frontend/jest.config.cjs`, `frontend/test/**`)
+- Frontend E2E: Playwright (`frontend/playwright.config.mjs`, `frontend/e2e/**`)
+- Test quality gate orchestrator: `scripts/test_quality_gate.py`
+- Modular analyzers: `scripts/quality/` + JS AST parser bridge at `frontend/scripts/ast-parser.cjs`.
 
 ## 1. Architecture Overview
 
@@ -47,16 +83,18 @@ This architecture defines the standard for fullstack projects that combine a rob
 
 | Layer | Technology | Purpose |
 |------|------------|-----------|
-| Backend | Django 4.x + DRF | API REST, ORM, Admin |
-| Authentication | SimpleJWT | Tokens JWT with refresh |
-| Database | MySQL | Data persistence |
-| Cache | Redis (optional) | Sessions, query cache |
+| Backend | Django 5.x + DRF | API REST, ORM, Admin |
+| Authentication | SimpleJWT + Google token verification | API auth and federated sign-in |
+| Database | SQLite (default local) | Local persistence (external DB optional per environment) |
+| Async / Jobs | Celery + Redis (+ django-celery-beat when enabled) | Background and scheduled tasks |
 | Frontend | Vue 3 + Vite | SPA with Composition API |
-| State | Pinia + Persistence | Reactive stores |
-| Routing | Vue Router 4 | SPA navigation |
-| HTTP Client | Axios | API requests |
+| State | Pinia (domain stores) | Reactive state management |
+| Routing | Vue Router 4 | SPA navigation + role/auth guards |
+| HTTP Client | Axios | API requests via shared request service |
 | Styles | TailwindCSS | CSS utilities |
-| i18n | Vue I18n | Multi-language |
+| PWA | vite-plugin-pwa | Installability + service worker updates |
+| Testing | Pytest + Jest + Playwright | Unit, integration, and E2E validation |
+| Quality Gate | `scripts/test_quality_gate.py` + `scripts/quality` | Static quality analysis for tests |
 
 ### 1.2 Design Principles
 
@@ -75,44 +113,36 @@ This architecture defines the standard for fullstack projects that combine a rob
 
 ```
 backend/
-├── core_project/           # Django project
-│   ├── settings.py         # Global configuration
-│   ├── urls.py             # Root URLs
-│   ├── wsgi.py / asgi.py   # Entry points
-├── core_app/               # Main domain app
-│   ├── models/             # Models per entity
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   ├── product.py
-│   │   └── order.py
-│   ├── serializers/        # Serializers per module
-│   │   ├── __init__.py
-│   │   ├── user_serializers.py
-│   │   └── product_serializers.py
-│   ├── views/              # API views per module
-│   │   ├── __init__.py
-│   │   ├── auth_views.py
-│   │   └── product_views.py
-│   ├── urls/               # URLs per module
-│   │   ├── __init__.py
-│   │   ├── auth_urls.py
-│   │   └── product_urls.py
-│   ├── services/           # Business logic
-│   │   ├── email_service.py
-│   │   └── payment_service.py
-│   ├── middleware/         # Custom middleware
-│   ├── management/commands/# Django commands
-│   │   ├── create_fake_data.py
-│   │   └── delete_fake_data.py
-│   ├── admin.py            # Admin configuration
-│   └── utils/              # Shared helpers
-├── django_attachments/     # Gallery subproject (optional)
-├── media/                  # Uploaded files
-├── static/                 # Static files
-└── requirements.txt
+├── manage.py
+├── gym_project/                  # Django project package
+│   ├── settings.py
+│   ├── urls.py
+│   ├── celery.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── gym_app/                      # Main domain app
+│   ├── apps.py
+│   ├── admin.py
+│   ├── models/
+│   ├── serializers/
+│   ├── views/
+│   │   └── dynamic_documents/
+│   ├── urls.py                   # Grouped URL lists merged into urlpatterns
+│   ├── management/commands/
+│   ├── tests/
+│   │   ├── models/
+│   │   ├── serializers/
+│   │   ├── views/
+│   │   ├── tasks/
+│   │   └── utils/
+│   └── utils/
+├── scripts/
+│   └── run-tests-blocks.py
+├── pytest.ini
+└── requirements*.txt
 ```
 
-> **Note:** Each model, serializer, view, and URL must be in its own file within the corresponding directory. This facilitates maintenance and avoids monolithic files that are difficult to navigate.
+> **Note:** The current implementation combines domain-based modular files (`models/`, `serializers/`, `views/`) with grouped URL lists in a central `gym_app/urls.py`.
 
 ---
 
@@ -122,26 +152,17 @@ backend/
 
 ```python
 INSTALLED_APPS = [
-    # Django Core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third-party (required)
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    
-    # Third-party (optional per project)
-    'django_redis',
-    'easy_thumbnails',
-    'django_cleanup.apps.CleanupConfig',
-    
-    # Project app
-    'core_app',
+    # 'django_celery_beat',  # enable when scheduler app is installed/migrated
+    'gym_app',
 ]
 ```
 
@@ -152,11 +173,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
 }
 ```
 
@@ -166,11 +182,7 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),    # Adjust based on security requirements
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
 }
 ```
 
@@ -178,252 +190,132 @@ SIMPLE_JWT = {
 
 ```python
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',      # Vite dev server
     'http://127.0.0.1:5173',
-    # Add production domains
+    'http://localhost:5173',
 ]
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = [
-    'accept', 'accept-encoding', 'authorization', 'content-type',
-    'origin', 'x-csrftoken', 'x-requested-with',
-    'x-currency', 'accept-language',  # Custom headers
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
 ]
 
 # Custom user model (REQUIRED from the start)
-AUTH_USER_MODEL = 'core_app.User'
+AUTH_USER_MODEL = 'gym_app.User'
 ```
 
-> **Important:** Credentials (SECRET_KEY, DB passwords, API keys) must NEVER be hardcoded. Use environment variables with `os.getenv()`.
+> **Important:** Credentials (SECRET_KEY, email keys, payment keys, OAuth keys) should be managed via environment variables and not hardcoded for production.
 
 ---
 
 ### 2.3 Domain Models
 
-Models represent domain entities. Each model goes in its own file inside `models/`. Use computed properties for derived logic.
+Domain entities are organized by business capability in `backend/gym_app/models/` and exported through `backend/gym_app/models/__init__.py`.
 
-```python
-# core_app/models/product.py
-import os
-from django.db import models
+| Model module | Main entities |
+| --- | --- |
+| `user.py` | `User`, `ActivityFeed`, `UserSignature` |
+| `process.py` | `Case`, `Stage`, `CaseFile`, `Process`, `RecentProcess` |
+| `legal_request.py` | `LegalRequest`, `LegalRequestType`, `LegalDiscipline`, `LegalRequestFiles`, `LegalRequestResponse` |
+| `corporate_request.py` | `CorporateRequest`, `CorporateRequestType`, `CorporateRequestFiles`, `CorporateRequestResponse` |
+| `organization.py` | `Organization`, `OrganizationInvitation`, `OrganizationMembership`, `OrganizationPost` |
+| `dynamic_document.py` | `DynamicDocument`, `DocumentVariable`, `DocumentSignature`, `Tag`, folder/permission/relationship models, `RecentDocument` |
+| `intranet_gym.py` | `LegalDocument`, `IntranetProfile` |
+| `subscription.py` | `Subscription`, `PaymentHistory` |
+| `legal_update.py` | `LegalUpdate` |
+| `email_verification_code.py`, `password_code.py` | Verification/recovery code models |
 
+Implementation notes:
 
-class Product(models.Model):
-    """
-    Product model representing items available for sale.
-    
-    Attributes:
-        name_en: Product name in English.
-        name_es: Product name in Spanish.
-        price: Product price in default currency.
-        stock: Available quantity in inventory.
-        is_active: Whether the product is visible to customers.
-    """
-    
-    # Bilingual fields (standard pattern)
-    name_en = models.CharField(max_length=255)
-    name_es = models.CharField(max_length=255)
-    description_en = models.TextField(blank=True)
-    description_es = models.TextField(blank=True)
-    
-    # Business fields
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    stock = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    
-    # File fields
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
-    
-    # Timestamps (always include)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return self.name_en
-    
-    @property
-    def is_in_stock(self):
-        """Check if product has available inventory."""
-        return self.stock > 0
-    
-    def delete(self, *args, **kwargs):
-        """Override delete to clean up associated files."""
-        if self.image and os.path.isfile(self.image.path):
-            os.remove(self.image.path)
-        super().delete(*args, **kwargs)
-```
+- `AUTH_USER_MODEL` is `gym_app.User`.
+- Process and dynamic document modules model most of the domain complexity.
+- File-backed entities (for example case files and legal request files) include cleanup and validation paths in model/view logic.
 
 ---
 
 ### 2.4 Serializers
 
-Create specific serializers per use case: List (lightweight), Detail (complete), CreateUpdate (with validations). This optimizes performance and clarifies the API.
+Serializers mirror the domain split and live in `backend/gym_app/serializers/`.
 
-```python
-# core_app/serializers/product_serializers.py
-from rest_framework import serializers
-from ..models import Product
+| Serializer module | Main purpose |
+| --- | --- |
+| `user.py` | User and activity feed payloads |
+| `process.py` | Process/case/stage serialization |
+| `legal_request.py` | Detailed and list serializers, nested responses/files |
+| `corporate_request.py` | Corporate request workflows |
+| `organization.py` | Organizations, memberships, posts, invitations |
+| `dynamic_document.py` | Dynamic document, variables, recent docs |
+| `subscription.py` | Subscription and payment history |
+| `intranet_gym.py`, `legal_update.py` | Intranet docs and legal updates |
 
+Current serializer patterns used in the codebase:
 
-class ProductListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for product listings."""
-    
-    class Meta:
-        model = Product
-        fields = ['id', 'name_en', 'name_es', 'price', 'is_in_stock', 'image']
-
-
-class ProductDetailSerializer(serializers.ModelSerializer):
-    """Full serializer for product detail view."""
-    is_in_stock = serializers.ReadOnlyField()
-    
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-
-class ProductCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for create/update operations with validations."""
-    
-    class Meta:
-        model = Product
-        fields = ['name_en', 'name_es', 'description_en', 'description_es',
-                  'price', 'stock', 'is_active', 'image']
-    
-    def validate_price(self, value):
-        if value <= 0:
-            raise serializers.ValidationError('Price must be greater than 0')
-        return value
-```
+- split serializers for detail vs listing where payload size matters (`LegalRequestSerializer` vs `LegalRequestListSerializer`),
+- nested read-only relationships for rich detail views,
+- computed fields through `SerializerMethodField` and `source=` mappings.
 
 ---
 
 ### 2.5 API Views (@api_view)
 
-The standard uses function-based views with `@api_view`. Each endpoint has its own function with explicit permissions. Responses follow a consistent format with descriptive keys.
+The backend uses function-based DRF views with `@api_view` across domain modules.
 
-```python
-# core_app/views/product_views.py
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
-from rest_framework.response import Response
-from rest_framework import status
+| View module | Responsibility |
+| --- | --- |
+| `userAuth.py` | Registration, login, password reset, token validation, Google auth |
+| `user.py` | Profiles, signatures, user activities |
+| `process.py` / `case_type.py` | Case/process CRUD and recent processes |
+| `legal_request.py` / `corporate_request.py` | Legal and corporate request workflows |
+| `organization.py` / `organization_posts.py` | Organization lifecycle, members, invitations, posts |
+| `dynamic_documents/*` | Dynamic doc CRUD, signatures, permissions, tags/folders, relationships |
+| `subscription.py` | Wompi config/signature/subscription/webhook endpoints |
+| `captcha.py`, `reports.py`, `legal_update.py`, `intranet_gym.py` | Cross-domain support endpoints |
 
-from ..models import Product
-from ..serializers.product_serializers import (
-    ProductListSerializer,
-    ProductDetailSerializer,
-    ProductCreateUpdateSerializer,
-)
+Current conventions:
 
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def list_products(request):
-    """Return all active products."""
-    products = Product.objects.filter(is_active=True)
-    serializer = ProductListSerializer(products, many=True, context={'request': request})
-    return Response({'products': serializer.data}, status=status.HTTP_200_OK)
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def retrieve_product(request, product_id):
-    """Get product detail by ID."""
-    try:
-        product = Product.objects.get(id=product_id, is_active=True)
-    except Product.DoesNotExist:
-        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    serializer = ProductDetailSerializer(product, context={'request': request})
-    return Response({'product': serializer.data}, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([IsAdminUser])
-def create_product(request):
-    """Create a new product (admin only)."""
-    serializer = ProductCreateUpdateSerializer(data=request.data)
-    if serializer.is_valid():
-        product = serializer.save()
-        return Response({
-            'message': 'Product created successfully',
-            'product': ProductDetailSerializer(product).data
-        }, status=status.HTTP_201_CREATED)
-    return Response({'error': 'Invalid data', 'details': serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['PUT', 'PATCH'])
-@permission_classes([IsAdminUser])
-def update_product(request, product_id):
-    """Update an existing product."""
-    try:
-        product = Product.objects.get(id=product_id)
-    except Product.DoesNotExist:
-        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    partial = request.method == 'PATCH'
-    serializer = ProductCreateUpdateSerializer(product, data=request.data, partial=partial)
-    if serializer.is_valid():
-        product = serializer.save()
-        return Response({
-            'message': 'Product updated successfully',
-            'product': ProductDetailSerializer(product).data
-        }, status=status.HTTP_200_OK)
-    return Response({'error': 'Invalid data', 'details': serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAdminUser])
-def delete_product(request, product_id):
-    """Delete a product."""
-    try:
-        product = Product.objects.get(id=product_id)
-    except Product.DoesNotExist:
-        return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    product.delete()
-    return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
-```
+- explicit `@permission_classes(...)` declarations,
+- request-level validation and structured error responses,
+- integration-heavy flows delegate to utility modules (captcha/email/notifications),
+- URL names are stable and consumed by backend tests through `reverse()`.
 
 ---
 
 ### 2.6 URLs by Module
 
-URLs are organized by functional module. Each module has its own URL file that is included in the main urlpatterns.
+In the current implementation, URLs are grouped by functional lists inside a single app-level file (`backend/gym_app/urls.py`) and mounted from the project root.
 
 ```python
-# core_app/urls/product_urls.py
-from django.urls import path
-from ..views.product_views import (
-    list_products, retrieve_product, create_product, update_product, delete_product
-)
+# backend/gym_project/urls.py
+from django.urls import path, include
+from django.urls import re_path
+from gym_app.admin import admin_site
+from gym_app.views.spa import SPAView
 
 urlpatterns = [
-    path('', list_products, name='list-products'),
-    path('<int:product_id>/', retrieve_product, name='retrieve-product'),
-    path('create/', create_product, name='create-product'),
-    path('<int:product_id>/update/', update_product, name='update-product'),
-    path('<int:product_id>/delete/', delete_product, name='delete-product'),
+    path('admin/', admin_site.urls),
+    path('api/', include('gym_app.urls')),
+]
+
+urlpatterns += [
+    re_path(r'^.*$', SPAView.as_view(), name='spa'),
 ]
 ```
 
 ```python
-# core_project/urls.py
-from django.urls import path, include
-from django.contrib import admin
+# backend/gym_app/urls.py (excerpt)
+sign_in_sign_on_urls = [...]
+user_urls = [...]
+process_urls = [...]
+legal_request_urls = [...]
+dynamic_document_urls = [...]
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/auth/', include('core_app.urls.auth_urls')),
-    path('api/products/', include('core_app.urls.product_urls')),
-    path('api/orders/', include('core_app.urls.order_urls')),
-    # ... more modules
-]
+urlpatterns = (
+    sign_in_sign_on_urls
+    + user_urls
+    + process_urls
+    + legal_request_urls
+    + dynamic_document_urls
+    # ... additional grouped URL lists
+)
 ```
 
 #### Endpoint Convention
@@ -440,983 +332,109 @@ urlpatterns = [
 
 ### 2.7 Custom Django Admin
 
-Configure an explicit ModelAdmin for each model with `list_display`, `search_fields`, `list_filter`, etc. For large projects, create a custom AdminSite.
+The project uses a custom admin site (`GyMAdminSite`) defined in `backend/gym_app/admin.py` and exposed through `backend/gym_project/urls.py` via:
 
 ```python
-# core_app/admin.py
-from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
-from .models import Product, Order, User
-
-
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name_en', 'price', 'stock', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name_en', 'name_es', 'description_en')
-    readonly_fields = ('created_at', 'updated_at')
-    list_editable = ('is_active', 'stock')
-    ordering = ('-created_at',)
-
-
-# Custom AdminSite (for large projects)
-class ProjectAdminSite(admin.AdminSite):
-    site_header = 'Admin Panel'
-    site_title = 'Admin'
-    index_title = 'Control Panel'
-    
-    def get_app_list(self, request):
-        app_dict = self._build_app_dict(request)
-        # Organize by logical sections
-        return [
-            {'name': _('Users'), 'models': [...]},
-            {'name': _('Products'), 'models': [...]},
-            {'name': _('Orders'), 'models': [...]},
-        ]
-
-admin_site = ProjectAdminSite(name='project_admin')
+path('admin/', admin_site.urls)
 ```
+
+Admin architecture highlights:
+
+- custom dashboard grouping through `GyMAdminSite.get_app_list`,
+- dedicated `ModelAdmin` classes per domain model,
+- registration occurs against `admin_site` (not the default `admin.site`),
+- grouped sections include User, Process, Legal Request, Corporate Request, Organization, Dynamic Documents, and dashboard-related models.
 
 ---
 
 ### 2.8 Management Commands (Fake Data)
 
-Management commands allow populating and cleaning test data in a controlled manner. **ONE SEPARATE FILE per entity/model** must be created, following the single responsibility principle.
+Fake data and maintenance commands are located at `backend/gym_app/management/commands/`.
 
-> **IMPORTANT RULE:** Each model must have its own command file to generate fake data. This allows running individual commands during development and facilitates maintenance.
-
-> **PROJECT STANDARD:** If a command currently creates multiple models (e.g., `clients + lawyers` in a single file), it should be refactored so each model has its own independent file (e.g., `users`, `organizations`, `processes`, etc.). The `create_fake_data.py` command should be limited to **orchestrating** (calling in order) those generators.
-
-#### 2.8.1 Command File Structure
+#### 2.8.1 Command Inventory
 
 ```
-core_app/
-└── management/
-    └── commands/
-        ├── create_fake_data.py        # Master command (orchestrator)
-        ├── delete_fake_data.py        # Data cleanup
-        ├── create_fake_users.py       # User (this model only + minimal dependencies)
-        ├── create_fake_categories.py  # Categories (no dependencies)
-        ├── create_fake_products.py    # Product (this model only, depends on Category)
-        ├── create_fake_carts.py       # Carts (depends on User, Product)
-        ├── create_fake_orders.py      # Orders (depends on User, Product)
-        └── create_fake_reviews.py     # Reviews (depends on User, Product)
+gym_app/management/commands/
+├── create_fake_data.py          # Orchestrator command
+├── delete_fake_data.py          # Cleanup command
+├── create_clients_lawyers.py
+├── create_organizations.py
+├── create_legal_requests.py
+├── create_processes.py
+├── create_dynamic_documents.py
+└── create_activity_logs.py
 ```
 
-#### 2.8.2 Master Command (Orchestrator)
+#### 2.8.2 Orchestration Flow (`create_fake_data`)
 
-```python
-# core_app/management/commands/create_fake_data.py
-"""
-Master command to orchestrate fake data creation for the entire system.
+`create_fake_data.py` coordinates command execution in this sequence:
 
-This command calls individual entity commands in the correct order,
-respecting model dependencies (e.g., Products need Categories first).
-"""
-from django.core.management import call_command
-from django.core.management.base import BaseCommand
+1. `create_clients_lawyers`
+2. `create_organizations`
+3. `create_legal_requests`
+4. `create_processes`
+5. `create_dynamic_documents`
+6. `create_activity_logs`
 
+It accepts:
 
-class Command(BaseCommand):
-    help = 'Create fake data for all entities in the correct order'
-    
-    def add_arguments(self, parser):
-        parser.add_argument('--users', type=int, default=20,
-                           help='Number of users to create')
-        parser.add_argument('--categories', type=int, default=10,
-                           help='Number of categories to create')
-        parser.add_argument('--products', type=int, default=50,
-                           help='Number of products to create')
-        parser.add_argument('--orders', type=int, default=30,
-                           help='Number of orders to create')
-        parser.add_argument('--reviews', type=int, default=100,
-                           help='Number of reviews to create')
-    
-    def handle(self, *args, **options):
-        self.stdout.write('🚀 Starting fake data creation...\n')
-        
-        # Order matters! Respect dependencies
-        # 1. Independent entities first
-        self.stdout.write('Creating users...')
-        call_command('create_fake_users', '--num', options['users'])
-        
-        self.stdout.write('Creating categories...')
-        call_command('create_fake_categories', '--num', options['categories'])
-        
-        # 2. Entities with single dependency
-        self.stdout.write('Creating products...')
-        call_command('create_fake_products', '--num', options['products'])
-        
-        # 3. Entities with multiple dependencies
-        self.stdout.write('Creating orders...')
-        call_command('create_fake_orders', '--num', options['orders'])
-        
-        self.stdout.write('Creating reviews...')
-        call_command('create_fake_reviews', '--num', options['reviews'])
-        
-        self.stdout.write(self.style.SUCCESS('\n✅ Fake data created successfully!'))
-```
+- positional `number_of_records` (default `50`),
+- `--activities_per_user` (default `40`),
+- `--num_documents` (default `60`),
+- `--num_legal_requests` (default `40`).
 
-#### 2.8.3 Per-Entity Command - Complete Example (Products)
+#### 2.8.3 Cleanup Command Notes (`delete_fake_data`)
 
-```python
-# core_app/management/commands/create_fake_products.py
-"""
-Command to generate fake product data for development and testing.
-
-This command creates realistic product records with:
-- Bilingual content (English/Spanish)
-- Random pricing and stock levels
-- Association with existing categories
-- Placeholder images
-
-Dependencies:
-    - Category model must have existing records
-    
-Usage:
-    python manage.py create_fake_products --num 50
-    python manage.py create_fake_products --num 100 --with-images
-"""
-import random
-from decimal import Decimal
-from django.core.management.base import BaseCommand
-from django.core.files.base import ContentFile
-from faker import Faker
-
-from core_app.models import Product, Category
-
-
-class Command(BaseCommand):
-    help = 'Create fake products with realistic data'
-    
-    def __init__(self):
-        super().__init__()
-        self.fake_en = Faker('en_US')
-        self.fake_es = Faker('es_ES')
-    
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--num',
-            type=int,
-            default=50,
-            help='Number of products to create (default: 50)'
-        )
-        parser.add_argument(
-            '--with-images',
-            action='store_true',
-            help='Generate placeholder images for products'
-        )
-    
-    def handle(self, *args, **options):
-        num_products = options['num']
-        with_images = options['with_images']
-        
-        # Validate dependencies exist
-        categories = list(Category.objects.all())
-        if not categories:
-            self.stdout.write(self.style.ERROR(
-                'No categories found. Run create_fake_categories first.'
-            ))
-            return
-        
-        self.stdout.write(f'Creating {num_products} fake products...')
-        
-        created_count = 0
-        for i in range(num_products):
-            product = self._create_product(categories, with_images)
-            if product:
-                created_count += 1
-                if created_count % 10 == 0:
-                    self.stdout.write(f'  Created {created_count} products...')
-        
-        self.stdout.write(self.style.SUCCESS(
-            f'✅ Successfully created {created_count} products'
-        ))
-    
-    def _create_product(self, categories, with_images=False):
-        """
-        Create a single product with randomized data.
-        
-        Args:
-            categories: List of available Category instances.
-            with_images: Whether to generate placeholder images.
-        
-        Returns:
-            Product: The created product instance.
-        """
-        # Generate bilingual product name
-        product_type = random.choice([
-            'Laptop', 'Phone', 'Tablet', 'Headphones', 'Camera',
-            'Watch', 'Speaker', 'Monitor', 'Keyboard', 'Mouse'
-        ])
-        brand = self.fake_en.company()
-        
-        name_en = f'{brand} {product_type} {self.fake_en.word().title()}'
-        name_es = f'{product_type} {brand} {self.fake_es.word().title()}'
-        
-        # Generate descriptions
-        desc_en = self.fake_en.paragraph(nb_sentences=3)
-        desc_es = self.fake_es.paragraph(nb_sentences=3)
-        
-        # Generate realistic pricing
-        base_price = random.choice([29.99, 49.99, 99.99, 149.99, 299.99, 499.99])
-        price = Decimal(str(base_price)) + Decimal(random.randint(0, 50))
-        
-        # Create product
-        product = Product.objects.create(
-            name_en=name_en,
-            name_es=name_es,
-            description_en=desc_en,
-            description_es=desc_es,
-            price=price,
-            stock=random.randint(0, 100),
-            is_active=random.random() > 0.1,  # 90% active
-            category=random.choice(categories),
-        )
-        
-        return product
-```
-
-#### 2.8.4 Cleanup Command (Delete)
-
-```python
-# core_app/management/commands/delete_fake_data.py
-"""
-Command to safely delete all fake/test data from the database.
-
-IMPORTANT: This command respects the reverse order of dependencies
-to avoid foreign key constraint violations.
-
-Protected records (not deleted):
-- Superusers
-- Users with specific protected emails
-- System configuration records
-"""
-from django.core.management.base import BaseCommand
-
-from core_app.models import (
-    User, Category, Product, Order, OrderItem, Review, Cart, CartItem
-)
-
-
-class Command(BaseCommand):
-    help = 'Delete all fake data (requires --confirm flag)'
-    
-    # Emails that should never be deleted
-    PROTECTED_EMAILS = {
-        'admin@example.com',
-        'superadmin@company.com',
-    }
-    
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--confirm',
-            action='store_true',
-            help='Required flag to confirm deletion'
-        )
-    
-    def handle(self, *args, **options):
-        if not options['confirm']:
-            self.stdout.write(self.style.WARNING(
-                '⚠️  This will DELETE ALL test data!\n'
-                'Run with --confirm to proceed:\n'
-                '  python manage.py delete_fake_data --confirm'
-            ))
-            return
-        
-        self.stdout.write('🗑️  Deleting fake data...\n')
-        
-        # Delete in reverse dependency order
-        # 1. Entities with most dependencies first
-        self._delete_model(OrderItem, 'order items')
-        self._delete_model(Order, 'orders')
-        self._delete_model(CartItem, 'cart items')
-        self._delete_model(Cart, 'carts')
-        self._delete_model(Review, 'reviews')
-        
-        # 2. Entities with single dependency
-        self._delete_model(Product, 'products')
-        
-        # 3. Independent entities
-        self._delete_model(Category, 'categories')
-        
-        # 4. Users (with protection)
-        deleted_users = User.objects.exclude(
-            email__in=self.PROTECTED_EMAILS
-        ).exclude(
-            is_superuser=True
-        ).delete()
-        self.stdout.write(f'  Deleted {deleted_users[0]} users')
-        
-        self.stdout.write(self.style.SUCCESS('\n✅ All fake data deleted'))
-    
-    def _delete_model(self, model, name):
-        """Helper to delete all records of a model."""
-        count = model.objects.count()
-        model.objects.all().delete()
-        self.stdout.write(f'  Deleted {count} {name}')
-```
-
-#### 2.8.5 Dependency Diagram
-
-```
-Creation Order (from least to most dependencies):
-═══════════════════════════════════════════════
-
-    [User] ─────────────────────┐
-                                │
-    [Category] ──────┐          │
-                     │          │
-                     ▼          │
-               [Product] ◄──────┤
-                     │          │
-                     ▼          ▼
-               [Review] ◄── [User]
-                     
-               [Order] ◄─── [User]
-                  │
-                  ▼
-            [OrderItem] ◄── [Product]
-
-
-Deletion Order (reverse - from most to least dependencies):
-═════════════════════════════════════════════════════════════
-
-    1. OrderItem  (depends on Order, Product)
-    2. Order      (depends on User)
-    3. Review     (depends on User, Product)
-    4. CartItem   (depends on Cart, Product)
-    5. Cart       (depends on User)
-    6. Product    (depends on Category)
-    7. Category   (independent)
-    8. User       (independent, protect admins)
-```
+- Current implementation deletes seeded data directly (no `--confirm` flag).
+- Use only in development/test environments.
+- Keep command behavior aligned with test fixtures and fake-data expectations.
 
 ---
 
 ### 2.9 Services and Integrations
 
-Complex business logic and external integrations go in `services/`. This keeps views clean and facilitates unit testing.
+Although there is no dedicated `services/` package yet, the backend uses focused integration modules and helpers.
 
-```python
-# core_app/services/email_service.py
-from django.core.mail import send_mail
-from django.conf import settings
-from django.template.loader import render_to_string
+Current integration points:
 
-
-class EmailService:
-    """
-    Service class for handling email notifications.
-    
-    Provides static methods for sending various types of emails
-    using Django's email backend with HTML templates.
-    """
-    
-    @staticmethod
-    def send_welcome_email(user):
-        """
-        Send a welcome email to a newly registered user.
-        
-        Args:
-            user: User instance with email attribute.
-        
-        Returns:
-            int: Number of successfully delivered messages (0 or 1).
-        """
-        subject = 'Welcome to our platform'
-        html_message = render_to_string('emails/welcome.html', {'user': user})
-        
-        return send_mail(
-            subject=subject,
-            message='',  # Plain text fallback
-            html_message=html_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-    
-    @staticmethod
-    def send_order_confirmation(order):
-        """
-        Send order confirmation email to customer.
-        
-        Args:
-            order: Order instance with customer and items data.
-        """
-        # Implementation follows same pattern...
-        pass
-
-# Usage in views:
-# from ..services.email_service import EmailService
-# EmailService.send_welcome_email(user)
-```
+- **Google reCAPTCHA:** validated from auth endpoints through `gym_app.utils.captcha.verify_captcha`.
+- **Google OAuth sign-in:** handled in `views/userAuth.py` with token verification.
+- **Wompi billing:** subscription/payment flows in `views/subscription.py`, with periodic billing in `gym_app/tasks.py`.
+- **Email notifications:** template-based emails (`views/layouts/sendEmail.py`) and legal request notifications (`utils/email_notifications.py`).
+- **Secure file validation:** legal request uploads validate extension, MIME type, and size using `python-magic`.
 
 ---
 
 ### 2.10 Documentation Conventions
 
-> **MANDATORY RULE:** All comments and documentation within the code must be written in ENGLISH and must use the Python DocString format. This convention applies to both backend (Python/Django) and frontend (JavaScript/Vue).
+Current code includes both English and Spanish user-facing messages. For maintainability in this project:
 
-#### 2.10.1 Python DocStrings (Backend)
-
-```python
-# CORRECT - English DocString
-class OrderService:
-    """
-    Service class for handling order operations.
-    
-    This service manages order creation, updates, and integrations
-    with external payment providers.
-    
-    Attributes:
-        payment_gateway: Instance of the payment provider client.
-        notification_service: Service for sending order notifications.
-    
-    Example:
-        >>> service = OrderService()
-        >>> order = service.create_order(user_id=1, items=[...])
-    """
-    
-    def calculate_total(self, items):
-        """
-        Calculate the total price for a list of order items.
-        
-        Args:
-            items: List of OrderItem objects with price and quantity.
-        
-        Returns:
-            Decimal: The total price including taxes.
-        
-        Raises:
-            ValueError: If items list is empty.
-        """
-        if not items:
-            raise ValueError("Items list cannot be empty")
-        return sum(item.price * item.quantity for item in items)
-
-
-# INCORRECT - Spanish comments
-class ServicioOrdenes:  # NO: Spanish name
-    # Este servicio maneja las órdenes  # NO: Spanish comment
-    def calcular_total(self, items):
-        # Calcular el total  # NO
-        pass
-```
-
-#### 2.10.2 JavaScript/Vue Comments (Frontend)
-
-```javascript
-// CORRECT - English JSDoc
-/**
- * Fetches products from the API with optional filters.
- * 
- * @param {Object} filters - Filter options for the query
- * @param {string} filters.category - Product category to filter by
- * @param {number} filters.minPrice - Minimum price threshold
- * @param {number} filters.maxPrice - Maximum price threshold
- * @returns {Promise<Array>} Array of product objects
- * @throws {Error} If the API request fails
- * 
- * @example
- * const products = await fetchProducts({ category: 'electronics' });
- */
-async function fetchProducts(filters = {}) {
-    // Build query parameters from filters
-    const params = new URLSearchParams(filters);
-    
-    // Make API request
-    const response = await get_request(`products/?${params}`);
-    
-    // Return parsed data
-    return response.data.products;
-}
-
-// INCORRECT
-async function obtenerProductos(filtros) {  // NO: Spanish name
-    // Obtener los productos del servidor  // NO: Spanish comment
-    const respuesta = await get_request('products/');
-    return respuesta.data;
-}
-```
-
-#### 2.10.3 Convention Summary
-
-- **Language:** Everything in ENGLISH (comments, DocStrings, variable names, functions, and classes).
-- **Python format:** Use DocStrings with triple quotes. Include description, Args, Returns, Raises.
-- **JavaScript format:** Use JSDoc with `/** */`. Include @param, @returns, @throws, @example.
-- **Classes:** Document purpose, main attributes, and usage example.
-- **Functions:** Document what it does, parameters, return value, and exceptions.
-- **Complex code:** Add inline comments explaining non-obvious logic.
-- **TODO/FIXME:** Use standard format: `// TODO: description` or `# TODO: description`.
+- keep developer-facing comments/docstrings in English,
+- keep product copy in the required user language,
+- document non-trivial backend functions with Python docstrings,
+- document non-trivial frontend helpers with concise JSDoc,
+- avoid verbose comments for self-explanatory code.
 
 ---
 
-### 2.11 Image Gallery (django_attachments)
+### 2.11 Media and File Handling
 
-This library is an **ESSENTIAL** component of our architecture for managing image galleries on any model. It provides reusable fields (GalleryField, LibraryField), widgets for Django admin, and a unified experience for uploading, sorting, and deleting images.
+The project currently handles file/media concerns through native Django storage and model/file validations (no vendored `django_attachments` module in this repository).
 
-> **Repository:** https://github.com/carlos18bp/django-attachments
-> 
-> **Based on:** Fork of mireq/django-attachments with custom improvements.
+Current media architecture:
 
-#### 2.11.1 Installation and Configuration
+- `MEDIA_URL` and `MEDIA_ROOT` are configured in `gym_project/settings.py`.
+- `gym_project/urls.py` serves media through `static(...)` routing.
+- Upload-heavy areas include:
+  - process case files,
+  - legal request attachments,
+  - dynamic document assets (letterheads/templates/signature resources).
 
-The library is included as a vendored subproject inside the backend. This allows full control over modifications.
+Security and validation highlights:
 
-```
-backend/
-├── django_attachments/      # Subproject copied from repo
-│   ├── __init__.py
-│   ├── admin.py             # AttachmentsAdminMixin, widgets
-│   ├── fields.py            # GalleryField, LibraryField
-│   ├── models.py            # Library, Attachment
-│   ├── migrations/
-│   ├── static/
-│   │   └── django_attachments/
-│   │       ├── css/
-│   │       └── js/
-│   └── templates/
-│       └── django_attachments/
-├── core_app/
-└── core_project/
-```
-
-**Configuration in settings.py:**
-
-```python
-# core_project/settings.py
-
-INSTALLED_APPS = [
-    # Django core...
-    
-    # Image management dependencies (install before django_attachments)
-    'easy_thumbnails',                    # Thumbnail generation
-    'django_cleanup.apps.CleanupConfig',  # Auto-cleanup orphan files
-    
-    # Gallery/Attachments subproject
-    'django_attachments',
-    
-    # Main app
-    'core_app',
-]
-
-# Thumbnail configuration (required for django_attachments)
-THUMBNAIL_ALIASES = {
-    '': {
-        'small':  {'size': (50, 50),   'crop': True},
-        'medium': {'size': (200, 200), 'crop': True},
-        'large':  {'size': (500, 500), 'crop': False},
-        'admin':  {'size': (100, 100), 'crop': True},
-    },
-}
-
-# Media files configuration
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-```
-
-**After configuration, run migrations:**
-
-```bash
-python manage.py makemigrations
-python manage.py migrate django_attachments
-python manage.py migrate
-```
-
-#### 2.11.2 Usage in Models
-
-Models that need image galleries use `GalleryField` (for multiple images) or `LibraryField` (for general attachments). It is **CRITICAL** to implement the `delete()` method to clean up associated galleries.
-
-```python
-# core_app/models/product.py
-"""
-Product model with image gallery support.
-
-Uses django_attachments for managing product images with
-automatic cleanup on deletion.
-"""
-from django.db import models
-from django_attachments.fields import GalleryField
-from django_attachments.models import Library
-
-
-class Product(models.Model):
-    """
-    Product entity with gallery support.
-    
-    Attributes:
-        name_en: Product name in English.
-        name_es: Product name in Spanish.
-        price: Product price.
-        gallery: Image gallery (managed by django_attachments).
-    """
-    
-    # Business fields
-    name_en = models.CharField(max_length=255)
-    name_es = models.CharField(max_length=255)
-    description_en = models.TextField(blank=True)
-    description_es = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    stock = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    
-    # Gallery field - stores multiple images
-    gallery = GalleryField(
-        related_name='products_with_gallery',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-    
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return self.name_en
-    
-    def delete(self, *args, **kwargs):
-        """
-        Override delete to clean up associated gallery.
-        
-        IMPORTANT: This prevents orphan files in the media directory.
-        Always implement this pattern for models with GalleryField.
-        """
-        try:
-            if self.gallery:
-                self.gallery.delete()
-        except Library.DoesNotExist:
-            pass
-        super().delete(*args, **kwargs)
-```
-
-**Example with multiple galleries (Home/Landing page):**
-
-```python
-# core_app/models/home.py
-"""Home page model with multiple gallery sections."""
-from django.db import models
-from django_attachments.fields import GalleryField
-from django_attachments.models import Library
-
-
-class Home(models.Model):
-    """
-    Home page configuration with multiple image galleries.
-    
-    Typically only one instance exists (singleton pattern).
-    """
-    
-    # Hero section
-    hero_title_en = models.CharField(max_length=255)
-    hero_title_es = models.CharField(max_length=255)
-    
-    # Multiple galleries for different sections
-    carousel_gallery = GalleryField(
-        related_name='home_carousel',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-    
-    featured_gallery = GalleryField(
-        related_name='home_featured',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-    
-    testimonials_gallery = GalleryField(
-        related_name='home_testimonials',
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True
-    )
-    
-    def delete(self, *args, **kwargs):
-        """Clean up ALL associated galleries."""
-        galleries = [
-            self.carousel_gallery,
-            self.featured_gallery,
-            self.testimonials_gallery
-        ]
-        for gallery in galleries:
-            try:
-                if gallery:
-                    gallery.delete()
-            except Library.DoesNotExist:
-                pass
-        super().delete(*args, **kwargs)
-```
-
-#### 2.11.3 Admin Forms
-
-For the admin to correctly display gallery widgets, create ModelForms that automatically initialize Library objects.
-
-```python
-# core_app/forms.py
-"""
-Model forms with automatic Library initialization for gallery fields.
-
-These forms ensure that GalleryField widgets work correctly in Django Admin
-by creating Library instances when they don't exist.
-"""
-from django import forms
-from django_attachments.models import Library
-from .models import Product, Home
-
-
-class ProductForm(forms.ModelForm):
-    """
-    Form for Product model with gallery support.
-    
-    Automatically creates a Library instance for the gallery field
-    if one doesn't exist.
-    """
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Make gallery field optional in the form
-        self.fields['gallery'].required = False
-    
-    def save(self, commit=True):
-        """
-        Save the product, creating a Library if needed.
-        
-        Args:
-            commit: Whether to save to database immediately.
-        
-        Returns:
-            Product: The saved product instance.
-        """
-        obj = super().save(commit=False)
-        
-        # Create Library if it doesn't exist
-        if not obj.gallery_id:
-            library = Library()
-            library.save()
-            obj.gallery = library
-        
-        if commit:
-            obj.save()
-        return obj
-    
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-
-class HomeForm(forms.ModelForm):
-    """Form for Home model with multiple gallery fields."""
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # All gallery fields are optional
-        gallery_fields = [
-            'carousel_gallery',
-            'featured_gallery',
-            'testimonials_gallery'
-        ]
-        for field_name in gallery_fields:
-            if field_name in self.fields:
-                self.fields[field_name].required = False
-    
-    def save(self, commit=True):
-        """Save the home instance, creating Libraries for all galleries."""
-        obj = super().save(commit=False)
-        
-        gallery_fields = [
-            'carousel_gallery',
-            'featured_gallery',
-            'testimonials_gallery'
-        ]
-        
-        for field_name in gallery_fields:
-            field_id = f'{field_name}_id'
-            if not getattr(obj, field_id, None):
-                library = Library()
-                library.save()
-                setattr(obj, field_name, library)
-        
-        if commit:
-            obj.save()
-        return obj
-    
-    class Meta:
-        model = Home
-        fields = '__all__'
-```
-
-#### 2.11.4 Admin Configuration
-
-The ModelAdmin must inherit from `AttachmentsAdminMixin` and override `delete_queryset` to ensure gallery cleanup.
-
-```python
-# core_app/admin.py
-"""
-Django Admin configuration with gallery support.
-
-Uses AttachmentsAdminMixin to enable image gallery widgets
-and custom delete handling to clean up associated files.
-"""
-from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
-from django_attachments.admin import AttachmentsAdminMixin
-
-from .models import Product, Home, Category
-from .forms import ProductForm, HomeForm
-
-
-class ProductAdmin(AttachmentsAdminMixin, admin.ModelAdmin):
-    """
-    Admin for Product model with gallery support.
-    
-    AttachmentsAdminMixin provides:
-    - Custom widgets for GalleryField (drag & drop, ordering)
-    - AJAX upload functionality
-    - Thumbnail previews
-    """
-    form = ProductForm
-    
-    list_display = ('name_en', 'price', 'stock', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name_en', 'name_es', 'description_en')
-    readonly_fields = ('created_at', 'updated_at')
-    
-    fieldsets = (
-        (None, {
-            'fields': ('name_en', 'name_es', 'price', 'stock', 'is_active')
-        }),
-        (_('Descriptions'), {
-            'fields': ('description_en', 'description_es'),
-            'classes': ('collapse',)
-        }),
-        (_('Gallery'), {
-            'fields': ('gallery',),
-            'description': _('Drag and drop images to reorder. Click to edit.')
-        }),
-        (_('Metadata'), {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def delete_queryset(self, request, queryset):
-        """
-        Override bulk delete to use model's delete() method.
-        
-        IMPORTANT: The default queryset.delete() bypasses the model's
-        delete() method, which would leave orphan gallery files.
-        """
-        for obj in queryset:
-            obj.delete()
-
-
-class HomeAdmin(AttachmentsAdminMixin, admin.ModelAdmin):
-    """Admin for Home model with multiple galleries."""
-    form = HomeForm
-    
-    def delete_queryset(self, request, queryset):
-        """Use model's delete() to clean up all galleries."""
-        for obj in queryset:
-            obj.delete()
-
-
-# Register models
-admin.site.register(Product, ProductAdmin)
-admin.site.register(Home, HomeAdmin)
-admin.site.register(Category)
-```
-
-#### 2.11.5 API Serializers
-
-To expose images in the REST API, use `SerializerMethodField` to extract URLs.
-
-```python
-# core_app/serializers/product_serializers.py
-"""
-Product serializers with gallery URL extraction.
-"""
-from rest_framework import serializers
-from ..models import Product
-
-
-class ProductListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer with thumbnail only."""
-    thumbnail_url = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Product
-        fields = ['id', 'name_en', 'name_es', 'price', 'stock', 'thumbnail_url']
-    
-    def get_thumbnail_url(self, obj):
-        """Get the first image URL from the gallery."""
-        request = self.context.get('request')
-        if not request or not obj.gallery:
-            return None
-        
-        first_attachment = obj.gallery.attachment_set.order_by('rank').first()
-        if first_attachment and first_attachment.file:
-            return request.build_absolute_uri(first_attachment.file.url)
-        return None
-
-
-class ProductDetailSerializer(serializers.ModelSerializer):
-    """Full serializer with all gallery images."""
-    gallery_images = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Product
-        fields = '__all__'
-    
-    def get_gallery_images(self, obj):
-        """Get all images from the gallery with metadata."""
-        request = self.context.get('request')
-        if not request or not obj.gallery:
-            return []
-        
-        images = []
-        for attachment in obj.gallery.attachment_set.order_by('rank'):
-            if attachment.file:
-                images.append({
-                    'id': attachment.id,
-                    'url': request.build_absolute_uri(attachment.file.url),
-                    'original_name': attachment.original_name,
-                    'title': attachment.title or '',
-                    'caption': attachment.caption or '',
-                    'width': attachment.image_width,
-                    'height': attachment.image_height,
-                    'filesize': attachment.filesize,
-                    'rank': attachment.rank,
-                })
-        return images
-```
-
-#### django_attachments Integration Summary
-
-- **Installation:** Check if `backend/django_attachments/` exists. If not, clone the repository inside `backend/` then add to `INSTALLED_APPS` and run migrations.
-- **Dependencies:** Requires easy_thumbnails and django_cleanup.
-- **Models:** Use GalleryField, ALWAYS implement delete() to clean up galleries.
-- **Forms:** Create ModelForm that automatically initializes Library.
-- **Admin:** Inherit from AttachmentsAdminMixin, override delete_queryset.
-- **Serializers:** Use SerializerMethodField to extract image URLs.
-- **URLs:** No manual configuration required - admin registers them automatically.
-
-Official repository (for cloning):
-
-```
-https://github.com/carlos18bp/django-attachments.git
-```
-
-Suggested command (clone inside `backend/`):
-
-```bash
-git clone https://github.com/carlos18bp/django-attachments.git backend/django_attachments
-```
+- legal request uploads validate extension, MIME type, and max size,
+- server-side MIME detection uses `python-magic`,
+- frontend file uploads use `upload_file_request` with FormData and auth headers.
 
 ---
 
@@ -1430,6 +448,7 @@ In the backend, tests are organized as a `pytest` package inside the Django app:
 backend/
 └── gym_app/
     └── tests/
+        ├── commands/      # Command-level tests/utilities when present
         ├── models/        # Unit tests for models (validations, managers, constraints)
         ├── serializers/   # Unit tests for DRF serializers
         ├── views/         # Endpoint tests (lightweight integration with DRF APIClient)
@@ -1442,9 +461,13 @@ Practical classification:
 - **Unit tests**
   - Models (`gym_app/tests/models/*`)
   - Serializers (`gym_app/tests/serializers/*`)
+  - Tasks (`gym_app/tests/tasks/*`)
   - Utils (`gym_app/tests/utils/*`)
+  - Commands (`gym_app/tests/commands/*`, when used)
 - **Flow / lightweight integration (API)**
   - Views (`gym_app/tests/views/*`) using `rest_framework.test.APIClient`, `reverse()` and asserts on status/response.
+
+> **Quality gate alignment note:** keep test folder conventions synchronized with `scripts/quality/base.py` (`Config.py_allowed_folders`) so location checks match the documented architecture.
 
 #### 2.12.2 Libraries Used
 
@@ -1481,16 +504,22 @@ def test_sign_in_with_password_success(api_client, existing_user, mock_requests_
 
 #### 2.12.5 How to Run Tests
 
-No versioned `pytest.ini` was found. In environments where `pytest-django` does not automatically detect settings, it is recommended to configure:
+The repository includes `backend/pytest.ini` with:
 
-- Environment variable: `DJANGO_SETTINGS_MODULE=gym_project.settings`
+- `DJANGO_SETTINGS_MODULE = gym_project.settings`
+- marker taxonomy (`edge`, `contract`, `integration`)
 
-Recommended commands (from `backend/`):
+Recommended commands (from `backend/`) for local development:
 
 ```bash
-pytest
-pytest -q
-pytest --cov
+# Targeted file
+pytest gym_app/tests/models/test_<entity>.py -v
+
+# Targeted + related regression file
+pytest gym_app/tests/views/test_<endpoint>.py gym_app/tests/serializers/test_<serializer>.py -v
+
+# Optional segmented backend run (broader regression without one huge run)
+python scripts/run-tests-blocks.py --markers edge,contract --groups models,serializers
 ```
 
 ---
@@ -1502,49 +531,36 @@ pytest --cov
 ```
 frontend/
 ├── src/
-│   ├── main.js              # App bootstrap
-│   ├── App.vue              # Root component
-│   ├── style.css            # Global styles + Tailwind
-│   │
+│   ├── main.js
+│   ├── App.vue
+│   ├── style.css
 │   ├── router/
-│   │   └── index.js         # Route configuration and guards
-│   │
+│   │   └── index.js
 │   ├── stores/
-│   │   ├── index.js         # Export all stores
-│   │   ├── services/
-│   │   │   └── request_http.js  # HTTP client (Axios)
-│   │   └── modules/
-│   │       ├── authStore.js
-│   │       ├── productStore.js
-│   │       ├── i18nStore.js
-│   │       └── currencyStore.js
-│   │
-│   ├── views/               # Pages/Views
 │   │   ├── auth/
-│   │   │   ├── LoginView.vue
-│   │   │   └── RegisterView.vue
-│   │   ├── products/
-│   │   │   ├── ProductListView.vue
-│   │   │   └── ProductDetailView.vue
-│   │   └── ...
-│   │
-│   ├── components/          # Reusable components
-│   │   ├── common/
-│   │   ├── forms/
-│   │   └── layouts/
-│   │
-│   ├── composables/         # Reusable logic (hooks)
-│   │
-│   ├── locales/             # Translation files
-│   │   ├── en.json
-│   │   └── es.json
-│   │
-│   └── utils/               # Helpers and utilities
-│
-├── public/
-├── index.html
+│   │   ├── legal/
+│   │   ├── organizations/
+│   │   ├── organization_posts/
+│   │   ├── dynamic_document/
+│   │   ├── dashboard/
+│   │   ├── subscriptions/
+│   │   ├── services/
+│   │   │   └── request_http.js
+│   │   ├── process.js
+│   │   ├── user_guide.js
+│   │   └── user_guide_updates.js
+│   ├── views/               # auth, process, legal_request, organizations, etc.
+│   ├── components/          # dynamic_document, organizations, legal-requests, layouts, etc.
+│   ├── composables/
+│   ├── shared/
+│   └── assets/
+├── test/                    # Jest unit/component tests
+├── e2e/                     # Playwright tests
+├── scripts/                 # AST parser + coverage helpers
 ├── vite.config.js
 ├── tailwind.config.js
+├── jest.config.cjs
+├── playwright.config.mjs
 └── package.json
 ```
 
@@ -1554,144 +570,88 @@ frontend/
 
 ```javascript
 // src/main.js
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import App from './App.vue'
-import router from './router'
-import { i18n, useI18nStore } from './stores/modules/i18nStore'
-import { useCurrencyStore } from './stores/modules/currencyStore'
-import './style.css'
+import './style.css';
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import App from './App.vue';
+import router, { installRouterGuards } from './router';
+import axios from 'axios';
+import { useAuthStore } from './stores/auth/auth';
+import vue3GoogleLogin from 'vue3-google-login';
+import { registerSW } from 'virtual:pwa-register';
 
-const app = createApp(App)
-const pinia = createPinia()
+const app = createApp(App);
+const pinia = createPinia();
+app.use(pinia);
+app.use(router);
 
-// Persistence plugin for stores
-pinia.use(piniaPluginPersistedstate)
+const authStore = useAuthStore();
+installRouterGuards(authStore);
 
-app.use(pinia)
-app.use(router)
-app.use(i18n)
+if (authStore.token) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${authStore.token}`;
+}
 
-// Async initialization (non-blocking)
-const i18nStore = useI18nStore()
-i18nStore.initializeIfNeeded().catch(console.error)
+app.use(vue3GoogleLogin, {
+  clientId: '<GOOGLE_CLIENT_ID>',
+  prompt: 'select_account',
+  redirect_uri: '<APP_DOMAIN>/auth/google/callback',
+});
 
-const currencyStore = useCurrencyStore()
-currencyStore.initializeIfNeeded().catch(console.error)
+registerSW({
+  onNeedRefresh() { /* trigger refresh UX */ },
+  onOfflineReady() { /* optional offline-ready toast */ },
+});
 
-app.mount('#app')
+app.mount('#app');
 ```
 
 ---
 
 ### 3.3 HTTP Service (Axios + JWT)
 
-The HTTP service centralizes all requests. It automatically handles JWT, token refresh, and language/currency headers.
+The HTTP service centralizes API calls under `/api/`, injects CSRF + Bearer token headers, and exposes method-specific wrappers used across domain stores.
 
 ```javascript
 // src/stores/services/request_http.js
-import axios from 'axios'
-import { useI18nStore } from '@/stores/modules/i18nStore'
-import { useCurrencyStore } from '@/stores/modules/currencyStore'
+import axios from 'axios';
 
-// Token helpers
-export function getJWTToken() {
-    return localStorage.getItem('access_token')
+function getCookie(name) {
+  // Extract CSRF token from browser cookies
 }
 
-export function getRefreshToken() {
-    return localStorage.getItem('refresh_token')
-}
-
-export function setTokens(accessToken, refreshToken) {
-    localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('refresh_token', refreshToken)
-}
-
-export function clearTokens() {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('user')
-}
-
-export function isAuthenticated() {
-    return !!getJWTToken()
-}
-
-// Main request function
 async function makeRequest(method, url, params = {}, config = {}) {
-    const i18nStore = useI18nStore()
-    const currencyStore = useCurrencyStore()
-    
-    const token = getJWTToken()
-    const headers = {
-        'Accept-Language': i18nStore?.locale || 'en',
-        'X-Currency': currencyStore?.currentCurrency || 'USD',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...config.headers,
-    }
-    
-    try {
-        let response
-        switch (method) {
-            case 'GET':
-                response = await axios.get(`/api/${url}`, { ...config, headers })
-                break
-            case 'POST':
-                response = await axios.post(`/api/${url}`, params, { ...config, headers })
-                break
-            case 'PUT':
-                response = await axios.put(`/api/${url}`, params, { ...config, headers })
-                break
-            case 'PATCH':
-                response = await axios.patch(`/api/${url}`, params, { ...config, headers })
-                break
-            case 'DELETE':
-                response = await axios.delete(`/api/${url}`, { ...config, headers })
-                break
-        }
-        return response
-    } catch (error) {
-        // Auto-refresh token on 401
-        if (error.response?.status === 401 && token) {
-            const refreshToken = getRefreshToken()
-            if (refreshToken) {
-                try {
-                    const refreshResponse = await axios.post('/api/auth/token/refresh/',
-                        { refresh: refreshToken })
-                    if (refreshResponse.data.access) {
-                        setTokens(refreshResponse.data.access, refreshToken)
-                        // Retry original request
-                        return makeRequest(method, url, params, config)
-                    }
-                } catch {
-                    clearTokens()
-                }
-            }
-        }
-        throw error
-    }
+  const csrfToken = getCookie('csrftoken');
+  const token = localStorage.getItem('token');
+  const headers = {
+    'X-CSRFToken': csrfToken,
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+
+  switch (method) {
+    case 'GET':
+      return axios.get(`/api/${url}`, { headers, ...config });
+    case 'POST':
+      return axios.post(`/api/${url}`, params, { headers, ...config });
+    case 'PUT':
+      return axios.put(`/api/${url}`, params, { headers, ...config });
+    case 'PATCH':
+      return axios.patch(`/api/${url}`, params, { headers, ...config });
+    case 'DELETE':
+      return axios.delete(`/api/${url}`, { headers, ...config });
+    default:
+      throw new Error(`Unsupported method: ${method}`);
+  }
 }
 
-// CRUD wrappers
 export const get_request = (url, responseType = 'json') =>
-    makeRequest('GET', url, {}, { responseType })
-
-export const create_request = (url, params) =>
-    makeRequest('POST', url, params)
-
-export const update_request = (url, params) =>
-    makeRequest('PUT', url, params)
-
-export const patch_request = (url, params) =>
-    makeRequest('PATCH', url, params)
-
-export const delete_request = (url) =>
-    makeRequest('DELETE', url)
-
-// Global axios config
-axios.defaults.timeout = 120000
+  makeRequest('GET', url, {}, { responseType });
+export const create_request = (url, params) => makeRequest('POST', url, params);
+export const update_request = (url, params) => makeRequest('PUT', url, params);
+export const patch_request = (url, params) => makeRequest('PATCH', url, params);
+export const delete_request = (url) => makeRequest('DELETE', url);
+export const upload_file_request = (url, formData) =>
+  axios.post(`/api/${url}`, formData, { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } });
 ```
 
 ---
@@ -1699,6 +659,8 @@ axios.defaults.timeout = 120000
 ### 3.4 Pinia Stores (CRUD)
 
 Each store follows the same pattern: reactive state, computed getters, and CRUD actions.
+
+> In the current repository, stores are grouped by business domain (`auth`, `legal`, `organizations`, `dynamic_document`, etc.). The snippet below illustrates a reusable CRUD pattern.
 
 ```javascript
 // src/stores/modules/productStore.js
@@ -1826,193 +788,44 @@ export const useProductStore = defineStore('product', () => {
 
 ```javascript
 // src/router/index.js
-import { createRouter, createWebHistory } from 'vue-router'
-import { isAuthenticated } from '@/stores/services/request_http'
-import { useI18nStore } from '@/stores/modules/i18nStore'
-
-const availableLanguages = ['en', 'es']
-
-// Base routes
-const baseRoutes = [
-    {
-        path: '/',
-        name: 'Home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { title: 'Home' }
-    },
-    {
-        path: '/login',
-        name: 'Login',
-        component: () => import('@/views/auth/LoginView.vue'),
-        meta: { requiresGuest: true, title: 'Login' }
-    },
-    {
-        path: '/dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/DashboardView.vue'),
-        meta: { requiresAuth: true, title: 'Dashboard' }
-    },
-    {
-        path: '/products',
-        name: 'Products',
-        component: () => import('@/views/products/ProductListView.vue'),
-        meta: { title: 'Products' }
-    },
-    {
-        path: '/products/:id',
-        name: 'ProductDetail',
-        component: () => import('@/views/products/ProductDetailView.vue'),
-        meta: { title: 'Product Detail' }
-    },
-    {
-        path: '/:pathMatch(.*)*',
-        name: 'NotFound',
-        component: () => import('@/views/NotFoundView.vue')
-    }
-]
-
-// Generate localized routes automatically
-const routes = [
-    ...baseRoutes,
-    ...availableLanguages.flatMap(lang =>
-        baseRoutes.map(route => ({
-            ...route,
-            path: `/${lang}${route.path === '/' ? '' : route.path}`,
-            name: route.name ? `${route.name}-${lang}` : undefined,
-        }))
-    )
-]
+import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/auth/auth';
 
 const router = createRouter({
-    history: createWebHistory(),
-    routes,
-    scrollBehavior(to, from, savedPosition) {
-        if (savedPosition) return savedPosition
-        if (to.hash) return { el: to.hash, behavior: 'smooth' }
-        return { top: 0, behavior: 'smooth' }
-    }
-})
+  history: createWebHistory(),
+  routes: [
+    { path: '/sign_in', name: 'sign_in', component: () => import('@/views/auth/SignIn.vue') },
+    { path: '/dashboard', name: 'dashboard', component: () => import('@/views/dashboard/dashboard.vue'), meta: { requiresAuth: true } },
+    { path: '/process_list/:user_id?/:display?', name: 'process_list', component: () => import('@/views/process/ProcessList.vue'), meta: { requiresAuth: true } },
+    { path: '/:pathMatch(.*)*', redirect: { name: 'sign_in' } },
+  ],
+});
 
-// Guards
-router.beforeEach((to, from, next) => {
-    const i18nStore = useI18nStore()
-    const urlLang = to.path.split('/')[1]
-    
-    // Detect and sync language from URL
-    if (availableLanguages.includes(urlLang) && urlLang !== i18nStore.locale) {
-        i18nStore.setLocale(urlLang)
+export function installRouterGuards(authStore) {
+  router.beforeEach(async (to, from, next) => {
+    const isAuthenticated = await authStore.isAuthenticated();
+    if (to.meta.requiresAuth && !isAuthenticated) {
+      return next({ name: 'sign_in' });
     }
-    
-    // Auth guard
-    if (to.meta.requiresAuth && !isAuthenticated()) {
-        const targetLang = urlLang || i18nStore.locale || 'en'
-        return next({ name: `Login-${targetLang}`, query: { redirect: to.fullPath } })
+    if (to.meta.requiresLawyer && isAuthenticated) {
+      // Role-based restrictions are validated before navigation
     }
-    
-    // Guest guard (redirect if already authenticated)
-    if (to.meta.requiresGuest && isAuthenticated()) {
-        const targetLang = urlLang || i18nStore.locale || 'en'
-        return next({ name: `Home-${targetLang}` })
-    }
-    
-    // Update page title
-    document.title = to.meta.title || 'My Application'
-    
-    next()
-})
+    return next();
+  });
+}
 
-export default router
+export default router;
 ```
 
 ---
 
-### 3.6 Internationalization (i18n)
+### 3.6 Localization Strategy (Current State)
 
-```javascript
-// src/stores/modules/i18nStore.js
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { createI18n } from 'vue-i18n'
+Current frontend implementation does not use `vue-i18n` as a dedicated translation runtime.
 
-// Translation messages
-const messages = {
-    en: {
-        common: {
-            save: 'Save',
-            cancel: 'Cancel',
-            delete: 'Delete',
-            loading: 'Loading...',
-            error: 'An error occurred'
-        },
-        auth: {
-            login: 'Log In',
-            logout: 'Log Out',
-            register: 'Register'
-        },
-        products: {
-            title: 'Products',
-            addToCart: 'Add to Cart',
-            outOfStock: 'Out of Stock'
-        }
-    },
-    es: {
-        common: {
-            save: 'Guardar',
-            cancel: 'Cancelar',
-            delete: 'Eliminar',
-            loading: 'Cargando...',
-            error: 'Ocurrió un error'
-        },
-        auth: {
-            login: 'Iniciar Sesión',
-            logout: 'Cerrar Sesión',
-            register: 'Registrarse'
-        },
-        products: {
-            title: 'Productos',
-            addToCart: 'Agregar al Carrito',
-            outOfStock: 'Agotado'
-        }
-    }
-}
-
-// Create i18n instance
-export const i18n = createI18n({
-    legacy: false,
-    locale: 'en',
-    fallbackLocale: 'en',
-    messages
-})
-
-// Store for language management
-export const useI18nStore = defineStore('i18n', () => {
-    const locale = ref('en')
-    const availableLocales = ['en', 'es']
-    
-    function setLocale(newLocale) {
-        if (availableLocales.includes(newLocale)) {
-            locale.value = newLocale
-            i18n.global.locale.value = newLocale
-            localStorage.setItem('locale', newLocale)
-        }
-    }
-    
-    async function initializeIfNeeded() {
-        const saved = localStorage.getItem('locale')
-        if (saved && availableLocales.includes(saved)) {
-            setLocale(saved)
-        } else {
-            // Detect from browser
-            const browserLang = navigator.language.split('-')[0]
-            setLocale(availableLocales.includes(browserLang) ? browserLang : 'en')
-        }
-    }
-    
-    return { locale, availableLocales, setLocale, initializeIfNeeded }
-}, {
-    persist: true  // Persist to localStorage
-})
-```
+- Most UI copy is currently authored in Spanish directly in views/components.
+- Date/number formatting commonly uses locale-specific formatters (for example `toLocaleDateString('es-ES')`).
+- If full runtime i18n is required in future iterations, it should be introduced as an explicit architectural decision (message catalog + key-based rendering).
 
 ---
 
@@ -2037,10 +850,13 @@ Unit test structure:
 ```
 frontend/
 └── test/
+    ├── animations/   # Animation behavior tests
+    ├── views/        # View-level tests
     ├── stores/       # Pinia unit tests (actions/getters)
     ├── router/       # Guards and navigation
     ├── composables/  # Hooks/composables
     ├── shared/       # Shared helpers
+    ├── utils/        # Utility tests
     └── components/   # Component tests with Vue Test Utils
 ```
 
@@ -2080,17 +896,24 @@ Real example (E2E):
 
 ```js
 await page.goto('/sign_in');
-await page.locator('#email').fill('client@example.com');
-await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+await page.getByTestId('email-input').fill('client@example.com');
+await page.getByRole('button', { name: 'Sign In' }).click();
 await expect(page).toHaveURL(/\/dashboard/);
 ```
 
 #### 3.7.3 Commands to Run Tests
 
 ```bash
-npm run test
-npm run e2e
-npm run e2e:ui
+# Unit/component tests (targeted)
+npm run test -- test/stores/<store>.test.js
+npm run test -- test/components/<component>.test.js test/composables/<composable>.test.js
+
+# E2E tests (targeted)
+npm run e2e -- e2e/auth/<flow>.spec.js
+npm run e2e -- e2e/organizations/<flow>.spec.js e2e/profile/<flow>.spec.js
+
+# Optional interactive/reports for scoped E2E runs
+npm run e2e:ui -- e2e/auth/<flow>.spec.js
 npm run e2e:headed
 npm run e2e:report
 ```
@@ -2103,10 +926,12 @@ npm run e2e:report
 
 | Category | Package | Purpose |
 |----------|---------|----------|
-| Core | Django>=4.2 | Web framework |
+| Core | Django>=5.0 | Web framework |
 | Core | djangorestframework | REST API |
 | Auth | djangorestframework-simplejwt | JWT authentication |
 | CORS | django-cors-headers | CORS handling |
+| Async | celery | Background jobs |
+| Async | django-celery-beat | Scheduled jobs (optional enablement) |
 | Cache | django-redis | Redis cache |
 | Images | Pillow | Image processing |
 | Images | easy-thumbnails | Automatic thumbnails |
@@ -2125,10 +950,10 @@ npm run e2e:report
 | Core | vue@^3.x | Reactive framework |
 | Build | vite + @vitejs/plugin-vue | Fast bundler |
 | State | pinia | Store management |
-| State | pinia-plugin-persistedstate | Store persistence |
 | Routing | vue-router@^4.x | SPA navigation |
 | HTTP | axios | HTTP client |
-| i18n | vue-i18n | Internationalization |
+| Auth | vue3-google-login | Google OAuth UI integration |
+| PWA | vite-plugin-pwa | Progressive Web App support |
 | Styles | tailwindcss | CSS utilities |
 | UI | @headlessui/vue | Accessible components |
 | Icons | @heroicons/vue | SVG icons |
@@ -2169,20 +994,23 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # 6. Create fake data
-python manage.py create_fake_data --users 20 --products 50 --orders 30
+python manage.py create_fake_data 60 --num_legal_requests 40 --num_documents 80 --activities_per_user 30
 
 # 7. Delete fake data
-python manage.py delete_fake_data --confirm
+python manage.py delete_fake_data
 
-# 8. Tests
-pytest
-pytest -q
+# 8. Tests (targeted)
+pytest gym_app/tests/models/test_<entity>.py -v
+pytest gym_app/tests/views/test_<endpoint>.py gym_app/tests/views/test_<endpoint>_regression.py -v
+
+# 8.1 Optional: segmented backend run for broader regression
+python scripts/run-tests-blocks.py --markers edge,contract,integration,rest --chunk-size 22 --sleep 2
 
 # 9. Development server
 python manage.py runserver        # http://localhost:8000
 
 # 10. Production server (with gunicorn)
-gunicorn core_project.wsgi:application --bind 0.0.0.0:8000
+gunicorn gym_project.wsgi:application --bind 0.0.0.0:8000
 ```
 
 ### 5.2 Frontend (Vue + Vite)
@@ -2204,11 +1032,13 @@ npm run preview
 # 5. Linting
 npm run lint
 
-# 6. Tests
-npm run test
+# 6. Unit/component tests (targeted)
+npm run test -- test/stores/<store>.test.js
+npm run test -- test/components/<component>.test.js
 
-# 7. E2E
-npm run e2e
+# 7. E2E tests (targeted)
+npm run e2e -- e2e/auth/<flow>.spec.js
+npm run e2e -- e2e/subscriptions/<flow>.spec.js
 ```
 
 ### 5.3 Development Access URLs
@@ -2251,7 +1081,7 @@ Use this list when starting a new project to ensure all standards are followed.
 - [ ] Organize URLs by functional module
 - [ ] Configure Django Admin with detailed ModelAdmins
 - [ ] Create create_fake_data and delete_fake_data commands
-- [ ] Verify and integrate `django_attachments` if the project requires image galleries
+- [ ] Define media/file handling strategy (validation, storage backend, cleanup)
 - [ ] Implement services for complex business logic
 
 ### 6.3 Frontend
@@ -2260,7 +1090,7 @@ Use this list when starting a new project to ensure all standards are followed.
 - [ ] Implement HTTP service with JWT handling and refresh
 - [ ] Create Pinia stores with standard CRUD pattern
 - [ ] Configure router with auth guards
-- [ ] Implement internationalization (i18n)
+- [ ] Define localization strategy (direct locale copy vs runtime i18n)
 - [ ] Configure TailwindCSS
 - [ ] Create reusable base components
 - [ ] Implement global error handling
@@ -2274,7 +1104,7 @@ Use this list when starting a new project to ensure all standards are followed.
 - [ ] Configure collectstatic for static files
 - [ ] Configure media file server (S3, etc.)
 - [ ] Implement appropriate logging
-- [ ] Run delete_fake_data --confirm
+- [ ] Run delete_fake_data only in controlled non-production environments when data reset is required
 - [ ] Review permissions on sensitive endpoints
 - [ ] Production build for frontend
 
@@ -2313,7 +1143,7 @@ This appendix describes the standard steps to follow every time a change is made
 - When changing existing behavior:
   - Update tests to describe the **new** intended behavior.
   - Avoid weakening assertions unless it is a deliberate design decision.
-- Run the relevant full test suite (backend and/or frontend) and ensure it passes before merging.
+- Run targeted tests for changed files plus related regression tests (small batches) and ensure they pass before merging.
 
 #### 4. Verify and maintain test data
 
@@ -2409,7 +1239,7 @@ These items are not always required, but should be considered for any non-trivia
 │                    AFTER IMPLEMENTING                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  □ Write/update tests (happy path + edge cases)                  │
-│  □ Run full relevant test suite                                  │
+│  □ Run targeted tests + related regression tests                 │
 │  □ Update user manual if applicable                              │
 │  □ Review security and permissions                               │
 │  □ Prepare descriptive commit message                            │
