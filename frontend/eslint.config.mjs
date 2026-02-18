@@ -35,7 +35,7 @@ export default [
       "jest/valid-expect": "error",
       "jest/expect-expect": "warn",
       "jest/consistent-test-it": ["warn", { fn: "test", withinDescribe: "test" }],
-      "jest-dom/prefer-to-be-in-the-document": "warn",
+      "jest-dom/prefer-in-document": "warn",
       "jest-dom/prefer-enabled-disabled": "warn",
       "jest-dom/prefer-required": "warn",
     },
