@@ -40,6 +40,42 @@ jest.mock("vue3-recaptcha2", () => ({
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const getSetupState = (wrapper) => wrapper.vm.$.setupState;
+
+const fillRegistrationForm = (wrapper, values = {}) => {
+  const state = getSetupState(wrapper);
+  const {
+    email = "user@test.com",
+    firstName = "Ana",
+    lastName = "Lopez",
+    password = "Secret123",
+    confirmPassword = "Secret123",
+  } = values;
+
+  state.userForm.email = email;
+  state.userForm.firstName = firstName;
+  state.userForm.lastName = lastName;
+  state.userForm.password = password;
+  state.userForm.confirmPassword = confirmPassword;
+};
+
+const setPasscodeState = (wrapper, { passcodeSent, passcode, emailUsedToSentPasscode }) => {
+  const state = getSetupState(wrapper);
+  state.passcodeSent = passcodeSent;
+  state.passcode = passcode;
+  state.emailUsedToSentPasscode = emailUsedToSentPasscode;
+};
+
+const setPrivacyAccepted = (wrapper, accepted) => {
+  getSetupState(wrapper).privacyAccepted = accepted;
+};
+
+const verifyCaptcha = (wrapper, token) => getSetupState(wrapper).onCaptchaVerified(token);
+const sendVerificationPasscode = (wrapper) => getSetupState(wrapper).sendVerificationPasscode();
+const signOnUser = (wrapper) => getSetupState(wrapper).signOnUser();
+const handleGoogleSignUp = (wrapper, payload) => getSetupState(wrapper).handleLoginWithGoogle(payload);
+const getPasscodeSent = (wrapper) => getSetupState(wrapper).passcodeSent;
+
 describe("SubscriptionSignUp.vue", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -71,15 +107,11 @@ describe("SubscriptionSignUp.vue", () => {
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.userForm.password = "Secret123";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "Secret123";
-    wrapper.vm.$.setupState.privacyAccepted = true;
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
+    fillRegistrationForm(wrapper);
+    setPrivacyAccepted(wrapper, true);
+    await verifyCaptcha(wrapper, "token");
 
-    await wrapper.vm.$.setupState.sendVerificationPasscode();
+    await sendVerificationPasscode(wrapper);
 
     expect(axios.post).toHaveBeenCalledWith("/api/sign_on/send_verification_code/", {
       email: "user@test.com",
@@ -89,7 +121,8 @@ describe("SubscriptionSignUp.vue", () => {
       "Se ha enviado un código de acceso a tu correo electrónico",
       "info"
     );
-    expect(wrapper.vm.$.setupState.passcodeSent).toBe(true);
+    expect(getPasscodeSent(wrapper)).toBe(true);
+    jest.restoreAllMocks();
   });
 
   test("creates account when passcode matches", async () => {
@@ -117,17 +150,15 @@ describe("SubscriptionSignUp.vue", () => {
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.userForm.password = "Secret123";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "Secret123";
-    wrapper.vm.$.setupState.passcodeSent = "999";
-    wrapper.vm.$.setupState.passcode = "999";
-    wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
+    fillRegistrationForm(wrapper);
+    setPasscodeState(wrapper, {
+      passcodeSent: "999",
+      passcode: "999",
+      emailUsedToSentPasscode: "user@test.com",
+    });
+    await verifyCaptcha(wrapper, "token");
 
-    await wrapper.vm.$.setupState.signOnUser();
+    await signOnUser(wrapper);
 
     expect(axios.post).toHaveBeenCalledWith("/api/sign_on/", {
       email: "user@test.com",
@@ -143,6 +174,8 @@ describe("SubscriptionSignUp.vue", () => {
       name: "checkout",
       params: { plan: "cliente" },
     });
+    expect(mockRouterPush.mock.calls.length).toBe(1);
+    jest.restoreAllMocks();
   });
 
   test("rejects sign on when passcode is empty", async () => {
@@ -166,20 +199,20 @@ describe("SubscriptionSignUp.vue", () => {
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.userForm.password = "Secret123";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "Secret123";
-    wrapper.vm.$.setupState.passcodeSent = true;
-    wrapper.vm.$.setupState.passcode = "";
-    wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
+    fillRegistrationForm(wrapper);
+    setPasscodeState(wrapper, {
+      passcodeSent: true,
+      passcode: "",
+      emailUsedToSentPasscode: "user@test.com",
+    });
+    await verifyCaptcha(wrapper, "token");
 
-    await wrapper.vm.$.setupState.signOnUser();
+    await signOnUser(wrapper);
 
     expect(mockShowNotification).toHaveBeenCalledWith("El código de verificación es obligatorio", "warning");
     expect(axios.post).not.toHaveBeenCalled();
+    expect(mockRouterPush.mock.calls.length).toBe(0);
+    jest.restoreAllMocks();
   });
 
   test("throws validation error when email missing", async () => {
@@ -202,13 +235,14 @@ describe("SubscriptionSignUp.vue", () => {
 
     await flushPromises();
 
-    await expect(wrapper.vm.$.setupState.sendVerificationPasscode()).rejects.toThrow(
+    await expect(sendVerificationPasscode(wrapper)).rejects.toThrow(
       "Email required"
     );
     expect(mockShowNotification).toHaveBeenCalledWith(
       "El correo electrónico es obligatorio",
       "warning"
     );
+    jest.restoreAllMocks();
   });
 
   test("handles Google sign up", async () => {
@@ -236,7 +270,7 @@ describe("SubscriptionSignUp.vue", () => {
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.handleLoginWithGoogle({ credential: "token" });
+    await handleGoogleSignUp(wrapper, { credential: "token" });
 
     expect(axios.post).toHaveBeenCalledWith("/api/google_login/", {
       credential: "token",
@@ -250,5 +284,7 @@ describe("SubscriptionSignUp.vue", () => {
       name: "checkout",
       params: { plan: "cliente" },
     });
+    expect(mockRouterPush.mock.calls.length).toBe(1);
+    jest.restoreAllMocks();
   });
 });

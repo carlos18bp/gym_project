@@ -76,6 +76,16 @@ const mountView = async ({
   return { wrapper, subscriptionStore };
 };
 
+const getSetupState = (wrapper) => wrapper.vm.$.setupState;
+
+const runGoBack = (wrapper) => getSetupState(wrapper).goBack();
+const runHandleSubscribe = (wrapper) => getSetupState(wrapper).handleSubscribe();
+const runTokenizeCard = (wrapper) => getSetupState(wrapper).tokenizeCard();
+const setCardSetupState = (wrapper, values) => {
+  Object.assign(getSetupState(wrapper), values);
+};
+const getCardToken = (wrapper) => getSetupState(wrapper).cardToken;
+
 describe("Checkout view", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -86,18 +96,20 @@ describe("Checkout view", () => {
   test("goBack routes to subscriptions", async () => {
     const { wrapper } = await mountView();
 
-    wrapper.vm.$.setupState.goBack();
+    runGoBack(wrapper);
 
     expect(mockRouterPush).toHaveBeenCalledWith({ name: "subscriptions" });
+    expect(mockRouterPush.mock.calls.length).toBe(1);
   });
 
   test("creates free plan subscription and navigates", async () => {
     const { wrapper, subscriptionStore } = await mountView({ plan: "basico" });
 
-    await wrapper.vm.$.setupState.handleSubscribe();
+    await runHandleSubscribe(wrapper);
 
     expect(subscriptionStore.createSubscription).toHaveBeenCalledWith({ plan_type: "basico" });
     expect(mockRouterPush).toHaveBeenCalledWith({ name: "dashboard" });
+    expect(mockRouterPush.mock.calls.length).toBe(1);
   });
 
   test("shows error when free plan activation fails", async () => {
@@ -108,21 +120,23 @@ describe("Checkout view", () => {
       },
     });
 
-    await wrapper.vm.$.setupState.handleSubscribe();
+    await runHandleSubscribe(wrapper);
 
     expect(subscriptionStore.createSubscription).toHaveBeenCalled();
+    expect(mockRouterPush.mock.calls.length).toBe(0);
   });
 
   test("validates card info before tokenizing", async () => {
     ensureWompiScripts();
     const { wrapper } = await mountView({ plan: "cliente" });
 
-    await wrapper.vm.$.setupState.tokenizeCard();
+    await runTokenizeCard(wrapper);
 
     const Swal = await import("sweetalert2");
     expect(Swal.default.fire).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Información incompleta" })
     );
+    expect(mockRouterPush.mock.calls.length).toBe(0);
   });
 
   test("tokenizes card and stores token", async () => {
@@ -132,14 +146,16 @@ describe("Checkout view", () => {
 
     const { wrapper } = await mountView({ plan: "cliente" });
 
-    wrapper.vm.$.setupState.cardNumber = "4242 4242 4242 4242";
-    wrapper.vm.$.setupState.cardExpMonth = "12";
-    wrapper.vm.$.setupState.cardExpYear = "28";
-    wrapper.vm.$.setupState.cardCvc = "123";
-    wrapper.vm.$.setupState.cardHolder = "Ana Lopez";
-    wrapper.vm.$.setupState.wompiPublicKey = "pk_test";
+    setCardSetupState(wrapper, {
+      cardNumber: "4242 4242 4242 4242",
+      cardExpMonth: "12",
+      cardExpYear: "28",
+      cardCvc: "123",
+      cardHolder: "Ana Lopez",
+      wompiPublicKey: "pk_test",
+    });
 
-    await wrapper.vm.$.setupState.tokenizeCard();
+    await runTokenizeCard(wrapper);
 
     expect(axios.post).toHaveBeenCalledWith(
       "https://sandbox.wompi.co/v1/tokens/cards",
@@ -152,29 +168,32 @@ describe("Checkout view", () => {
       }),
       expect.any(Object)
     );
-    expect(wrapper.vm.$.setupState.cardToken).toBe("tok_1");
+    expect(getCardToken(wrapper)).toBe("tok_1");
   });
 
   test("requires payment token for paid plan", async () => {
     ensureWompiScripts();
     const { wrapper } = await mountView({ plan: "cliente" });
 
-    await wrapper.vm.$.setupState.handleSubscribe();
+    await runHandleSubscribe(wrapper);
 
     const Swal = await import("sweetalert2");
     expect(Swal.default.fire).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Método de pago requerido" })
     );
+    expect(mockRouterPush.mock.calls.length).toBe(0);
   });
 
   test("creates paid subscription when data is complete", async () => {
     ensureWompiScripts();
     const { wrapper, subscriptionStore } = await mountView({ plan: "cliente" });
 
-    wrapper.vm.$.setupState.cardToken = "tok_1";
-    wrapper.vm.$.setupState.wompiSessionId = "sess_1";
+    setCardSetupState(wrapper, {
+      cardToken: "tok_1",
+      wompiSessionId: "sess_1",
+    });
 
-    await wrapper.vm.$.setupState.handleSubscribe();
+    await runHandleSubscribe(wrapper);
 
     expect(subscriptionStore.createSubscription).toHaveBeenCalledWith({
       plan_type: "cliente",
@@ -182,5 +201,6 @@ describe("Checkout view", () => {
       token: "tok_1",
     });
     expect(mockRouterPush).toHaveBeenCalledWith({ name: "dashboard" });
+    expect(mockRouterPush.mock.calls.length).toBe(1);
   });
 });
