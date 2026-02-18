@@ -98,8 +98,8 @@ test.describe("legal updates store: fetch operations", () => {
     const userId = 7000;
 
     const updates = [
-      buildMockLegalUpdate({ id: 1, title: "Nueva Ley de Protección de Datos", content: "Contenido importante..." }),
-      buildMockLegalUpdate({ id: 2, title: "Reforma Laboral 2024", content: "Detalles de la reforma..." }),
+      buildMockLegalUpdate({ id: 1, title: "Nueva Ley de Protección de Datos", content: "E2E contenido legal visible para dashboard" }),
+      buildMockLegalUpdate({ id: 2, title: "Reforma Laboral 2024", content: "E2E segunda actualización legal" }),
     ];
 
     await installLegalUpdateMocks(page, { userId, role: "lawyer", updates });
@@ -110,17 +110,12 @@ test.describe("legal updates store: fetch operations", () => {
     });
 
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // Dashboard should show legal updates section
-    await expect(page.locator("body")).toBeVisible();
-    
-    // Look for legal updates content
-    const hasUpdates = await page.getByText("Nueva Ley de Protección de Datos").isVisible().catch(() => false) ||
-                       await page.getByText(/actualización|legal|update/i).first().isVisible().catch(() => false);
-    
-    // Expect legal updates content to be visible
-    expect(hasUpdates).toBeTruthy();
+    // Wait until dashboard core content is ready
+    await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
+
+    // Card renders update.content, not update.title
+    await expect(page.getByText("E2E contenido legal visible para dashboard")).toBeVisible({ timeout: 10_000 });
   });
 
   test("dashboard shows empty state when no legal updates", async ({ page }) => {
