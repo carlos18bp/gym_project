@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -121,7 +121,7 @@ def test_legal_request_auto_generates_request_number(user_factory):
         description="Need advice",
     )
 
-    year = timezone.now().year
+    year = request.created_at.year
     assert request.request_number is not None
     assert request.request_number.startswith(f"SOL-{year}-")
 
@@ -250,12 +250,13 @@ def test_organization_invitation_str_includes_org_user_status(user_factory):
         corporate_client=corporate_client,
     )
 
+    expiration_time = timezone.make_aware(datetime(2030, 1, 10, 12, 0, 0))
     invitation = OrganizationInvitation.objects.create(
         organization=organization,
         invited_user=invited_user,
         invited_by=corporate_client,
         status="PENDING",
-        expires_at=timezone.now() + timedelta(days=10),
+        expires_at=expiration_time,
     )
 
     assert str(invitation) == (
@@ -272,12 +273,14 @@ def test_organization_invitation_unique_together_enforced(user_factory):
         corporate_client=corporate_client,
     )
 
+    expiration_time = timezone.make_aware(datetime(2030, 1, 10, 12, 0, 0))
+
     OrganizationInvitation.objects.create(
         organization=organization,
         invited_user=invited_user,
         invited_by=corporate_client,
         status="ACCEPTED",
-        expires_at=timezone.now() + timedelta(days=10),
+        expires_at=expiration_time,
     )
 
     with pytest.raises(IntegrityError) as exc_info:
@@ -287,7 +290,7 @@ def test_organization_invitation_unique_together_enforced(user_factory):
                 invited_user=invited_user,
                 invited_by=corporate_client,
                 status="ACCEPTED",
-                expires_at=timezone.now() + timedelta(days=10),
+                expires_at=expiration_time,
             )
     assert exc_info.value is not None
     assert OrganizationInvitation.objects.filter(organization=organization, invited_user=invited_user).count() == 1
@@ -314,8 +317,9 @@ def test_organization_membership_ordering_by_joined_at(user_factory):
         role="MEMBER",
     )
 
-    older_time = timezone.now() - timedelta(days=1)
-    newer_time = timezone.now()
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=1)
+    newer_time = reference_time
     OrganizationMembership.objects.filter(pk=older_membership.pk).update(
         joined_at=older_time
     )
@@ -359,9 +363,10 @@ def test_organization_post_ordering_pinned_then_created(user_factory):
         is_pinned=False,
     )
 
-    older_time = timezone.now() - timedelta(days=2)
-    newer_time = timezone.now() - timedelta(days=1)
-    newest_time = timezone.now()
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=2)
+    newer_time = reference_time - timedelta(days=1)
+    newest_time = reference_time
     OrganizationPost.objects.filter(pk=pinned_old.pk).update(created_at=older_time)
     OrganizationPost.objects.filter(pk=pinned_new.pk).update(created_at=newer_time)
     OrganizationPost.objects.filter(pk=unpinned_new.pk).update(created_at=newest_time)
@@ -375,24 +380,26 @@ def test_organization_post_ordering_pinned_then_created(user_factory):
 
 def test_subscription_ordering_by_created_at_desc(user_factory):
     user = user_factory("subscriber@example.com", role="client")
+    billing_date = datetime(2030, 1, 20).date()
 
     older = Subscription.objects.create(
         user=user,
         plan_type="basico",
         status="active",
-        next_billing_date=timezone.now().date(),
+        next_billing_date=billing_date,
         amount=Decimal("10000.00"),
     )
     newer = Subscription.objects.create(
         user=user,
         plan_type="cliente",
         status="active",
-        next_billing_date=timezone.now().date(),
+        next_billing_date=billing_date,
         amount=Decimal("20000.00"),
     )
 
-    older_time = timezone.now() - timedelta(days=2)
-    newer_time = timezone.now() - timedelta(days=1)
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=2)
+    newer_time = reference_time - timedelta(days=1)
     Subscription.objects.filter(pk=older.pk).update(created_at=older_time)
     Subscription.objects.filter(pk=newer.pk).update(created_at=newer_time)
 
@@ -404,11 +411,12 @@ def test_subscription_ordering_by_created_at_desc(user_factory):
 
 def test_payment_history_ordering_by_payment_date_desc(user_factory):
     user = user_factory("payer@example.com", role="client")
+    billing_date = datetime(2030, 1, 20).date()
     subscription = Subscription.objects.create(
         user=user,
         plan_type="basico",
         status="active",
-        next_billing_date=timezone.now().date(),
+        next_billing_date=billing_date,
         amount=Decimal("10000.00"),
     )
 
@@ -425,8 +433,9 @@ def test_payment_history_ordering_by_payment_date_desc(user_factory):
         reference="REF-NEW",
     )
 
-    older_time = timezone.now() - timedelta(days=2)
-    newer_time = timezone.now() - timedelta(days=1)
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=2)
+    newer_time = reference_time - timedelta(days=1)
     PaymentHistory.objects.filter(pk=older.pk).update(payment_date=older_time)
     PaymentHistory.objects.filter(pk=newer.pk).update(payment_date=newer_time)
 
@@ -444,8 +453,7 @@ def test_intranet_profile_str_constant():
 
 def test_intranet_profile_updated_at_changes_on_save():
     profile = IntranetProfile.objects.create()
-
-    past_time = timezone.now() - timedelta(days=1)
+    past_time = profile.updated_at - timedelta(days=1)
     IntranetProfile.objects.filter(pk=profile.pk).update(updated_at=past_time)
 
     profile.refresh_from_db()

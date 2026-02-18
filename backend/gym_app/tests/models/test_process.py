@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from gym_app.models.process import Case, CaseFile, Stage, Process, RecentProcess
@@ -284,8 +284,9 @@ class TestRecentProcess:
         """Solo debe existir un RecentProcess por combinación (user, process)"""
         RecentProcess.objects.create(user=user_lawyer, process=process)
 
-        with pytest.raises(IntegrityError) as exc_info:
-            RecentProcess.objects.create(user=user_lawyer, process=process)
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                RecentProcess.objects.create(user=user_lawyer, process=process)
         assert exc_info.value is not None
         assert RecentProcess.objects.filter(user=user_lawyer, process=process).count() == 1
 

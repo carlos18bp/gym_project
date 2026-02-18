@@ -346,6 +346,23 @@ class TestProcessSerializerUpdate:
         assert "Updated Stage" in stage_statuses
         assert "Brand New Stage" in stage_statuses
 
+    def test_update_stages_removes_missing_existing(self, process, rf):
+        """Cover line 89: remove stage IDs missing from payload."""
+        keep_stage = process.stages.first()
+        remove_stage = Stage.objects.create(status="Remove Me")
+        process.stages.add(remove_stage)
+
+        validated = {
+            "stages": [
+                {"id": keep_stage.id, "status": "Keep Stage"},
+            ]
+        }
+
+        updated = serializer_update_helper(process, validated)
+        stage_ids = set(updated.stages.values_list("id", flat=True))
+        assert keep_stage.id in stage_ids
+        assert remove_stage.id not in stage_ids
+
     def test_update_stages_none_skips(self, process, rf):
         """Cover line 80: stages_data is None → skip stage update."""
         original_count = process.stages.count()

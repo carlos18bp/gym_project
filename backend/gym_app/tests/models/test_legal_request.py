@@ -1,8 +1,9 @@
 import pytest
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from gym_app.models.legal_request import (
     LegalRequestType,
@@ -66,8 +67,9 @@ class TestLegalRequestType:
     
     def test_unique_name_constraint(self, legal_request_type):
         """Test unique name constraint for legal request types"""
-        with pytest.raises(Exception) as exc_info:  # This should raise an exception due to unique constraint
-            LegalRequestType.objects.create(name=legal_request_type.name)
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                LegalRequestType.objects.create(name=legal_request_type.name)
         assert exc_info.value is not None
         assert LegalRequestType.objects.filter(name=legal_request_type.name).count() == 1
     
@@ -87,8 +89,9 @@ class TestLegalDiscipline:
     
     def test_unique_name_constraint(self, legal_discipline):
         """Test unique name constraint for legal disciplines"""
-        with pytest.raises(Exception) as exc_info:  # This should raise an exception due to unique constraint
-            LegalDiscipline.objects.create(name=legal_discipline.name)
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                LegalDiscipline.objects.create(name=legal_discipline.name)
         assert exc_info.value is not None
         assert LegalDiscipline.objects.filter(name=legal_discipline.name).count() == 1
     
@@ -199,8 +202,9 @@ class TestLegalRequestResponse:
             user_type="client",
         )
 
-        older_time = timezone.now() - timedelta(days=1)
-        newer_time = timezone.now()
+        reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+        older_time = reference_time - timedelta(days=1)
+        newer_time = reference_time
         LegalRequestResponse.objects.filter(pk=older.pk).update(created_at=older_time)
         LegalRequestResponse.objects.filter(pk=newer.pk).update(created_at=newer_time)
 
@@ -225,7 +229,7 @@ class TestLegalRequestEdges:
             user=client_user, request_type=rt, discipline=ld,
             description="Desc",
         )
-        year = timezone.now().year
+        year = lr.created_at.year
         assert lr.request_number.startswith(f"SOL-{year}-")
 
     def test_request_number_increments(self, client_user):

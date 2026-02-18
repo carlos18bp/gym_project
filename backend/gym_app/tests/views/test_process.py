@@ -209,6 +209,7 @@ class TestProcessViews:
             'clientIds': [client_user.id],
             'lawyerId': lawyer_user.id,
             'caseTypeId': case_type.id,
+            'subcase': 'Contract Dispute',
             'stages': [{'status': 'New'}, {'status': 'Analysis'}]
         }
         
@@ -274,6 +275,31 @@ class TestProcessViews:
         assert updated_process.authority == 'Updated Court'
         assert updated_process.plaintiff == 'Updated Plaintiff'
         assert updated_process.ref == 'UPDATED-REF'
+
+    def test_update_process_case_files(self, api_client, admin_user, process):
+        """Test updating a process replaces case files when caseFileIds are provided."""
+        api_client.force_authenticate(user=admin_user)
+
+        existing_file = CaseFile.objects.create(
+            file=SimpleUploadedFile("existing.txt", b"existing", content_type="text/plain")
+        )
+        process.case_files.add(existing_file)
+
+        new_file = CaseFile.objects.create(
+            file=SimpleUploadedFile("new_file.txt", b"new", content_type="text/plain")
+        )
+
+        main_data = {
+            'caseFileIds': [new_file.id],
+        }
+
+        url = reverse('update-process', kwargs={'pk': process.id})
+        response = api_client.put(url, {'mainData': json.dumps(main_data)}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        process.refresh_from_db()
+        case_file_ids = set(process.case_files.values_list('id', flat=True))
+        assert case_file_ids == {new_file.id}
 
     def test_update_process_response(self, api_client, admin_user, process, case_type):
         """Test updating a process returns correct response"""

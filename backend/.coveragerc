@@ -1,0 +1,11 @@
+[run]
+omit =
+    */gym_app/tests/*
+    */gym_app/tests/*/*
+    */gym_app/tests/*/*/*
+
+[report]
+omit =
+    */gym_app/tests/*
+    */gym_app/tests/*/*
+    */gym_app/tests/*/*/*

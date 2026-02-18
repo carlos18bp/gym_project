@@ -426,6 +426,32 @@ class TestOrganizationSerializer:
         assert data["pending_invitations_count"] == 1
         assert data["recent_requests_count"] == 1
 
+    def test_detail_serializer_images_with_request(self, organization):
+        """OrganizationSerializer should build absolute URLs when a request is provided."""
+        organization.profile_image = SimpleUploadedFile(
+            "detail_prof.png",
+            b"\x89PNG",
+            content_type="image/png",
+        )
+        organization.cover_image = SimpleUploadedFile(
+            "detail_cover.png",
+            b"\x89PNG",
+            content_type="image/png",
+        )
+        organization.save()
+
+        class MockRequest:
+            def build_absolute_uri(self, url):
+                return f"http://testserver{url}"
+
+        serializer = OrganizationSerializer(organization, context={"request": MockRequest()})
+        data = serializer.data
+
+        assert data["profile_image_url"].startswith("http://testserver")
+        assert "/organization_images/profiles/" in data["profile_image_url"]
+        assert data["cover_image_url"].startswith("http://testserver")
+        assert "/organization_images/covers/" in data["cover_image_url"]
+
     def test_detail_serializer_members_list(self, organization, corporate_client, client_user):
         """Test organization serializer members list excludes inactive"""
         OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")

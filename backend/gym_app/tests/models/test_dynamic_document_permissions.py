@@ -1,5 +1,5 @@
 import pytest
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -601,8 +601,9 @@ def test_document_visibility_permission_ordering_by_granted_at(user_factory, doc
         granted_by=creator,
     )
 
-    older_time = timezone.now() - timedelta(days=1)
-    newer_time = timezone.now()
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=1)
+    newer_time = reference_time
     DocumentVisibilityPermission.objects.filter(pk=perm_old.pk).update(
         granted_at=older_time
     )
@@ -712,8 +713,9 @@ def test_document_usability_permission_ordering_by_granted_at(user_factory, docu
         granted_by=creator,
     )
 
-    older_time = timezone.now() - timedelta(days=1)
-    newer_time = timezone.now()
+    reference_time = timezone.make_aware(datetime(2030, 1, 15, 12, 0, 0))
+    older_time = reference_time - timedelta(days=1)
+    newer_time = reference_time
     DocumentUsabilityPermission.objects.filter(pk=perm_old.pk).update(
         granted_at=older_time
     )

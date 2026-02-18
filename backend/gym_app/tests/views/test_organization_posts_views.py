@@ -147,6 +147,32 @@ class TestOrganizationPostsCreateAndList:
         assert len(response.data["results"]) == 1
         assert response.data["results"][0]["title"] == "Pinned"
 
+    @pytest.mark.contract
+    def test_get_organization_posts_filter_search(self, api_client, corporate_client, organization):
+        """Test filtering posts by search term across title/content/link_name."""
+        match_post = OrganizationPost.objects.create(
+            title="Searchable",
+            content="Contenido",
+            link_name="Help Center",
+            link_url="https://example.com",
+            organization=organization,
+            author=corporate_client,
+        )
+        OrganizationPost.objects.create(
+            title="Other",
+            content="No match",
+            organization=organization,
+            author=corporate_client,
+        )
+
+        api_client.force_authenticate(user=corporate_client)
+        url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})
+        response = api_client.get(url, {"search": "help"})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["id"] == match_post.id
+
     @pytest.mark.edge
     def test_get_organization_posts_requires_corporate_client(self, api_client, client_user, organization):
         url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})

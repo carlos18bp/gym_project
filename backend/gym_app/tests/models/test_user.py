@@ -2,7 +2,7 @@ import pytest
 from datetime import date
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from gym_app.models.user import User, UserManager, UserSignature, ActivityFeed
 
 @pytest.mark.django_db
@@ -219,11 +219,12 @@ class TestUser:
         )
         
         # Try to create another user with the same email
-        with pytest.raises(Exception) as exc_info:
-            User.objects.create(
-                email='duplicate@example.com',
-                password='password2'
-            )
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                User.objects.create(
+                    email='duplicate@example.com',
+                    password='password2'
+                )
         assert exc_info.value is not None
         assert User.objects.filter(email='duplicate@example.com').count() == 1
     
@@ -343,12 +344,13 @@ class TestUserSignature:
             content_type="image/png"
         )
 
-        with pytest.raises(IntegrityError) as exc_info:
-            UserSignature.objects.create(
-                user=user,
-                signature_image=second_signature,
-                method='draw'
-            )
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                UserSignature.objects.create(
+                    user=user,
+                    signature_image=second_signature,
+                    method='draw'
+                )
         assert exc_info.value is not None
         assert UserSignature.objects.filter(user=user).count() == 1
 

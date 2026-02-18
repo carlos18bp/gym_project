@@ -264,6 +264,39 @@ class TestListRelatedAndAvailableDocuments:
         assert candidate_ok.id in ids
         assert candidate_related.id not in ids
 
+    @pytest.mark.edge
+    def test_list_available_documents_skips_unviewable_target(self, api_client, client_user, other_user):
+        """Unviewable documents assigned to the user should be skipped in results."""
+        source = DynamicDocument.objects.create(
+            title="Source",
+            content="<p>src</p>",
+            state="Completed",
+            created_by=client_user,
+        )
+        candidate_visible = DynamicDocument.objects.create(
+            title="Visible",
+            content="<p>ok</p>",
+            state="Completed",
+            created_by=client_user,
+        )
+        candidate_unviewable = DynamicDocument.objects.create(
+            title="Assigned",
+            content="<p>assigned</p>",
+            state="Completed",
+            created_by=other_user,
+            assigned_to=client_user,
+            is_public=False,
+        )
+
+        api_client.force_authenticate(user=client_user)
+        url = reverse("list-available-documents-for-relationship", kwargs={"document_id": source.id})
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        ids = {doc["id"] for doc in response.data}
+        assert candidate_visible.id in ids
+        assert candidate_unviewable.id not in ids
+
     @pytest.mark.contract
     def test_list_available_documents_excludes_invalid_states(self, api_client, client_user):
         """list_available_documents excludes documents with invalid states."""

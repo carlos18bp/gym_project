@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from gym_app.models.organization import (
@@ -343,12 +343,13 @@ class TestOrganizationMembership:
             role="MEMBER",
         )
 
-        with pytest.raises(IntegrityError) as exc_info:
-            OrganizationMembership.objects.create(
-                organization=organization,
-                user=client_user,
-                role="ADMIN",
-            )
+        with transaction.atomic():
+            with pytest.raises(IntegrityError) as exc_info:
+                OrganizationMembership.objects.create(
+                    organization=organization,
+                    user=client_user,
+                    role="ADMIN",
+                )
         assert exc_info.value is not None
         assert OrganizationMembership.objects.filter(organization=organization, user=client_user).count() == 1
 
