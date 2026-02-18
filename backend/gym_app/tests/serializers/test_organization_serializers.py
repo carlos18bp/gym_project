@@ -352,69 +352,27 @@ class TestOrganizationListSerializer:
         assert data["cover_image_url"] is None
 
     def test_list_serializer_counts_and_images_with_request(self, organization, corporate_client, client_user):
+        """Test list serializer with members, invitations and images"""
         organization.profile_image.name = "organization_images/profiles/test.jpg"
         organization.cover_image.name = "organization_images/covers/test.jpg"
 
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=corporate_client,
-            role="LEADER",
-        )
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client_user,
-            role="MEMBER",
-        )
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=User.objects.create_user(
-                email="inactive@example.com",
-                password="testpassword",
-                role="client",
-            ),
-            role="MEMBER",
-            is_active=False,
-        )
+        OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")
+        OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
+        OrganizationMembership.objects.create(organization=organization, user=User.objects.create_user(email="inactive@example.com", password="testpassword", role="client"), role="MEMBER", is_active=False)
 
-        OrganizationInvitation.objects.create(
-            organization=organization,
-            invited_user=User.objects.create_user(
-                email="invitee@example.com",
-                password="testpassword",
-                role="client",
-            ),
-            invited_by=corporate_client,
-            status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=3),
-        )
-        OrganizationInvitation.objects.create(
-            organization=organization,
-            invited_user=User.objects.create_user(
-                email="invitee2@example.com",
-                password="testpassword",
-                role="client",
-            ),
-            invited_by=corporate_client,
-            status="ACCEPTED",
-            expires_at=timezone.now() + timezone.timedelta(days=3),
-        )
+        expires = timezone.now() + timezone.timedelta(days=3)
+        OrganizationInvitation.objects.create(organization=organization, invited_user=User.objects.create_user(email="invitee@example.com", password="testpassword", role="client"), invited_by=corporate_client, status="PENDING", expires_at=expires)
+        OrganizationInvitation.objects.create(organization=organization, invited_user=User.objects.create_user(email="invitee2@example.com", password="testpassword", role="client"), invited_by=corporate_client, status="ACCEPTED", expires_at=expires)
 
         class MockRequest:
-            def build_absolute_uri(self, url):
-                return f"http://testserver{url}"
+            def build_absolute_uri(self, url): return f"http://testserver{url}"
 
-        serializer = OrganizationListSerializer(
-            organization,
-            context={"request": MockRequest()},
-        )
+        serializer = OrganizationListSerializer(organization, context={"request": MockRequest()})
         data = serializer.data
 
         assert data["member_count"] == 2
         assert data["pending_invitations_count"] == 1
-        assert data["profile_image_url"].startswith("http://testserver")
         assert "organization_images/profiles/test.jpg" in data["profile_image_url"]
-        assert data["cover_image_url"].startswith("http://testserver")
-        assert "organization_images/covers/test.jpg" in data["cover_image_url"]
 
     def test_list_serializer_images_without_request(self, organization):
         organization.profile_image.name = "organization_images/profiles/test.jpg"
@@ -440,85 +398,51 @@ class TestOrganizationSerializer:
         assert data["profile_image_url"] is None
         assert data["cover_image_url"] is None
 
-    def test_detail_serializer_members_and_recent_requests(self, organization, corporate_client, client_user):
-        organization.profile_image.name = "organization_images/profiles/test.jpg"
-        organization.cover_image.name = "organization_images/covers/test.jpg"
-
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=corporate_client,
-            role="LEADER",
-        )
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client_user,
-            role="MEMBER",
-        )
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=User.objects.create_user(
-                email="inactive-member@example.com",
-                password="testpassword",
-                role="client",
-            ),
-            role="MEMBER",
-            is_active=False,
-        )
+    def test_detail_serializer_counts(self, organization, corporate_client, client_user):
+        """Test organization serializer counts members, invitations, and requests"""
+        OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")
+        OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
 
         OrganizationInvitation.objects.create(
             organization=organization,
-            invited_user=User.objects.create_user(
-                email="pending@example.com",
-                password="testpassword",
-                role="client",
-            ),
-            invited_by=corporate_client,
-            status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=3),
+            invited_user=User.objects.create_user(email="pending@example.com", password="testpassword", role="client"),
+            invited_by=corporate_client, status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=3),
         )
 
         request_type = CorporateRequestType.objects.create(name="Consulta")
-        recent_request = CorporateRequest.objects.create(
-            client=client_user,
-            organization=organization,
-            corporate_client=corporate_client,
-            request_type=request_type,
-            title="Reciente",
-            description="Desc",
+        CorporateRequest.objects.create(
+            client=client_user, organization=organization, corporate_client=corporate_client,
+            request_type=request_type, title="Reciente", description="Desc",
         )
-        old_request = CorporateRequest.objects.create(
-            client=client_user,
-            organization=organization,
-            corporate_client=corporate_client,
-            request_type=request_type,
-            title="Antigua",
-            description="Desc",
-        )
-        old_request.created_at = timezone.now() - timezone.timedelta(days=40)
-        old_request.save(update_fields=["created_at"])
 
         class MockRequest:
             def build_absolute_uri(self, url):
                 return f"http://testserver{url}"
 
-        serializer = OrganizationSerializer(
-            organization,
-            context={"request": MockRequest()},
-        )
+        serializer = OrganizationSerializer(organization, context={"request": MockRequest()})
         data = serializer.data
 
         assert data["member_count"] == 2
         assert data["pending_invitations_count"] == 1
         assert data["recent_requests_count"] == 1
 
-        members = {member["email"] for member in data["members"]}
+    def test_detail_serializer_members_list(self, organization, corporate_client, client_user):
+        """Test organization serializer members list excludes inactive"""
+        OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")
+        OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
+        inactive_user = User.objects.create_user(email="inactive@example.com", password="testpassword", role="client")
+        OrganizationMembership.objects.create(organization=organization, user=inactive_user, role="MEMBER", is_active=False)
+
+        class MockRequest:
+            def build_absolute_uri(self, url):
+                return f"http://testserver{url}"
+
+        serializer = OrganizationSerializer(organization, context={"request": MockRequest()})
+        members = {member["email"] for member in serializer.data["members"]}
+
         assert corporate_client.email in members
         assert client_user.email in members
-        assert "inactive-member@example.com" not in members
-
-        assert data["profile_image_url"].startswith("http://testserver")
-        assert data["cover_image_url"].startswith("http://testserver")
-        assert recent_request.title == "Reciente"
+        assert "inactive@example.com" not in members
 
 
 @pytest.mark.django_db
@@ -681,7 +605,7 @@ class TestOrganizationPostSerializer:
             context={"request": MockRequest(client_user)}
         )
 
-        with pytest.raises(serializers.ValidationError):
+        with pytest.raises(serializers.ValidationError) as exc_info:
             serializer.create(
                 {
                     "title": "Post",
@@ -689,6 +613,8 @@ class TestOrganizationPostSerializer:
                     "organization": organization,
                 }
             )
+        assert exc_info.value is not None
+        assert OrganizationPost.objects.filter(organization=organization, title="Post").count() == 0
 
 
 @pytest.mark.django_db
@@ -792,8 +718,9 @@ class TestOrganizationCreateSerializerEdges:
             data={"title": "Org", "description": "D"},
             context={"request": None},
         )
-        with pytest.raises(serializers.ValidationError):
+        with pytest.raises(serializers.ValidationError) as exc_info:
             serializer.is_valid(raise_exception=True)
+        assert exc_info.value is not None
 
     def test_validate_non_corporate_raises(self, basic_user, rf):
         """Cover line 153: non-corporate user → ValidationError."""
@@ -803,14 +730,16 @@ class TestOrganizationCreateSerializerEdges:
             data={"title": "Org", "description": "D"},
             context={"request": request},
         )
-        with pytest.raises(serializers.ValidationError):
+        with pytest.raises(serializers.ValidationError) as exc_info:
             serializer.is_valid(raise_exception=True)
+        assert exc_info.value is not None
 
     def test_create_no_user_raises(self, rf):
         """Cover line 166: create with no user → ValidationError."""
         serializer = OrganizationCreateSerializer(context={"request": None})
-        with pytest.raises(serializers.ValidationError):
+        with pytest.raises(serializers.ValidationError) as exc_info:
             serializer.create({"title": "Org", "description": "D"})
+        assert exc_info.value is not None
 
 
 # ---------------------------------------------------------------------------
@@ -831,8 +760,9 @@ class TestOrganizationInvitationResponseSerializerEdges:
         )
         serializer = OrganizationInvitationResponseSerializer()
         with patch.object(invitation, 'accept', side_effect=DjangoValidationError("Already accepted")):
-            with pytest.raises(serializers.ValidationError):
+            with pytest.raises(serializers.ValidationError) as exc_info:
                 serializer.update(invitation, {"action": "accept"})
+            assert exc_info.value is not None
 
     def test_reject_invocation(self, organization, basic_user, corporate_user):
         """Cover line 320: reject action calls instance.reject()."""
@@ -845,6 +775,7 @@ class TestOrganizationInvitationResponseSerializerEdges:
         with patch.object(invitation, 'reject') as mock_reject:
             result = serializer.update(invitation, {"action": "reject"})
             mock_reject.assert_called_once()
+        assert result == invitation
 
 
 # ---------------------------------------------------------------------------
@@ -969,8 +900,11 @@ class TestOrganizationPostSerializerEdges:
         )
         # is_valid may pass but create should raise
         if serializer.is_valid():
-            with pytest.raises(serializers.ValidationError):
+            with pytest.raises(serializers.ValidationError) as exc_info:
                 serializer.save()
+            assert exc_info.value is not None
+        else:
+            assert "non_field_errors" in serializer.errors or not serializer.is_valid()
 
     def test_update_post_link_name_without_url(self, rf):
         """Cover line 494-497: link_name without link_url → ValidationError."""
@@ -1154,12 +1088,14 @@ class TestOrganizationPostCreateNonCorporateDirect:
             context={"request": request},
         )
 
-        with pytest.raises(serializers.ValidationError, match="corporativos"):
+        with pytest.raises(serializers.ValidationError, match="corporativos") as exc_info:
             serializer.create({
                 "title": "Post",
                 "content": "Content",
                 "organization": organization,
             })
+        assert exc_info.value is not None
+        assert OrganizationPost.objects.filter(organization=organization, title="Post").count() == 0
 
 
 

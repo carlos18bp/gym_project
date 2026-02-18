@@ -45,16 +45,19 @@ class TestPasswordCode:
         # Valid 6-digit code
         valid_code = PasswordCode(user=user, code='123456')
         valid_code.full_clean()  # Should not raise ValidationError
+        assert valid_code.code == '123456'
         
         # Invalid code - too short
         invalid_code_short = PasswordCode(user=user, code='12345')
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invalid_code_short.full_clean()
+        assert exc_info.value is not None
         
         # Invalid code - too long
         invalid_code_long = PasswordCode(user=user, code='1234567')
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invalid_code_long.full_clean()
+        assert exc_info.value is not None
         
         # Invalid code - non-numeric
         invalid_code_alpha = PasswordCode(user=user, code='12345a')

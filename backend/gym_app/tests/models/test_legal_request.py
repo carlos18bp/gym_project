@@ -66,8 +66,10 @@ class TestLegalRequestType:
     
     def test_unique_name_constraint(self, legal_request_type):
         """Test unique name constraint for legal request types"""
-        with pytest.raises(Exception):  # This should raise an exception due to unique constraint
+        with pytest.raises(Exception) as exc_info:  # This should raise an exception due to unique constraint
             LegalRequestType.objects.create(name=legal_request_type.name)
+        assert exc_info.value is not None
+        assert LegalRequestType.objects.filter(name=legal_request_type.name).count() == 1
     
     def test_str_representation(self, legal_request_type):
         """Test string representation of legal request type"""
@@ -85,8 +87,10 @@ class TestLegalDiscipline:
     
     def test_unique_name_constraint(self, legal_discipline):
         """Test unique name constraint for legal disciplines"""
-        with pytest.raises(Exception):  # This should raise an exception due to unique constraint
+        with pytest.raises(Exception) as exc_info:  # This should raise an exception due to unique constraint
             LegalDiscipline.objects.create(name=legal_discipline.name)
+        assert exc_info.value is not None
+        assert LegalDiscipline.objects.filter(name=legal_discipline.name).count() == 1
     
     def test_str_representation(self, legal_discipline):
         """Test string representation of legal discipline"""

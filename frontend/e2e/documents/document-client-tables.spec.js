@@ -154,7 +154,7 @@ test("lawyer sees empty state message when no completed client documents", async
   await page.getByRole("button", { name: "Dcs. Clientes", exact: true }).click();
 
   // Should see an empty state (no documents match)
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
   // The table header should still render
   await expect(page.getByText("Nombre Documento")).toBeVisible({ timeout: 10_000 });
   // But "Borrador Doc" should NOT appear (it's Draft, not Completed)

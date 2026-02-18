@@ -19,6 +19,32 @@ describe("Organizations Store", () => {
     console.error.mockRestore();
   });
 
+  const collectLoadingResets = async (store, actions) => {
+    const results = [];
+    for (const action of actions) {
+      try {
+        await action();
+        results.push("resolved");
+      } catch {
+        results.push(store.isLoading);
+      }
+    }
+    return results;
+  };
+
+  const collectInvitationResets = async (store, actions) => {
+    const results = [];
+    for (const action of actions) {
+      try {
+        await action();
+        results.push("resolved");
+      } catch {
+        results.push(store.isLoadingInvitations);
+      }
+    }
+    return results;
+  };
+
   test("initializes with empty state", () => {
     const store = useOrganizationsStore();
 
@@ -732,45 +758,52 @@ describe("Organizations Store", () => {
     expect(console.error).toHaveBeenCalled();
   });
 
-  test("resets isLoading on organization action network errors", async () => {
+  test("resets isLoading for organization create/detail actions", async () => {
     const store = useOrganizationsStore();
 
     mock.onPost("/api/organizations/create/").networkError();
     mock.onGet("/api/organizations/my-organizations/").networkError();
     mock.onGet("/api/organizations/5/").networkError();
+
+    const results = await collectLoadingResets(store, [
+      () => store.createOrganization({ name: "Org" }),
+      () => store.getMyOrganizations(),
+      () => store.getOrganizationDetail(5),
+    ]);
+
+    expect(results).toEqual([false, false, false]);
+  });
+
+  test("resets isLoading for organization update/delete actions", async () => {
+    const store = useOrganizationsStore();
+
     mock.onPut("/api/organizations/7/update/").networkError();
     mock.onDelete("/api/organizations/9/delete/").networkError();
-    mock.onGet("/api/organizations/my-memberships/").networkError();
     mock.onPost("/api/organizations/30/leave/").networkError();
+
+    const results = await collectLoadingResets(store, [
+      () => store.updateOrganization(7, { name: "Updated" }),
+      () => store.deleteOrganization(9),
+      () => store.leaveOrganization(30),
+    ]);
+
+    expect(results).toEqual([false, false, false]);
+  });
+
+  test("resets isLoading for membership/stats/public info actions", async () => {
+    const store = useOrganizationsStore();
+
+    mock.onGet("/api/organizations/my-memberships/").networkError();
     mock.onGet("/api/organizations/stats/").networkError();
     mock.onGet("/api/organizations/99/public/").networkError();
 
-    await expect(store.createOrganization({ name: "Org" })).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
+    const results = await collectLoadingResets(store, [
+      () => store.getMyMemberships(),
+      () => store.getOrganizationStats(),
+      () => store.getOrganizationPublicInfo(99),
+    ]);
 
-    await expect(store.getMyOrganizations()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.getOrganizationDetail(5)).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.updateOrganization(7, { name: "Updated" })).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.deleteOrganization(9)).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.getMyMemberships()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.leaveOrganization(30)).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.getOrganizationStats()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.getOrganizationPublicInfo(99)).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
+    expect(results).toEqual([false, false, false]);
   });
 
   test("resets isLoadingInvitations on invitation action network errors", async () => {
@@ -782,22 +815,15 @@ describe("Organizations Store", () => {
     mock.onGet("/api/invitations/my-invitations/").networkError();
     mock.onPost("/api/invitations/20/respond/").networkError();
 
-    await expect(
-      store.sendInvitation(1, { invited_user_email: "x@test.com" })
-    ).rejects.toBeTruthy();
-    expect(store.isLoadingInvitations).toBe(false);
+    const results = await collectInvitationResets(store, [
+      () => store.sendInvitation(1, { invited_user_email: "x@test.com" }),
+      () => store.getOrganizationInvitations(1),
+      () => store.cancelInvitation(1, 2),
+      () => store.getMyInvitations(),
+      () => store.respondToInvitation(20, "accept"),
+    ]);
 
-    await expect(store.getOrganizationInvitations(1)).rejects.toBeTruthy();
-    expect(store.isLoadingInvitations).toBe(false);
-
-    await expect(store.cancelInvitation(1, 2)).rejects.toBeTruthy();
-    expect(store.isLoadingInvitations).toBe(false);
-
-    await expect(store.getMyInvitations()).rejects.toBeTruthy();
-    expect(store.isLoadingInvitations).toBe(false);
-
-    await expect(store.respondToInvitation(20, "accept")).rejects.toBeTruthy();
-    expect(store.isLoadingInvitations).toBe(false);
+    expect(results).toEqual([false, false, false, false, false]);
   });
 
   test("resets isLoadingMembers on member action network errors", async () => {
@@ -862,14 +888,16 @@ describe("Organizations Store", () => {
 
     store.clearAll();
 
-    expect(store.organizations).toEqual([]);
-    expect(store.currentOrganization).toBe(null);
-    expect(store.myMemberships).toEqual([]);
-    expect(store.invitations).toEqual([]);
-    expect(store.myInvitations).toEqual([]);
-    expect(store.organizationMembers).toEqual([]);
-    expect(store.dataLoaded).toBe(false);
-    expect(store.lastFetchTime).toBe(null);
-    expect(store.organizationStats.total_organizations).toBe(0);
+    expect([
+      store.organizations,
+      store.currentOrganization,
+      store.myMemberships,
+      store.invitations,
+      store.myInvitations,
+      store.organizationMembers,
+      store.dataLoaded,
+      store.lastFetchTime,
+      store.organizationStats.total_organizations,
+    ]).toEqual([[], null, [], [], [], [], false, null, 0]);
   });
 });

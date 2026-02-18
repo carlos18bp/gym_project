@@ -740,16 +740,18 @@ describe("Organization Posts Store", () => {
     consoleSpy.mockRestore();
   });
 
-  test("filters and clear methods", () => {
+  test("filters set and clear reset pagination", () => {
     const store = useOrganizationPostsStore();
 
     store.setFilters({ search: "x", page: 2 });
-    expect(store.filters.search).toBe("x");
-    expect(store.filters.page).toBe(2);
+    expect([store.filters.search, store.filters.page]).toEqual(["x", 2]);
 
     store.clearFilters();
-    expect(store.filters.search).toBe("");
-    expect(store.filters.page).toBe(1);
+    expect([store.filters.search, store.filters.page]).toEqual(["", 1]);
+  });
+
+  test("clearPosts resets lists and pagination", () => {
+    const store = useOrganizationPostsStore();
 
     store.$patch({
       managementPosts: [{ id: 1 }],
@@ -759,11 +761,18 @@ describe("Organization Posts Store", () => {
     });
 
     store.clearPosts();
-    expect(store.managementPosts).toEqual([]);
-    expect(store.publicPosts).toEqual([]);
-    expect(store.currentPost).toBe(null);
-    expect(store.pagination.currentPage).toBe(1);
-    expect(store.pagination.pageSize).toBe(10);
+
+    expect([
+      store.managementPosts,
+      store.publicPosts,
+      store.currentPost,
+      store.pagination.currentPage,
+      store.pagination.pageSize,
+    ]).toEqual([[], [], null, 1, 10]);
+  });
+
+  test("clearAll resets filters and loading flags", () => {
+    const store = useOrganizationPostsStore();
 
     store.setFilters({ search: "x" });
     store.isLoading = true;
@@ -773,8 +782,7 @@ describe("Organization Posts Store", () => {
     store.isDeletingPost = true;
 
     store.clearAll();
-    expect(store.filters.search).toBe("");
-    expect(store.isLoading).toBe(false);
-    expect(store.isDeletingPost).toBe(false);
+
+    expect([store.filters.search, store.isLoading, store.isDeletingPost]).toEqual(["", false, false]);
   });
 });

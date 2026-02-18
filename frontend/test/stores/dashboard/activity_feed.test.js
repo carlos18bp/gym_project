@@ -7,6 +7,16 @@ import * as requestHttp from "@/stores/services/request_http";
 
 const mock = new AxiosMockAdapter(axios);
 
+const fetchActivities = async (items) => {
+  const store = useActivityFeedStore();
+  mock.onGet("/api/user-activities/").reply(200, items);
+  await store.fetchUserActivities();
+  return store;
+};
+
+const timesFor = (store, ids) =>
+  ids.map((id) => store.activities.find((activity) => activity.id === id)?.time);
+
 describe("Activity Feed Store", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -188,45 +198,67 @@ describe("Activity Feed Store", () => {
     jest.useRealTimers();
   });
 
-  test("fetchUserActivities formats time across minutes/hours/days/weeks/months/years", async () => {
+  test("fetchUserActivities formats seconds/minutes/hours", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-01-31T12:00:00Z"));
 
-    const store = useActivityFeedStore();
-
-    mock.onGet("/api/user-activities/").reply(200, [
+    const store = await fetchActivities([
       { id: 1, action_type: "other", description: "sec", created_at: "2026-01-31T11:59:50Z" },
       { id: 2, action_type: "other", description: "1m", created_at: "2026-01-31T11:59:00Z" },
       { id: 3, action_type: "other", description: "2m", created_at: "2026-01-31T11:58:00Z" },
       { id: 4, action_type: "other", description: "1h", created_at: "2026-01-31T11:00:00Z" },
       { id: 5, action_type: "other", description: "2h", created_at: "2026-01-31T10:00:00Z" },
+    ]);
+
+    expect(timesFor(store, [1, 2, 3, 4, 5])).toEqual([
+      "Hace unos segundos",
+      "Hace 1 minuto",
+      "Hace 2 minutos",
+      "Hace 1 hora",
+      "Hace 2 horas",
+    ]);
+
+    jest.useRealTimers();
+  });
+
+  test("fetchUserActivities formats days and weeks", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-31T12:00:00Z"));
+
+    const store = await fetchActivities([
       { id: 6, action_type: "other", description: "1d", created_at: "2026-01-30T12:00:00Z" },
       { id: 7, action_type: "other", description: "2d", created_at: "2026-01-29T12:00:00Z" },
       { id: 8, action_type: "other", description: "1w", created_at: "2026-01-24T12:00:00Z" },
       { id: 9, action_type: "other", description: "2w", created_at: "2026-01-17T12:00:00Z" },
+    ]);
+
+    expect(timesFor(store, [6, 7, 8, 9])).toEqual([
+      "Hace 1 día",
+      "Hace 2 días",
+      "Hace 1 semana",
+      "Hace 2 semanas",
+    ]);
+
+    jest.useRealTimers();
+  });
+
+  test("fetchUserActivities formats months and years", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-31T12:00:00Z"));
+
+    const store = await fetchActivities([
       { id: 10, action_type: "other", description: "1mo", created_at: "2026-01-01T12:00:00Z" },
       { id: 11, action_type: "other", description: "2mo", created_at: "2025-12-02T12:00:00Z" },
       { id: 12, action_type: "other", description: "1y", created_at: "2025-01-31T12:00:00Z" },
       { id: 13, action_type: "other", description: "2y", created_at: "2024-01-31T12:00:00Z" },
     ]);
 
-    await store.fetchUserActivities();
-
-    const timeById = (id) => store.activities.find((a) => a.id === id)?.time;
-
-    expect(timeById(1)).toBe("Hace unos segundos");
-    expect(timeById(2)).toBe("Hace 1 minuto");
-    expect(timeById(3)).toBe("Hace 2 minutos");
-    expect(timeById(4)).toBe("Hace 1 hora");
-    expect(timeById(5)).toBe("Hace 2 horas");
-    expect(timeById(6)).toBe("Hace 1 día");
-    expect(timeById(7)).toBe("Hace 2 días");
-    expect(timeById(8)).toBe("Hace 1 semana");
-    expect(timeById(9)).toBe("Hace 2 semanas");
-    expect(timeById(10)).toBe("Hace 1 mes");
-    expect(timeById(11)).toBe("Hace 2 meses");
-    expect(timeById(12)).toBe("Hace 1 año");
-    expect(timeById(13)).toBe("Hace 2 años");
+    expect(timesFor(store, [10, 11, 12, 13])).toEqual([
+      "Hace 1 mes",
+      "Hace 2 meses",
+      "Hace 1 año",
+      "Hace 2 años",
+    ]);
 
     jest.useRealTimers();
   });

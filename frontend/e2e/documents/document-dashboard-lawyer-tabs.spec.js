@@ -47,7 +47,7 @@ test("lawyer can navigate to Dcs. Clientes en Progreso tab", async ({ page }) =>
   await page.getByRole("button", { name: "Dcs. Clientes en Progreso" }).click();
 
   // The tab should be active and the component should render
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
   // The table component should load (even if no matching documents are shown due to filtering)
   const tabButton = page.getByRole("button", { name: "Dcs. Clientes en Progreso" });
   await expect(tabButton).toBeVisible();
@@ -85,7 +85,7 @@ test("lawyer can navigate to Dcs. Clientes (finished) tab", async ({ page }) => 
   // Switch to "Dcs. Clientes" (finished documents) tab
   await page.getByRole("button", { name: "Dcs. Clientes", exact: true }).click();
 
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
   const tabButton = page.getByRole("button", { name: "Dcs. Clientes", exact: true });
   await expect(tabButton).toBeVisible();
 });
@@ -121,7 +121,7 @@ test("lawyer can navigate to Dcs. Por Firmar tab", async ({ page }) => {
   // Switch to "Dcs. Por Firmar" tab
   await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
 
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
   await expect(page.getByRole("button", { name: "Dcs. Por Firmar" })).toBeVisible();
 });
 

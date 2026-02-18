@@ -410,14 +410,16 @@ class TestGoogleLogin:
 
     def test_invalid_token(self, api_client, monkeypatch):
         """Invalid/expired Google token returns 401."""
+        mock_verify = MagicMock(side_effect=ValueError("Invalid token"))
         monkeypatch.setattr(
             "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
-            MagicMock(side_effect=ValueError("Invalid token")),
+            mock_verify,
         )
         url = reverse("google_login")
         response = api_client.post(url, {"credential": "bad_token"}, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data["error_message"] == "Invalid Google token."
+        mock_verify.assert_called_once()
 
     def test_token_without_email(self, api_client, monkeypatch):
         """Google token without email returns 400."""
@@ -704,9 +706,10 @@ class TestSendVerificationCodeEmailFailure:
     def test_email_failure_returns_500(self, api_client, monkeypatch):
         """T1: send_verification_code returns 500 when send_template_email raises."""
         _mock_captcha_success(monkeypatch)
+        mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
             "gym_app.views.userAuth.send_template_email",
-            MagicMock(side_effect=Exception("SMTP error")),
+            mock_send_email,
         )
         url = reverse("send_verification_code")
         response = api_client.post(
@@ -714,6 +717,7 @@ class TestSendVerificationCodeEmailFailure:
         )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert response.data["error"] == "Error sending verification email"
+        mock_send_email.assert_called_once()
 
 
 # =========================================================================
@@ -724,9 +728,10 @@ class TestSendPasscodeEmailFailure:
     def test_email_failure_returns_500(self, api_client, user, monkeypatch):
         """T2: send_passcode returns 500 when send_template_email raises."""
         _mock_captcha_success(monkeypatch)
+        mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
             "gym_app.views.userAuth.send_template_email",
-            MagicMock(side_effect=Exception("SMTP error")),
+            mock_send_email,
         )
         url = reverse("send_passcode")
         response = api_client.post(
@@ -736,6 +741,7 @@ class TestSendPasscodeEmailFailure:
         )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert response.data["error"] == "Error sending verification email"
+        mock_send_email.assert_called_once()
 
 
 # =========================================================================

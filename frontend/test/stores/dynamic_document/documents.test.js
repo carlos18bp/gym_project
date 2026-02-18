@@ -931,15 +931,18 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     await store.fetchDocumentsForTab({});
 
     const url = mock.history.get[0].url;
-    expect(url).toContain("page=1");
-    expect(url).toContain("limit=10");
-    expect(url).not.toContain("state=");
-    expect(url).not.toContain("states=");
-    expect(url).not.toContain("client_id=");
-    expect(url).not.toContain("lawyer_id=");
-    expect(url).not.toContain("user_related=");
-    expect(url).not.toContain("signer_signed=");
-    expect(url).not.toContain("unassigned=");
+    const required = ["page=1", "limit=10"];
+    const forbidden = [
+      "state=",
+      "states=",
+      "client_id=",
+      "lawyer_id=",
+      "user_related=",
+      "signer_signed=",
+      "unassigned=",
+    ];
+    expect(required.every((segment) => url.includes(segment))).toBe(true);
+    expect(forbidden.every((segment) => !url.includes(segment))).toBe(true);
   });
 
   test("fetchDocumentsForTab does not mutate store documents", async () => {

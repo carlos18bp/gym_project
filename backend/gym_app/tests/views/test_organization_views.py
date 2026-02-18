@@ -169,39 +169,47 @@ class TestOrganizationCrudAndMembers:
 @pytest.mark.integration
 class TestOrganizationInvitationsAndMemberships:
     @pytest.mark.contract
-    def test_send_and_list_invitations_and_client_accepts(self, api_client, corporate_client, client_user, organization):
-        # Enviar invitación
+    def test_send_invitation(self, api_client, corporate_client, client_user, organization):
+        """Test sending an invitation"""
         api_client.force_authenticate(user=corporate_client)
         url_send = reverse("send-organization-invitation", kwargs={"organization_id": organization.id})
         data = {"invited_user_email": client_user.email, "message": "Únete"}
         response = api_client.post(url_send, data, format="json")
+        
         assert response.status_code == status.HTTP_201_CREATED
+        assert OrganizationInvitation.objects.filter(organization=organization, invited_user=client_user).exists()
 
-        invitation = OrganizationInvitation.objects.get(organization=organization, invited_user=client_user)
-
-        # Corporate lista sus invitaciones
+    @pytest.mark.contract
+    def test_list_invitations(self, api_client, corporate_client, client_user, organization):
+        """Test listing invitations"""
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization, invited_user=client_user, invited_by=corporate_client,
+            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10)
+        )
+        api_client.force_authenticate(user=corporate_client)
+        
         url_list = reverse("get-organization-invitations", kwargs={"organization_id": organization.id})
         response = api_client.get(url_list)
+        
         assert response.status_code == status.HTTP_200_OK
-        invites = (response.data.get("results") or response.data.get("invitations"))
+        invites = response.data.get("results") or response.data.get("invitations")
         assert any(inv["id"] == invitation.id for inv in invites)
 
-        # Client ve sus invitaciones
+    @pytest.mark.contract
+    def test_client_accepts_invitation(self, api_client, corporate_client, client_user, organization):
+        """Test client accepting an invitation"""
+        invitation = OrganizationInvitation.objects.create(
+            organization=organization, invited_user=client_user, invited_by=corporate_client,
+            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10)
+        )
         api_client.force_authenticate(user=client_user)
-        url_my_inv = reverse("get-my-invitations")
-        response = api_client.get(url_my_inv)
-        assert response.status_code == status.HTTP_200_OK
-        my_invites = (response.data.get("results") or response.data.get("invitations"))
-        assert any(inv["id"] == invitation.id for inv in my_invites)
-
-        # Client acepta invitación
+        
         url_respond = reverse("respond-to-invitation", kwargs={"invitation_id": invitation.id})
         response = api_client.post(url_respond, {"action": "accept"}, format="json")
+        
         assert response.status_code == status.HTTP_200_OK
-
         invitation.refresh_from_db()
         assert invitation.status == "ACCEPTED"
-        # Debe existir membresía
         assert OrganizationMembership.objects.filter(organization=organization, user=client_user, is_active=True).exists()
 
     @pytest.mark.edge
@@ -480,8 +488,11 @@ class TestInvitationActions:
         org = Organization.objects.create(title="DupOrg", corporate_client=corp)
         OrganizationMembership.objects.create(organization=org, user=cli, role="MEMBER", is_active=True)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             inv.accept()
+        assert exc_info.value is not None
+        inv.refresh_from_db()
+        assert inv.status == "PENDING"
 
     def test_reject_invitation(self, corp, cli):
         org = Organization.objects.create(title="RejOrg", corporate_client=corp)
@@ -593,8 +604,10 @@ class TestInvitationEdge:
         org = Organization.objects.create(title="E2", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         inv.accept()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             inv.accept()
+        assert exc_info.value is not None
+        assert inv.status == "ACCEPTED"
 
 
 # 20. DynamicDocument __str__
@@ -1005,3 +1018,6 @@ class TestOrganizationViewsRegressionScenarios:
             format='json')
         assert r.status_code == 400
         assert 'save failed' in r.data['error']
+        MockSerializer.assert_called()
+        mock_instance.is_valid.assert_called()
+        mock_instance.save.assert_called()

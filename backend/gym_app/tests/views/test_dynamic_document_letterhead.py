@@ -185,7 +185,7 @@ class TestUserGlobalLetterhead:
 
         assert response.status_code == status.HTTP_201_CREATED
         lawyer_user.refresh_from_db()
-        assert lawyer_user.letterhead_image
+        assert lawyer_user.letterhead_image is not None and lawyer_user.letterhead_image.name != ""
 
         get_url = reverse("get-user-letterhead-image")
         response = api_client.get(get_url)
@@ -477,7 +477,7 @@ class TestDocumentLetterhead:
 
         assert response.status_code == status.HTTP_201_CREATED
         document.refresh_from_db()
-        assert document.letterhead_image
+        assert document.letterhead_image is not None and document.letterhead_image.name != ""
 
         get_url = reverse("get-letterhead-image", kwargs={"pk": document.id})
         response = api_client.get(get_url)
@@ -610,7 +610,7 @@ class TestUserWordLetterheadTemplate:
 
         assert response.status_code == status.HTTP_201_CREATED
         lawyer_user.refresh_from_db()
-        assert lawyer_user.letterhead_word_template
+        assert lawyer_user.letterhead_word_template is not None and lawyer_user.letterhead_word_template.name != ""
 
         get_url = reverse("get-user-letterhead-word-template")
         response = api_client.get(get_url)
@@ -793,7 +793,7 @@ class TestDocumentWordLetterheadTemplate:
 
         assert response.status_code == status.HTTP_201_CREATED
         document.refresh_from_db()
-        assert document.letterhead_word_template
+        assert document.letterhead_word_template is not None and document.letterhead_word_template.name != ""
 
         get_url = reverse("get-document-letterhead-word-template", kwargs={"pk": document.id})
         response = api_client.get(get_url)

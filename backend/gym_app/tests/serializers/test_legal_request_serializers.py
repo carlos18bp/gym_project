@@ -131,21 +131,23 @@ class TestLegalRequestFilesSerializer:
 @pytest.mark.django_db
 class TestLegalRequestSerializer:
     
-    def test_serialize_legal_request(self, legal_request):
-        """Test the serialization of a complete legal request"""
+    def test_serialize_legal_request_basic_fields(self, legal_request):
+        """Test the serialization of a complete legal request - basic fields"""
         serializer = LegalRequestSerializer(legal_request)
         
-        # Verify basic fields
         assert serializer.data['id'] == legal_request.id
         assert serializer.data['first_name'] == legal_request.user.first_name
         assert serializer.data['last_name'] == legal_request.user.last_name
         assert serializer.data['email'] == legal_request.user.email
         assert serializer.data['description'] == legal_request.description
+
+    def test_serialize_legal_request_relationships(self, legal_request):
+        """Test the serialization of a complete legal request - relationships"""
+        serializer = LegalRequestSerializer(legal_request)
         
         # Verify nested relationships
         assert serializer.data['request_type']['id'] == legal_request.request_type.id
         assert serializer.data['request_type']['name'] == legal_request.request_type.name
-        
         assert serializer.data['discipline']['id'] == legal_request.discipline.id
         assert serializer.data['discipline']['name'] == legal_request.discipline.name
         

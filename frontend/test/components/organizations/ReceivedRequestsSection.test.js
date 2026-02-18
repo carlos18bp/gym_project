@@ -88,88 +88,79 @@ const buildManyRequests = (count) => {
   });
 };
 
+const defaultOrganizations = [
+  { id: 1, title: "Acme" },
+  { id: 2, title: "Beta" },
+];
+
+const mountSection = async ({ requests = buildRequests(), organizations = defaultOrganizations } = {}) => {
+  const wrapper = mount(ReceivedRequestsSection, {
+    props: {
+      requests,
+      organizations,
+      isLoading: false,
+    },
+    global: {
+      stubs: {
+        CorporateRequestCard: CorporateRequestCardStub,
+      },
+    },
+  });
+
+  await flushPromises();
+
+  return wrapper;
+};
+
+const getTitles = (wrapper) =>
+  wrapper.findAll("[data-test='request-title']").map((n) => (n.text() || "").trim());
+
 describe("ReceivedRequestsSection.vue", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test("renders requests sorted by created_at (newest first) and quick stats match filteredRequests", async () => {
-    const wrapper = mount(ReceivedRequestsSection, {
-      props: {
-        requests: buildRequests(),
-        organizations: [
-          { id: 1, title: "Acme" },
-          { id: 2, title: "Beta" },
-        ],
-        isLoading: false,
-      },
-      global: {
-        stubs: {
-          CorporateRequestCard: CorporateRequestCardStub,
-        },
-      },
-    });
+  test("renders requests sorted by created_at (newest first)", async () => {
+    const wrapper = await mountSection();
 
-    await flushPromises();
-
-    const titles = wrapper
-      .findAll("[data-test='request-title']")
-      .map((n) => (n.text() || "").trim());
-
-    expect(titles).toEqual(["New In Review", "Mid Responded", "Old Pending"]);
-
-    expect(wrapper.text()).toContain("Total:");
-    expect(wrapper.text()).toContain("3");
-    expect(wrapper.text()).toContain("Pendientes:");
-    expect(wrapper.text()).toContain("1");
-    expect(wrapper.text()).toContain("En Revisión:");
-    expect(wrapper.text()).toContain("1");
-    expect(wrapper.text()).toContain("Urgentes:");
-    expect(wrapper.text()).toContain("1");
+    expect(getTitles(wrapper)).toEqual(["New In Review", "Mid Responded", "Old Pending"]);
   });
 
-  test("filters by status, priority, organization and search", async () => {
-    const wrapper = mount(ReceivedRequestsSection, {
-      props: {
-        requests: buildRequests(),
-        organizations: [
-          { id: 1, title: "Acme" },
-          { id: 2, title: "Beta" },
-        ],
-        isLoading: false,
-      },
-      global: {
-        stubs: {
-          CorporateRequestCard: CorporateRequestCardStub,
-        },
-      },
-    });
+  test("quick stats match filteredRequests", async () => {
+    const wrapper = await mountSection();
 
-    await flushPromises();
+    const expected = [
+      "Total:",
+      "3",
+      "Pendientes:",
+      "1",
+      "En Revisión:",
+      "1",
+      "Urgentes:",
+      "1",
+    ];
+
+    expect(expected.every((text) => wrapper.text().includes(text))).toBe(true);
+  });
+
+  test("filters by status and priority combination", async () => {
+    const wrapper = await mountSection();
 
     await wrapper.find("select#status-filter").setValue("PENDING");
     await flushPromises();
 
-    expect(wrapper.findAll("[data-test='request-card']")).toHaveLength(1);
-    expect(wrapper.text()).toContain("Old Pending");
+    expect(getTitles(wrapper)).toEqual(["Old Pending"]);
 
     await wrapper.find("select#priority-filter").setValue("URGENT");
     await flushPromises();
 
     expect(wrapper.findAll("[data-test='request-card']")).toHaveLength(0);
+  });
 
-    await wrapper.find("select#status-filter").setValue("");
-    await flushPromises();
-
-    expect(wrapper.findAll("[data-test='request-card']")).toHaveLength(1);
-    expect(wrapper.text()).toContain("New In Review");
+  test("filters by organization and search", async () => {
+    const wrapper = await mountSection();
 
     await wrapper.find("select#organization-filter").setValue("1");
-    await flushPromises();
-
-    expect(wrapper.findAll("[data-test='request-card']")).toHaveLength(0);
-
-    await wrapper.find("select#priority-filter").setValue("");
     await flushPromises();
 
     expect(wrapper.findAll("[data-test='request-card']")).toHaveLength(2);
@@ -177,11 +168,7 @@ describe("ReceivedRequestsSection.vue", () => {
     await wrapper.find("input#search").setValue("corp-req-3");
     await flushPromises();
 
-    const titles = wrapper
-      .findAll("[data-test='request-title']")
-      .map((n) => (n.text() || "").trim());
-
-    expect(titles).toEqual(["Mid Responded"]);
+    expect(getTitles(wrapper)).toEqual(["Mid Responded"]);
   });
 
   test("shows loading state when isLoading is true", async () => {

@@ -10,7 +10,8 @@ User = get_user_model()
 
 @pytest.mark.django_db
 class TestGenerateAuthTokens:
-    def test_generate_auth_tokens_structure_and_user_data(self):
+    def test_generate_auth_tokens_structure(self):
+        """Test that generate_auth_tokens returns expected keys"""
         user = User.objects.create_user(
             email="user@example.com",
             password="testpassword",
@@ -24,10 +25,21 @@ class TestGenerateAuthTokens:
         assert "refresh" in data
         assert "access" in data
         assert "user" in data
-
         # Tokens deben ser strings no vacíos
         assert isinstance(data["refresh"], str) and data["refresh"]
         assert isinstance(data["access"], str) and data["access"]
+
+    def test_generate_auth_tokens_user_data(self):
+        """Test that generate_auth_tokens returns correct user data"""
+        user = User.objects.create_user(
+            email="user2@example.com",
+            password="testpassword",
+            first_name="Test",
+            last_name="User",
+            role="client",
+        )
+
+        data = generate_auth_tokens(user)
 
         # Datos de usuario serializados
         user_data = data["user"]

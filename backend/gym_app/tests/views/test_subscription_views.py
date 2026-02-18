@@ -228,6 +228,8 @@ class TestCreateSubscription:
         assert response.status_code == status.HTTP_201_CREATED
         sub = Subscription.objects.get(user=subscription_user)
         assert sub.payment_source_id == "src_from_wompi"
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
 
     @mock.patch("gym_app.views.subscription.requests.get")
     def test_create_paid_subscription_error_fetching_tokens(self, mock_get, api_client, subscription_user, wompi_settings):
@@ -242,6 +244,7 @@ class TestCreateSubscription:
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert "Error fetching acceptance tokens from Wompi" in response.data["error"]
+        mock_get.assert_called_once()
 
     @pytest.mark.edge
     @mock.patch("gym_app.views.subscription.requests.post")
@@ -279,6 +282,8 @@ class TestCreateSubscription:
         assert response.data["error"] == "Error creating payment source with Wompi"
         assert response.data["wompi_status"] == 400
         assert not Subscription.objects.filter(user=subscription_user).exists()
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
 
     @pytest.mark.edge
     @mock.patch("gym_app.views.subscription.requests.post")
@@ -315,6 +320,8 @@ class TestCreateSubscription:
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert response.data["error"] == "Invalid response from Wompi while creating payment source"
         assert not Subscription.objects.filter(user=subscription_user).exists()
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
 
 
 @pytest.mark.django_db
@@ -826,69 +833,81 @@ class TestSubscriptionRegressionScenarios:
     def test_create_sub_missing_acceptance_tokens(self, api_client, client_u):
         """Lines 205-210: Wompi merchant returns empty tokens."""
         api_client.force_authenticate(user=client_u)
-        mock_resp = mock.MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {'data': {}}
-        mock_resp.raise_for_status.return_value = None
-        with mock.patch('requests.get', return_value=mock_resp):
+        from types import SimpleNamespace
+        mock_resp = SimpleNamespace(
+            status_code=200,
+            json=lambda: {'data': {}},
+            raise_for_status=lambda: None
+        )
+        with mock.patch('requests.get', return_value=mock_resp) as mock_get:
             r = api_client.post(
                 reverse('subscription-create'),
                 {'plan_type': 'cliente', 'session_id': 's1', 'token': 't1'},
                 format='json')
         assert r.status_code == 502
         assert 'Invalid acceptance tokens' in r.data['error']
+        mock_get.assert_called_once()
 
     # --- create_subscription: payment source API error (lines 240-252) ---
     def test_create_sub_payment_source_api_error(self, api_client, client_u):
         """Lines 240-252: Wompi payment source returns 4xx."""
         api_client.force_authenticate(user=client_u)
-        merchant_resp = mock.MagicMock()
-        merchant_resp.status_code = 200
-        merchant_resp.json.return_value = {
-            'data': {
-                'presigned_acceptance': {'acceptance_token': 'tok_a'},
-                'presigned_personal_data_auth': {'acceptance_token': 'tok_p'},
-            }
-        }
-        merchant_resp.raise_for_status.return_value = None
+        from types import SimpleNamespace
+        merchant_resp = SimpleNamespace(
+            status_code=200,
+            json=lambda: {
+                'data': {
+                    'presigned_acceptance': {'acceptance_token': 'tok_a'},
+                    'presigned_personal_data_auth': {'acceptance_token': 'tok_p'},
+                }
+            },
+            raise_for_status=lambda: None
+        )
 
-        ps_resp = mock.MagicMock()
-        ps_resp.status_code = 422
-        ps_resp.json.return_value = {'error': 'invalid card'}
+        ps_resp = SimpleNamespace(
+            status_code=422,
+            json=lambda: {'error': 'invalid card'}
+        )
 
-        with mock.patch('requests.get', return_value=merchant_resp), \
-             mock.patch('requests.post', return_value=ps_resp):
+        with mock.patch('requests.get', return_value=merchant_resp) as mock_get, \
+             mock.patch('requests.post', return_value=ps_resp) as mock_post:
             r = api_client.post(
                 reverse('subscription-create'),
                 {'plan_type': 'cliente', 'session_id': 's1', 'token': 't1'},
                 format='json')
         assert r.status_code == 502
         assert 'Error creating payment source' in r.data['error']
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
 
     # --- create_subscription: payment source request exception (lines 262-267) ---
     def test_create_sub_payment_source_exception(self, api_client, client_u):
         """Lines 262-267: requests.RequestException creating payment source."""
         api_client.force_authenticate(user=client_u)
         import requests as req_lib
-        merchant_resp = mock.MagicMock()
-        merchant_resp.status_code = 200
-        merchant_resp.json.return_value = {
-            'data': {
-                'presigned_acceptance': {'acceptance_token': 'tok_a'},
-                'presigned_personal_data_auth': {'acceptance_token': 'tok_p'},
-            }
-        }
-        merchant_resp.raise_for_status.return_value = None
+        from types import SimpleNamespace
+        merchant_resp = SimpleNamespace(
+            status_code=200,
+            json=lambda: {
+                'data': {
+                    'presigned_acceptance': {'acceptance_token': 'tok_a'},
+                    'presigned_personal_data_auth': {'acceptance_token': 'tok_p'},
+                }
+            },
+            raise_for_status=lambda: None
+        )
 
-        with mock.patch('requests.get', return_value=merchant_resp), \
+        with mock.patch('requests.get', return_value=merchant_resp) as mock_get, \
              mock.patch('requests.post',
-                        side_effect=req_lib.RequestException('conn err')):
+                        side_effect=req_lib.RequestException('conn err')) as mock_post:
             r = api_client.post(
                 reverse('subscription-create'),
                 {'plan_type': 'cliente', 'session_id': 's1', 'token': 't1'},
                 format='json')
         assert r.status_code == 502
         assert 'Error creating payment source' in r.data['error']
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
 
     # --- wompi_webhook: invalid JSON (lines 581-583) ---
     def test_webhook_invalid_json(self, api_client):

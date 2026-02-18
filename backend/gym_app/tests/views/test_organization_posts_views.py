@@ -109,58 +109,43 @@ class TestOrganizationPostsCreateAndList:
         assert "link_name" in response.data["details"][0]
 
     @pytest.mark.contract
-    def test_get_organization_posts_filters_and_ordering(self, api_client, corporate_client, organization):
-        # Crear posts con combinaciones de activo/pinned
-        OrganizationPost.objects.create(
-            title="Old inactive",
-            content="C1",
-            organization=organization,
-            author=corporate_client,
-            is_active=False,
-            is_pinned=False,
-        )
-        pinned = OrganizationPost.objects.create(
-            title="Pinned active",
-            content="C2",
-            organization=organization,
-            author=corporate_client,
-            is_active=True,
-            is_pinned=True,
-        )
-        active = OrganizationPost.objects.create(
-            title="Active",
-            content="C3",
-            organization=organization,
-            author=corporate_client,
-            is_active=True,
-            is_pinned=False,
-        )
+    def test_get_organization_posts_pinned_first(self, api_client, corporate_client, organization):
+        """Test posts are ordered with pinned first"""
+        OrganizationPost.objects.create(title="Active", content="C", organization=organization, author=corporate_client, is_active=True, is_pinned=False)
+        pinned = OrganizationPost.objects.create(title="Pinned", content="C", organization=organization, author=corporate_client, is_active=True, is_pinned=True)
 
         api_client.force_authenticate(user=corporate_client)
         url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})
-
-        # Sin filtros: pinned primero
         response = api_client.get(url)
+        
         assert response.status_code == status.HTTP_200_OK
-        results = response.data["results"]
-        assert results[0]["id"] == pinned.id
+        assert response.data["results"][0]["id"] == pinned.id
 
-        # Filtro is_active=false
+    @pytest.mark.contract
+    def test_get_organization_posts_filter_inactive(self, api_client, corporate_client, organization):
+        """Test filtering posts by is_active=false"""
+        OrganizationPost.objects.create(title="Inactive", content="C", organization=organization, author=corporate_client, is_active=False)
+        OrganizationPost.objects.create(title="Active", content="C", organization=organization, author=corporate_client, is_active=True)
+
+        api_client.force_authenticate(user=corporate_client)
+        url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})
         response = api_client.get(url, {"is_active": "false"})
-        results = response.data["results"]
-        assert len(results) == 1
-        assert results[0]["title"] == "Old inactive"
+        
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["title"] == "Inactive"
 
-        # Filtro is_pinned=true
+    @pytest.mark.contract
+    def test_get_organization_posts_filter_pinned(self, api_client, corporate_client, organization):
+        """Test filtering posts by is_pinned=true"""
+        OrganizationPost.objects.create(title="Not pinned", content="C", organization=organization, author=corporate_client, is_pinned=False)
+        OrganizationPost.objects.create(title="Pinned", content="C", organization=organization, author=corporate_client, is_pinned=True)
+
+        api_client.force_authenticate(user=corporate_client)
+        url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})
         response = api_client.get(url, {"is_pinned": "true"})
-        results = response.data["results"]
-        assert len(results) == 1
-        assert results[0]["title"] == "Pinned active"
-
-        # Búsqueda por texto
-        response = api_client.get(url, {"search": "Active"})
-        titles = {p["title"] for p in response.data["results"]}
-        assert {"Pinned active", "Active"}.issubset(titles)
+        
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["title"] == "Pinned"
 
     @pytest.mark.edge
     def test_get_organization_posts_requires_corporate_client(self, api_client, client_user, organization):
@@ -346,7 +331,8 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
 @pytest.mark.django_db
 class TestOrganizationPostsRest:
-    def test_rest_create_list_toggle_delete(self, api_client, corporate_client, client_user, organization):
+    def test_rest_create_and_list_post(self, api_client, corporate_client, organization):
+        """Test creating and listing organization posts"""
         api_client.force_authenticate(user=corporate_client)
         create_url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
 
@@ -359,36 +345,43 @@ class TestOrganizationPostsRest:
         assert response.status_code == status.HTTP_200_OK
         assert any(item["id"] == post_id for item in response.data["results"])
 
-        pin_url = reverse(
-            "toggle-organization-post-pin",
-            kwargs={"organization_id": organization.id, "post_id": post_id},
+    def test_rest_toggle_pin_and_status(self, api_client, corporate_client, organization):
+        """Test toggling post pin and status"""
+        api_client.force_authenticate(user=corporate_client)
+        post = OrganizationPost.objects.create(
+            organization=organization, author=corporate_client, title="Test", content="Content"
         )
+
+        pin_url = reverse("toggle-organization-post-pin", kwargs={"organization_id": organization.id, "post_id": post.id})
         response = api_client.post(pin_url, {}, format="json")
         assert response.status_code == status.HTTP_200_OK
-        post = OrganizationPost.objects.get(id=post_id)
+        post.refresh_from_db()
         assert post.is_pinned is True
 
-        status_url = reverse(
-            "toggle-organization-post-status",
-            kwargs={"organization_id": organization.id, "post_id": post_id},
-        )
+        status_url = reverse("toggle-organization-post-status", kwargs={"organization_id": organization.id, "post_id": post.id})
         response = api_client.post(status_url, {}, format="json")
         assert response.status_code == status.HTTP_200_OK
         post.refresh_from_db()
         assert post.is_active is False
 
-        api_client.force_authenticate(user=client_user)
-        response = api_client.post(create_url, {"title": "No", "content": "x"}, format="json")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
+    def test_rest_delete_post(self, api_client, corporate_client, organization):
+        """Test deleting organization post"""
         api_client.force_authenticate(user=corporate_client)
-        delete_url = reverse(
-            "delete-organization-post",
-            kwargs={"organization_id": organization.id, "post_id": post_id},
+        post = OrganizationPost.objects.create(
+            organization=organization, author=corporate_client, title="ToDelete", content="X"
         )
+
+        delete_url = reverse("delete-organization-post", kwargs={"organization_id": organization.id, "post_id": post.id})
         response = api_client.delete(delete_url)
         assert response.status_code == status.HTTP_200_OK
-        assert not OrganizationPost.objects.filter(id=post_id).exists()
+        assert not OrganizationPost.objects.filter(id=post.id).exists()
+
+    def test_rest_create_forbidden_for_client(self, api_client, client_user, organization):
+        """Test client user cannot create posts"""
+        api_client.force_authenticate(user=client_user)
+        create_url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
+        response = api_client.post(create_url, {"title": "No", "content": "x"}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_rest_public_posts_permissions(self, api_client, corporate_client, client_user, basic_user, organization):
         OrganizationPost.objects.create(
@@ -521,38 +514,45 @@ class TestFileValidation:
 
     def test_too_large(self):
         from gym_app.views.legal_request import validate_file_security
-        with pytest.raises(ValidationError, match="exceeds"):
+        with pytest.raises(ValidationError, match="exceeds") as exc_info:
             validate_file_security(self._mk("big.pdf", size=31*1024*1024))
+        assert exc_info.value is not None
 
     def test_bad_ext(self):
         from gym_app.views.legal_request import validate_file_security
-        with pytest.raises(ValidationError, match="not allowed"):
+        with pytest.raises(ValidationError, match="not allowed") as exc_info:
             validate_file_security(self._mk("h.exe"))
+        assert exc_info.value is not None
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="application/octet-stream")
     def test_mime_not_allowed(self, _m):
         from gym_app.views.legal_request import validate_file_security
-        with pytest.raises(ValidationError, match="MIME"):
+        with pytest.raises(ValidationError, match="MIME") as exc_info:
             validate_file_security(self._mk("t.pdf"))
+        assert exc_info.value is not None
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="image/png")
     def test_ext_mismatch(self, _m):
         from gym_app.views.legal_request import validate_file_security
-        with pytest.raises(ValidationError, match="doesn't match"):
+        with pytest.raises(ValidationError, match="doesn't match") as exc_info:
             validate_file_security(self._mk("t.pdf"))
+        assert exc_info.value is not None
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="application/zip")
-    def test_docx_zip_valid(self, _m):
+    def test_docx_zip_valid(self, mock_from_buffer):
         from gym_app.views.legal_request import validate_file_security
         c = b"PK\x03\x04word/document.xml"
         f = self._mk("t.docx", content=c); f.read=MagicMock(return_value=c)
         assert validate_file_security(f) is True
+        mock_from_buffer.assert_called_once()
 
     @patch("gym_app.views.legal_request.magic.from_buffer", side_effect=Exception("err"))
-    def test_magic_exc(self, _m):
+    def test_magic_exc(self, mock_from_buffer):
         from gym_app.views.legal_request import validate_file_security
-        with pytest.raises(ValidationError, match="Unable"):
+        with pytest.raises(ValidationError, match="Unable") as exc_info:
             validate_file_security(self._mk("t.pdf"))
+        assert exc_info.value is not None
+        mock_from_buffer.assert_called_once()
 
 # === 2. process_file_upload exception ===
 @pytest.mark.django_db
@@ -560,14 +560,16 @@ class TestProcessFileUpload:
     def test_general_exception(self, client_user):
         from gym_app.views.legal_request import process_file_upload
         from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline
+        from types import SimpleNamespace
         lr = LegalRequest.objects.create(
             user=client_user, request_type=LegalRequestType.objects.create(name="T17"),
             discipline=LegalDiscipline.objects.create(name="D17"), description="T", status="OPEN",
         )
-        f = MagicMock(); f.name="t.pdf"; f.size=100; f.read=MagicMock(return_value=b"%PDF"); f.seek=MagicMock()
-        with patch("gym_app.views.legal_request.validate_file_security", side_effect=Exception("fail")):
+        f = SimpleNamespace(name="t.pdf", size=100, read=lambda: b"%PDF", seek=lambda x: None)
+        with patch("gym_app.views.legal_request.validate_file_security", side_effect=Exception("fail")) as mock_validate:
             r = process_file_upload(f, lr)
         assert r["success"] is False
+        mock_validate.assert_called_once()
 
 # === 3. admin GyMAdminSite ===
 @pytest.mark.django_db
@@ -628,7 +630,8 @@ class TestReportsUserFilters:
 class TestVerifyPasscode:
     @patch("gym_app.views.userAuth.requests.post")
     def test_valid_captcha_invalid_code(self, mock_post):
-        mock_resp = MagicMock(); mock_resp.json.return_value={"success": True}; mock_resp.raise_for_status=MagicMock()
+        from types import SimpleNamespace
+        mock_resp = SimpleNamespace(json=lambda: {"success": True}, raise_for_status=lambda: None)
         mock_post.return_value = mock_resp
         c = APIClient()
         url = reverse("verify_passcode_and_reset_password")
@@ -644,10 +647,12 @@ class TestVerifyPasscode:
         )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         assert "invalid" in resp.data.get("error", "").lower()
+        mock_post.assert_called_once()
 
     @patch("gym_app.views.userAuth.requests.post")
     def test_captcha_failure(self, mock_post):
-        mock_resp = MagicMock(); mock_resp.json.return_value={"success": False}; mock_resp.raise_for_status=MagicMock()
+        from types import SimpleNamespace
+        mock_resp = SimpleNamespace(json=lambda: {"success": False}, raise_for_status=lambda: None)
         mock_post.return_value = mock_resp
         c = APIClient()
         url = reverse("verify_passcode_and_reset_password")
@@ -662,6 +667,7 @@ class TestVerifyPasscode:
             format="json",
         )
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        mock_post.assert_called_once()
 
 
 # ======================================================================

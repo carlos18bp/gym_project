@@ -21,7 +21,7 @@ describe("Reports Store", () => {
     return { promise, resolve, reject };
   };
 
-  test("generateExcelReport creates a download and sets lastGeneratedReport", async () => {
+  const runExcelReport = async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-01-31T10:00:00Z"));
 
@@ -33,7 +33,9 @@ describe("Reports Store", () => {
       window.URL.createObjectURL = () => "blob:mock";
     }
 
-    const createObjectURLSpy = jest.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:mock");
+    const createObjectURLSpy = jest
+      .spyOn(window.URL, "createObjectURL")
+      .mockReturnValue("blob:mock");
 
     axios.post.mockResolvedValue({
       data: new Blob(["xls"], {
@@ -41,29 +43,53 @@ describe("Reports Store", () => {
       }),
     });
 
-    const reportData = { reportType: "processes", startDate: "2026-01-01", endDate: "2026-01-31", userId: null };
+    const reportData = {
+      reportType: "processes",
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+      userId: null,
+    };
 
     const result = await store.generateExcelReport(reportData);
 
-    expect(axios.post).toHaveBeenCalledWith(
-      "/api/reports/generate-excel/",
-      reportData,
-      { responseType: "blob" }
-    );
+    const cleanup = () => {
+      clickSpy.mockRestore();
+      createObjectURLSpy.mockRestore();
+      jest.useRealTimers();
+    };
 
-    expect(result).toBeTruthy();
-    expect(store.isGenerating).toBe(false);
-    expect(store.error).toBe(null);
+    return { store, reportData, result, clickSpy, createObjectURLSpy, cleanup };
+  };
 
-    expect(createObjectURLSpy).toHaveBeenCalled();
-    expect(clickSpy).toHaveBeenCalled();
+  test("generateExcelReport posts data and updates lastGeneratedReport", async () => {
+    const { store, reportData, result, cleanup } = await runExcelReport();
 
-    expect(store.lastGeneratedReport.type).toBe("processes");
-    expect(store.lastGeneratedReport.filename).toBe("processes_2026-01-31.xlsx");
+    try {
+      expect(axios.post).toHaveBeenCalledWith(
+        "/api/reports/generate-excel/",
+        reportData,
+        { responseType: "blob" }
+      );
+      expect(result).toBeTruthy();
+      expect([store.isGenerating, store.error]).toEqual([false, null]);
+      expect([store.lastGeneratedReport.type, store.lastGeneratedReport.filename]).toEqual([
+        "processes",
+        "processes_2026-01-31.xlsx",
+      ]);
+    } finally {
+      cleanup();
+    }
+  });
 
-    clickSpy.mockRestore();
-    createObjectURLSpy.mockRestore();
-    jest.useRealTimers();
+  test("generateExcelReport creates a download link", async () => {
+    const { clickSpy, createObjectURLSpy, cleanup } = await runExcelReport();
+
+    try {
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+    } finally {
+      cleanup();
+    }
   });
 
   test("generateExcelReport toggles isGenerating while request is pending", async () => {

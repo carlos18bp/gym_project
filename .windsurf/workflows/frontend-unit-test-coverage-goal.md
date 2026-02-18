@@ -11,4 +11,7 @@ Prioritize test work using the coverage report as a triage map. Start with the l
 - Lowest % coverage first (Cover / % Stmts / % Branch / % Funcs).
 - Highest “Miss” / “Uncovered Line #s” counts next (biggest uncovered surface area).
 - Prioritize core layers (Views/Controllers, Serializers, Models, State/Stores, Shared Utils) over already-high or low-impact files.
-Goal: maximize coverage gain per test by addressing the most uncovered and most critical files before polishing near-100% files.
+IMPORTANT NOTE (3): **Review the defined global rules and the saved memories. and check testing-quality-standards.md to meet the quality standards in each implemented test.**
+Goal: 
+- maximize coverage gain per test by addressing the most uncovered and most critical files before polishing near-100% files.
+- Do not run the full test suite; run only regression tests.

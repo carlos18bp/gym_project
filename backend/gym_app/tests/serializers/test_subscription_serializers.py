@@ -57,8 +57,8 @@ class TestPaymentHistorySerializer:
 
 @pytest.mark.django_db
 class TestSubscriptionSerializer:
-    def test_serialize_subscription(self, subscription_user):
-        """SubscriptionSerializer debe incluir user_email y user_name derivados."""
+    def test_serialize_subscription_basic_fields(self, subscription_user):
+        """SubscriptionSerializer basic field serialization."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -71,12 +71,25 @@ class TestSubscriptionSerializer:
         data = serializer.data
 
         assert data["id"] == sub.id
-        assert data["user_email"] == subscription_user.email
-        # user_name usa nombre completo o email
-        assert data["user_name"] in {f"{subscription_user.first_name} {subscription_user.last_name}", subscription_user.email}
         assert data["plan_type"] == sub.plan_type
         assert data["status"] == sub.status
         assert data["amount"] == str(sub.amount)
+
+    def test_serialize_subscription_user_fields(self, subscription_user):
+        """SubscriptionSerializer debe incluir user_email y user_name derivados."""
+        sub = Subscription.objects.create(
+            user=subscription_user,
+            plan_type="cliente",
+            status="active",
+            next_billing_date=timezone.now().date(),
+            amount=Decimal("99000.00"),
+        )
+
+        serializer = SubscriptionSerializer(sub)
+        data = serializer.data
+
+        assert data["user_email"] == subscription_user.email
+        assert data["user_name"] in {f"{subscription_user.first_name} {subscription_user.last_name}", subscription_user.email}
         assert "created_at" in data
         assert "updated_at" in data
 

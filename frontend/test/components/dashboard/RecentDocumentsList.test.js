@@ -247,61 +247,57 @@ describe("RecentDocumentsList.vue", () => {
 
     const byId = Object.fromEntries(received.map((r) => [r.id, r]));
 
-    expect(byId[1]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "CheckCircleIcon",
-      statusText: "Completado",
-      showClientName: true,
+    expect(byId).toMatchObject({
+      1: {
+        cardType: "lawyer",
+        statusIconName: "CheckCircleIcon",
+        statusText: "Completado",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-green-100"),
+      },
+      2: {
+        cardType: "lawyer",
+        statusIconName: "CheckCircleIcon",
+        statusText: "Firmado",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-green-100"),
+      },
+      3: {
+        cardType: "lawyer",
+        statusIconName: "DocumentCheckIcon",
+        statusText: "Publicado",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-blue-100"),
+      },
+      4: {
+        cardType: "lawyer",
+        statusIconName: "ClockIcon",
+        statusText: "Pendiente",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-yellow-100"),
+      },
+      5: {
+        cardType: "lawyer",
+        statusIconName: "PencilIcon",
+        statusText: "En Progreso",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-gray-100"),
+      },
+      6: {
+        cardType: "lawyer",
+        statusIconName: "PencilIcon",
+        statusText: "Borrador",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("bg-gray-100"),
+      },
+      7: {
+        cardType: "lawyer",
+        statusIconName: "ExclamationTriangleIcon",
+        statusText: "Weird",
+        showClientName: true,
+        statusBadgeClasses: expect.stringContaining("text-gray-600"),
+      },
     });
-    expect(byId[1].statusBadgeClasses).toContain("bg-green-100");
-
-    expect(byId[2]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "CheckCircleIcon",
-      statusText: "Firmado",
-      showClientName: true,
-    });
-    expect(byId[2].statusBadgeClasses).toContain("bg-green-100");
-
-    expect(byId[3]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "DocumentCheckIcon",
-      statusText: "Publicado",
-      showClientName: true,
-    });
-    expect(byId[3].statusBadgeClasses).toContain("bg-blue-100");
-
-    expect(byId[4]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "ClockIcon",
-      statusText: "Pendiente",
-      showClientName: true,
-    });
-    expect(byId[4].statusBadgeClasses).toContain("bg-yellow-100");
-
-    expect(byId[5]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "PencilIcon",
-      statusText: "En Progreso",
-      showClientName: true,
-    });
-    expect(byId[5].statusBadgeClasses).toContain("bg-gray-100");
-
-    expect(byId[6]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "PencilIcon",
-      statusText: "Borrador",
-      showClientName: true,
-    });
-    expect(byId[6].statusBadgeClasses).toContain("bg-gray-100");
-
-    expect(byId[7]).toMatchObject({
-      cardType: "lawyer",
-      statusIconName: "ExclamationTriangleIcon",
-      statusText: "Weird",
-      showClientName: true,
-    });
-    expect(byId[7].statusBadgeClasses).toContain("text-gray-600");
 
     await wrapper.findAll("[data-test='doc-card']")[0].trigger("click");
     expect(mockRegisterView).toHaveBeenCalledWith("document", 1);

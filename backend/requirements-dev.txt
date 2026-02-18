@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Developer tooling
+pre-commit==3.7.1

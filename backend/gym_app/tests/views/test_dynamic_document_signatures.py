@@ -1,6 +1,7 @@
 import datetime
 from io import BytesIO
-from unittest.mock import patch, MagicMock, mock_open
+from types import SimpleNamespace
+from unittest.mock import patch, mock_open
 from unittest import mock
 from contextlib import ExitStack
 
@@ -952,13 +953,15 @@ class TestExpireOverdue:
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
     def test_expire_overdue_sends_email(self, mock_email, law):
-        DynamicDocument.objects.create(
+        doc = DynamicDocument.objects.create(
             title="Overdue2", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
             signature_due_date=timezone.now().date() - datetime.timedelta(days=1),
         )
         expire_overdue_documents()
         mock_email.assert_called_once()
+        doc.refresh_from_db()
+        assert doc.state == "Expired"
 
     def test_expire_no_overdue_noop(self, law):
         DynamicDocument.objects.create(
@@ -1502,28 +1505,24 @@ class TestHelperFunctions:
 
     def test_get_client_ip_x_forwarded_for(self):
         """Line 56-60: X-Forwarded-For header."""
-        factory = MagicMock()
-        factory.META = {'HTTP_X_FORWARDED_FOR': '10.0.0.1, 10.0.0.2'}
-        assert signature_views.get_client_ip(factory) == '10.0.0.1'
+        request = SimpleNamespace(META={'HTTP_X_FORWARDED_FOR': '10.0.0.1, 10.0.0.2'})
+        assert signature_views.get_client_ip(request) == '10.0.0.1'
 
     def test_get_client_ip_x_real_ip(self):
         """Line 62-64: X-Real-IP header."""
-        factory = MagicMock()
-        factory.META = {'HTTP_X_REAL_IP': '172.16.0.1'}
-        assert signature_views.get_client_ip(factory) == '172.16.0.1'
+        request = SimpleNamespace(META={'HTTP_X_REAL_IP': '172.16.0.1'})
+        assert signature_views.get_client_ip(request) == '172.16.0.1'
 
     def test_get_client_ip_remote_addr(self):
         """Line 66: fallback to REMOTE_ADDR."""
-        factory = MagicMock()
-        factory.META = {'REMOTE_ADDR': '127.0.0.1'}
-        assert signature_views.get_client_ip(factory) == '127.0.0.1'
+        request = SimpleNamespace(META={'REMOTE_ADDR': '127.0.0.1'})
+        assert signature_views.get_client_ip(request) == '127.0.0.1'
 
     def test_get_client_ip_empty_forwarded_for(self):
         """Line 59-60: empty first element in X-Forwarded-For."""
-        factory = MagicMock()
-        factory.META = {'HTTP_X_FORWARDED_FOR': ' , 10.0.0.2', 'REMOTE_ADDR': '127.0.0.1'}
+        request = SimpleNamespace(META={'HTTP_X_FORWARDED_FOR': ' , 10.0.0.2', 'REMOTE_ADDR': '127.0.0.1'})
         # Empty first element -> falls through
-        ip = signature_views.get_client_ip(factory)
+        ip = signature_views.get_client_ip(request)
         # Should fallback since first IP is empty after strip
         assert ip in ('127.0.0.1', '10.0.0.2')  # depends on implementation
 
@@ -1536,11 +1535,20 @@ class TestHelperFunctions:
 
     def test_generate_encrypted_document_id_fallback(self):
         """Lines 95-97: fallback on exception."""
-        # Use a mock that has strftime for the fallback but causes failure in the try block
-        bad_dt = MagicMock()
-        bad_dt.strftime.side_effect = [ValueError("bad"), "20250101"]
+        class FailingDate:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def strftime(self, _format: str) -> str:
+                self.calls += 1
+                if self.calls == 1:
+                    raise ValueError("bad")
+                return "20250101"
+
+        bad_dt = FailingDate()
         result = signature_views.generate_encrypted_document_id(1, bad_dt)
         assert result.startswith("DOC-")
+        assert bad_dt.calls == 2
 
     def test_format_datetime_spanish(self):
         """Lines 116-122: Spanish date formatting."""
@@ -1566,28 +1574,22 @@ class TestGetLetterheadForDocument:
 
     def test_document_letterhead_priority(self, lawyer_user):
         """Lines 772-773: document letterhead takes priority."""
-        doc = MagicMock()
-        doc.letterhead_image = "doc_letterhead.png"
-        user = MagicMock()
-        user.letterhead_image = "user_letterhead.png"
+        doc = SimpleNamespace(letterhead_image="doc_letterhead.png")
+        user = SimpleNamespace(letterhead_image="user_letterhead.png")
         result = signature_views.get_letterhead_for_document(doc, user)
         assert result == "doc_letterhead.png"
 
     def test_user_letterhead_fallback(self, lawyer_user):
         """Lines 776-777: user letterhead when doc has none."""
-        doc = MagicMock()
-        doc.letterhead_image = None
-        user = MagicMock()
-        user.letterhead_image = "user_letterhead.png"
+        doc = SimpleNamespace(letterhead_image=None)
+        user = SimpleNamespace(letterhead_image="user_letterhead.png")
         result = signature_views.get_letterhead_for_document(doc, user)
         assert result == "user_letterhead.png"
 
     def test_no_letterhead(self, lawyer_user):
         """Lines 779-780: no letterhead at all."""
-        doc = MagicMock()
-        doc.letterhead_image = None
-        user = MagicMock()
-        user.letterhead_image = None
+        doc = SimpleNamespace(letterhead_image=None)
+        user = SimpleNamespace(letterhead_image=None)
         result = signature_views.get_letterhead_for_document(doc, user)
         assert result is None
 
@@ -1602,8 +1604,9 @@ class TestPdfHelpers:
     @patch('gym_app.views.dynamic_documents.signature_views.os.path.exists', return_value=False)
     def test_register_carlito_fonts_missing_file(self, mock_exists):
         """Lines 740-742: FileNotFoundError when font missing."""
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError) as exc_info:
             signature_views.register_carlito_fonts()
+        assert exc_info.value is not None
 
     @patch('gym_app.views.dynamic_documents.signature_views.pisa')
     @patch('gym_app.views.dynamic_documents.signature_views.register_carlito_fonts')
@@ -1618,8 +1621,7 @@ class TestPdfHelpers:
             "Carlito-Italic": "/fake/Carlito-Italic.ttf",
             "Carlito-BoldItalic": "/fake/Carlito-BoldItalic.ttf",
         }
-        mock_pisa_status = MagicMock()
-        mock_pisa_status.err = 0
+        mock_pisa_status = SimpleNamespace(err=0)
         mock_pisa.CreatePDF.return_value = mock_pisa_status
 
         doc = DynamicDocument.objects.create(
@@ -1644,16 +1646,16 @@ class TestPdfHelpers:
             "Carlito-Regular": "/fake/r.ttf", "Carlito-Bold": "/fake/b.ttf",
             "Carlito-Italic": "/fake/i.ttf", "Carlito-BoldItalic": "/fake/bi.ttf",
         }
-        mock_pisa_status = MagicMock()
-        mock_pisa_status.err = 1
+        mock_pisa_status = SimpleNamespace(err=1)
         mock_pisa.CreatePDF.return_value = mock_pisa_status
 
         doc = DynamicDocument.objects.create(
             title="Err", content="<p>x</p>", state="Draft",
             created_by=lawyer_user,
         )
-        with pytest.raises(Exception, match="HTML to PDF conversion failed"):
+        with pytest.raises(Exception, match="HTML to PDF conversion failed") as exc_info:
             signature_views.generate_original_document_pdf(doc, lawyer_user)
+        assert exc_info.value is not None
 
     def test_combine_pdfs(self):
         """Lines 1151-1170: combine two PDF buffers."""
@@ -1778,8 +1780,7 @@ class TestCreateSignaturesPdf:
             document=doc, signer=client_user, signed=True,
             signed_at=timezone.now(), ip_address="10.0.0.1",
         )
-        request = MagicMock()
-        request.user = lawyer_user
+        request = SimpleNamespace(user=lawyer_user)
 
         result = signature_views.create_signatures_pdf(doc, request)
         assert isinstance(result, BytesIO)
@@ -1796,8 +1797,7 @@ class TestCreateSignaturesPdf:
             document=doc, signer=client_user, signed=True,
             signed_at=timezone.now(),
         )
-        request = MagicMock()
-        request.user = lawyer_user
+        request = SimpleNamespace(user=lawyer_user)
 
         result = signature_views.create_signatures_pdf(doc, request)
         assert isinstance(result, BytesIO)
@@ -1811,8 +1811,7 @@ class TestCreateSignaturesPdf:
         DocumentSignature.objects.create(
             document=doc, signer=client_user, signed=False,
         )
-        request = MagicMock()
-        request.user = lawyer_user
+        request = SimpleNamespace(user=lawyer_user)
 
         result = signature_views.create_signatures_pdf(doc, request)
         assert isinstance(result, BytesIO)
@@ -1905,8 +1904,7 @@ class TestSignatureViewsRegressionScenarios:
     # --- Helper: get_client_ip with X-Forwarded-For ---
     def test_get_client_ip_forwarded_for(self):
         """Lines 58-60: X-Forwarded-For header returns first IP."""
-        req = mock.MagicMock()
-        req.META = {'HTTP_X_FORWARDED_FOR': '1.2.3.4, 5.6.7.8'}
+        req = SimpleNamespace(META={'HTTP_X_FORWARDED_FOR': '1.2.3.4, 5.6.7.8'})
         assert get_client_ip(req) == '1.2.3.4'
 
     def test_encrypted_id_normal(self):
@@ -1919,18 +1917,17 @@ class TestSignatureViewsRegressionScenarios:
     # --- Helper: get_letterhead_for_document ---
     def test_letterhead_no_letterhead(self, lawyer):
         """Line 779: no letterhead returns None."""
-        doc = mock.MagicMock()
-        doc.letterhead_image = None
+        doc = SimpleNamespace(letterhead_image=None)
         lawyer.letterhead_image = None
         assert get_letterhead_for_document(doc, lawyer) is None
 
     def test_letterhead_user_global(self, lawyer):
         """Line 777: user global letterhead used when doc has none."""
-        doc = mock.MagicMock()
-        doc.letterhead_image = None
-        lawyer.letterhead_image = mock.MagicMock()
+        doc = SimpleNamespace(letterhead_image=None)
+        letterhead = object()
+        lawyer.letterhead_image = letterhead
         result = get_letterhead_for_document(doc, lawyer)
-        assert result == lawyer.letterhead_image
+        assert result is letterhead
 
     # --- generate_signatures_pdf: not fully signed ---
     def test_gen_sig_pdf_not_fully_signed(

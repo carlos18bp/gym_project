@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -219,10 +220,20 @@ class TestGenerateEncryptedDocId:
         assert len(result) == 19  # XXXX-XXXX-XXXX-XXXX
 
     def test_fallback_on_exception(self):
-        bad_dt = MagicMock()
-        bad_dt.strftime = MagicMock(side_effect=[Exception("hash fail"), "20250101"])
+        class FailingDate:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def strftime(self, _format: str) -> str:
+                self.calls += 1
+                if self.calls == 1:
+                    raise Exception("hash fail")
+                return "20250101"
+
+        bad_dt = FailingDate()
         result = signature_views.generate_encrypted_document_id(7, bad_dt)
         assert result.startswith("DOC-")
+        assert bad_dt.calls == 2
 
 
 # ===========================================================================
@@ -390,33 +401,27 @@ def _png_file(name="test.png"):
 
 class TestGetClientIp:
     def test_x_forwarded_for_single(self):
-        request = MagicMock()
-        request.META = {"HTTP_X_FORWARDED_FOR": "1.2.3.4"}
+        request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "1.2.3.4"})
         assert signature_views.get_client_ip(request) == "1.2.3.4"
 
     def test_x_forwarded_for_multiple(self):
-        request = MagicMock()
-        request.META = {"HTTP_X_FORWARDED_FOR": "10.0.0.1, 10.0.0.2, 10.0.0.3"}
+        request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "10.0.0.1, 10.0.0.2, 10.0.0.3"})
         assert signature_views.get_client_ip(request) == "10.0.0.1"
 
     def test_x_forwarded_for_empty_string_falls_through(self):
-        request = MagicMock()
-        request.META = {"HTTP_X_FORWARDED_FOR": "", "HTTP_X_REAL_IP": "5.5.5.5"}
+        request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "", "HTTP_X_REAL_IP": "5.5.5.5"})
         assert signature_views.get_client_ip(request) == "5.5.5.5"
 
     def test_x_real_ip(self):
-        request = MagicMock()
-        request.META = {"HTTP_X_REAL_IP": "9.8.7.6"}
+        request = SimpleNamespace(META={"HTTP_X_REAL_IP": "9.8.7.6"})
         assert signature_views.get_client_ip(request) == "9.8.7.6"
 
     def test_remote_addr_fallback(self):
-        request = MagicMock()
-        request.META = {"REMOTE_ADDR": "127.0.0.1"}
+        request = SimpleNamespace(META={"REMOTE_ADDR": "127.0.0.1"})
         assert signature_views.get_client_ip(request) == "127.0.0.1"
 
     def test_no_headers_returns_none(self):
-        request = MagicMock()
-        request.META = {}
+        request = SimpleNamespace(META={})
         assert signature_views.get_client_ip(request) is None
 
 
@@ -445,10 +450,20 @@ class TestGenerateEncryptedDocumentId:
     def test_exception_fallback(self):
         # Pass an object whose strftime raises on first call but returns a
         # date string on the second call (used by the fallback path).
-        bad_dt = MagicMock()
-        bad_dt.strftime.side_effect = [Exception("boom"), "20250101"]
+        class FailingDate:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def strftime(self, _format: str) -> str:
+                self.calls += 1
+                if self.calls == 1:
+                    raise Exception("boom")
+                return "20250101"
+
+        bad_dt = FailingDate()
         result = signature_views.generate_encrypted_document_id(7, bad_dt)
         assert result.startswith("DOC-0007-")
+        assert bad_dt.calls == 2
 
 
 class TestFormatDatetimeSpanish:
@@ -468,29 +483,22 @@ class TestFormatDatetimeSpanish:
 
 class TestGetLetterheadForDocument:
     def test_document_letterhead_priority(self):
-        doc = MagicMock()
-        doc.letterhead_image = "doc_letterhead.png"
-        user = MagicMock()
-        user.letterhead_image = "user_letterhead.png"
+        doc = SimpleNamespace(letterhead_image="doc_letterhead.png")
+        user = SimpleNamespace(letterhead_image="user_letterhead.png")
         assert signature_views.get_letterhead_for_document(doc, user) == "doc_letterhead.png"
 
     def test_user_letterhead_fallback(self):
-        doc = MagicMock()
-        doc.letterhead_image = None
-        user = MagicMock()
-        user.letterhead_image = "user_letterhead.png"
+        doc = SimpleNamespace(letterhead_image=None)
+        user = SimpleNamespace(letterhead_image="user_letterhead.png")
         assert signature_views.get_letterhead_for_document(doc, user) == "user_letterhead.png"
 
     def test_no_letterhead(self):
-        doc = MagicMock()
-        doc.letterhead_image = None
-        user = MagicMock()
-        user.letterhead_image = None
+        doc = SimpleNamespace(letterhead_image=None)
+        user = SimpleNamespace(letterhead_image=None)
         assert signature_views.get_letterhead_for_document(doc, user) is None
 
     def test_no_user(self):
-        doc = MagicMock()
-        doc.letterhead_image = None
+        doc = SimpleNamespace(letterhead_image=None)
         assert signature_views.get_letterhead_for_document(doc, None) is None
 
 
@@ -589,6 +597,8 @@ class TestSubscriptionEdgeCases:
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert "Invalid acceptance tokens" in response.data["error"]
+        mock_get.assert_called_once()
+        merchant_resp.json.assert_called_once()
 
     @mock.patch("gym_app.views.subscription.requests.post")
     @mock.patch("gym_app.views.subscription.requests.get")
@@ -621,6 +631,10 @@ class TestSubscriptionEdgeCases:
         # ps_body will be the raw text, and won't have .get('data', {}), so
         # wompi_payment_source_id will be None → 502
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
+        merchant_resp.json.assert_called_once()
+        ps_response.json.assert_called_once()
 
     @mock.patch("gym_app.views.subscription.requests.post")
     @mock.patch("gym_app.views.subscription.requests.get")
@@ -647,6 +661,9 @@ class TestSubscriptionEdgeCases:
 
         assert response.status_code == status.HTTP_502_BAD_GATEWAY
         assert "Error creating payment source" in response.data["error"]
+        mock_get.assert_called_once()
+        mock_post.assert_called_once()
+        merchant_resp.json.assert_called_once()
 
     def test_create_subscription_db_exception(
         self, api_client, basic_user, wompi_settings

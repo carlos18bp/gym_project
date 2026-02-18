@@ -31,15 +31,16 @@ describe("Dynamic Document Store", () => {
     await store.fetchDocuments();
 
     expect(store.documents).toEqual(apiResponse.items);
-    expect(store.pagination.currentPage).toBe(1);
-    expect(store.pagination.itemsPerPage).toBe(10);
-    expect(store.pagination.totalItems).toBe(2);
-    expect(store.pagination.totalPages).toBe(1);
+    expect([
+      store.pagination.currentPage,
+      store.pagination.itemsPerPage,
+      store.pagination.totalItems,
+      store.pagination.totalPages,
+    ]).toEqual([1, 10, 2, 1]);
 
     expect(mock.history.get).toHaveLength(1);
     const params = getQueryParams(mock.history.get[0].url);
-    expect(params.get("page")).toBe("1");
-    expect(params.get("limit")).toBe("10");
+    expect([params.get("page"), params.get("limit")]).toEqual(["1", "10"]);
   });
 
   test("fetchDocuments sends states and lawyer_id filters", async () => {
@@ -89,16 +90,20 @@ describe("Dynamic Document Store", () => {
       forceRefresh: true,
     });
 
-    expect(store.pagination.currentPage).toBe(3);
-    expect(store.pagination.itemsPerPage).toBe(3);
-    expect(store.pagination.totalItems).toBe(13);
-    expect(store.pagination.totalPages).toBe(5);
+    expect([
+      store.pagination.currentPage,
+      store.pagination.itemsPerPage,
+      store.pagination.totalItems,
+      store.pagination.totalPages,
+    ]).toEqual([3, 3, 13, 5]);
 
     expect(mock.history.get).toHaveLength(1);
     const params = getQueryParams(mock.history.get[0].url);
-    expect(params.get("page")).toBe("3");
-    expect(params.get("limit")).toBe("3");
-    expect(params.get("client_id")).toBe("7");
+    expect([params.get("page"), params.get("limit"), params.get("client_id")]).toEqual([
+      "3",
+      "3",
+      "7",
+    ]);
   });
 
   test("fetchDocuments returns early when isLoading is true", async () => {

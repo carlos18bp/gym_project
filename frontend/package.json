@@ -42,7 +42,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/parser": "^7.29.0",
     "@babel/preset-env": "^7.25.4",
+    "@babel/traverse": "^7.29.0",
     "@playwright/test": "^1.41.2",
     "@testing-library/jest-dom": "^6.5.0",
     "@vitejs/plugin-vue": "^5.0.4",

@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: test-quality-gate
+        name: Test Quality Gate (staged tests only)
+        language: system
+        pass_filenames: true
+        files: ^(backend/gym_app/tests/.*\.py|frontend/(test|e2e)/.*\.(js|jsx|ts|tsx|vue))$
+        entry: >-
+          bash -c 'include_args=(); for f in "$@"; do case "$f" in backend/gym_app/tests/*|frontend/test/*|frontend/e2e/*) include_args+=(--include-file "$f") ;; esac; done; if [ ${#include_args[@]} -eq 0 ]; then exit 0; fi; python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json "${include_args[@]}"' --

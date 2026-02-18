@@ -28,9 +28,11 @@ class TestVerifyCaptchaUtility:
     def test_success(self, monkeypatch):
         """verify_captcha returns (True, None) on success."""
         from gym_app.utils.captcha import verify_captcha
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"success": True}
-        mock_resp.raise_for_status = MagicMock()
+        from types import SimpleNamespace
+        mock_resp = SimpleNamespace(
+            json=lambda: {"success": True},
+            raise_for_status=lambda: None
+        )
         monkeypatch.setattr(
             "gym_app.utils.captcha.requests.post", lambda *a, **kw: mock_resp
         )
@@ -41,9 +43,11 @@ class TestVerifyCaptchaUtility:
     def test_google_rejects(self, monkeypatch):
         """verify_captcha returns error when Google rejects token."""
         from gym_app.utils.captcha import verify_captcha
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"success": False}
-        mock_resp.raise_for_status = MagicMock()
+        from types import SimpleNamespace
+        mock_resp = SimpleNamespace(
+            json=lambda: {"success": False},
+            raise_for_status=lambda: None
+        )
         monkeypatch.setattr(
             "gym_app.utils.captcha.requests.post", lambda *a, **kw: mock_resp
         )
@@ -56,11 +60,10 @@ class TestVerifyCaptchaUtility:
         """verify_captcha returns 500 on request timeout."""
         import requests as req_lib
         from gym_app.utils.captcha import verify_captcha
-        monkeypatch.setattr(
-            "gym_app.utils.captcha.requests.post",
-            MagicMock(side_effect=req_lib.RequestException("timeout")),
-        )
+        mock_post = MagicMock(side_effect=req_lib.RequestException("timeout"))
+        monkeypatch.setattr("gym_app.utils.captcha.requests.post", mock_post)
         success, error_response = verify_captcha("tok", "127.0.0.1")
         assert success is False
         assert error_response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert error_response.data["error"] == "Error verifying captcha"
+        mock_post.assert_called_once()

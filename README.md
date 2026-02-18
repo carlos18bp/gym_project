@@ -312,6 +312,13 @@ npx playwright install chromium
 npm run e2e
 ```
 
+Optional: enable Playwright console/page error logs (silenced by default):
+
+```bash
+cd frontend
+E2E_LOG_ERRORS=1 npm run e2e
+```
+
 Run E2E coverage (Playwright + V8):
 
 ```bash
@@ -319,6 +326,133 @@ cd frontend
 npx playwright install chromium
 npm run e2e:coverage
 ```
+
+Enable page/console error logs during coverage runs:
+
+```bash
+cd frontend
+E2E_LOG_ERRORS=1 npm run e2e:coverage
+```
+
+### Test Quality Gate (Backend + Frontend)
+
+This repository includes a modular **test quality gate** that audits test quality for:
+
+- Backend tests (`pytest`)
+- Frontend unit tests (`Jest`)
+- Frontend E2E tests (`Playwright`)
+
+The gate is an analysis tool for test quality patterns and **does not change production business logic**.
+
+Behavior notes:
+
+- If the JavaScript AST bridge is unavailable, frontend analyzers now emit a `PARSE_ERROR` finding (explicit failure instead of a silent empty analysis).
+- Frontend E2E fragile selector findings are reported as `fragile_locator`.
+- Hardcoded timeout detection in E2E is AST-driven to avoid duplicate findings from overlapping checks.
+
+#### Architecture
+
+```text
+scripts/
+├── test_quality_gate.py            # Orchestrator
+└── quality/
+    ├── base.py                     # Shared dataclasses/enums/config
+    ├── patterns.py                 # Shared patterns
+    ├── backend_analyzer.py         # Python AST analyzer
+    ├── js_ast_bridge.py            # Python <-> Node bridge
+    ├── frontend_unit_analyzer.py   # Jest analyzer
+    └── frontend_e2e_analyzer.py    # Playwright analyzer
+
+frontend/scripts/
+└── ast-parser.cjs                  # Babel parser for JS/TS tests
+```
+
+#### Prerequisites
+
+1. **Python dependencies** (recommended: backend virtual env)
+
+```bash
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install -r backend/requirements-dev.txt
+```
+
+`backend/requirements-dev.txt` includes runtime dependencies plus developer tools (for example, `pre-commit`).
+
+2. **Frontend dependencies** (required for Babel AST parser)
+
+```bash
+cd frontend
+npm install
+```
+
+> `@babel/parser` and `@babel/traverse` are installed from `frontend/package.json`.
+
+#### Run the quality gate
+
+From repository root:
+
+```bash
+python3 scripts/test_quality_gate.py --repo-root .
+```
+
+Useful variants:
+
+```bash
+# Analyze a single suite
+python3 scripts/test_quality_gate.py --repo-root . --suite backend
+python3 scripts/test_quality_gate.py --repo-root . --suite frontend-unit
+python3 scripts/test_quality_gate.py --repo-root . --suite frontend-e2e
+
+# Verbose output
+python3 scripts/test_quality_gate.py --repo-root . --verbose --show-all
+
+# Strict mode (warnings fail the command)
+python3 scripts/test_quality_gate.py --repo-root . --strict
+
+# Analyze only a specific test file
+python3 scripts/test_quality_gate.py --repo-root . --suite backend \
+  --include-file backend/gym_app/tests/models/test_dynamic_document.py
+
+# Analyze only files matching a glob
+python3 scripts/test_quality_gate.py --repo-root . --suite backend \
+  --include-glob 'backend/gym_app/tests/models/test_dynamic_document*.py'
+```
+
+#### Output and exit codes
+
+- Default report: `test-results/test-quality-report.json`
+- Exit codes:
+  - `0`: passed (or only info-level findings in non-strict mode)
+  - `1`: errors found (or warnings in strict mode)
+  - `2`: configuration/runtime error
+
+#### Pre-commit integration
+
+Install and enable pre-commit in your local environment:
+
+```bash
+# Recommended with backend virtual environment active
+pip install -r backend/requirements-dev.txt
+
+# From repository root
+pre-commit install
+pre-commit run --all-files
+```
+
+Notes:
+
+- `pre-commit` is a developer tool; install it in your active Python environment.
+- It does **not** need to be installed inside a specific folder, but commands should be run from repo root.
+- Hook config lives in `.pre-commit-config.yaml`.
+
+#### CI integration
+
+Quality gate runs in CI via:
+
+- `.github/workflows/test-quality-gate.yml`
+
+The workflow sets up Python + Node, installs frontend dependencies, runs the gate, and uploads the JSON report artifact.
 
 Run the full test suite in blocks (backend blocks + frontend unit + E2E with coverage):
 

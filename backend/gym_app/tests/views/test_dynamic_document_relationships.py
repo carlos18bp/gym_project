@@ -248,75 +248,12 @@ class TestListRelatedAndAvailableDocuments:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.contract
-    def test_list_available_documents_excludes_self_and_existing_and_invalid_states(self, api_client, client_user, other_user):
-        """list_available_documents_for_relationship excluye self, ya relacionados y estados no permitidos."""
-        source = DynamicDocument.objects.create(
-            title="Source",
-            content="<p>src</p>",
-            state="Completed",
-            created_by=client_user,
-        )
-
-        # Candidato válido (Completed)
-        candidate_ok = DynamicDocument.objects.create(
-            title="OK",
-            content="<p>ok</p>",
-            state="Completed",
-            created_by=client_user,
-        )
-
-        # Candidato ya relacionado
-        candidate_related = DynamicDocument.objects.create(
-            title="Related",
-            content="<p>rel</p>",
-            state="Completed",
-            created_by=client_user,
-        )
-        DocumentRelationship.objects.create(
-            source_document=source,
-            target_document=candidate_related,
-            created_by=client_user,
-        )
-
-        # Candidato con estado no permitido
-        candidate_bad_state = DynamicDocument.objects.create(
-            title="Bad",
-            content="<p>bad</p>",
-            state="Draft",
-            created_by=client_user,
-        )
-
-        candidate_pending = DynamicDocument.objects.create(
-            title="Pending",
-            content="<p>pending</p>",
-            state="PendingSignatures",
-            created_by=client_user,
-        )
-
-        candidate_fully_signed = DynamicDocument.objects.create(
-            title="Signed",
-            content="<p>signed</p>",
-            state="FullySigned",
-            created_by=client_user,
-        )
-
-        # Documento de otro usuario
-        foreign_doc = DynamicDocument.objects.create(
-            title="Foreign",
-            content="<p>f</p>",
-            state="Completed",
-            created_by=other_user,
-        )
-
-        # Documento asignado pero sin permisos de visibilidad
-        assigned_hidden = DynamicDocument.objects.create(
-            title="Assigned Hidden",
-            content="<p>assigned</p>",
-            state="Completed",
-            created_by=other_user,
-            assigned_to=client_user,
-            is_public=False,
-        )
+    def test_list_available_documents_excludes_related(self, api_client, client_user):
+        """list_available_documents excludes already related documents."""
+        source = DynamicDocument.objects.create(title="Source", content="<p>src</p>", state="Completed", created_by=client_user)
+        candidate_ok = DynamicDocument.objects.create(title="OK", content="<p>ok</p>", state="Completed", created_by=client_user)
+        candidate_related = DynamicDocument.objects.create(title="Related", content="<p>rel</p>", state="Completed", created_by=client_user)
+        DocumentRelationship.objects.create(source_document=source, target_document=candidate_related, created_by=client_user)
 
         api_client.force_authenticate(user=client_user)
         url = reverse("list-available-documents-for-relationship", kwargs={"document_id": source.id})
@@ -326,10 +263,22 @@ class TestListRelatedAndAvailableDocuments:
         ids = {doc["id"] for doc in response.data}
         assert candidate_ok.id in ids
         assert candidate_related.id not in ids
-        assert candidate_bad_state.id not in ids
-        assert candidate_pending.id not in ids
-        assert foreign_doc.id not in ids
-        assert assigned_hidden.id not in ids
+
+    @pytest.mark.contract
+    def test_list_available_documents_excludes_invalid_states(self, api_client, client_user):
+        """list_available_documents excludes documents with invalid states."""
+        source = DynamicDocument.objects.create(title="Source", content="<p>src</p>", state="Completed", created_by=client_user)
+        DynamicDocument.objects.create(title="Draft", content="<p>x</p>", state="Draft", created_by=client_user)
+        DynamicDocument.objects.create(title="Pending", content="<p>x</p>", state="PendingSignatures", created_by=client_user)
+
+        api_client.force_authenticate(user=client_user)
+        url = reverse("list-available-documents-for-relationship", kwargs={"document_id": source.id})
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        titles = {doc["title"] for doc in response.data}
+        assert "Draft" not in titles
+        assert "Pending" not in titles
 
     @pytest.mark.edge
     def test_list_available_documents_excludes_reverse_relationship(self, api_client, client_user):

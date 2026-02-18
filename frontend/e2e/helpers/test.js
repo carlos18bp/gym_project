@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 const isE2ECoverage = process.env.E2E_COVERAGE === "1";
+const shouldLogErrors = process.env.E2E_LOG_ERRORS === "1";
 const nycDir = path.join(process.cwd(), ".nyc_output");
 
 function writeCoverageFile(coverageData) {
@@ -15,7 +16,7 @@ function writeCoverageFile(coverageData) {
 
 export const test = base.extend({
   page: async ({ page }, use) => {
-    if (isE2ECoverage) {
+    if (shouldLogErrors) {
       page.on("pageerror", (err) => {
         console.error("[e2e:pageerror]", err);
       });

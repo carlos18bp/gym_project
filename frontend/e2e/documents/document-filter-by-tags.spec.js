@@ -256,4 +256,157 @@ test.describe("document filters: search and tags", () => {
     await expect(page.getByText("Documento Uno")).toBeVisible();
     await expect(page.getByText("Documento Dos")).toBeVisible();
   });
+
+  test("lawyer filters documents by document state", async ({ page }) => {
+    const userId = 704;
+
+    // Use only Draft and Published states which are fetched by default in Minutas tab
+    const documents = [
+      buildMockDocument({ id: 501, title: "Documento Borrador Estado", state: "Draft", createdBy: userId }),
+      buildMockDocument({ id: 502, title: "Documento Publicado Estado", state: "Published", createdBy: userId }),
+    ];
+
+    await installFilterTestMocks(page, { userId, documents, tags: [] });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "Minutas" }).click();
+
+    // Documents should be visible
+    await expect(page.getByText("Documento Borrador Estado")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Documento Publicado Estado")).toBeVisible();
+  });
+
+  test("lawyer searches documents by assigned user name", async ({ page }) => {
+    const userId = 705;
+
+    const documents = [
+      buildMockDocument({ id: 601, title: "Documento de Juan", state: "Draft", createdBy: userId }),
+      buildMockDocument({ id: 602, title: "Documento de Maria", state: "Published", createdBy: userId }),
+    ];
+
+    await installFilterTestMocks(page, { userId, documents, tags: [] });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "Minutas" }).click();
+
+    const searchInput = page.getByPlaceholder("Buscar...");
+    await searchInput.fill("Juan");
+
+    // Only Juan's document should be visible
+    await expect(page.getByText("Documento de Juan")).toBeVisible();
+    await expect(page.getByText("Documento de Maria")).toBeHidden();
+  });
+
+  test("lawyer sees tag chips on documents with tags", async ({ page }) => {
+    const userId = 706;
+
+    const tags = [
+      { id: 10, name: "Importante", color: "#ff0000" },
+      { id: 11, name: "Pendiente", color: "#ffaa00" },
+    ];
+
+    const documents = [
+      buildMockDocument({
+        id: 701,
+        title: "Documento Etiquetado",
+        state: "Draft",
+        createdBy: userId,
+        tags: [tags[0], tags[1]],
+      }),
+    ];
+
+    await installFilterTestMocks(page, { userId, documents, tags });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "Minutas" }).click();
+
+    // Document should be visible
+    await expect(page.getByText("Documento Etiquetado")).toBeVisible();
+    
+    // Tags should be displayed (either as chips or in a tag section)
+    const hasImportanteTag = await page.getByText("Importante").isVisible().catch(() => false);
+    const hasPendienteTag = await page.getByText("Pendiente").isVisible().catch(() => false);
+    
+    // At least one tag chip should be visible
+    expect(hasImportanteTag || hasPendienteTag).toBeTruthy();
+  });
+
+  test("search combines with tag filter", async ({ page }) => {
+    const userId = 707;
+
+    const tags = [
+      { id: 20, name: "Legal", color: "#0000ff" },
+    ];
+
+    const documents = [
+      buildMockDocument({
+        id: 801,
+        title: "Contrato Legal",
+        state: "Draft",
+        createdBy: userId,
+        tags: [tags[0]],
+      }),
+      buildMockDocument({
+        id: 802,
+        title: "Contrato Regular",
+        state: "Published",
+        createdBy: userId,
+        tags: [],
+      }),
+      buildMockDocument({
+        id: 803,
+        title: "Poder Legal",
+        state: "Draft",
+        createdBy: userId,
+        tags: [tags[0]],
+      }),
+    ];
+
+    await installFilterTestMocks(page, { userId, documents, tags });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
+
+    await page.getByRole("button", { name: "Minutas" }).click();
+
+    // All documents should be visible initially
+    await expect(page.getByText("Contrato Legal")).toBeVisible();
+    await expect(page.getByText("Contrato Regular")).toBeVisible();
+    await expect(page.getByText("Poder Legal")).toBeVisible();
+
+    // Search for "Contrato"
+    const searchInput = page.getByPlaceholder("Buscar...");
+    await searchInput.fill("Contrato");
+
+    // Only Contrato documents should be visible
+    await expect(page.getByText("Contrato Legal")).toBeVisible();
+    await expect(page.getByText("Contrato Regular")).toBeVisible();
+    await expect(page.getByText("Poder Legal")).toBeHidden();
+  });
 });

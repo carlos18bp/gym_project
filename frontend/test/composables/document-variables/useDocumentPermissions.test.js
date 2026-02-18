@@ -21,6 +21,54 @@ jest.mock("@/shared/notification_message", () => ({
 import { reactive } from "vue";
 import { useDocumentPermissions } from "@/composables/document-variables/useDocumentPermissions";
 
+const buildRoleClients = () => [
+  {
+    user_id: 1,
+    id: 1,
+    email: "client1@test.com",
+    full_name: "Client One",
+    role: "client",
+  },
+  {
+    user_id: 2,
+    id: 2,
+    email: "corp@test.com",
+    full_name: "Corp User",
+    role: "corporate_client",
+  },
+  {
+    user_id: 3,
+    id: 3,
+    email: "basic@test.com",
+    full_name: "Basic User",
+    role: "basic",
+  },
+];
+
+const buildVisibilityClients = () => [
+  {
+    user_id: 1,
+    id: 1,
+    email: "c1@test.com",
+    full_name: "C1",
+    role: "client",
+  },
+  {
+    user_id: 2,
+    id: 2,
+    email: "c2@test.com",
+    full_name: "C2",
+    role: "client",
+  },
+  {
+    user_id: 3,
+    id: 3,
+    email: "b@test.com",
+    full_name: "B",
+    role: "basic",
+  },
+];
+
 describe("useDocumentPermissions", () => {
   beforeEach(() => {
     mockShowNotification.mockReset();
@@ -291,38 +339,30 @@ describe("useDocumentPermissions", () => {
     ]);
   });
 
-  test("initializeExistingPermissions: sets public and role-based permissions and filters individual permissions by active roles", () => {
+  test("initializeExistingPermissions marks document public and clears selections", () => {
     const permissions = useDocumentPermissions();
 
-    permissions.availableClients.value = [
-      {
-        user_id: 1,
-        id: 1,
-        email: "client1@test.com",
-        full_name: "Client One",
-        role: "client",
-      },
-      {
-        user_id: 2,
-        id: 2,
-        email: "corp@test.com",
-        full_name: "Corp User",
-        role: "corporate_client",
-      },
-      {
-        user_id: 3,
-        id: 3,
-        email: "basic@test.com",
-        full_name: "Basic User",
-        role: "basic",
-      },
-    ];
+    permissions.availableClients.value = buildRoleClients();
+    permissions.selectedVisibilityUsers.value = [{ id: 5 }];
+    permissions.selectedRolesVisibility.value = ["client"];
+    permissions.selectedUsabilityUsers.value = [{ id: 8 }];
+    permissions.selectedRolesUsability.value = ["basic"];
 
     permissions.initializeExistingPermissions({ is_public: true });
 
     expect(permissions.isPublicDocument.value).toBe(true);
-    expect(permissions.selectedVisibilityUsers.value).toEqual([]);
-    expect(permissions.selectedRolesVisibility.value).toEqual([]);
+    expect([
+      permissions.selectedVisibilityUsers.value,
+      permissions.selectedUsabilityUsers.value,
+      permissions.selectedRolesVisibility.value,
+      permissions.selectedRolesUsability.value,
+    ]).toEqual([[], [], [], []]);
+  });
+
+  test("initializeExistingPermissions sets roles and filters individual permissions", () => {
+    const permissions = useDocumentPermissions();
+
+    permissions.availableClients.value = buildRoleClients();
 
     permissions.initializeExistingPermissions({
       is_public: false,
@@ -360,17 +400,18 @@ describe("useDocumentPermissions", () => {
       ],
     });
 
-    expect(permissions.isPublicDocument.value).toBe(false);
-    expect(permissions.selectedRolesVisibility.value).toEqual(["client"]);
-    expect(permissions.selectedRolesUsability.value).toEqual(["basic"]);
-
-    expect(permissions.selectedVisibilityUsers.value).toEqual([
-      { id: 2, user_id: 2, email: "corp@test.com", full_name: "Corp User" },
-    ]);
-
-    expect(permissions.selectedUsabilityUsers.value).toEqual([
-      { id: 2, user_id: 2, email: "corp@test.com", full_name: "Corp User" },
-    ]);
+    expect([
+      permissions.isPublicDocument.value,
+      permissions.selectedRolesVisibility.value,
+      permissions.selectedRolesUsability.value,
+    ]).toEqual([false, ["client"], ["basic"]]);
+    expect({
+      visibility: permissions.selectedVisibilityUsers.value,
+      usability: permissions.selectedUsabilityUsers.value,
+    }).toEqual({
+      visibility: [{ id: 2, user_id: 2, email: "corp@test.com", full_name: "Corp User" }],
+      usability: [{ id: 2, user_id: 2, email: "corp@test.com", full_name: "Corp User" }],
+    });
   });
 
   test("initializeExistingPermissions matches clients by id when user_id differs", () => {
@@ -630,33 +671,10 @@ describe("useDocumentPermissions", () => {
     expect(permissions.isPublicDocument.value).toBe(false);
   });
 
-  test("toggleRoleVisibilityPermission adds clients for role and removes them when toggling off", () => {
+  test("toggleRoleVisibilityPermission adds clients for role", () => {
     const permissions = useDocumentPermissions();
 
-    permissions.availableClients.value = [
-      {
-        user_id: 1,
-        id: 1,
-        email: "c1@test.com",
-        full_name: "C1",
-        role: "client",
-      },
-      {
-        user_id: 2,
-        id: 2,
-        email: "c2@test.com",
-        full_name: "C2",
-        role: "client",
-      },
-      {
-        user_id: 3,
-        id: 3,
-        email: "b@test.com",
-        full_name: "B",
-        role: "basic",
-      },
-    ];
-
+    permissions.availableClients.value = buildVisibilityClients();
     permissions.selectedVisibilityUsers.value = [
       { id: 1, user_id: 1, email: "c1@test.com", full_name: "C1" },
     ];
@@ -668,18 +686,30 @@ describe("useDocumentPermissions", () => {
       { id: 1, user_id: 1, email: "c1@test.com", full_name: "C1" },
       { id: 2, user_id: 2, email: "c2@test.com", full_name: "C2" },
     ]);
+  });
 
+  test("toggleRoleVisibilityPermission removes roles and users when toggling off", () => {
+    const permissions = useDocumentPermissions();
+
+    permissions.availableClients.value = buildVisibilityClients();
+    permissions.selectedRolesVisibility.value = ["client"];
     permissions.selectedRolesUsability.value = ["client"];
+    permissions.selectedVisibilityUsers.value = [
+      { id: 1, user_id: 1, email: "c1@test.com", full_name: "C1" },
+      { id: 2, user_id: 2, email: "c2@test.com", full_name: "C2" },
+    ];
     permissions.selectedUsabilityUsers.value = [
       { id: 2, user_id: 2, email: "c2@test.com", full_name: "C2" },
     ];
 
     permissions.toggleRoleVisibilityPermission("client");
 
-    expect(permissions.selectedRolesVisibility.value).toEqual([]);
-    expect(permissions.selectedRolesUsability.value).toEqual([]);
-    expect(permissions.selectedVisibilityUsers.value).toEqual([]);
-    expect(permissions.selectedUsabilityUsers.value).toEqual([]);
+    expect([
+      permissions.selectedRolesVisibility.value,
+      permissions.selectedRolesUsability.value,
+      permissions.selectedVisibilityUsers.value,
+      permissions.selectedUsabilityUsers.value,
+    ]).toEqual([[], [], [], []]);
   });
 
   test("toggleRoleUsabilityPermission requires role visibility and toggles usability", () => {

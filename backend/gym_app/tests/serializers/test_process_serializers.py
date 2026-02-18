@@ -143,23 +143,24 @@ class TestStageSerializer:
 @pytest.mark.django_db
 class TestProcessSerializer:
     
-    def test_serialize_process(self, process):
-        """Test the serialization of a complete process"""
+    def test_serialize_process_basic_fields(self, process):
+        """Test the serialization of a complete process - basic fields"""
         serializer = ProcessSerializer(process)
         
-        # Verify basic fields
         assert serializer.data['id'] == process.id
         assert serializer.data['authority'] == process.authority
         assert serializer.data['plaintiff'] == process.plaintiff
         assert serializer.data['defendant'] == process.defendant
         assert serializer.data['ref'] == process.ref
         assert serializer.data['subcase'] == process.subcase
+
+    def test_serialize_process_relationships(self, process):
+        """Test the serialization of a complete process - relationships"""
+        serializer = ProcessSerializer(process)
         
-        # Verify nested relationships
         assert serializer.data['case']['id'] == process.case.id
         assert serializer.data['case']['type'] == process.case.type
         
-        # Verify clients list (use the first associated client)
         primary_client = process.clients.first()
         assert len(serializer.data['clients']) == 1
         assert serializer.data['clients'][0]['id'] == primary_client.id
@@ -167,8 +168,11 @@ class TestProcessSerializer:
         
         assert serializer.data['lawyer']['id'] == process.lawyer.id
         assert serializer.data['lawyer']['email'] == process.lawyer.email
+
+    def test_serialize_process_collections(self, process):
+        """Test the serialization of a complete process - collections"""
+        serializer = ProcessSerializer(process)
         
-        # Verify collections
         assert len(serializer.data['stages']) == 1
         assert serializer.data['stages'][0]['id'] == process.stages.first().id
         
@@ -217,11 +221,24 @@ class TestProcessSerializer:
         # Verify updated simple fields
         assert updated_process.authority == 'District Court'
         assert updated_process.plaintiff == 'Updated Plaintiff'
-        assert updated_process.defendant == process.defendant  # No changes
+        assert updated_process.defendant == process.defendant
         assert updated_process.subcase == 'Updated Subcase'
+        assert updated_process.stages.count() == 2
+
+    def test_update_process_stages_changes(self, process, stage):
+        """Test updating a process - stages changes"""
+        new_stage = Stage.objects.create(status='New Stage')
         
-        # Verify updated stages
-        assert updated_process.stages.count() == 2  # One updated, one new
+        data = {
+            'stages': [
+                {'id': stage.id, 'status': 'Updated Status'},
+                {'status': 'Brand New Stage'}
+            ]
+        }
+        
+        serializer = ProcessSerializer(process, data=data, partial=True)
+        validated_data = data.copy()
+        updated_process = serializer.update(process, validated_data)
         
         # Verify existing stage updated
         updated_stage = updated_process.stages.get(id=stage.id)
@@ -230,7 +247,7 @@ class TestProcessSerializer:
         # Verify new stage created
         assert updated_process.stages.filter(status='Brand New Stage').exists()
         
-        # Verify that new_stage was removed from the relationship (not included in the update)
+        # Verify that new_stage was removed from the relationship
         assert not updated_process.stages.filter(id=new_stage.id).exists()
     
     def test_update_process_without_stages(self, process):

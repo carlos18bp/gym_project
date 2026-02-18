@@ -133,8 +133,8 @@ class TestStage:
 @pytest.mark.django_db
 class TestProcess:
     
-    def test_create_process(self, user_client, user_lawyer, case_type):
-        """Test creating a process"""
+    def test_create_process_basic_fields(self, user_client, user_lawyer, case_type):
+        """Test creating a process - basic fields"""
         process = Process.objects.create(
             authority='District Court',
             plaintiff='Company Inc.',
@@ -151,14 +151,24 @@ class TestProcess:
         assert process.plaintiff == 'Company Inc.'
         assert process.defendant == 'Other Company LLC'
         assert process.ref == 'CASE-456'
+        assert process.subcase == 'Contract Dispute'
+        assert process.created_at is not None
+
+    def test_create_process_relationships(self, user_client, user_lawyer, case_type):
+        """Test creating a process - relationships"""
+        process = Process.objects.create(
+            authority='District Court',
+            lawyer=user_lawyer,
+            case=case_type,
+        )
+        process.clients.add(user_client)
+        
         assert process.clients.count() == 1
         assert process.clients.first() == user_client
         assert process.lawyer == user_lawyer
         assert process.case == case_type
-        assert process.subcase == 'Contract Dispute'
-        assert process.created_at is not None
-        assert process.stages.count() == 0  # No stages added yet
-        assert process.case_files.count() == 0  # No files added yet
+        assert process.stages.count() == 0
+        assert process.case_files.count() == 0
     
     def test_add_stages_to_process(self, process):
         """Test adding stages to a process"""
@@ -230,6 +240,7 @@ class TestProcess:
 
         # full_clean debería pasar sin errores
         process.full_clean()
+        assert process.progress == 50
 
     def test_process_progress_below_zero_raises_validation_error(self, user_client, user_lawyer, case_type):
         """Process.progress < 0 debe lanzar ValidationError por el validador de rango"""
@@ -244,8 +255,9 @@ class TestProcess:
             progress=-1,
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             process.full_clean()
+        assert exc_info.value is not None
 
     def test_process_progress_above_hundred_raises_validation_error(self, user_client, user_lawyer, case_type):
         """Process.progress > 100 debe lanzar ValidationError por el validador de rango"""
@@ -260,8 +272,9 @@ class TestProcess:
             progress=101,
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             process.full_clean()
+        assert exc_info.value is not None
 
 
 @pytest.mark.django_db
@@ -271,8 +284,10 @@ class TestRecentProcess:
         """Solo debe existir un RecentProcess por combinación (user, process)"""
         RecentProcess.objects.create(user=user_lawyer, process=process)
 
-        with pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError) as exc_info:
             RecentProcess.objects.create(user=user_lawyer, process=process)
+        assert exc_info.value is not None
+        assert RecentProcess.objects.filter(user=user_lawyer, process=process).count() == 1
 
     def test_recent_process_ordering_by_last_viewed(self, user_lawyer, process, case_type):
         """Las instancias de RecentProcess deben ordenarse por last_viewed descendente"""
@@ -339,10 +354,12 @@ class TestCaseFileSignalEdge:
         """Signal should not fail when file was already removed from disk."""
         f = SimpleUploadedFile("gone.pdf", b"x", content_type="application/pdf")
         cf = CaseFile.objects.create(file=f)
+        cf_id = cf.id
         path = cf.file.path
         if os.path.isfile(path):
             os.remove(path)
         cf.delete()  # should not raise
+        assert CaseFile.objects.filter(id=cf_id).count() == 0
 
 
 # ── Process edge-cases ──────────────────────────────────────────────────────

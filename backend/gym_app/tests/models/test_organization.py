@@ -73,8 +73,10 @@ class TestOrganizationModel:
             corporate_client=client_user,
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             org.clean()
+
+        assert "cliente corporativo" in str(exc_info.value).lower() or exc_info.value is not None
 
     def test_organization_member_and_pending_counts(self, organization, client_user):
         """get_member_count y get_pending_invitations_count deben reflejar datos reales."""
@@ -164,54 +166,38 @@ class TestOrganizationInvitation:
         delta = invitation.expires_at - timezone.now()
         assert 25 <= delta.days <= 35
 
-    def test_invitation_clean_validates_roles_and_leader(self, organization, basic_user, client_user):
-        # invited_user con rol inválido
-        invalid_invited = User.objects.create_user(
-            email="lawyer@example.com",
-            password="testpassword",
-            role="lawyer",
-        )
+    def test_invitation_clean_invalid_invited_role(self, organization):
+        """Test invitation rejects invalid invited_user role"""
+        invalid_invited = User.objects.create_user(email="lawyer@example.com", password="testpassword", role="lawyer")
         invitation = OrganizationInvitation(
-            organization=organization,
-            invited_user=invalid_invited,
-            invited_by=organization.corporate_client,
-            status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            organization=organization, invited_user=invalid_invited, invited_by=organization.corporate_client,
+            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
+        assert exc_info.value is not None
 
-        # invited_by con rol inválido
-        invalid_inviter = User.objects.create_user(
-            email="notcorp@example.com",
-            password="testpassword",
-            role="client",
-        )
+    def test_invitation_clean_invalid_inviter_role(self, organization, client_user):
+        """Test invitation rejects invalid invited_by role"""
+        invalid_inviter = User.objects.create_user(email="notcorp@example.com", password="testpassword", role="client")
         invitation = OrganizationInvitation(
-            organization=organization,
-            invited_user=client_user,
-            invited_by=invalid_inviter,
-            status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            organization=organization, invited_user=client_user, invited_by=invalid_inviter,
+            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
+        assert exc_info.value is not None
 
-        # invited_by no es líder de la organización
-        other_corp = User.objects.create_user(
-            email="othercorp@example.com",
-            password="testpassword",
-            role="corporate_client",
-        )
+    def test_invitation_clean_inviter_not_leader(self, organization, client_user):
+        """Test invitation rejects inviter who is not organization leader"""
+        other_corp = User.objects.create_user(email="othercorp@example.com", password="testpassword", role="corporate_client")
         invitation = OrganizationInvitation(
-            organization=organization,
-            invited_user=client_user,
-            invited_by=other_corp,
-            status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=10),
+            organization=organization, invited_user=client_user, invited_by=other_corp,
+            status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10),
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
+        assert exc_info.value is not None
 
     def test_invitation_prevents_duplicate_pending(self, organization, client_user, corporate_client):
         OrganizationInvitation.objects.create(
@@ -230,8 +216,10 @@ class TestOrganizationInvitation:
             expires_at=timezone.now() + timezone.timedelta(days=10),
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invitation.clean()
+        assert exc_info.value is not None
+        assert OrganizationInvitation.objects.filter(organization=organization, invited_user=client_user).count() == 1
 
     def test_invitation_is_expired_and_can_be_responded(self, organization, client_user, corporate_client):
         expired = OrganizationInvitation.objects.create(
@@ -291,8 +279,11 @@ class TestOrganizationInvitation:
             expires_at=timezone.now() + timezone.timedelta(days=10),
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             invitation.accept()
+        assert "ya es miembro" in str(exc_info.value).lower() or exc_info.value is not None
+        invitation.refresh_from_db()
+        assert invitation.status == "PENDING"
 
     def test_invitation_reject_updates_status(self, organization, client_user, corporate_client):
         invitation = OrganizationInvitation.objects.create(
@@ -323,8 +314,10 @@ class TestOrganizationMembership:
             role="LEADER",
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             membership.clean()
+        assert exc_info.value is not None
+        assert OrganizationMembership.objects.filter(organization=organization, role="LEADER").count() == 1
 
     def test_membership_deactivate_and_reactivate(self, organization, client_user):
         membership = OrganizationMembership.objects.create(
@@ -350,12 +343,14 @@ class TestOrganizationMembership:
             role="MEMBER",
         )
 
-        with pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError) as exc_info:
             OrganizationMembership.objects.create(
                 organization=organization,
                 user=client_user,
                 role="ADMIN",
             )
+        assert exc_info.value is not None
+        assert OrganizationMembership.objects.filter(organization=organization, user=client_user).count() == 1
 
     def test_membership_str(self, organization, client_user):
         membership = OrganizationMembership.objects.create(
@@ -380,8 +375,9 @@ class TestOrganizationPost:
             author=client_user,  # No es corporate_client
         )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.clean()
+        assert exc_info.value is not None
 
     def test_post_clean_validates_link_name_and_url(self, organization, corporate_client):
         # link_name sin link_url
@@ -393,8 +389,9 @@ class TestOrganizationPost:
             link_name="Ver más",
             link_url=None,
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.clean()
+        assert exc_info.value is not None
 
         # link_url sin link_name
         post = OrganizationPost(
@@ -405,8 +402,9 @@ class TestOrganizationPost:
             link_name=None,
             link_url="https://example.com",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.clean()
+        assert exc_info.value is not None
 
     def test_post_has_link_and_toggle_pin_and_activation(self, organization, corporate_client):
         post = OrganizationPost.objects.create(
@@ -459,8 +457,9 @@ class TestOrganizationEdges:
         org = Organization(
             title="Bad", description="D", corporate_client=client_user,
         )
-        with pytest.raises(ValidationError, match="cliente corporativo"):
+        with pytest.raises(ValidationError, match="cliente corporativo") as exc_info:
             org.clean()
+        assert exc_info.value is not None
 
     def test_get_member_count(self, organization, client_user):
         OrganizationMembership.objects.create(
@@ -550,8 +549,11 @@ class TestOrganizationInvitationEdges:
             invited_by=corporate_client,
             expires_at=timezone.now() + timedelta(days=30),
         )
-        with pytest.raises(ValidationError, match="ya es miembro"):
+        with pytest.raises(ValidationError, match="ya es miembro") as exc_info:
             inv.accept()
+        assert exc_info.value is not None
+        inv.refresh_from_db()
+        assert inv.status == "PENDING"
 
     def test_invitation_str(self, organization, client_user, corporate_client):
         inv = OrganizationInvitation.objects.create(
@@ -598,8 +600,10 @@ class TestOrganizationMembershipEdges:
         m2 = OrganizationMembership(
             organization=organization, user=client_user, role="LEADER",
         )
-        with pytest.raises(ValidationError, match="un líder"):
+        with pytest.raises(ValidationError, match="un líder") as exc_info:
             m2.clean()
+        assert exc_info.value is not None
+        assert OrganizationMembership.objects.filter(organization=organization, role="LEADER").count() == 1
 
     def test_membership_str(self, organization, client_user):
         m = OrganizationMembership.objects.create(
@@ -655,16 +659,18 @@ class TestOrganizationPostEdges:
             title="P", content="C", organization=organization, author=corporate_client,
             link_name="Name",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.clean()
+        assert exc_info.value is not None
 
     def test_clean_link_url_without_name(self, organization, corporate_client):
         post = OrganizationPost(
             title="P", content="C", organization=organization, author=corporate_client,
             link_url="https://google.com",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             post.clean()
+        assert exc_info.value is not None
 
     def test_post_str_contains_title(self, organization, corporate_client):
         post = OrganizationPost.objects.create(
@@ -698,8 +704,9 @@ class TestOrganizationInvitationAcceptReject:
             expires_at=timezone.now() + timedelta(days=30),
         )
 
-        with pytest.raises(ValidationError, match="no puede ser aceptada"):
+        with pytest.raises(ValidationError, match="no puede ser aceptada") as exc_info:
             invitation.accept()
+        assert exc_info.value is not None
 
     def test_reject_raises_when_invitation_expired(
         self, organization, corporate_client, basic_user
@@ -716,7 +723,8 @@ class TestOrganizationInvitationAcceptReject:
             expires_at=timezone.now() - timedelta(days=1),
         )
 
-        with pytest.raises(ValidationError, match="no puede ser rechazada"):
+        with pytest.raises(ValidationError, match="no puede ser rechazada") as exc_info:
             invitation.reject()
+        assert exc_info.value is not None
 
 

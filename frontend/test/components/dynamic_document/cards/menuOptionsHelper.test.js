@@ -418,25 +418,16 @@ describe("menuOptionsHelper.js", () => {
       expect(edit).toBeTruthy();
       expect(edit.children.some((c) => c.action === "editDocument")).toBe(false);
 
-      const formalize = options.find((o) => o.action === "formalize");
-      expect(formalize).toBeTruthy();
-      expect(formalize.disabled).toBe(true);
+      const disabledActions = [
+        "formalize",
+        "letterhead",
+        "relationships",
+        "downloadWord",
+        "email",
+      ].map((action) => options.find((o) => o.action === action));
 
-      const letterhead = options.find((o) => o.action === "letterhead");
-      expect(letterhead).toBeTruthy();
-      expect(letterhead.disabled).toBe(true);
-
-      const relationships = options.find((o) => o.action === "relationships");
-      expect(relationships).toBeTruthy();
-      expect(relationships.disabled).toBe(true);
-
-      const downloadWord = options.find((o) => o.action === "downloadWord");
-      expect(downloadWord).toBeTruthy();
-      expect(downloadWord.disabled).toBe(true);
-
-      const email = options.find((o) => o.action === "email");
-      expect(email).toBeTruthy();
-      expect(email.disabled).toBe(true);
+      expect(disabledActions.every(Boolean)).toBe(true);
+      expect(disabledActions.every((option) => option.disabled)).toBe(true);
     });
 
     test("Progress includes preview and disables relationships and downloads", () => {
@@ -527,24 +518,17 @@ describe("menuOptionsHelper.js", () => {
         { currentUser: { role: "corporate_client" } }
       );
 
-      const formalize = options.find((o) => o.action === "formalize");
-      expect(formalize).toBeTruthy();
-      expect(formalize.disabled).toBeFalsy();
+      const enabledActions = [
+        "formalize",
+        "letterhead",
+        "relationships",
+        "downloadPDF",
+        "downloadWord",
+        "email",
+      ].map((action) => options.find((o) => o.action === action));
 
-      const letterhead = options.find((o) => o.action === "letterhead");
-      expect(letterhead).toBeTruthy();
-      expect(letterhead.disabled).toBeFalsy();
-
-      const relationships = options.find((o) => o.action === "relationships");
-      expect(relationships).toBeTruthy();
-      expect(relationships.disabled).toBeFalsy();
-
-      const downloadPdf = options.find((o) => o.action === "downloadPDF");
-      const downloadWord = options.find((o) => o.action === "downloadWord");
-      const email = options.find((o) => o.action === "email");
-      expect(downloadPdf?.disabled).toBe(false);
-      expect(downloadWord?.disabled).toBe(false);
-      expect(email?.disabled).toBe(false);
+      expect(enabledActions.every(Boolean)).toBe(true);
+      expect(enabledActions.every((option) => option.disabled === false)).toBe(true);
     });
 
     test("Draft includes Completar and omits preview", () => {

@@ -34,6 +34,41 @@ const flushPromises = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
+const findButtonByText = (wrapper, matcher) => {
+  const btn = wrapper
+    .findAll("button")
+    .find((b) => {
+      const text = (b.text() || "").trim();
+      return typeof matcher === "string" ? text === matcher : matcher(text);
+    });
+  if (!btn) {
+    throw new Error("Button not found");
+  }
+  return btn;
+};
+
+const mountPostCard = async (overrides = {}) => {
+  const wrapper = mount(CorporatePostCard, {
+    props: {
+      post: buildPost({ id: 10, title: "P", ...overrides }),
+      organizationId: 1,
+    },
+  });
+
+  await flushPromises();
+
+  return wrapper;
+};
+
+const openMenu = async (wrapper) => {
+  const toggleBtn = wrapper.findAll("button")[0];
+  if (!toggleBtn) {
+    throw new Error("Toggle button not found");
+  }
+  await toggleBtn.trigger("click");
+  await flushPromises();
+};
+
 const buildPost = (overrides = {}) => ({
   id: 1,
   title: "Post",
@@ -56,77 +91,56 @@ describe("CorporatePostCard.vue", () => {
     jest.useRealTimers();
   });
 
-  test("opens actions menu and emits edit/delete/toggle-pin/toggle-status; closes menu after action", async () => {
-    const wrapper = mount(CorporatePostCard, {
-      props: {
-        post: buildPost({ id: 10, title: "P" }),
-        organizationId: 1,
-      },
-    });
+  test("opens actions menu and emits edit; menu closes", async () => {
+    const wrapper = await mountPostCard();
 
-    await flushPromises();
+    await openMenu(wrapper);
 
-    const toggleBtn = wrapper.findAll("button")[0];
-    expect(toggleBtn.exists()).toBe(true);
-
-    await toggleBtn.trigger("click");
-    await flushPromises();
-
-    expect(wrapper.text()).toContain("Editar");
-
-    const editBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").trim() === "Editar");
-
-    expect(editBtn).toBeTruthy();
+    const editBtn = findButtonByText(wrapper, "Editar");
     await editBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("edit")).toBeTruthy();
-    expect(wrapper.emitted("edit")[0]).toEqual([expect.objectContaining({ id: 10 })]);
+    expect(wrapper.emitted("edit")?.[0]).toEqual([expect.objectContaining({ id: 10 })]);
     expect(wrapper.find("div.fixed.inset-0.z-0").exists()).toBe(false);
+  });
 
-    await toggleBtn.trigger("click");
-    await flushPromises();
+  test("emits toggle-pin when selecting pin action", async () => {
+    const wrapper = await mountPostCard();
 
-    const pinBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").includes("Fijar"));
+    await openMenu(wrapper);
 
-    expect(pinBtn).toBeTruthy();
+    const pinBtn = findButtonByText(wrapper, (text) => text.includes("Fijar"));
     await pinBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("toggle-pin")).toBeTruthy();
-    expect(wrapper.emitted("toggle-pin")[0]).toEqual([expect.objectContaining({ id: 10 })]);
+    expect(wrapper.emitted("toggle-pin")?.[0]).toEqual([expect.objectContaining({ id: 10 })]);
+  });
 
-    await toggleBtn.trigger("click");
-    await flushPromises();
+  test("emits toggle-status when selecting status action", async () => {
+    const wrapper = await mountPostCard();
 
-    const statusBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").includes("Desactivar") || (b.text() || "").includes("Activar"));
+    await openMenu(wrapper);
 
-    expect(statusBtn).toBeTruthy();
+    const statusBtn = findButtonByText(
+      wrapper,
+      (text) => text.includes("Desactivar") || text.includes("Activar")
+    );
     await statusBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("toggle-status")).toBeTruthy();
-    expect(wrapper.emitted("toggle-status")[0]).toEqual([expect.objectContaining({ id: 10 })]);
+    expect(wrapper.emitted("toggle-status")?.[0]).toEqual([expect.objectContaining({ id: 10 })]);
+  });
 
-    await toggleBtn.trigger("click");
-    await flushPromises();
+  test("emits delete when selecting delete action", async () => {
+    const wrapper = await mountPostCard();
 
-    const deleteBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").trim() === "Eliminar");
+    await openMenu(wrapper);
 
-    expect(deleteBtn).toBeTruthy();
+    const deleteBtn = findButtonByText(wrapper, "Eliminar");
     await deleteBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("delete")).toBeTruthy();
-    expect(wrapper.emitted("delete")[0]).toEqual([expect.objectContaining({ id: 10 })]);
+    expect(wrapper.emitted("delete")?.[0]).toEqual([expect.objectContaining({ id: 10 })]);
   });
 
   test("clicking backdrop closes actions menu without emitting", async () => {

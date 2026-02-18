@@ -32,8 +32,8 @@ class Command(BaseCommand):
         processes = list(Process.objects.all())
         documents = list(DynamicDocument.objects.all())
         
-        # Define possible action types
-        action_types = ['create', 'edit', 'finish', 'delete', 'update', 'other']
+        # Define possible action types (must match ActivityFeed.ACTION_TYPE_CHOICES)
+        action_types = ['create', 'edit', 'finish', 'delete', 'update', 'download', 'other']
         
         # Define activity templates for different action types
         activity_templates = {
@@ -72,10 +72,16 @@ class Command(BaseCommand):
                 'Added new information to case',
                 'Updated case documentation'
             ],
+            'download': [
+                'Downloaded document: {document_title}',
+                'Exported process report: {process_ref}',
+                'Downloaded case files',
+                'Exported legal request data',
+                'Downloaded signed document'
+            ],
             'other': [
                 'Logged into system',
                 'Viewed process details: {process_ref}',
-                'Downloaded document: {document_title}',
                 'Generated report',
                 'Sent email notification',
                 'Scheduled meeting with client',

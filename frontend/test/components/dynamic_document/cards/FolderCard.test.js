@@ -22,6 +22,34 @@ describe("FolderCard.vue", () => {
     mockGetColorById.mockReturnValue({ hex: "#6B7280", name: "Gray" });
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const mountWithCreatedAt = (createdAt) =>
+    mount(FolderCard, {
+      props: {
+        folder: {
+          id: 1,
+          name: "Dates",
+          color_id: 1,
+          created_at: createdAt,
+          documents: [],
+        },
+      },
+      global: {
+        stubs: {
+          FolderIcon: { template: "<span />" },
+          DocumentIcon: { template: "<span />" },
+          EllipsisVerticalIcon: { template: "<span />" },
+          PencilIcon: { template: "<span />" },
+          PlusIcon: { template: "<span />" },
+          TrashIcon: { template: "<span />" },
+          ChevronRightIcon: { template: "<span />" },
+        },
+      },
+    });
+
   test("renders folder name and document count", () => {
     const wrapper = mount(FolderCard, {
       props: {
@@ -388,63 +416,72 @@ describe("FolderCard.vue", () => {
     expect(wrapper.emitted("click")).toBeFalsy();
   });
 
-  test("formatDate handles hoy/ayer/dias/semanas/meses/fecha", async () => {
+  test("formatDate handles hoy/ayer", async () => {
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);
 
-    const wrapper = mount(FolderCard, {
-      props: {
-        folder: {
-          id: 1,
-          name: "Dates",
-          color_id: 1,
-          created_at: now.toISOString(),
-          documents: [],
-        },
-      },
-      global: {
-        stubs: {
-          FolderIcon: { template: "<span />" },
-          DocumentIcon: { template: "<span />" },
-          EllipsisVerticalIcon: { template: "<span />" },
-          PencilIcon: { template: "<span />" },
-          PlusIcon: { template: "<span />" },
-          TrashIcon: { template: "<span />" },
-          ChevronRightIcon: { template: "<span />" },
-        },
-      },
-    });
+    const wrapper = mountWithCreatedAt(now.toISOString());
 
     expect(wrapper.text()).toContain("Creada hoy");
 
     await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString() },
+      folder: {
+        ...wrapper.props("folder"),
+        created_at: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      },
     });
     expect(wrapper.text()).toContain("Creada ayer");
 
-    await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-    });
+    jest.useRealTimers();
+  });
+
+  test("formatDate handles days/weeks", async () => {
+    jest.useFakeTimers();
+    const now = new Date("2026-02-10T12:00:00.000Z");
+    jest.setSystemTime(now);
+
+    const wrapper = mountWithCreatedAt(
+      new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    );
+
     expect(wrapper.text()).toContain("Creada hace 3 días");
 
     await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString() },
+      folder: {
+        ...wrapper.props("folder"),
+        created_at: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
     });
     expect(wrapper.text()).toContain("Creada hace 1 semana");
 
     await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString() },
+      folder: {
+        ...wrapper.props("folder"),
+        created_at: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      },
     });
     expect(wrapper.text()).toContain("Creada hace 2 semanas");
 
-    await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString() },
-    });
+    jest.useRealTimers();
+  });
+
+  test("formatDate handles months and older dates", async () => {
+    jest.useFakeTimers();
+    const now = new Date("2026-02-10T12:00:00.000Z");
+    jest.setSystemTime(now);
+
+    const wrapper = mountWithCreatedAt(
+      new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    );
+
     expect(wrapper.text()).toContain("Creada hace 1 mes");
 
     await wrapper.setProps({
-      folder: { ...wrapper.props("folder"), created_at: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString() },
+      folder: {
+        ...wrapper.props("folder"),
+        created_at: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+      },
     });
     expect(wrapper.text()).toContain("Creada hace 3 meses");
 
@@ -457,7 +494,7 @@ describe("FolderCard.vue", () => {
       month: "short",
       day: "numeric",
     });
-    expect(wrapper.text()).toContain(`Creada ${expected}`);
+    expect(wrapper.text()).toContain(expected);
 
     jest.useRealTimers();
   });

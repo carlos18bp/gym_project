@@ -280,7 +280,7 @@ def test_organization_invitation_unique_together_enforced(user_factory):
         expires_at=timezone.now() + timedelta(days=10),
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             OrganizationInvitation.objects.create(
                 organization=organization,
@@ -289,6 +289,8 @@ def test_organization_invitation_unique_together_enforced(user_factory):
                 status="ACCEPTED",
                 expires_at=timezone.now() + timedelta(days=10),
             )
+    assert exc_info.value is not None
+    assert OrganizationInvitation.objects.filter(organization=organization, invited_user=invited_user).count() == 1
 
 
 def test_organization_membership_ordering_by_joined_at(user_factory):

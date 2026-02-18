@@ -13,7 +13,11 @@ export default defineConfig({
   },
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: [
+    ["list"],
+    ["html", { open: "never" }],
+    ["json", { outputFile: "coverage-e2e/results.json" }],
+  ],
   use: {
     baseURL,
     navigationTimeout: isE2ECoverage ? 60_000 : 30_000,

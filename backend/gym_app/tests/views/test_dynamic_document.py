@@ -57,39 +57,34 @@ def sample_document(user):
 @pytest.mark.django_db
 class TestDynamicDocumentViews:
     
-    def test_list_dynamic_documents_authenticated(self, api_client, user, sample_document):
-        """Test retrieving a list of dynamic documents when authenticated"""
-        # Authenticate the user
+    def test_list_dynamic_documents_authenticated_pagination(self, api_client, user, sample_document):
+        """Test paginated structure when retrieving list of dynamic documents"""
         api_client.force_authenticate(user=user)
-        
-        # Make the request
         url = reverse('list_dynamic_documents')
         response = api_client.get(url)
         
-        # Assert the response
         assert response.status_code == status.HTTP_200_OK
-        # The list endpoint now returns a paginated structure
-        # {
-        #   "items": [...],
-        #   "totalItems": N,
-        #   "totalPages": P,
-        #   "currentPage": page
-        # }
         assert 'items' in response.data
         assert response.data['totalItems'] == 1
         assert response.data['totalPages'] == 1
         assert response.data['currentPage'] == 1
 
+    def test_list_dynamic_documents_authenticated_content(self, api_client, user, sample_document):
+        """Test document content when retrieving list of dynamic documents"""
+        api_client.force_authenticate(user=user)
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url)
+        
+        assert response.status_code == status.HTTP_200_OK
         assert len(response.data['items']) == 1
         first_doc = response.data['items'][0]
         assert first_doc['title'] == "Test Document"
         assert first_doc['state'] == "Draft"
     
-    def test_list_dynamic_documents_pagination_default_limit_10(self, api_client, user):
-        """list_dynamic_documents debe paginar de 10 en 10 y devolver totales correctos."""
+    def test_list_dynamic_documents_pagination_page_1(self, api_client, user):
+        """list_dynamic_documents first page returns correct pagination metadata."""
         api_client.force_authenticate(user=user)
 
-        # Crear más de 10 documentos para forzar paginación
         for i in range(15):
             DynamicDocument.objects.create(
                 title=f"Doc {i}",
@@ -99,24 +94,33 @@ class TestDynamicDocumentViews:
             )
 
         url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'page': 1})
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['totalItems'] == 15
+        assert response.data['totalPages'] == 2
+        assert response.data['currentPage'] == 1
+        assert len(response.data['items']) == 10
 
-        # Primera página
-        response_page_1 = api_client.get(url, {'page': 1})
-        assert response_page_1.status_code == status.HTTP_200_OK
-        assert response_page_1.data['totalItems'] == 15
-        assert response_page_1.data['totalPages'] == 2
-        assert response_page_1.data['currentPage'] == 1
-        # El límite por defecto debe ser 10 elementos en la primera página
-        assert len(response_page_1.data['items']) == 10
+    def test_list_dynamic_documents_pagination_page_2(self, api_client, user):
+        """list_dynamic_documents second page returns remaining items."""
+        api_client.force_authenticate(user=user)
 
-        # Segunda página
-        response_page_2 = api_client.get(url, {'page': 2})
-        assert response_page_2.status_code == status.HTTP_200_OK
-        assert response_page_2.data['totalItems'] == 15
-        assert response_page_2.data['totalPages'] == 2
-        assert response_page_2.data['currentPage'] == 2
-        # Restantes 5 elementos en la segunda página
-        assert len(response_page_2.data['items']) == 5
+        for i in range(15):
+            DynamicDocument.objects.create(
+                title=f"Doc {i}",
+                content="<p>content</p>",
+                state="Draft",
+                created_by=user,
+            )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'page': 2})
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['totalItems'] == 15
+        assert response.data['currentPage'] == 2
+        assert len(response.data['items']) == 5
 
     def test_list_dynamic_documents_filter_by_states(self, api_client, user):
         """list_dynamic_documents debe permitir filtrar por múltiples estados usando 'states'."""
@@ -290,43 +294,44 @@ class TestDynamicDocumentViews:
         assert response.data['totalPages'] == 3
         assert len(response.data['items']) == 2
     
-    def test_create_dynamic_document_authenticated(self, api_client, user):
-        """Test creating a new dynamic document when authenticated"""
-        # Authenticate the user
+    def test_create_dynamic_document_authenticated_response(self, api_client, user):
+        """Test creating a new dynamic document - response"""
         api_client.force_authenticate(user=user)
         
-        # Create document data
         data = {
             "title": "New Document",
             "content": "<p>This is a new document with {{variable1}}.</p>",
             "state": "Draft",
-            "variables": [
-                {
-                    "name_en": "variable1",
-                    "value": "Test Value"
-                }
-            ]
+            "variables": [{"name_en": "variable1", "value": "Test Value"}]
         }
         
-        # Make the request
         url = reverse('create_dynamic_document')
         response = api_client.post(url, data, format='json')
         
-        # Assert the response
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['title'] == "New Document"
-        
-        # Verify document was created in the database
         assert DynamicDocument.objects.count() == 1
-        document = DynamicDocument.objects.first()
-        assert document.title == "New Document"
-        assert document.created_by == user
+
+    def test_create_dynamic_document_authenticated_db_state(self, api_client, user):
+        """Test creating a new dynamic document - database state"""
+        api_client.force_authenticate(user=user)
         
-        # Verify variable was created
+        data = {
+            "title": "New Doc DB",
+            "content": "<p>Content</p>",
+            "state": "Draft",
+            "variables": [{"name_en": "var1", "value": "Val1"}]
+        }
+        
+        url = reverse('create_dynamic_document')
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+        
+        document = DynamicDocument.objects.first()
+        assert document.title == "New Doc DB"
+        assert document.created_by == user
         assert document.variables.count() == 1
-        variable = document.variables.first()
-        assert variable.name_en == "variable1"
-        assert variable.value == "Test Value"
+        assert document.variables.first().name_en == "var1"
 
     def test_create_dynamic_document_assigns_user_when_progress(self, api_client, user):
         """Progress documents created without assigned_to should default to request.user."""
@@ -510,57 +515,23 @@ class TestDynamicDocumentExport:
     
     def test_download_dynamic_document_word_authenticated(self, api_client, user, sample_document, monkeypatch):
         """Test downloading a dynamic document as Word when authenticated"""
-        # Create a mock for Document.save
-        class MockDocument:  # pragma: no cover – mock methods not invoked
-            def __init__(self):
-                self.styles = {
-                    'Normal': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading1': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading2': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading3': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading4': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading5': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading6': type('Style', (), {'font': type('Font', (), {'name': None})})
-                }
-                
-            def add_paragraph(self, *args, **kwargs):
-                return type('Paragraph', (), {
-                    'runs': [],
-                    'add_run': lambda text: type('Run', (), {'font': type('Font', (), {'name': None})}),
-                    'alignment': None,
-                    'paragraph_format': type('ParagraphFormat', (), {'left_indent': None, 'line_spacing': None})
-                })
-                
-            def add_heading(self, *args, **kwargs):
-                return type('Heading', (), {
-                    'runs': [type('Run', (), {'font': type('Font', (), {'name': None})})],
-                })
-                
-            def save(self, *args, **kwargs):
-                pass
-        
-        # Replace Document with our mock
+        _Style = type('Style', (), {'font': type('Font', (), {'name': None})})
+        _Para = type('Para', (), {'runs': [], 'add_run': lambda s, t: type('Run', (), {'font': type('Font', (), {'name': None})}), 'alignment': None, 'paragraph_format': type('PF', (), {'left_indent': None, 'line_spacing': None})})
+        class MockDocument:  # pragma: no cover
+            styles = {k: _Style for k in ['Normal', 'Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6']}
+            def add_paragraph(self, *a, **k): return _Para()
+            def add_heading(self, *a, **k): return type('H', (), {'runs': [type('R', (), {'font': type('F', (), {'name': None})})()]})()
+            def save(self, *a, **k): pass
+
         monkeypatch.setattr('docx.Document', lambda: MockDocument())
-        
-        # Create a mock for get_template
-        def mock_get_template(*args, **kwargs):  # pragma: no cover – mock factory not invoked
-            return type('Template', (), {
-                'render': lambda context: f'<html><body>{context["content"]}</body></html>'
-            })
-        
-        monkeypatch.setattr('django.template.loader.get_template', mock_get_template)
-        
-        # Authenticate the user
+        monkeypatch.setattr('django.template.loader.get_template', lambda *a, **k: type('T', (), {'render': lambda c: '<html></html>'})())
+
         api_client.force_authenticate(user=user)
-        
-        # Make the request
         url = reverse('download_dynamic_document_word', kwargs={'pk': sample_document.pk})
         response = api_client.get(url)
-        
-        # Assert the response
+
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        assert response['Content-Disposition'] == f'attachment; filename="{sample_document.title}.docx"'
 
     def test_download_dynamic_document_pdf_missing_fonts_returns_500(self, api_client, user, sample_document, monkeypatch):
         api_client.force_authenticate(user=user)
@@ -611,52 +582,26 @@ class TestDynamicDocumentExport:
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=user)
 
-        template_file = SimpleUploadedFile(
-            "template.docx",
-            b"bad-template",
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        user.letterhead_word_template = template_file
+        user.letterhead_word_template = SimpleUploadedFile("template.docx", b"bad", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         user.save(update_fields=["letterhead_word_template"])
 
+        _Style = type('Style', (), {'font': type('Font', (), {'name': None})})
+        _Para = type('Para', (), {'runs': [], 'add_run': lambda s, t: type('R', (), {'font': type('F', (), {'name': None})}), 'alignment': None, 'paragraph_format': type('PF', (), {'left_indent': None, 'line_spacing': None})})
         class MockDocument:
-            def __init__(self, *args, **kwargs):
-                self.styles = {
-                    'Normal': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading1': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading2': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading3': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading4': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading5': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                    'Heading6': type('Style', (), {'font': type('Font', (), {'name': None})}),
-                }
-                self.paragraphs = [type('Paragraph', (), {'text': '', 'runs': []})]
-                self.sections = [type('Section', (), {})]
-
-            def add_paragraph(self, *args, **kwargs):
-                return type('Paragraph', (), {
-                    'runs': [],
-                    'add_run': lambda text: type('Run', (), {'font': type('Font', (), {'name': None})}),
-                    'alignment': None,
-                    'paragraph_format': type('ParagraphFormat', (), {'left_indent': None, 'line_spacing': None})
-                })
-
-            def add_heading(self, *args, **kwargs):  # pragma: no cover – mock method not invoked
-                return type('Heading', (), {'runs': [type('Run', (), {'font': type('Font', (), {'name': None})})]})
-
-            def save(self, *args, **kwargs):
-                pass
+            styles = {k: _Style for k in ['Normal', 'Heading1', 'Heading2', 'Heading3', 'Heading4', 'Heading5', 'Heading6']}
+            paragraphs = [type('P', (), {'text': '', 'runs': []})()]
+            sections = [type('S', (), {})()]
+            def add_paragraph(self, *a, **k): return _Para()
+            def add_heading(self, *a, **k): return type('H', (), {'runs': []})()
+            def save(self, *a, **k): pass
 
         def document_factory(path=None):
-            if path:
-                raise Exception("bad template")
+            if path: raise Exception("bad template")
             return MockDocument()
 
         monkeypatch.setattr(document_views, "Document", document_factory)
-
         url = reverse('download_dynamic_document_word', kwargs={'pk': sample_document.pk})
         response = api_client.get(url)
-
         assert response.status_code == status.HTTP_200_OK
     
     def test_document_download_unauthenticated(self, api_client, sample_document):

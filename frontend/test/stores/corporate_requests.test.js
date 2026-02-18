@@ -191,19 +191,33 @@ describe("Corporate Requests Store", () => {
 
     await store.getMyRequests({ status: "PENDING", search: "", page: 2, page_size: 20 });
 
-    expect(store.myRequests).toEqual([{ id: 1 }]);
-    expect(store.pagination.count).toBe(1);
-    expect(store.pagination.currentPage).toBe(2);
-    expect(store.pagination.pageSize).toBe(20);
-    expect(store.dataLoaded).toBe(true);
-    expect(store.isLoadingRequests).toBe(false);
+    expect([
+      store.myRequests,
+      store.pagination.count,
+      store.pagination.currentPage,
+      store.pagination.pageSize,
+      store.dataLoaded,
+      store.isLoadingRequests,
+    ]).toEqual([[{ id: 1 }], 1, 2, 20, true, false]);
+  });
 
-    expect(mock.history.get).toHaveLength(1);
+  test("getMyRequests builds query params", async () => {
+    const store = useCorporateRequestsStore();
+
+    mock
+      .onGet(/\/api\/corporate-requests\/clients\/my-requests\/.*/)
+      .reply(200, { results: [{ id: 1 }], count: 1, next: null, previous: null });
+
+    await store.getMyRequests({ status: "PENDING", search: "", page: 2, page_size: 20 });
+
     const calledUrl = mock.history.get[0].url;
-    expect(calledUrl).toContain("/api/corporate-requests/clients/my-requests/");
-    expect(calledUrl).toContain("status=PENDING");
-    expect(calledUrl).toContain("page=2");
-    expect(calledUrl).toContain("page_size=20");
+    const expected = [
+      "/api/corporate-requests/clients/my-requests/",
+      "status=PENDING",
+      "page=2",
+      "page_size=20",
+    ];
+    expect(expected.every((segment) => calledUrl.includes(segment))).toBe(true);
     expect(calledUrl).not.toContain("search=");
   });
 
@@ -735,14 +749,16 @@ describe("Corporate Requests Store", () => {
 
     store.clearAll();
 
-    expect(store.myRequests).toEqual([]);
-    expect(store.receivedRequests).toEqual([]);
-    expect(store.currentRequest).toBe(null);
-    expect(store.availableOrganizations).toEqual([]);
-    expect(store.requestTypes).toEqual([]);
-    expect(store.requestResponses).toEqual([]);
-    expect(store.dataLoaded).toBe(false);
-    expect(store.lastFetchTime).toBe(null);
+    expect([
+      store.myRequests,
+      store.receivedRequests,
+      store.currentRequest,
+      store.availableOrganizations,
+      store.requestTypes,
+      store.requestResponses,
+      store.dataLoaded,
+      store.lastFetchTime,
+    ]).toEqual([[], [], null, [], [], [], false, null]);
   });
 
   test("clearFilters resets filters", () => {

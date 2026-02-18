@@ -42,6 +42,13 @@ const setupStore = () => {
   return useDocumentFolderStore();
 };
 
+const seedFolders = (store) => {
+  store.folders = [
+    buildFolder({ id: 1, created_at: "2026-01-01T00:00:00Z", color_id: 1 }),
+    buildFolder({ id: 2, created_at: "2026-01-02T00:00:00Z", color_id: 0, document_ids: null }),
+  ];
+};
+
 describe("Document Folders Store", () => {
   beforeEach(() => {
     mockGetRequest.mockReset();
@@ -66,26 +73,32 @@ describe("Document Folders Store", () => {
     expect(store.availableColors).toEqual([{ id: 0 }, { id: 1 }]);
   });
 
-  test("getters return sorted folders and metadata", () => {
+  test("getters return sorted folders and lookup by id/color", () => {
     const store = setupStore();
 
-    store.folders = [
-      buildFolder({ id: 1, created_at: "2026-01-01T00:00:00Z", color_id: 1 }),
-      buildFolder({ id: 2, created_at: "2026-01-02T00:00:00Z", color_id: 0, document_ids: null }),
-    ];
+    seedFolders(store);
 
-    expect(store.sortedFolders.map((folder) => folder.id)).toEqual([2, 1]);
-    expect(store.getFolderById(1)?.id).toBe(1);
-    expect(store.getFolderById(999)).toBeUndefined();
-    expect(store.getFoldersByColor(1).map((folder) => folder.id)).toEqual([1]);
+    expect([
+      store.sortedFolders.map((folder) => folder.id),
+      store.getFolderById(1)?.id,
+      store.getFolderById(999),
+      store.getFoldersByColor(1).map((folder) => folder.id),
+    ]).toEqual([[2, 1], 1, undefined, [1]]);
+  });
+
+  test("getters return color metadata and totals", () => {
+    const store = setupStore();
+
+    seedFolders(store);
 
     const withColor = store.getFolderWithColor(1);
-    expect(withColor.color).toEqual({ id: 1, hex: "#1" });
-    expect(store.getFolderWithColor(999)).toBeNull();
-
-    expect(store.getFoldersContainingDocument(1).map((folder) => folder.id)).toEqual([1]);
-    expect(store.totalDocumentsInFolders).toBe(2);
-    expect(store.hasFolders).toBe(true);
+    expect([
+      withColor.color,
+      store.getFolderWithColor(999),
+      store.getFoldersContainingDocument(1).map((folder) => folder.id),
+      store.totalDocumentsInFolders,
+      store.hasFolders,
+    ]).toEqual([{ id: 1, hex: "#1" }, null, [1], 2, true]);
   });
 
   test("init returns early when folders already loaded", async () => {

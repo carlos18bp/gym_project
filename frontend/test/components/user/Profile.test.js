@@ -57,6 +57,12 @@ const findButtonByText = (wrapper, text) => {
   return btn;
 };
 
+const triggerSignatureSave = async (wrapper) => {
+  await findButtonByText(wrapper, "Firma electrónica").trigger("click");
+  await wrapper.find("[data-test='emit-save']").trigger("click");
+  await flushPromises();
+};
+
 describe("Profile.vue", () => {
   beforeEach(() => {
     const pinia = createPinia();
@@ -138,36 +144,37 @@ describe("Profile.vue", () => {
     expect(wrapper.text()).toContain("Firma Electrónica");
   });
 
-  test("handles signatureSaved: shows notification, closes modal after timeout, and shows green indicator", async () => {
-    jest.useFakeTimers();
-
-    const { wrapper, userStore, currentUser } = mountProfile({
+  test("signatureSaved shows notification and refreshes user info", async () => {
+    const { wrapper, userStore } = mountProfile({
       currentUserOverrides: { has_signature: false },
     });
 
-    expect(currentUser.has_signature).toBe(false);
-    expect(wrapper.find(".bg-green-500").exists()).toBe(false);
-
-    await findButtonByText(wrapper, "Firma electrónica").trigger("click");
-    expect(wrapper.text()).toContain("Firma Electrónica");
-
-    await wrapper.find("[data-test='emit-save']").trigger("click");
-    await flushPromises();
+    await triggerSignatureSave(wrapper);
 
     expect(userStore.getUserInfo).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Firma electrónica guardada correctamente",
       "success"
     );
+  });
+
+  test("signatureSaved closes modal after timeout and shows green indicator", async () => {
+    jest.useFakeTimers();
+
+    const { wrapper, currentUser } = mountProfile({
+      currentUserOverrides: { has_signature: false },
+    });
+
+    await triggerSignatureSave(wrapper);
 
     jest.advanceTimersByTime(500);
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).not.toContain("Firma Electrónica");
-
-    // Indicator should be visible after signature is saved
-    expect(currentUser.has_signature).toBe(true);
-    expect(wrapper.find(".bg-green-500").exists()).toBe(true);
+    expect([currentUser.has_signature, wrapper.find(".bg-green-500").exists()]).toEqual([
+      true,
+      true,
+    ]);
 
     jest.useRealTimers();
   });

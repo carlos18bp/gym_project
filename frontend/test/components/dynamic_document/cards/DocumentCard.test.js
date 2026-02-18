@@ -105,7 +105,7 @@ describe("DocumentCard.vue", () => {
     jest.clearAllMocks();
   });
 
-  test("renders title, emits click, and runs preview/delete menu actions", async () => {
+  const buildMenuWrapper = () => {
     const doc = {
       id: 1,
       title: "My Document",
@@ -151,12 +151,21 @@ describe("DocumentCard.vue", () => {
       },
     });
 
+    return { wrapper, doc };
+  };
+
+  test("renders title and emits click", async () => {
+    const { wrapper, doc } = buildMenuWrapper();
+
     expect(wrapper.text()).toContain("My Document");
 
     await wrapper.find("[data-document-id='1']").trigger("click");
 
-    expect(wrapper.emitted("click")).toBeTruthy();
-    expect(wrapper.emitted("click")[0][0]).toEqual(doc);
+    expect(wrapper.emitted("click")).toEqual([[doc]]);
+  });
+
+  test("menu actions run preview/delete and emit refresh", async () => {
+    const { wrapper, doc } = buildMenuWrapper();
 
     const previewBtn = wrapper
       .findAll("button")
@@ -165,14 +174,12 @@ describe("DocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Eliminar");
 
-    expect(previewBtn).toBeTruthy();
-    expect(deleteBtn).toBeTruthy();
+    expect([Boolean(previewBtn), Boolean(deleteBtn)]).toEqual([true, true]);
 
     await previewBtn.trigger("click");
-    expect(mockHandlePreviewDocument).toHaveBeenCalledWith(doc);
-
     await deleteBtn.trigger("click");
 
+    expect(mockHandlePreviewDocument).toHaveBeenCalledWith(doc);
     expect(mockDeleteDocument).toHaveBeenCalledWith(doc);
     expect(wrapper.emitted("refresh")).toBeTruthy();
   });
@@ -264,95 +271,99 @@ describe("DocumentCard.vue", () => {
     expect(baseOverride.props("menuOptions")).toEqual(opts);
   });
 
-  test("signature badges and progress render only for lawyer and map to correct classes/text", async () => {
-    const userStore = {
-      currentUser: { id: 1 },
-      userById: jest.fn(),
-    };
+  const userStore = {
+    currentUser: { id: 1 },
+    userById: jest.fn(),
+  };
 
-    const wrapperFullySigned = mount(DocumentCard, {
+  const mountSignatureCard = ({ document, cardType = "lawyer", showSignatureProgress = false }) =>
+    mount(DocumentCard, {
       props: {
-        document: {
-          id: 1,
-          title: "Doc",
-          requires_signature: true,
-          fully_signed: true,
-          signatures: [{ signer_id: 1, signed: true }],
-        },
-        cardType: "lawyer",
-        showSignatureProgress: true,
+        document,
+        cardType,
+        showSignatureProgress,
         userStore,
       },
       global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
     });
 
-    const badges1 = wrapperFullySigned.find("[data-test='slot-additional-badges']");
-    expect(badges1.text()).toContain("Formalizado");
-    const statusBadge1 = badges1.find("div.inline-flex");
-    expect(statusBadge1.classes().join(" ")).toContain("bg-green-100");
-    expect(badges1.text()).toContain("1/1");
-
-    const wrapperUserSigned = mount(DocumentCard, {
-      props: {
-        document: {
-          id: 2,
-          title: "Doc",
-          requires_signature: true,
-          fully_signed: false,
-          signatures: [
-            { signer_id: 1, signed: true },
-            { signer_id: 2, signed: false },
-          ],
-        },
-        cardType: "lawyer",
-        userStore,
+  test("signature badge shows fully signed state for lawyer", () => {
+    const wrapper = mountSignatureCard({
+      document: {
+        id: 1,
+        title: "Doc",
+        requires_signature: true,
+        fully_signed: true,
+        signatures: [{ signer_id: 1, signed: true }],
       },
-      global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
+      showSignatureProgress: true,
     });
 
-    const badges2 = wrapperUserSigned.find("[data-test='slot-additional-badges']");
-    expect(badges2.text()).toContain("Has firmado");
-    const statusBadge2 = badges2.find("div.inline-flex");
-    expect(statusBadge2.classes().join(" ")).toContain("bg-blue-100");
+    const badges = wrapper.find("[data-test='slot-additional-badges']");
+    expect(badges.text()).toContain("Formalizado");
+    expect(badges.find("div.inline-flex").classes().join(" ")).toContain(
+      "bg-green-100"
+    );
+    expect(badges.text()).toContain("1/1");
+  });
 
-    const wrapperPendingMine = mount(DocumentCard, {
-      props: {
-        document: {
-          id: 3,
-          title: "Doc",
-          requires_signature: true,
-          fully_signed: false,
-          signatures: [
-            { signer_id: 1, signed: false },
-            { signer_id: 2, signed: true },
-          ],
-        },
-        cardType: "lawyer",
-        userStore,
+  test("signature badge shows current user signed state", () => {
+    const wrapper = mountSignatureCard({
+      document: {
+        id: 2,
+        title: "Doc",
+        requires_signature: true,
+        fully_signed: false,
+        signatures: [
+          { signer_id: 1, signed: true },
+          { signer_id: 2, signed: false },
+        ],
       },
-      global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
     });
 
-    const badges3 = wrapperPendingMine.find("[data-test='slot-additional-badges']");
-    expect(badges3.text()).toContain("Firmas: 1/2");
-    const statusBadge3 = badges3.find("div.inline-flex");
-    expect(statusBadge3.classes().join(" ")).toContain("bg-yellow-100");
+    const badges = wrapper.find("[data-test='slot-additional-badges']");
+    expect(badges.text()).toContain("Has firmado");
+    expect(badges.find("div.inline-flex").classes().join(" ")).toContain(
+      "bg-blue-100"
+    );
+  });
 
-    const wrapperNonLawyer = mount(DocumentCard, {
-      props: {
-        document: {
-          id: 4,
-          title: "Doc",
-          requires_signature: true,
-          fully_signed: false,
-          signatures: [{ signer_id: 1, signed: false }],
-        },
-        cardType: "client",
-        userStore,
+  test("signature badge shows pending count for lawyer", () => {
+    const wrapper = mountSignatureCard({
+      document: {
+        id: 3,
+        title: "Doc",
+        requires_signature: true,
+        fully_signed: false,
+        signatures: [
+          { signer_id: 1, signed: false },
+          { signer_id: 2, signed: true },
+        ],
       },
-      global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
     });
-    expect(wrapperNonLawyer.find("[data-test='slot-additional-badges']").text()).toBe("");
+
+    const badges = wrapper.find("[data-test='slot-additional-badges']");
+    expect(badges.text()).toContain("Firmas: 1/2");
+    expect(badges.find("div.inline-flex").classes().join(" ")).toContain(
+      "bg-yellow-100"
+    );
+  });
+
+  test("signature badges are hidden for non-lawyer", () => {
+    const wrapper = mountSignatureCard({
+      document: {
+        id: 4,
+        title: "Doc",
+        requires_signature: true,
+        fully_signed: false,
+        signatures: [{ signer_id: 1, signed: false }],
+      },
+      cardType: "client",
+    });
+
+    expect(
+      wrapper.find("[data-test='slot-additional-badges']").text()
+    ).toBe("");
   });
 
   test("signature badge shows 'Requiere firmas' and gray classes when signatures/user missing", async () => {

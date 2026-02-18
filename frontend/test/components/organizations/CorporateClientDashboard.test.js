@@ -84,6 +84,64 @@ const ReceivedRequestsSectionStub = {
   `,
 };
 
+const dashboardStubs = {
+  CreateOrganizationModal: CreateOrganizationModalStub,
+  EditOrganizationModal: EditOrganizationModalStub,
+  InviteMemberModal: InviteMemberModalStub,
+  MembersListModal: MembersListModalStub,
+  AllMembersModal: AllMembersModalStub,
+  ReceivedRequestsSection: ReceivedRequestsSectionStub,
+  OrganizationPostsSection: OrganizationPostsSectionStub,
+};
+
+const mountCorporateDashboard = async ({ currentUser, organizations = [] } = {}) => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+
+  const userStore = useUserStore();
+  userStore.$patch({ currentUser: currentUser || { id: 1, role: "corporate_client" } });
+
+  const organizationsStore = useOrganizationsStore();
+  const requestsStore = useCorporateRequestsStore();
+
+  const orgsSpy = jest
+    .spyOn(organizationsStore, "getMyOrganizations")
+    .mockResolvedValue({ results: [] });
+  const statsSpy = jest.spyOn(organizationsStore, "getOrganizationStats").mockResolvedValue({});
+  const receivedSpy = jest
+    .spyOn(requestsStore, "getReceivedRequests")
+    .mockResolvedValue({ results: [] });
+
+  const wrapper = mount(CorporateClientDashboard, {
+    global: {
+      plugins: [pinia],
+      stubs: dashboardStubs,
+    },
+  });
+
+  await flushPromises();
+
+  if (organizations.length) {
+    organizationsStore.$patch({ organizations });
+    await wrapper.vm.$nextTick();
+  }
+
+  return { wrapper, orgsSpy, statsSpy, receivedSpy, organizationsStore, requestsStore, userStore };
+};
+
+const findButtonByText = (wrapper, matcher) => {
+  const btn = wrapper
+    .findAll("button")
+    .find((b) => {
+      const text = (b.text() || "").trim();
+      return typeof matcher === "string" ? text.includes(matcher) : matcher(text);
+    });
+  if (!btn) {
+    throw new Error("Button not found");
+  }
+  return btn;
+};
+
 describe("CorporateClientDashboard.vue", () => {
   beforeEach(() => {
     const pinia = createPinia();
@@ -423,42 +481,14 @@ describe("CorporateClientDashboard.vue", () => {
     expect(receivedSpy).not.toHaveBeenCalled();
   });
 
-  test("loadData logs friendly errors for 403 and 401 responses", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const userStore = useUserStore();
-    userStore.$patch({ currentUser: { id: 1, role: "corporate_client" } });
-
-    const organizationsStore = useOrganizationsStore();
-    const requestsStore = useCorporateRequestsStore();
-
-    const orgsSpy = jest.spyOn(organizationsStore, "getMyOrganizations").mockResolvedValue({ results: [] });
-
-    jest.spyOn(organizationsStore, "getOrganizationStats").mockResolvedValue({});
-    jest.spyOn(requestsStore, "getReceivedRequests").mockResolvedValue({ results: [] });
-
-    const wrapper = mount(CorporateClientDashboard, {
-      global: {
-        plugins: [pinia],
-        stubs: {
-          CreateOrganizationModal: CreateOrganizationModalStub,
-          EditOrganizationModal: EditOrganizationModalStub,
-          InviteMemberModal: InviteMemberModalStub,
-          MembersListModal: MembersListModalStub,
-          AllMembersModal: AllMembersModalStub,
-          ReceivedRequestsSection: ReceivedRequestsSectionStub,
-          OrganizationPostsSection: OrganizationPostsSectionStub,
-        },
-      },
-    });
-
-    await flushPromises();
+  test("loadData logs friendly error for 403 response", async () => {
+    const { wrapper, orgsSpy } = await mountCorporateDashboard();
 
     console.error.mockClear();
 
     orgsSpy.mockRejectedValueOnce({ response: { status: 403 } });
     await wrapper.vm.$.setupState.loadData();
+
     expect(console.error).toHaveBeenCalledWith(
       "Error loading dashboard data:",
       expect.objectContaining({ response: expect.objectContaining({ status: 403 }) })
@@ -466,11 +496,16 @@ describe("CorporateClientDashboard.vue", () => {
     expect(console.error).toHaveBeenCalledWith(
       "Access denied. User may not have corporate client permissions."
     );
+  });
+
+  test("loadData logs friendly error for 401 response", async () => {
+    const { wrapper, orgsSpy } = await mountCorporateDashboard();
 
     console.error.mockClear();
 
     orgsSpy.mockRejectedValueOnce({ response: { status: 401 } });
     await wrapper.vm.$.setupState.loadData();
+
     expect(console.error).toHaveBeenCalledWith(
       "Error loading dashboard data:",
       expect.objectContaining({ response: expect.objectContaining({ status: 401 }) })
@@ -480,62 +515,46 @@ describe("CorporateClientDashboard.vue", () => {
     );
   });
 
-  test("modal flows: open/close and emitted events refresh organizations/stats", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
+  test("all members modal opens and closes", async () => {
+    const { wrapper } = await mountCorporateDashboard();
 
-    const userStore = useUserStore();
-    userStore.$patch({ currentUser: { id: 1, role: "corporate_client" } });
+    const allMembersButton = wrapper.find("button[title='Ver todos los miembros de tus organizaciones']");
+    if (!allMembersButton.exists()) {
+      throw new Error("All members button not found");
+    }
 
-    const organizationsStore = useOrganizationsStore();
-    const requestsStore = useCorporateRequestsStore();
-
-    const orgsSpy = jest.spyOn(organizationsStore, "getMyOrganizations").mockResolvedValue({ results: [] });
-    const statsSpy = jest.spyOn(organizationsStore, "getOrganizationStats").mockResolvedValue({});
-    jest.spyOn(requestsStore, "getReceivedRequests").mockResolvedValue({ results: [] });
-
-    const wrapper = mount(CorporateClientDashboard, {
-      global: {
-        plugins: [pinia],
-        stubs: {
-          CreateOrganizationModal: CreateOrganizationModalStub,
-          EditOrganizationModal: EditOrganizationModalStub,
-          InviteMemberModal: InviteMemberModalStub,
-          MembersListModal: MembersListModalStub,
-          AllMembersModal: AllMembersModalStub,
-          ReceivedRequestsSection: ReceivedRequestsSectionStub,
-          OrganizationPostsSection: OrganizationPostsSectionStub,
-        },
-      },
-    });
-
-    await flushPromises();
-
-    orgsSpy.mockClear();
-    statsSpy.mockClear();
-
-    await wrapper.find("button[title='Ver todos los miembros de tus organizaciones']").trigger("click");
+    await allMembersButton.trigger("click");
     expect(wrapper.findComponent(AllMembersModalStub).props("visible")).toBe(true);
+
     wrapper.findComponent({ name: "AllMembersModal" }).vm.$emit("close");
     await flushPromises();
-    expect(wrapper.findComponent(AllMembersModalStub).props("visible")).toBe(false);
 
-    const createButton = wrapper.findAll("button").find((b) => b.text().includes("Crear Organización"));
-    expect(createButton).toBeTruthy();
+    expect(wrapper.findComponent(AllMembersModalStub).props("visible")).toBe(false);
+  });
+
+  test("create organization modal toggles and created refreshes lists", async () => {
+    const { wrapper, orgsSpy, statsSpy } = await mountCorporateDashboard();
+
+    const createButton = findButtonByText(wrapper, "Crear Organización");
     await createButton.trigger("click");
+
     expect(wrapper.findComponent(CreateOrganizationModalStub).props("visible")).toBe(true);
+
     wrapper.findComponent({ name: "CreateOrganizationModal" }).vm.$emit("close");
     await flushPromises();
+
     expect(wrapper.findComponent(CreateOrganizationModalStub).props("visible")).toBe(false);
 
     orgsSpy.mockClear();
     statsSpy.mockClear();
     wrapper.findComponent({ name: "CreateOrganizationModal" }).vm.$emit("created", { id: 2 });
     await flushPromises();
-    expect(orgsSpy).toHaveBeenCalled();
-    expect(statsSpy).toHaveBeenCalled();
 
-    organizationsStore.$patch({
+    expect([orgsSpy.mock.calls.length, statsSpy.mock.calls.length]).toEqual([1, 1]);
+  });
+
+  test("edit organization modal opens and updated refreshes organizations", async () => {
+    const { wrapper, orgsSpy } = await mountCorporateDashboard({
       organizations: [
         {
           id: 1,
@@ -549,31 +568,76 @@ describe("CorporateClientDashboard.vue", () => {
         },
       ],
     });
-    await wrapper.vm.$nextTick();
 
     orgsSpy.mockClear();
-    const editButton = wrapper.findAll("button").find((b) => b.text().includes("Editar"));
-    expect(editButton).toBeTruthy();
+
+    const editButton = findButtonByText(wrapper, "Editar");
     await editButton.trigger("click");
+
     expect(wrapper.findComponent(EditOrganizationModalStub).props("visible")).toBe(true);
+
     wrapper.findComponent({ name: "EditOrganizationModal" }).vm.$emit("updated", { id: 1 });
     await flushPromises();
+
     expect(orgsSpy).toHaveBeenCalled();
+  });
+
+  test("invite member modal opens and invited refreshes stats", async () => {
+    const { wrapper, statsSpy } = await mountCorporateDashboard({
+      organizations: [
+        {
+          id: 1,
+          title: "Org",
+          description: "Desc",
+          created_at: "2024-01-01T00:00:00Z",
+          member_count: 1,
+          pending_invitations_count: 0,
+          profile_image_url: null,
+          cover_image_url: null,
+        },
+      ],
+    });
 
     statsSpy.mockClear();
-    const inviteButton = wrapper.findAll("button").find((b) => b.text().includes("Invitar Miembro"));
-    expect(inviteButton).toBeTruthy();
+
+    const inviteButton = findButtonByText(wrapper, "Invitar Miembro");
     await inviteButton.trigger("click");
+
     expect(wrapper.findComponent(InviteMemberModalStub).props("visible")).toBe(true);
+
     wrapper.findComponent({ name: "InviteMemberModal" }).vm.$emit("invited", { ok: true });
     await flushPromises();
+
     expect(statsSpy).toHaveBeenCalled();
+  });
+
+  test("members list modal opens and closes", async () => {
+    const { wrapper } = await mountCorporateDashboard({
+      organizations: [
+        {
+          id: 1,
+          title: "Org",
+          description: "Desc",
+          created_at: "2024-01-01T00:00:00Z",
+          member_count: 1,
+          pending_invitations_count: 0,
+          profile_image_url: null,
+          cover_image_url: null,
+        },
+      ],
+    });
 
     const membersButton = wrapper.find("button[title='Ver lista de miembros de Org']");
+    if (!membersButton.exists()) {
+      throw new Error("Members button not found");
+    }
+
     await membersButton.trigger("click");
     expect(wrapper.findComponent(MembersListModalStub).props("visible")).toBe(true);
+
     wrapper.findComponent({ name: "MembersListModal" }).vm.$emit("close");
     await flushPromises();
+
     expect(wrapper.findComponent(MembersListModalStub).props("visible")).toBe(false);
   });
 

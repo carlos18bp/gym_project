@@ -221,24 +221,27 @@ class TestDocumentVariableClean:
         var = DocumentVariable(
             document=doc, name_en="v", field_type="number", value="abc",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             var.clean()
+        assert exc_info.value is not None
 
     def test_clean_date_invalid(self, lawyer):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="date", value="not-a-date",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             var.clean()
+        assert exc_info.value is not None
 
     def test_clean_email_invalid(self, lawyer):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="email", value="bad-email",
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             var.clean()
+        assert exc_info.value is not None
 
     def test_clean_number_valid(self, lawyer):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
@@ -246,6 +249,7 @@ class TestDocumentVariableClean:
             document=doc, name_en="v", field_type="number", value="42.5",
         )
         var.clean()  # should not raise
+        assert var.value == "42.5"
 
     def test_clean_date_valid(self, lawyer):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
@@ -253,6 +257,7 @@ class TestDocumentVariableClean:
             document=doc, name_en="v", field_type="date", value="2024-01-15",
         )
         var.clean()  # should not raise
+        assert var.value == "2024-01-15"
 
     def test_clean_email_valid(self, lawyer):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
@@ -260,6 +265,7 @@ class TestDocumentVariableClean:
             document=doc, name_en="v", field_type="email", value="ok@example.com",
         )
         var.clean()  # should not raise
+        assert var.value == "ok@example.com"
 
 
 # ── DocumentVariable.get_formatted_value ─────────────────────────────────────
@@ -374,13 +380,15 @@ def test_document_variable_invalid_number_raises(user_factory, document_factory)
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
-    with pytest.raises(ValidationError, match="valor debe ser un"):
+    with pytest.raises(ValidationError, match="valor debe ser un") as exc_info:
         DocumentVariable.objects.create(
             document=document,
             name_en="amount",
             field_type="number",
             value="not-a-number",
         )
+    assert exc_info.value is not None
+    assert DocumentVariable.objects.filter(document=document, name_en="amount").count() == 0
 
 
 @pytest.mark.django_db
@@ -388,13 +396,15 @@ def test_document_variable_invalid_date_raises(user_factory, document_factory):
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
-    with pytest.raises(ValidationError, match="valor debe ser una fecha"):
+    with pytest.raises(ValidationError, match="valor debe ser una fecha") as exc_info:
         DocumentVariable.objects.create(
             document=document,
             name_en="start",
             field_type="date",
             value="2023/01/01",
         )
+    assert exc_info.value is not None
+    assert DocumentVariable.objects.filter(document=document, name_en="start").count() == 0
 
 
 @pytest.mark.django_db
@@ -402,13 +412,15 @@ def test_document_variable_invalid_email_raises(user_factory, document_factory):
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
-    with pytest.raises(ValidationError, match="valor debe ser un correo"):
+    with pytest.raises(ValidationError, match="valor debe ser un correo") as exc_info:
         DocumentVariable.objects.create(
             document=document,
             name_en="email",
             field_type="email",
             value="not-an-email",
         )
+    assert exc_info.value is not None
+    assert DocumentVariable.objects.filter(document=document, name_en="email").count() == 0
 
 
 @pytest.mark.django_db
@@ -540,9 +552,11 @@ def test_recent_document_unique_together(user_factory, document_factory):
 
     RecentDocument.objects.create(user=user, document=document)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             RecentDocument.objects.create(user=user, document=document)
+    assert exc_info.value is not None
+    assert RecentDocument.objects.filter(user=user, document=document).count() == 1
 
 
 # ======================================================================
@@ -556,6 +570,6 @@ class TestDocumentVariableStr:
         doc = DynamicDocument.objects.create(title="V36", content="<p>x</p>", state="Draft", created_by=user)
         v = DocumentVariable.objects.create(document=doc, name_en="full_name", name_es="Nombre", field_type="input", value="John")
         s = str(v)
-        assert s  # verify no crash and non-empty string
+        assert isinstance(s, str) and len(s) > 0, "Expected non-empty string representation"
 
 

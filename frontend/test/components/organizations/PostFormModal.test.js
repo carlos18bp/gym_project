@@ -52,6 +52,14 @@ const DialogTitleStub = {
   template: "<div><slot /></div>",
 };
 
+const modalStubs = {
+  TransitionRoot: TransitionRootStub,
+  TransitionChild: TransitionChildStub,
+  Dialog: DialogStub,
+  DialogPanel: DialogPanelStub,
+  DialogTitle: DialogTitleStub,
+};
+
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const buildPost = (overrides = {}) => ({
@@ -65,6 +73,40 @@ const buildPost = (overrides = {}) => ({
   ...overrides,
 });
 
+const mountModal = async ({ pinia = createPinia(), props = {} } = {}) => {
+  setActivePinia(pinia);
+
+  const wrapper = mount(PostFormModal, {
+    props: {
+      visible: true,
+      post: null,
+      organizationId: 10,
+      ...props,
+    },
+    global: {
+      plugins: [pinia],
+      stubs: modalStubs,
+    },
+  });
+
+  await flushPromises();
+
+  return wrapper;
+};
+
+const openLinkSection = async (wrapper) => {
+  const toggleLinkBtn = wrapper
+    .findAll("button")
+    .find((b) => (b.text() || "").includes("Agregar enlace"));
+
+  if (!toggleLinkBtn) {
+    throw new Error("Agregar enlace button not found");
+  }
+
+  await toggleLinkBtn.trigger("click");
+  await flushPromises();
+};
+
 describe("PostFormModal.vue", () => {
   beforeEach(() => {
     const pinia = createPinia();
@@ -73,61 +115,43 @@ describe("PostFormModal.vue", () => {
     jest.useRealTimers();
   });
 
-  test("submit button disabled until title/content valid; link requires both fields", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const wrapper = mount(PostFormModal, {
-      props: {
-        visible: true,
-        post: null,
-        organizationId: 10,
-      },
-      global: {
-        plugins: [pinia],
-        stubs: {
-          TransitionRoot: TransitionRootStub,
-          TransitionChild: TransitionChildStub,
-          Dialog: DialogStub,
-          DialogPanel: DialogPanelStub,
-          DialogTitle: DialogTitleStub,
-        },
-      },
-    });
-
-    await flushPromises();
+  test("submit button enables when title/content are valid", async () => {
+    const wrapper = await mountModal();
 
     const submitBtn = wrapper.find('button[type="submit"]');
     expect(submitBtn.attributes("disabled")).toBeDefined();
 
     await wrapper.find("input#title").setValue("  Title  ");
     await flushPromises();
-
     expect(submitBtn.attributes("disabled")).toBeDefined();
 
     await wrapper.find("textarea#content").setValue("  Content  ");
     await flushPromises();
 
     expect(submitBtn.attributes("disabled")).toBeUndefined();
+  });
 
-    // open link section and fill only one field -> invalid
-    const toggleLinkBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").includes("Agregar enlace"));
+  test("link fields require both values to keep submit enabled", async () => {
+    const wrapper = await mountModal();
+    const submitBtn = wrapper.find('button[type="submit"]');
 
-    expect(toggleLinkBtn).toBeTruthy();
-    await toggleLinkBtn.trigger("click");
+    await wrapper.find("input#title").setValue("Title");
+    await wrapper.find("textarea#content").setValue("Content");
     await flushPromises();
+
+    await openLinkSection(wrapper);
 
     await wrapper.find("input#link_name").setValue("Ver");
     await flushPromises();
-
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    const disabledAfterName = submitBtn.attributes("disabled");
 
     await wrapper.find("input#link_url").setValue("https://example.com");
     await flushPromises();
 
-    expect(submitBtn.attributes("disabled")).toBeUndefined();
+    expect([disabledAfterName !== undefined, submitBtn.attributes("disabled") === undefined]).toEqual([
+      true,
+      true,
+    ]);
   });
 
   test("link mismatch triggers warning and does not call store", async () => {
@@ -230,14 +254,8 @@ describe("PostFormModal.vue", () => {
     expect(wrapper.emitted("saved")[0]).toEqual([{ post: { id: 50 } }]);
   });
 
-  test("edit flow: populates form from post, includes is_active, calls updatePost and emits saved", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const store = useOrganizationPostsStore();
-    const updateSpy = jest.spyOn(store, "updatePost").mockResolvedValue({ post: { id: 60 } });
-
-    const wrapper = mount(PostFormModal, {
+  test("edit flow populates fields and shows link/is_active inputs", async () => {
+    const wrapper = await mountModal({
       props: {
         visible: false,
         post: buildPost({
@@ -249,37 +267,50 @@ describe("PostFormModal.vue", () => {
           is_pinned: false,
           is_active: false,
         }),
-        organizationId: 10,
-      },
-      global: {
-        plugins: [pinia],
-        stubs: {
-          TransitionRoot: TransitionRootStub,
-          TransitionChild: TransitionChildStub,
-          Dialog: DialogStub,
-          DialogPanel: DialogPanelStub,
-          DialogTitle: DialogTitleStub,
-        },
       },
     });
-
-    await flushPromises();
 
     await wrapper.setProps({ visible: true });
     await flushPromises();
 
-    expect(wrapper.find("input#title").element.value).toBe("Old");
-    expect(wrapper.find("textarea#content").element.value).toBe("OldC");
+    expect([
+      wrapper.find("input#title").element.value,
+      wrapper.find("textarea#content").element.value,
+    ]).toEqual(["Old", "OldC"]);
+    expect([
+      wrapper.find("input#link_name").exists(),
+      wrapper.find("input#link_url").exists(),
+      wrapper.find("input#is_active").exists(),
+    ]).toEqual([true, true, true]);
+  });
 
-    // link section should be visible due to existing link
-    expect(wrapper.find("input#link_name").exists()).toBe(true);
-    expect(wrapper.find("input#link_url").exists()).toBe(true);
+  test("edit flow submits updatePost, notifies, and emits saved", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
 
-    // is_active checkbox exists only for editing
-    expect(wrapper.find("input#is_active").exists()).toBe(true);
+    const store = useOrganizationPostsStore();
+    const updateSpy = jest.spyOn(store, "updatePost").mockResolvedValue({ post: { id: 60 } });
+
+    const wrapper = await mountModal({
+      pinia,
+      props: {
+        visible: false,
+        post: buildPost({
+          id: 6,
+          title: "Old",
+          content: "OldC",
+          link_name: "Doc",
+          link_url: "https://x.com",
+          is_pinned: false,
+          is_active: false,
+        }),
+      },
+    });
+
+    await wrapper.setProps({ visible: true });
+    await flushPromises();
 
     await wrapper.find("input#is_active").setChecked();
-
     await wrapper.find("form").trigger("submit");
     await flushPromises();
 
@@ -291,12 +322,10 @@ describe("PostFormModal.vue", () => {
       link_url: "https://x.com",
       is_active: true,
     });
-
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Post actualizado exitosamente",
       "success"
     );
-
     expect(wrapper.emitted("saved")).toBeTruthy();
   });
 
@@ -345,13 +374,9 @@ describe("PostFormModal.vue", () => {
     expect(isActive.element.checked).toBe(true);
   });
 
-  test("resetForm clears create defaults when post is removed", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const wrapper = mount(PostFormModal, {
+  test("resetForm shows link inputs for editing post", async () => {
+    const wrapper = await mountModal({
       props: {
-        visible: true,
         post: buildPost({
           title: "Editing",
           content: "Editing content",
@@ -360,45 +385,37 @@ describe("PostFormModal.vue", () => {
           is_pinned: true,
           is_active: false,
         }),
-        organizationId: 10,
-      },
-      global: {
-        plugins: [pinia],
-        stubs: {
-          TransitionRoot: TransitionRootStub,
-          TransitionChild: TransitionChildStub,
-          Dialog: DialogStub,
-          DialogPanel: DialogPanelStub,
-          DialogTitle: DialogTitleStub,
-        },
       },
     });
-
-    await flushPromises();
-
-    await wrapper.setProps({
-      post: buildPost({
-        title: "Editing",
-        content: "Editing content",
-        link_name: "Link",
-        link_url: "https://example.com",
-        is_pinned: true,
-        is_active: false,
-      }),
-    });
-    await flushPromises();
 
     expect(wrapper.find("input#link_name").exists()).toBe(true);
+  });
+
+  test("resetForm clears fields when post is removed", async () => {
+    const wrapper = await mountModal({
+      props: {
+        post: buildPost({
+          title: "Editing",
+          content: "Editing content",
+          link_name: "Link",
+          link_url: "https://example.com",
+          is_pinned: true,
+          is_active: false,
+        }),
+      },
+    });
 
     await wrapper.setProps({ post: null });
     await flushPromises();
 
-    expect(wrapper.find("input#title").element.value).toBe("");
-    expect(wrapper.find("textarea#content").element.value).toBe("");
-    expect(wrapper.find("input#link_name").exists()).toBe(false);
-    expect(wrapper.find("input#link_url").exists()).toBe(false);
-    expect(wrapper.find("input#is_active").exists()).toBe(false);
-    expect(wrapper.find("input#is_pinned").element.checked).toBe(false);
+    expect([
+      wrapper.find("input#title").element.value,
+      wrapper.find("textarea#content").element.value,
+      wrapper.find("input#link_name").exists(),
+      wrapper.find("input#link_url").exists(),
+      wrapper.find("input#is_active").exists(),
+      wrapper.find("input#is_pinned").element.checked,
+    ]).toEqual(["", "", false, false, false, false]);
   });
 
   test("link section toggles and preview reflects link and pinned", async () => {

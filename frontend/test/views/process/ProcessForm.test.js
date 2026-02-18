@@ -146,31 +146,39 @@ const mountView = async ({
   };
 };
 
+const mountEditView = async (processOverrides = {}) => {
+  const process = buildProcess(processOverrides);
+  const view = await mountView({
+    routeParams: { action: "edit", process_id: String(process.id) },
+    processes: [process],
+  });
+
+  return { ...view, process };
+};
+
 describe("ProcessForm.vue", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRoute = reactive({ params: { action: "add", process_id: "" } });
   });
 
-  test("loads process data in edit mode and tracks changes", async () => {
-    const process = buildProcess();
+  test("loads process data in edit mode", async () => {
+    const { wrapper, processInitSpy, caseTypeInitSpy, userInitSpy, process } = await mountEditView();
 
-    const { wrapper, processInitSpy, caseTypeInitSpy, userInitSpy } = await mountView({
-      routeParams: { action: "edit", process_id: "101" },
-      processes: [process],
-    });
+    expect([processInitSpy, caseTypeInitSpy, userInitSpy].every((spy) => spy.mock.calls.length)).toBe(true);
+    expect([
+      wrapper.vm.$.setupState.formData.plaintiff,
+      wrapper.vm.$.setupState.formData.authorityEmail,
+      wrapper.vm.$.setupState.selectedCaseType,
+      wrapper.vm.$.setupState.selectedClients.length,
+      wrapper.vm.$.setupState.formData.caseFiles.length,
+      wrapper.vm.$.setupState.isFormModified,
+      wrapper.vm.$.setupState.isSaveButtonEnabled,
+    ]).toEqual(["Alice", "court@test.com", process.case, 1, 1, false, true]);
+  });
 
-    expect(processInitSpy).toHaveBeenCalled();
-    expect(caseTypeInitSpy).toHaveBeenCalled();
-    expect(userInitSpy).toHaveBeenCalled();
-
-    expect(wrapper.vm.$.setupState.formData.plaintiff).toBe("Alice");
-    expect(wrapper.vm.$.setupState.formData.authorityEmail).toBe("court@test.com");
-    expect(wrapper.vm.$.setupState.selectedCaseType).toEqual(process.case);
-    expect(wrapper.vm.$.setupState.selectedClients).toHaveLength(1);
-    expect(wrapper.vm.$.setupState.formData.caseFiles).toHaveLength(1);
-    expect(wrapper.vm.$.setupState.isFormModified).toBe(false);
-    expect(wrapper.vm.$.setupState.isSaveButtonEnabled).toBe(true);
+  test("tracks changes and resets when route action changes", async () => {
+    const { wrapper } = await mountEditView();
 
     wrapper.vm.$.setupState.formData.plaintiff = "Updated";
     await nextTick();
@@ -279,33 +287,51 @@ describe("ProcessForm.vue", () => {
     expect(mockRouterBack).toHaveBeenCalled();
   });
 
-  test("manages clients, stages, files, and uploads", async () => {
+  test("manages client selection and removal", async () => {
     const { wrapper } = await mountView();
     const client = { id: 5, first_name: "Ana", last_name: "Lopez" };
 
     wrapper.vm.$.setupState.onClientSelected(client);
     wrapper.vm.$.setupState.onClientSelected(client);
 
-    expect(wrapper.vm.$.setupState.selectedClients).toHaveLength(1);
-    expect(wrapper.vm.$.setupState.isClientSelected(client)).toBe(true);
+    expect([
+      wrapper.vm.$.setupState.selectedClients.length,
+      wrapper.vm.$.setupState.isClientSelected(client),
+    ]).toEqual([1, true]);
 
     wrapper.vm.$.setupState.removeClient(5);
-    expect(wrapper.vm.$.setupState.selectedClients).toHaveLength(0);
-    expect(wrapper.vm.$.setupState.formData.clientIds).toEqual([]);
+    expect([
+      wrapper.vm.$.setupState.selectedClients.length,
+      wrapper.vm.$.setupState.formData.clientIds,
+    ]).toEqual([0, []]);
+  });
 
-    const initialStages = wrapper.vm.$.setupState.formData.stages.length;
+  test("manages stages and case files", async () => {
+    const { wrapper } = await mountView();
+    const formData = wrapper.vm.$.setupState.formData;
+
+    const initialStages = formData.stages.length;
     wrapper.vm.$.setupState.addStage();
-    expect(wrapper.vm.$.setupState.formData.stages).toHaveLength(initialStages + 1);
-
+    const stagesAfterAdd = formData.stages.length;
     wrapper.vm.$.setupState.deleteStage(0);
-    expect(wrapper.vm.$.setupState.formData.stages).toHaveLength(initialStages);
+    const stagesAfterDelete = formData.stages.length;
 
-    const initialFiles = wrapper.vm.$.setupState.formData.caseFiles.length;
+    const initialFiles = formData.caseFiles.length;
     wrapper.vm.$.setupState.addCaseFile();
-    expect(wrapper.vm.$.setupState.formData.caseFiles).toHaveLength(initialFiles + 1);
-
+    const filesAfterAdd = formData.caseFiles.length;
     wrapper.vm.$.setupState.removeCaseFile(0);
-    expect(wrapper.vm.$.setupState.formData.caseFiles).toHaveLength(initialFiles);
+    const filesAfterRemove = formData.caseFiles.length;
+
+    expect([stagesAfterAdd, stagesAfterDelete, filesAfterAdd, filesAfterRemove]).toEqual([
+      initialStages + 1,
+      initialStages,
+      initialFiles + 1,
+      initialFiles,
+    ]);
+  });
+
+  test("handles file uploads and openFile", async () => {
+    const { wrapper } = await mountView();
 
     const largeFile = createFile("large.pdf", "application/pdf", 51 * 1024 * 1024);
     wrapper.vm.$.setupState.handleFileUpload({ target: { files: [largeFile] } }, 0);

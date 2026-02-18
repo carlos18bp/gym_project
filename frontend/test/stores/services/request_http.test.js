@@ -44,6 +44,21 @@ describe("request_http", () => {
     setCookieValue("csrftoken=abc");
   });
 
+  const runUploadRequest = async () => {
+    localStorage.setItem("token", "tkn");
+
+    const formData = new FormData();
+    formData.append("file", new File(["x"], "x.txt"));
+
+    mockAxiosPost.mockResolvedValueOnce({ status: 200, data: { ok: true } });
+
+    const res = await upload_file_request("uploads/", formData);
+
+    const [url, body, config] = mockAxiosPost.mock.calls[0];
+
+    return { res, url, body, config, formData };
+  };
+
   test("get_request calls axios.get with /api prefix, csrf header, bearer token, and responseType", async () => {
     localStorage.setItem("token", "tkn");
 
@@ -355,31 +370,25 @@ describe("request_http", () => {
     consoleSpy.mockRestore();
   });
 
-  test("upload_file_request posts FormData with transformRequest and token header", async () => {
-    localStorage.setItem("token", "tkn");
+  test("upload_file_request posts FormData and returns response", async () => {
+    const { res, url, body, formData } = await runUploadRequest();
 
-    const formData = new FormData();
-    formData.append("file", new File(["x"], "x.txt"));
+    expect([res.status, url, body]).toEqual([200, "/api/uploads/", formData]);
+  });
 
-    mockAxiosPost.mockResolvedValueOnce({ status: 200, data: { ok: true } });
+  test("upload_file_request sets headers and transformRequest", async () => {
+    const { config, formData } = await runUploadRequest();
 
-    const res = await upload_file_request("uploads/", formData);
-
-    expect(res.status).toBe(200);
-
-    expect(mockAxiosPost).toHaveBeenCalledTimes(1);
-    const [url, body, config] = mockAxiosPost.mock.calls[0];
-
-    expect(url).toBe("/api/uploads/");
-    expect(body).toBe(formData);
-
-    expect(config.headers["X-CSRFToken"]).toBe("abc");
-    expect(config.headers.Authorization).toBe("Bearer tkn");
-    expect(config.headers["Content-Type"]).toBeUndefined();
-
+    expect([
+      config.headers["X-CSRFToken"],
+      config.headers.Authorization,
+      config.headers["Content-Type"],
+    ]).toEqual(["abc", "Bearer tkn", undefined]);
     expect(Array.isArray(config.transformRequest)).toBe(true);
-    expect(config.transformRequest).toHaveLength(1);
-    expect(config.transformRequest[0](formData)).toBe(formData);
+    expect([config.transformRequest.length, config.transformRequest[0](formData)]).toEqual([
+      1,
+      formData,
+    ]);
   });
 
   test("create_request logs error details for non-silent 404 and rethrows", async () => {

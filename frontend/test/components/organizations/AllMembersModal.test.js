@@ -88,23 +88,11 @@ describe("AllMembersModal.vue", () => {
     console.error.mockRestore();
   });
 
-  test("when visible becomes true, loads members for each organization and renders totals", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const store = useOrganizationsStore();
-    const getSpy = jest
-      .spyOn(store, "getOrganizationMembers")
-      .mockImplementation(async (orgId) => {
-        if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
-        if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
-        return [];
-      });
-
+  const mountVisibleModal = async (pinia, organizations) => {
     const wrapper = mount(AllMembersModal, {
       props: {
         visible: false,
-        organizations: [buildOrg({ id: 1, title: "Org 1" }), buildOrg({ id: 2, title: "Org 2" })],
+        organizations,
       },
       global: {
         plugins: [pinia],
@@ -123,20 +111,61 @@ describe("AllMembersModal.vue", () => {
     await wrapper.setProps({ visible: true });
     await flushPromises();
 
+    return wrapper;
+  };
+
+  test("when visible becomes true, loads members for each organization", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const store = useOrganizationsStore();
+    const getSpy = jest
+      .spyOn(store, "getOrganizationMembers")
+      .mockImplementation(async (orgId) => {
+        if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
+        if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
+        return [];
+      });
+
+    await mountVisibleModal(pinia, [
+      buildOrg({ id: 1, title: "Org 1" }),
+      buildOrg({ id: 2, title: "Org 2" }),
+    ]);
+
     expect(getSpy).toHaveBeenCalledWith(1);
     expect(getSpy).toHaveBeenCalledWith(2);
+  });
 
-    expect(wrapper.text()).toContain("Todos los Miembros");
-    expect(wrapper.text()).toContain("2 miembros");
-    expect(wrapper.text()).toContain("2 organizaciones");
+  test("renders totals and member details when visible", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
 
-    expect(wrapper.text()).toContain("Org 1");
-    expect(wrapper.text()).toContain("Org 2");
+    const store = useOrganizationsStore();
+    jest.spyOn(store, "getOrganizationMembers").mockImplementation(async (orgId) => {
+      if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
+      if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
+      return [];
+    });
 
-    expect(wrapper.text()).toContain("Alice Doe");
-    expect(wrapper.text()).toContain("alice@example.com");
-    expect(wrapper.text()).toContain("Bob Roe");
-    expect(wrapper.text()).toContain("bob@example.com");
+    const wrapper = await mountVisibleModal(pinia, [
+      buildOrg({ id: 1, title: "Org 1" }),
+      buildOrg({ id: 2, title: "Org 2" }),
+    ]);
+
+    const text = wrapper.text();
+    const expected = [
+      "Todos los Miembros",
+      "2 miembros",
+      "2 organizaciones",
+      "Org 1",
+      "Org 2",
+      "Alice Doe",
+      "alice@example.com",
+      "Bob Roe",
+      "bob@example.com",
+    ];
+
+    expect(expected.every((item) => text.includes(item))).toBe(true);
   });
 
   test("if a single org members call fails, it still renders others and does not show global error notification", async () => {

@@ -32,6 +32,17 @@ describe("ClientPostCard.vue", () => {
     jest.useRealTimers();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const mountWithCreatedAt = (createdAt) =>
+    mount(ClientPostCard, {
+      props: {
+        post: buildPost({ created_at: createdAt }),
+      },
+    });
+
   test("shows 'Reciente' for posts within last 3 days", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-02-10T00:00:00.000Z"));
@@ -72,16 +83,12 @@ describe("ClientPostCard.vue", () => {
     expect(wrapper.find("a").exists()).toBe(false);
   });
 
-  test("formatRelativeDate handles minutes/hours/days/weeks/months and long dates", async () => {
+  test("formatRelativeDate handles minutes and hours", async () => {
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);
 
-    const wrapper = mount(ClientPostCard, {
-      props: {
-        post: buildPost({ created_at: new Date(now.getTime() - 30 * 1000).toISOString() }),
-      },
-    });
+    const wrapper = mountWithCreatedAt(new Date(now.getTime() - 30 * 1000).toISOString());
 
     expect(wrapper.text()).toContain("hace un momento");
 
@@ -99,10 +106,16 @@ describe("ClientPostCard.vue", () => {
       post: buildPost({ created_at: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString() }),
     });
     expect(wrapper.text()).toContain("hace 3 horas");
+  });
 
-    await wrapper.setProps({
-      post: buildPost({ created_at: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString() }),
-    });
+  test("formatRelativeDate handles days and weeks", async () => {
+    jest.useFakeTimers();
+    const now = new Date("2026-02-10T12:00:00.000Z");
+    jest.setSystemTime(now);
+
+    const wrapper = mountWithCreatedAt(
+      new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+    );
     expect(wrapper.text()).toContain("ayer");
 
     await wrapper.setProps({
@@ -114,10 +127,16 @@ describe("ClientPostCard.vue", () => {
       post: buildPost({ created_at: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString() }),
     });
     expect(wrapper.text()).toContain("hace 2 semanas");
+  });
 
-    await wrapper.setProps({
-      post: buildPost({ created_at: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString() }),
-    });
+  test("formatRelativeDate handles months and long dates", async () => {
+    jest.useFakeTimers();
+    const now = new Date("2026-02-10T12:00:00.000Z");
+    jest.setSystemTime(now);
+
+    const wrapper = mountWithCreatedAt(
+      new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString()
+    );
     expect(wrapper.text()).toContain("hace 2 meses");
 
     const oldDate = new Date(now.getTime() - 400 * 24 * 60 * 60 * 1000);
@@ -130,7 +149,5 @@ describe("ClientPostCard.vue", () => {
       minute: "2-digit",
     });
     expect(wrapper.text()).toContain(expected);
-
-    jest.useRealTimers();
   });
 });

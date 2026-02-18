@@ -8,8 +8,8 @@ from gym_app.models.user import User, UserManager, UserSignature, ActivityFeed
 @pytest.mark.django_db
 class TestUserManager:
     
-    def test_create_user(self):
-        """Test creating a regular user with the UserManager"""
+    def test_create_user_basic_fields(self):
+        """Test creating a regular user with the UserManager - basic fields"""
         user = User.objects.create_user(
             email='test@example.com',
             password='testpassword',
@@ -22,6 +22,14 @@ class TestUserManager:
         assert user.check_password('testpassword')
         assert user.first_name == 'Test'
         assert user.last_name == 'User'
+
+    def test_create_user_default_flags(self):
+        """Test creating a regular user with the UserManager - default flags"""
+        user = User.objects.create_user(
+            email='test_flags@example.com',
+            password='testpassword',
+        )
+        
         assert user.is_staff is False
         assert user.is_superuser is False
         assert user.role == 'basic'  # Default role for new users
@@ -73,8 +81,8 @@ class TestUserManager:
 @pytest.mark.django_db
 class TestUser:
     
-    def test_user_creation_minimal(self):
-        """Test creating a user with minimal fields"""
+    def test_user_creation_minimal_basic(self):
+        """Test creating a user with minimal fields - basic fields"""
         user = User.objects.create(
             email='minimal@example.com',
             password='raw_password'  # Note: This doesn't hash the password
@@ -86,14 +94,22 @@ class TestUser:
         assert user.last_name is None
         assert user.contact is None
         assert user.birthday is None
+
+    def test_user_creation_minimal_defaults(self):
+        """Test creating a user with minimal fields - default values"""
+        user = User.objects.create(
+            email='minimal_defaults@example.com',
+            password='raw_password'
+        )
+        
         assert user.identification is None
         assert user.document_type is None
         assert user.role == 'basic'  # Default role
         assert user.is_gym_lawyer is False  # Default value
         assert user.is_profile_completed is False  # Default value
     
-    def test_user_creation_complete(self):
-        """Test creating a user with all fields"""
+    def test_user_creation_complete_basic_fields(self):
+        """Test creating a user with all fields - basic fields"""
         test_photo = SimpleUploadedFile(
             "profile.jpg",
             b"file_content",
@@ -121,6 +137,26 @@ class TestUser:
         assert user.last_name == 'User'
         assert user.contact == '1234567890'
         assert user.birthday == date(1990, 1, 1)
+
+    def test_user_creation_complete_extended_fields(self):
+        """Test creating a user with all fields - extended fields"""
+        test_photo = SimpleUploadedFile(
+            "profile2.jpg",
+            b"file_content",
+            content_type="image/jpeg"
+        )
+        
+        user = User.objects.create(
+            email='complete2@example.com',
+            password='raw_password',
+            identification='ID12345',
+            document_type='CC',
+            role='lawyer',
+            photo_profile=test_photo,
+            is_gym_lawyer=True,
+            is_profile_completed=True
+        )
+        
         assert user.identification == 'ID12345'
         assert user.document_type == 'CC'
         assert user.role == 'lawyer'
@@ -139,6 +175,7 @@ class TestUser:
                 document_type=doc_type
             )
             user.full_clean(exclude=['password'])
+            assert user.document_type == doc_type
         
         # Invalid document type
         user = User(
@@ -146,8 +183,9 @@ class TestUser:
             password='testpassword',
             document_type='INVALID'
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             user.full_clean(exclude=['password'])
+        assert exc_info.value is not None
     
     def test_user_role_choices(self):
         """Test role choices validation"""
@@ -160,6 +198,7 @@ class TestUser:
                 role=role
             )
             user.full_clean(exclude=['password'])
+            assert user.role == role
         
         # Invalid role
         user = User(
@@ -167,8 +206,9 @@ class TestUser:
             password='testpassword',
             role='INVALID'
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc_info:
             user.full_clean(exclude=['password'])
+        assert exc_info.value is not None
     
     def test_unique_email_constraint(self):
         """Test unique email constraint"""
@@ -179,11 +219,13 @@ class TestUser:
         )
         
         # Try to create another user with the same email
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             User.objects.create(
                 email='duplicate@example.com',
                 password='password2'
             )
+        assert exc_info.value is not None
+        assert User.objects.filter(email='duplicate@example.com').count() == 1
     
     def test_str_representation(self):
         """Test string representation of user"""
@@ -301,12 +343,14 @@ class TestUserSignature:
             content_type="image/png"
         )
 
-        with pytest.raises(IntegrityError):
+        with pytest.raises(IntegrityError) as exc_info:
             UserSignature.objects.create(
                 user=user,
                 signature_image=second_signature,
                 method='draw'
             )
+        assert exc_info.value is not None
+        assert UserSignature.objects.filter(user=user).count() == 1
 
 
 @pytest.mark.django_db

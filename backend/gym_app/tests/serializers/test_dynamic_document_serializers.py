@@ -196,12 +196,10 @@ class TestDynamicDocumentSerializer:
         assert 'variable1' in variable_names
         assert 'variable2' in variable_names
     
-    def test_create_document(self, document_data, document_variable_data, user):
-        """Test creating a document with variables"""
-        # Add variables to document data
+    def test_create_document_basic_fields(self, document_data, document_variable_data, user):
+        """Test creating a document with variables - basic fields"""
         document_data['variables'] = [document_variable_data]
         
-        # Create mock request with authenticated user
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -212,13 +210,24 @@ class TestDynamicDocumentSerializer:
         assert serializer.is_valid()
         document = serializer.save()
         
-        # Verify document was created with the correct data
         assert document.title == document_data['title']
         assert document.content == document_data['content']
         assert document.state == document_data['state']
         assert document.created_by == user
+
+    def test_create_document_variables(self, document_data, document_variable_data, user):
+        """Test creating a document with variables - variables creation"""
+        document_data['variables'] = [document_variable_data]
         
-        # Verify variables were created
+        class MockRequest:
+            def __init__(self, user):
+                self.user = user
+        
+        context = {'request': MockRequest(user)}
+        serializer = DynamicDocumentSerializer(data=document_data, context=context)
+        assert serializer.is_valid()
+        document = serializer.save()
+        
         assert document.variables.count() == 1
         variable = document.variables.first()
         assert variable.name_en == document_variable_data['name_en']
@@ -227,16 +236,29 @@ class TestDynamicDocumentSerializer:
     
     def test_update_document(self, document_with_variables, user):
         """Test updating a document and its variables"""
-        # Get existing variables to update
+        ev = list(document_with_variables.variables.all())
+        update_data = {
+            'title': 'Updated Document', 'content': '<p>Updated.</p>', 'state': 'Progress',
+            'variables': [
+                {'id': ev[0].id, 'name_en': ev[0].name_en, 'name_es': ev[0].name_es, 'tooltip': 'Updated', 'field_type': ev[0].field_type, 'value': 'Updated'},
+                {'name_en': 'new_var', 'name_es': 'nueva_var', 'tooltip': 'New', 'field_type': 'input', 'value': 'New'}
+            ]
+        }
+        class MockRequest:
+            def __init__(self, u): self.user = u
+
+        serializer = DynamicDocumentSerializer(document_with_variables, data=update_data, partial=True, context={'request': MockRequest(user)})
+        assert serializer.is_valid()
+        doc = serializer.save()
+        assert doc.title == 'Updated Document'
+        assert doc.variables.count() == 2
+
+    def test_update_document_variables_changes(self, document_with_variables, user):
+        """Test that updating a document correctly modifies variables"""
         existing_variables = list(document_with_variables.variables.all())
         
-        # Prepare update data
         update_data = {
-            'title': 'Updated Document',
-            'content': '<p>This is an updated document.</p>',
-            'state': 'Progress',
             'variables': [
-                # Update first variable
                 {
                     'id': existing_variables[0].id,
                     'name_en': existing_variables[0].name_en,
@@ -245,7 +267,6 @@ class TestDynamicDocumentSerializer:
                     'field_type': existing_variables[0].field_type,
                     'value': 'Updated Value'
                 },
-                # Add a new variable
                 {
                     'name_en': 'new_variable',
                     'name_es': 'nueva_variable',
@@ -253,33 +274,19 @@ class TestDynamicDocumentSerializer:
                     'field_type': 'input',
                     'value': 'New value'
                 }
-                # Note: Second existing variable is not included, so it should be deleted
             ]
         }
         
-        # Create context with request
         class MockRequest:
             def __init__(self, user):
                 self.user = user
         
         context = {'request': MockRequest(user)}
         serializer = DynamicDocumentSerializer(
-            document_with_variables, 
-            data=update_data, 
-            partial=True,
-            context=context
+            document_with_variables, data=update_data, partial=True, context=context
         )
-        
         assert serializer.is_valid()
         updated_document = serializer.save()
-        
-        # Verify document was updated
-        assert updated_document.title == update_data['title']
-        assert updated_document.content == update_data['content']
-        assert updated_document.state == update_data['state']
-        
-        # Verify variables were updated correctly
-        assert updated_document.variables.count() == 2  # One updated, one new, one deleted
         
         # First variable should be updated
         updated_var = updated_document.variables.get(id=existing_variables[0].id)
@@ -1564,10 +1571,16 @@ class TestDynamicDocumentSummaryEdges:
         sig = DocumentSignature.objects.create(document=document, signer=lawyer)
         serializer = DynamicDocumentSerializer(context={"request": rf.get("/")})
         # Mock the queryset to return a signature with signer=None
-        mock_sig = MagicMock()
-        mock_sig.signer = None
-        mock_obj = MagicMock()
-        mock_obj.signatures.select_related.return_value.all.return_value = [mock_sig]
+        from types import SimpleNamespace
+        mock_sig = SimpleNamespace(signer=None)
+        
+        class MockSignatures:
+            def select_related(self, *args):
+                return self
+            def all(self):
+                return [mock_sig]
+        
+        mock_obj = SimpleNamespace(signatures=MockSignatures())
         result = serializer.get_signers(mock_obj)
         assert result == []
 
@@ -2053,8 +2066,8 @@ class TestDocumentRelationshipSerializerEdges:
             source_document=document, target_document=doc2, created_by=lawyer,
         )
         serializer = DocumentRelationshipSerializer(context={"request": rf.get("/")})
-        mock_obj = MagicMock()
-        mock_obj.created_by = None
+        from types import SimpleNamespace
+        mock_obj = SimpleNamespace(created_by=None)
         assert serializer.get_created_by_name(mock_obj) == ""
 
     def test_validate_self_relationship_raises(self, document, rf, lawyer):

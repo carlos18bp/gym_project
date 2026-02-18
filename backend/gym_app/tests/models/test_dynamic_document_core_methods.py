@@ -234,12 +234,14 @@ def test_document_relationship_clean_rejects_self(user_factory, document_factory
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
-    with pytest.raises(ValidationError, match="cannot be related to itself"):
+    with pytest.raises(ValidationError, match="cannot be related to itself") as exc_info:
         DocumentRelationship.objects.create(
             source_document=document,
             target_document=document,
             created_by=creator,
         )
+    assert exc_info.value is not None
+    assert DocumentRelationship.objects.filter(source_document=document).count() == 0
 
 
 def test_document_relationship_str(user_factory, document_factory):
@@ -475,13 +477,15 @@ def test_document_relationship_unique_together(user_factory, document_factory):
         created_by=creator,
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentRelationship.objects.create(
                 source_document=source,
                 target_document=target,
                 created_by=creator,
             )
+    assert exc_info.value is not None
+    assert DocumentRelationship.objects.filter(source_document=source, target_document=target).count() == 1
 
 
 def test_document_signature_unique_together(user_factory, document_factory):
@@ -491,9 +495,11 @@ def test_document_signature_unique_together(user_factory, document_factory):
 
     DocumentSignature.objects.create(document=document, signer=signer)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentSignature.objects.create(document=document, signer=signer)
+    assert exc_info.value is not None
+    assert DocumentSignature.objects.filter(document=document, signer=signer).count() == 1
 
 
 def test_document_signature_ordering_by_signer_email(user_factory, document_factory):

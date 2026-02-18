@@ -100,17 +100,16 @@ class Command(BaseCommand):
         lawyers = list(User.objects.filter(role='lawyer')) if with_responses else []
 
         # Preferred test users by email (if they already exist)
+        # Note: Search by email only to handle role changes gracefully
         special_lawyer = User.objects.filter(
             email='core.paginaswebscolombia@gmail.com',
             role='lawyer'
         ).first()
         special_client = User.objects.filter(
             email='carlos18bp@gmail.com',
-            role='client'
         ).first()
         special_basic = User.objects.filter(
             email='info.montreal.studios@gmail.com',
-            role='basic'
         ).first()
 
         # Enrich client pool so these users more often get requests

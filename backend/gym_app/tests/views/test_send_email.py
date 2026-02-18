@@ -28,24 +28,26 @@ def _mock_template(html="<html><body>{{ content_html }}</body></html>"):
 
 def test_send_template_email_missing_layout_template_raises():
     with patch('gym_app.views.layouts.sendEmail.get_template', side_effect=Exception('missing layout')):
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError) as exc_info:
             send_template_email(
                 template_name='legal_request',
                 subject='Test',
                 to_emails=['test@example.com'],
             )
+        assert exc_info.value is not None
 
 
 def test_send_template_email_missing_content_template_raises():
     layout_template = _mock_template()
 
     with patch('gym_app.views.layouts.sendEmail.get_template', side_effect=[layout_template, Exception('missing content')]):
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError) as exc_info:
             send_template_email(
                 template_name='legal_request',
                 subject='Test',
                 to_emails=['test@example.com'],
             )
+        assert exc_info.value is not None
 
 
 def test_send_template_email_skips_missing_attachments():

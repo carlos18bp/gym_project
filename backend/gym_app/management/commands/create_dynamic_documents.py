@@ -63,8 +63,8 @@ class Command(BaseCommand):
             if user and user not in client_candidates:
                 client_candidates.extend([user] * 4)
 
-        # Document state choices
-        states = ['Draft', 'Published', 'Progress', 'Completed', 'Rejected', 'Pending Review']
+        # Document state choices (must match DynamicDocument.STATE_CHOICES)
+        states = ['Draft', 'Published', 'Progress', 'Completed', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired']
         
         # Document template titles and content patterns
         document_templates = [

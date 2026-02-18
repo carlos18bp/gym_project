@@ -9,6 +9,26 @@ describe("User Guide Store", () => {
     jest.clearAllMocks();
   });
 
+  const seedCustomGuide = (store, sectionContent = "Contenido de ejemplo para buscar") => {
+    store.guideContent = {
+      custom: {
+        name: "Custom Module",
+        description: "Custom description",
+        sections: [
+          {
+            id: "sec",
+            name: "Sección",
+            description: "",
+            content: sectionContent,
+            features: ["Feature Uno"],
+          },
+        ],
+      },
+    };
+
+    return sectionContent;
+  };
+
   test("initializeGuideContent is idempotent and sets initialized", () => {
     const store = useUserGuideStore();
 
@@ -157,45 +177,33 @@ describe("User Guide Store", () => {
     });
   });
 
-  test("searchGuideContent uses icon and snippet fallbacks", () => {
+  test("searchGuideContent uses icon fallback for module and section results", () => {
     const store = useUserGuideStore();
-    const sectionContent = "Contenido de ejemplo para buscar";
+    const sectionContent = seedCustomGuide(store);
 
-    store.guideContent = {
-      custom: {
-        name: "Custom Module",
-        description: "Custom description",
-        sections: [
-          {
-            id: "sec",
-            name: "Sección",
-            description: "",
-            content: sectionContent,
-            features: ["Feature Uno"],
-          },
-        ],
-      },
-    };
+    const moduleMatch = store.searchGuideContent("custom").find((result) => result.section === "General");
+    const sectionMatch = store.searchGuideContent("contenido").find((result) => result.section === "Sección");
 
-    const moduleResults = store.searchGuideContent("custom");
-    const moduleMatch = moduleResults.find((result) => result.section === "General");
+    expect([
+      Boolean(moduleMatch),
+      moduleMatch.icon,
+      Boolean(sectionMatch),
+      sectionMatch.snippet,
+      sectionMatch.icon,
+    ]).toEqual([true, DocumentTextIcon, true, sectionContent.substring(0, 150), DocumentTextIcon]);
+  });
 
-    expect(moduleMatch).toBeTruthy();
-    expect(moduleMatch.icon).toBe(DocumentTextIcon);
+  test("searchGuideContent uses feature snippet fallback", () => {
+    const store = useUserGuideStore();
+    seedCustomGuide(store);
 
-    const sectionResults = store.searchGuideContent("contenido");
-    const sectionMatch = sectionResults.find((result) => result.section === "Sección");
+    const featureMatch = store.searchGuideContent("feature").find((result) => result.title === "Feature Uno");
 
-    expect(sectionMatch).toBeTruthy();
-    expect(sectionMatch.snippet).toBe(sectionContent.substring(0, 150));
-    expect(sectionMatch.icon).toBe(DocumentTextIcon);
-
-    const featureResults = store.searchGuideContent("feature");
-    const featureMatch = featureResults.find((result) => result.title === "Feature Uno");
-
-    expect(featureMatch).toBeTruthy();
-    expect(featureMatch.snippet).toBe("Funcionalidad: Feature Uno");
-    expect(featureMatch.icon).toBe(DocumentTextIcon);
+    expect([Boolean(featureMatch), featureMatch.snippet, featureMatch.icon]).toEqual([
+      true,
+      "Funcionalidad: Feature Uno",
+      DocumentTextIcon,
+    ]);
   });
 
   test("searchGuideContent handles sections without features", () => {

@@ -7,8 +7,8 @@ from gym_app.serializers.legal_update import LegalUpdateSerializer
 
 @pytest.mark.django_db
 class TestLegalUpdateSerializer:
-    def test_serialize_legal_update_with_image_and_request(self):
-        """Debe construir image_url absoluta cuando hay request en contexto."""
+    def test_serialize_legal_update_basic_fields(self):
+        """Test basic field serialization."""
         image = SimpleUploadedFile(
             "update.jpg",
             b"image-bytes",
@@ -23,11 +23,7 @@ class TestLegalUpdateSerializer:
             is_active=True,
         )
 
-        class MockRequest:
-            def build_absolute_uri(self, url):
-                return f"http://testserver{url}"
-
-        serializer = LegalUpdateSerializer(update, context={"request": MockRequest()})
+        serializer = LegalUpdateSerializer(update)
         data = serializer.data
 
         assert data["id"] == update.id
@@ -36,6 +32,28 @@ class TestLegalUpdateSerializer:
         assert data["link_text"] == update.link_text
         assert data["link_url"] == update.link_url
         assert data["is_active"] is True
+
+    def test_serialize_legal_update_image_url_with_request(self):
+        """Debe construir image_url absoluta cuando hay request en contexto."""
+        image = SimpleUploadedFile(
+            "update2.jpg",
+            b"image-bytes",
+            content_type="image/jpeg",
+        )
+        update = LegalUpdate.objects.create(
+            title="Otra norma",
+            content="Contenido",
+            image=image,
+            is_active=True,
+        )
+
+        class MockRequest:
+            def build_absolute_uri(self, url):
+                return f"http://testserver{url}"
+
+        serializer = LegalUpdateSerializer(update, context={"request": MockRequest()})
+        data = serializer.data
+
         assert data["image_url"].startswith("http://testserver")
         assert "update" in data["image_url"]
 

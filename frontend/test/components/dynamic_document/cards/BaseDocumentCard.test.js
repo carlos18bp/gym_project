@@ -205,6 +205,20 @@ describe("BaseDocumentCard.vue", () => {
     };
   };
 
+  const mountDerivedStatusCard = (state, highlightedDocId = 1) =>
+    mount(BaseDocumentCard, {
+      props: basePropsDerivedStatus({
+        document: { state },
+        highlightedDocId,
+      }),
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+  const getRootClasses = (wrapper) =>
+    wrapper.find("[data-document-id='1']").classes().join(" ");
+
   const globalStubs = {
     Menu: { template: "<div v-bind='$attrs' class='menu-container'><slot /></div>" },
     MenuButton: { template: "<button v-bind='$attrs'><slot /></button>" },
@@ -401,44 +415,30 @@ describe("BaseDocumentCard.vue", () => {
     expect(menuComp.props("menuPosition")).toContain("sm:-translate-x");
   });
 
-  test("derives status icon/text/badge classes and card/highlight classes from document state", async () => {
-    const wrapper = mount(BaseDocumentCard, {
-      props: basePropsDerivedStatus({
-        document: { state: "Published" },
-        highlightedDocId: 1,
-      }),
-      global: {
-        stubs: globalStubs,
-      },
-    });
+  test("Published state uses check icon and green highlight", () => {
+    const wrapper = mountDerivedStatusCard("Published");
 
     expect(wrapper.find("[data-test='status-check']").exists()).toBe(true);
     expect(wrapper.text()).toContain("Publicado");
+    expect(getRootClasses(wrapper)).toContain("border-green-400");
+    expect(getRootClasses(wrapper)).toContain("animate-pulse-highlight-green");
+  });
 
-    const root = wrapper.find("[data-document-id='1']");
-    const cls = () => root.classes().join(" ");
-
-    expect(cls()).toContain("border-green-400");
-    expect(cls()).toContain("animate-pulse-highlight-green");
-
-    await wrapper.setProps({
-      document: { id: 1, title: "My Document", state: "PendingSignatures", tags: [] },
-      highlightedDocId: 1,
-    });
+  test("Pending signatures uses pencil icon and yellow highlight", () => {
+    const wrapper = mountDerivedStatusCard("PendingSignatures");
 
     expect(wrapper.find("[data-test='status-pencil']").exists()).toBe(true);
     expect(wrapper.text()).toContain("Pendiente de firmas");
-    expect(cls()).toContain("border-yellow-400");
-    expect(cls()).toContain("animate-pulse-highlight-yellow");
+    expect(getRootClasses(wrapper)).toContain("border-yellow-400");
+    expect(getRootClasses(wrapper)).toContain("animate-pulse-highlight-yellow");
+  });
 
-    await wrapper.setProps({
-      document: { id: 1, title: "My Document", state: "Draft", tags: [] },
-      highlightedDocId: 1,
-    });
+  test("Draft state uses blue highlight", () => {
+    const wrapper = mountDerivedStatusCard("Draft");
 
     expect(wrapper.text()).toContain("Borrador");
-    expect(cls()).toContain("border-blue-300");
-    expect(cls()).toContain("animate-pulse-highlight-blue");
+    expect(getRootClasses(wrapper)).toContain("border-blue-300");
+    expect(getRootClasses(wrapper)).toContain("animate-pulse-highlight-blue");
   });
 
   test("showMenuOptions=false hides menu when menuOptions is null, but menuOptions override still renders", async () => {
@@ -690,43 +690,35 @@ describe("BaseDocumentCard.vue", () => {
     expect(wrapper.vm.organizedMenuItems).toEqual([]);
   });
 
-  test("status text/classes handle progress/completed/fully signed and unknown", async () => {
-    const wrapper = mount(BaseDocumentCard, {
-      props: basePropsDerivedStatus({
-        document: { id: 1, title: "Doc", state: "Progress", tags: [] },
-      }),
-      global: {
-        stubs: globalStubs,
-      },
-    });
+  test("status text/classes handle progress", () => {
+    const wrapper = mountDerivedStatusCard("Progress");
 
     expect(wrapper.text()).toContain("En progreso");
     expect(wrapper.find("[data-test='status-pencil']").exists()).toBe(true);
+  });
 
-    await wrapper.setProps({
-      document: { id: 1, title: "Doc", state: "Completed", tags: [] },
-    });
+  test("status text/classes handle completed", () => {
+    const wrapper = mountDerivedStatusCard("Completed");
+
     expect(wrapper.text()).toContain("Completado");
     expect(wrapper.find("[data-test='status-check']").exists()).toBe(true);
+  });
 
-    await wrapper.setProps({
-      document: { id: 1, title: "Doc", state: "FullySigned", tags: [] },
-    });
+  test("status text/classes handle fully signed", () => {
+    const wrapper = mountDerivedStatusCard("FullySigned");
+
     expect(wrapper.text()).toContain("Completamente firmado");
     expect(wrapper.find("[data-test='status-check']").exists()).toBe(true);
+  });
 
-    await wrapper.setProps({
-      document: { id: 1, title: "Doc", state: "Unknown", tags: [] },
-    });
+  test("status text/classes handle unknown state", () => {
+    const wrapper = mountDerivedStatusCard("Unknown");
+
     expect(wrapper.text()).toContain("Desconocido");
-
-    const badge = wrapper.find("div.inline-flex");
-    expect(badge.classes()).toEqual(
+    expect(wrapper.find("div.inline-flex").classes()).toEqual(
       expect.arrayContaining(["bg-gray-100", "text-gray-700"])
     );
-
-    const root = wrapper.find("[data-document-id='1']");
-    expect(root.classes()).toContain("border-gray-200");
+    expect(getRootClasses(wrapper)).toContain("border-gray-200");
   });
 
   test("lawyer Published menu actions call store actions and open email modal", async () => {
@@ -849,7 +841,7 @@ describe("BaseDocumentCard.vue", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  test("signatures cardType exposes signature actions and canSignDocument branches", async () => {
+  const mountPendingSignatures = () => {
     const baseDoc = {
       id: 20,
       title: "Sig Doc",
@@ -861,7 +853,7 @@ describe("BaseDocumentCard.vue", () => {
       tags: [],
     };
 
-    const wrapperPending = mount(BaseDocumentCard, {
+    const wrapper = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
         cardType: "signatures",
         cardContext: "folder",
@@ -876,41 +868,65 @@ describe("BaseDocumentCard.vue", () => {
       },
     });
 
-    const textsPending = wrapperPending
+    return { wrapper, baseDoc };
+  };
+
+  test("signatures cardType shows pending actions", async () => {
+    const { wrapper } = mountPendingSignatures();
+
+    const textsPending = wrapper
       .findAll("button")
       .map((b) => (b.text() || "").trim())
       .filter(Boolean);
 
-    expect(textsPending).toContain("Estado de las firmas");
-    expect(textsPending).toContain("Firmar documento");
-    expect(textsPending).toContain("Descargar PDF");
-    expect(textsPending).toContain("Quitar de Carpeta");
+    expect(textsPending).toEqual(
+      expect.arrayContaining([
+        "Estado de las firmas",
+        "Firmar documento",
+        "Descargar PDF",
+        "Quitar de Carpeta",
+      ])
+    );
+  });
+
+  test("signatures cardType pending actions trigger handlers", async () => {
+    const { wrapper } = mountPendingSignatures();
 
     const clickPending = async (label) => {
-      const b = wrapperPending
+      const b = wrapper
         .findAll("button")
         .find((x) => (x.text() || "").trim() === label);
-      expect(b).toBeTruthy();
       await b.trigger("click");
     };
 
     await clickPending("Estado de las firmas");
+    await clickPending("Firmar documento");
+    await clickPending("Descargar PDF");
+    await clickPending("Quitar de Carpeta");
+
     expect(mockOpenModal).toHaveBeenCalledWith(
       "signatures",
       expect.objectContaining({ id: 20 })
     );
-
-    await clickPending("Firmar documento");
     expect(mockSignDocument).toHaveBeenCalledWith(
       expect.objectContaining({ id: 20 }),
       expect.any(Function)
     );
-
-    await clickPending("Descargar PDF");
     expect(mockDownloadPDFDocument).toHaveBeenCalledWith(expect.objectContaining({ id: 20 }));
+    expect(wrapper.emitted("remove-from-folder")).toBeTruthy();
+  });
 
-    await clickPending("Quitar de Carpeta");
-    expect(wrapperPending.emitted("remove-from-folder")).toBeTruthy();
+  test("signatures cardType shows signed download action", async () => {
+    const baseDoc = {
+      id: 20,
+      title: "Sig Doc",
+      requires_signature: true,
+      signatures: [
+        { signer_email: "test@example.com", signed: false },
+        { signer_email: "other@example.com", signed: true },
+      ],
+      tags: [],
+    };
 
     const wrapperFullySigned = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
@@ -939,6 +955,19 @@ describe("BaseDocumentCard.vue", () => {
     expect(mockDownloadSignedDocument).toHaveBeenCalledWith(
       expect.objectContaining({ id: 20 })
     );
+  });
+
+  test("signatures cardType hides sign action when user cannot sign", async () => {
+    const baseDoc = {
+      id: 20,
+      title: "Sig Doc",
+      requires_signature: true,
+      signatures: [
+        { signer_email: "test@example.com", signed: false },
+        { signer_email: "other@example.com", signed: true },
+      ],
+      tags: [],
+    };
 
     const wrapperCantSign = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
@@ -1062,7 +1091,7 @@ describe("BaseDocumentCard.vue", () => {
     consoleWarnSpy.mockRestore();
   });
 
-  test("modal close and refresh wiring: signatures/permissions/letterhead/relationships", async () => {
+  test("modal wiring renders open modals", async () => {
     const wrapper = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
         cardType: "lawyer",
@@ -1088,6 +1117,25 @@ describe("BaseDocumentCard.vue", () => {
     expect(wrapper.find("[data-test='modal-permissions']").exists()).toBe(true);
     expect(wrapper.find("[data-test='modal-letterhead']").exists()).toBe(true);
     expect(wrapper.find("[data-test='modal-relationships']").exists()).toBe(true);
+  });
+
+  test("modal wiring refresh events emit refresh", async () => {
+    const wrapper = mount(BaseDocumentCard, {
+      props: basePropsDerivedStatus({
+        cardType: "lawyer",
+        document: { id: 40, title: "Doc", state: "Published", variables: [], tags: [] },
+        showMenuOptions: true,
+      }),
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    mockActiveModalsRef.value.signatures.isOpen = true;
+    mockActiveModalsRef.value.permissions.isOpen = true;
+    mockActiveModalsRef.value.letterhead.isOpen = true;
+    mockActiveModalsRef.value.relationships.isOpen = true;
+    await wrapper.vm.$nextTick();
 
     await wrapper.find("[data-test='refresh-signatures']").trigger("click");
     expect(wrapper.emitted("refresh")).toBeTruthy();
@@ -1101,6 +1149,25 @@ describe("BaseDocumentCard.vue", () => {
 
     await wrapper.find("[data-test='refresh-relationships']").trigger("click");
     expect(wrapper.emitted("refresh")).toBeTruthy();
+  });
+
+  test("modal wiring close actions call closeModal", async () => {
+    const wrapper = mount(BaseDocumentCard, {
+      props: basePropsDerivedStatus({
+        cardType: "lawyer",
+        document: { id: 40, title: "Doc", state: "Published", variables: [], tags: [] },
+        showMenuOptions: true,
+      }),
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    mockActiveModalsRef.value.signatures.isOpen = true;
+    mockActiveModalsRef.value.permissions.isOpen = true;
+    mockActiveModalsRef.value.letterhead.isOpen = true;
+    mockActiveModalsRef.value.relationships.isOpen = true;
+    await wrapper.vm.$nextTick();
 
     await wrapper.find("[data-test='close-signatures']").trigger("click");
     await wrapper.find("[data-test='close-permissions']").trigger("click");

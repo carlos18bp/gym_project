@@ -13,6 +13,20 @@ describe("Subscription Store", () => {
     jest.clearAllMocks();
   });
 
+  const collectLoadingResets = async (store, actions) => {
+    const results = [];
+    for (const action of actions) {
+      let failed = false;
+      try {
+        await action();
+      } catch {
+        failed = true;
+      }
+      results.push({ failed, isLoading: store.isLoading });
+    }
+    return results;
+  };
+
   test("initializes with empty state", () => {
     const store = useSubscriptionStore();
 
@@ -269,22 +283,21 @@ describe("Subscription Store", () => {
     mock.onPatch("/api/subscriptions/reactivate/").networkError();
     mock.onPatch("/api/subscriptions/update-payment-method/").networkError();
 
-    await expect(store.fetchSubscriptionHistory()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
+    const results = await collectLoadingResets(store, [
+      () => store.fetchSubscriptionHistory(),
+      () => store.createSubscription({ plan_type: "cliente", payment_source_id: "ps" }),
+      () => store.cancelSubscription(),
+      () => store.reactivateSubscription(),
+      () => store.updatePaymentMethod("new"),
+    ]);
 
-    await expect(
-      store.createSubscription({ plan_type: "cliente", payment_source_id: "ps" })
-    ).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.cancelSubscription()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.reactivateSubscription()).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
-
-    await expect(store.updatePaymentMethod("new")).rejects.toBeTruthy();
-    expect(store.isLoading).toBe(false);
+    expect(results).toEqual([
+      { failed: true, isLoading: false },
+      { failed: true, isLoading: false },
+      { failed: true, isLoading: false },
+      { failed: true, isLoading: false },
+      { failed: true, isLoading: false },
+    ]);
 
     consoleSpy.mockRestore();
   });

@@ -48,7 +48,7 @@ describe("useSendEmail", () => {
     expect(mockCreateRequest).not.toHaveBeenCalled();
   });
 
-  test("sendEmail: sends FormData with attachments + extra params and notifies success", async () => {
+  const runSendEmailSuccess = async () => {
     const { sendEmail, isLoading, errorMessage } = useSendEmail();
 
     const file1 = new File(["hello"], "hello.txt", { type: "text/plain" });
@@ -66,34 +66,38 @@ describe("useSendEmail", () => {
 
     const result = await resultPromise;
 
-    expect(result).toEqual({ ok: true });
+    return { result, isLoading, errorMessage, file1 };
+  };
 
+  test("sendEmail: notifies success and clears loading state", async () => {
+    const { result, isLoading, errorMessage } = await runSendEmailSuccess();
+
+    expect(result).toEqual({ ok: true });
     expect(mockShowLoading).toHaveBeenCalledWith(
       "Sending email...",
       "Please wait while we send the email."
     );
     expect(mockHideLoading).toHaveBeenCalled();
-
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Email sent successfully.",
       "success"
     );
+    expect([errorMessage.value, isLoading.value]).toEqual(["", false]);
+  });
 
-    expect(errorMessage.value).toBe("");
-    expect(isLoading.value).toBe(false);
-
-    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+  test("sendEmail: sends FormData with attachments and extra params", async () => {
+    const { file1 } = await runSendEmailSuccess();
 
     const [endpointArg, formDataArg] = mockCreateRequest.mock.calls[0];
     expect(endpointArg).toBe("dynamic-documents/send_email_with_attachments/");
-
     expect(formDataArg).toBeInstanceOf(FormData);
-    expect(formDataArg.get("to_email")).toBe("to@test.com");
-    expect(formDataArg.get("subject")).toBe("Subject");
-    expect(formDataArg.get("body")).toBe("Body");
-    expect(formDataArg.get("extra_key")).toBe("extra_value");
-
-    expect(formDataArg.get("attachments[0]")).toBe(file1);
+    expect([
+      formDataArg.get("to_email"),
+      formDataArg.get("subject"),
+      formDataArg.get("body"),
+      formDataArg.get("extra_key"),
+      formDataArg.get("attachments[0]"),
+    ]).toEqual(["to@test.com", "Subject", "Body", "extra_value", file1]);
   });
 
   test("sendEmail: hides loading, notifies error, sets errorMessage and rethrows when request fails", async () => {

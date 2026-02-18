@@ -168,6 +168,7 @@ class TestSendVerificationCode:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Captcha verification failed' in response.data['error']
+        mock_requests_post.assert_called_once()
 
     @patch('gym_app.utils.captcha.requests.post', side_effect=requests.RequestException('network error'))
     @pytest.mark.edge
@@ -182,7 +183,8 @@ class TestSendVerificationCode:
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'Error verifying captcha' in response.data['error']
-    
+        mock_requests_post.assert_called_once()
+
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_send_verification_code_existing_email(self, mock_requests_post, api_client, existing_user):
@@ -204,7 +206,8 @@ class TestSendVerificationCode:
         assert response.status_code == status.HTTP_409_CONFLICT
         assert 'error' in response.data
         assert 'already registered' in response.data['error']
-    
+        mock_requests_post.assert_called_once()
+
     @pytest.mark.edge
     def test_send_verification_code_no_email(self, api_client):
         """Test sending verification code without providing email"""
@@ -272,6 +275,7 @@ class TestSignIn:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert 'error' in response.data
+        mock_requests_post.assert_called_once()
 
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
@@ -292,6 +296,7 @@ class TestSignIn:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Captcha verification failed' in response.data['error']
+        mock_requests_post.assert_called_once()
 
     @patch('gym_app.utils.captcha.requests.post', side_effect=requests.RequestException('network error'))
     @pytest.mark.edge
@@ -307,6 +312,7 @@ class TestSignIn:
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'Error verifying captcha' in response.data['error']
+        mock_requests_post.assert_called_once()
     
     @pytest.mark.edge
     def test_sign_in_missing_email(self, api_client):
@@ -381,6 +387,7 @@ class TestSignIn:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert 'error' in response.data
+        mock_requests_post.assert_called_once()
 
 @pytest.mark.django_db
 @pytest.mark.integration
@@ -433,6 +440,8 @@ class TestGoogleLogin:
         user = User.objects.get(email='google.user@example.com')
         assert user.first_name == 'Google'
         assert user.last_name == 'User'
+        mock_urlopen.assert_called_once()
+        mock_response.read.assert_called_once()
 
     @patch('gym_app.views.userAuth.urlopen', side_effect=Exception('urlopen failed'))
     @pytest.mark.edge
@@ -468,9 +477,10 @@ class TestGoogleLogin:
     @pytest.mark.edge
     def test_google_login_invalid_token(self, api_client, monkeypatch):
         """Test Google login with invalid/tampered token returns 401"""
+        verify_mock = MagicMock(side_effect=ValueError("Invalid token"))
         monkeypatch.setattr(
             "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
-            MagicMock(side_effect=ValueError("Invalid token")),
+            verify_mock,
         )
 
         url = reverse('google_login')
@@ -478,6 +488,7 @@ class TestGoogleLogin:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data['error_message'] == 'Invalid Google token.'
+        verify_mock.assert_called_once()
 
 @pytest.mark.django_db
 @pytest.mark.integration
@@ -541,6 +552,7 @@ class TestPasswordResetFlow:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Captcha verification failed' in response.data['error']
+        mock_requests_post.assert_called_once()
     
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
@@ -562,6 +574,7 @@ class TestPasswordResetFlow:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert 'error' in response.data
+        mock_requests_post.assert_called_once()
     
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.contract
@@ -592,6 +605,7 @@ class TestPasswordResetFlow:
         existing_user.refresh_from_db()
         assert existing_user.check_password('resetpassword123')
         assert PasswordCode.objects.get(code=passcode).used is True
+        mock_requests_post.assert_called_once()
 
     @pytest.mark.edge
     def test_verify_passcode_missing_captcha(self, api_client):
@@ -627,6 +641,7 @@ class TestPasswordResetFlow:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'Captcha verification failed' in response.data['error']
+        mock_requests_post.assert_called_once()
     
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
@@ -650,5 +665,6 @@ class TestPasswordResetFlow:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'error' in response.data
         assert 'invalid or expired' in response.data['error'].lower()
+        mock_requests_post.assert_called_once()
 
 

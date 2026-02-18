@@ -72,8 +72,8 @@ def user():
 @pytest.mark.django_db
 class TestUserSerializer:
     
-    def test_serialize_user(self, existing_user):
-        """Test the serialization of an existing user"""
+    def test_serialize_user_basic_fields(self, existing_user):
+        """Test the serialization of an existing user - basic fields"""
         serializer = UserSerializer(existing_user)
         
         # Verify that data is serialized correctly
@@ -82,15 +82,19 @@ class TestUserSerializer:
         assert serializer.data['first_name'] == existing_user.first_name
         assert serializer.data['last_name'] == existing_user.last_name
         assert serializer.data['contact'] == existing_user.contact
+        # Verify that password is not included in serialization
+        assert 'password' not in serializer.data
+
+    def test_serialize_user_extended_fields(self, existing_user):
+        """Test the serialization of an existing user - extended fields"""
+        serializer = UserSerializer(existing_user)
+        
         assert serializer.data['identification'] == existing_user.identification
         assert serializer.data['document_type'] == existing_user.document_type
         assert serializer.data['role'] == existing_user.role
-        
-        # Verify that password is not included in serialization
-        assert 'password' not in serializer.data
     
-    def test_create_minimal_user(self, user_data):
-        """Test the creation of a user with minimal data"""
+    def test_create_minimal_user_basic_fields(self, user_data):
+        """Test the creation of a user with minimal data - basic fields"""
         # Hash the password manually before creating the user
         user_data_with_hashed_password = user_data.copy()
         user_data_with_hashed_password['password'] = make_password(user_data['password'])
@@ -104,18 +108,32 @@ class TestUserSerializer:
         assert user.first_name == user_data['first_name']
         assert user.last_name == user_data['last_name']
         assert user.role == user_data['role']
-        assert user.check_password(user_data['password'])  # Should pass now
+        assert user.check_password(user_data['password'])
+
+    def test_create_minimal_user_default_values(self):
+        """Test the creation of a user with minimal data - default values"""
+        user_data = {
+            'email': 'minimal@example.com',
+            'password': make_password('testpassword'),
+            'first_name': 'Minimal',
+            'last_name': 'User',
+            'role': 'client'
+        }
+        
+        serializer = UserSerializer(data=user_data)
+        assert serializer.is_valid()
+        user = serializer.save()
         
         # Verify that optional fields are empty
         assert user.contact is None
         assert user.birthday is None
         assert user.identification is None
         assert user.document_type is None
-        assert user.is_gym_lawyer is False  # Default value
-        assert user.is_profile_completed is False  # Default value
+        assert user.is_gym_lawyer is False
+        assert user.is_profile_completed is False
     
-    def test_create_complete_user(self, complete_user_data):
-        """Test the creation of a user with all fields"""
+    def test_create_complete_user_basic_fields(self, complete_user_data):
+        """Test the creation of a user with all fields - basic fields"""
         # Hash the password manually
         complete_user_data_with_hashed_password = complete_user_data.copy()
         complete_user_data_with_hashed_password['password'] = make_password(complete_user_data['password'])
@@ -128,20 +146,29 @@ class TestUserSerializer:
         # Verify basic fields
         assert user.email == complete_user_data['email']
         assert user.check_password(complete_user_data['password'])
-        
-        # Verify optional fields
         assert user.first_name == complete_user_data['first_name']
         assert user.last_name == complete_user_data['last_name']
         assert user.contact == complete_user_data['contact']
         assert user.birthday == complete_user_data['birthday']
+
+    def test_create_complete_user_extended_fields(self, complete_user_data):
+        """Test the creation of a user with all fields - extended fields"""
+        complete_user_data_with_hashed_password = complete_user_data.copy()
+        complete_user_data_with_hashed_password['email'] = 'complete2@example.com'
+        complete_user_data_with_hashed_password['password'] = make_password(complete_user_data['password'])
+        
+        serializer = UserSerializer(data=complete_user_data_with_hashed_password)
+        assert serializer.is_valid()
+        user = serializer.save()
+        
         assert user.identification == complete_user_data['identification']
         assert user.document_type == complete_user_data['document_type']
         assert user.role == complete_user_data['role']
         assert user.is_gym_lawyer == complete_user_data['is_gym_lawyer']
         assert user.is_profile_completed == complete_user_data['is_profile_completed']
     
-    def test_update_user(self, existing_user):
-        """Test updating an existing user"""
+    def test_update_user_changes_fields(self, existing_user):
+        """Test updating an existing user - fields are updated"""
         update_data = {
             'first_name': 'Updated',
             'last_name': 'Name',
@@ -159,11 +186,22 @@ class TestUserSerializer:
         assert updated_user.last_name == update_data['last_name']
         assert updated_user.contact == update_data['contact']
         assert updated_user.document_type == update_data['document_type']
+
+    def test_update_user_preserves_unchanged_fields(self, existing_user):
+        """Test updating an existing user - unchanged fields preserved"""
+        original_email = existing_user.email
+        original_identification = existing_user.identification
+        original_role = existing_user.role
+        
+        update_data = {'first_name': 'Updated2'}
+        serializer = UserSerializer(existing_user, data=update_data, partial=True)
+        assert serializer.is_valid()
+        updated_user = serializer.save()
         
         # Verify that fields not included in update_data did not change
-        assert updated_user.email == existing_user.email
-        assert updated_user.identification == existing_user.identification
-        assert updated_user.role == existing_user.role
+        assert updated_user.email == original_email
+        assert updated_user.identification == original_identification
+        assert updated_user.role == original_role
     
     def test_update_user_password(self, existing_user):
         """Test updating a user's password"""
@@ -298,8 +336,8 @@ class TestUserSignatureSerializer:
 @pytest.mark.django_db
 class TestActivityFeedSerializer:
 
-    def test_activity_feed_serializer_includes_time_ago_and_action_display(self, user):
-        """La representación del ActivityFeed incluye campos derivados time_ago y action_display"""
+    def test_activity_feed_serializer_basic_fields(self, user):
+        """Test basic field serialization for ActivityFeed"""
         activity = ActivityFeed.objects.create(
             user=user,
             action_type='create',
@@ -312,11 +350,21 @@ class TestActivityFeedSerializer:
         assert data['id'] == activity.id
         assert data['user'] == user.id
         assert data['action_type'] == 'create'
-        # Debe usar el display legible definido en ACTION_TYPE_CHOICES
         assert data['action_display'] == 'Create'
         assert data['description'] == 'Created a resource'
+
+    def test_activity_feed_serializer_time_fields(self, user):
+        """Test time-related fields for ActivityFeed"""
+        activity = ActivityFeed.objects.create(
+            user=user,
+            action_type='create',
+            description='Created a resource'
+        )
+
+        serializer = ActivityFeedSerializer(activity)
+        data = serializer.data
+
         assert 'created_at' in data
-        # time_ago debe ser una cadena no vacía (no comprobamos el valor exacto por ser relativo al tiempo)
         assert 'time_ago' in data
         assert isinstance(data['time_ago'], str)
         assert data['time_ago'] != ''

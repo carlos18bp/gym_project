@@ -54,14 +54,10 @@ def lawyer_user():
 class TestLegalRequestViews:
     
     @pytest.mark.contract
-    def test_create_legal_request_authenticated(self, api_client, user, legal_request_type, legal_discipline):
-        """
-        Test creating a new legal request when authenticated.
-        """
-        # Authenticate the user
+    def test_create_legal_request_response(self, api_client, user, legal_request_type, legal_discipline):
+        """Test creating a legal request returns correct response"""
         api_client.force_authenticate(user=user)
         
-        # Prepare the data
         main_data = {
             'firstName': 'Jane',
             'lastName': 'Smith',
@@ -71,26 +67,35 @@ class TestLegalRequestViews:
             'description': 'I need legal advice regarding intellectual property.'
         }
         
-        # Make the request
         url = reverse('create-legal-request')
-        response = api_client.post(
-            url, 
-            {'mainData': json.dumps(main_data)}, 
-            format='multipart'
-        )
+        response = api_client.post(url, {'mainData': json.dumps(main_data)}, format='multipart')
         
-        # Assert the response
         assert response.status_code == status.HTTP_201_CREATED
-        # The new API returns a summary payload, not the full serialized request
         assert response.data['message'] == 'Legal request received successfully'
         assert response.data['status'] == 'received'
         assert 'email_notification' in response.data
         assert 'next_steps' in response.data
+
+    @pytest.mark.contract
+    def test_create_legal_request_db_state(self, api_client, user, legal_request_type, legal_discipline):
+        """Test creating a legal request creates correct database record"""
+        api_client.force_authenticate(user=user)
         
-        # Verify the legal request was created in the database
+        main_data = {
+            'firstName': 'Jane',
+            'lastName': 'Smith',
+            'email': 'jane.smith@example.com',
+            'requestTypeId': legal_request_type.id,
+            'disciplineId': legal_discipline.id,
+            'description': 'Legal advice needed.'
+        }
+        
+        url = reverse('create-legal-request')
+        response = api_client.post(url, {'mainData': json.dumps(main_data)}, format='multipart')
+        assert response.status_code == status.HTTP_201_CREATED
+        
         assert LegalRequest.objects.count() == 1
         legal_request = LegalRequest.objects.first()
-        # The legal request should be associated to the authenticated user
         assert legal_request.user == user
         assert legal_request.request_type.id == legal_request_type.id
         assert legal_request.discipline.id == legal_discipline.id
@@ -1727,21 +1732,19 @@ class TestLegalRequestRegressionScenarios:
         validation which accepts application/zip + .docx."""
         mock_magic.from_buffer.return_value = 'application/zip'
         from gym_app.views.legal_request import validate_file_security
-        from unittest.mock import MagicMock
-        mock_file = MagicMock()
-        mock_file.name = "doc.docx"
-        mock_file.size = 500
+        from types import SimpleNamespace
         call_count = {'n': 0}
         def _read(n=-1):
             call_count['n'] += 1
             if call_count['n'] == 1:
                 return b'PK\x03\x04' + b'\x00' * 100
             raise IOError("simulated read failure")
-        mock_file.read = _read
+        mock_file = SimpleNamespace(name="doc.docx", size=500, read=_read, seek=lambda x: None)
         # Inner except (line 74-75) logs warning, then standard MIME check
         # passes because application/zip + .docx is allowed.
         result = validate_file_security(mock_file)
         assert result is True
+        mock_magic.from_buffer.assert_called()
 
     # --- create_legal_request ValidationError (lines 239-240) ---
     @mock.patch('gym_app.views.legal_request.LegalRequest.objects')

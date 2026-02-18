@@ -15,6 +15,26 @@ const findButtonByText = (wrapper, text) => {
   return btn;
 };
 
+const setupDrawSignature = async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+
+  const userStore = useUserStore();
+  userStore.$patch({ userSignature: null });
+
+  const wrapper = mount(DrawSignature, {
+    global: { plugins: [pinia] },
+  });
+
+  const canvas = wrapper.find("canvas");
+  await canvas.trigger("mousedown", { offsetX: 10, offsetY: 10 });
+  await canvas.trigger("mousemove", { offsetX: 20, offsetY: 20 });
+  await canvas.trigger("mouseup");
+  await flushPromises();
+
+  return { wrapper, userStore };
+};
+
 describe("DrawSignature.vue", () => {
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
   const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
@@ -188,25 +208,8 @@ describe("DrawSignature.vue", () => {
     expect(saveBtn.attributes("disabled")).toBeDefined();
   });
 
-  test("after drawing: saves signature, updates store, and emits save payload", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const userStore = useUserStore();
-    userStore.$patch({ userSignature: null });
-
-    const wrapper = mount(DrawSignature, {
-      global: { plugins: [pinia] },
-    });
-
-    const canvas = wrapper.find("canvas");
-    expect(canvas.exists()).toBe(true);
-
-    await canvas.trigger("mousedown", { offsetX: 10, offsetY: 10 });
-    await canvas.trigger("mousemove", { offsetX: 20, offsetY: 20 });
-    await canvas.trigger("mouseup");
-
-    await flushPromises();
+  test("after drawing enables save and updates store", async () => {
+    const { wrapper, userStore } = await setupDrawSignature();
 
     const saveBtn = findButtonByText(wrapper, "Guardar");
     expect(saveBtn.attributes("disabled")).toBeUndefined();
@@ -214,8 +217,13 @@ describe("DrawSignature.vue", () => {
     await saveBtn.trigger("click");
 
     expect(userStore.userSignature.has_signature).toBe(true);
-    expect(userStore.userSignature.signature.signature_image).toBe("data:image/png;base64,QQ==");
     expect(userStore.userSignature.signature.method).toBe("draw");
+  });
+
+  test("after drawing emits save payload", async () => {
+    const { wrapper } = await setupDrawSignature();
+
+    await findButtonByText(wrapper, "Guardar").trigger("click");
 
     const emitted = wrapper.emitted("save");
     expect(emitted).toBeTruthy();

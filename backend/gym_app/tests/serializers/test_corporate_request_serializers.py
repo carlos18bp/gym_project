@@ -283,64 +283,41 @@ class TestCorporateRequestBasicInfoSerializers:
 
 @pytest.mark.django_db
 class TestCorporateRequestSerializerCreate:
-    def test_only_client_or_basic_can_create_and_must_be_member(self, organization, request_type):
+    def test_client_member_can_create(self, organization, request_type):
+        """Test client member can create corporate request"""
         class MockRequest:
-            def __init__(self, user):
-                self.user = user
+            def __init__(self, user): self.user = user
 
-        # Setup client member of org
-        client = User.objects.create_user(
-            email="member@example.com",
-            password="testpassword",
-            role="client",
-        )
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client,
-            role="MEMBER",
-            is_active=True,
-        )
+        client = User.objects.create_user(email="member@example.com", password="testpassword", role="client")
+        OrganizationMembership.objects.create(organization=organization, user=client, role="MEMBER", is_active=True)
 
-        data = {
-            "organization": organization.id,
-            "request_type": request_type.id,
-            "title": "Nueva",
-            "description": "Desc",
-            "priority": "MEDIUM",
-            "corporate_client": organization.corporate_client.id,
-        }
-
-        serializer = CorporateRequestSerializer(
-            data=data,
-            context={"request": MockRequest(client)},
-        )
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM", "corporate_client": organization.corporate_client.id}
+        serializer = CorporateRequestSerializer(data=data, context={"request": MockRequest(client)})
+        
         assert serializer.is_valid(), serializer.errors
         req = serializer.save()
-
         assert req.client == client
 
-        # Usuario no miembro
-        other_client = User.objects.create_user(
-            email="other@example.com",
-            password="testpassword",
-            role="client",
-        )
-        serializer = CorporateRequestSerializer(
-            data=data,
-            context={"request": MockRequest(other_client)},
-        )
+    def test_non_member_cannot_create(self, organization, request_type):
+        """Test non-member cannot create corporate request"""
+        class MockRequest:
+            def __init__(self, user): self.user = user
+
+        other_client = User.objects.create_user(email="other@example.com", password="testpassword", role="client")
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM", "corporate_client": organization.corporate_client.id}
+        serializer = CorporateRequestSerializer(data=data, context={"request": MockRequest(other_client)})
+        
         assert not serializer.is_valid()
 
-        # Usuario abogado no permitido
-        lawyer = User.objects.create_user(
-            email="lawyer@example.com",
-            password="testpassword",
-            role="lawyer",
-        )
-        serializer = CorporateRequestSerializer(
-            data=data,
-            context={"request": MockRequest(lawyer)},
-        )
+    def test_lawyer_cannot_create(self, organization, request_type):
+        """Test lawyer role cannot create corporate request"""
+        class MockRequest:
+            def __init__(self, user): self.user = user
+
+        lawyer = User.objects.create_user(email="lawyer@example.com", password="testpassword", role="lawyer")
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM", "corporate_client": organization.corporate_client.id}
+        serializer = CorporateRequestSerializer(data=data, context={"request": MockRequest(lawyer)})
+        
         assert not serializer.is_valid()
 
     def test_validate_corporate_client_role(self, organization, request_type, normal_client):
@@ -403,57 +380,40 @@ class TestCorporateRequestListSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestCreateSerializer:
-    def test_create_serializer_requires_membership_and_role(self, organization, request_type):
+    def test_create_serializer_requires_membership(self, organization, request_type):
+        """Test create serializer requires membership"""
         class MockRequest:
-            def __init__(self, user):
-                self.user = user
+            def __init__(self, user): self.user = user
 
-        client = User.objects.create_user(
-            email="client@example.com",
-            password="testpassword",
-            role="client",
-        )
+        client = User.objects.create_user(email="client@example.com", password="testpassword", role="client")
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM"}
 
-        data = {
-            "organization": organization.id,
-            "request_type": request_type.id,
-            "title": "Nueva",
-            "description": "Desc",
-            "priority": "MEDIUM",
-        }
-
-        # Sin membership debe fallar
-        serializer = CorporateRequestCreateSerializer(
-            data=data,
-            context={"request": MockRequest(client)},
-        )
+        serializer = CorporateRequestCreateSerializer(data=data, context={"request": MockRequest(client)})
         assert not serializer.is_valid()
 
-        # Agregar membership y debe funcionar
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client,
-            role="MEMBER",
-            is_active=True,
-        )
-        serializer = CorporateRequestCreateSerializer(
-            data=data,
-            context={"request": MockRequest(client)},
-        )
+    def test_create_serializer_with_membership(self, organization, request_type):
+        """Test create serializer works with membership"""
+        class MockRequest:
+            def __init__(self, user): self.user = user
+
+        client = User.objects.create_user(email="member@example.com", password="testpassword", role="client")
+        OrganizationMembership.objects.create(organization=organization, user=client, role="MEMBER", is_active=True)
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM"}
+
+        serializer = CorporateRequestCreateSerializer(data=data, context={"request": MockRequest(client)})
         assert serializer.is_valid(), serializer.errors
         req = serializer.save()
         assert req.client == client
 
-        # Usuario abogado no puede crear
-        lawyer = User.objects.create_user(
-            email="lawyer@example.com",
-            password="testpassword",
-            role="lawyer",
-        )
-        serializer = CorporateRequestCreateSerializer(
-            data=data,
-            context={"request": MockRequest(lawyer)},
-        )
+    def test_create_serializer_rejects_lawyer(self, organization, request_type):
+        """Test create serializer rejects lawyer role"""
+        class MockRequest:
+            def __init__(self, user): self.user = user
+
+        lawyer = User.objects.create_user(email="lawyer@example.com", password="testpassword", role="lawyer")
+        data = {"organization": organization.id, "request_type": request_type.id, "title": "Nueva", "description": "Desc", "priority": "MEDIUM"}
+
+        serializer = CorporateRequestCreateSerializer(data=data, context={"request": MockRequest(lawyer)})
         assert not serializer.is_valid()
 
 
@@ -532,8 +492,8 @@ class TestCorporateRequestResponseSerializerEdges:
         request = rf.get("/")
         # Directly call get_user_name with a mock obj whose user is None
         serializer = CorporateRequestResponseSerializer(context={"request": request})
-        mock_obj = MagicMock()
-        mock_obj.user = None
+        from types import SimpleNamespace
+        mock_obj = SimpleNamespace(user=None)
         assert serializer.get_user_name(mock_obj) is None
 
 
@@ -758,8 +718,9 @@ class TestCorporateRequestValidateCorporateClientDirect:
         """
         serializer = CorporateRequestSerializer()
 
-        with pytest.raises(drf_serializers.ValidationError, match="corporativo"):
+        with pytest.raises(drf_serializers.ValidationError, match="corporativo") as exc_info:
             serializer.validate_corporate_client(normal_client)
+        assert exc_info.value is not None
 
 
 # ---------------------------------------------------------------------------

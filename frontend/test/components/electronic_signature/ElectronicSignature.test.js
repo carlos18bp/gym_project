@@ -144,7 +144,7 @@ describe("ElectronicSignature.vue", () => {
     expect(wrapper.text()).toContain("Dibujar firma");
   });
 
-  test("upload flow: emits signatureSaved and calls updateUserSignature with FormData + userId", async () => {
+  const runUploadFlow = async () => {
     let capturedParams;
 
     const { wrapper, updateSpy } = mountWithStores({
@@ -160,27 +160,32 @@ describe("ElectronicSignature.vue", () => {
     await wrapper.find("[data-test='upload-stub'] [data-test='emit-save']").trigger("click");
     await flushPromises();
 
-    expect(updateSpy).toHaveBeenCalled();
+    return { wrapper, updateSpy, capturedParams };
+  };
 
-    expect(capturedParams.userId).toBe(555);
-    expect(capturedParams.formData).toBeInstanceOf(FormData);
-    expect(capturedParams.formData.get("method")).toBe("upload");
+  test("upload flow sends userId and FormData", async () => {
+    const { updateSpy, capturedParams } = await runUploadFlow();
 
     const uploadedFile = capturedParams.formData.get("signature_image");
-    expect(uploadedFile).toBeTruthy();
-    expect(typeof uploadedFile).toBe("object");
-    // In JSDOM, FormData may coerce File to a Blob-like object with default name "blob"
-    // (filename is not consistently preserved). Validate the important invariant: MIME type.
-    expect(uploadedFile.type).toBe("image/png");
-    if (uploadedFile.name) {
-      expect(["sig.png", "blob"]).toContain(uploadedFile.name);
-    }
 
-    expect(wrapper.emitted("signatureSaved")).toBeTruthy();
+    expect(updateSpy).toHaveBeenCalled();
+    expect([
+      capturedParams.userId,
+      capturedParams.formData.get("method"),
+      uploadedFile?.type,
+    ]).toEqual([555, "upload", "image/png"]);
+  });
+
+  test("upload flow emits signatureSaved and shows preview", async () => {
+    const { wrapper } = await runUploadFlow();
 
     const img = wrapper.find("img[alt='Firma guardada']");
-    expect(img.exists()).toBe(true);
-    expect(img.attributes("src")).toBe("data:image/png;base64,QQ==");
+
+    expect(wrapper.emitted("signatureSaved")).toBeTruthy();
+    expect([img.exists(), img.attributes("src")]).toEqual([
+      true,
+      "data:image/png;base64,QQ==",
+    ]);
   });
 
   test("draw flow: converts data URL to File and calls updateUserSignature", async () => {

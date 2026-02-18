@@ -255,6 +255,76 @@ function tierLabel(pct) {
   return getTier(pct).label;
 }
 
+// ── Parse Playwright JSON report for test summary ────────────────────────────
+const playwrightJsonPath = path.resolve(__dirname, "..", "coverage-e2e", "results.json");
+let playwrightSummary = null;
+
+if (fs.existsSync(playwrightJsonPath)) {
+  try {
+    const pwData = JSON.parse(fs.readFileSync(playwrightJsonPath, "utf-8"));
+    const stats = pwData.stats || {};
+    playwrightSummary = {
+      tests: stats.expected + stats.unexpected + stats.flaky + stats.skipped || 0,
+      failed: stats.unexpected || 0,
+      flaky: stats.flaky || 0,
+      skipped: stats.skipped || 0,
+      passed: stats.expected || 0,
+      duration: stats.duration || 0,
+    };
+    // Count suites, projects, files from the structure
+    const suites = pwData.suites || [];
+    playwrightSummary.projects = suites.length;
+    let fileCount = 0;
+    let describeCount = 0;
+    function countSuites(s) {
+      if (s.suites) {
+        for (const sub of s.suites) {
+          if (sub.file) fileCount++;
+          describeCount++;
+          countSuites(sub);
+        }
+      }
+    }
+    for (const s of suites) countSuites(s);
+    playwrightSummary.files = fileCount || suites.reduce((acc, s) => acc + (s.suites ? s.suites.length : 0), 0);
+    playwrightSummary.describes = describeCount;
+    playwrightSummary.errors = pwData.errors ? pwData.errors.length : 0;
+  } catch (e) {
+    // Ignore parse errors
+  }
+}
+
+// ── Print Playwright Test Summary ─────────────────────────────────────────────
+if (playwrightSummary) {
+  const pw = playwrightSummary;
+  const totalTests = pw.tests;
+  const failedPct = totalTests > 0 ? ((pw.failed / totalTests) * 100).toFixed(1) : "0.0";
+  const flakyPct = totalTests > 0 ? ((pw.flaky / totalTests) * 100).toFixed(1) : "0.0";
+  const skippedPct = totalTests > 0 ? ((pw.skipped / totalTests) * 100).toFixed(1) : "0.0";
+  const passedPct = totalTests > 0 ? ((pw.passed / totalTests) * 100).toFixed(1) : "0.0";
+  const durationMin = Math.floor(pw.duration / 60000);
+  const durationSec = Math.floor((pw.duration % 60000) / 1000);
+  const durationStr = `${durationMin}m ${durationSec}s`;
+  const dateStr = new Date().toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
+
+  console.log("");
+  console.log(`${ANSI.bold}🎭 Playwright Test Summary${ANSI.reset}`);
+  console.log(`${ANSI.dim}────────────────────────────────────────${ANSI.reset}`);
+  console.log(`  Tests         ${ANSI.bold}${String(totalTests).padStart(6)}${ANSI.reset}`);
+  console.log(`  ├ Failed      ${pw.failed > 0 ? ANSI.red : ANSI.dim}${String(pw.failed).padStart(6)}${ANSI.reset}  ${ANSI.dim}(${failedPct}%)${ANSI.reset}`);
+  console.log(`  ├ Flaky       ${pw.flaky > 0 ? ANSI.yellow : ANSI.dim}${String(pw.flaky).padStart(6)}${ANSI.reset}  ${ANSI.dim}(${flakyPct}%)${ANSI.reset}`);
+  console.log(`  ├ Skipped     ${pw.skipped > 0 ? ANSI.yellow : ANSI.dim}${String(pw.skipped).padStart(6)}${ANSI.reset}  ${ANSI.dim}(${skippedPct}%)${ANSI.reset}`);
+  console.log(`  └ Passed      ${pw.passed > 0 ? ANSI.green : ANSI.dim}${String(pw.passed).padStart(6)}${ANSI.reset}  ${ANSI.dim}(${passedPct}%)${ANSI.reset}`);
+  console.log(`  Suites        ${ANSI.dim}${String(pw.describes).padStart(6)}${ANSI.reset}`);
+  console.log(`  ├ Projects    ${ANSI.dim}${String(pw.projects).padStart(6)}${ANSI.reset}`);
+  console.log(`  ├ Files       ${ANSI.dim}${String(pw.files).padStart(6)}${ANSI.reset}`);
+  console.log(`  └ Describes   ${ANSI.dim}${String(pw.describes).padStart(6)}${ANSI.reset}`);
+  console.log(`  Errors        ${pw.errors > 0 ? ANSI.red : ANSI.dim}${String(pw.errors).padStart(6)}${ANSI.reset}`);
+  console.log(`  Duration      ${ANSI.dim}${durationStr.padStart(6)}${ANSI.reset}`);
+  console.log(`  Date          ${ANSI.dim}${dateStr}${ANSI.reset}`);
+  console.log(`${ANSI.dim}────────────────────────────────────────${ANSI.reset}`);
+}
+
 console.log("");
 console.log(`${ANSI.bold}📊 E2E Coverage Color Report${ANSI.reset}`);
 console.log(`${ANSI.dim}────────────────────────────────────────${ANSI.reset}`);
@@ -274,14 +344,14 @@ if (summary) {
   console.log(`${ANSI.dim}────────────────────────────────────────${ANSI.reset}`);
 }
 
-// Show bottom 10 files by lines coverage (excluding directories and "All files")
+// Show bottom 16 files by lines coverage (excluding directories and "All files")
 const fileRows = rows.filter((r) => !r.isDir && r.fileName !== "All files");
 fileRows.sort((a, b) => a.lines - b.lines);
-const bottom10 = fileRows.slice(0, 10);
+const bottom16 = fileRows.slice(0, 16);
 
-if (bottom10.length > 0) {
-  console.log(`${ANSI.bold}  ⚠  10 archivos con menor cobertura (Lines):${ANSI.reset}`);
-  for (const r of bottom10) {
+if (bottom16.length > 0) {
+  console.log(`${ANSI.bold}  ⚠  16 archivos con menor cobertura (Lines):${ANSI.reset}`);
+  for (const r of bottom16) {
     const color = ansiColor(r.lines);
     console.log(`  ${color}${r.lines.toFixed(1).padStart(6)}%${ANSI.reset}  ${r.fileName}`);
   }

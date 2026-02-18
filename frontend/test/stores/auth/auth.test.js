@@ -17,6 +17,29 @@ describe("Auth Store", () => {
     jest.clearAllMocks();
   });
 
+  const runLogout = () => {
+    const authStore = useAuthStore();
+    const processStore = useProcessStore();
+    const userStore = useUserStore();
+
+    authStore.token = "abc";
+    authStore.userAuth = { id: 1 };
+    axios.defaults.headers.common["Authorization"] = "Bearer abc";
+
+    localStorage.setItem("token", "abc");
+    localStorage.setItem("userAuth", JSON.stringify({ id: 1 }));
+    localStorage.setItem("signInTries", "3");
+    localStorage.setItem("signInSecondsRemaining", "60");
+    localStorage.setItem("signInSecondsAcumulated", "60");
+
+    const resetProcessSpy = jest.spyOn(processStore, "$reset");
+    const resetUserSpy = jest.spyOn(userStore, "$reset");
+
+    authStore.logout();
+
+    return { authStore, resetProcessSpy, resetUserSpy };
+  };
+
   test("initializes token and userAuth from localStorage", () => {
     localStorage.setItem("token", "tkn");
     localStorage.setItem("userAuth", JSON.stringify({ id: 1, role: "lawyer" }));
@@ -50,38 +73,25 @@ describe("Auth Store", () => {
     expect(axios.defaults.headers.common["Authorization"]).toBeUndefined();
   });
 
-  test("logout clears token/userAuth, removes Authorization header, clears localStorage, and resets other stores", () => {
-    const authStore = useAuthStore();
-    const processStore = useProcessStore();
-    const userStore = useUserStore();
+  test("logout clears auth state and localStorage", () => {
+    const { authStore } = runLogout();
 
-    authStore.token = "abc";
-    authStore.userAuth = { id: 1 };
-    axios.defaults.headers.common["Authorization"] = "Bearer abc";
+    expect([
+      authStore.token,
+      authStore.userAuth,
+      axios.defaults.headers.common["Authorization"],
+      localStorage.getItem("token"),
+      localStorage.getItem("userAuth"),
+      localStorage.getItem("signInTries"),
+      localStorage.getItem("signInSecondsRemaining"),
+      localStorage.getItem("signInSecondsAcumulated"),
+    ]).toEqual([null, {}, undefined, null, null, "0", "0", "0"]);
+  });
 
-    localStorage.setItem("token", "abc");
-    localStorage.setItem("userAuth", JSON.stringify({ id: 1 }));
-    localStorage.setItem("signInTries", "3");
-    localStorage.setItem("signInSecondsRemaining", "60");
-    localStorage.setItem("signInSecondsAcumulated", "60");
+  test("logout resets related stores", () => {
+    const { resetProcessSpy, resetUserSpy } = runLogout();
 
-    const resetProcessSpy = jest.spyOn(processStore, "$reset");
-    const resetUserSpy = jest.spyOn(userStore, "$reset");
-
-    authStore.logout();
-
-    expect(authStore.token).toBe(null);
-    expect(authStore.userAuth).toEqual({});
-    expect(axios.defaults.headers.common["Authorization"]).toBeUndefined();
-
-    expect(localStorage.getItem("token")).toBe(null);
-    expect(localStorage.getItem("userAuth")).toBe(null);
-    expect(localStorage.getItem("signInTries")).toBe("0");
-    expect(localStorage.getItem("signInSecondsRemaining")).toBe("0");
-    expect(localStorage.getItem("signInSecondsAcumulated")).toBe("0");
-
-    expect(resetProcessSpy).toHaveBeenCalled();
-    expect(resetUserSpy).toHaveBeenCalled();
+    expect([resetProcessSpy.mock.calls.length, resetUserSpy.mock.calls.length]).toEqual([1, 1]);
   });
 
   test("removeFromLocalStorage clears running sign-in interval", () => {

@@ -16,7 +16,7 @@ const buildDocument = (overrides = {}) => ({
 });
 
 describe("DocumentSummaryModal.vue", () => {
-  test("renders summary fields with formatted values", () => {
+  test("renders summary labels", () => {
     const wrapper = mount(DocumentSummaryModal, {
       props: {
         isVisible: true,
@@ -25,16 +25,35 @@ describe("DocumentSummaryModal.vue", () => {
     });
 
     expect(wrapper.text()).toContain("Usuario / Contraparte");
-    expect(wrapper.text()).toContain("ACME");
     expect(wrapper.text()).toContain("Objeto");
+    expect(wrapper.text()).toContain("Plazo");
+  });
+
+  test("renders summary values", () => {
+    const wrapper = mount(DocumentSummaryModal, {
+      props: {
+        isVisible: true,
+        document: buildDocument(),
+      },
+    });
+
+    expect(wrapper.text()).toContain("ACME");
     expect(wrapper.text()).toContain("Servicio");
     expect(wrapper.text()).toContain("USD $ 12.000");
-    expect(wrapper.text()).toContain("Plazo");
     expect(wrapper.text()).toContain("12 meses");
+  });
+
+  test("renders summary dates and formats values", () => {
+    const wrapper = mount(DocumentSummaryModal, {
+      props: {
+        isVisible: true,
+        document: buildDocument(),
+      },
+    });
+
     expect(wrapper.text()).toContain("2026-01-10");
     expect(wrapper.text()).toContain("2026-01-11");
     expect(wrapper.text()).toContain("2026-12-31");
-
     expect(wrapper.vm.formatDate("2026-02-01T10:00:00Z")).toBe("2026-02-01");
   });
 

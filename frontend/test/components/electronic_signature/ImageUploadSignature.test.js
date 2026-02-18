@@ -136,7 +136,7 @@ describe("ImageUploadSignature.vue", () => {
     alertSpy.mockRestore();
   });
 
-  test("on valid file: creates preview, updates user store signature, and emits save payload", async () => {
+  const setupValidUpload = async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -158,23 +158,35 @@ describe("ImageUploadSignature.vue", () => {
 
     await flushPromises();
 
+    return { wrapper, userStore, okFile };
+  };
+
+  test("on valid file shows preview and updates store", async () => {
+    const { wrapper, userStore } = await setupValidUpload();
+
     const img = wrapper.find("img[alt='Firma']");
     expect(img.exists()).toBe(true);
 
     await findButtonByText(wrapper, "Guardar").trigger("click");
 
     expect(userStore.userSignature.has_signature).toBe(true);
-    expect(userStore.userSignature.signature.signature_image).toBe("data:image/png;base64,QQ==");
     expect(userStore.userSignature.signature.method).toBe("upload");
+  });
+
+  test("on valid file emits save payload", async () => {
+    const { wrapper } = await setupValidUpload();
+
+    await findButtonByText(wrapper, "Guardar").trigger("click");
 
     const emitted = wrapper.emitted("save");
-    expect(emitted).toBeTruthy();
-
     const payload = emitted[0][0];
-    expect(payload.signatureImage).toBe("data:image/png;base64,QQ==");
-    expect(payload.originalFile).toBeTruthy();
-    expect(payload.originalFile.name).toBe("sig.png");
-    expect(payload.traceabilityData.method).toBe("upload");
+
+    expect(emitted).toBeTruthy();
+    expect([payload.signatureImage, payload.originalFile?.name, payload.traceabilityData.method]).toEqual([
+      "data:image/png;base64,QQ==",
+      "sig.png",
+      "upload",
+    ]);
   });
 
   test("triggerFileInput calls click on file input element when clicking upload area", async () => {

@@ -62,6 +62,40 @@ const buildOrg = (overrides = {}) => {
   };
 };
 
+const mountOrganizationCard = async (organizationOverrides = {}) => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+
+  const wrapper = mount(OrganizationCard, {
+    props: {
+      organization: buildOrg(organizationOverrides),
+    },
+    global: {
+      plugins: [pinia],
+      stubs: {
+        ConfirmationModal: ConfirmationModalStub,
+      },
+    },
+  });
+
+  await flushPromises();
+
+  return wrapper;
+};
+
+const openLeaveModal = async (wrapper) => {
+  const leaveBtn = wrapper
+    .findAll("button")
+    .find((b) => (b.text() || "").trim() === "Salir" || (b.text() || "").includes("Salir"));
+
+  if (!leaveBtn) {
+    throw new Error("Leave button not found");
+  }
+
+  await leaveBtn.trigger("click");
+  await flushPromises();
+};
+
 describe("OrganizationCard.vue", () => {
   beforeEach(() => {
     const pinia = createPinia();
@@ -108,55 +142,37 @@ describe("OrganizationCard.vue", () => {
     expect(wrapper.emitted("view-details")[0]).toEqual([10]);
   });
 
-  test("leave flow: opens confirmation, cancel closes, confirm calls store, notifies and emits left", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
+  test("leave flow: opens confirmation and cancel closes", async () => {
+    const wrapper = await mountOrganizationCard({ id: 22, title: "Org 22" });
 
-    const store = useOrganizationsStore();
-    const leaveSpy = jest.spyOn(store, "leaveOrganization").mockResolvedValue({ ok: true });
-
-    const wrapper = mount(OrganizationCard, {
-      props: {
-        organization: buildOrg({ id: 22, title: "Org 22" }),
-      },
-      global: {
-        plugins: [pinia],
-        stubs: {
-          ConfirmationModal: ConfirmationModalStub,
-        },
-      },
-    });
-
-    await flushPromises();
-
-    const leaveBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").trim() === "Salir" || (b.text() || "").includes("Salir"));
-
-    expect(leaveBtn).toBeTruthy();
-    await leaveBtn.trigger("click");
-    await flushPromises();
-
-    expect(wrapper.find("[data-test='confirm-modal']").exists()).toBe(true);
+    await openLeaveModal(wrapper);
+    const modalExistsAfterOpen = wrapper.find("[data-test='confirm-modal']").exists();
 
     await wrapper.find("[data-test='cancel']").trigger("click");
     await flushPromises();
 
-    expect(wrapper.find("[data-test='confirm-modal']").exists()).toBe(false);
+    expect([modalExistsAfterOpen, wrapper.find("[data-test='confirm-modal']").exists()]).toEqual([
+      true,
+      false,
+    ]);
+  });
 
-    await leaveBtn.trigger("click");
-    await flushPromises();
+  test("leave flow: confirm calls store, notifies, emits left, and closes modal", async () => {
+    const store = useOrganizationsStore();
+    const leaveSpy = jest.spyOn(store, "leaveOrganization").mockResolvedValue({ ok: true });
 
+    const wrapper = await mountOrganizationCard({ id: 22, title: "Org 22" });
+
+    await openLeaveModal(wrapper);
     await wrapper.find("[data-test='confirm']").trigger("click");
     await flushPromises();
 
-    expect(leaveSpy).toHaveBeenCalledWith(22);
-    expect(mockShowNotification).toHaveBeenCalledWith("Has abandonado Org 22", "success");
-
-    expect(wrapper.emitted("left")).toBeTruthy();
-    expect(wrapper.emitted("left")[0]).toEqual([22]);
-
-    expect(wrapper.find("[data-test='confirm-modal']").exists()).toBe(false);
+    expect([
+      leaveSpy.mock.calls[0]?.[0],
+      mockShowNotification.mock.calls[0],
+      wrapper.emitted("left")?.[0],
+      wrapper.find("[data-test='confirm-modal']").exists(),
+    ]).toEqual([22, ["Has abandonado Org 22", "success"], [22], false]);
   });
 
   test("leave flow: store error with response.data.error shows error notification and keeps modal open", async () => {

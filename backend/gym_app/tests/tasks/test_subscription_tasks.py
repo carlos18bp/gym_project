@@ -115,6 +115,7 @@ class TestProcessSubscriptionPayment:
         assert sub.status == "expired"
         subscription_user.refresh_from_db()
         assert subscription_user.role == "basic"
+        mock_post.assert_called_once()
 
     @mock.patch("gym_app.tasks.requests.post")
     def test_paid_plan_pending_leaves_subscription_unchanged(
@@ -168,8 +169,11 @@ class TestProcessSubscriptionPayment:
 
         mock_post.side_effect = requests.RequestException("boom")
 
-        with pytest.raises(requests.RequestException):
+        with pytest.raises(requests.RequestException) as exc_info:
             process_subscription_payment(sub)
+        assert exc_info.value is not None
+        sub.refresh_from_db()
+        assert sub.status == "active"
 
 
 @pytest.mark.django_db
@@ -264,8 +268,9 @@ class TestCancelSubscriptionTask:
         assert str(sub.id) in result
 
     def test_cancel_subscription_task_not_found_raises(self):
-        with pytest.raises(Subscription.DoesNotExist):
+        with pytest.raises(Subscription.DoesNotExist) as exc_info:
             cancel_subscription.run(9999)
+        assert exc_info.value is not None
 
 
 # ======================================================================
@@ -337,8 +342,9 @@ class TestProcessMonthlySubscriptions:
             user=user, plan_type="cliente", status="active",
             amount=Decimal("1000"), next_billing_date=datetime.date.today() + datetime.timedelta(days=5),
         )
-        process_monthly_subscriptions()
+        result = process_monthly_subscriptions()
         mock_pay.assert_not_called()
+        assert "0 subscriptions" in result
 
     @patch("gym_app.tasks.process_subscription_payment", side_effect=Exception("boom"))
     def test_continues_on_exception(self, mock_pay, active_sub, user):
@@ -357,8 +363,9 @@ class TestProcessMonthlySubscriptions:
             user=user, plan_type="cliente", status="cancelled",
             amount=Decimal("1000"), next_billing_date=datetime.date.today(),
         )
-        process_monthly_subscriptions()
+        result = process_monthly_subscriptions()
         mock_pay.assert_not_called()
+        assert "0 subscriptions" in result
 
 
 # ── process_subscription_payment ───────────────────────────────────
@@ -380,6 +387,7 @@ class TestProcessSubscriptionPayment:
         active_sub.refresh_from_db()
         assert active_sub.next_billing_date > datetime.date.today()
         assert active_sub.status == "active"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_declined_payment_expires_subscription(self, mock_post, active_sub):
@@ -393,6 +401,7 @@ class TestProcessSubscriptionPayment:
         assert active_sub.status == "expired"
         active_sub.user.refresh_from_db()
         assert active_sub.user.role == "basic"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_pending_status_no_change(self, mock_post, active_sub):
@@ -406,13 +415,18 @@ class TestProcessSubscriptionPayment:
         active_sub.refresh_from_db()
         assert active_sub.next_billing_date == old_date
         assert active_sub.status == "active"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_request_exception_raises(self, mock_post, active_sub):
         import requests as req_lib
         mock_post.side_effect = req_lib.RequestException("timeout")
-        with pytest.raises(req_lib.RequestException):
+        with pytest.raises(req_lib.RequestException) as exc_info:
             process_subscription_payment(active_sub)
+        assert exc_info.value is not None
+        active_sub.refresh_from_db()
+        assert active_sub.status == "active"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_amount_converted_to_cents(self, mock_post, active_sub):
@@ -425,6 +439,7 @@ class TestProcessSubscriptionPayment:
         call_kwargs = mock_post.call_args
         sent_amount = call_kwargs.kwargs["json"]["amount_in_cents"]
         assert sent_amount == 5000000  # 50000.00 * 100
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_reference_contains_sub_id(self, mock_post, active_sub):
@@ -436,6 +451,7 @@ class TestProcessSubscriptionPayment:
         process_subscription_payment(active_sub)
         ref = mock_post.call_args.kwargs["json"]["reference"]
         assert f"SUB-{active_sub.id}-" in ref
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_payment_source_id_sent(self, mock_post, active_sub):
@@ -448,6 +464,7 @@ class TestProcessSubscriptionPayment:
         payload = mock_post.call_args.kwargs["json"]
         assert payload["payment_source_id"] == "src_123"
         assert payload["currency"] == "COP"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_signature_sent_in_payload(self, mock_post, active_sub):
@@ -460,6 +477,7 @@ class TestProcessSubscriptionPayment:
         payload = mock_post.call_args.kwargs["json"]
         assert "signature" in payload
         assert len(payload["signature"]) == 64  # SHA256 hex
+        mock_post.assert_called_once()
 
 
 # ── cancel_subscription ────────────────────────────────────────────
@@ -474,8 +492,9 @@ class TestCancelSubscription:
         assert str(active_sub.id) in result
 
     def test_cancel_not_found_raises(self):
-        with pytest.raises(Subscription.DoesNotExist):
+        with pytest.raises(Subscription.DoesNotExist) as exc_info:
             cancel_subscription(999999)
+        assert exc_info.value is not None
 
     def test_cancel_already_cancelled(self, user):
         sub = Subscription.objects.create(
@@ -495,8 +514,9 @@ class TestTasksEdgeCases:
             user=user, plan_type="cliente", status="expired",
             amount=Decimal("1000"), next_billing_date=datetime.date.today(),
         )
-        process_monthly_subscriptions()
+        result = process_monthly_subscriptions()
         mock_pay.assert_not_called()
+        assert "0 subscriptions" in result
 
     @patch("gym_app.tasks.requests.post")
     def test_auth_header_uses_private_key(self, mock_post, active_sub):
@@ -509,6 +529,7 @@ class TestTasksEdgeCases:
         headers = mock_post.call_args.kwargs["headers"]
         assert "Authorization" in headers
         assert headers["Content-Type"] == "application/json"
+        mock_post.assert_called_once()
 
     @patch("gym_app.tasks.requests.post")
     def test_recurrent_flag_true(self, mock_post, active_sub):
@@ -520,3 +541,4 @@ class TestTasksEdgeCases:
         process_subscription_payment(active_sub)
         payload = mock_post.call_args.kwargs["json"]
         assert payload["recurrent"] is True
+        mock_post.assert_called_once()

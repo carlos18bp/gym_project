@@ -79,9 +79,11 @@ def test_tag_unique_name(user_factory):
     creator = user_factory("lawyer@example.com", role="lawyer")
     Tag.objects.create(name="Unique", color_id=1, created_by=creator)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             Tag.objects.create(name="Unique", color_id=2, created_by=creator)
+    assert exc_info.value is not None
+    assert Tag.objects.filter(name="Unique").count() == 1
 
 
 def test_tag_created_by_optional():
@@ -177,9 +179,11 @@ def test_document_folder_remove_document(user_factory, document_factory):
 
 
 def test_document_folder_owner_required():
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentFolder.objects.create(name="NoOwner")
+    assert exc_info.value is not None
+    assert DocumentFolder.objects.filter(name="NoOwner").count() == 0
 
 
 def test_document_folder_color_default(user_factory):

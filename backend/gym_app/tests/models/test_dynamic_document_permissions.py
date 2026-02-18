@@ -309,8 +309,10 @@ def test_document_usability_permission_clean_requires_visibility_raises(user_fac
         granted_by=creator,
     )
 
-    with pytest.raises(ValidationError, match="visibility permission"):
+    with pytest.raises(ValidationError, match="visibility permission") as exc_info:
         permission.save()
+    assert exc_info.value is not None
+    assert DocumentUsabilityPermission.objects.filter(document=document, user=client).count() == 0
 
 
 def test_document_usability_permission_clean_allows_lawyer_without_visibility(user_factory, document_factory):
@@ -510,14 +512,16 @@ class TestDocumentUsabilityPermissionClean:
             document=doc, user=lawyer, granted_by=lawyer,
         )
         perm.clean()  # should not raise
+        assert perm.user == lawyer
 
     def test_clean_raises_without_visibility(self, lawyer, client_user):
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         perm = DocumentUsabilityPermission(
             document=doc, user=client_user, granted_by=lawyer,
         )
-        with pytest.raises(ValidationError, match="visibility permission"):
+        with pytest.raises(ValidationError, match="visibility permission") as exc_info:
             perm.clean()
+        assert exc_info.value is not None
 
 
 # ── DynamicDocument.delete ───────────────────────────────────────────────────
@@ -623,13 +627,15 @@ def test_document_visibility_permission_unique_together(user_factory, document_f
         granted_by=creator,
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentVisibilityPermission.objects.create(
                 document=document,
                 user=viewer,
                 granted_by=creator,
             )
+    assert exc_info.value is not None
+    assert DocumentVisibilityPermission.objects.filter(document=document, user=viewer).count() == 1
 
 
 def test_document_usability_permission_str(user_factory, document_factory):
@@ -667,13 +673,15 @@ def test_document_usability_permission_unique_together(user_factory, document_fa
         granted_by=creator,
     )
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentUsabilityPermission.objects.create(
                 document=document,
                 user=editor,
                 granted_by=creator,
             )
+    assert exc_info.value is not None
+    assert DocumentUsabilityPermission.objects.filter(document=document, user=editor).count() == 1
 
 
 def test_document_usability_permission_ordering_by_granted_at(user_factory, document_factory):

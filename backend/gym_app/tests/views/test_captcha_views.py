@@ -56,6 +56,7 @@ class TestVerifyRecaptcha:
         data = json.loads(response.content.decode())
         assert data["success"] is True
         assert data["result"]["success"] is True
+        mock_post.assert_called_once()
 
     @mock.patch("gym_app.views.captcha.requests.post")
     @pytest.mark.edge
@@ -72,6 +73,7 @@ class TestVerifyRecaptcha:
         assert response.status_code == 200
         data = json.loads(response.content.decode())
         assert data["success"] is False
+        mock_post.assert_called_once()
 
     @mock.patch("gym_app.views.captcha.requests.post")
     @pytest.mark.edge

@@ -27,18 +27,26 @@ describe("submitHandler", () => {
     Swal.fire.mockResolvedValue({ isConfirmed: true });
   });
 
-  test("creates process and shows success alert", async () => {
+  const runCreateSuccess = async () => {
     mockCreateProcess.mockResolvedValue(201);
 
     const formData = { plaintiff: "Ana" };
-
     const result = await submitHandler(formData, "Proceso creado", false);
+
+    return {
+      formData,
+      result,
+      loadingConfig: Swal.fire.mock.calls[0][0],
+      successConfig: Swal.fire.mock.calls[1][0],
+    };
+  };
+
+  test("creates process and shows loading alert", async () => {
+    const { formData, loadingConfig } = await runCreateSuccess();
 
     expect(mockCreateProcess).toHaveBeenCalledWith(formData);
     expect(mockUpdateProcess).not.toHaveBeenCalled();
-
-    expect(Swal.fire).toHaveBeenCalledTimes(2);
-    expect(Swal.fire.mock.calls[0][0]).toEqual(
+    expect(loadingConfig).toEqual(
       expect.objectContaining({
         title: "Procesando...",
         showConfirmButton: false,
@@ -46,12 +54,15 @@ describe("submitHandler", () => {
       })
     );
 
-    const loadingConfig = Swal.fire.mock.calls[0][0];
     loadingConfig.didOpen();
     expect(Swal.showLoading).toHaveBeenCalled();
+  });
+
+  test("shows success alert after creating process", async () => {
+    const { result, successConfig } = await runCreateSuccess();
 
     expect(Swal.close).toHaveBeenCalled();
-    expect(Swal.fire.mock.calls[1][0]).toEqual(
+    expect(successConfig).toEqual(
       expect.objectContaining({
         icon: "success",
         text: "Proceso creado",

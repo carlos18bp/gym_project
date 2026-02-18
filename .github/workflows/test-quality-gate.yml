@@ -1,0 +1,59 @@
+name: Test Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - 'backend/gym_app/tests/**'
+      - 'frontend/test/**'
+      - 'frontend/e2e/**'
+      - 'scripts/test_quality_gate.py'
+      - 'scripts/quality/**'
+      - 'frontend/scripts/ast-parser.cjs'
+      - '.pre-commit-config.yaml'
+      - '.github/workflows/test-quality-gate.yml'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'backend/gym_app/tests/**'
+      - 'frontend/test/**'
+      - 'frontend/e2e/**'
+      - 'scripts/test_quality_gate.py'
+      - 'scripts/quality/**'
+      - 'frontend/scripts/ast-parser.cjs'
+      - '.pre-commit-config.yaml'
+      - '.github/workflows/test-quality-gate.yml'
+
+jobs:
+  test-quality-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run test quality gate
+        run: |
+          python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json --verbose
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-quality-report
+          path: test-results/test-quality-report.json
