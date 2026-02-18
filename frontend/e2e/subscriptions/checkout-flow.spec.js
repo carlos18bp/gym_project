@@ -76,8 +76,12 @@ test("checkout page renders plan details for free plan (basico)", async ({ page 
   await page.goto("/checkout/basico");
 
   // Should show plan name and price
-  await expect(page.getByText("Plan Básico").first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Gratuito").first()).toBeVisible();
+  const basicPlanCard = page.locator("div").filter({
+    has: page.getByRole("heading", { name: "Plan Básico" }),
+  });
+  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible({ timeout: 15_000 });
+  const basicPlanPrice = basicPlanCard.locator("p", { hasText: "Gratuito" });
+  await expect(basicPlanPrice).toBeVisible();
 
   // Should show order summary
   await expect(page.getByText("Resumen del pedido")).toBeVisible();
@@ -134,9 +138,10 @@ test("free plan checkout activates subscription successfully", async ({ page }) 
   await page.getByRole("button", { name: /Activar Plan Gratuito/i }).click();
 
   // Should show success notification
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("Activada");
-  await page.locator(".swal2-confirm").click();
+  const successDialog = page.locator('[class~="swal2-popup"]');
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText("Activada");
+  await page.locator('[class~="swal2-confirm"]').click();
 
   // Should redirect to dashboard
   await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });

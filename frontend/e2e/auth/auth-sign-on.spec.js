@@ -58,14 +58,14 @@ test("new user can register and is redirected to dashboard", async ({ page }) =>
 
   await page.goto("/sign_on");
 
-  await page.locator("#email").fill("newuser@example.com");
-  await page.locator("#password").fill("SecurePass1!");
-  await page.locator("#confirm_password").fill("SecurePass1!");
-  await page.locator("#first_name").fill("New");
-  await page.locator("#last_name").fill("User");
+  await page.locator('[id="email"]').fill("newuser@example.com");
+  await page.locator('[id="password"]').fill("SecurePass1!");
+  await page.locator('[id="confirm_password"]').fill("SecurePass1!");
+  await page.locator('[id="first_name"]').fill("New");
+  await page.locator('[id="last_name"]').fill("User");
 
   // Accept privacy policy
-  await page.locator("#privacy-policy").check();
+  await page.locator('[id="privacy-policy"]').check();
 
   await bypassCaptcha(page);
 
@@ -73,8 +73,9 @@ test("new user can register and is redirected to dashboard", async ({ page }) =>
   await page.getByRole("button", { name: "Registrarse" }).click();
 
   // Notification about verification code — dismiss it fully
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  const okBtn = page.locator(".swal2-confirm");
+  const notificationDialog = page.locator('[class~="swal2-popup"]');
+  await expect(notificationDialog).toBeVisible({ timeout: 10_000 });
+  const okBtn = page.locator('[class~="swal2-confirm"]');
   if (await okBtn.isVisible().catch(() => false)) {
     await okBtn.click();
   }
@@ -86,10 +87,10 @@ test("new user can register and is redirected to dashboard", async ({ page }) =>
   });
 
   // Wait for passcode input to appear (passcodeSent becomes truthy after API response)
-  await expect(page.locator("#passcode")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[id="passcode"]')).toBeVisible({ timeout: 10_000 });
 
   // Enter the verification code
-  await page.locator("#passcode").fill("123456");
+  await page.locator('[id="passcode"]').fill("123456");
 
   // Click verify button
   await page.getByRole("button", { name: "Verificar" }).click();
@@ -114,20 +115,21 @@ test("registration with mismatched passwords shows warning", async ({ page }) =>
 
   await page.goto("/sign_on");
 
-  await page.locator("#first_name").fill("Test");
-  await page.locator("#last_name").fill("User");
-  await page.locator("#email").fill("newuser@example.com");
-  await page.locator("#password").fill("SecurePass1!");
-  await page.locator("#confirm_password").fill("DifferentPass!");
+  await page.locator('[id="first_name"]').fill("Test");
+  await page.locator('[id="last_name"]').fill("User");
+  await page.locator('[id="email"]').fill("newuser@example.com");
+  await page.locator('[id="password"]').fill("SecurePass1!");
+  await page.locator('[id="confirm_password"]').fill("DifferentPass!");
 
-  await page.locator("#privacy-policy").check();
+  await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
   await page.getByRole("button", { name: "Registrarse" }).click();
 
   // Should show password mismatch warning
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("contraseñas no coinciden");
+  const mismatchDialog = page.locator('[class~="swal2-popup"]');
+  await expect(mismatchDialog).toBeVisible({ timeout: 10_000 });
+  await expect(mismatchDialog).toContainText("contraseñas no coinciden");
 
   // Should stay on sign_on page
   await expect(page).toHaveURL(/\/sign_on/);
@@ -145,19 +147,19 @@ test("registration with existing email shows error", async ({ page }) => {
 
   await page.goto("/sign_on");
 
-  await page.locator("#email").fill("existing@example.com");
-  await page.locator("#password").fill("SecurePass1!");
-  await page.locator("#confirm_password").fill("SecurePass1!");
-  await page.locator("#first_name").fill("Existing");
-  await page.locator("#last_name").fill("User");
+  await page.locator('[id="email"]').fill("existing@example.com");
+  await page.locator('[id="password"]').fill("SecurePass1!");
+  await page.locator('[id="confirm_password"]').fill("SecurePass1!");
+  await page.locator('[id="first_name"]').fill("Existing");
+  await page.locator('[id="last_name"]').fill("User");
 
-  await page.locator("#privacy-policy").check();
+  await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
   await page.getByRole("button", { name: "Registrarse" }).click();
 
   // Should show email already registered error
-  await expect(page.locator(".swal2-popup")).toContainText("ya está registrado", { timeout: 10_000 });
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("ya está registrado", { timeout: 10_000 });
 
   // Should stay on sign_on page
   await expect(page).toHaveURL(/\/sign_on/);

@@ -63,12 +63,8 @@ test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages",
 
   // Click "Ver Histórico" or the progress bar area to open ProcessHistoryModal
   const historyBtn = page.getByRole("button", { name: /Histórico|Ver etapas/i });
-  if (await historyBtn.isVisible()) {
-    await historyBtn.click();
-  } else {
-    // Fallback: click the progress section that emits open-history
-    await page.locator(".cursor-pointer").first().click();
-  }
+  await expect(historyBtn).toBeVisible({ timeout: 10_000 });
+  await historyBtn.click();
 
   // ProcessHistoryModal should open
   await expect(page.getByRole("heading", { name: "Histórico Procesal" })).toBeVisible({ timeout: 10_000 });
@@ -81,8 +77,7 @@ test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages",
 
   // Verify order matches the edit form: Inicio (1), Trámite (2), Pruebas (3)
   const stageHeadings = page.locator('h4.text-base.font-medium.text-gray-900');
-  const texts = await stageHeadings.allTextContents();
-  expect(texts).toEqual(["Inicio", "Trámite", "Pruebas"]);
+  await expect(stageHeadings).toHaveText(["Inicio", "Trámite", "Pruebas"]);
 
   // Close modal via Cerrar button
   await page.getByRole("button", { name: "Cerrar" }).click();

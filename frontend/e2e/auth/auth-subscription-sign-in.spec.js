@@ -124,8 +124,8 @@ test("subscription sign-in page renders form with email, password, and plan link
   await expect(page.getByRole("heading", { name: "Inicia sesión para continuar" })).toBeVisible({ timeout: 15_000 });
 
   // Form fields
-  await expect(page.locator("#email")).toBeVisible();
-  await expect(page.locator("#password")).toBeVisible();
+  await expect(page.locator('[id="email"]')).toBeVisible();
+  await expect(page.locator('[id="password"]')).toBeVisible();
 
   // Submit button
   await expect(page.getByRole("button", { name: "Iniciar sesión" })).toBeVisible();
@@ -145,22 +145,23 @@ test("user signs in successfully and is redirected to checkout", async ({ page }
 
   await page.goto("/subscription/sign_in?plan=basico");
 
-  await expect(page.locator("#email")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[id="email"]')).toBeVisible({ timeout: 15_000 });
 
   // Fill credentials
-  await page.locator("#email").fill("e2e@example.com");
-  await page.locator("#password").fill("Password123!");
+  await page.locator('[id="email"]').fill("e2e@example.com");
+  await page.locator('[id="password"]').fill("Password123!");
 
   // Bypass captcha verification
-  await bypassCaptcha(page, { rootSelector: "#email" });
+  await bypassCaptcha(page, { rootSelector: '[id="email"]' });
 
   // Submit
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
   // Should show success notification
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitoso");
-  await page.locator(".swal2-confirm").click();
+  const successDialog = page.locator('[class~="swal2-popup"]');
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText("exitoso");
+  await page.locator('[class~="swal2-confirm"]').click();
 
   // Should redirect to checkout with the plan
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
@@ -173,24 +174,25 @@ test("user sees error notification on invalid credentials", async ({ page }) => 
 
   await page.goto("/subscription/sign_in?plan=cliente");
 
-  await expect(page.locator("#email")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[id="email"]')).toBeVisible({ timeout: 15_000 });
 
   // Fill invalid credentials
-  await page.locator("#email").fill("wrong@example.com");
-  await page.locator("#password").fill("WrongPassword!");
+  await page.locator('[id="email"]').fill("wrong@example.com");
+  await page.locator('[id="password"]').fill("WrongPassword!");
 
   // Bypass captcha
-  await bypassCaptcha(page, { rootSelector: "#email" });
+  await bypassCaptcha(page, { rootSelector: '[id="email"]' });
 
   // Submit
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
   // Should show error notification about invalid credentials
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText(/inválidas|error/i);
-  await page.locator(".swal2-confirm").click();
+  const errorDialog = page.locator('[class~="swal2-popup"]');
+  await expect(errorDialog).toBeVisible({ timeout: 15_000 });
+  await expect(errorDialog).toContainText(/inválidas|error/i);
+  await page.locator('[class~="swal2-confirm"]').click();
 
   // Should remain on sign-in page (not redirected)
   await expect(page).toHaveURL(/\/subscription\/sign_in/);
-  await expect(page.locator("#email")).toBeVisible();
+  await expect(page.locator('[id="email"]')).toBeVisible();
 });

@@ -89,9 +89,5 @@ test.describe("folder utilities: color selection", () => {
 
     await page.getByRole("button", { name: "Carpetas" }).click();
     await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeVisible();
-
-    // Page should load successfully - either showing empty state or create button
-    const pageLoaded = await page.getByRole("heading", { name: "Mis Carpetas" }).isVisible();
-    expect(pageLoaded).toBeTruthy();
   });
 });

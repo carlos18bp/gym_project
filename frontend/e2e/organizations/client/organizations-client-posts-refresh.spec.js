@@ -40,7 +40,11 @@ test("client posts section: refresh button shows loading and updates rendered po
   await refreshBtn.click();
 
   // Loading state may appear briefly during refresh (mock resolves fast)
-  await expect(page.getByText("Cargando anuncios...")).toBeVisible().catch(() => {});
+  try {
+    await expect(page.getByText("Cargando anuncios...")).toBeVisible({ timeout: 1_500 });
+  } catch {
+    // Loading indicator may not appear if response resolves immediately.
+  }
 
   // After refresh, a different post should be rendered
   await expect(page.getByText("Anuncio Actualizado")).toBeVisible({ timeout: 10_000 });
