@@ -1,0 +1,1 @@
+import{S as o}from"./index-BROrgVaC.js";function a(s="Procesando...",e="Por favor espere, estamos procesando la solicitud."){o.fire({title:s,text:e,iconColor:"#FFF",allowOutsideClick:!1,showConfirmButton:!1,didOpen:()=>{o.showLoading()}})}function n(){o.close()}export{n as h,a as s};
