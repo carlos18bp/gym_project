@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest import mock
 
 import pytest
-import requests
-from django.utils import timezone
 from django.contrib.auth import get_user_model
+from requests.exceptions import RequestException
 
 from gym_app.models import Subscription
 from gym_app.tasks import (
@@ -16,6 +15,15 @@ from gym_app.tasks import (
 
 
 User = get_user_model()
+FIXED_TODAY = date(2026, 1, 15)
+
+
+@pytest.fixture
+def wompi_settings(monkeypatch, settings):
+    monkeypatch.setattr(settings, "WOMPI_API_URL", "https://sandbox.wompi.co/v1")
+    monkeypatch.setattr(settings, "WOMPI_PRIVATE_KEY", "priv_test")
+    monkeypatch.setattr(settings, "WOMPI_INTEGRITY_KEY", "integrity_test")
+    return settings
 
 
 @pytest.fixture
@@ -36,7 +44,7 @@ class TestProcessSubscriptionPayment:
     def test_free_plan_skips_wompi_and_updates_next_billing(
         self, mock_post, subscription_user
     ):
-        today = datetime.now().date()
+        today = FIXED_TODAY
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="basico",
@@ -54,13 +62,9 @@ class TestProcessSubscriptionPayment:
 
     @mock.patch("gym_app.tasks.requests.post")
     def test_paid_plan_approved_updates_next_billing(
-        self, mock_post, subscription_user, settings
+        self, mock_post, subscription_user, wompi_settings
     ):
-        settings.WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-        settings.WOMPI_PRIVATE_KEY = "priv_test"
-        settings.WOMPI_INTEGRITY_KEY = "integrity_test"
-
-        today = datetime.now().date()
+        today = FIXED_TODAY
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -88,13 +92,9 @@ class TestProcessSubscriptionPayment:
 
     @mock.patch("gym_app.tasks.requests.post")
     def test_paid_plan_declined_expires_subscription_and_downgrades_user(
-        self, mock_post, subscription_user, settings
+        self, mock_post, subscription_user, wompi_settings
     ):
-        settings.WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-        settings.WOMPI_PRIVATE_KEY = "priv_test"
-        settings.WOMPI_INTEGRITY_KEY = "integrity_test"
-
-        today = datetime.now().date()
+        today = FIXED_TODAY
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -119,13 +119,9 @@ class TestProcessSubscriptionPayment:
 
     @mock.patch("gym_app.tasks.requests.post")
     def test_paid_plan_pending_leaves_subscription_unchanged(
-        self, mock_post, subscription_user, settings
+        self, mock_post, subscription_user, wompi_settings
     ):
-        settings.WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-        settings.WOMPI_PRIVATE_KEY = "priv_test"
-        settings.WOMPI_INTEGRITY_KEY = "integrity_test"
-
-        today = datetime.now().date()
+        today = FIXED_TODAY
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -151,13 +147,9 @@ class TestProcessSubscriptionPayment:
 
     @mock.patch("gym_app.tasks.requests.post")
     def test_paid_plan_request_exception_raises(
-        self, mock_post, subscription_user, settings
+        self, mock_post, subscription_user, wompi_settings
     ):
-        settings.WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-        settings.WOMPI_PRIVATE_KEY = "priv_test"
-        settings.WOMPI_INTEGRITY_KEY = "integrity_test"
-
-        today = datetime.now().date()
+        today = FIXED_TODAY
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -167,9 +159,9 @@ class TestProcessSubscriptionPayment:
             payment_source_id="src_1",
         )
 
-        mock_post.side_effect = requests.RequestException("boom")
+        mock_post.side_effect = RequestException("boom")
 
-        with pytest.raises(requests.RequestException) as exc_info:
+        with pytest.raises(RequestException) as exc_info:
             process_subscription_payment(sub)
         assert exc_info.value is not None
         sub.refresh_from_db()
@@ -182,7 +174,7 @@ class TestProcessMonthlySubscriptions:
     def test_process_monthly_subscriptions_filters_due_and_calls_processor(
         self, mock_processor, subscription_user
     ):
-        today = datetime.now().date()
+        today = FIXED_TODAY
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
 
@@ -220,7 +212,7 @@ class TestProcessMonthlySubscriptions:
     def test_process_monthly_subscriptions_continues_on_exception(
         self, mock_processor, subscription_user
     ):
-        today = datetime.now().date()
+        today = FIXED_TODAY
         yesterday = today - timedelta(days=1)
 
         due1 = Subscription.objects.create(
@@ -255,7 +247,7 @@ class TestCancelSubscriptionTask:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_TODAY,
             amount=Decimal("50000.00"),
         )
 
