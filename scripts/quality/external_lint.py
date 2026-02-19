@@ -71,7 +71,8 @@ class ExternalLintRunner:
         if not targets:
             return ExternalLintRunResult(source="ruff")
 
-        if shutil.which("ruff") is None:
+        ruff_bin = self._ruff_binary()
+        if ruff_bin is None:
             return ExternalLintRunResult(
                 source="ruff",
                 status="unavailable",
@@ -79,7 +80,7 @@ class ExternalLintRunner:
             )
 
         command = [
-            "ruff",
+            ruff_bin,
             "check",
             "--output-format",
             "json",
@@ -218,6 +219,20 @@ class ExternalLintRunner:
                 )
 
         return ExternalLintRunResult(source="eslint", findings=findings)
+
+    def _ruff_binary(self) -> str | None:
+        """Resolve Ruff binary from common project virtualenv locations or PATH."""
+        candidates = (
+            self.repo_root / "backend" / "venv" / "bin" / "ruff",
+            self.repo_root / "backend" / ".venv" / "bin" / "ruff",
+            self.repo_root / "venv" / "bin" / "ruff",
+            self.repo_root / ".venv" / "bin" / "ruff",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return shutil.which("ruff")
 
     def _eslint_binary(self) -> str | None:
         local_bin = self.repo_root / "frontend" / "node_modules" / ".bin" / "eslint"
