@@ -2,6 +2,22 @@ import { test, expect } from "../helpers/test.js";
 
 import { installAuthSignInApiMocks } from "../helpers/authSignInMocks.js";
 
+const authEmailForRole = (role, userId) => `${role}.${userId}@test.local`;
+
+async function resetSignInState(page) {
+  await page.addInitScript(() => {
+    if (window.location.pathname !== "/sign_in") {
+      return;
+    }
+    localStorage.removeItem("token");
+    localStorage.removeItem("userAuth");
+    localStorage.removeItem("signInTries");
+    localStorage.removeItem("signInSecondsRemaining");
+    localStorage.removeItem("signInSecondsAcumulated");
+    localStorage.removeItem("signInIntervalId");
+  });
+}
+
 async function bypassCaptcha(page) {
   await page.evaluate(() => {
     const el = document.querySelector("#email") || document.querySelector("form");
@@ -57,6 +73,9 @@ async function bypassCaptcha(page) {
 
 test("client can sign in and is redirected to dashboard", async ({ page }) => {
   const userId = 1000;
+  const email = authEmailForRole("client", userId);
+
+  await resetSignInState(page);
 
   await installAuthSignInApiMocks(page, {
     userId,
@@ -65,9 +84,12 @@ test("client can sign in and is redirected to dashboard", async ({ page }) => {
   });
 
   await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({
+    timeout: 15_000,
+  });
 
-  await page.locator("#email").fill("client@example.com");
-  await page.locator("#password").fill("password");
+  await page.locator('[id="email"]').fill(email);
+  await page.locator('[id="password"]').fill("password");
 
   await bypassCaptcha(page);
 
@@ -84,6 +106,9 @@ test("client can sign in and is redirected to dashboard", async ({ page }) => {
 
 test("lawyer can sign in and is redirected to dashboard", async ({ page }) => {
   const userId = 1100;
+  const email = authEmailForRole("lawyer", userId);
+
+  await resetSignInState(page);
 
   await installAuthSignInApiMocks(page, {
     userId,
@@ -92,9 +117,12 @@ test("lawyer can sign in and is redirected to dashboard", async ({ page }) => {
   });
 
   await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({
+    timeout: 15_000,
+  });
 
-  await page.locator("#email").fill("lawyer@example.com");
-  await page.locator("#password").fill("password");
+  await page.locator('[id="email"]').fill(email);
+  await page.locator('[id="password"]').fill("password");
 
   await bypassCaptcha(page);
 
@@ -111,6 +139,9 @@ test("lawyer can sign in and is redirected to dashboard", async ({ page }) => {
 
 test("invalid credentials shows warning", async ({ page }) => {
   const userId = 1200;
+  const email = authEmailForRole("client", userId);
+
+  await resetSignInState(page);
 
   await installAuthSignInApiMocks(page, {
     userId,
@@ -119,16 +150,18 @@ test("invalid credentials shows warning", async ({ page }) => {
   });
 
   await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({
+    timeout: 15_000,
+  });
 
-  await page.locator("#email").fill("client@example.com");
-  await page.locator("#password").fill("wrong");
+  await page.locator('[id="email"]').fill(email);
+  await page.locator('[id="password"]').fill("wrong");
 
   await bypassCaptcha(page);
 
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("Credenciales inválidas");
+  await expect(page.getByText(/Credenciales inválidas/i)).toBeVisible({ timeout: 10_000 });
 
   expect(await page.evaluate(() => localStorage.getItem("token"))).toBeNull();
 });

@@ -115,6 +115,40 @@ async function installCardActionsMocks(page, { userId, role, documents, hasSigna
   });
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const buildSignerEmail = (label, userId) => `${label}.${userId}@test.local`;
+
+async function openDocumentActionsModal(page, documentTitle) {
+  await page.getByRole("button", { name: "Minutas" }).click();
+  await expect(page.getByText(documentTitle)).toBeVisible({ timeout: 15_000 });
+  await page
+    .getByRole("row", { name: new RegExp(escapeRegExp(documentTitle), "i") })
+    .click();
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+const confirmDialogButton = (page) =>
+  page.getByRole("button", {
+    name: /^(OK|Aceptar|Confirmar|Sí|Si)$/i,
+  });
+
+const cancelDialogButton = (page) =>
+  page.getByRole("button", {
+    name: /^(Cancelar|No)$/i,
+  });
+
+async function clickConfirmDialogIfVisible(page, timeout = 5000) {
+  const confirmButton = confirmDialogButton(page);
+  if (await confirmButton.isVisible({ timeout }).catch(() => false)) {
+    await confirmButton.click();
+  }
+}
+
 test.describe("document card actions: modals and action handlers", () => {
   test("lawyer opens preview modal for document", async ({ page }) => {
     const userId = 8000;
@@ -139,24 +173,13 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento para Vista Previa")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento para Vista Previa");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento para Vista Previa/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click preview option
-      const previewOption = page.getByText("Vista previa").or(page.getByText("Preview")).first();
-      if (await previewOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await previewOption.click();
-        
-        // Modal should open or preview should be triggered
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const previewOption = page.getByRole("button", { name: /Vista previa|Preview/i });
+    if (await previewOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await previewOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 
@@ -182,22 +205,13 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento para Editar")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento para Editar");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento para Editar/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click edit option
-      const editOption = page.getByText("Editar").first();
-      if (await editOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await editOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const editOption = page.getByRole("button", { name: /Editar/i });
+    if (await editOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await editOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 
@@ -223,29 +237,17 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento para Publicar")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento para Publicar");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento para Publicar/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
+    const publishOption = page.getByRole("button", { name: /Publicar/i });
+    if (await publishOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await publishOption.click();
+      await page.waitForLoadState("networkidle");
 
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click publish option
-      const publishOption = page.getByText("Publicar").first();
-      if (await publishOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await publishOption.click();
-        
-        // Wait for action to complete - notification may or may not appear
-        await page.waitForLoadState('networkidle');
-        
-        // If notification appears, dismiss it
-        const popup = page.locator(".swal2-popup");
-        if (await popup.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await page.locator(".swal2-confirm").click();
-        }
+      const dialog = page.getByRole("dialog");
+      if (await dialog.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await clickConfirmDialogIfVisible(page);
       }
     }
   });
@@ -272,25 +274,15 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento Publicado")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento Publicado");
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento Publicado/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click "Mover a borrador" option
-      const draftOption = page.getByText("Mover a borrador").or(page.getByText("borrador")).first();
-      if (await draftOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await draftOption.click();
-        
-        // Success notification should appear
-        await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-        await page.locator(".swal2-confirm").click();
-      }
+    const draftOption = page.getByRole("button", {
+      name: /Mover a Borrador|Mover a borrador|borrador/i,
+    });
+    if (await draftOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await draftOption.click();
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+      await clickConfirmDialogIfVisible(page);
     }
   });
 
@@ -316,22 +308,13 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento con Permisos")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento con Permisos");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento con Permisos/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click permissions option
-      const permOption = page.getByText("Permisos").or(page.getByText("Permissions")).first();
-      if (await permOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await permOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const permOption = page.getByRole("button", { name: /Permisos|Permissions/i });
+    if (await permOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await permOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 
@@ -358,30 +341,19 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento Original")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento Original");
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento Original/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
+    const copyOption = page.getByRole("button", {
+      name: /Crear una Copia|Duplicar|Copiar/i,
+    });
+    if (await copyOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await copyOption.click();
 
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click copy/duplicate option
-      const copyOption = page.getByText("Duplicar").or(page.getByText("Copiar")).first();
-      if (await copyOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await copyOption.click();
-        
-        // Confirmation dialog should appear
-        const confirmBtn = page.locator(".swal2-confirm");
-        if (await confirmBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await confirmBtn.click();
-          
-          // Success notification
-          await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-          await page.locator(".swal2-confirm").click();
-        }
+      const dialog = page.getByRole("dialog");
+      if (await dialog.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await clickConfirmDialogIfVisible(page);
+        await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+        await clickConfirmDialogIfVisible(page);
       }
     }
   });
@@ -408,30 +380,19 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento para Eliminar")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento para Eliminar");
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento para Eliminar/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
+    const deleteOption = page.getByRole("button", { name: /Eliminar/i });
+    if (await deleteOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteOption.click();
 
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click delete option
-      const deleteOption = page.getByText("Eliminar").first();
-      if (await deleteOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await deleteOption.click();
-        
-        // Confirmation dialog should appear
-        const confirmBtn = page.locator(".swal2-confirm");
-        if (await confirmBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await confirmBtn.click();
-          
-          // Success notification
-          await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-        }
-      }
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+      await expect(confirmDialogButton(page)).toBeVisible();
+      await expect(cancelDialogButton(page)).toBeVisible();
+
+      await clickConfirmDialogIfVisible(page);
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+      await clickConfirmDialogIfVisible(page);
     }
   });
 
@@ -457,22 +418,15 @@ test.describe("document card actions: modals and action handlers", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento para Enviar")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento para Enviar");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento para Enviar/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click email option
-      const emailOption = page.getByText("Enviar por correo").or(page.getByText("Email")).or(page.getByText("Correo")).first();
-      if (await emailOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await emailOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const emailOption = page.getByRole("button", {
+      name: /Enviar por correo|Email|Correo/i,
+    });
+    if (await emailOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await emailOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 });
@@ -500,22 +454,13 @@ test.describe("document card actions: download operations", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento PDF")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento PDF");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento PDF/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click download PDF option
-      const pdfOption = page.getByText("Descargar PDF").or(page.getByText("PDF")).first();
-      if (await pdfOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await pdfOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const pdfOption = page.getByRole("button", { name: /Descargar PDF|PDF/i });
+    if (await pdfOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await pdfOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 
@@ -541,22 +486,13 @@ test.describe("document card actions: download operations", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento Word")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento Word");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento Word/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click download Word option
-      const wordOption = page.getByText("Descargar Word").or(page.getByText("Word")).first();
-      if (await wordOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await wordOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const wordOption = page.getByRole("button", { name: /Descargar Word|Word/i });
+    if (await wordOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await wordOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 });
@@ -574,8 +510,16 @@ test.describe("document card actions: signature operations", () => {
         createdBy: userId,
         requires_signature: true,
         signatures: [
-          { signer_email: "signer1@example.com", signed: true, signed_at: new Date().toISOString() },
-          { signer_email: "signer2@example.com", signed: true, signed_at: new Date().toISOString() },
+          {
+            signer_email: buildSignerEmail("signer.one", userId),
+            signed: true,
+            signed_at: new Date().toISOString(),
+          },
+          {
+            signer_email: buildSignerEmail("signer.two", userId),
+            signed: true,
+            signed_at: new Date().toISOString(),
+          },
         ],
       }),
     ];
@@ -584,28 +528,27 @@ test.describe("document card actions: signature operations", () => {
 
     await setAuthLocalStorage(page, {
       token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true, email: "e2e@example.com" },
+      userAuth: {
+        id: userId,
+        role: "lawyer",
+        is_gym_lawyer: true,
+        is_profile_completed: true,
+        email: buildSignerEmail("owner", userId),
+      },
     });
 
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento con Firmas Visibles")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento con Firmas Visibles");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento con Firmas Visibles/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click view signatures option
-      const signaturesOption = page.getByText("Ver firmas").or(page.getByText("Firmas")).first();
-      if (await signaturesOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await signaturesOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const signaturesOption = page.getByRole("button", {
+      name: /Ver firmas|Firmas/i,
+    });
+    if (await signaturesOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await signaturesOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 
@@ -621,7 +564,11 @@ test.describe("document card actions: signature operations", () => {
         createdBy: userId,
         requires_signature: true,
         signatures: [
-          { signer_email: "signer@example.com", signed: true, signed_at: new Date().toISOString() },
+          {
+            signer_email: buildSignerEmail("signer", userId),
+            signed: true,
+            signed_at: new Date().toISOString(),
+          },
         ],
       }),
     ];
@@ -636,22 +583,15 @@ test.describe("document card actions: signature operations", () => {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    await page.getByRole("button", { name: "Minutas" }).click();
-    await expect(page.getByText("Documento Firmado para Descargar")).toBeVisible({ timeout: 15_000 });
+    await openDocumentActionsModal(page, "Documento Firmado para Descargar");
+    await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible();
 
-    // Find the document card and open menu
-    const cardContainer = page.locator("div").filter({ hasText: /Documento Firmado para Descargar/ }).first();
-    const menuTrigger = cardContainer.locator('button').filter({ has: page.locator('svg') }).first();
-
-    if (await menuTrigger.isVisible()) {
-      await menuTrigger.click();
-      
-      // Click download signed document or regular download option
-      const downloadSignedOption = page.getByText("Descargar firmado").or(page.getByText("documento firmado")).or(page.getByText("PDF")).first();
-      if (await downloadSignedOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await downloadSignedOption.click();
-        await page.waitForLoadState('domcontentloaded');
-      }
+    const downloadSignedOption = page.getByRole("button", {
+      name: /Descargar firmado|documento firmado|PDF/i,
+    });
+    if (await downloadSignedOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await downloadSignedOption.click();
+      await page.waitForLoadState("domcontentloaded");
     }
   });
 });
