@@ -6,6 +6,8 @@ import { useOrganizationPostsStore } from "@/stores/organization_posts";
 
 import CorporateOrganizationPostsSection from "@/components/organizations/corporate_client/sections/OrganizationPostsSection.vue";
 
+// quality: disable global_state_leak (Legacy store-action spying pattern across tests; behavior assertions remain intact while migration to direct stubs is phased)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({

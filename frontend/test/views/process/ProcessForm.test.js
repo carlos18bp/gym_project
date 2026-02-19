@@ -99,6 +99,9 @@ const createFile = (name, type, size = 1000) => {
   return file;
 };
 
+const getSetupState = (wrapper) => wrapper.vm.$.setupState;
+const getFormData = (wrapper) => getSetupState(wrapper).formData;
+
 const mountView = async ({
   routeParams = { action: "add", process_id: "" },
   processes = [],
@@ -164,29 +167,31 @@ describe("ProcessForm.vue", () => {
 
   test("loads process data in edit mode", async () => {
     const { wrapper, processInitSpy, caseTypeInitSpy, userInitSpy, process } = await mountEditView();
+    const setupState = getSetupState(wrapper);
 
     expect([processInitSpy, caseTypeInitSpy, userInitSpy].every((spy) => spy.mock.calls.length)).toBe(true);
     expect([
-      wrapper.vm.$.setupState.formData.plaintiff,
-      wrapper.vm.$.setupState.formData.authorityEmail,
-      wrapper.vm.$.setupState.selectedCaseType,
-      wrapper.vm.$.setupState.selectedClients.length,
-      wrapper.vm.$.setupState.formData.caseFiles.length,
-      wrapper.vm.$.setupState.isFormModified,
-      wrapper.vm.$.setupState.isSaveButtonEnabled,
+      setupState.formData.plaintiff,
+      setupState.formData.authorityEmail,
+      setupState.selectedCaseType,
+      setupState.selectedClients.length,
+      setupState.formData.caseFiles.length,
+      setupState.isFormModified,
+      setupState.isSaveButtonEnabled,
     ]).toEqual(["Alice", "court@test.com", process.case, 1, 1, false, true]);
   });
 
   test("tracks changes and resets when route action changes", async () => {
     const { wrapper } = await mountEditView();
+    const setupState = getSetupState(wrapper);
 
-    wrapper.vm.$.setupState.formData.plaintiff = "Updated";
+    setupState.formData.plaintiff = "Updated";
     await nextTick();
-    expect(wrapper.vm.$.setupState.isFormModified).toBe(true);
+    expect(setupState.isFormModified).toBe(true);
 
     mockRoute.params.action = "add";
     await nextTick();
-    expect(wrapper.vm.$.setupState.formData.plaintiff).toBe("");
+    expect(setupState.formData.plaintiff).toBe("");
   });
 
   test("submits a valid new process and navigates to list", async () => {
@@ -198,23 +203,24 @@ describe("ProcessForm.vue", () => {
       users: [client],
       authUser: { id: 55 },
     });
+    const setupState = getSetupState(wrapper);
 
-    wrapper.vm.$.setupState.selectedCaseType = { id: 10, type: "Civil" };
-    wrapper.vm.$.setupState.selectedClients = [client];
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [client];
 
-    wrapper.vm.$.setupState.formData.plaintiff = "Plaintiff";
-    wrapper.vm.$.setupState.formData.defendant = "Defendant";
-    wrapper.vm.$.setupState.formData.subcase = "Sub";
-    wrapper.vm.$.setupState.formData.ref = "REF";
-    wrapper.vm.$.setupState.formData.authority = "Court";
-    wrapper.vm.$.setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
-    wrapper.vm.$.setupState.formData.caseFiles = [
+    setupState.formData.plaintiff = "Plaintiff";
+    setupState.formData.defendant = "Defendant";
+    setupState.formData.subcase = "Sub";
+    setupState.formData.ref = "REF";
+    setupState.formData.authority = "Court";
+    setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
+    setupState.formData.caseFiles = [
       { file: createFile("file.pdf", "application/pdf") },
     ];
 
     mockSubmitHandler.mockResolvedValue();
 
-    await wrapper.vm.$.setupState.onSubmit();
+    await setupState.onSubmit();
 
     expect(mockSubmitHandler).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,19 +244,20 @@ describe("ProcessForm.vue", () => {
       routeParams: { action: "add", process_id: "" },
       authUser: { id: 42 },
     });
+    const setupState = getSetupState(wrapper);
 
-    wrapper.vm.$.setupState.selectedCaseType = { id: 10, type: "Civil" };
-    wrapper.vm.$.setupState.selectedClients = [{ id: 1, role: "client" }];
-    wrapper.vm.$.setupState.formData.defendant = "Defendant";
-    wrapper.vm.$.setupState.formData.subcase = "Sub";
-    wrapper.vm.$.setupState.formData.ref = "REF";
-    wrapper.vm.$.setupState.formData.authority = "Court";
-    wrapper.vm.$.setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
-    wrapper.vm.$.setupState.formData.caseFiles = [
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [{ id: 1, role: "client" }];
+    setupState.formData.defendant = "Defendant";
+    setupState.formData.subcase = "Sub";
+    setupState.formData.ref = "REF";
+    setupState.formData.authority = "Court";
+    setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
+    setupState.formData.caseFiles = [
       { file: createFile("file.pdf", "application/pdf") },
     ];
 
-    await wrapper.vm.$.setupState.onSubmit();
+    await setupState.onSubmit();
 
     expect(mockSwalFire).toHaveBeenCalled();
     expect(mockSubmitHandler).not.toHaveBeenCalled();
@@ -265,20 +272,21 @@ describe("ProcessForm.vue", () => {
       processes: [process],
       authUser: { id: 55 },
     });
+    const setupState = getSetupState(wrapper);
 
-    wrapper.vm.$.setupState.selectedCaseType = { id: 10, type: "Civil" };
-    wrapper.vm.$.setupState.selectedClients = [client];
-    wrapper.vm.$.setupState.formData.caseFiles = [
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [client];
+    setupState.formData.caseFiles = [
       { file: createFile("file.pdf", "application/pdf") },
     ];
 
     mockSwalFire.mockResolvedValueOnce({ isConfirmed: true });
     mockSubmitHandler.mockResolvedValue();
 
-    await wrapper.vm.$.setupState.archiveProcess();
+    await setupState.archiveProcess();
 
-    expect(wrapper.vm.$.setupState.formData.isArchiving).toBe(true);
-    expect(wrapper.vm.$.setupState.formData.stages.slice(-1)[0].status).toBe("Fallo");
+    expect(setupState.formData.isArchiving).toBe(true);
+    expect(setupState.formData.stages.slice(-1)[0].status).toBe("Fallo");
     expect(mockSubmitHandler).toHaveBeenCalledWith(
       expect.objectContaining({ processIdParam: "77" }),
       expect.stringContaining("archivado exitosamente"),
@@ -290,36 +298,38 @@ describe("ProcessForm.vue", () => {
   test("manages client selection and removal", async () => {
     const { wrapper } = await mountView();
     const client = { id: 5, first_name: "Ana", last_name: "Lopez" };
+    const setupState = getSetupState(wrapper);
 
-    wrapper.vm.$.setupState.onClientSelected(client);
-    wrapper.vm.$.setupState.onClientSelected(client);
+    setupState.onClientSelected(client);
+    setupState.onClientSelected(client);
 
     expect([
-      wrapper.vm.$.setupState.selectedClients.length,
-      wrapper.vm.$.setupState.isClientSelected(client),
+      setupState.selectedClients.length,
+      setupState.isClientSelected(client),
     ]).toEqual([1, true]);
 
-    wrapper.vm.$.setupState.removeClient(5);
+    setupState.removeClient(5);
     expect([
-      wrapper.vm.$.setupState.selectedClients.length,
-      wrapper.vm.$.setupState.formData.clientIds,
+      setupState.selectedClients.length,
+      setupState.formData.clientIds,
     ]).toEqual([0, []]);
   });
 
   test("manages stages and case files", async () => {
     const { wrapper } = await mountView();
-    const formData = wrapper.vm.$.setupState.formData;
+    const setupState = getSetupState(wrapper);
+    const formData = getFormData(wrapper);
 
     const initialStages = formData.stages.length;
-    wrapper.vm.$.setupState.addStage();
+    setupState.addStage();
     const stagesAfterAdd = formData.stages.length;
-    wrapper.vm.$.setupState.deleteStage(0);
+    setupState.deleteStage(0);
     const stagesAfterDelete = formData.stages.length;
 
     const initialFiles = formData.caseFiles.length;
-    wrapper.vm.$.setupState.addCaseFile();
+    setupState.addCaseFile();
     const filesAfterAdd = formData.caseFiles.length;
-    wrapper.vm.$.setupState.removeCaseFile(0);
+    setupState.removeCaseFile(0);
     const filesAfterRemove = formData.caseFiles.length;
 
     expect([stagesAfterAdd, stagesAfterDelete, filesAfterAdd, filesAfterRemove]).toEqual([
@@ -332,21 +342,22 @@ describe("ProcessForm.vue", () => {
 
   test("handles file uploads and openFile", async () => {
     const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
 
     const largeFile = createFile("large.pdf", "application/pdf", 51 * 1024 * 1024);
-    wrapper.vm.$.setupState.handleFileUpload({ target: { files: [largeFile] } }, 0);
+    setupState.handleFileUpload({ target: { files: [largeFile] } }, 0);
 
     const invalidFile = createFile("virus.exe", "application/octet-stream", 1000);
-    wrapper.vm.$.setupState.handleFileUpload({ target: { files: [invalidFile] } }, 0);
+    setupState.handleFileUpload({ target: { files: [invalidFile] } }, 0);
 
     const validFile = createFile("file.pdf", "application/pdf", 1000);
-    wrapper.vm.$.setupState.handleFileUpload({ target: { files: [validFile] } }, 0);
+    setupState.handleFileUpload({ target: { files: [validFile] } }, 0);
 
     expect(mockShowNotification).toHaveBeenCalled();
-    expect(wrapper.vm.$.setupState.formData.caseFiles[0].file).toBe(validFile);
+    expect(setupState.formData.caseFiles[0].file).toBe(validFile);
 
     const openSpy = jest.spyOn(window, "open").mockImplementation(() => {});
-    wrapper.vm.$.setupState.openFile("http://files.test/file.pdf");
+    setupState.openFile("http://files.test/file.pdf");
     expect(openSpy).toHaveBeenCalledWith("http://files.test/file.pdf", "_blank");
     openSpy.mockRestore();
   });

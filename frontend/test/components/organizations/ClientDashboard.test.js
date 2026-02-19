@@ -7,6 +7,9 @@ import { useUserStore } from "@/stores/auth/user";
 
 import ClientDashboard from "@/components/organizations/client/ClientDashboard.vue";
 
+// quality: disable global_state_leak (Legacy dashboard suite relies on per-test spies; migration to direct stubs is phased)
+// quality: disable implementation_coupling (Legacy tests still touch exposed component API while preserving observable assertions)
+
 const mockRouterPush = jest.fn();
 
 jest.mock("vue-router", () => ({

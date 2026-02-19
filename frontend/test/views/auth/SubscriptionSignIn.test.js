@@ -1,4 +1,4 @@
-import { shallowMount } from "@vue/test-utils";
+import { mount } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
 
 import SubscriptionSignIn from "@/views/auth/SubscriptionSignIn.vue";
@@ -34,10 +34,53 @@ jest.mock("@/stores/auth/captcha", () => ({
 
 jest.mock("vue3-recaptcha2", () => ({
   __esModule: true,
-  default: { template: "<div />" },
+  default: {
+    template:
+      "<button data-test='captcha' @click=\"$emit('verify', 'token')\">Captcha</button>",
+  },
 }));
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const GoogleLoginStub = {
+  props: ["callback"],
+  template:
+    "<button data-test='google-login' @click='callback({ credential: \"token\" })'>Google</button>",
+};
+
+const VueRecaptchaStub = {
+  template:
+    "<button data-test='captcha' @click=\"$emit('verify', 'token')\">Captcha</button>",
+};
+
+const mountSubscriptionSignIn = (pinia) =>
+  mount(SubscriptionSignIn, {
+    global: {
+      plugins: [pinia],
+      mocks: {
+        $route: mockRoute,
+      },
+      stubs: {
+        GoogleLogin: GoogleLoginStub,
+        VueRecaptcha: VueRecaptchaStub,
+        RouterLink: { template: "<a><slot /></a>" },
+      },
+    },
+  });
+
+const fillCredentials = async (wrapper, { email, password }) => {
+  if (email !== undefined) {
+    await wrapper.get("#email").setValue(email);
+  }
+  if (password !== undefined) {
+    await wrapper.get("#password").setValue(password);
+  }
+};
+
+const verifyCaptcha = async (wrapper) => {
+  await wrapper.get("[data-test='captcha']").trigger("click");
+  await flushPromises();
+};
 
 describe("SubscriptionSignIn.vue", () => {
   beforeEach(() => {
@@ -52,9 +95,9 @@ describe("SubscriptionSignIn.vue", () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
 
-    jest.spyOn(authStore, "login").mockImplementation(() => {});
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
-    jest.spyOn(authStore, "attempsSignIn").mockImplementation((action) => {
+    authStore.login = jest.fn();
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
+    authStore.attempsSignIn = jest.fn((action) => {
       if (action !== "initial") {
         authStore.signInTries += 1;
       }
@@ -62,27 +105,14 @@ describe("SubscriptionSignIn.vue", () => {
 
     axios.post.mockResolvedValue({ data: { access: "token", user: { id: 1 } } });
 
-    const wrapper = shallowMount(SubscriptionSignIn, {
-      global: {
-        plugins: [pinia],
-        mocks: {
-          $route: mockRoute,
-        },
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSubscriptionSignIn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.password = "secret";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
-
-    await wrapper.vm.$.setupState.signInUser();
+    await fillCredentials(wrapper, { email: "user@test.com", password: "secret" });
+    await verifyCaptcha(wrapper);
+    await wrapper.get("form").trigger("submit.prevent");
+    await flushPromises();
 
     expect(axios.post).toHaveBeenCalledWith("/api/sign_in/", {
       email: "user@test.com",
@@ -98,30 +128,20 @@ describe("SubscriptionSignIn.vue", () => {
       name: "checkout",
       params: { plan: "cliente" },
     });
+    expect(wrapper.get("#password").element.value).toBe("");
   });
 
   test("blocks submit when missing email", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
 
-    const wrapper = shallowMount(SubscriptionSignIn, {
-      global: {
-        plugins: [pinia],
-        mocks: {
-          $route: mockRoute,
-        },
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSubscriptionSignIn(pinia);
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.signInUser();
+    await wrapper.get("form").trigger("submit.prevent");
+    await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "El correo electrónico es requerido",
@@ -135,34 +155,21 @@ describe("SubscriptionSignIn.vue", () => {
     const authStore = useAuthStore();
     authStore.signInTries = 2;
 
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
-    jest.spyOn(authStore, "attempsSignIn").mockImplementation((action) => {
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
+    authStore.attempsSignIn = jest.fn((action) => {
       if (action !== "initial") {
         authStore.signInTries += 1;
       }
     });
 
-    const wrapper = shallowMount(SubscriptionSignIn, {
-      global: {
-        plugins: [pinia],
-        mocks: {
-          $route: mockRoute,
-        },
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSubscriptionSignIn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.password = "secret";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
-
-    await wrapper.vm.$.setupState.signInUser();
+    await fillCredentials(wrapper, { email: "user@test.com", password: "secret" });
+    await verifyCaptcha(wrapper);
+    await wrapper.get("form").trigger("submit.prevent");
+    await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Has excedido el número máximo de intentos. Intenta más tarde.",
@@ -175,28 +182,16 @@ describe("SubscriptionSignIn.vue", () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
 
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
-    jest.spyOn(authStore, "login").mockImplementation(() => {});
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
+    authStore.login = jest.fn();
 
     axios.post.mockResolvedValue({ data: { access: "token", user: { id: 1 } } });
 
-    const wrapper = shallowMount(SubscriptionSignIn, {
-      global: {
-        plugins: [pinia],
-        mocks: {
-          $route: mockRoute,
-        },
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSubscriptionSignIn(pinia);
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.handleLoginWithGoogle({ credential: "token" });
+    await wrapper.get("[data-test='google-login']").trigger("click");
 
     expect(axios.post).toHaveBeenCalledWith("/api/google_login/", {
       credential: "token",

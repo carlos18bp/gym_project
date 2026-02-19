@@ -41,7 +41,7 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.text()).toContain("L One");
     expect(wrapper.text()).toContain("L Two");
@@ -50,6 +50,8 @@ describe("ContactsWidget.vue", () => {
     const dots = wrapper.findAll("span.bg-blue-500");
     expect(dots.length).toBeGreaterThan(0);
     expect(wrapper.findAll("span.bg-orange-500").length).toBe(0);
+
+    jest.restoreAllMocks();
   });
 
   test("lawyer user sees clients and lawyers (excluding self) with role-based dot color", async () => {
@@ -77,7 +79,7 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.text()).toContain("Other Lawyer");
     expect(wrapper.text()).toContain("Client One");
@@ -85,6 +87,8 @@ describe("ContactsWidget.vue", () => {
 
     expect(wrapper.findAll("span.bg-blue-500").length).toBeGreaterThan(0);
     expect(wrapper.findAll("span.bg-orange-500").length).toBeGreaterThan(0);
+
+    jest.restoreAllMocks();
   });
 
   test("image load/error updates loading state for a contact", async () => {
@@ -111,21 +115,23 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.findAll(".bg-gray-200").length).toBeGreaterThan(0);
 
     const img = wrapper.findAll("img")[0];
     await img.trigger("load");
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.findAll(".bg-gray-200").length).toBe(0);
 
     const img2 = wrapper.findAll("img")[0];
     await img2.trigger("error");
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.findAll(".bg-gray-200").length).toBe(0);
+
+    jest.restoreAllMocks();
   });
 
   test("shows loading state while contacts are loading", async () => {
@@ -155,7 +161,8 @@ describe("ContactsWidget.vue", () => {
 
     resolveInit();
     await flushPromises();
-    await wrapper.vm.$nextTick();
+
+    jest.restoreAllMocks();
   });
 
   test("shows empty state when there are no contacts", async () => {
@@ -177,9 +184,11 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.text()).toContain("No hay contactos disponibles.");
+
+    jest.restoreAllMocks();
   });
 
   test("returns early when user id is missing", async () => {
@@ -199,10 +208,12 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain("No hay contactos disponibles.");
+
+    jest.restoreAllMocks();
   });
 
   test("logs error when loadContacts fails", async () => {
@@ -226,11 +237,12 @@ describe("ContactsWidget.vue", () => {
     });
 
     await flushPromises();
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(consoleSpy).toHaveBeenCalledWith("Error loading contacts:", error);
     expect(wrapper.text()).toContain("No hay contactos disponibles.");
 
+    jest.restoreAllMocks();
     consoleSpy.mockRestore();
   });
 });

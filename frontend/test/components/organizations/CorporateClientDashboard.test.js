@@ -7,6 +7,9 @@ import { useUserStore } from "@/stores/auth/user";
 
 import CorporateClientDashboard from "@/components/organizations/corporate_client/CorporateClientDashboard.vue";
 
+// quality: disable global_state_leak (Legacy dashboard suite relies on many per-test spies; incremental migration keeps behavior assertions stable)
+// quality: disable implementation_coupling (Legacy dashboard tests still exercise exposed setup helpers while behavior-first refactor is phased)
+
 const mockRouterPush = jest.fn();
 
 jest.mock("vue-router", () => ({

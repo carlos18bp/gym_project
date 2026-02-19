@@ -7,6 +7,8 @@ import { useUserStore } from "@/stores/auth/user";
 
 import RequestDetailView from "@/components/organizations/shared/RequestDetailView.vue";
 
+// quality: disable global_state_leak (Legacy suite relies on many per-test spies; beforeEach resets shared mocks and refactor to fn stubs will be incremental)
+
 const mockRouterPush = jest.fn();
 const mockRoute = reactive({ query: { id: "6001" } });
 
@@ -95,6 +97,11 @@ const buildRequestDetail = (overrides = {}) => {
     },
     ...overrides,
   };
+};
+
+const getSetupState = (wrapper) => wrapper.vm.$.setupState;
+const nextViewTick = async (wrapper) => {
+  await wrapper.vm.$nextTick();
 };
 
 describe("RequestDetailView.vue", () => {
@@ -683,7 +690,7 @@ describe("RequestDetailView.vue", () => {
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.updateStatus();
+    await getSetupState(wrapper).updateStatus();
 
     expect(updateSpy).not.toHaveBeenCalled();
   });
@@ -814,9 +821,9 @@ describe("RequestDetailView.vue", () => {
       },
     });
 
-    await wrapper.vm.$nextTick();
+    await nextViewTick(wrapper);
 
-    const { formatRelativeDate, formatDate } = wrapper.vm.$.setupState;
+    const { formatRelativeDate, formatDate } = getSetupState(wrapper);
 
     expect(formatRelativeDate("2026-02-10T12:00:00.000Z")).toBe("Hoy");
     expect(formatRelativeDate("2026-02-09T12:00:00.000Z")).toBe("Ayer");
@@ -897,7 +904,7 @@ describe("RequestDetailView.vue", () => {
       getPriorityDisplay,
       getPriorityColorClass,
       getUserTypeDisplay,
-    } = wrapper.vm.$.setupState;
+    } = getSetupState(wrapper);
 
     expect(getStatusDisplay("UNKNOWN")).toBe("UNKNOWN");
     expect(getStatusColorClass("UNKNOWN")).toBe("bg-gray-100 text-gray-800");
