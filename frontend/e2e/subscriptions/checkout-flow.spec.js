@@ -2,15 +2,18 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
 
+const buildCheckoutEmail = (userId) => `checkout-user-${userId}@example.test`;
+
 /**
  * Mock installer for subscription checkout page.
  */
 async function installCheckoutMocks(page, { userId, planType = "basico" }) {
+  const userEmail = buildCheckoutEmail(userId);
   const user = {
     id: userId,
     first_name: "Test",
     last_name: "User",
-    email: "test@example.com",
+    email: userEmail,
     role: "client",
     contact: "",
     birthday: "",
@@ -65,12 +68,13 @@ async function installCheckoutMocks(page, { userId, planType = "basico" }) {
 
 test("checkout page renders plan details for free plan (basico)", async ({ page }) => {
   const userId = 9100;
+  const userEmail = buildCheckoutEmail(userId);
 
   await installCheckoutMocks(page, { userId, planType: "basico" });
 
   await setAuthLocalStorage(page, {
     token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: "test@example.com" },
+    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
   });
 
   await page.goto("/checkout/basico");
@@ -88,7 +92,7 @@ test("checkout page renders plan details for free plan (basico)", async ({ page 
 
   // User info should be visible
   await expect(page.getByText("Test User")).toBeVisible();
-  await expect(page.getByText("test@example.com")).toBeVisible();
+  await expect(page.getByText(userEmail)).toBeVisible();
 
   // Free plan button should say "Activar Plan Gratuito"
   await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toBeVisible();
@@ -96,12 +100,13 @@ test("checkout page renders plan details for free plan (basico)", async ({ page 
 
 test("checkout page for corporativo plan shows correct plan info", async ({ page }) => {
   const userId = 9101;
+  const userEmail = buildCheckoutEmail(userId);
 
   await installCheckoutMocks(page, { userId, planType: "basico" });
 
   await setAuthLocalStorage(page, {
     token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: "test@example.com" },
+    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
   });
 
   // Navigate to free (basico) checkout, then click "Volver a planes" to navigate back
@@ -122,12 +127,13 @@ test("checkout page for corporativo plan shows correct plan info", async ({ page
 
 test("free plan checkout activates subscription successfully", async ({ page }) => {
   const userId = 9102;
+  const userEmail = buildCheckoutEmail(userId);
 
   await installCheckoutMocks(page, { userId, planType: "basico" });
 
   await setAuthLocalStorage(page, {
     token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: "test@example.com" },
+    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
   });
 
   await page.goto("/checkout/basico");

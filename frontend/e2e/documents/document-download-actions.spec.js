@@ -94,10 +94,20 @@ test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
 
   // Intercept download to prevent actual file download dialog
-  const downloadPromise = page.waitForEvent("download", { timeout: 15_000 }).catch(() => null);
+  const waitForOptionalDownload = async () => {
+    try {
+      await page.waitForEvent("download", { timeout: 5_000 });
+    } catch {
+      return null;
+    }
+    return null;
+  };
 
-  // Click "Descargar PDF" — triggers useDocumentActions.downloadPDFDocument → store.downloadPDF → document_utils.downloadFile
-  await page.getByRole("button", { name: "Descargar PDF" }).click();
+  await Promise.all([
+    waitForOptionalDownload(),
+    // Click "Descargar PDF" — triggers useDocumentActions.downloadPDFDocument → store.downloadPDF → document_utils.downloadFile
+    page.getByRole("button", { name: "Descargar PDF" }).click(),
+  ]);
 
   // Success notification (from store's downloadPDF action)
   await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });

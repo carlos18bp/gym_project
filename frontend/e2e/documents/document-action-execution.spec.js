@@ -92,6 +92,29 @@ async function installDocActionMocks(page, { userId, documents }) {
   });
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function openDocumentActionsModal(page, documentTitle) {
+  await page
+    .getByRole("row", { name: new RegExp(escapeRegExp(documentTitle), "i") })
+    .click();
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+const confirmDialogButton = (page) =>
+  page.getByRole("button", {
+    name: /^(OK|Aceptar|Confirmar|Sí|Si)$/i,
+  });
+
+const cancelDialogButton = (page) =>
+  page.getByRole("button", {
+    name: /^(Cancelar|No)$/i,
+  });
+
 test("lawyer clicks Publicar on Draft doc — triggers publishDocument action in cards/index.js", async ({ page }) => {
   const userId = 9820;
   const doc = buildMockDocument({ id: 701, title: "Doc Para Publicar", state: "Draft", createdBy: userId });
@@ -102,17 +125,15 @@ test("lawyer clicks Publicar on Draft doc — triggers publishDocument action in
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  // Open actions modal
-  await page.locator("table tbody tr").first().click();
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await openDocumentActionsModal(page, doc.title);
 
   // Click "Publicar" — triggers useDocumentActions.publishDocument
   await page.getByRole("button", { name: "Publicar" }).click();
 
   // SweetAlert success notification should appear
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("dialog")).toContainText("exitosamente");
+  await confirmDialogButton(page).click();
 });
 
 test("lawyer clicks Mover a Borrador on Published doc — triggers moveToDraft action", async ({ page }) => {
@@ -125,16 +146,15 @@ test("lawyer clicks Mover a Borrador on Published doc — triggers moveToDraft a
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.locator("table tbody tr").first().click();
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await openDocumentActionsModal(page, doc.title);
 
   // Click "Mover a Borrador"
   await page.getByRole("button", { name: "Mover a Borrador" }).click();
 
   // Success notification
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("dialog")).toContainText("exitosamente");
+  await confirmDialogButton(page).click();
 });
 
 test("lawyer clicks Eliminar on Draft doc — triggers confirmation_alert.js and deleteDocument", async ({ page }) => {
@@ -147,25 +167,23 @@ test("lawyer clicks Eliminar on Draft doc — triggers confirmation_alert.js and
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.locator("table tbody tr").first().click();
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await openDocumentActionsModal(page, doc.title);
 
   // Click "Eliminar" — triggers showConfirmationAlert from confirmation_alert.js
   await page.getByRole("button", { name: "Eliminar" }).click();
 
   // SweetAlert confirmation dialog should appear (from confirmation_alert.js)
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  // The confirmation alert has "Aceptar" and "Cancelar" buttons
-  await expect(page.locator(".swal2-confirm")).toBeVisible();
-  await expect(page.locator(".swal2-cancel")).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(confirmDialogButton(page)).toBeVisible();
+  await expect(cancelDialogButton(page)).toBeVisible();
 
   // Confirm the delete
-  await page.locator(".swal2-confirm").click();
+  await confirmDialogButton(page).click();
 
   // Success notification after delete
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("eliminado");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("dialog")).toContainText("eliminado");
+  await confirmDialogButton(page).click();
 });
 
 test("lawyer clicks Crear una Copia on Published doc — triggers confirmation and copy flow", async ({ page }) => {
@@ -178,21 +196,20 @@ test("lawyer clicks Crear una Copia on Published doc — triggers confirmation a
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.locator("table tbody tr").first().click();
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await openDocumentActionsModal(page, doc.title);
 
   // Click "Crear una Copia" — triggers copyDocument which shows confirmation_alert
   await page.getByRole("button", { name: "Crear una Copia" }).click();
 
   // SweetAlert confirmation dialog
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-confirm")).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(confirmDialogButton(page)).toBeVisible();
 
   // Confirm the copy
-  await page.locator(".swal2-confirm").click();
+  await confirmDialogButton(page).click();
 
   // Success notification after copy creation
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("Copia creada");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("dialog")).toContainText("Copia creada");
+  await confirmDialogButton(page).click();
 });

@@ -3,6 +3,13 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
+async function closeSuccessDialog(page, expectedText) {
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText(expectedText);
+  await successDialog.getByRole("button").click();
+}
+
 test("corporate_client pins an older post and client sees pinned posts first", async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -36,7 +43,7 @@ test("corporate_client pins an older post and client sees pinned posts first", a
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
   const createPost = async ({ title, content }) => {
-    await page.getByRole("button", { name: "Nuevo Post" }).first().click();
+    await page.getByRole("button", { name: "Nuevo Post" }).click();
     await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toBeVisible();
 
     await page.locator("input#title").fill(title);
@@ -44,9 +51,7 @@ test("corporate_client pins an older post and client sees pinned posts first", a
 
     await page.getByRole("button", { name: "Crear Post" }).click();
 
-    await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".swal2-title")).toHaveText("Post creado exitosamente");
-    await page.locator(".swal2-confirm").click();
+    await closeSuccessDialog(page, "Post creado exitosamente");
 
     await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
   };
@@ -56,27 +61,23 @@ test("corporate_client pins an older post and client sees pinned posts first", a
 
   const postCardA = page
     .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post A (nuevo)" })
-    .first();
+    .filter({ hasText: "Post A (nuevo)" });
 
   const postCardB = page
     .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post B (viejo)" })
-    .first();
+    .filter({ hasText: "Post B (viejo)" });
 
   await expect(postCardA).toBeVisible();
   await expect(postCardB).toBeVisible();
 
   // Step 2: pin the older post (B)
   await postCardB.locator('button:has(svg.h-5.w-5)').click();
-  const actionsMenu = postCardB.locator("div.absolute.right-0.mt-1.w-48").first();
+  const actionsMenu = postCardB.locator("div.absolute.right-0.mt-1.w-48");
   await expect(actionsMenu).toBeVisible();
   await expect(actionsMenu.locator('button:has-text("Fijar")')).toBeVisible();
   await actionsMenu.locator('button:has-text("Fijar")').click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Post fijado exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await closeSuccessDialog(page, "Post fijado exitosamente");
 
   // Step 3: switch to client and verify pinned post is first
   await setAuthLocalStorage(page, {
@@ -97,7 +98,9 @@ test("corporate_client pins an older post and client sees pinned posts first", a
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  const orgPostsSection = page.locator('div:has(h2:has-text("Anuncios de la Organización"))').first();
+  const orgPostsSection = page
+    .locator("h2", { hasText: "Anuncios de la Organización" })
+    .locator("xpath=ancestor::div[1]");
   await expect(orgPostsSection).toBeVisible();
 
   const postCards = orgPostsSection
@@ -106,8 +109,8 @@ test("corporate_client pins an older post and client sees pinned posts first", a
 
   await expect(postCards).toHaveCount(2);
 
-  await expect(postCards.nth(0)).toContainText("Post B (viejo)");
-  await expect(postCards.nth(0)).toContainText("Fijado");
-
-  await expect(postCards.nth(1)).toContainText("Post A (nuevo)");
+  const orderedPostCards = await postCards.all();
+  await expect(orderedPostCards[0]).toContainText("Post B (viejo)");
+  await expect(orderedPostCards[0]).toContainText("Fijado");
+  await expect(orderedPostCards[1]).toContainText("Post A (nuevo)");
 });

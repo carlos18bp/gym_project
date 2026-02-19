@@ -7,6 +7,17 @@ import {
 } from "../helpers/dynamicDocumentMocks.js";
 import { mockApi } from "../helpers/api.js";
 
+const alertDialog = (page) => page.getByRole("dialog");
+const alertConfirmButton = (page) =>
+  page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
+
+async function dismissAlertIfVisible(page, timeout = 10_000) {
+  const confirmButton = alertConfirmButton(page);
+  if (await confirmButton.isVisible({ timeout }).catch(() => false)) {
+    await confirmButton.click();
+  }
+}
+
 /**
  * Custom mock installer that adds folder CRUD endpoints on top of the
  * standard dynamic-document mocks. We build it inline so that create /
@@ -144,7 +155,7 @@ test("lawyer creates a new folder with name and color via modal", async ({ page 
   await expect(page.getByRole("heading", { name: "Nueva Carpeta" })).toBeVisible({ timeout: 10_000 });
 
   // Fill folder name
-  await page.locator("#folderName").fill("Contratos Laborales");
+  await page.getByRole("textbox", { name: /nombre/i }).fill("Contratos Laborales");
 
   // Submit the form — the button text is "Crear" when not editing
   const submitBtn = page.locator('button[type="submit"]');
@@ -152,9 +163,9 @@ test("lawyer creates a new folder with name and color via modal", async ({ page 
   await submitBtn.click();
 
   // Success notification from store (SweetAlert)
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
+  await expect(alertDialog(page)).toContainText("exitosamente");
+  await dismissAlertIfVisible(page);
 
   // Folder should now appear in the table
   await expect(page.getByText("Contratos Laborales")).toBeVisible({ timeout: 10_000 });
@@ -186,7 +197,10 @@ test("lawyer edits a folder name via context menu", async ({ page }) => {
   await expect(page.getByText("Carpeta Original")).toBeVisible({ timeout: 15_000 });
 
   // Open context menu (ellipsis button on the folder row)
-  await page.locator("table tbody tr").first().locator("button").click();
+  await page
+    .getByRole("row", { name: /Carpeta Original/i })
+    .getByRole("button")
+    .click();
 
   // Click "Editar" from the menu
   await page.getByText("Editar", { exact: true }).click();
@@ -195,16 +209,17 @@ test("lawyer edits a folder name via context menu", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Editar Carpeta" })).toBeVisible({ timeout: 10_000 });
 
   // Clear and fill new name
-  await page.locator("#folderName").clear();
-  await page.locator("#folderName").fill("Carpeta Renombrada");
+  const folderNameInput = page.getByRole("textbox", { name: /nombre/i });
+  await folderNameInput.clear();
+  await folderNameInput.fill("Carpeta Renombrada");
 
   // Submit
   await page.getByRole("button", { name: "Actualizar" }).click();
 
   // Success notification
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
+  await expect(alertDialog(page)).toContainText("exitosamente");
+  await dismissAlertIfVisible(page);
 });
 
 test("lawyer deletes a folder via context menu", async ({ page }) => {
@@ -238,7 +253,10 @@ test("lawyer deletes a folder via context menu", async ({ page }) => {
   page.on("dialog", (dialog) => dialog.accept());
 
   // Open context menu on the first folder row
-  await page.locator("table tbody tr").first().locator("button").click();
+  await page
+    .getByRole("row", { name: /Carpeta a Eliminar/i })
+    .getByRole("button")
+    .click();
 
   // Click "Eliminar"
   await page.getByText("Eliminar", { exact: true }).click();
@@ -247,14 +265,11 @@ test("lawyer deletes a folder via context menu", async ({ page }) => {
   // 1. Store's showNotification("Carpeta eliminada exitosamente")
   // 2. FolderManagement's showNotification after store success
   // Wait for the first SweetAlert
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await page.locator(".swal2-confirm").click();
+  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
+  await dismissAlertIfVisible(page);
 
   // If a second notification appears, dismiss it too
-  const secondPopup = page.locator(".swal2-popup");
-  if (await secondPopup.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await page.locator(".swal2-confirm").click();
-  }
+  await dismissAlertIfVisible(page, 3_000);
 
   // Deleted folder should no longer be visible, but the other remains
   await expect(page.getByText("Carpeta Permanente")).toBeVisible({ timeout: 10_000 });
@@ -299,12 +314,11 @@ test("lawyer removes a document from a folder via folder details", async ({ page
   await expect(page.getByText("Doc que Queda")).toBeVisible();
 
   // Open context menu on the first document row inside the modal and click "Quitar de carpeta"
-  const modalTable = page.locator(".fixed").filter({ hasText: "Carpeta con Docs" });
-  const firstDocRow = modalTable.locator("table tbody tr").first();
-  await firstDocRow.locator("button").click();
+  const documentRow = page.getByRole("row", { name: /Doc para Remover/i });
+  await documentRow.getByRole("button").click();
   await page.getByText("Quitar de carpeta").click();
 
   // Success notification for document removal
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await page.locator(".swal2-confirm").click({ timeout: 10_000 });
+  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
+  await dismissAlertIfVisible(page, 10_000);
 });

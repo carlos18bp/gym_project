@@ -3,8 +3,7 @@ import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
 
 /**
- * E2E tests for checkout flow and Checkout.vue
- * Target: create tests for empty e2e/checkout/ directory
+ * E2E tests for Checkout subscription flows with behavior-first assertions.
  */
 
 function buildMockUser({ id, role }) {
@@ -14,20 +13,87 @@ function buildMockUser({ id, role }) {
     last_name: "User",
     email: "e2e@example.com",
     role,
+    has_signature: role === "lawyer",
     is_profile_completed: true,
     is_gym_lawyer: role === "lawyer",
+    contact: "",
+    birthday: "",
+    identification: "",
+    document_type: "",
+    photo_profile: "",
   };
 }
 
-async function installCheckoutMocks(page, { userId, role, currentSubscription = null }) {
-  const user = buildMockUser({ id: userId, role });
+function buildAuthPayload(user) {
+  return {
+    token: "e2e-token",
+    userAuth: {
+      id: user.id,
+      role: user.role,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      is_profile_completed: true,
+      is_gym_lawyer: user.is_gym_lawyer,
+    },
+  };
+}
+
+async function installWompiExternalMocks(
+  page,
+  { cardToken = "tok_card_checkout_e2e", sessionId = "sess_checkout_e2e" } = {}
+) {
+  await page.route("https://checkout.wompi.co/widget.js*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: "window.WidgetCheckout = function WidgetCheckout(){ this.open = function(){}; };",
+    });
+  });
+
+  await page.route("https://wompijs.wompi.com/libs/js/v1.js*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.$wompi = { initialize: function(callback){ callback({ sessionId: \"${sessionId}\" }, null); } };`,
+    });
+  });
+
+  await page.route("https://sandbox.wompi.co/v1/tokens/cards", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "CREATED",
+        data: { id: cardToken },
+      }),
+    });
+  });
+}
+
+async function installCheckoutMocks(
+  page,
+  {
+    user,
+    currentSubscription = null,
+    createSubscriptionStatus = 201,
+    subscriptionRequests = [],
+  }
+) {
+  const nowIso = new Date().toISOString();
 
   await mockApi(page, async ({ route, apiPath }) => {
     if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
     if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-    if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
+    if (apiPath === `users/${user.id}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
+    if (apiPath === `users/${user.id}/signature/`) {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ has_signature: user.has_signature }),
+      };
+    }
 
-    // Subscription endpoints
     if (apiPath === "subscriptions/current/") {
       if (currentSubscription) {
         return { status: 200, contentType: "application/json", body: JSON.stringify(currentSubscription) };
@@ -44,231 +110,151 @@ async function installCheckoutMocks(page, { userId, role, currentSubscription = 
     }
 
     if (apiPath === "subscriptions/create/" && route.request().method() === "POST") {
+      const payload = route.request().postDataJSON?.() || {};
+      subscriptionRequests.push(payload);
+
+      if (createSubscriptionStatus >= 400) {
+        return {
+          status: createSubscriptionStatus,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "subscription_create_failed" }),
+        };
+      }
+
       const newSub = {
         id: 5001,
-        plan_type: "cliente",
+        plan_type: payload.plan_type,
         status: "active",
         next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
       return { status: 201, contentType: "application/json", body: JSON.stringify(newSub) };
     }
 
-    // Standard endpoints
-    if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    if (apiPath === "user-activities/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "create-activity/") {
+      return {
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ id: 1, action_type: "view", description: "", created_at: nowIso }),
+      };
+    }
+    if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "processes/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
 
     return null;
   });
 }
 
-test.describe("checkout: page load and display", () => {
-  test("checkout page loads for unauthenticated user", async ({ page }) => {
-    // Install minimal mocks for unauthenticated access
-    await mockApi(page, async ({ route, apiPath }) => {
-      if (apiPath === "validate_token/") return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "unauthorized" }) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-      if (apiPath === "subscriptions/wompi-config/") return { status: 200, contentType: "application/json", body: JSON.stringify({ public_key: "pub_test_key_e2e" }) };
-      return null;
-    });
+test.describe.configure({ timeout: 90_000 });
 
-    // Don't set auth - test unauthenticated access
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
+test("paid checkout keeps subscribe disabled before payment tokenization", async ({ page }) => {
+  const user = buildMockUser({ id: 5400, role: "client" });
 
-    // Should redirect to login or show checkout
-    await expect(page.locator("body")).toBeVisible();
+  await installWompiExternalMocks(page);
+  await installCheckoutMocks(page, { user });
+  await setAuthLocalStorage(page, buildAuthPayload(user));
+
+  await page.goto("/checkout/cliente");
+
+  await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Plan Cliente").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Método de pago", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar método de pago" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
+});
+
+test("paid checkout tokenizes card then posts subscription payload", async ({ page }) => {
+  const user = buildMockUser({ id: 5401, role: "client" });
+  const subscriptionRequests = [];
+
+  await installWompiExternalMocks(page, {
+    cardToken: "tok_card_checkout_e2e",
+    sessionId: "sess_checkout_e2e",
   });
+  await installCheckoutMocks(page, { user, subscriptionRequests });
+  await setAuthLocalStorage(page, buildAuthPayload(user));
 
-  test("checkout page loads for authenticated user without subscription", async ({ page }) => {
-    const userId = 5000;
+  await page.goto("/checkout/cliente");
 
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
+  await page.getByPlaceholder("Como aparece en la tarjeta").fill("E2E Holder");
+  await page.getByPlaceholder("0000 0000 0000 0000").fill("4242 4242 4242 4242");
+  await page.getByPlaceholder("MM").fill("12");
+  await page.getByPlaceholder("AA").fill("30");
+  await page.getByPlaceholder("CVC").fill("123");
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
 
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
+  const tokenizationDialog = page.locator(".swal2-popup");
+  await expect(tokenizationDialog).toBeVisible({ timeout: 15_000 });
+  await expect(tokenizationDialog).toContainText("Método de pago agregado");
+  await page.locator(".swal2-confirm").click();
 
-    // Checkout should show plan options
-    await expect(page.locator("body")).toBeVisible();
-  });
+  await expect(page.getByText("Método de pago configurado")).toBeVisible();
 
-  test("checkout shows available plan options", async ({ page }) => {
-    const userId = 5001;
+  const subscribeButton = page.getByRole("button", { name: "Confirmar Suscripción" });
+  await expect(subscribeButton).toBeEnabled();
+  await subscribeButton.click();
 
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
+  const subscriptionDialog = page.locator(".swal2-popup");
+  await expect(subscriptionDialog).toBeVisible({ timeout: 15_000 });
+  await expect(subscriptionDialog).toContainText("Suscripción Creada");
+  await page.locator(".swal2-confirm").click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
+  await expect
+    .poll(() => page.evaluate(() => window.location.pathname), { timeout: 45_000 })
+    .toBe("/dashboard");
 
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Should show plan selection or checkout form
-    const hasPlans = await page.getByText(/plan|cliente|corporativo|básico/i).first().isVisible().catch(() => false);
-    
-    // Page loads successfully
-    await expect(page.locator("body")).toBeVisible();
+  expect(subscriptionRequests).toHaveLength(1);
+  expect(subscriptionRequests[0]).toMatchObject({
+    plan_type: "cliente",
+    session_id: "sess_checkout_e2e",
+    token: "tok_card_checkout_e2e",
   });
 });
 
-test.describe("checkout: plan selection", () => {
-  test("user can view plan details", async ({ page }) => {
-    const userId = 5010;
+test("paid checkout shows incomplete-card warning on empty tokenize submit", async ({ page }) => {
+  const user = buildMockUser({ id: 5402, role: "client" });
 
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
+  await installWompiExternalMocks(page);
+  await installCheckoutMocks(page, { user });
+  await setAuthLocalStorage(page, buildAuthPayload(user));
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
+  await page.goto("/checkout/cliente");
 
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
 
-    // Look for plan cards or details
-    await expect(page.locator("body")).toBeVisible();
-  });
+  const warningDialog = page.locator(".swal2-popup");
+  await expect(warningDialog).toBeVisible({ timeout: 15_000 });
+  await expect(warningDialog).toContainText("Información incompleta");
+  await page.locator(".swal2-confirm").click();
 
-  test("user with existing subscription sees upgrade options", async ({ page }) => {
-    const userId = 5011;
-
-    const currentSubscription = {
-      id: 100,
-      plan_type: "basico",
-      status: "active",
-    };
-
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Should show upgrade options or current plan info
-    await expect(page.locator("body")).toBeVisible();
-  });
+  await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test.describe("checkout: payment integration", () => {
-  test("checkout fetches Wompi configuration", async ({ page }) => {
-    const userId = 5020;
+test("free checkout creates subscription without payment tokenization", async ({ page }) => {
+  const user = buildMockUser({ id: 5403, role: "client" });
+  const subscriptionRequests = [];
 
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
+  await installCheckoutMocks(page, { user, subscriptionRequests });
+  await setAuthLocalStorage(page, buildAuthPayload(user));
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
+  await page.goto("/checkout/basico");
 
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
+  await expect(page.getByText("Plan Básico").first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Método de pago" })).toHaveCount(0);
 
-    // Page should load with Wompi config fetched
-    await expect(page.locator("body")).toBeVisible();
-  });
+  await page.getByRole("button", { name: "Activar Plan Gratuito" }).click();
 
-  test("checkout displays payment form elements", async ({ page }) => {
-    const userId = 5021;
+  const successDialog = page.locator(".swal2-popup");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText("Suscripción Activada");
+  await page.locator(".swal2-confirm").click();
 
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Look for payment-related elements
-    const hasPaymentElements = await page.getByText(/pagar|payment|tarjeta|card/i).first().isVisible().catch(() => false) ||
-                                await page.getByRole("button").first().isVisible().catch(() => false);
-
-    // Page loads with some interactive elements
-    await expect(page.locator("body")).toBeVisible();
-  });
-});
-
-test.describe("checkout: form validation", () => {
-  test("checkout validates required fields", async ({ page }) => {
-    const userId = 5030;
-
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Try to submit without selecting plan (if applicable)
-    const submitBtn = page.getByRole("button", { name: /continuar|pagar|submit/i }).first();
-    if (await submitBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      // Button should be visible (validation will prevent submission)
-      await expect(submitBtn).toBeVisible();
-    }
-
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
-  });
-});
-
-test.describe("checkout: navigation", () => {
-  test("user can navigate back from checkout", async ({ page }) => {
-    const userId = 5040;
-
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Page should load and be navigable
-    await expect(page.locator("body")).toBeVisible();
-    
-    // Look for any back/cancel button or link
-    const backElements = page.getByRole("button", { name: /volver|back|cancelar/i }).or(
-      page.getByRole("link", { name: /volver|back|cancelar/i })
-    );
-    
-    if (await backElements.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-      await backElements.first().click();
-      await page.waitForLoadState('networkidle');
-    }
-
-    // Page should still be stable
-    await expect(page.locator("body")).toBeVisible();
-  });
-
-  test("checkout redirects authenticated user appropriately", async ({ page }) => {
-    const userId = 5041;
-
-    await installCheckoutMocks(page, { userId, role: "client", currentSubscription: null });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/checkout");
-    await page.waitForLoadState('networkidle');
-
-    // Page should load properly for authenticated user
-    await expect(page.locator("body")).toBeVisible();
-  });
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  expect(subscriptionRequests).toHaveLength(1);
+  expect(subscriptionRequests[0]).toMatchObject({ plan_type: "basico" });
+  expect(subscriptionRequests[0].token).toBeUndefined();
+  expect(subscriptionRequests[0].session_id).toBeUndefined();
 });
