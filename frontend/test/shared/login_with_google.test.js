@@ -27,7 +27,7 @@ describe("login_with_google.js", () => {
 
     mockAxiosPost.mockResolvedValueOnce({ data: { token: "t", created: true } });
 
-    await loginWithGoogle({ credential: "token" }, router, authStore);
+    const result = await loginWithGoogle({ credential: "token" }, router, authStore);
 
     expect(mockAxiosPost).toHaveBeenCalledWith("/api/google_login/", {
       credential: "token",
@@ -35,6 +35,7 @@ describe("login_with_google.js", () => {
     expect(authStore.login).toHaveBeenCalledWith({ token: "t", created: true });
     expect(mockShowNotification).toHaveBeenCalledWith("¡Registro exitoso!", "success");
     expect(router.push).toHaveBeenCalledWith({ name: "dashboard" });
+    expect(result).toBeUndefined();
   });
 
   test("logs in and notifies when user already exists", async () => {
@@ -43,7 +44,7 @@ describe("login_with_google.js", () => {
 
     mockAxiosPost.mockResolvedValueOnce({ data: { token: "t", created: false } });
 
-    await loginWithGoogle({ credential: "token" }, router, authStore);
+    const result = await loginWithGoogle({ credential: "token" }, router, authStore);
 
     expect(authStore.login).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -51,6 +52,7 @@ describe("login_with_google.js", () => {
       "success"
     );
     expect(router.push).toHaveBeenCalledWith({ name: "dashboard" });
+    expect(result).toBeUndefined();
   });
 
   test("handles errors and notifies", async () => {
@@ -60,7 +62,7 @@ describe("login_with_google.js", () => {
 
     mockAxiosPost.mockRejectedValueOnce(new Error("fail"));
 
-    await loginWithGoogle({ credential: "token" }, router, authStore);
+    const result = await loginWithGoogle({ credential: "token" }, router, authStore);
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error durante el inicio de sesión",
@@ -68,6 +70,7 @@ describe("login_with_google.js", () => {
     );
     expect(authStore.login).not.toHaveBeenCalled();
     expect(router.push).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
 
     consoleSpy.mockRestore();
   });

@@ -1,4 +1,4 @@
-import { shallowMount } from "@vue/test-utils";
+import { mount } from "@vue/test-utils";
 import { setActivePinia, createPinia } from "pinia";
 
 import SignOn from "@/views/auth/SignOn.vue";
@@ -39,47 +39,90 @@ jest.mock("@/stores/auth/captcha", () => ({
 
 jest.mock("vue3-recaptcha2", () => ({
   __esModule: true,
-  default: { template: "<div />" },
+  default: {
+    template:
+      "<button data-test='captcha' @click=\"$emit('verify', 'token')\">Captcha</button>",
+  },
 }));
 
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+const GoogleLoginStub = {
+  props: ["callback"],
+  template:
+    "<button data-test='google-login' @click='callback({ credential: \"token\" })'>Google</button>",
+};
+
+const VueRecaptchaStub = {
+  template:
+    "<button data-test='captcha' @click=\"$emit('verify', 'token')\">Captcha</button>",
+};
+
+const mountSignOn = (pinia) =>
+  mount(SignOn, {
+    global: {
+      plugins: [pinia],
+      stubs: {
+        GoogleLogin: GoogleLoginStub,
+        VueRecaptcha: VueRecaptchaStub,
+        RouterLink: { template: "<a><slot /></a>" },
+      },
+    },
+  });
+
+const fillSignOnForm = async (wrapper, {
+  email = "user@test.com",
+  firstName = "Ana",
+  lastName = "Lopez",
+  password = "secret",
+  confirmPassword = "secret",
+} = {}) => {
+  await wrapper.get("#email").setValue(email);
+  await wrapper.get("#first_name").setValue(firstName);
+  await wrapper.get("#last_name").setValue(lastName);
+  await wrapper.get("#password").setValue(password);
+  await wrapper.get("#confirm_password").setValue(confirmPassword);
+};
+
+const acceptPrivacyPolicy = async (wrapper) => {
+  await wrapper.get("#privacy-policy").setValue(true);
+};
+
+const verifyCaptcha = async (wrapper) => {
+  await wrapper.get("[data-test='captcha']").trigger("click");
+  await flushPromises();
+};
+
 describe("SignOn.vue", () => {
+  let pinia;
+
   beforeEach(() => {
-    setActivePinia(createPinia());
+    pinia = createPinia();
+    setActivePinia(pinia);
     jest.clearAllMocks();
     mockFetchSiteKey.mockResolvedValue("site-key");
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test("sends verification passcode when form is valid", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
 
     axios.post.mockResolvedValue({ data: { passcode: "123" } });
 
-    const wrapper = shallowMount(SignOn, {
-      global: {
-        plugins: [authStore.$pinia],
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSignOn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.userForm.password = "secret";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "secret";
-    wrapper.vm.$.setupState.privacyAccepted = true;
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
-
-    await wrapper.vm.$.setupState.sendVerificationPasscode();
+    await fillSignOnForm(wrapper);
+    await acceptPrivacyPolicy(wrapper);
+    await verifyCaptcha(wrapper);
+    await wrapper.get("button[type='submit']").trigger("click");
+    await flushPromises();
 
     expect(axios.post).toHaveBeenCalledWith("/api/sign_on/send_verification_code/", {
       email: "user@test.com",
@@ -89,42 +132,39 @@ describe("SignOn.vue", () => {
       "Se ha enviado un código de acceso a tu correo electrónico",
       "info"
     );
-    expect(wrapper.vm.$.setupState.passcodeSent).toBe(true);
+    expect(wrapper.text()).toContain("Verificar");
   });
 
   test("completes sign on when passcode matches", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
 
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
-    jest.spyOn(authStore, "login").mockImplementation(() => {});
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
+    authStore.login = jest.fn();
 
-    axios.post.mockResolvedValue({ data: { access: "token", user: { id: 1 } } });
-
-    const wrapper = shallowMount(SignOn, {
-      global: {
-        plugins: [authStore.$pinia],
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
+    axios.post.mockImplementation((url) => {
+      if (url === "/api/sign_on/send_verification_code/") {
+        return Promise.resolve({ data: { passcode: "123" } });
+      }
+      if (url === "/api/sign_on/") {
+        return Promise.resolve({ data: { access: "token", user: { id: 1 } } });
+      }
+      return Promise.resolve({ data: {} });
     });
+
+    const wrapper = mountSignOn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.password = "secret";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "secret";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.passcodeSent = "123";
-    wrapper.vm.$.setupState.passcode = "123";
-    wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
+    await fillSignOnForm(wrapper);
+    await acceptPrivacyPolicy(wrapper);
+    await verifyCaptcha(wrapper);
+    await wrapper.get("button[type='submit']").trigger("click");
+    await flushPromises();
 
-    await wrapper.vm.$.setupState.signOnUser();
+    await wrapper.get("#passcode").setValue("123");
+    await wrapper.get("#passcode + button").trigger("click");
+    await flushPromises();
 
     expect(axios.post).toHaveBeenCalledWith("/api/sign_on/", {
       email: "user@test.com",
@@ -140,60 +180,50 @@ describe("SignOn.vue", () => {
       name: "dashboard",
       params: { user_id: "", display: "" },
     });
+    expect(wrapper.get("#email").element.value).toBe("user@test.com");
   });
 
   test("rejects sign on when passcode is empty", async () => {
     const axios = await import("axios");
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
 
-    const wrapper = shallowMount(SignOn, {
-      global: {
-        plugins: [authStore.$pinia],
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
+    axios.post.mockImplementation((url) => {
+      if (url === "/api/sign_on/send_verification_code/") {
+        return Promise.resolve({ data: { passcode: "123" } });
+      }
+      return Promise.resolve({ data: {} });
     });
+
+    const wrapper = mountSignOn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.userForm.email = "user@test.com";
-    wrapper.vm.$.setupState.userForm.firstName = "Ana";
-    wrapper.vm.$.setupState.userForm.lastName = "Lopez";
-    wrapper.vm.$.setupState.userForm.password = "secret";
-    wrapper.vm.$.setupState.userForm.confirmPassword = "secret";
-    wrapper.vm.$.setupState.passcodeSent = true;
-    wrapper.vm.$.setupState.passcode = "";
-    wrapper.vm.$.setupState.emailUsedToSentPasscode = "user@test.com";
-    await wrapper.vm.$.setupState.onCaptchaVerified("token");
+    await fillSignOnForm(wrapper);
+    await acceptPrivacyPolicy(wrapper);
+    await verifyCaptcha(wrapper);
+    await wrapper.get("button[type='submit']").trigger("click");
+    await flushPromises();
 
-    await wrapper.vm.$.setupState.signOnUser();
+    await wrapper.get("#passcode").setValue("");
+    await wrapper.get("#passcode + button").trigger("click");
+    await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith("El código de verificación es obligatorio", "warning");
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(wrapper.get("#passcode").element.value).toBe("");
   });
 
   test("delegates Google login handler", async () => {
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
 
-    const wrapper = shallowMount(SignOn, {
-      global: {
-        plugins: [authStore.$pinia],
-        stubs: {
-          GoogleLogin: { template: "<div />" },
-          VueRecaptcha: { template: "<div />" },
-          RouterLink: { template: "<a><slot /></a>" },
-        },
-      },
-    });
+    const wrapper = mountSignOn(pinia);
 
     await flushPromises();
 
-    wrapper.vm.$.setupState.handleLoginWithGoogle({ credential: "token" });
+    await wrapper.get("[data-test='google-login']").trigger("click");
+    expect(wrapper.get("[data-test='google-login']").text()).toContain("Google");
 
     expect(mockLoginWithGoogle).toHaveBeenCalledWith(
       { credential: "token" },
