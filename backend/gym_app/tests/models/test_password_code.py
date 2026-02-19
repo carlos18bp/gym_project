@@ -3,8 +3,12 @@ import re
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
 from gym_app.models.user import User  # Asumiendo que User está en este módulo
 from gym_app.models.password_code import PasswordCode
+
+
+FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 
 @pytest.fixture
 def user():
@@ -88,7 +92,7 @@ class TestPasswordCode:
         
         # Manually update created_at to simulate older record
         PasswordCode.objects.filter(id=code1.id).update(
-            created_at=datetime.now() - timedelta(days=1)
+            created_at=FIXED_NOW - timedelta(days=1)
         )
         
         code2 = PasswordCode.objects.create(user=user, code='222222')

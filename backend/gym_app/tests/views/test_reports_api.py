@@ -12,6 +12,13 @@ from gym_app.models import (
     LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
 )
 from django.core.files.uploadedfile import SimpleUploadedFile
+
+
+FIXED_TODAY = datetime.date(2026, 1, 15)
+REPORT_START_DATE = (FIXED_TODAY - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
+REPORT_END_DATE = FIXED_TODAY.strftime('%Y-%m-%d')
+
+
 @pytest.fixture
 def admin_user():
     """Create an admin user for API authentication"""
@@ -163,8 +170,8 @@ class TestReportsAPI:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'active_processes',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -219,13 +226,10 @@ class TestReportsAPI:
         
         # Test each report type
         for report_type in report_types:
-            # Use date objects to avoid timezone issues with datetimes
-            start_date = (timezone.now().date() - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
-            end_date = timezone.now().date().strftime('%Y-%m-%d')
             data = {
                 'reportType': report_type,
-                'startDate': start_date,
-                'endDate': end_date
+                'startDate': REPORT_START_DATE,
+                'endDate': REPORT_END_DATE,
             }
             response = api_client.post(url, data, format='json')
             

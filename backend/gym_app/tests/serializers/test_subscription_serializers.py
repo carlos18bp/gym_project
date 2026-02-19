@@ -1,7 +1,7 @@
 import pytest
+import datetime
 from decimal import Decimal
 
-from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from gym_app.models import Subscription, PaymentHistory
@@ -9,6 +9,8 @@ from gym_app.serializers.subscription import PaymentHistorySerializer, Subscript
 
 
 User = get_user_model()
+FIXED_BILLING_DATE = datetime.date(2026, 1, 15)
+FIXED_FUTURE_BILLING_DATE = FIXED_BILLING_DATE + datetime.timedelta(days=30)
 
 
 @pytest.fixture
@@ -31,7 +33,7 @@ class TestPaymentHistorySerializer:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("99000.00"),
         )
 
@@ -63,7 +65,7 @@ class TestSubscriptionSerializer:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("99000.00"),
         )
 
@@ -81,7 +83,7 @@ class TestSubscriptionSerializer:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=FIXED_BILLING_DATE,
             amount=Decimal("99000.00"),
         )
 
@@ -103,7 +105,7 @@ class TestSubscriptionSerializerEdges:
         )
         sub = Subscription.objects.create(
             user=user, plan_type="basico", status="active",
-            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            next_billing_date=FIXED_FUTURE_BILLING_DATE,
             amount=Decimal("0.00"),
         )
         s = SubscriptionSerializer(sub)
@@ -115,7 +117,7 @@ class TestSubscriptionSerializerEdges:
         )
         sub = Subscription.objects.create(
             user=user, plan_type="cliente", status="active",
-            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            next_billing_date=FIXED_FUTURE_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         s = SubscriptionSerializer(sub)
@@ -129,7 +131,7 @@ class TestSubscriptionSerializerEdges:
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date() + timezone.timedelta(days=30),
+            next_billing_date=FIXED_FUTURE_BILLING_DATE,
             amount=Decimal("50000.00"),
         )
         serializer = SubscriptionSerializer(sub)

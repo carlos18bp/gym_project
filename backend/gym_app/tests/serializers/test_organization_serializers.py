@@ -1,4 +1,5 @@
 import pytest
+import datetime
 from unittest.mock import MagicMock, patch, PropertyMock
 
 from django.contrib.auth import get_user_model
@@ -53,6 +54,9 @@ from gym_app.serializers.user import (
 )
 
 factory = APIRequestFactory()
+FIXED_NOW = timezone.make_aware(datetime.datetime.combine(datetime.date.today(), datetime.time(10, 0, 0)))
+FIXED_INVITATION_EXPIRY = FIXED_NOW + timezone.timedelta(days=5)
+FIXED_RECENT_EXPIRY = FIXED_NOW + timezone.timedelta(days=3)
 
 
 @pytest.fixture
@@ -166,7 +170,7 @@ class TestOrganizationInvitationSerializers:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=5),
+            expires_at=FIXED_INVITATION_EXPIRY,
         )
 
         serializer = OrganizationInvitationSerializer(invitation)
@@ -204,7 +208,7 @@ class TestOrganizationInvitationSerializers:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=5),
+            expires_at=FIXED_INVITATION_EXPIRY,
         )
 
         serializer = OrganizationInvitationCreateSerializer(
@@ -221,7 +225,7 @@ class TestOrganizationInvitationSerializers:
             invited_user=client_user,
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=5),
+            expires_at=FIXED_INVITATION_EXPIRY,
         )
 
         # Aceptar
@@ -240,7 +244,7 @@ class TestOrganizationInvitationSerializers:
             ),
             invited_by=corporate_client,
             status="PENDING",
-            expires_at=timezone.now() + timezone.timedelta(days=5),
+            expires_at=FIXED_INVITATION_EXPIRY,
         )
 
         serializer = OrganizationInvitationResponseSerializer(invitation2, data={"action": "reject"})
@@ -360,7 +364,7 @@ class TestOrganizationListSerializer:
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
         OrganizationMembership.objects.create(organization=organization, user=User.objects.create_user(email="inactive@example.com", password="testpassword", role="client"), role="MEMBER", is_active=False)
 
-        expires = timezone.now() + timezone.timedelta(days=3)
+        expires = FIXED_RECENT_EXPIRY
         OrganizationInvitation.objects.create(organization=organization, invited_user=User.objects.create_user(email="invitee@example.com", password="testpassword", role="client"), invited_by=corporate_client, status="PENDING", expires_at=expires)
         OrganizationInvitation.objects.create(organization=organization, invited_user=User.objects.create_user(email="invitee2@example.com", password="testpassword", role="client"), invited_by=corporate_client, status="ACCEPTED", expires_at=expires)
 
@@ -406,7 +410,7 @@ class TestOrganizationSerializer:
         OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=User.objects.create_user(email="pending@example.com", password="testpassword", role="client"),
-            invited_by=corporate_client, status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=3),
+            invited_by=corporate_client, status="PENDING", expires_at=FIXED_RECENT_EXPIRY,
         )
 
         request_type = CorporateRequestType.objects.create(name="Consulta")
@@ -513,8 +517,8 @@ class TestOrganizationSearchSerializer:
         payload = {
             "search": "Org",
             "is_active": True,
-            "created_after": timezone.now() - timezone.timedelta(days=7),
-            "created_before": timezone.now(),
+            "created_after": FIXED_NOW - timezone.timedelta(days=7),
+            "created_before": FIXED_NOW,
             "min_members": 1,
             "max_members": 10,
         }

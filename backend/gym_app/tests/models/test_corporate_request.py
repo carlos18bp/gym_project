@@ -3,7 +3,6 @@ import os
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 
 from gym_app.models.user import User
 from gym_app.models.organization import Organization, OrganizationMembership
@@ -110,8 +109,9 @@ class TestCorporateRequest:
         assert request.corporate_client == organization.corporate_client
         assert request.request_number is not None
 
-        year = timezone.now().year
-        assert request.request_number.startswith(f"CORP-{year}-")
+        generated_year = request.request_number.split("-")[1]
+        assert generated_year == str(request.created_at.year)
+        assert request.request_number.startswith(f"CORP-{generated_year}-")
 
     def test_corporate_request_request_number_increments_sequence(
         self,

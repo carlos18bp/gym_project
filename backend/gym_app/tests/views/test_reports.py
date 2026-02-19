@@ -14,6 +14,12 @@ from gym_app.models import (
 )
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+
+FIXED_TODAY = datetime.date.today()
+FIXED_NOW = timezone.make_aware(datetime.datetime.combine(FIXED_TODAY, datetime.time(10, 0, 0)))
+REPORT_START_DATE = (FIXED_TODAY - datetime.timedelta(days=60)).strftime("%Y-%m-%d")
+REPORT_END_DATE = FIXED_TODAY.strftime("%Y-%m-%d")
+
 @pytest.fixture
 def sample_users():
     """Create sample users for testing reports"""
@@ -82,18 +88,18 @@ def sample_processes(sample_users, sample_case_types):
         lawyer=sample_users['lawyer'],
         case=sample_case_types['civil'],
         subcase='Contract Dispute',
-        created_at=timezone.now() - datetime.timedelta(days=30),
+        created_at=FIXED_NOW - datetime.timedelta(days=30),
     )
     process1.clients.add(sample_users['client'])
     
     # Add stages to process1
     stage1 = Stage.objects.create(
         status='Initial Review',
-        created_at=timezone.now() - datetime.timedelta(days=28)
+        created_at=FIXED_NOW - datetime.timedelta(days=28)
     )
     stage2 = Stage.objects.create(
         status='Documentation',
-        created_at=timezone.now() - datetime.timedelta(days=20)
+        created_at=FIXED_NOW - datetime.timedelta(days=20)
     )
     process1.stages.add(stage1, stage2)
     
@@ -106,22 +112,22 @@ def sample_processes(sample_users, sample_case_types):
         lawyer=sample_users['lawyer'],
         case=sample_case_types['family'],
         subcase='Custody Case',
-        created_at=timezone.now() - datetime.timedelta(days=15),
+        created_at=FIXED_NOW - datetime.timedelta(days=15),
     )
     process2.clients.add(sample_users['client'])
     
     # Add stages to process2
     stage3 = Stage.objects.create(
         status='Initial Review',
-        created_at=timezone.now() - datetime.timedelta(days=14)
+        created_at=FIXED_NOW - datetime.timedelta(days=14)
     )
     stage4 = Stage.objects.create(
         status='Court Hearing',
-        created_at=timezone.now() - datetime.timedelta(days=7)
+        created_at=FIXED_NOW - datetime.timedelta(days=7)
     )
     stage5 = Stage.objects.create(
         status='Fallo',
-        created_at=timezone.now() - datetime.timedelta(days=1)
+        created_at=FIXED_NOW - datetime.timedelta(days=1)
     )
     process2.stages.add(stage3, stage4, stage5)
     
@@ -141,14 +147,14 @@ def sample_activities(sample_users, sample_processes):
         user=sample_users['lawyer'],
         action_type='create_process',
         description=f"Created process {sample_processes['process1'].ref}",
-        created_at=timezone.now() - datetime.timedelta(days=30)
+        created_at=FIXED_NOW - datetime.timedelta(days=30)
     ))
     
     activities.append(ActivityFeed.objects.create(
         user=sample_users['lawyer'],
         action_type='update_process',
         description=f"Updated process {sample_processes['process1'].ref}",
-        created_at=timezone.now() - datetime.timedelta(days=25)
+        created_at=FIXED_NOW - datetime.timedelta(days=25)
     ))
     
     # Create activities for client
@@ -156,7 +162,7 @@ def sample_activities(sample_users, sample_processes):
         user=sample_users['client'],
         action_type='view_process',
         description=f"Viewed process {sample_processes['process1'].ref}",
-        created_at=timezone.now() - datetime.timedelta(days=20)
+        created_at=FIXED_NOW - datetime.timedelta(days=20)
     ))
     
     return activities
@@ -173,8 +179,8 @@ def sample_documents(sample_users):
         state="Draft",
         created_by=sample_users['lawyer'],
         assigned_to=sample_users['client'],
-        created_at=timezone.now() - datetime.timedelta(days=15),
-        updated_at=timezone.now() - datetime.timedelta(days=15)
+        created_at=FIXED_NOW - datetime.timedelta(days=15),
+        updated_at=FIXED_NOW - datetime.timedelta(days=15)
     ))
     
     documents.append(DynamicDocument.objects.create(
@@ -182,8 +188,8 @@ def sample_documents(sample_users):
         state="Published",
         created_by=sample_users['lawyer'],
         assigned_to=sample_users['client'],
-        created_at=timezone.now() - datetime.timedelta(days=10),
-        updated_at=timezone.now() - datetime.timedelta(days=8)
+        created_at=FIXED_NOW - datetime.timedelta(days=10),
+        updated_at=FIXED_NOW - datetime.timedelta(days=8)
     ))
     
     documents.append(DynamicDocument.objects.create(
@@ -191,8 +197,8 @@ def sample_documents(sample_users):
         state="Progress",
         created_by=sample_users['lawyer'],
         assigned_to=sample_users['client'],
-        created_at=timezone.now() - datetime.timedelta(days=5),
-        updated_at=timezone.now() - datetime.timedelta(days=2)
+        created_at=FIXED_NOW - datetime.timedelta(days=5),
+        updated_at=FIXED_NOW - datetime.timedelta(days=2)
     ))
     
     return documents
@@ -241,7 +247,7 @@ def sample_legal_requests():
         request_type=consultation,
         discipline=civil,
         description="I need advice on contract law",
-        created_at=timezone.now() - datetime.timedelta(days=20),
+        created_at=FIXED_NOW - datetime.timedelta(days=20),
     )
 
     # Create and attach a file
@@ -258,7 +264,7 @@ def sample_legal_requests():
         request_type=representation,
         discipline=family,
         description="I need representation in a custody case",
-        created_at=timezone.now() - datetime.timedelta(days=10),
+        created_at=FIXED_NOW - datetime.timedelta(days=10),
     )
 
     request3 = LegalRequest.objects.create(
@@ -266,7 +272,7 @@ def sample_legal_requests():
         request_type=consultation,
         discipline=criminal,
         description="I need advice on my criminal case",
-        created_at=timezone.now() - datetime.timedelta(days=5),
+        created_at=FIXED_NOW - datetime.timedelta(days=5),
     )
     
     return {
@@ -334,8 +340,8 @@ class TestReportViews:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'active_processes',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -365,8 +371,8 @@ class TestReportViews:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'processes_by_lawyer',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -395,8 +401,8 @@ class TestReportViews:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'processes_by_client',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -421,8 +427,8 @@ class TestReportViews:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'process_stages',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -447,8 +453,8 @@ class TestReportViews:
         
         # Make the request with naive datetimes (no timezone)
         url = reverse('generate-excel-report')
-        start_date = (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-        end_date = timezone.now().date().strftime('%Y-%m-%d')
+        start_date = REPORT_START_DATE
+        end_date = REPORT_END_DATE
         data = {
             'reportType': 'registered_users',
             'startDate': start_date,
@@ -476,8 +482,8 @@ class TestReportViews:
         
         # Make the request with naive datetimes (no timezone)
         url = reverse('generate-excel-report')
-        start_date = (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-        end_date = timezone.now().date().strftime('%Y-%m-%d')
+        start_date = REPORT_START_DATE
+        end_date = REPORT_END_DATE
         data = {
             'reportType': 'user_activity',
             'startDate': start_date,
@@ -512,8 +518,8 @@ class TestReportViews:
         url = reverse('generate-excel-report')
         data = {
             'reportType': 'lawyers_workload',
-            'startDate': (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d'),
-            'endDate': timezone.now().date().strftime('%Y-%m-%d')
+            'startDate': REPORT_START_DATE,
+            'endDate': REPORT_END_DATE,
         }
         response = api_client.post(url, data, format='json')
         
@@ -542,8 +548,8 @@ class TestReportViews:
         api_client.force_authenticate(user=sample_users['admin'])
         
         url = reverse('generate-excel-report')
-        start_date = (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-        end_date = timezone.now().date().strftime('%Y-%m-%d')
+        start_date = REPORT_START_DATE
+        end_date = REPORT_END_DATE
         data = {'reportType': 'documents_by_state', 'startDate': start_date, 'endDate': end_date}
         response = api_client.post(url, data, format='json')
         
@@ -560,8 +566,8 @@ class TestReportViews:
         api_client.force_authenticate(user=sample_users['admin'])
         
         url = reverse('generate-excel-report')
-        start_date = (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-        end_date = timezone.now().date().strftime('%Y-%m-%d')
+        start_date = REPORT_START_DATE
+        end_date = REPORT_END_DATE
         data = {'reportType': 'received_legal_requests', 'startDate': start_date, 'endDate': end_date}
         response = api_client.post(url, data, format='json')
         
@@ -581,8 +587,8 @@ class TestReportViews:
         
         # Make the request with naive datetimes (no timezone)
         url = reverse('generate-excel-report')
-        start_date = (timezone.now().date() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-        end_date = timezone.now().date().strftime('%Y-%m-%d')
+        start_date = REPORT_START_DATE
+        end_date = REPORT_END_DATE
         data = {
             'reportType': 'requests_by_type_discipline',
             'startDate': start_date,
@@ -1063,7 +1069,7 @@ def ctype():
 
 @pytest.fixture
 def dr():
-    e = timezone.now().date()
+    e = FIXED_TODAY
     s = e - datetime.timedelta(days=60)
     return s.strftime('%Y-%m-%d'), e.strftime('%Y-%m-%d')
 
@@ -1081,19 +1087,19 @@ def procs2(lawyer, lawyer2, client_u, ctype):
     p1 = Process.objects.create(
         authority='A', plaintiff='P', defendant='D', ref='RC1',
         lawyer=lawyer, case=ctype, subcase='S',
-        created_at=timezone.now() - datetime.timedelta(days=30))
+        created_at=FIXED_NOW - datetime.timedelta(days=30))
     p1.clients.add(client_u)
     p1.stages.add(Stage.objects.create(
         status='Init',
-        created_at=timezone.now() - datetime.timedelta(days=28)))
+        created_at=FIXED_NOW - datetime.timedelta(days=28)))
     p2 = Process.objects.create(
         authority='B', plaintiff='P', defendant='D', ref='RC2',
         lawyer=lawyer2, case=ctype, subcase='S',
-        created_at=timezone.now() - datetime.timedelta(days=20))
+        created_at=FIXED_NOW - datetime.timedelta(days=20))
     p2.clients.add(client_u)
     p2.stages.add(Stage.objects.create(
         status='Fallo',
-        created_at=timezone.now() - datetime.timedelta(days=5)))
+        created_at=FIXED_NOW - datetime.timedelta(days=5)))
     return [p1, p2]
 
 
@@ -1103,7 +1109,7 @@ def proc_ns(lawyer, client_u, ctype):
     p = Process.objects.create(
         authority='X', plaintiff='P', defendant='D', ref='RCNS',
         lawyer=lawyer, case=ctype, subcase='N',
-        created_at=timezone.now() - datetime.timedelta(days=10))
+        created_at=FIXED_NOW - datetime.timedelta(days=10))
     p.clients.add(client_u)
     return p
 
@@ -1123,11 +1129,11 @@ def lr_data():
     LegalRequest.objects.create(
         user=u1, request_type=rt, discipline=d1,
         description="R1",
-        created_at=timezone.now() - datetime.timedelta(days=10))
+        created_at=FIXED_NOW - datetime.timedelta(days=10))
     LegalRequest.objects.create(
         user=u2, request_type=rt, discipline=d2,
         description="R2",
-        created_at=timezone.now() - datetime.timedelta(days=5))
+        created_at=FIXED_NOW - datetime.timedelta(days=5))
     return {'types': [rt], 'discs': [d1, d2]}
 
 
@@ -1166,7 +1172,7 @@ class TestReportsRegressionScenarios:
         """Line 809: delete action type gets red formatting."""
         ActivityFeed.objects.create(
             user=lawyer, action_type='delete', description='Del',
-            created_at=timezone.now() - datetime.timedelta(days=2))
+            created_at=FIXED_NOW - datetime.timedelta(days=2))
         api_client.force_authenticate(user=admin)
         r = _post(api_client, 'user_activity', dr)
         assert r.status_code == 200
@@ -1197,8 +1203,8 @@ class TestReportsRegressionScenarios:
         """Lines 1080-1085: user_id as lawyer in documents_by_state."""
         DynamicDocument.objects.create(
             title="DocRC", state="Draft", created_by=lawyer,
-            created_at=timezone.now() - datetime.timedelta(days=5),
-            updated_at=timezone.now() - datetime.timedelta(days=3))
+            created_at=FIXED_NOW - datetime.timedelta(days=5),
+            updated_at=FIXED_NOW - datetime.timedelta(days=3))
         api_client.force_authenticate(user=admin)
         with mock.patch('gym_app.views.reports.user_id', lawyer.id):
             r = _post(api_client, 'documents_by_state', dr)
@@ -1210,8 +1216,8 @@ class TestReportsRegressionScenarios:
         DynamicDocument.objects.create(
             title="DocRC2", state="Published", created_by=lawyer,
             assigned_to=client_u,
-            created_at=timezone.now() - datetime.timedelta(days=5),
-            updated_at=timezone.now() - datetime.timedelta(days=3))
+            created_at=FIXED_NOW - datetime.timedelta(days=5),
+            updated_at=FIXED_NOW - datetime.timedelta(days=3))
         api_client.force_authenticate(user=admin)
         with mock.patch('gym_app.views.reports.user_id', client_u.id):
             r = _post(api_client, 'documents_by_state', dr)
@@ -1252,10 +1258,10 @@ class TestReportsRegressionScenarios:
         p = Process.objects.create(
             authority='A', plaintiff='P', defendant='D', ref='RC-SKP',
             lawyer=lawyer, case=ctype, subcase='S',
-            created_at=timezone.now() - datetime.timedelta(days=10))
+            created_at=FIXED_NOW - datetime.timedelta(days=10))
         p.clients.add(client_u)
         p.stages.add(Stage.objects.create(
-            status='X', created_at=timezone.now() - datetime.timedelta(days=9)))
+            status='X', created_at=FIXED_NOW - datetime.timedelta(days=9)))
         api_client.force_authenticate(user=admin)
         r = _post(api_client, 'processes_by_lawyer', dr)
         assert r.status_code == 200
@@ -1271,7 +1277,7 @@ class TestReportsRegressionScenarios:
         p = Process.objects.create(
             authority='A', plaintiff='P', defendant='D', ref='RC-SKC',
             lawyer=lawyer, case=ctype, subcase='S',
-            created_at=timezone.now() - datetime.timedelta(days=10))
+            created_at=FIXED_NOW - datetime.timedelta(days=10))
         p.clients.add(client_u)
         api_client.force_authenticate(user=admin)
         r = _post(api_client, 'processes_by_client', dr)
@@ -1283,7 +1289,7 @@ class TestReportsRegressionScenarios:
         p = Process.objects.create(
             authority='A', plaintiff='P', defendant='D', ref='RC-WK0',
             lawyer=lawyer, case=ctype, subcase='S',
-            created_at=timezone.now() - datetime.timedelta(days=10))
+            created_at=FIXED_NOW - datetime.timedelta(days=10))
         p.clients.add(client_u)
         api_client.force_authenticate(user=admin)
         r = _post(api_client, 'lawyers_workload', dr)
@@ -1312,10 +1318,10 @@ class TestReportsRegressionScenarios:
             role='client')
         LegalRequest.objects.create(
             user=u, request_type=rt1, discipline=d1, description="A",
-            created_at=timezone.now() - datetime.timedelta(days=5))
+            created_at=FIXED_NOW - datetime.timedelta(days=5))
         LegalRequest.objects.create(
             user=u, request_type=rt2, discipline=d2, description="B",
-            created_at=timezone.now() - datetime.timedelta(days=3))
+            created_at=FIXED_NOW - datetime.timedelta(days=3))
         api_client.force_authenticate(user=admin)
         # Pre-existing bug: workbook.add_chart({'type': 'heatmap'}) returns
         # None in xlsxwriter → AttributeError on chart.add_series (line 1719).
@@ -1550,8 +1556,8 @@ class TestReportsEdges:
         url = reverse("generate-excel-report")
         data = {
             "reportType": "lawyers_workload",
-            "startDate": (timezone.now().date() - datetime.timedelta(days=60)).strftime("%Y-%m-%d"),
-            "endDate": timezone.now().date().strftime("%Y-%m-%d"),
+            "startDate": REPORT_START_DATE,
+            "endDate": REPORT_END_DATE,
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_200_OK
@@ -1576,8 +1582,8 @@ class TestReportsEdges:
         url = reverse("generate-excel-report")
         data = {
             "reportType": "requests_by_type_discipline",
-            "startDate": (timezone.now().date() - datetime.timedelta(days=60)).strftime("%Y-%m-%d"),
-            "endDate": timezone.now().date().strftime("%Y-%m-%d"),
+            "startDate": REPORT_START_DATE,
+            "endDate": REPORT_END_DATE,
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_200_OK
@@ -1601,8 +1607,8 @@ class TestReportsEdges:
         url = reverse("generate-excel-report")
         data = {
             "reportType": "user_activity",
-            "startDate": (timezone.now().date() - datetime.timedelta(days=60)).strftime("%Y-%m-%d"),
-            "endDate": timezone.now().date().strftime("%Y-%m-%d"),
+            "startDate": REPORT_START_DATE,
+            "endDate": REPORT_END_DATE,
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_200_OK

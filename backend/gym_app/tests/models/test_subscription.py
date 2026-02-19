@@ -1,11 +1,19 @@
 import pytest
 from decimal import Decimal
-from datetime import date, timedelta
-
-from django.utils import timezone
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 
 from gym_app.models.subscription import Subscription, PaymentHistory
 from gym_app.models.user import User
+
+
+@pytest.fixture
+def fixed_today():
+    return date(2026, 1, 15)
+
+
+@pytest.fixture
+def fixed_now():
+    return datetime(2026, 1, 15, 10, 0, tzinfo=dt_timezone.utc)
 
 
 @pytest.fixture
@@ -24,14 +32,14 @@ def subscription_user():
 class TestSubscription:
     """Tests for the Subscription model."""
 
-    def test_create_subscription_and_str(self, subscription_user):
+    def test_create_subscription_and_str(self, subscription_user, fixed_today):
         """Create a subscription and verify fields and __str__."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
             payment_source_id="src_test_123",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=fixed_today,
             amount=Decimal("99000.00"),
         )
 
@@ -45,13 +53,13 @@ class TestSubscription:
         expected = f"{subscription_user.email} - {sub.get_plan_type_display()} ({sub.status})"
         assert str(sub) == expected
 
-    def test_subscription_payments_related_name(self, subscription_user):
+    def test_subscription_payments_related_name(self, subscription_user, fixed_today):
         """Los pagos deben estar enlazados vía related_name 'payments'."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="basico",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=fixed_today,
             amount=Decimal("10000.00"),
         )
 
@@ -76,13 +84,13 @@ class TestSubscription:
 class TestPaymentHistory:
     """Tests for the PaymentHistory model."""
 
-    def test_create_payment_history_and_str(self, subscription_user):
+    def test_create_payment_history_and_str(self, subscription_user, fixed_today):
         """Create a payment history entry and verify fields and __str__."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="corporativo",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=fixed_today,
             amount=Decimal("250000.00"),
         )
 
@@ -103,12 +111,12 @@ class TestPaymentHistory:
         assert subscription_user.email in s
         assert "approved" in s
 
-    def test_payment_history_ordering_by_payment_date(self, subscription_user):
+    def test_payment_history_ordering_by_payment_date(self, subscription_user, fixed_today, fixed_now):
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
             status="active",
-            next_billing_date=timezone.now().date(),
+            next_billing_date=fixed_today,
             amount=Decimal("50000.00"),
         )
 
@@ -125,8 +133,8 @@ class TestPaymentHistory:
             reference="REF-NEW",
         )
 
-        older_time = timezone.now() - timedelta(days=1)
-        newer_time = timezone.now()
+        older_time = fixed_now - timedelta(days=1)
+        newer_time = fixed_now
         PaymentHistory.objects.filter(pk=older.pk).update(payment_date=older_time)
         PaymentHistory.objects.filter(pk=newer.pk).update(payment_date=newer_time)
 
@@ -144,20 +152,20 @@ class TestPaymentHistory:
 
 @pytest.mark.django_db
 class TestSubscriptionEdges:
-    def test_subscription_str(self, client_user):
+    def test_subscription_str(self, client_user, fixed_today):
         sub = Subscription.objects.create(
             user=client_user, plan_type="cliente", status="active",
-            next_billing_date=date.today() + timedelta(days=30),
+            next_billing_date=fixed_today + timedelta(days=30),
             amount=Decimal("50000.00"),
         )
         s = str(sub)
         assert client_user.email in s
         assert "Cliente" in s
 
-    def test_payment_history_str(self, client_user):
+    def test_payment_history_str(self, client_user, fixed_today):
         sub = Subscription.objects.create(
             user=client_user, plan_type="basico", status="active",
-            next_billing_date=date.today() + timedelta(days=30),
+            next_billing_date=fixed_today + timedelta(days=30),
             amount=Decimal("0.00"),
         )
         ph = PaymentHistory.objects.create(

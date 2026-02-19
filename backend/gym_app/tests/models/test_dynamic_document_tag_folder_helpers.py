@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from django.db import IntegrityError, transaction
@@ -19,6 +19,8 @@ from gym_app.models.user import User
 
 
 pytestmark = pytest.mark.django_db
+
+FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 
 
 @pytest.fixture
@@ -141,8 +143,8 @@ def test_document_folder_str(user_factory):
 
 def test_document_folder_ordering_by_created_at(user_factory):
     owner = user_factory("owner@example.com")
-    older_time = timezone.now() - timedelta(days=1)
-    newer_time = timezone.now()
+    older_time = FIXED_NOW - timedelta(days=1)
+    newer_time = FIXED_NOW
 
     older_folder = DocumentFolder.objects.create(name="Older", owner=owner)
     newer_folder = DocumentFolder.objects.create(name="Newer", owner=owner)
@@ -201,8 +203,8 @@ def test_recent_document_ordering_by_last_visited(user_factory, document_factory
     older_recent = RecentDocument.objects.create(user=user, document=older_doc)
     newer_recent = RecentDocument.objects.create(user=user, document=newer_doc)
 
-    older_time = timezone.now() - timedelta(days=1)
-    newer_time = timezone.now()
+    older_time = FIXED_NOW - timedelta(days=1)
+    newer_time = FIXED_NOW
     RecentDocument.objects.filter(pk=older_recent.pk).update(last_visited=older_time)
     RecentDocument.objects.filter(pk=newer_recent.pk).update(last_visited=newer_time)
 

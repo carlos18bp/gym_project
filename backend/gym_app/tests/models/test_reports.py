@@ -4,7 +4,6 @@ import pandas as pd
 import datetime
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
-from django.utils import timezone
 from django.db import models
 from gym_app.views.reports import (
     generate_active_processes_report,
@@ -30,6 +29,28 @@ def mock_response():
     return HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
+
+@pytest.fixture
+def fixed_now():
+    """Deterministic timestamp anchor for report test data and filters."""
+    return datetime.datetime(2026, 1, 15, 10, 0, tzinfo=datetime.timezone.utc)
+
+
+@pytest.fixture
+def report_window():
+    """Stable aware range that always includes test records regardless runtime date."""
+    return (
+        datetime.datetime(2000, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+        datetime.datetime(2100, 1, 1, 0, 0, tzinfo=datetime.timezone.utc),
+    )
+
+
+@pytest.fixture
+def report_window_naive(report_window):
+    """Naive variant used by report functions that compare naive datetimes."""
+    start_date, end_date = report_window
+    return start_date.replace(tzinfo=None), end_date.replace(tzinfo=None)
 
 
 @pytest.fixture
@@ -63,7 +84,7 @@ def sample_users():
 
 
 @pytest.fixture
-def sample_data(sample_users):
+def sample_data(sample_users, fixed_now):
     """Create sample data for testing reports"""
     # Create case type
     case = Case.objects.create(type='Civil')
@@ -77,18 +98,18 @@ def sample_data(sample_users):
         lawyer=sample_users['lawyer'],
         case=case,
         subcase='Contract Dispute',
-        created_at=timezone.now() - datetime.timedelta(days=10),
+        created_at=fixed_now - datetime.timedelta(days=10),
     )
     process.clients.add(sample_users['client'])
     
     # Create stages for the process
     stage1 = Stage.objects.create(
         status='Initial Review',
-        created_at=timezone.now() - datetime.timedelta(days=9)
+        created_at=fixed_now - datetime.timedelta(days=9)
     )
     stage2 = Stage.objects.create(
         status='Documentation',
-        created_at=timezone.now() - datetime.timedelta(days=5)
+        created_at=fixed_now - datetime.timedelta(days=5)
     )
     process.stages.add(stage1, stage2)
     
@@ -97,7 +118,7 @@ def sample_data(sample_users):
         user=sample_users['lawyer'],
         action_type='create_process',
         description=f"Created process {process.ref}",
-        created_at=timezone.now() - datetime.timedelta(days=10)
+        created_at=fixed_now - datetime.timedelta(days=10)
     )
     
     # Create document
@@ -106,8 +127,8 @@ def sample_data(sample_users):
         state="Draft",
         created_by=sample_users['lawyer'],
         assigned_to=sample_users['client'],
-        created_at=timezone.now() - datetime.timedelta(days=8),
-        updated_at=timezone.now() - datetime.timedelta(days=5)
+        created_at=fixed_now - datetime.timedelta(days=8),
+        updated_at=fixed_now - datetime.timedelta(days=5)
     )
     
     # Create legal request types and disciplines
@@ -129,7 +150,7 @@ def sample_data(sample_users):
         request_type=request_type,
         discipline=discipline,
         description="I need advice on a civil matter",
-        created_at=timezone.now() - datetime.timedelta(days=7),
+        created_at=fixed_now - datetime.timedelta(days=7),
     )
     
     # Create and attach a file to the legal request
@@ -157,11 +178,10 @@ def sample_data(sample_users):
 @pytest.mark.django_db
 class TestReportFunctions:
     
-    def test_active_processes_report(self, mock_response, sample_data):
+    def test_active_processes_report(self, mock_response, sample_data, report_window):
         """Test the active processes report generation function directly"""
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_active_processes_report(mock_response, start_date, end_date)
@@ -181,14 +201,13 @@ class TestReportFunctions:
         assert 'Company Inc.' in df['Demandante'].values
         assert 'Other Company LLC' in df['Demandado'].values
     
-    def test_processes_by_lawyer_report(self, mock_response, sample_data, sample_users, monkeypatch):
+    def test_processes_by_lawyer_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
         """Test the processes by lawyer report generation function directly"""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_processes_by_lawyer_report(mock_response, start_date, end_date)
@@ -208,14 +227,13 @@ class TestReportFunctions:
         # Check that process reference is there
         assert 'TEST-123' in df['Referencia de Proceso'].values
     
-    def test_processes_by_client_report(self, mock_response, sample_data, sample_users, monkeypatch):
+    def test_processes_by_client_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
         """Test the processes by client report generation function directly"""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_processes_by_client_report(mock_response, start_date, end_date)
@@ -233,11 +251,10 @@ class TestReportFunctions:
         assert sample_users['client'].identification in df['ID Cliente'].values
         assert 'TEST-123' in df['Referencia de Proceso'].values
     
-    def test_process_stages_report(self, mock_response, sample_data):
+    def test_process_stages_report(self, mock_response, sample_data, report_window):
         """Test the process stages report generation function directly"""
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_process_stages_report(mock_response, start_date, end_date)
@@ -255,11 +272,10 @@ class TestReportFunctions:
         assert 'Initial Review' in df['Etapa'].values
         assert 'Documentation' in df['Etapa'].values
     
-    def test_registered_users_report(self, mock_response, sample_users):
+    def test_registered_users_report(self, mock_response, sample_users, report_window_naive):
         """Test the registered users report generation function directly"""
         # Get dates for report range - use naive datetimes (no timezone)
-        start_date = (timezone.now() - datetime.timedelta(days=30)).replace(tzinfo=None)
-        end_date = timezone.now().replace(tzinfo=None)
+        start_date, end_date = report_window_naive
         
         # Generate report
         response = generate_registered_users_report(mock_response, start_date, end_date)
@@ -282,11 +298,10 @@ class TestReportFunctions:
         assert client_row['Rol'] == 'Cliente'
         assert lawyer_row['Rol'] == 'Abogado'
     
-    def test_user_activity_report(self, mock_response, sample_data, sample_users):
+    def test_user_activity_report(self, mock_response, sample_data, sample_users, report_window_naive):
         """Test the user activity report generation function directly"""
         # Get dates for report range - use naive datetimes (no timezone)
-        start_date = (timezone.now() - datetime.timedelta(days=30)).replace(tzinfo=None)
-        end_date = timezone.now().replace(tzinfo=None)
+        start_date, end_date = report_window_naive
         
         # Generate report
         response = generate_user_activity_report(mock_response, start_date, end_date)
@@ -309,14 +324,13 @@ class TestReportFunctions:
         description = df[df['Usuario'] == sample_users['lawyer'].email]['Descripción'].iloc[0]
         assert 'TEST-123' in description
     
-    def test_lawyers_workload_report(self, mock_response, sample_data, sample_users, monkeypatch):
+    def test_lawyers_workload_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
         """Test the lawyers workload report generation function directly"""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_lawyers_workload_report(mock_response, start_date, end_date)
@@ -337,7 +351,7 @@ class TestReportFunctions:
         assert lawyer_row['Total de Procesos Asignados'] >= 1  # At least our test process
         assert lawyer_row['Procesos Activos'] >= 1  # Our test process is active
     
-    def test_documents_by_state_report(self, mock_response, sample_data, sample_users, monkeypatch):
+    def test_documents_by_state_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
         """Test the documents by state report generation function directly"""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
@@ -345,8 +359,7 @@ class TestReportFunctions:
         monkeypatch.setattr('gym_app.views.reports.models', models)
         
         # Get dates for report range
-        start_date = timezone.now() - datetime.timedelta(days=30)
-        end_date = timezone.now()
+        start_date, end_date = report_window
         
         # Generate report
         response = generate_documents_by_state_report(mock_response, start_date, end_date)
@@ -363,11 +376,10 @@ class TestReportFunctions:
         assert "Test Document" in df['Título'].values
         assert "Borrador" in df['Estado'].values  # "Draft" translated to Spanish
     
-    def test_received_legal_requests_report(self, mock_response, sample_data):
+    def test_received_legal_requests_report(self, mock_response, sample_data, report_window_naive):
         """Test the received legal requests report generation function directly"""
         # Get dates for report range - use naive datetimes (no timezone)
-        start_date = (timezone.now() - datetime.timedelta(days=30)).replace(tzinfo=None)
-        end_date = timezone.now().replace(tzinfo=None)
+        start_date, end_date = report_window_naive
         
         # Generate report
         response = generate_received_legal_requests_report(mock_response, start_date, end_date)
@@ -390,11 +402,10 @@ class TestReportFunctions:
         request_row = df[df['Email'] == "john.doe@example.com"].iloc[0]
         assert request_row['Archivos Adjuntos'] == 1  # Our test legal request has one file
     
-    def test_requests_by_type_discipline_report(self, mock_response, sample_data):
+    def test_requests_by_type_discipline_report(self, mock_response, sample_data, report_window_naive):
         """Test the requests by type and discipline report generation function directly"""
         # Get dates for report range - use naive datetimes (no timezone)
-        start_date = (timezone.now() - datetime.timedelta(days=30)).replace(tzinfo=None)
-        end_date = timezone.now().replace(tzinfo=None)
+        start_date, end_date = report_window_naive
         
         # Generate report
         response = generate_requests_by_type_discipline_report(mock_response, start_date, end_date)

@@ -1,7 +1,11 @@
 import pytest
+from datetime import datetime, timedelta
 from django.utils import timezone
 
 from gym_app.models.legal_update import LegalUpdate
+
+
+FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 
 
 @pytest.mark.django_db
@@ -49,7 +53,7 @@ class TestLegalUpdate:
             link_url="https://example.com/old",
         )
         # Ajustamos manualmente created_at para simular diferencia temporal
-        older.created_at = timezone.now() - timezone.timedelta(days=1)
+        older.created_at = FIXED_NOW - timedelta(days=1)
         older.save(update_fields=["created_at"])
 
         newer = LegalUpdate.objects.create(
