@@ -1015,6 +1015,8 @@ gunicorn gym_project.wsgi:application --bind 0.0.0.0:8000
 
 ### 5.2 Frontend (Vue + Vite)
 
+Node baseline for frontend tooling: **>= 22.13.0** (`.nvmrc` at repository root).
+
 ```bash
 # 1. Install dependencies
 cd frontend

@@ -75,6 +75,9 @@ sudo apt install silversearcher-ag
 sudo apt install libpangocairo-1.0-0 libpangoft2-1.0-0 libffi-dev libcairo2
 ```
 
+Frontend tooling baseline: **Node.js >= 22.13.0**.
+If you use `nvm`, run `nvm use` from the repository root (the version is pinned in `.nvmrc`).
+
 ### Clone the repository
 
 ```bash
