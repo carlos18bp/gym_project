@@ -1,69 +1,214 @@
 # G&M Internal Management Tool
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Main Features](#main-features)
+- [Technology Stack](#technology-stack)
+- [Architecture Overview](#architecture-overview)
+- [Project Structure](#project-structure)
+- [Development Quickstart](#development-quickstart)
+  - [System dependencies (Linux)](#system-dependencies-linux)
+  - [Clone the repository](#clone-the-repository)
+  - [Backend (Django)](#backend-django)
+  - [Frontend (Vue 3 + Vite)](#frontend-vue-3--vite)
+- [Testing](#testing)
+  - [Backend tests](#backend-tests)
+  - [Backend tests in blocks](#backend-tests-in-blocks)
+  - [Frontend unit tests](#frontend-unit-tests)
+  - [Frontend E2E tests (Playwright)](#frontend-e2e-tests-playwright)
+  - [E2E coverage](#e2e-coverage)
+  - [Test Quality Gate](#test-quality-gate-backend--frontend)
+  - [Run all test suites](#run-all-test-suites)
+- [Documentation](#documentation)
+- [Project change guidelines](#project-change-guidelines)
+
 ## Overview
 
-G&M Internal Management Tool is a custom-built application designed for managing legal processes within the company. This tool helps streamline the interactions between **lawyers** and **clients**, allowing both roles to manage and track the progression of legal cases, files, and other related tasks in a more efficient and structured manner.
+G&M Internal Management Tool is a full-stack web application for managing legal processes, organizations, subscriptions, and document workflows within a law firm. It streamlines interactions between **lawyers** and **clients** through a **role-based system**, enabling case tracking, dynamic document generation, electronic signatures, organization management, and subscription-based billing.
 
-The application is built with a **role-based system** where users are either clients or lawyers. Clients can view and track the progress of their cases, while lawyers can manage the legal processes, update case statuses, and upload case files.
+The platform is built as a **Progressive Web App (PWA)** with a **Django REST API** backend and a **Vue 3 SPA** frontend. Key capabilities include:
+
+- **Legal case management** with stages, case files, and activity tracking
+- **Dynamic document builder** with template variables, permissions, tags, folders, and relationships
+- **Electronic signatures** (draw or image upload)
+- **Organization management** with invitations, memberships, and posts
+- **Legal and corporate request workflows** with file attachments and responses
+- **Subscription billing** via Wompi payment gateway with automated Celery tasks
+- **Google OAuth** and **reCAPTCHA** integration
+- **Offline-ready PWA** with service worker and installable app support
 
 ## Main Features
 
 ### 1. **User Management**
-   - The **Users** model is at the core of the application and is built around a **role-based system**. Users can either be:
-     - **Clients**: Users who have ongoing legal processes and need to track the status of their cases.
-     - **Lawyers**: Legal professionals who manage the cases, update statuses, and upload necessary documents.
-   - User roles determine what parts of the system the user can access and manage.
+   - Role-based access system with three roles: **Client**, **Lawyer**, and **Basic**.
+   - Clients track their legal cases; lawyers manage cases, upload documents, and update statuses.
+   - User profiles include activity feeds, electronic signatures, and email verification.
+   - Authentication via **JWT (SimpleJWT)**, **Google OAuth**, and **reCAPTCHA** protection.
 
 ### 2. **Process Management**
-   - The **Process** model represents the legal cases being handled within the system.
-   - Each process can contain several key attributes, such as:
-     - **Authority**: The entity managing the case.
-     - **Plaintiff** and **Defendant**: The parties involved in the case.
-     - **Case Type**: The classification of the legal matter (e.g., Civil, Criminal).
-     - **Subcase**: A more specific classification within the case type.
-     - **File Number**: A unique identifier for each case.
+   - Legal cases with authority, plaintiff, defendant, case type, subcase, and file number.
+   - Each process tracks stages (timestamped phases) and attached case files.
+   - Recent-process tracking for quick access from the dashboard.
 
-### 3. **Stage Management**
-   - **Processes** can have different **Stages**, representing the current phase of the legal proceedings.
-   - Each stage is timestamped, allowing users to track the evolution of the case over time.
+### 3. **Dynamic Documents**
+   - Template-based document builder with injectable **variables** (text, date, signature fields).
+   - **Visibility and usability permissions** control who can view or edit each document.
+   - Documents support **tags**, **folders**, and **relationships** between documents.
+   - Recent-document tracking for quick access.
 
-### 4. **Case File Management**
-   - Each **Process** can have one or more **Case Files** attached to it. These files may include important legal documents, evidence, or other files necessary for the process.
-   - Case files can be uploaded by lawyers and viewed by clients, providing a centralized place for managing all relevant documentation.
+### 4. **Electronic Signatures**
+   - Users can sign documents by **drawing** on a canvas or **uploading an image**.
+   - Signatures are stored per user and can be applied to dynamic documents.
 
-## Core Models
+### 5. **Organizations**
+   - Create and manage organizations with **invitations** and **memberships**.
+   - Organization **posts** for internal communication.
+   - Corporate request workflows tied to organizations.
 
-### 1. **Users**
-   The `User` model handles the application's role-based access system. Users can be either:
-   - **Clients**: Users who have cases in the system and can monitor their progress.
-   - **Lawyers**: Users who manage the cases, update the status, and upload case files.
+### 6. **Legal Requests**
+   - Clients submit legal requests categorized by **type** and **discipline**.
+   - File attachments and lawyer **responses** for each request.
 
-### 2. **Processes**
-   The `Process` model is the heart of the system, representing the legal cases. It contains essential information such as:
-   - **Authority**: The court or legal authority overseeing the case.
-   - **Plaintiff** and **Defendant**: The involved parties.
-   - **Stage**: A Many-to-Many relationship with the stages, tracking the progress of the case.
-   - **Case Files**: A Many-to-Many relationship representing all documents associated with the case.
+### 7. **Corporate Requests**
+   - Similar to legal requests but for corporate matters.
+   - Categorized by **type**, with file attachments and **responses**.
 
-### 3. **Stages**
-   The `Stage` model represents the different stages of the legal process. Each stage can have:
-   - **Status**: The current phase of the case (e.g., "Under Investigation", "In Court").
-   - **Date Created**: The date the stage was reached.
+### 8. **Subscriptions & Payments**
+   - Subscription plans with recurring billing via **Wompi** payment gateway.
+   - Automated monthly payment processing through **Celery** scheduled tasks.
+   - Payment history tracking and automatic role downgrade on payment failure.
 
-### 4. **Case Files**
-   The `Case File` model handles the files attached to each process. These could include:
-   - **File Name**: The name of the file.
-   - **Description**: A brief description of the contents of the file.
-   - **Date Uploaded**: When the file was uploaded.
+### 9. **Dashboard & Activity Feed**
+   - Centralized dashboard with recent processes, recent documents, and reports.
+   - Activity feed tracking user actions across the platform.
+   - Report generation with PDF and Excel export (xhtml2pdf, openpyxl, XlsxWriter).
+
+### 10. **Intranet**
+   - Internal legal document library and user profiles for the firm.
+
+### 11. **Legal Updates**
+   - Lawyers can publish legal updates visible to clients.
+
+### 12. **PWA Support**
+   - Progressive Web App with **service worker**, **offline readiness**, and **installable** app experience.
+   - Install prompts and instructions modal for supported platforms.
+
+## Technology Stack
+
+### Backend
+
+| Category | Technology |
+|----------|-----------|
+| Framework | Django 5.0.6, Django REST Framework 3.15.2 |
+| Authentication | SimpleJWT, Google OAuth (google-auth) |
+| Task queue | Celery 5.3.6 + Redis |
+| Database | SQLite (development) |
+| PDF generation | xhtml2pdf, PyMuPDF, reportlab |
+| Document processing | python-docx, PyPDF2, pypdf, openpyxl, XlsxWriter, pandas |
+| Image processing | Pillow, opencv-python-headless |
+| Digital signatures | pyHanko |
+| QR codes | qrcode |
+| Email | Django SMTP backend |
+| Test data | Faker |
+| Linting | Ruff |
+| Testing | pytest, pytest-django, pytest-cov, coverage |
+
+### Frontend
+
+| Category | Technology |
+|----------|-----------|
+| Framework | Vue 3.4 |
+| Build tool | Vite 6 |
+| State management | Pinia |
+| Routing | Vue Router 4 |
+| Styling | TailwindCSS 3, Flowbite |
+| UI components | Headless UI, Heroicons |
+| HTTP client | Axios |
+| Rich text editor | TinyMCE 7 |
+| Animations | GSAP |
+| Alerts | SweetAlert2 |
+| Carousel | Swiper |
+| Document export | docx (JS), file-saver |
+| Auth | vue3-google-login, vue3-recaptcha2 |
+| PWA | vite-plugin-pwa |
+| Unit testing | Jest 29, Vue Test Utils |
+| E2E testing | Playwright |
+| Linting | ESLint (jest, jest-dom, playwright plugins) |
+
+### DevOps & Tooling
+
+| Category | Technology |
+|----------|-----------|
+| Pre-commit | pre-commit hooks with custom test quality gate |
+| CI | GitHub Actions (`.github/workflows/test-quality-gate.yml`) |
+| Quality gate | Custom Python analyzer (`scripts/test_quality_gate.py`) |
+
+## Architecture Overview
+
+The backend is organized around the following model domains (defined in `backend/gym_app/models/`):
+
+| Domain | Models | Description |
+|--------|--------|-------------|
+| **Users** | `User`, `ActivityFeed`, `UserSignature` | Role-based users (client, lawyer, basic), activity tracking, electronic signatures |
+| **Processes** | `Process`, `Case`, `Stage`, `CaseFile`, `RecentProcess` | Legal cases with stages, attached files, and recent-access tracking |
+| **Dynamic Documents** | `DynamicDocument`, `DocumentVariable`, `DocumentSignature`, `RecentDocument`, `Tag`, `DocumentVisibilityPermission`, `DocumentUsabilityPermission`, `DocumentFolder`, `DocumentRelationship` | Template-based document builder with variables, permissions, tags, folders, and relationships |
+| **Organizations** | `Organization`, `OrganizationInvitation`, `OrganizationMembership`, `OrganizationPost` | Organization management with invitations, memberships, and posts |
+| **Legal Requests** | `LegalRequest`, `LegalRequestType`, `LegalDiscipline`, `LegalRequestFiles`, `LegalRequestResponse` | Client legal request workflows |
+| **Corporate Requests** | `CorporateRequest`, `CorporateRequestType`, `CorporateRequestFiles`, `CorporateRequestResponse` | Corporate request workflows |
+| **Subscriptions** | `Subscription`, `PaymentHistory` | Subscription plans and Wompi payment history |
+| **Intranet** | `LegalDocument`, `IntranetProfile` | Internal legal document library and profiles |
+| **Legal Updates** | `LegalUpdate` | Lawyer-published legal updates |
+| **Auth helpers** | `PasswordCode`, `EmailVerificationCode` | Password reset and email verification codes |
+
+## Project Structure
+
+```
+gym_project/
+├── backend/                    # Django project
+│   ├── gym_project/            #   Django settings, urls, celery, wsgi/asgi
+│   ├── gym_app/                #   Main application
+│   │   ├── models/             #     Domain models (user, process, dynamic_document, organization, ...)
+│   │   ├── views/              #     API views + dynamic_documents/ and layouts/ sub-modules
+│   │   ├── serializers/        #     DRF serializers
+│   │   ├── utils/              #     Auth, captcha, email notification helpers
+│   │   ├── management/commands/#     Fake data creation/deletion commands
+│   │   ├── templates/          #     Email and PDF templates
+│   │   ├── tests/              #     pytest tests (models, serializers, tasks, utils, views, commands)
+│   │   ├── tasks.py            #     Celery tasks (subscription billing)
+│   │   ├── urls.py             #     API URL routing
+│   │   └── admin.py            #     Django admin configuration
+│   ├── scripts/                #   run-tests-blocks.py (block-based test runner)
+│   ├── requirements.txt        #   Production dependencies
+│   └── requirements-dev.txt    #   Dev dependencies (pre-commit, ruff)
+├── frontend/                   # Vue 3 + Vite project
+│   ├── src/
+│   │   ├── views/              #     Page-level Vue components (auth, dashboard, process, ...)
+│   │   ├── components/         #     Reusable components (dynamic_document, electronic_signature, ...)
+│   │   ├── stores/             #     Pinia stores (auth, corporate_requests, dynamic_document, ...)
+│   │   ├── composables/        #     Vue composables (useIdleLogout, usePWAInstall, useSearch, ...)
+│   │   ├── router/             #     Vue Router configuration
+│   │   ├── shared/             #     Shared utilities (alerts, color palette, submit handler)
+│   │   └── animations/         #     GSAP animation helpers
+│   ├── test/                   #   Jest unit tests (stores, components, composables, views, ...)
+│   ├── e2e/                    #   Playwright E2E tests + helpers + reporters
+│   ├── scripts/                #   E2E helper scripts (modules, coverage, AST parser)
+│   ├── package.json            #   npm dependencies and scripts
+│   ├── vite.config.js          #   Vite + PWA + E2E coverage instrumentation
+│   ├── tailwind.config.js      #   TailwindCSS configuration
+│   ├── playwright.config.mjs   #   Playwright configuration
+│   └── jest.config.cjs         #   Jest configuration
+├── scripts/                    # Repository-level scripts
+│   ├── test_quality_gate.py    #   Test quality gate analyzer
+│   ├── run-tests-all-suites.py #   Parallel test suite runner
+│   └── quality/                #   Quality gate analyzers (backend, frontend-unit, frontend-e2e)
+├── docs/                       # Project documentation
+├── .github/workflows/          # CI workflows (test-quality-gate.yml)
+├── .pre-commit-config.yaml     # Pre-commit hook configuration
+└── .nvmrc                      # Node.js version (22.13.0)
+```
 
 ## Development Quickstart
-
-This repository is organized as:
-
-```
-backend/   # Django project
-frontend/  # Vue 3 project
-```
 
 ### System dependencies (Linux)
 
@@ -90,8 +235,8 @@ cd gym_project
 Create and activate a virtual environment, then install dependencies:
 
 ```bash
-python3 -m venv backend/.venv
-source backend/.venv/bin/activate
+python3 -m venv backend/venv
+source backend/venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
@@ -109,7 +254,34 @@ python backend/manage.py create_fake_data
 python backend/manage.py delete_fake_data --confirm
 ```
 
-Run backend tests:
+Run the backend dev server:
+
+```bash
+python backend/manage.py runserver
+```
+
+### Frontend (Vue 3 + Vite)
+
+Install dependencies and start dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Build the frontend for production:
+
+```bash
+cd frontend
+npm run build
+```
+
+## Testing
+
+### Backend tests
+
+Run targeted backend tests:
 
 ```bash
 cd backend
@@ -117,7 +289,9 @@ pytest gym_app/tests/<domain>/test_<feature>.py -v
 pytest gym_app/tests/<domain>/test_<feature>.py gym_app/tests/<domain>/test_<feature>_regression.py -v
 ```
 
-Run backend tests in blocks (low RAM, markers + test groups):
+### Backend tests in blocks
+
+For low-RAM environments, the block runner splits tests by marker and group:
 
 ```bash
 python backend/scripts/run-tests-blocks.py
@@ -278,30 +452,9 @@ python backend/scripts/run-tests-blocks.py --run-id $RUN_ID \
   -- --cov=gym_app --cov-append --cov-report=term --cov-report=html
 ```
 
-Run the backend dev server:
+### Frontend unit tests
 
-```bash
-python backend/manage.py runserver
-```
-
-### Frontend (Vue 3)
-
-Install dependencies and start dev server:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Build the frontend for production:
-
-```bash
-cd frontend
-npm run build
-```
-
-Run frontend unit tests (targeted):
+Run targeted unit tests (Jest + Vue Test Utils):
 
 ```bash
 cd frontend
@@ -309,17 +462,33 @@ npm run test -- test/stores/<store>.test.js
 npm run test -- test/components/<component>.test.js test/composables/<composable>.test.js
 ```
 
-Run E2E tests (Playwright, targeted):
+Run unit tests with coverage:
+
+```bash
+cd frontend
+npm run test:coverage
+```
+
+### Frontend E2E tests (Playwright)
+
+Install Playwright browsers (first time only):
 
 ```bash
 cd frontend
 npx playwright install chromium
+```
+
+Run targeted E2E tests:
+
+```bash
+cd frontend
 npm run e2e -- e2e/<flow>.spec.js
 npm run e2e -- e2e/<flow>.spec.js e2e/<related-flow>.spec.js
 ```
 
-By default, `npm run e2e` runs tests across **three viewports**: Desktop Chrome,
-Mobile Chrome (Pixel 5), and Tablet (iPad Mini). To run a single viewport:
+By default, `npm run e2e` runs tests on **Desktop Chrome**. The configuration
+supports additional viewports (Mobile Chrome, Tablet) which can be enabled in
+`playwright.config.mjs`. To run a specific viewport:
 
 ```bash
 cd frontend
@@ -354,7 +523,9 @@ npm run e2e:module -- --module auth --clean
 
 > `npm run e2e:module` runs `npm run e2e -- --grep @module:<name>` under the hood.
 
-Run E2E coverage (Playwright + V8):
+### E2E coverage
+
+Run E2E coverage (Playwright + Istanbul instrumentation via Vite):
 
 ```bash
 cd frontend
@@ -379,8 +550,7 @@ npm run e2e:coverage:module -- auth
 npm run e2e:coverage:module -- --module auth --clean
 ```
 
-Coverage also runs across all three viewports. To collect coverage for a single
-viewport:
+To collect coverage for a specific viewport:
 
 ```bash
 cd frontend
@@ -406,7 +576,7 @@ The gate is an analysis tool for test quality patterns and **does not change pro
 
 Detailed architecture, algorithm, rule semantics, and complete CLI options are documented in:
 
-- `TEST_QUALITY_GATE_REFERENCE.md`
+- `docs/TEST_QUALITY_GATE_REFERENCE.md`
 
 #### Practical commands (most common)
 
@@ -453,6 +623,8 @@ Behavior notes:
 Quality gate CI workflow:
 
 - `.github/workflows/test-quality-gate.yml`
+
+### Run all test suites
 
 Run all test suites in parallel (backend pytest + frontend unit + frontend E2E):
 
@@ -510,22 +682,23 @@ python scripts/run-tests-all-suites.py --e2e-workers 2
 python scripts/run-tests-all-suites.py --report-dir ci-reports
 ```
 
-To collect coverage for a single spec, run Playwright with `E2E_COVERAGE=1` and then build the report:
+## Documentation
 
-```bash
-cd frontend
-E2E_COVERAGE=1 npm run e2e -- e2e/subscriptions-flow.spec.js
-nyc report --temp-dir .nyc_output --report-dir coverage-e2e --reporter=lcov --reporter=text-summary
-```
+Project documentation lives in the `docs/` directory:
 
-Run only the Organizations E2E suite:
+| Document | Description |
+|----------|-------------|
+| `docs/STANDARD_ARCHITECTURE.md` | Project architecture standard |
+| `docs/DJANGO_VUE_ARCHITECTURE_STANDARD.md` | Django + Vue architecture patterns |
+| `docs/TESTING_QUALITY_STANDARDS.md` | Testing quality criteria and rules |
+| `docs/TEST_QUALITY_GATE_REFERENCE.md` | Quality gate CLI reference and algorithm |
+| `docs/BACKEND_AND_FRONTEND_COVERAGE_REPORT_STANDARD.md` | Coverage report standards |
+| `docs/E2E_FLOW_COVERAGE_REPORT_STANDARD.md` | E2E flow coverage standards |
+| `docs/FUNCTIONAL_GUIDE_BY_ROLE.md` | Feature guide by user role |
+| `docs/USER_FLOW_MAP.md` | User flow maps |
+| `docs/GLOBAL_RULES_GUIDELINES.md` | Global development rules and guidelines |
 
-```bash
-cd frontend
-npm run e2e -- e2e/organizations*.spec.js
-```
-
-### Project change guidelines
+## Project change guidelines
 
 Before implementing changes, review:
 
