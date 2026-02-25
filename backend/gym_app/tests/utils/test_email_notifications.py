@@ -1,13 +1,15 @@
-from datetime import datetime
+"""Tests for email_notifications module."""
 from unittest import mock
 
 import pytest
-from django.utils import timezone
 from django.contrib.auth import get_user_model
-
-from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestResponse
+from gym_app.models import (
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestResponse,
+    LegalRequestType,
+)
 from gym_app.utils import email_notifications
-
 
 User = get_user_model()
 
@@ -15,6 +17,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -27,18 +30,21 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def legal_request_type():
+    """Legal request type."""
     return LegalRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def legal_discipline():
+    """Legal discipline."""
     return LegalDiscipline.objects.create(name="Derecho Civil")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def legal_request(client_user, legal_request_type, legal_discipline):
+    """Legal request."""
     return LegalRequest.objects.create(
         user=client_user,
         request_type=legal_request_type,
@@ -50,6 +56,7 @@ def legal_request(client_user, legal_request_type, legal_discipline):
 @pytest.fixture
 @pytest.mark.django_db
 def legal_response(legal_request, client_user):
+    """Legal response."""
     return LegalRequestResponse.objects.create(
         legal_request=legal_request,
         response_text="Respuesta",
@@ -60,8 +67,11 @@ def legal_response(legal_request, client_user):
 
 @pytest.mark.django_db
 class TestSendStatusUpdateNotification:
+    """Tests for Send Status Update Notification."""
+
     @mock.patch("gym_app.utils.email_notifications.send_template_email")
     def test_send_status_update_notification_success(self, mock_send, legal_request):
+        """Verify send status update notification success."""
         mock_send.return_value = True
 
         result = email_notifications.send_status_update_notification(
@@ -81,6 +91,7 @@ class TestSendStatusUpdateNotification:
 
     @mock.patch("gym_app.utils.email_notifications.send_template_email")
     def test_send_status_update_notification_failure(self, mock_send, legal_request):
+        """Verify send status update notification failure."""
         mock_send.return_value = False
 
         result = email_notifications.send_status_update_notification(
@@ -93,6 +104,7 @@ class TestSendStatusUpdateNotification:
     def test_send_status_update_notification_exception_returns_false(
         self, mock_send, legal_request
     ):
+        """Verify send status update notification exception returns false."""
         mock_send.side_effect = Exception("boom")
 
         result = email_notifications.send_status_update_notification(
@@ -104,8 +116,11 @@ class TestSendStatusUpdateNotification:
 
 @pytest.mark.django_db
 class TestSendNewResponseNotification:
+    """Tests for Send New Response Notification."""
+
     @mock.patch("gym_app.utils.email_notifications.send_template_email")
     def test_send_new_response_notification_to_client(self, mock_send, legal_request, legal_response):
+        """Verify send new response notification to client."""
         mock_send.return_value = True
 
         result = email_notifications.send_new_response_notification(
@@ -128,6 +143,7 @@ class TestSendNewResponseNotification:
     def test_send_new_response_notification_returns_false_on_failure(
         self, mock_send, legal_request, legal_response
     ):
+        """Verify send new response notification returns false on failure."""
         mock_send.return_value = False
 
         result = email_notifications.send_new_response_notification(
@@ -144,6 +160,7 @@ class TestSendNewResponseNotification:
     def test_send_new_response_notification_prefers_response_user_name(
         self, mock_send, legal_request, legal_response
     ):
+        """Verify send new response notification prefers response user name."""
         mock_send.return_value = True
         legal_response.user_name = "Custom Author"
 
@@ -163,6 +180,7 @@ class TestSendNewResponseNotification:
     def test_send_new_response_notification_falls_back_to_user_email(
         self, mock_send, legal_request_type, legal_discipline
     ):
+        """Verify send new response notification falls back to user email."""
         mock_send.return_value = True
         nameless_user = User.objects.create_user(
             email="nameless@example.com",
@@ -197,8 +215,11 @@ class TestSendNewResponseNotification:
 
 @pytest.mark.django_db
 class TestNotifyHelpers:
+    """Tests for Notify Helpers."""
+
     @mock.patch("gym_app.utils.email_notifications.send_new_response_notification")
     def test_notify_lawyers_of_client_response(self, mock_send_new, legal_request):
+        """Verify notify lawyers of client response."""
         # Crear un par de abogados activos y uno inactivo
         lawyer1 = User.objects.create_user(
             email="lawyer1@example.com",
@@ -216,7 +237,7 @@ class TestNotifyHelpers:
             last_name="Lawyer",
             is_active=True,
         )
-        inactive_lawyer = User.objects.create_user(
+        _inactive_lawyer = User.objects.create_user(
             email="inactive@example.com",
             password="testpassword",
             role="lawyer",
@@ -244,13 +265,14 @@ class TestNotifyHelpers:
     def test_notify_lawyers_of_client_response_partial_success(
         self, mock_send_new, legal_request
     ):
+        """Verify notify lawyers of client response partial success."""
         lawyer1 = User.objects.create_user(
             email="lawyer-success@example.com",
             password="testpassword",
             role="lawyer",
             is_active=True,
         )
-        lawyer2 = User.objects.create_user(
+        _lawyer2 = User.objects.create_user(
             email="lawyer-fail@example.com",
             password="testpassword",
             role="lawyer",
@@ -279,6 +301,7 @@ class TestNotifyHelpers:
     def test_notify_lawyers_of_client_response_exception_returns_empty(
         self, mock_filter, legal_request
     ):
+        """Verify notify lawyers of client response exception returns empty."""
         mock_filter.side_effect = Exception("boom")
         response = LegalRequestResponse.objects.create(
             legal_request=legal_request,
@@ -295,6 +318,7 @@ class TestNotifyHelpers:
 
     @mock.patch("gym_app.utils.email_notifications.send_new_response_notification")
     def test_notify_client_of_lawyer_response(self, mock_send_new, legal_request, client_user):
+        """Verify notify client of lawyer response."""
         response = LegalRequestResponse.objects.create(
             legal_request=legal_request,
             response_text="Respuesta de abogado",
@@ -317,6 +341,7 @@ class TestNotifyHelpers:
     def test_notify_client_of_lawyer_response_exception_returns_false(
         self, mock_send_new, legal_request, client_user
     ):
+        """Verify notify client of lawyer response exception returns false."""
         response = LegalRequestResponse.objects.create(
             legal_request=legal_request,
             response_text="Respuesta de abogado",
@@ -333,12 +358,14 @@ class TestNotifyHelpers:
 
 
 def test_get_request_detail_url_uses_frontend_base_url(settings):
+    """Verify get request detail url uses frontend base url."""
     settings.FRONTEND_BASE_URL = "https://frontend.example.com"
     url = email_notifications._get_request_detail_url(123)
     assert url == "https://frontend.example.com/legal-requests/123"
 
 
 def test_get_request_detail_url_returns_hash_on_exception(monkeypatch):
+    """Verify get request detail url returns hash on exception."""
     class BrokenSettings:
         def __getattribute__(self, name):
             if name == "__class__":
@@ -351,6 +378,7 @@ def test_get_request_detail_url_returns_hash_on_exception(monkeypatch):
 
 
 def test_get_status_message_returns_expected_strings():
+    """Verify get status message returns expected strings."""
     assert email_notifications._get_status_message("PENDING").startswith("Tu solicitud está pendiente")
     assert email_notifications._get_status_message("IN_REVIEW").startswith("Tu solicitud está siendo revisada")
     assert email_notifications._get_status_message("RESPONDED").startswith("Hemos respondido")
@@ -374,14 +402,13 @@ from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
-
 from gym_app.models import (
-    LegalRequest,
-    LegalRequestType,
-    LegalDiscipline,
-    LegalRequestResponse,
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestResponse,  # noqa: F811
+    LegalRequestType,  # noqa: F811
 )
-from gym_app.utils import email_notifications
+from gym_app.utils import email_notifications  # noqa: F811
 
 User = get_user_model()
 
@@ -389,6 +416,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_ucov@test.com",
         password="pw",
@@ -400,7 +428,8 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="client_ucov@test.com",
         password="pw",
@@ -412,7 +441,8 @@ def client_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def legal_request(client_user):
+def legal_request(client_user):  # noqa: F811
+    """Legal request."""
     req_type = LegalRequestType.objects.create(name="Ucov Type")
     discipline = LegalDiscipline.objects.create(name="Ucov Disc")
     return LegalRequest.objects.create(
@@ -426,6 +456,7 @@ def legal_request(client_user):
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_response(legal_request, lawyer_user):
+    """Lawyer response."""
     return LegalRequestResponse.objects.create(
         legal_request=legal_request,
         response_text="Lawyer reply",
@@ -442,12 +473,14 @@ pytestmark = pytest.mark.django_db
 # ---------------------------------------------------------------------------
 
 class TestSendNewResponseNotificationLawyerSubject:
+    """Tests for Send New Response Notification Lawyer Subject."""
+
     @mock.patch("gym_app.utils.email_notifications.send_template_email")
     def test_lawyer_response_uses_abogado_subject(
         self, mock_send, legal_request, lawyer_response
     ):
-        """
-        When response.user_type == 'lawyer', the subject line should
+        """When response.user_type == 'lawyer', the subject line should.
+        
         contain 'Abogado' (line 118).
         """
         mock_send.return_value = True
@@ -472,12 +505,14 @@ class TestSendNewResponseNotificationLawyerSubject:
 # ---------------------------------------------------------------------------
 
 class TestSendNewResponseNotificationException:
+    """Tests for Send New Response Notification Exception."""
+
     @mock.patch("gym_app.utils.email_notifications.send_template_email")
     def test_returns_false_when_exception_is_raised(
         self, mock_send, legal_request, lawyer_response
     ):
-        """
-        When send_new_response_notification encounters an unexpected
+        """When send_new_response_notification encounters an unexpected.
+        
         exception, it logs the error and returns False (lines 137-139).
         """
         mock_send.side_effect = Exception("SMTP connection failed")

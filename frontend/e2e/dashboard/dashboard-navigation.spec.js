@@ -3,7 +3,7 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installDashboardNavApiMocks } from "../helpers/dashboardNavMocks.js";
 
-test("dashboard loads and sidebar navigation works (processes, legal requests, dynamic documents)", async ({ page }) => {
+test("dashboard loads and sidebar navigation works (processes, legal requests, dynamic documents)", { tag: ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 1300;
 
   await installDashboardNavApiMocks(page, {
@@ -43,4 +43,31 @@ test("dashboard loads and sidebar navigation works (processes, legal requests, d
   await sidebar.getByRole("link", { name: "Archivos Juridicos", exact: true }).click();
   await expect(page).toHaveURL(/\/dynamic_document_dashboard/);
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();
+});
+
+test("client dashboard loads and shows sidebar with correct navigation items", { tag: ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  const userId = 1301;
+
+  await installDashboardNavApiMocks(page, {
+    userId,
+    role: "client",
+    isGymLawyer: false,
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "client", is_profile_completed: true },
+  });
+
+  await page.goto("/dashboard");
+  await page.waitForLoadState("networkidle");
+
+  // Client dashboard should render
+  await expect(page.locator("body")).toBeVisible();
+
+  const sidebar = page.locator("div.lg\\:fixed.lg\\:inset-y-0");
+
+  // Client should see Archivos Juridicos link
+  await sidebar.getByRole("link", { name: "Archivos Juridicos", exact: true }).click();
+  await expect(page).toHaveURL(/\/dynamic_document_dashboard/);
 });

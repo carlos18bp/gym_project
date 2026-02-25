@@ -41,7 +41,7 @@ async function installDashboardDeepMocks(page, { userId, role, activities = [], 
   });
 }
 
-test("activity feed renders entries with varied time ranges and formatTimeAgo branches", async ({ page }) => {
+test("activity feed renders entries with varied time ranges and formatTimeAgo branches", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4010;
   const now = Date.now();
 
@@ -78,7 +78,7 @@ test("activity feed renders entries with varied time ranges and formatTimeAgo br
   await expect(page.getByText(/Hace \d+ meses/)).toBeVisible();
 });
 
-test("lawyer dashboard renders welcome card with process stats", async ({ page }) => {
+test("lawyer dashboard renders welcome card with process stats", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4020;
   const nowIso = new Date().toISOString();
 
@@ -113,7 +113,7 @@ test("lawyer dashboard renders welcome card with process stats", async ({ page }
   await expect(page.getByText("1").first()).toBeVisible({ timeout: 10_000 });
 });
 
-test("client dashboard renders with empty activity feed state", async ({ page }) => {
+test("client dashboard renders with empty activity feed state", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4030;
 
   await installDashboardDeepMocks(page, { userId, role: "client", activities: [] });

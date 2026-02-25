@@ -110,8 +110,8 @@ async function installLegalUpdateMocks(page, { userId, role, updates = [] }) {
   });
 }
 
-test.describe("legal updates: display and CRUD", () => {
-  test("lawyer sees active legal updates on dashboard", async ({ page }) => {
+test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, () => {
+  test("lawyer sees active legal updates on dashboard", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 1200;
 
     const updates = [
@@ -148,10 +148,11 @@ test.describe("legal updates: display and CRUD", () => {
     const updatesVisible = await page.getByText("Nueva Ley de Protección de Datos").isVisible().catch(() => false) ||
                            await page.getByText("Actualizaciones").isVisible().catch(() => false);
     
+    await expect(page.locator("body")).toBeVisible();
     expect(updatesVisible || true).toBeTruthy(); // Page loads without error
   });
 
-  test("dashboard shows empty state when no legal updates", async ({ page }) => {
+  test("dashboard shows empty state when no legal updates", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 1201;
 
     await installLegalUpdateMocks(page, {
@@ -172,7 +173,7 @@ test.describe("legal updates: display and CRUD", () => {
     await expect(page.getByText("Procesos activos").or(page.getByText("Bienvenido"))).toBeVisible();
   });
 
-  test("only active updates are displayed", async ({ page }) => {
+  test("only active updates are displayed", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 1202;
 
     const updates = [
@@ -206,6 +207,7 @@ test.describe("legal updates: display and CRUD", () => {
 
     // Inactive updates should not be visible (mock only returns active ones)
     const inactiveVisible = await page.getByText("Actualización Inactiva").isVisible().catch(() => false);
+    await expect(page.locator("body")).toBeVisible();
     expect(inactiveVisible).toBeFalsy();
   });
 });

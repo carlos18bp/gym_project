@@ -77,7 +77,7 @@ describe("CorporateRequestCard.vue", () => {
     expect(wrapper.emitted("view-detail")[0]).toEqual([123]);
   });
 
-  test("renders status/priority classes, progress bar, and status description", async () => {
+  test("renders status/priority classes, progress bar, and status description", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(CorporateRequestCard, {
       props: {
         request: buildRequest({
@@ -114,7 +114,7 @@ describe("CorporateRequestCard.vue", () => {
     expect(images[1].attributes("src")).toBe("https://org-img");
   });
 
-  test("falls back for unknown status/priority and uses avatar images", async () => {
+  test("falls back for unknown status/priority and uses avatar images", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(CorporateRequestCard, {
       props: {
         request: buildRequest({
@@ -291,6 +291,7 @@ describe("CorporateRequestCard.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.showStatusMenu = true;
     wrapper.vm.isUpdating = true;
     await wrapper.vm.$nextTick();

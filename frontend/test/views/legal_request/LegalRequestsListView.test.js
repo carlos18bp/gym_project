@@ -82,6 +82,7 @@ describe("views/legal_request/LegalRequestsList.vue", () => {
     expect(wrapper.text()).toContain("Nueva Solicitud");
 
     await wrapper.find("[data-test='search']").trigger("click");
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find("[data-test='props']").text()).toContain("|abc");

@@ -26,9 +26,13 @@ describe("Subscriptions view", () => {
     mockRoute = { params: {}, query: {} };
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("routes authenticated users to checkout", async () => {
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(true);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(true);
 
     const wrapper = shallowMount(Subscriptions, {
       global: {
@@ -38,7 +42,10 @@ describe("Subscriptions view", () => {
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.selectPlan("cliente");
+    const planButtons = wrapper
+      .findAll("button")
+      .filter((button) => button.text().includes("Elegir plan"));
+    await planButtons[1].trigger("click");
 
     expect(mockRouterPush).toHaveBeenCalledWith({
       name: "checkout",
@@ -48,7 +55,7 @@ describe("Subscriptions view", () => {
 
   test("routes anonymous users to subscription sign in", async () => {
     const authStore = useAuthStore();
-    jest.spyOn(authStore, "isAuthenticated").mockResolvedValue(false);
+    authStore.isAuthenticated = jest.fn().mockResolvedValue(false);
 
     const wrapper = shallowMount(Subscriptions, {
       global: {
@@ -58,7 +65,10 @@ describe("Subscriptions view", () => {
 
     await flushPromises();
 
-    await wrapper.vm.$.setupState.selectPlan("basico");
+    const planButtons = wrapper
+      .findAll("button")
+      .filter((button) => button.text().includes("Elegir plan"));
+    await planButtons[0].trigger("click");
 
     expect(mockRouterPush).toHaveBeenCalledWith({
       name: "subscription_sign_in",

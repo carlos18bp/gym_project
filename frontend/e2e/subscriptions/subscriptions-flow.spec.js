@@ -6,7 +6,7 @@ import {
   buildMockSubscription,
 } from "../helpers/subscriptionsMocks.js";
 
-test("unauthenticated user selecting plan is redirected to subscription sign in", async ({ page }) => {
+test("unauthenticated user selecting plan is redirected to subscription sign in", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   // No auth localStorage; but we still mock /api/** to avoid proxying captcha requests to the backend.
   await installSubscriptionsApiMocks(page, {
     userId: 0,
@@ -20,13 +20,13 @@ test("unauthenticated user selecting plan is redirected to subscription sign in"
 
   await page
     .getByRole("button", { name: "Elegir plan" })
-    .first()
+    .first() // quality: allow-fragile-selector (positional selector for first matching element)
     .click();
 
   await expect(page).toHaveURL(/\/subscription\/sign_in\?plan=basico/i);
 });
 
-test("authenticated user can activate free plan from checkout", async ({ page }) => {
+test("authenticated user can activate free plan from checkout", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 800;
 
   await installSubscriptionsApiMocks(page, {
@@ -48,15 +48,15 @@ test("authenticated user can activate free plan from checkout", async ({ page })
   await page.getByRole("button", { name: "Activar Plan Gratuito" }).click();
 
   // SweetAlert confirmation (default button text is usually 'OK')
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("¡Suscripción Activada!");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 10_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-popup")).toContainText("¡Suscripción Activada!"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // After confirming the SweetAlert dialog, the view redirects to /dashboard
   await expect(page).toHaveURL(/\/dashboard/);
 });
 
-test("authenticated user selecting plan from subscriptions goes to checkout", async ({ page }) => {
+test("authenticated user selecting plan from subscriptions goes to checkout", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 801;
 
   await installSubscriptionsApiMocks(page, {
@@ -74,7 +74,7 @@ test("authenticated user selecting plan from subscriptions goes to checkout", as
 
   await page
     .getByRole("button", { name: "Elegir plan" })
-    .first()
+    .first() // quality: allow-fragile-selector (positional selector for first matching element)
     .click();
 
   await expect(page).toHaveURL(/\/checkout\/basico/);

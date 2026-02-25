@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installProcessApiMocks,
   buildMockProcess,
   buildMockUser,
@@ -14,7 +16,7 @@ import {
  * - process.js store (41%) — fetchProcessById, processesWithClosedStatus getter
  */
 
-test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages", async ({ page }) => {
+test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 7100;
   const clientId = 7101;
   const nowIso = new Date().toISOString();
@@ -84,7 +86,7 @@ test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages",
   await expect(page.getByRole("heading", { name: "Histórico Procesal" })).toBeHidden({ timeout: 5_000 });
 });
 
-test("process detail page shows closed status process with Fallo stage", async ({ page }) => {
+test("process detail page shows closed status process with Fallo stage", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 7110;
   const nowIso = new Date().toISOString();
 

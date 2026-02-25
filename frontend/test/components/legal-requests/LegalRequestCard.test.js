@@ -79,6 +79,7 @@ describe("LegalRequestCard.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.showActions = true;
     await wrapper.vm.$nextTick();
 
@@ -113,6 +114,7 @@ describe("LegalRequestCard.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.showActions = true;
     await wrapper.vm.$nextTick();
 

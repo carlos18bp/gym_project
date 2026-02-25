@@ -29,11 +29,12 @@
       </div>
 
       <!-- Action Menu -->
-      <div class="relative folder-menu-container">
+      <div class="relative folder-menu-container" data-testid="folder-menu-container">
         <button
           @click.stop="toggleMenu"
           class="opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-100"
           :class="{ 'bg-gray-100': showMenu }"
+          data-testid="folder-menu-toggle"
         >
           <EllipsisVerticalIcon class="w-4 h-4 text-gray-500" />
         </button>
@@ -42,6 +43,7 @@
         <div
           v-if="showMenu"
           class="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+          data-testid="folder-menu-dropdown"
         >
           <button
             @click.stop="handleEdit"

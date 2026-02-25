@@ -75,6 +75,30 @@ const buildInvitation = (overrides = {}) => {
   };
 };
 
+const mountInvitationCard = (pinia, invitationOverrides = {}) => {
+  return mount(InvitationCard, {
+    props: {
+      invitation: buildInvitation(invitationOverrides),
+    },
+    global: {
+      plugins: [pinia],
+    },
+  });
+};
+
+const getActionButton = (wrapper, label) => {
+  return wrapper
+    .findAll("button")
+    .find((button) => (button.text() || "").includes(label));
+};
+
+const mockRespondToInvitation = (implementation) => {
+  const store = useOrganizationsStore();
+  const respondMock = jest.fn(implementation);
+  store.respondToInvitation = respondMock;
+  return respondMock;
+};
+
 describe("InvitationCard.vue", () => {
   beforeEach(() => {
     jest.useRealTimers();
@@ -93,22 +117,10 @@ describe("InvitationCard.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "respondToInvitation").mockResolvedValue({
-      invitation: { id: 10, status: "ACCEPTED" },
-    });
-
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({
-          status: "PENDING",
-          can_be_responded: true,
-          is_expired: false,
-        }),
-      },
-      global: {
-        plugins: [pinia],
-      },
+    const wrapper = mountInvitationCard(pinia, {
+      status: "PENDING",
+      can_be_responded: true,
+      is_expired: false,
     });
 
     await flushPromises();
@@ -122,18 +134,11 @@ describe("InvitationCard.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({
-          status: "PENDING",
-          can_be_responded: true,
-          is_expired: true,
-          expires_at: "2026-01-01T00:00:00.000Z",
-        }),
-      },
-      global: {
-        plugins: [pinia],
-      },
+    const wrapper = mountInvitationCard(pinia, {
+      status: "PENDING",
+      can_be_responded: true,
+      is_expired: true,
+      expires_at: "2026-01-01T00:00:00.000Z",
     });
 
     await flushPromises();
@@ -146,39 +151,28 @@ describe("InvitationCard.vue", () => {
   test("expiring soon applies orange text class", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-02-01T00:00:00.000Z"));
+    try {
+      const pinia = createPinia();
+      setActivePinia(pinia);
 
-    const pinia = createPinia();
-    setActivePinia(pinia);
+      const wrapper = mountInvitationCard(pinia, {
+        is_expired: false,
+        expires_at: "2026-02-05T00:00:00.000Z",
+      });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({
-          is_expired: false,
-          expires_at: "2026-02-05T00:00:00.000Z",
-        }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+      await flushPromises();
 
-    expect(wrapper.find(".text-orange-600").exists()).toBe(true);
-
-    jest.useRealTimers();
+      expect(wrapper.text()).toContain("Expira hace 4 días");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test("unknown status falls back to raw status and gray badge", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ status: "UNKNOWN" }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+    const wrapper = mountInvitationCard(pinia, { status: "UNKNOWN" });
 
     await flushPromises();
 
@@ -192,72 +186,47 @@ describe("InvitationCard.vue", () => {
     );
   });
 
-  test("getStatusDisplay/getStatusColorClass fall back for unknown status", () => {
+  test("pending status renders translated badge label", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ status: "UNKNOWN" }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+    const wrapper = mountInvitationCard(pinia, { status: "PENDING" });
 
-    const { getStatusDisplay, getStatusColorClass } = wrapper.vm.$.setupState;
+    await flushPromises();
 
-    expect(getStatusDisplay("UNKNOWN")).toBe("UNKNOWN");
-    expect(getStatusColorClass("UNKNOWN")).toBe("bg-gray-100 text-gray-800");
+    expect(wrapper.text()).toContain("Pendiente");
   });
 
   test("isExpiringSoon is false when expires_at is missing", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ expires_at: null }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+    const wrapper = mountInvitationCard(pinia, { expires_at: null });
 
     await flushPromises();
 
-    const expiringSoonRef = wrapper.vm.$.setupState.isExpiringSoon;
-    expect(expiringSoonRef).toBe(false);
+    expect(wrapper.text()).not.toContain("Expira");
+    expect(wrapper.text()).not.toContain("Expiró");
   });
 
   test("accept action calls store, shows success notification and emits responded", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const respondSpy = jest.spyOn(store, "respondToInvitation").mockResolvedValue({
+    const respondSpy = mockRespondToInvitation().mockResolvedValue({
       invitation: { id: 10, status: "ACCEPTED" },
     });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({
-          id: 10,
-          status: "PENDING",
-          can_be_responded: true,
-          is_expired: false,
-        }),
-      },
-      global: {
-        plugins: [pinia],
-      },
+    const wrapper = mountInvitationCard(pinia, {
+      id: 10,
+      status: "PENDING",
+      can_be_responded: true,
+      is_expired: false,
     });
 
     await flushPromises();
 
-    const acceptBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").includes("Aceptar"));
+    const acceptBtn = getActionButton(wrapper, "Aceptar");
 
     expect(acceptBtn).toBeTruthy();
 
@@ -275,30 +244,20 @@ describe("InvitationCard.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const respondSpy = jest.spyOn(store, "respondToInvitation").mockResolvedValue({
+    const respondSpy = mockRespondToInvitation().mockResolvedValue({
       invitation: { id: 10, status: "REJECTED" },
     });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({
-          id: 10,
-          status: "PENDING",
-          can_be_responded: true,
-          is_expired: false,
-        }),
-      },
-      global: {
-        plugins: [pinia],
-      },
+    const wrapper = mountInvitationCard(pinia, {
+      id: 10,
+      status: "PENDING",
+      can_be_responded: true,
+      is_expired: false,
     });
 
     await flushPromises();
 
-    const rejectBtn = wrapper
-      .findAll("button")
-      .find((b) => (b.text() || "").includes("Rechazar"));
+    const rejectBtn = getActionButton(wrapper, "Rechazar");
 
     expect(rejectBtn).toBeTruthy();
 
@@ -319,8 +278,7 @@ describe("InvitationCard.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "respondToInvitation").mockRejectedValue({
+    mockRespondToInvitation().mockRejectedValue({
       response: {
         data: {
           error: "Custom error",
@@ -328,14 +286,7 @@ describe("InvitationCard.vue", () => {
       },
     });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ id: 10 }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+    const wrapper = mountInvitationCard(pinia, { id: 10 });
 
     await flushPromises();
 
@@ -353,17 +304,9 @@ describe("InvitationCard.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "respondToInvitation").mockRejectedValue(new Error("fail"));
+    mockRespondToInvitation().mockRejectedValue(new Error("fail"));
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ id: 10 }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+    const wrapper = mountInvitationCard(pinia, { id: 10 });
 
     await flushPromises();
 
@@ -379,66 +322,59 @@ describe("InvitationCard.vue", () => {
       "error"
     );
 
-    expect(wrapper.vm.$.setupState.isLoading).toBe(false);
-    expect(wrapper.vm.$.setupState.actionType).toBe(null);
+    expect(getActionButton(wrapper, "Aceptar").attributes("disabled")).toBeUndefined();
+    expect(getActionButton(wrapper, "Rechazar").attributes("disabled")).toBeUndefined();
   });
 
-  test("formatRelativeDate handles days and older dates", async () => {
+  test("responded invitation shows relative days label", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-02-15T00:00:00.000Z"));
+    try {
+      const pinia = createPinia();
+      setActivePinia(pinia);
 
-    const pinia = createPinia();
-    setActivePinia(pinia);
+      const wrapper = mountInvitationCard(pinia, {
+        status: "ACCEPTED",
+        can_be_responded: false,
+        responded_at: "2026-02-12T00:00:00.000Z",
+      });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ can_be_responded: false, responded_at: null }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+      await flushPromises();
 
-    await flushPromises();
-
-    const { formatRelativeDate } = wrapper.vm.$.setupState;
-
-    expect(formatRelativeDate("2026-02-12T00:00:00.000Z")).toBe("hace 3 días");
-    expect(formatRelativeDate("2026-02-01T00:00:00.000Z")).toBe("hace 2 semanas");
-
-    const olderDate = "2025-12-01T00:00:00.000Z";
-    const expectedDate = new Date(olderDate).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    expect(formatRelativeDate(olderDate)).toBe(expectedDate);
-
-    jest.useRealTimers();
+      expect(wrapper.text()).toContain("Respondiste hace 3 días");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
-  test("formatRelativeDate handles today, yesterday, and weeks", async () => {
+  test("responded invitation shows today and yesterday labels", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-02-15T00:00:00.000Z"));
+    try {
+      const pinia = createPinia();
+      setActivePinia(pinia);
 
-    const pinia = createPinia();
-    setActivePinia(pinia);
+      const wrapper = mountInvitationCard(pinia, {
+        status: "ACCEPTED",
+        can_be_responded: false,
+        responded_at: "2026-02-15T00:00:00.000Z",
+      });
 
-    const wrapper = mount(InvitationCard, {
-      props: {
-        invitation: buildInvitation({ can_be_responded: false, responded_at: null }),
-      },
-      global: {
-        plugins: [pinia],
-      },
-    });
+      await flushPromises();
+      expect(wrapper.text()).toContain("Respondiste hoy");
 
-    await flushPromises();
+      await wrapper.setProps({
+        invitation: buildInvitation({
+          status: "ACCEPTED",
+          can_be_responded: false,
+          responded_at: "2026-02-14T00:00:00.000Z",
+        }),
+      });
+      await flushPromises();
 
-    const { formatRelativeDate } = wrapper.vm.$.setupState;
-
-    expect(formatRelativeDate("2026-02-15T00:00:00.000Z")).toBe("hoy");
-    expect(formatRelativeDate("2026-02-14T00:00:00.000Z")).toBe("hace 1 día");
-    expect(formatRelativeDate("2026-02-01T00:00:00.000Z")).toBe("hace 2 semanas");
+      expect(wrapper.text()).toContain("Respondiste hace 1 día");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

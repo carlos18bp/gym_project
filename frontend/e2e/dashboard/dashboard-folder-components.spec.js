@@ -7,6 +7,8 @@ import {
 } from "../helpers/dynamicDocumentMocks.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * E2E tests for dashboard folder/contact flows with behavior assertions.
  *
@@ -264,7 +266,7 @@ async function installDashboardComponentMocks(
   });
 }
 
-test("folders tab renders folder row and folder details with real document data", async ({ page }) => {
+test("folders tab renders folder row and folder details with real document data", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 10700;
   const documents = [
     buildMockDocument({ id: 1, title: "Contrato laboral base", state: "Draft", createdBy: userId }),
@@ -300,7 +302,7 @@ test("folders tab renders folder row and folder details with real document data"
   await expect(page.getByText("Poder especial")).toBeVisible();
 });
 
-test("empty folders state exposes first-folder CTA and opens create modal", async ({ page }) => {
+test("empty folders state exposes first-folder CTA and opens create modal", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 10701;
 
   await installDashboardComponentMocks(page, {
@@ -322,7 +324,7 @@ test("empty folders state exposes first-folder CTA and opens create modal", asyn
   await expect(page.getByLabel("Nombre de la carpeta")).toBeVisible();
 });
 
-test("dashboard contacts tab shows contact list for lawyer users", async ({ page }) => {
+test("dashboard contacts tab shows contact list for lawyer users", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 10702;
   const contacts = [
     buildDashboardUser({
@@ -368,7 +370,7 @@ test("dashboard contacts tab shows contact list for lawyer users", async ({ page
   await expect(page.getByText("No hay contactos disponibles.")).toHaveCount(0);
 });
 
-test("dashboard contacts tab shows empty state when lawyer has no contacts", async ({ page }) => {
+test("dashboard contacts tab shows empty state when lawyer has no contacts", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 10703;
 
   await installDashboardComponentMocks(page, {
@@ -386,7 +388,7 @@ test("dashboard contacts tab shows empty state when lawyer has no contacts", asy
   await expect(page.getByText("No hay contactos disponibles.")).toBeVisible();
 });
 
-test("dashboard contacts tab for client user shows lawyers label and data", async ({ page }) => {
+test("dashboard contacts tab for client user shows lawyers label and data", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 10704;
   const contacts = [
     buildDashboardUser({

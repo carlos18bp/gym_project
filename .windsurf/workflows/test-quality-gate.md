@@ -21,7 +21,7 @@ Create and execute a phased strategy to improve test quality by selecting a crit
 Before refactoring any test, you **must consult** the document:
 
 ```
-docs/testing-quality-standards.md
+docs/TESTING_QUALITY_STANDARDS.md
 ```
 
 This document contains the **complete definition of quality criteria** that every test must meet. It includes:
@@ -51,16 +51,32 @@ Produce a plan with phases, and for each phase include:
 5. **Refactor approach** (concrete actions/patterns you will apply).
 6. **Exactly which commands you will run to validate** — and they must execute only the changed test files.
 
+## Severity Levels — How to Treat Each
+
+The quality gate report emits issues at three severity levels. You must address **all three**, in order:
+
+| Severity | Gate Impact | When to Fix |
+|----------|-------------|-------------|
+| **error** | Fails the gate | Phase 0–3 (must fix before declaring a phase done) |
+| **warning** | Lowers the score | Phase 4 (dedicated warning sweep after errors are cleared) |
+| **info** | Informational / style | Phase 5 (final pass; low risk, high readability gain) |
+
+> ⚠️ Do not skip warnings or info items. They accumulate and drag the overall score down over time.
+
+---
+
 ## Selection Rules (How You Pick the "Critical Subset")
 
 Pick tests that maximize impact using this priority order:
 
-| Priority | Category | Examples |
-|----------|----------|----------|
-| 1 | Tooling blocker first | Anything that causes the gate to fail (e.g., ESLint misconfiguration) |
-| 2 | Core user journeys (highest value E2E + unit) | Auth flows (sign-in/sign-up/forget password/google login), Checkout/subscriptions, Dashboard core widgets, Document flows (create/edit/send/sign/permissions) |
-| 3 | Highest issue density | Files with many warnings in the report output |
-| 4 | Representative patterns | Files that, once fixed, provide a repeatable refactor pattern across many other tests |
+| Priority | Severity | Category | Examples |
+|----------|----------|----------|----------|
+| 1 | error | Tooling blocker first | Anything that causes the gate to fail (e.g., ESLint misconfiguration) |
+| 2 | error | Core user journeys (highest value E2E + unit) | Auth flows (sign-in/sign-up/forget password/google login), Checkout/subscriptions, Dashboard core widgets, Document flows (create/edit/send/sign/permissions) |
+| 3 | error / warning | Highest issue density | Files with the most reported issues in the gate output |
+| 4 | error / warning | Representative patterns | Files that, once fixed, provide a repeatable refactor pattern across many other tests |
+| 5 | warning | Warning-only files | Files that pass but carry accumulated quality debt |
+| 6 | info | Info / style issues | Files with minor style, naming, or documentation gaps |
 
 ---
 
@@ -109,6 +125,46 @@ Pick tests that maximize impact using this priority order:
 
 ---
 
+### Phase 4 — Warning Sweep
+
+**Objective:** Eliminate all `warning`-level issues surfaced by the quality gate after Phases 0–3 are complete.
+
+**How to identify targets:**
+1. Run the quality gate and filter output to `warning` severity only.
+2. Sort files by warning count (descending) and pick the top offenders.
+3. Cross-reference the warning rule IDs against `docs/TESTING_QUALITY_STANDARDS.md` to understand the correct fix.
+
+**Common warning categories to look for:**
+- Weak or missing assertions (e.g., `assert response` with no field checks)
+- Mocking internal logic instead of boundaries
+- Tests that pass but rely on implicit/global state
+- Missing edge-case or error-condition coverage
+- Overly broad `except` / `catch` blocks in test helpers
+
+**Done condition:** Quality gate output contains zero `warning`-level findings for all modified files.
+
+---
+
+### Phase 5 — Info / Style Pass
+
+**Objective:** Resolve all `info`-level findings to achieve a clean, fully green quality gate report.
+
+**How to identify targets:**
+1. Run the quality gate and filter output to `info` severity only.
+2. Group by rule ID to find patterns (e.g., naming conventions, missing docstrings, minor style gaps).
+3. Fix in small, thematic batches — do not scatter unrelated changes across many files.
+
+**Common info categories to look for:**
+- Test function naming does not follow the `test_<what>_<condition>_<outcome>` pattern
+- Test files missing a module-level description or grouping comment
+- Redundant setup/teardown that could be extracted into shared fixtures
+- `print` / `console.log` debug statements left in tests
+- Unused imports or variables in test files
+
+**Done condition:** Quality gate output contains zero `info`-level findings for all modified files, and the overall gate score has measurably improved vs. the Phase 0 baseline.
+
+---
+
 ## Validation Commands Rule (Strict)
 
 When you validate changes, you must run commands that target only the modified tests:
@@ -145,9 +201,10 @@ python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semanti
 
 Return:
 
-- [ ] A phased plan (Phase 0 → Phase 3)
+- [ ] A phased plan (Phase 0 → Phase 5)
 - [ ] A short checklist of "done conditions" for each phase
 - [ ] The exact per-phase test-run commands that comply with the "only changed tests" rule
+- [ ] A severity breakdown from the initial gate run (error count / warning count / info count) so progress is measurable
 
 ---
 

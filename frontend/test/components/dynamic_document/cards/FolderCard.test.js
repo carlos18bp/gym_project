@@ -104,10 +104,6 @@ describe("FolderCard.vue", () => {
       },
     });
 
-    expect(wrapper.vm.$.setupState.folderColor).toEqual({
-      hex: "#6B7280",
-      name: "Gray",
-    });
     expect(wrapper.find("div.absolute").attributes("style")).toContain(
       "background-color: rgb(107, 114, 128)"
     );
@@ -256,21 +252,21 @@ describe("FolderCard.vue", () => {
       },
     });
 
-    const menuToggle = wrapper.find(".folder-menu-container button");
+    const menuToggle = wrapper.find("[data-testid='folder-menu-toggle']");
     await menuToggle.trigger("click");
 
-    const buttons = wrapper.findAll(".folder-menu-container .absolute button");
+    const buttons = wrapper.findAll("[data-testid='folder-menu-dropdown'] button");
     expect(buttons).toHaveLength(3);
 
     await buttons[0].trigger("click");
     expect(wrapper.emitted("edit")).toBeTruthy();
 
     await menuToggle.trigger("click");
-    await wrapper.findAll(".folder-menu-container .absolute button")[1].trigger("click");
+    await wrapper.findAll("[data-testid='folder-menu-dropdown'] button")[1].trigger("click");
     expect(wrapper.emitted("add-documents")).toBeTruthy();
 
     await menuToggle.trigger("click");
-    await wrapper.findAll(".folder-menu-container .absolute button")[2].trigger("click");
+    await wrapper.findAll("[data-testid='folder-menu-dropdown'] button")[2].trigger("click");
     expect(wrapper.emitted("delete")).toBeTruthy();
   });
 
@@ -298,7 +294,7 @@ describe("FolderCard.vue", () => {
       },
     });
 
-    const menuToggle = wrapper.find(".folder-menu-container button");
+    const menuToggle = wrapper.find("[data-testid='folder-menu-toggle']");
     await menuToggle.trigger("click");
 
     await wrapper.trigger("click");
@@ -333,15 +329,15 @@ describe("FolderCard.vue", () => {
       },
     });
 
-    const menuToggle = wrapper.find(".folder-menu-container button");
+    const menuToggle = wrapper.find("[data-testid='folder-menu-toggle']");
     await menuToggle.trigger("click");
 
-    expect(wrapper.find(".folder-menu-container .absolute").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='folder-menu-dropdown']").exists()).toBe(true);
 
     // Click outside
     await document.body.click();
 
-    expect(wrapper.find(".folder-menu-container .absolute").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='folder-menu-dropdown']").exists()).toBe(false);
 
     // Immediately clicking the card should not emit click due to menuJustClosed
     await wrapper.trigger("click");
@@ -408,7 +404,7 @@ describe("FolderCard.vue", () => {
       },
     });
 
-    const menuContainer = wrapper.find(".folder-menu-container").element;
+    const menuContainer = wrapper.find("[data-testid='folder-menu-container']").element;
     const event = new MouseEvent("click", { bubbles: true });
     Object.defineProperty(event, "target", { value: menuContainer });
     wrapper.element.dispatchEvent(event);

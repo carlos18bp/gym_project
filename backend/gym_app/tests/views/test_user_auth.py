@@ -1,11 +1,16 @@
+"""Tests for user_auth module."""
+from unittest.mock import MagicMock, patch
+
 import pytest
-import requests
-from unittest.mock import patch, MagicMock
 from django.urls import reverse
+from requests import RequestException
 from rest_framework import status
-from gym_app.models import User, PasswordCode, EmailVerificationCode
+
+from gym_app.models import EmailVerificationCode, PasswordCode, User
+
+
 def _mock_captcha_success_patch(monkeypatch):
-    """Helper to mock successful captcha verification."""
+    """Mock successful captcha verification."""
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"success": True}
     mock_resp.raise_for_status = MagicMock()
@@ -15,6 +20,7 @@ def _mock_captcha_success_patch(monkeypatch):
 
 @pytest.fixture
 def user_data():
+    """User data."""
     return {
         'email': 'test@example.com',
         'password': 'securepassword123',
@@ -25,6 +31,7 @@ def user_data():
 
 @pytest.fixture
 def existing_user():
+    """Existing user."""
     user = User.objects.create_user(
         email='existing@example.com',
         password='existingpassword',
@@ -35,6 +42,7 @@ def existing_user():
 
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -45,10 +53,11 @@ def user():
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestSignOn:
+    """Tests for Sign On."""
     
     @pytest.mark.contract
     def test_sign_on_success(self, api_client, user_data, monkeypatch):
-        """Test successful user registration"""
+        """Test successful user registration."""
         _mock_captcha_success_patch(monkeypatch)
         EmailVerificationCode.objects.create(email=user_data['email'], code='123456')
         user_data['passcode'] = '123456'
@@ -73,7 +82,7 @@ class TestSignOn:
     
     @pytest.mark.edge
     def test_sign_on_existing_email(self, api_client, user_data, existing_user, monkeypatch):
-        """Test registration with an existing email"""
+        """Test registration with an existing email."""
         _mock_captcha_success_patch(monkeypatch)
         # Use an existing email
         user_data['email'] = existing_user.email
@@ -91,7 +100,7 @@ class TestSignOn:
     
     @pytest.mark.edge
     def test_sign_on_invalid_data(self, api_client, monkeypatch):
-        """Test registration with invalid data"""
+        """Test registration with invalid data."""
         _mock_captcha_success_patch(monkeypatch)
         # Invalid data (missing required field - email)
         invalid_data = {
@@ -114,11 +123,12 @@ class TestSignOn:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestSendVerificationCode:
+    """Tests for Send Verification Code."""
     
     @patch('gym_app.views.userAuth.send_template_email')
     @pytest.mark.contract
     def test_send_verification_code_success(self, mock_send_email, api_client):
-        """Test successful sending of verification code with valid captcha"""
+        """Test successful sending of verification code with valid captcha."""
         data = {
             'email': 'new@example.com',
             'captcha_token': 'valid_captcha_token',
@@ -153,6 +163,7 @@ class TestSendVerificationCode:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_send_verification_code_captcha_failed(self, mock_requests_post, api_client):
+        """Verify send verification code captcha failed."""
         data = {
             'email': 'new@example.com',
             'captcha_token': 'invalid_captcha',
@@ -170,9 +181,10 @@ class TestSendVerificationCode:
         assert 'Captcha verification failed' in response.data['error']
         mock_requests_post.assert_called_once()
 
-    @patch('gym_app.utils.captcha.requests.post', side_effect=requests.RequestException('network error'))
+    @patch('gym_app.utils.captcha.requests.post', side_effect=RequestException('network error'))
     @pytest.mark.edge
     def test_send_verification_code_captcha_request_exception(self, mock_requests_post, api_client):
+        """Verify send verification code captcha request exception."""
         data = {
             'email': 'new@example.com',
             'captcha_token': 'captcha_token',
@@ -188,7 +200,7 @@ class TestSendVerificationCode:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_send_verification_code_existing_email(self, mock_requests_post, api_client, existing_user):
-        """Test sending verification code to an existing email"""
+        """Test sending verification code to an existing email."""
         data = {
             'email': existing_user.email,
             'captcha_token': 'valid_captcha_token',
@@ -210,7 +222,7 @@ class TestSendVerificationCode:
 
     @pytest.mark.edge
     def test_send_verification_code_no_email(self, api_client):
-        """Test sending verification code without providing email"""
+        """Test sending verification code without providing email."""
         # Make the request with empty data
         url = reverse('send_verification_code')
         response = api_client.post(url, {}, format='json')
@@ -223,11 +235,12 @@ class TestSendVerificationCode:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestSignIn:
+    """Tests for Sign In."""
     
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.contract
     def test_sign_in_with_password_success(self, mock_requests_post, api_client, existing_user):
-        """Test successful sign-in with password and valid captcha"""
+        """Test successful sign-in with password and valid captcha."""
         # Mock successful captcha verification
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': True}
@@ -257,7 +270,7 @@ class TestSignIn:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_sign_in_with_wrong_password(self, mock_requests_post, api_client, existing_user):
-        """Test sign-in with wrong password and valid captcha"""
+        """Test sign-in with wrong password and valid captcha."""
         # Mock successful captcha verification
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': True}
@@ -280,6 +293,7 @@ class TestSignIn:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_sign_in_captcha_failed(self, mock_requests_post, api_client, existing_user):
+        """Verify sign in captcha failed."""
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': False}
         mock_response.raise_for_status.return_value = None
@@ -298,9 +312,10 @@ class TestSignIn:
         assert 'Captcha verification failed' in response.data['error']
         mock_requests_post.assert_called_once()
 
-    @patch('gym_app.utils.captcha.requests.post', side_effect=requests.RequestException('network error'))
+    @patch('gym_app.utils.captcha.requests.post', side_effect=RequestException('network error'))
     @pytest.mark.edge
     def test_sign_in_captcha_request_exception(self, mock_requests_post, api_client, existing_user):
+        """Verify sign in captcha request exception."""
         data = {
             'email': existing_user.email,
             'password': 'existingpassword',
@@ -316,7 +331,7 @@ class TestSignIn:
     
     @pytest.mark.edge
     def test_sign_in_missing_email(self, api_client):
-        """Test sign-in with missing email"""
+        """Test sign-in with missing email."""
         # Prepare data without email
         data = {
             'password': 'anypassword'
@@ -333,7 +348,7 @@ class TestSignIn:
     
     @pytest.mark.edge
     def test_sign_in_missing_password(self, api_client):
-        """Test sign-in with missing password"""
+        """Test sign-in with missing password."""
         # Prepare data without password
         data = {
             'email': 'test@example.com'
@@ -350,7 +365,7 @@ class TestSignIn:
     
     @pytest.mark.edge
     def test_sign_in_missing_captcha(self, api_client):
-        """Test sign-in with missing captcha token"""
+        """Test sign-in with missing captcha token."""
         # Prepare data without captcha_token
         data = {
             'email': 'test@example.com',
@@ -369,7 +384,7 @@ class TestSignIn:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_sign_in_user_not_found(self, mock_requests_post, api_client):
-        """Test sign-in with non-existent user and valid captcha"""
+        """Test sign-in with non-existent user and valid captcha."""
         # Mock successful captcha verification
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': True}
@@ -392,10 +407,11 @@ class TestSignIn:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestGoogleLogin:
+    """Tests for Google Login."""
 
     @pytest.mark.contract
     def test_google_login_existing_user(self, api_client, existing_user, monkeypatch):
-        """Test Google login with an existing user"""
+        """Test Google login with an existing user."""
         monkeypatch.setattr(
             "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
             lambda *a, **kw: {"email": existing_user.email, "given_name": "Google", "family_name": "User"},
@@ -413,7 +429,7 @@ class TestGoogleLogin:
     @patch('gym_app.views.userAuth.urlopen')
     @pytest.mark.contract
     def test_google_login_new_user(self, mock_urlopen, api_client, monkeypatch):
-        """Test Google login creating a new user"""
+        """Test Google login creating a new user."""
         mock_response = MagicMock()
         mock_response.read.return_value = b'fake_image_data'
         mock_urlopen.return_value = mock_response
@@ -446,7 +462,7 @@ class TestGoogleLogin:
     @patch('gym_app.views.userAuth.urlopen', side_effect=Exception('urlopen failed'))
     @pytest.mark.edge
     def test_google_login_profile_image_exception(self, mock_urlopen, api_client, monkeypatch):
-        """Test Google login when profile image urlopen fails"""
+        """Test Google login when profile image urlopen fails."""
         monkeypatch.setattr(
             "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
             lambda *a, **kw: {
@@ -467,7 +483,7 @@ class TestGoogleLogin:
 
     @pytest.mark.edge
     def test_google_login_no_credential(self, api_client):
-        """Test Google login without providing credential"""
+        """Test Google login without providing credential."""
         url = reverse('google_login')
         response = api_client.post(url, {'given_name': 'Test'}, format='json')
 
@@ -476,7 +492,7 @@ class TestGoogleLogin:
 
     @pytest.mark.edge
     def test_google_login_invalid_token(self, api_client, monkeypatch):
-        """Test Google login with invalid/tampered token returns 401"""
+        """Test Google login with invalid/tampered token returns 401."""
         verify_mock = MagicMock(side_effect=ValueError("Invalid token"))
         monkeypatch.setattr(
             "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
@@ -493,11 +509,12 @@ class TestGoogleLogin:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestPasswordResetFlow:
+    """Tests for Password Reset Flow."""
     
     @patch('gym_app.views.userAuth.send_template_email')
     @pytest.mark.contract
     def test_send_passcode_success(self, mock_send_email, api_client, existing_user):
-        """Test successful sending of password reset passcode with captcha"""
+        """Test successful sending of password reset passcode with captcha."""
         data = {
             'email': existing_user.email,
             'subject_email': 'Password Reset',
@@ -522,6 +539,7 @@ class TestPasswordResetFlow:
 
     @pytest.mark.edge
     def test_send_passcode_missing_captcha(self, api_client, existing_user):
+        """Verify send passcode missing captcha."""
         data = {
             'email': existing_user.email,
             'subject_email': 'Password Reset',
@@ -536,6 +554,7 @@ class TestPasswordResetFlow:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_send_passcode_captcha_failed(self, mock_requests_post, api_client, existing_user):
+        """Verify send passcode captcha failed."""
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': False}
         mock_response.raise_for_status.return_value = None
@@ -557,7 +576,7 @@ class TestPasswordResetFlow:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_send_passcode_user_not_found(self, mock_requests_post, api_client):
-        """Test sending passcode to non-existent user with valid captcha"""
+        """Test sending passcode to non-existent user with valid captcha."""
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': True}
         mock_response.raise_for_status.return_value = None
@@ -579,7 +598,7 @@ class TestPasswordResetFlow:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.contract
     def test_verify_passcode_and_reset_success(self, mock_requests_post, api_client, existing_user):
-        """Test successful password reset with valid passcode and captcha"""
+        """Test successful password reset with valid passcode and captcha."""
         passcode = '123456'
         PasswordCode.objects.create(user=existing_user, code=passcode, used=False)
 
@@ -609,6 +628,7 @@ class TestPasswordResetFlow:
 
     @pytest.mark.edge
     def test_verify_passcode_missing_captcha(self, api_client):
+        """Verify verify passcode missing captcha."""
         data = {
             'passcode': '123456',
             'new_password': 'resetpassword123',
@@ -624,6 +644,7 @@ class TestPasswordResetFlow:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_verify_passcode_captcha_failed(self, mock_requests_post, api_client):
+        """Verify verify passcode captcha failed."""
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': False}
         mock_response.raise_for_status.return_value = None
@@ -646,7 +667,7 @@ class TestPasswordResetFlow:
     @patch('gym_app.utils.captcha.requests.post')
     @pytest.mark.edge
     def test_verify_passcode_invalid_code(self, mock_requests_post, api_client):
-        """Test password reset with invalid passcode and valid captcha"""
+        """Test password reset with invalid passcode and valid captcha."""
         mock_response = MagicMock()
         mock_response.json.return_value = {'success': True}
         mock_response.raise_for_status.return_value = None

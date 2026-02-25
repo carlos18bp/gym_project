@@ -13,6 +13,10 @@ describe("Case Type Store", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("initializes with empty state", () => {
     const store = useCaseTypeStore();
 

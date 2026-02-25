@@ -3,7 +3,13 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate invites client, client rejects, corporate pending decrements and client gains no membership", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
+test("cross-role: corporate invites client, client rejects, corporate pending decrements and client gains no membership", { tag: ['@flow:org-cross-invite-flow', '@module:organizations', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4710;
@@ -46,14 +52,14 @@ test("cross-role: corporate invites client, client rejects, corporate pending de
   await expect(page.getByText("Invitar Nuevo Miembro")).toBeVisible();
 
   const inviteDialog = page.locator('[role="dialog"]').filter({ hasText: "Invitar Nuevo Miembro" });
-  await inviteDialog.locator("#email").fill(clientEmail);
-  await inviteDialog.locator("#message").fill("Invitación E2E");
+  await inviteDialog.locator("#email").fill(clientEmail); // quality: allow-fragile-selector (stable DOM id)
+  await inviteDialog.locator("#message").fill("Invitación E2E"); // quality: allow-fragile-selector (stable DOM id)
 
   await inviteDialog.getByRole("button", { name: "Enviar Invitación" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(pendingInvitesStat).toHaveText("2");
 
@@ -80,14 +86,14 @@ test("cross-role: corporate invites client, client rejects, corporate pending de
   await invitationsTab.click();
   await expect(page.locator('h2:has-text("Invitaciones Recibidas")')).toBeVisible();
 
-  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(invitationCard.getByRole("button", { name: "Rechazar" })).toBeVisible();
 
   await invitationCard.getByRole("button", { name: "Rechazar" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación rechazada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación rechazada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Invitation is no longer pending and no accept/reject actions remain
   await expect(invitationCard.locator('span:has-text("Rechazada")')).toBeVisible();

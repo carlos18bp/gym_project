@@ -5,8 +5,8 @@ import { test, expect } from "../helpers/test.js";
  * Target: create tests for empty e2e/policies/ directory
  */
 
-test.describe("policies: privacy policy page", () => {
-  test("privacy policy page loads successfully", async ({ page }) => {
+test.describe("policies: privacy policy page", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("privacy policy page loads successfully", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
 
@@ -18,7 +18,7 @@ test.describe("policies: privacy policy page", () => {
     expect(hasPrivacyContent).toBeTruthy();
   });
 
-  test("privacy policy contains required sections", async ({ page }) => {
+  test("privacy policy contains required sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
 
@@ -26,7 +26,7 @@ test.describe("policies: privacy policy page", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("privacy policy is accessible without authentication", async ({ page }) => {
+  test("privacy policy is accessible without authentication", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     // No auth setup - should still work
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
@@ -35,7 +35,7 @@ test.describe("policies: privacy policy page", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("privacy policy page is scrollable for long content", async ({ page }) => {
+  test("privacy policy page is scrollable for long content", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
 
@@ -51,8 +51,8 @@ test.describe("policies: privacy policy page", () => {
   });
 });
 
-test.describe("policies: terms of use page", () => {
-  test("terms of use page loads successfully", async ({ page }) => {
+test.describe("policies: terms of use page", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("terms of use page loads successfully", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/terms-of-use");
     await page.waitForLoadState("networkidle");
 
@@ -60,7 +60,7 @@ test.describe("policies: terms of use page", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("terms of use contains required sections", async ({ page }) => {
+  test("terms of use contains required sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/terms-of-use");
     await page.waitForLoadState('networkidle');
 
@@ -68,7 +68,7 @@ test.describe("policies: terms of use page", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("terms of use is accessible without authentication", async ({ page }) => {
+  test("terms of use is accessible without authentication", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     // No auth setup - should still work
     await page.goto("/terms-of-use");
     await page.waitForLoadState("networkidle");
@@ -78,8 +78,8 @@ test.describe("policies: terms of use page", () => {
   });
 });
 
-test.describe("policies: navigation between pages", () => {
-  test("user can navigate from privacy to terms", async ({ page }) => {
+test.describe("policies: navigation between pages", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("user can navigate from privacy to terms", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
 
@@ -94,7 +94,7 @@ test.describe("policies: navigation between pages", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("user can navigate from terms to privacy", async ({ page }) => {
+  test("user can navigate from terms to privacy", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/terms-of-use");
     await page.waitForLoadState("networkidle");
 
@@ -112,7 +112,7 @@ test.describe("policies: navigation between pages", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("policies pages have consistent layout", async ({ page }) => {
+  test("policies pages have consistent layout", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     // Check privacy policy
     await page.goto("/privacy-policy");
     await page.waitForLoadState("networkidle");
@@ -125,8 +125,8 @@ test.describe("policies: navigation between pages", () => {
   });
 });
 
-test.describe("policies: home page", () => {
-  test("home page loads correctly", async ({ page }) => {
+test.describe("policies: home page", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("home page loads correctly", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -134,7 +134,7 @@ test.describe("policies: home page", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("home page contains links to policies", async ({ page }) => {
+  test("home page contains links to policies", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 

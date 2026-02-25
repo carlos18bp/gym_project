@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can leave an organization and dashboard updates accordingly", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client can leave an organization and dashboard updates accordingly", { tag: ['@flow:org-client-leave', '@module:organizations', '@priority:P3', '@role:client'] }, async ({ page }) => {
   const userId = 3600;
 
   await installOrganizationsClientApiMocks(page, {
@@ -35,7 +37,7 @@ test("client can leave an organization and dashboard updates accordingly", async
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "Miembro desde" })
     .filter({ hasText: "Acme Corp" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(orgCard).toBeVisible();
 

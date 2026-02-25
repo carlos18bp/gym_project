@@ -318,6 +318,18 @@ npm run e2e -- e2e/<flow>.spec.js
 npm run e2e -- e2e/<flow>.spec.js e2e/<related-flow>.spec.js
 ```
 
+By default, `npm run e2e` runs tests across **three viewports**: Desktop Chrome,
+Mobile Chrome (Pixel 5), and Tablet (iPad Mini). To run a single viewport:
+
+```bash
+cd frontend
+npm run e2e:desktop                               # Desktop Chrome only
+npm run e2e:mobile                                # Mobile Chrome (Pixel 5) only
+npm run e2e:tablet                                # Tablet (iPad Mini) only
+npm run e2e:desktop -- e2e/auth/auth-login.spec.js  # Desktop + specific spec
+npm run e2e:mobile -- e2e/auth/auth-login.spec.js   # Mobile + specific spec
+```
+
 Optional: enable Playwright console/page error logs (silenced by default):
 
 ```bash
@@ -325,12 +337,54 @@ cd frontend
 E2E_LOG_ERRORS=1 npm run e2e
 ```
 
+List available E2E modules (from `flow-definitions.json`):
+
+```bash
+cd frontend
+npm run e2e:modules
+```
+
+Run E2E tests for a single module (example: `auth`):
+
+```bash
+cd frontend
+npm run e2e:module -- auth
+npm run e2e:module -- --module auth --clean
+```
+
+> `npm run e2e:module` runs `npm run e2e -- --grep @module:<name>` under the hood.
+
 Run E2E coverage (Playwright + V8):
 
 ```bash
 cd frontend
 npx playwright install chromium
 npm run e2e:coverage
+```
+
+Run coverage for a single module (example: `auth`):
+
+```bash
+cd frontend
+clear && npm run e2e:clean && npm run e2e:coverage -- --grep @module:auth
+```
+
+> `--grep @module:<name>` only runs tests tagged with that module. The flow coverage report will still list other modules as missing because the subset was not executed.
+
+Helper command for the same flow (optional):
+
+```bash
+cd frontend
+npm run e2e:coverage:module -- auth
+npm run e2e:coverage:module -- --module auth --clean
+```
+
+Coverage also runs across all three viewports. To collect coverage for a single
+viewport:
+
+```bash
+cd frontend
+E2E_COVERAGE=1 npm run e2e:mobile -- e2e/<spec>.js
 ```
 
 Enable page/console error logs during coverage runs:
@@ -400,37 +454,61 @@ Quality gate CI workflow:
 
 - `.github/workflows/test-quality-gate.yml`
 
-Run the full test suite in blocks (backend blocks + frontend unit + E2E with coverage):
+Run all test suites in parallel (backend pytest + frontend unit + frontend E2E):
 
 ```bash
-python scripts/run-tests-all-blocks.py
+python scripts/run-tests-all-suites.py
 ```
 
-This generates log files in `test-reports/` and prints a final summary (coverage included).
+This runs all three suites concurrently, displays a live progress spinner, generates log
+files in `test-reports/`, and prints a final summary when all suites complete.
 
-Defaults per suite:
+#### Coverage report
 
-- **Backend**: runs `backend/scripts/run-tests-blocks.py` with default marker blocks
-  (edge, contract, integration, rest), default chunk size **22**, and default sleep **2s**.
-- **Frontend unit**: runs `npm run test -- --coverage --runInBand`.
-- **Frontend E2E**: runs `npx playwright test --workers=1` with `E2E_COVERAGE=1`,
-  then generates coverage via `npx nyc report`.
-
-Optional flags:
+Coverage is captured automatically but **not shown by default**. Pass `--coverage` to
+display a per-suite summary at the end of the run:
 
 ```bash
-python scripts/run-tests-all-blocks.py --skip-e2e
-python scripts/run-tests-all-blocks.py --backend-markers edge,contract
-python scripts/run-tests-all-blocks.py --backend-groups models,serializers
-python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 12"
-python scripts/run-tests-all-blocks.py --backend-args "--chunk-size 22 --sleep 2"
+python scripts/run-tests-all-suites.py --coverage
 ```
 
-Coverage output:
+Coverage percentages are color-coded in the terminal output:
 
-- Raw coverage JSON: `frontend/.nyc_output/`
-- HTML report: `frontend/coverage-e2e/lcov-report/index.html`
-- Console summary: printed after the run
+| Range | Color |
+|-------|-------|
+| > 80% | Green |
+| 50 – 80% | Yellow |
+| < 50% | Red |
+
+#### Available flags
+
+```bash
+# Skip individual suites
+python scripts/run-tests-all-suites.py --skip-backend
+python scripts/run-tests-all-suites.py --skip-unit
+python scripts/run-tests-all-suites.py --skip-e2e
+
+# Run sequentially instead of in parallel
+python scripts/run-tests-all-suites.py --sequential
+
+# Show per-suite coverage summary
+python scripts/run-tests-all-suites.py --coverage
+
+# Filter backend tests by pytest marker
+python scripts/run-tests-all-suites.py --backend-markers "edge or contract"
+
+# Forward extra args to each runner
+python scripts/run-tests-all-suites.py --backend-args "-x -q"
+python scripts/run-tests-all-suites.py --unit-args "--testPathPattern=store"
+python scripts/run-tests-all-suites.py --e2e-args "--grep @smoke"
+
+# Control parallelism
+python scripts/run-tests-all-suites.py --unit-workers 4
+python scripts/run-tests-all-suites.py --e2e-workers 2
+
+# Custom log output directory (default: test-reports/)
+python scripts/run-tests-all-suites.py --report-dir ci-reports
+```
 
 To collect coverage for a single spec, run Playwright with `E2E_COVERAGE=1` and then build the report:
 

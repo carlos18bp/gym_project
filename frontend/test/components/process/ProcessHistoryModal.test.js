@@ -46,10 +46,13 @@ describe("ProcessHistoryModal.vue", () => {
       },
     });
 
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-02-01T12:00:00Z"));
+
     const { formatDate } = wrapper.vm;
 
     const plainDate = "2026-02-01";
-    const expectedPlain = new Date(2026, 1, 1).toLocaleDateString("es-CO", {
+    const expectedPlain = new Date("2026-02-01T05:00:00Z").toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -58,7 +61,7 @@ describe("ProcessHistoryModal.vue", () => {
     expect(formatDate(plainDate)).toBe(expectedPlain);
 
     const dateTime = "2026-02-01T12:30:00.000Z";
-    const expectedDateTime = new Date(dateTime).toLocaleDateString("es-CO", {
+    const expectedDateTime = new Date("2026-02-01T12:30:00.000Z").toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -68,6 +71,8 @@ describe("ProcessHistoryModal.vue", () => {
     });
 
     expect(formatDate(dateTime)).toBe(expectedDateTime);
+
+    jest.useRealTimers();
 
     const closeBtn = wrapper
       .findAll("button")

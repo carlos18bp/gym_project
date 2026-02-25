@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can reject an organization invitation and does not gain membership", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client can reject an organization invitation and does not gain membership", { tag: ['@flow:org-client-invitations', '@module:organizations', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 3500;
 
   await installOrganizationsClientApiMocks(page, {
@@ -38,13 +40,13 @@ test("client can reject an organization invitation and does not gain membership"
   await invitationsTab.click();
   await expect(page.locator('h2:has-text("Invitaciones Recibidas")')).toBeVisible();
 
-  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(invitationCard.getByRole("button", { name: "Rechazar" })).toBeVisible();
   await invitationCard.getByRole("button", { name: "Rechazar" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación rechazada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación rechazada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // After refresh, the invitation is no longer pending.
   await expect(invitationCard.locator('span:has-text("Rechazada")')).toBeVisible();

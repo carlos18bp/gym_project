@@ -1,13 +1,18 @@
-import pytest
+"""Tests for process module."""
 import json
-from unittest.mock import patch, MagicMock
-from django.urls import reverse
+from unittest.mock import patch
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
-from gym_app.models import User, Process, Stage, Case, CaseFile, RecentProcess
+
+from gym_app.models import Case, CaseFile, Process, RecentProcess, Stage, User
+
+
 @pytest.fixture
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email='client@example.com',
         password='testpassword',
@@ -16,6 +21,7 @@ def client_user():
 
 @pytest.fixture
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email='lawyer@example.com',
         password='testpassword',
@@ -24,6 +30,7 @@ def lawyer_user():
 
 @pytest.fixture
 def admin_user():
+    """Admin user."""
     return User.objects.create_user(
         email='admin@example.com',
         password='testpassword',
@@ -32,14 +39,17 @@ def admin_user():
 
 @pytest.fixture
 def case_type():
+    """Case type."""
     return Case.objects.create(type='Criminal')
 
 @pytest.fixture
 def stage():
+    """Stage."""
     return Stage.objects.create(status='In Progress')
 
 @pytest.fixture
 def process(client_user, lawyer_user, case_type, stage):
+    """Process."""
     process = Process.objects.create(
         authority='Supreme Court',
         plaintiff='John Smith',
@@ -53,11 +63,27 @@ def process(client_user, lawyer_user, case_type, stage):
     process.stages.add(stage)
     return process
 
+def _make_process_data(client_ids, lawyer_id, case_type_id, **overrides):
+    base = {
+        'authority': 'Court',
+        'plaintiff': 'P',
+        'defendant': 'D',
+        'ref': 'CASE-001',
+        'clientIds': client_ids,
+        'lawyerId': lawyer_id,
+        'caseTypeId': case_type_id,
+        'subcase': 'Contract Dispute',
+    }
+    base.update(overrides)
+    return base
+
+
 @pytest.mark.django_db
 class TestProcessViews:
+    """Tests for Process Views."""
     
     def test_process_list_client(self, api_client, client_user, process):
-        """Test that a client can only see their own processes"""
+        """Test that a client can only see their own processes."""
         # Authenticate as client
         api_client.force_authenticate(user=client_user)
         
@@ -94,7 +120,7 @@ class TestProcessViews:
         assert response.data[0]['ref'] == 'CASE-123'
     
     def test_process_list_lawyer(self, api_client, lawyer_user, process):
-        """Test that a lawyer can only see processes they are assigned to"""
+        """Test that a lawyer can only see processes they are assigned to."""
         # Authenticate as lawyer
         api_client.force_authenticate(user=lawyer_user)
         
@@ -132,7 +158,7 @@ class TestProcessViews:
         assert response.data[0]['ref'] == 'CASE-123'
     
     def test_process_list_admin(self, api_client, admin_user, process):
-        """Test that an admin can see all processes"""
+        """Test that an admin can see all processes."""
         # Authenticate as admin
         api_client.force_authenticate(user=admin_user)
         
@@ -175,19 +201,14 @@ class TestProcessViews:
         assert 'CASE-456' in refs
     
     def test_create_process_response(self, api_client, admin_user, client_user, lawyer_user, case_type):
-        """Test creating a new process returns correct response"""
+        """Test creating a new process returns correct response."""
         api_client.force_authenticate(user=admin_user)
         
-        main_data = {
-            'authority': 'Federal Court',
-            'plaintiff': 'Company Inc.',
-            'defendant': 'Other Company LLC',
-            'ref': 'CASE-789',
-            'clientIds': [client_user.id],
-            'lawyerId': lawyer_user.id,
-            'caseTypeId': case_type.id,
-            'subcase': 'Contract Dispute',
-        }
+        main_data = _make_process_data(
+            [client_user.id], lawyer_user.id, case_type.id,
+            authority='Federal Court', plaintiff='Company Inc.',
+            defendant='Other Company LLC', ref='CASE-789',
+        )
         
         url = reverse('create-process')
         response = api_client.post(url, {'mainData': json.dumps(main_data)}, format='multipart')
@@ -198,20 +219,13 @@ class TestProcessViews:
         assert response.data['ref'] == 'CASE-789'
 
     def test_create_process_db_state(self, api_client, admin_user, client_user, lawyer_user, case_type):
-        """Test creating a new process creates correct database records"""
+        """Test creating a new process creates correct database records."""
         api_client.force_authenticate(user=admin_user)
         
-        main_data = {
-            'authority': 'Court',
-            'plaintiff': 'P',
-            'defendant': 'D',
-            'ref': 'CASE-DB',
-            'clientIds': [client_user.id],
-            'lawyerId': lawyer_user.id,
-            'caseTypeId': case_type.id,
-            'subcase': 'Contract Dispute',
-            'stages': [{'status': 'New'}, {'status': 'Analysis'}]
-        }
+        main_data = _make_process_data(
+            [client_user.id], lawyer_user.id, case_type.id,
+            ref='CASE-DB', stages=[{'status': 'New'}, {'status': 'Analysis'}],
+        )
         
         url = reverse('create-process')
         response = api_client.post(url, {'mainData': json.dumps(main_data)}, format='multipart')
@@ -223,21 +237,16 @@ class TestProcessViews:
         assert created_process.stages.count() == 2
     
     def test_create_process_invalid_client(self, api_client, admin_user, lawyer_user, case_type):
-        """Test creating a process with an invalid client ID"""
+        """Test creating a process with an invalid client ID."""
         # Authenticate
         api_client.force_authenticate(user=admin_user)
         
         # Prepare the data with invalid client ID
-        main_data = {
-            'authority': 'Federal Court',
-            'plaintiff': 'Company Inc.',
-            'defendant': 'Other Company LLC',
-            'ref': 'CASE-789',
-            'clientIds': [9999],  # Invalid ID
-            'lawyerId': lawyer_user.id,
-            'caseTypeId': case_type.id,
-            'subcase': 'Contract Dispute'
-        }
+        main_data = _make_process_data(
+            [9999], lawyer_user.id, case_type.id,  # Invalid client ID
+            authority='Federal Court', plaintiff='Company Inc.',
+            defendant='Other Company LLC', ref='CASE-789',
+        )
         
         # Make the request
         url = reverse('create-process')
@@ -255,7 +264,7 @@ class TestProcessViews:
         assert Process.objects.count() == 0
     
     def test_update_process_db_state(self, api_client, admin_user, process, case_type):
-        """Test updating a process updates database correctly"""
+        """Test updating a process updates database correctly."""
         api_client.force_authenticate(user=admin_user)
         new_case_type = Case.objects.create(type='Civil')
         
@@ -301,8 +310,50 @@ class TestProcessViews:
         case_file_ids = set(process.case_files.values_list('id', flat=True))
         assert case_file_ids == {new_file.id}
 
+    def test_update_process_empty_case_file_ids_clears_all(self, api_client, admin_user, process):
+        """Test that sending caseFileIds=[] removes all case files from the process."""
+        api_client.force_authenticate(user=admin_user)
+
+        file1 = CaseFile.objects.create(
+            file=SimpleUploadedFile("f1.txt", b"a", content_type="text/plain")
+        )
+        file2 = CaseFile.objects.create(
+            file=SimpleUploadedFile("f2.txt", b"b", content_type="text/plain")
+        )
+        process.case_files.set([file1, file2])
+        assert process.case_files.count() == 2
+
+        main_data = {'caseFileIds': []}
+
+        url = reverse('update-process', kwargs={'pk': process.id})
+        response = api_client.put(url, {'mainData': json.dumps(main_data)}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        process.refresh_from_db()
+        assert process.case_files.count() == 0
+
+    def test_update_process_omitted_case_file_ids_keeps_files(self, api_client, admin_user, process):
+        """Test that omitting caseFileIds leaves existing case files unchanged."""
+        api_client.force_authenticate(user=admin_user)
+
+        file1 = CaseFile.objects.create(
+            file=SimpleUploadedFile("keep.txt", b"keep", content_type="text/plain")
+        )
+        process.case_files.add(file1)
+        assert process.case_files.count() == 1
+
+        main_data = {'authority': 'New Authority'}
+
+        url = reverse('update-process', kwargs={'pk': process.id})
+        response = api_client.put(url, {'mainData': json.dumps(main_data)}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        process.refresh_from_db()
+        assert process.case_files.count() == 1
+        assert process.case_files.first().id == file1.id
+
     def test_update_process_response(self, api_client, admin_user, process, case_type):
-        """Test updating a process returns correct response"""
+        """Test updating a process returns correct response."""
         api_client.force_authenticate(user=admin_user)
         
         main_data = {
@@ -322,7 +373,7 @@ class TestProcessViews:
         assert response.data['ref'] == 'RESP-REF'
     
     def test_update_case_file(self, api_client, admin_user, process):
-        """Test uploading a file to an existing process"""
+        """Test uploading a file to an existing process."""
         # Authenticate
         api_client.force_authenticate(user=admin_user)
         
@@ -359,7 +410,7 @@ class TestProcessViews:
         assert file_name.endswith('.txt')
     
     def test_update_case_file_missing_process_id(self, api_client, admin_user):
-        """Test uploading a file without specifying a process ID"""
+        """Test uploading a file without specifying a process ID."""
         # Authenticate
         api_client.force_authenticate(user=admin_user)
         
@@ -387,7 +438,7 @@ class TestProcessViews:
         assert CaseFile.objects.count() == 0
     
     def test_update_case_file_missing_file(self, api_client, admin_user, process):
-        """Test uploading without providing a file"""
+        """Test uploading without providing a file."""
         # Authenticate
         api_client.force_authenticate(user=admin_user)
         
@@ -408,7 +459,7 @@ class TestProcessViews:
         assert CaseFile.objects.count() == 0
     
     def test_update_case_file_nonexistent_process(self, api_client, admin_user):
-        """Test uploading a file to a non-existent process"""
+        """Test uploading a file to a non-existent process."""
         # Authenticate
         api_client.force_authenticate(user=admin_user)
         
@@ -436,7 +487,7 @@ class TestProcessViews:
         assert CaseFile.objects.count() == 0
     
     def test_unauthenticated_access(self, api_client):
-        """Test that unauthenticated users cannot access the process endpoints"""
+        """Test that unauthenticated users cannot access the process endpoints."""
         # Test process list
         list_url = reverse('process-list')
         list_response = api_client.get(list_url)
@@ -458,7 +509,7 @@ class TestProcessViews:
         assert file_response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_recent_processes_returns_only_user_entries(self, api_client, client_user, process):
-        """recent-processes debe devolver solo los procesos recientes del usuario autenticado"""
+        """recent-processes debe devolver solo los procesos recientes del usuario autenticado."""
         # Crear entradas de procesos recientes para el usuario
         RecentProcess.objects.create(user=client_user, process=process)
 
@@ -488,7 +539,7 @@ class TestProcessViews:
         assert response.data[0]['process']['id'] == process.id
 
     def test_get_recent_processes_limits_to_10_and_orders_by_last_viewed(self, api_client, client_user, case_type, lawyer_user):
-        """recent-processes debe devolver máximo 10 elementos ordenados por last_viewed desc"""
+        """recent-processes debe devolver máximo 10 elementos ordenados por last_viewed desc."""
         # Crear 12 procesos y entradas de RecentProcess con last_viewed creciente
         for i in range(12):
             p = Process.objects.create(
@@ -516,7 +567,7 @@ class TestProcessViews:
         assert timestamps == sorted(timestamps, reverse=True)
 
     def test_update_recent_process_creates_or_updates_entry(self, api_client, client_user, process):
-        """update-recent-process debe crear o actualizar la entrada de RecentProcess"""
+        """update-recent-process debe crear o actualizar la entrada de RecentProcess."""
         api_client.force_authenticate(user=client_user)
 
         url = reverse('update-recent-process', kwargs={'process_id': process.id})
@@ -537,7 +588,7 @@ class TestProcessViews:
         assert rp.last_viewed >= first_last_viewed
 
     def test_update_recent_process_not_found(self, api_client, client_user):
-        """update-recent-process debe responder 404 si el proceso no existe"""
+        """update-recent-process debe responder 404 si el proceso no existe."""
         api_client.force_authenticate(user=client_user)
 
         url = reverse('update-recent-process', kwargs={'process_id': 9999})
@@ -588,8 +639,9 @@ def _pv_proc(_pv_lawyer, _pv_client, _pv_ctype):
 
 @pytest.mark.django_db
 class TestProcessRegressionScenarios:
+    """Tests for Process Regression Scenarios."""
 
-    def test_update_process_changes_lawyer(self, api_client, _pv_lawyer, _pv_lawyer2, _pv_proc):
+    def test_update_process_changes_lawyer(self, api_client, _pv_lawyer, _pv_lawyer2, _pv_proc):  # noqa: PT019
         """Line 215: updating lawyerId assigns new lawyer to process."""
         api_client.force_authenticate(user=_pv_lawyer)
         url = reverse('update-process', kwargs={'pk': _pv_proc.pk})
@@ -648,7 +700,9 @@ def _edge_proc(_edge_lawyer, _edge_client, _edge_ctype):
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestProcessListEdges:
-    def test_process_list_exception_returns_500(self, api_client, _edge_client):
+    """Tests for Process List Edges."""
+
+    def test_process_list_exception_returns_500(self, api_client, _edge_client):  # noqa: PT019
         """Cover the except block in process_list (lines 46-47)."""
         api_client.force_authenticate(user=_edge_client)
         url = reverse("process-list")
@@ -658,7 +712,7 @@ class TestProcessListEdges:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "DB error" in response.data["detail"]
 
-    def test_process_list_admin_returns_all(self, api_client, _edge_admin, _edge_proc):
+    def test_process_list_admin_returns_all(self, api_client, _edge_admin, _edge_proc):  # noqa: PT019
         """Cover the else branch (non-client, non-lawyer role) in process_list."""
         api_client.force_authenticate(user=_edge_admin)
         url = reverse("process-list")
@@ -671,6 +725,8 @@ class TestProcessListEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCreateProcessEdges:
+    """Tests for Create Process Edges."""
+
     def _build_main_data(self, **overrides):
         defaults = {
             "clientIds": [], "lawyerId": None, "caseTypeId": None,
@@ -680,7 +736,7 @@ class TestCreateProcessEdges:
         defaults.update(overrides)
         return defaults
 
-    def test_create_process_single_client_id_not_list(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_single_client_id_not_list(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover line 67: client_ids converted from scalar to list."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -690,7 +746,7 @@ class TestCreateProcessEdges:
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_create_process_invalid_lawyer(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_invalid_lawyer(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 75-76: lawyer DoesNotExist."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -700,7 +756,7 @@ class TestCreateProcessEdges:
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_create_process_invalid_case_type(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_invalid_case_type(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 81-82: case type DoesNotExist."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -710,7 +766,7 @@ class TestCreateProcessEdges:
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_create_process_non_numeric_progress(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_non_numeric_progress(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 88-89: progress that can't be cast to int."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -722,7 +778,7 @@ class TestCreateProcessEdges:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["progress"] == 0
 
-    def test_create_process_stage_without_status_skipped(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_stage_without_status_skipped(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover line 115: stage with empty status is skipped."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -735,7 +791,7 @@ class TestCreateProcessEdges:
         proc = Process.objects.get(pk=response.data["id"])
         assert proc.stages.count() == 1
 
-    def test_create_process_stage_with_valid_date(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_stage_with_valid_date(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 120-123: stage with valid ISO date."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -749,7 +805,7 @@ class TestCreateProcessEdges:
         stage = proc.stages.first()
         assert str(stage.date) == "2025-06-15"
 
-    def test_create_process_stage_with_invalid_date_falls_back(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_stage_with_invalid_date_falls_back(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 124-125: invalid date falls back to today."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -760,7 +816,7 @@ class TestCreateProcessEdges:
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_create_process_unexpected_exception(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):
+    def test_create_process_unexpected_exception(self, api_client, _edge_lawyer, _edge_client, _edge_ctype):  # noqa: PT019
         """Cover lines 142-144: unexpected exception returns 500."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -771,7 +827,7 @@ class TestCreateProcessEdges:
             response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    def test_create_process_empty_client_ids(self, api_client, _edge_lawyer, _edge_ctype):
+    def test_create_process_empty_client_ids(self, api_client, _edge_lawyer, _edge_ctype):  # noqa: PT019
         """Cover line 71: empty clientIds returns 404."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
@@ -787,7 +843,9 @@ class TestCreateProcessEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestUpdateProcessEdges:
-    def test_update_process_json_body_directly(self, api_client, _edge_lawyer, _edge_proc):
+    """Tests for Update Process Edges."""
+
+    def test_update_process_json_body_directly(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover line 161: request.data is dict without 'mainData' key."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -798,14 +856,14 @@ class TestUpdateProcessEdges:
         assert _edge_proc.plaintiff == "New Plaintiff"
         assert _edge_proc.authority_email == "auth@example.com"
 
-    def test_update_process_invalid_json_maindata_fallback(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_invalid_json_maindata_fallback(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover lines 167-169: mainData is not valid JSON, fallback to request.data."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
         response = api_client.put(url, {"mainData": "not-json{{"}, format="multipart")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_update_process_progress_non_numeric(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_progress_non_numeric(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover lines 192-198: progress update with non-numeric value."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -815,7 +873,7 @@ class TestUpdateProcessEdges:
         _edge_proc.refresh_from_db()
         assert _edge_proc.progress in (50, 0)
 
-    def test_update_process_progress_clamped(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_progress_clamped(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover line 197: progress clamped to 0-100."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -825,7 +883,7 @@ class TestUpdateProcessEdges:
         _edge_proc.refresh_from_db()
         assert _edge_proc.progress == 100
 
-    def test_update_process_client_ids_scalar(self, api_client, _edge_lawyer, _edge_proc, _edge_client):
+    def test_update_process_client_ids_scalar(self, api_client, _edge_lawyer, _edge_proc, _edge_client):  # noqa: PT019
         """Cover lines 203-208: clientIds as scalar, not list."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -833,7 +891,7 @@ class TestUpdateProcessEdges:
         response = api_client.put(url, data, format="json")
         assert response.status_code == status.HTTP_200_OK
 
-    def test_update_process_invalid_lawyer_id(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_invalid_lawyer_id(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover lines 213-217: lawyerId that doesn't exist (DoesNotExist caught)."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -843,7 +901,7 @@ class TestUpdateProcessEdges:
         _edge_proc.refresh_from_db()
         assert _edge_proc.lawyer == _edge_lawyer
 
-    def test_update_process_invalid_case_type_id(self, api_client, _edge_lawyer, _edge_proc, _edge_ctype):
+    def test_update_process_invalid_case_type_id(self, api_client, _edge_lawyer, _edge_proc, _edge_ctype):  # noqa: PT019
         """Cover lines 225-226: caseTypeId that doesn't exist."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -853,7 +911,7 @@ class TestUpdateProcessEdges:
         _edge_proc.refresh_from_db()
         assert _edge_proc.case == _edge_ctype
 
-    def test_update_process_replaces_stages(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_replaces_stages(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover lines 239-255: stage replacement with valid/invalid dates."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
@@ -873,7 +931,7 @@ class TestUpdateProcessEdges:
         from datetime import date
         assert date(2025, 3, 1) in dates
 
-    def test_update_process_with_maindata_multipart(self, api_client, _edge_lawyer, _edge_proc):
+    def test_update_process_with_maindata_multipart(self, api_client, _edge_lawyer, _edge_proc):  # noqa: PT019
         """Cover lines 163-166: mainData as valid JSON string in multipart."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})

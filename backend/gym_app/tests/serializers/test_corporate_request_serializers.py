@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+"""Tests for corporate_request_serializers module."""
+from datetime import datetime
+from datetime import timezone as dt_timezone
+from unittest.mock import PropertyMock, patch
 
-from django.contrib.auth import get_user_model
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory
-from django.utils import timezone
 from rest_framework import serializers as drf_serializers
 
 from gym_app.models import (
@@ -16,6 +17,7 @@ from gym_app.models import (
     OrganizationMembership,
     User,
 )
+from gym_app.models.dynamic_document import DynamicDocument, Tag
 from gym_app.serializers.corporate_request import (
     CorporateRequestCreateSerializer,
     CorporateRequestFilesSerializer,
@@ -33,6 +35,7 @@ factory = RequestFactory()
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -45,6 +48,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def normal_client():
+    """Create a normal client."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -57,6 +61,7 @@ def normal_client():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org",
         description="Org desc",
@@ -67,12 +72,14 @@ def organization(corporate_client):
 @pytest.fixture
 @pytest.mark.django_db
 def request_type():
+    """Request type."""
     return CorporateRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_request(organization, normal_client, corporate_client, request_type):
+    """Corporate request."""
     OrganizationMembership.objects.create(
         organization=organization,
         user=normal_client,
@@ -93,7 +100,10 @@ def corporate_request(organization, normal_client, corporate_client, request_typ
 
 @pytest.mark.django_db
 class TestCorporateRequestFilesSerializer:
+    """Tests for Corporate Request Files Serializer."""
+
     def test_file_serializer_includes_url_name_and_size(self, settings):
+        """Verify file serializer includes url name and size."""
         test_file = SimpleUploadedFile(
             "corp_file.pdf",
             b"file-content",
@@ -118,6 +128,7 @@ class TestCorporateRequestFilesSerializer:
         assert data["file_size"] > 0
 
     def test_file_serializer_without_request_uses_relative_url(self):
+        """Verify file serializer without request uses relative url."""
         test_file = SimpleUploadedFile(
             "corp_file.pdf",
             b"file-content",
@@ -134,7 +145,10 @@ class TestCorporateRequestFilesSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestResponseSerializer:
+    """Tests for Corporate Request Response Serializer."""
+
     def test_response_serializer_sets_user_and_user_type_corporate_client(self, corporate_request, corporate_client):
+        """Verify response serializer sets user and user type corporate client."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -155,6 +169,7 @@ class TestCorporateRequestResponseSerializer:
         assert response.user_type == "corporate_client"
 
     def test_response_serializer_sets_user_type_client(self, corporate_request, normal_client):
+        """Verify response serializer sets user type client."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -175,6 +190,7 @@ class TestCorporateRequestResponseSerializer:
         assert response.user_type == "client"
 
     def test_response_serializer_user_name(self, corporate_request, corporate_client):
+        """Verify response serializer user name."""
         response = CorporateRequestResponse.objects.create(
             corporate_request=corporate_request,
             response_text="Respuesta",
@@ -188,6 +204,7 @@ class TestCorporateRequestResponseSerializer:
         assert data["user_name"] == f"{corporate_client.first_name} {corporate_client.last_name}".strip()
 
     def test_response_serializer_user_name_empty_when_missing_names(self, corporate_request):
+        """Verify response serializer user name empty when missing names."""
         user = User.objects.create_user(
             email="noname@example.com",
             password="testpassword",
@@ -210,8 +227,11 @@ class TestCorporateRequestResponseSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestSerializer:
+    """Tests for Corporate Request Serializer."""
+
     def test_serializer_computed_fields(self, corporate_request):
-        corporate_request.created_at = timezone.now() - timezone.timedelta(days=3)
+        """Verify serializer computed fields."""
+        corporate_request.created_at = datetime(2025, 1, 7, 12, 0, 0, tzinfo=dt_timezone.utc)
         corporate_request.save(update_fields=["created_at"])
 
         CorporateRequestResponse.objects.create(
@@ -232,7 +252,10 @@ class TestCorporateRequestSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestBasicInfoSerializers:
+    """Tests for Corporate Request Basic Info Serializers."""
+
     def test_user_basic_info_profile_image_url_with_request(self, corporate_client):
+        """Verify user basic info profile image url with request."""
         corporate_client.photo_profile.name = "profile_photos/test.jpg"
 
         class MockRequest:
@@ -249,6 +272,7 @@ class TestCorporateRequestBasicInfoSerializers:
         assert "profile_photos/test.jpg" in data["profile_image_url"]
 
     def test_user_basic_info_profile_image_url_without_request(self, corporate_client, settings):
+        """Verify user basic info profile image url without request."""
         corporate_client.photo_profile.name = "profile_photos/test.jpg"
 
         serializer = UserBasicInfoSerializer(corporate_client)
@@ -257,6 +281,7 @@ class TestCorporateRequestBasicInfoSerializers:
         assert data["profile_image_url"] == f"{settings.MEDIA_URL}profile_photos/test.jpg"
 
     def test_organization_basic_info_profile_image_url_with_request(self, organization):
+        """Verify organization basic info profile image url with request."""
         organization.profile_image.name = "organization_images/profiles/test.jpg"
 
         class MockRequest:
@@ -273,6 +298,7 @@ class TestCorporateRequestBasicInfoSerializers:
         assert "organization_images/profiles/test.jpg" in data["profile_image_url"]
 
     def test_organization_basic_info_profile_image_url_without_request(self, organization):
+        """Verify organization basic info profile image url without request."""
         organization.profile_image.name = "organization_images/profiles/test.jpg"
 
         serializer = OrganizationBasicInfoSerializer(organization)
@@ -283,8 +309,10 @@ class TestCorporateRequestBasicInfoSerializers:
 
 @pytest.mark.django_db
 class TestCorporateRequestSerializerCreate:
+    """Tests for Corporate Request Serializer Create."""
+
     def test_client_member_can_create(self, organization, request_type):
-        """Test client member can create corporate request"""
+        """Test client member can create corporate request."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -299,7 +327,7 @@ class TestCorporateRequestSerializerCreate:
         assert req.client == client
 
     def test_non_member_cannot_create(self, organization, request_type):
-        """Test non-member cannot create corporate request"""
+        """Test non-member cannot create corporate request."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -310,7 +338,7 @@ class TestCorporateRequestSerializerCreate:
         assert not serializer.is_valid()
 
     def test_lawyer_cannot_create(self, organization, request_type):
-        """Test lawyer role cannot create corporate request"""
+        """Test lawyer role cannot create corporate request."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -351,9 +379,11 @@ class TestCorporateRequestSerializerCreate:
 
 @pytest.mark.django_db
 class TestCorporateRequestListSerializer:
+    """Tests for Corporate Request List Serializer."""
+
     def test_list_serializer_computed_fields(self, corporate_request):
-        # Ajustar created_at para simular días transcurridos
-        corporate_request.created_at = timezone.now() - timezone.timedelta(days=5)
+        """Verify list serializer computed fields."""
+        corporate_request.created_at = datetime(2025, 1, 5, 12, 0, 0, tzinfo=dt_timezone.utc)
         corporate_request.save(update_fields=["created_at"])
 
         # Crear algunas respuestas
@@ -380,8 +410,10 @@ class TestCorporateRequestListSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestCreateSerializer:
+    """Tests for Corporate Request Create Serializer."""
+
     def test_create_serializer_requires_membership(self, organization, request_type):
-        """Test create serializer requires membership"""
+        """Test create serializer requires membership."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -392,7 +424,7 @@ class TestCorporateRequestCreateSerializer:
         assert not serializer.is_valid()
 
     def test_create_serializer_with_membership(self, organization, request_type):
-        """Test create serializer works with membership"""
+        """Test create serializer works with membership."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -406,7 +438,7 @@ class TestCorporateRequestCreateSerializer:
         assert req.client == client
 
     def test_create_serializer_rejects_lawyer(self, organization, request_type):
-        """Test create serializer rejects lawyer role"""
+        """Test create serializer rejects lawyer role."""
         class MockRequest:
             def __init__(self, user): self.user = user
 
@@ -419,6 +451,8 @@ class TestCorporateRequestCreateSerializer:
 
 @pytest.mark.django_db
 class TestCorporateRequestFilesSerializerEdges:
+    """Tests for Corporate Request Files Serializer Edges."""
+
     def test_file_url_no_file(self, rf):
         """Cover line 31: no file → return None."""
         obj = CorporateRequestFiles.objects.create()
@@ -469,6 +503,8 @@ class TestCorporateRequestFilesSerializerEdges:
 
 @pytest.mark.django_db
 class TestCorporateRequestResponseSerializerEdges:
+    """Tests for Corporate Request Response Serializer Edges."""
+
     def test_get_user_name_with_user(self, corporate_request, client_user, rf):
         """Cover lines 63-64: user with name."""
         resp = CorporateRequestResponse.objects.create(
@@ -483,7 +519,7 @@ class TestCorporateRequestResponseSerializerEdges:
 
     def test_get_user_name_no_user(self, corporate_request, client_user, rf):
         """Cover line 65: user obj is None → return None."""
-        resp = CorporateRequestResponse.objects.create(
+        _resp = CorporateRequestResponse.objects.create(
             corporate_request=corporate_request,
             user=client_user,
             user_type="client",
@@ -506,6 +542,8 @@ class TestCorporateRequestResponseSerializerEdges:
 
 @pytest.mark.django_db
 class TestCorporateRequestCreateSerializerEdges:
+    """Tests for Corporate Request Create Serializer Edges."""
+
     def test_validate_non_client_role_raises(self, corporate_user, organization, request_type, rf):
         """Cover lines 265-268: non-client role raises."""
         request = rf.post("/")
@@ -548,6 +586,8 @@ class TestCorporateRequestCreateSerializerEdges:
 
 @pytest.mark.django_db
 class TestCorporateRequestUpdateSerializerEdges:
+    """Tests for Corporate Request Update Serializer Edges."""
+
     def test_validate_assigned_to_none(self):
         """Cover lines 303-307: assigned_to is None → pass."""
         serializer = CorporateRequestUpdateSerializer(
@@ -568,6 +608,7 @@ class TestCorporateRequestUpdateSerializerEdges:
 
 @pytest.fixture
 def lawyer(db):
+    """Lawyer."""
     return User.objects.create_user(
         email="dds-lawyer@example.com",
         password="testpassword",
@@ -579,6 +620,7 @@ def lawyer(db):
 
 @pytest.fixture
 def client_user(db):
+    """Client user."""
     return User.objects.create_user(
         email="dds-client@example.com",
         password="testpassword",
@@ -590,6 +632,7 @@ def client_user(db):
 
 @pytest.fixture
 def client_user2(db):
+    """Client user2."""
     return User.objects.create_user(
         email="dds-client2@example.com",
         password="testpassword",
@@ -601,6 +644,7 @@ def client_user2(db):
 
 @pytest.fixture
 def document(db, lawyer):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Test Doc",
         content="<p>Content</p>",
@@ -611,6 +655,7 @@ def document(db, lawyer):
 
 @pytest.fixture
 def tag(db, lawyer):
+    """Tag."""
     return Tag.objects.create(name="TestTag", color_id=1, created_by=lawyer)
 
 
@@ -623,11 +668,13 @@ def tag(db, lawyer):
 
 @pytest.mark.django_db
 class TestCorporateRequestValidateCorporateClient:
+    """Tests for Corporate Request Validate Corporate Client."""
+
     def test_validate_corporate_client_rejects_non_corporate_role(
         self, normal_client, corporate_client, organization, request_type
     ):
-        """
-        validate_corporate_client raises ValidationError when the user
+        """validate_corporate_client raises ValidationError when the user.
+        
         is not a corporate_client (line 198).
         """
         OrganizationMembership.objects.create(
@@ -661,11 +708,13 @@ class TestCorporateRequestValidateCorporateClient:
 
 @pytest.mark.django_db
 class TestCorporateRequestValidateAssignedTo:
+    """Tests for Corporate Request Validate Assigned To."""
+
     def test_validate_assigned_to_with_instance_having_corporate_client(
         self, corporate_request, corporate_client
     ):
-        """
-        validate_assigned_to passes through when value is truthy and
+        """validate_assigned_to passes through when value is truthy and.
+        
         instance has corporate_client attribute (lines 205-209).
         """
         request = factory.patch("/fake/")
@@ -690,9 +739,11 @@ class TestCorporateRequestValidateAssignedTo:
 
 @pytest.mark.django_db
 class TestCorporateRequestListSerializerGetClientName:
+    """Tests for Corporate Request List Serializer Get Client Name."""
+
     def test_get_client_name_returns_full_name(self, corporate_request):
-        """
-        get_client_name returns 'first_name last_name' (line 235).
+        """get_client_name returns 'first_name last_name' (line 235).
+        
         Note: This method exists on CorporateRequestListSerializer but
         may not be in `fields`. We call it directly.
         """
@@ -711,9 +762,11 @@ class TestCorporateRequestListSerializerGetClientName:
 
 @pytest.mark.django_db
 class TestCorporateRequestValidateCorporateClientDirect:
+    """Tests for Corporate Request Validate Corporate Client Direct."""
+
     def test_validate_corporate_client_direct_call_rejects_non_corp(self, normal_client):
-        """
-        Call validate_corporate_client directly (bypassing DRF's
+        """Call validate_corporate_client directly (bypassing DRF's.
+        
         limit_choices_to queryset filter) to exercise line 198.
         """
         serializer = CorporateRequestSerializer()

@@ -16,6 +16,10 @@ describe("Process Store behaviors", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("activeProcessesForCurrentUser returns empty array when no current user", () => {
     const store = useProcessStore();
     const userStore = useUserStore();
@@ -471,6 +475,36 @@ describe("Process Store behaviors", () => {
     expect(status).toBe(null);
 
     consoleSpy.mockRestore();
+  });
+
+  test("updateProcess sends existing caseFile IDs in mainData payload", async () => {
+    const store = useProcessStore();
+
+    mock.onPut("/api/update_process/11/").reply(200);
+    mock.onGet("/api/processes/").reply(200, []);
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    const status = await store.updateProcess({
+      processIdParam: 11,
+      plaintiff: "Alice",
+      defendant: "Bob",
+      caseTypeId: 1,
+      subcase: "Civil",
+      ref: "R1",
+      authority: "X",
+      authorityEmail: "x@test.com",
+      clientIds: [1],
+      lawyerId: 10,
+      progress: 0,
+      stages: [{ status: "En curso" }],
+      caseFiles: [{ id: 100 }, { id: 200 }, { file: new File(["c"], "c.txt") }],
+    });
+
+    expect(status).toBe(200);
+
+    const putReq = mock.history.put.find((r) => r.url === "/api/update_process/11/");
+    const putPayload = JSON.parse(putReq.data);
+    expect(putPayload.caseFileIds).toEqual([100, 200]);
   });
 
   test("updateProcess registers EDIT when last stage is not Fallo", async () => {

@@ -98,6 +98,7 @@ describe("LetterheadModal.vue", () => {
 
     expect(mockStore.getLetterheadImage).toHaveBeenCalledWith(1);
     expect(mockStore.getDocumentLetterheadWordTemplate).toHaveBeenCalledWith(1, "blob");
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.currentImageUrl).toBe("blob:image");
     expect(wrapper.vm.$.setupState.currentWordTemplateName).toBe("template.docx");
   });
@@ -108,6 +109,7 @@ describe("LetterheadModal.vue", () => {
     const wrapper = mountView();
     const file = new File(["img"], "letterhead.png", { type: "image/png" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.selectedFile = file;
 
     await wrapper.vm.$.setupState.uploadFile();
@@ -122,6 +124,7 @@ describe("LetterheadModal.vue", () => {
     mockShowConfirmationAlert.mockResolvedValue(true);
     const wrapper = mountView();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.currentImageUrl = "blob:current";
 
     await wrapper.vm.$.setupState.confirmDelete();
@@ -139,6 +142,7 @@ describe("LetterheadModal.vue", () => {
 
     const file = new File(["data"], "template.pdf", { type: "application/pdf" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleWordTemplateSelect({
       target: { files: [file] },
     });
@@ -157,6 +161,7 @@ describe("LetterheadModal.vue", () => {
     const wrapper = mountView();
     const file = new File(["doc"], "template.docx", { type: "application/vnd.openxmlformats" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.selectedWordTemplate = file;
 
     await wrapper.vm.$.setupState.uploadWordTemplate();

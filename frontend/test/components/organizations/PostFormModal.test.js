@@ -115,6 +115,10 @@ describe("PostFormModal.vue", () => {
     jest.useRealTimers();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("submit button enables when title/content are valid", async () => {
     const wrapper = await mountModal();
 
@@ -684,6 +688,7 @@ describe("PostFormModal.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.isSubmitting = true;
     await wrapper.vm.$nextTick();
 

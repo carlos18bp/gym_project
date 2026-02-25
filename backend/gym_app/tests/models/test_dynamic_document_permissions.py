@@ -1,24 +1,26 @@
-import pytest
+"""Tests for dynamic_document_permissions module."""
 from datetime import datetime, timedelta
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from gym_app.models import (
-    DynamicDocument,
     DocumentFolder,
     DocumentSignature,
     DocumentUsabilityPermission,
     DocumentVisibilityPermission,
+    DynamicDocument,
 )
 from gym_app.models.user import User
-
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def user_factory():
+    """User factory."""
     def create_user(email, role="client", is_gym_lawyer=False):
         return User.objects.create_user(
             email=email,
@@ -32,6 +34,7 @@ def user_factory():
 
 @pytest.fixture
 def document_factory():
+    """Document factory."""
     def create_document(created_by, **kwargs):
         return DynamicDocument.objects.create(
             title=kwargs.pop("title", "Doc"),
@@ -46,6 +49,7 @@ def document_factory():
 
 
 def test_can_view_lawyer_has_access(user_factory, document_factory):
+    """Verify can view lawyer has access."""
     creator = user_factory("creator@example.com")
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     document = document_factory(created_by=creator)
@@ -54,6 +58,7 @@ def test_can_view_lawyer_has_access(user_factory, document_factory):
 
 
 def test_can_view_creator_and_signer(user_factory, document_factory):
+    """Verify can view creator and signer."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)
@@ -64,6 +69,7 @@ def test_can_view_creator_and_signer(user_factory, document_factory):
 
 
 def test_can_view_public_visibility_and_no_permission(user_factory, document_factory):
+    """Verify can view public visibility and no permission."""
     creator = user_factory("creator@example.com")
     public_user = user_factory("public@example.com")
     visibility_user = user_factory("viewer@example.com")
@@ -84,6 +90,7 @@ def test_can_view_public_visibility_and_no_permission(user_factory, document_fac
 
 
 def test_can_use_lawyer_has_access(user_factory, document_factory):
+    """Verify can use lawyer has access."""
     creator = user_factory("creator@example.com")
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     document = document_factory(created_by=creator)
@@ -92,6 +99,7 @@ def test_can_use_lawyer_has_access(user_factory, document_factory):
 
 
 def test_can_use_creator_and_assigned_user(user_factory, document_factory):
+    """Verify can use creator and assigned user."""
     creator = user_factory("creator@example.com")
     assigned_user = user_factory("assigned@example.com")
     document = document_factory(created_by=creator, assigned_to=assigned_user)
@@ -101,6 +109,7 @@ def test_can_use_creator_and_assigned_user(user_factory, document_factory):
 
 
 def test_can_use_public_usability_permission_and_no_permission(user_factory, document_factory):
+    """Verify can use public usability permission and no permission."""
     creator = user_factory("creator@example.com")
     public_user = user_factory("public@example.com")
     usability_user = user_factory("usability@example.com")
@@ -126,6 +135,7 @@ def test_can_use_public_usability_permission_and_no_permission(user_factory, doc
 
 
 def test_get_user_permission_level_lawyer_and_owner(user_factory, document_factory):
+    """Verify get user permission level lawyer and owner."""
     owner = user_factory("owner@example.com")
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     document = document_factory(created_by=owner)
@@ -135,6 +145,7 @@ def test_get_user_permission_level_lawyer_and_owner(user_factory, document_facto
 
 
 def test_get_user_permission_level_assigned_and_published_template(user_factory, document_factory):
+    """Verify get user permission level assigned and published template."""
     creator = user_factory("creator@example.com")
     assigned_user = user_factory("assigned@example.com")
     template_user = user_factory("template@example.com")
@@ -147,6 +158,7 @@ def test_get_user_permission_level_assigned_and_published_template(user_factory,
 
 
 def test_get_user_permission_level_usability_and_view_only_permissions(user_factory, document_factory):
+    """Verify get user permission level usability and view only permissions."""
     creator = user_factory("creator@example.com")
     usability_user = user_factory("usability@example.com")
     view_user = user_factory("viewer@example.com")
@@ -173,6 +185,7 @@ def test_get_user_permission_level_usability_and_view_only_permissions(user_fact
 
 
 def test_get_user_permission_level_public_access_and_none(user_factory, document_factory):
+    """Verify get user permission level public access and none."""
     creator = user_factory("creator@example.com")
     public_user = user_factory("public@example.com")
     no_access_user = user_factory("noaccess@example.com")
@@ -185,6 +198,7 @@ def test_get_user_permission_level_public_access_and_none(user_factory, document
 
 
 def test_get_user_permission_level_visibility_precedes_public(user_factory, document_factory):
+    """Verify get user permission level visibility precedes public."""
     creator = user_factory("creator@example.com")
     viewer = user_factory("viewer@example.com")
     document = document_factory(created_by=creator, is_public=True)
@@ -198,6 +212,7 @@ def test_get_user_permission_level_visibility_precedes_public(user_factory, docu
 
 
 def test_get_user_permission_level_usability_precedes_public(user_factory, document_factory):
+    """Verify get user permission level usability precedes public."""
     creator = user_factory("creator@example.com")
     usability_user = user_factory("usability@example.com")
     document = document_factory(created_by=creator, is_public=True)
@@ -222,6 +237,7 @@ def test_get_user_permission_level_usability_precedes_public(user_factory, docum
 
 
 def test_can_view_prefetched_lawyer_has_access(user_factory, document_factory):
+    """Verify can view prefetched lawyer has access."""
     creator = user_factory("creator_pf1@example.com")
     lawyer = user_factory("lawyer_pf1@example.com", role="lawyer")
     document = document_factory(created_by=creator)
@@ -230,6 +246,7 @@ def test_can_view_prefetched_lawyer_has_access(user_factory, document_factory):
 
 
 def test_can_view_prefetched_creator_and_signer(user_factory, document_factory):
+    """Verify can view prefetched creator and signer."""
     creator = user_factory("creator_pf2@example.com")
     signer = user_factory("signer_pf2@example.com")
     document = document_factory(created_by=creator)
@@ -245,6 +262,7 @@ def test_can_view_prefetched_creator_and_signer(user_factory, document_factory):
 
 
 def test_can_view_prefetched_public_visibility_and_no_permission(user_factory, document_factory):
+    """Verify can view prefetched public visibility and no permission."""
     creator = user_factory("creator_pf3@example.com")
     public_user = user_factory("public_pf3@example.com")
     visibility_user = user_factory("viewer_pf3@example.com")
@@ -300,6 +318,7 @@ def test_can_view_prefetched_matches_can_view(user_factory, document_factory):
 
 
 def test_document_usability_permission_clean_requires_visibility_raises(user_factory, document_factory):
+    """Verify document usability permission clean requires visibility raises."""
     creator = user_factory("creator@example.com")
     client = user_factory("client@example.com")
     document = document_factory(created_by=creator)
@@ -316,6 +335,7 @@ def test_document_usability_permission_clean_requires_visibility_raises(user_fac
 
 
 def test_document_usability_permission_clean_allows_lawyer_without_visibility(user_factory, document_factory):
+    """Verify document usability permission clean allows lawyer without visibility."""
     creator = user_factory("creator@example.com")
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     document = document_factory(created_by=creator)
@@ -330,6 +350,7 @@ def test_document_usability_permission_clean_allows_lawyer_without_visibility(us
 
 
 def test_document_usability_permission_clean_allows_with_visibility(user_factory, document_factory):
+    """Verify document usability permission clean allows with visibility."""
     creator = user_factory("creator@example.com")
     client = user_factory("client@example.com")
     document = document_factory(created_by=creator)
@@ -351,6 +372,7 @@ def test_document_usability_permission_clean_allows_with_visibility(user_factory
 # ======================================================================
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="lawyer-b1@example.com", password="testpassword",
         first_name="Lawyer", last_name="B1", role="lawyer",
@@ -363,13 +385,17 @@ def lawyer():
 # ── DynamicDocument permission helpers ───────────────────────────────────────
 
 class TestDynamicDocumentPermissions:
+    """Tests for Dynamic Document Permissions."""
+
     def test_is_lawyer_true_for_lawyer_role(self, lawyer):
+        """Verify is lawyer true for lawyer role."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer,
         )
         assert doc.is_lawyer(lawyer) is True
 
     def test_is_lawyer_true_for_gym_lawyer_flag(self, client_user):
+        """Verify is lawyer true for gym lawyer flag."""
         client_user.is_gym_lawyer = True
         client_user.save()
         doc = DynamicDocument.objects.create(
@@ -378,18 +404,21 @@ class TestDynamicDocumentPermissions:
         assert doc.is_lawyer(client_user) is True
 
     def test_can_view_public_document(self, lawyer, client_user):
+        """Verify can view public document."""
         doc = DynamicDocument.objects.create(
             title="Pub", content="C", created_by=lawyer, is_public=True,
         )
         assert doc.can_view(client_user) is True
 
     def test_can_view_creator(self, client_user):
+        """Verify can view creator."""
         doc = DynamicDocument.objects.create(
             title="Own", content="C", created_by=client_user,
         )
         assert doc.can_view(client_user) is True
 
     def test_can_view_signer(self, lawyer, client_user):
+        """Verify can view signer."""
         doc = DynamicDocument.objects.create(
             title="Sig", content="C", created_by=lawyer,
             requires_signature=True,
@@ -398,6 +427,7 @@ class TestDynamicDocumentPermissions:
         assert doc.can_view(client_user) is True
 
     def test_can_view_explicit_visibility(self, lawyer, client_user):
+        """Verify can view explicit visibility."""
         doc = DynamicDocument.objects.create(
             title="Vis", content="C", created_by=lawyer,
         )
@@ -407,12 +437,14 @@ class TestDynamicDocumentPermissions:
         assert doc.can_view(client_user) is True
 
     def test_can_view_returns_false_when_no_access(self, lawyer, client_user):
+        """Verify can view returns false when no access."""
         doc = DynamicDocument.objects.create(
             title="No", content="C", created_by=lawyer,
         )
         assert doc.can_view(client_user) is False
 
     def test_can_use_assigned_to(self, lawyer, client_user):
+        """Verify can use assigned to."""
         doc = DynamicDocument.objects.create(
             title="Assign", content="C", created_by=lawyer,
             assigned_to=client_user,
@@ -420,12 +452,14 @@ class TestDynamicDocumentPermissions:
         assert doc.can_use(client_user) is True
 
     def test_can_use_public(self, lawyer, client_user):
+        """Verify can use public."""
         doc = DynamicDocument.objects.create(
             title="PubUse", content="C", created_by=lawyer, is_public=True,
         )
         assert doc.can_use(client_user) is True
 
     def test_can_use_explicit_usability(self, lawyer, client_user):
+        """Verify can use explicit usability."""
         doc = DynamicDocument.objects.create(
             title="Usa", content="C", created_by=lawyer,
         )
@@ -438,6 +472,7 @@ class TestDynamicDocumentPermissions:
         assert doc.can_use(client_user) is True
 
     def test_can_use_returns_false_when_no_access(self, lawyer, client_user):
+        """Verify can use returns false when no access."""
         doc = DynamicDocument.objects.create(
             title="NoUse", content="C", created_by=lawyer,
         )
@@ -450,21 +485,27 @@ class TestDynamicDocumentPermissions:
 # ── get_user_permission_level ────────────────────────────────────────────────
 
 class TestGetUserPermissionLevel:
+    """Tests for Get User Permission Level."""
+
     def test_lawyer_level(self, lawyer):
+        """Verify lawyer level."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         assert doc.get_user_permission_level(lawyer) == "lawyer"
 
     def test_owner_level(self, client_user):
+        """Verify owner level."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=client_user)
         assert doc.get_user_permission_level(client_user) == "owner"
 
     def test_assigned_to_level(self, lawyer, client_user):
+        """Verify assigned to level."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer, assigned_to=client_user,
         )
         assert doc.get_user_permission_level(client_user) == "usability"
 
     def test_published_template_usability(self, lawyer, client_user):
+        """Verify published template usability."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer,
             state="Published", assigned_to=None,
@@ -472,6 +513,7 @@ class TestGetUserPermissionLevel:
         assert doc.get_user_permission_level(client_user) == "usability"
 
     def test_explicit_usability_level(self, lawyer, client_user):
+        """Verify explicit usability level."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         DocumentVisibilityPermission.objects.create(
             document=doc, user=client_user, granted_by=lawyer,
@@ -482,6 +524,7 @@ class TestGetUserPermissionLevel:
         assert doc.get_user_permission_level(client_user) == "usability"
 
     def test_view_only_level(self, lawyer, client_user):
+        """Verify view only level."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         DocumentVisibilityPermission.objects.create(
             document=doc, user=client_user, granted_by=lawyer,
@@ -489,6 +532,7 @@ class TestGetUserPermissionLevel:
         assert doc.get_user_permission_level(client_user) == "view_only"
 
     def test_public_access_level(self, lawyer, client_user):
+        """Verify public access level."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer,
             is_public=True, state="Draft",
@@ -496,6 +540,7 @@ class TestGetUserPermissionLevel:
         assert doc.get_user_permission_level(client_user) == "public_access"
 
     def test_no_access_returns_none(self, lawyer, client_user):
+        """Verify no access returns none."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         assert doc.get_user_permission_level(client_user) is None
 
@@ -506,7 +551,10 @@ class TestGetUserPermissionLevel:
 # ── DocumentUsabilityPermission.clean ────────────────────────────────────────
 
 class TestDocumentUsabilityPermissionClean:
+    """Tests for Document Usability Permission Clean."""
+
     def test_clean_skips_validation_for_lawyer(self, lawyer):
+        """Verify clean skips validation for lawyer."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         perm = DocumentUsabilityPermission(
             document=doc, user=lawyer, granted_by=lawyer,
@@ -515,6 +563,7 @@ class TestDocumentUsabilityPermissionClean:
         assert perm.user == lawyer
 
     def test_clean_raises_without_visibility(self, lawyer, client_user):
+        """Verify clean raises without visibility."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         perm = DocumentUsabilityPermission(
             document=doc, user=client_user, granted_by=lawyer,
@@ -530,7 +579,10 @@ class TestDocumentUsabilityPermissionClean:
 # ── DynamicDocument.delete ───────────────────────────────────────────────────
 
 class TestDynamicDocumentDelete:
+    """Tests for Dynamic Document Delete."""
+
     def test_delete_removes_from_folders(self, lawyer, client_user):
+        """Verify delete removes from folders."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         folder = DocumentFolder.objects.create(name="F", owner=client_user)
         folder.documents.add(doc)
@@ -545,7 +597,10 @@ class TestDynamicDocumentDelete:
 # ── DocumentVisibilityPermission / DocumentUsabilityPermission str ──────────
 
 class TestPermissionStr:
+    """Tests for Permission Str."""
+
     def test_visibility_permission_str(self, lawyer, client_user):
+        """Verify visibility permission str."""
         doc = DynamicDocument.objects.create(title="DocTitle", content="C", created_by=lawyer)
         perm = DocumentVisibilityPermission.objects.create(
             document=doc, user=client_user, granted_by=lawyer,
@@ -555,6 +610,7 @@ class TestPermissionStr:
         assert "DocTitle" in s
 
     def test_usability_permission_str(self, lawyer, client_user):
+        """Verify usability permission str."""
         doc = DynamicDocument.objects.create(title="DocTitle", content="C", created_by=lawyer)
         DocumentVisibilityPermission.objects.create(
             document=doc, user=client_user, granted_by=lawyer,
@@ -571,6 +627,7 @@ class TestPermissionStr:
 
 
 def test_document_visibility_permission_str(user_factory, document_factory):
+    """Verify document visibility permission str."""
     creator = user_factory("creator@example.com")
     viewer = user_factory("viewer@example.com")
     document = document_factory(created_by=creator, title="Doc Title")
@@ -585,6 +642,7 @@ def test_document_visibility_permission_str(user_factory, document_factory):
 
 
 def test_document_visibility_permission_ordering_by_granted_at(user_factory, document_factory):
+    """Verify document visibility permission ordering by granted at."""
     creator = user_factory("creator@example.com")
     viewer_old = user_factory("viewer-old@example.com")
     viewer_new = user_factory("viewer-new@example.com")
@@ -618,6 +676,7 @@ def test_document_visibility_permission_ordering_by_granted_at(user_factory, doc
 
 
 def test_document_visibility_permission_unique_together(user_factory, document_factory):
+    """Verify document visibility permission unique together."""
     creator = user_factory("creator@example.com")
     viewer = user_factory("viewer@example.com")
     document = document_factory(created_by=creator)
@@ -640,6 +699,7 @@ def test_document_visibility_permission_unique_together(user_factory, document_f
 
 
 def test_document_usability_permission_str(user_factory, document_factory):
+    """Verify document usability permission str."""
     creator = user_factory("creator@example.com")
     editor = user_factory("editor@example.com")
     document = document_factory(created_by=creator, title="Doc Title")
@@ -659,6 +719,7 @@ def test_document_usability_permission_str(user_factory, document_factory):
 
 
 def test_document_usability_permission_unique_together(user_factory, document_factory):
+    """Verify document usability permission unique together."""
     creator = user_factory("creator@example.com")
     editor = user_factory("editor@example.com")
     document = document_factory(created_by=creator)
@@ -686,6 +747,7 @@ def test_document_usability_permission_unique_together(user_factory, document_fa
 
 
 def test_document_usability_permission_ordering_by_granted_at(user_factory, document_factory):
+    """Verify document usability permission ordering by granted at."""
     creator = user_factory("creator@example.com")
     editor_old = user_factory("editor-old@example.com")
     editor_new = user_factory("editor-new@example.com")
@@ -730,6 +792,7 @@ def test_document_usability_permission_ordering_by_granted_at(user_factory, docu
 
 
 def test_document_usability_permission_allows_gym_lawyer(user_factory, document_factory):
+    """Verify document usability permission allows gym lawyer."""
     creator = user_factory("creator@example.com")
     gym_lawyer = user_factory("gym@example.com", is_gym_lawyer=True)
     document = document_factory(created_by=creator)

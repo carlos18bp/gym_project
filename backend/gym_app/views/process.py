@@ -255,8 +255,8 @@ def update_process(request, pk):
         process.stages.add(new_stage)
     
     # Handle case files
-    case_file_ids = main_data.get('caseFileIds', [])
-    if case_file_ids:
+    case_file_ids = main_data.get('caseFileIds', None)
+    if case_file_ids is not None:
         process.case_files.set(CaseFile.objects.filter(id__in=case_file_ids))
     
     # Final save with all updates

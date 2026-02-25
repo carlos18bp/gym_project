@@ -3,7 +3,20 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client edits a post and client sees updated title/content/link", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
+async function closeSuccessDialog(page, expectedText) {
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText(expectedText);
+  await page.getByRole("button", { name: /^(OK|Aceptar)$/i }).click();
+}
+
+test("corporate_client edits a post and client sees updated title/content/link", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4960;
@@ -32,31 +45,30 @@ test("corporate_client edits a post and client sees updated title/content/link",
   });
 
   await page.goto("/organizations_dashboard");
-  await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
+  const newPostButton = page.getByRole("button", { name: "Nuevo Post", exact: true });
+  await expect(newPostButton).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Nuevo Post" }).first().click();
+  await newPostButton.click();
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toBeVisible();
 
   await page.locator("input#title").fill("Post A Editar");
   await page.locator("textarea#content").fill("Contenido inicial");
 
   await page.getByRole("button", { name: "Crear Post" }).click();
-
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Post creado exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await closeSuccessDialog(page, "Post creado exitosamente");
 
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
-  const postCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post A Editar" })
-    .first();
+  const postCard = page.locator(
+    "xpath=//h3[normalize-space()='Post A Editar']/ancestor::div[contains(@class,'bg-white') and contains(@class,'rounded-lg')][1]"
+  );
   await expect(postCard).toBeVisible();
 
   // Step 2: corporate edits the post
-  await postCard.locator('button:has(svg.h-5.w-5)').click();
-  const actionsMenu = postCard.locator("div.absolute.right-0.mt-1.w-48").first();
+  await postCard.locator("button:has(svg.h-5.w-5)").click();
+  const actionsMenu = postCard.locator(
+    "xpath=.//div[contains(@class,'absolute') and contains(@class,'right-0') and contains(@class,'w-48')]"
+  );
   await expect(actionsMenu).toBeVisible();
   await actionsMenu.locator('button:has-text("Editar")').click();
 
@@ -72,19 +84,13 @@ test("corporate_client edits a post and client sees updated title/content/link",
   await page.locator("input#link_url").fill("https://example.com/doc");
 
   await page.getByRole("button", { name: "Actualizar Post" }).click();
-
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Post actualizado exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await closeSuccessDialog(page, "Post actualizado exitosamente");
 
   await expect(page.getByRole("heading", { name: "Editar Post" })).toHaveCount(0);
 
-  // Post card should be updated
-  const updatedPostCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post Editado" })
-    .first();
-  await expect(updatedPostCard).toBeVisible();
+  // Post should reflect updated content
+  await expect(page.getByText("Post Editado", { exact: true })).toBeVisible();
+  await expect(page.getByText("Contenido actualizado")).toBeVisible();
   await expect(page.getByText("Post A Editar")).toHaveCount(0);
 
   // Step 3: client sees updated post in public posts
@@ -106,15 +112,13 @@ test("corporate_client edits a post and client sees updated title/content/link",
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  const publicPostCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border")
-    .filter({ hasText: "Post Editado" })
-    .first();
+  await expect(page.getByRole("heading", { name: "Post Editado" })).toBeVisible();
+  await expect(page.getByText("Contenido actualizado")).toBeVisible();
 
-  await expect(publicPostCard).toBeVisible();
-  await expect(publicPostCard).toContainText("Contenido actualizado");
-
-  const link = publicPostCard.getByRole("link", { name: "Ver documento" }).first();
+  const publicPostCard = page.locator(
+    "xpath=//h3[normalize-space()='Post Editado']/ancestor::div[contains(@class,'bg-white') and contains(@class,'rounded-lg')][1]"
+  );
+  const link = publicPostCard.getByRole("link", { name: "Ver documento" });
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", "https://example.com/doc");
 

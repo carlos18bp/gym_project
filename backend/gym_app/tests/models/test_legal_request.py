@@ -1,33 +1,37 @@
-import pytest
+"""Tests for legal_request module."""
 import os
 from datetime import datetime, timedelta
 from unittest.mock import patch
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from gym_app.models.legal_request import (
-    LegalRequestType,
-    LegalDiscipline,
-    LegalRequestFiles,
-    LegalRequest,
-    LegalRequestResponse,
-)
+
 from gym_app.models import User
+from gym_app.models.legal_request import (
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestFiles,
+    LegalRequestResponse,
+    LegalRequestType,
+)
+
 
 @pytest.fixture
 def legal_request_type():
-    """Create a legal request type for testing"""
+    """Create a legal request type for testing."""
     return LegalRequestType.objects.create(name="Consultation")
 
 @pytest.fixture
 def legal_discipline():
-    """Create a legal discipline for testing"""
+    """Create a legal discipline for testing."""
     return LegalDiscipline.objects.create(name="Corporate Law")
 
 
 @pytest.fixture
 def user():
-    """Create a user associated with legal requests for testing"""
+    """Create a user associated with legal requests for testing."""
     return User.objects.create_user(
         email="john.doe@example.com",
         password="password123",
@@ -37,7 +41,7 @@ def user():
 
 @pytest.fixture
 def legal_request_file():
-    """Create a legal request file for testing"""
+    """Create a legal request file for testing."""
     test_file = SimpleUploadedFile(
         "test_document.pdf",
         b"File content for testing",
@@ -47,7 +51,7 @@ def legal_request_file():
 
 @pytest.fixture
 def legal_request(legal_request_type, legal_discipline, user):
-    """Create a legal request for testing"""
+    """Create a legal request for testing."""
     return LegalRequest.objects.create(
         user=user,
         request_type=legal_request_type,
@@ -57,16 +61,17 @@ def legal_request(legal_request_type, legal_discipline, user):
 
 @pytest.mark.django_db
 class TestLegalRequestType:
+    """Tests for Legal Request Type."""
     
     def test_create_legal_request_type(self):
-        """Test creating a legal request type"""
+        """Test creating a legal request type."""
         request_type = LegalRequestType.objects.create(name="Contract Review")
         
         assert request_type.id is not None
         assert request_type.name == "Contract Review"
     
     def test_unique_name_constraint(self, legal_request_type):
-        """Test unique name constraint for legal request types"""
+        """Test unique name constraint for legal request types."""
         with transaction.atomic():
             with pytest.raises(IntegrityError) as exc_info:
                 LegalRequestType.objects.create(name=legal_request_type.name)
@@ -74,21 +79,22 @@ class TestLegalRequestType:
         assert LegalRequestType.objects.filter(name=legal_request_type.name).count() == 1
     
     def test_str_representation(self, legal_request_type):
-        """Test string representation of legal request type"""
+        """Test string representation of legal request type."""
         assert str(legal_request_type) == legal_request_type.name
 
 @pytest.mark.django_db
 class TestLegalDiscipline:
+    """Tests for Legal Discipline."""
     
     def test_create_legal_discipline(self):
-        """Test creating a legal discipline"""
+        """Test creating a legal discipline."""
         discipline = LegalDiscipline.objects.create(name="Family Law")
         
         assert discipline.id is not None
         assert discipline.name == "Family Law"
     
     def test_unique_name_constraint(self, legal_discipline):
-        """Test unique name constraint for legal disciplines"""
+        """Test unique name constraint for legal disciplines."""
         with transaction.atomic():
             with pytest.raises(IntegrityError) as exc_info:
                 LegalDiscipline.objects.create(name=legal_discipline.name)
@@ -96,14 +102,15 @@ class TestLegalDiscipline:
         assert LegalDiscipline.objects.filter(name=legal_discipline.name).count() == 1
     
     def test_str_representation(self, legal_discipline):
-        """Test string representation of legal discipline"""
+        """Test string representation of legal discipline."""
         assert str(legal_discipline) == legal_discipline.name
 
 @pytest.mark.django_db
 class TestLegalRequestFiles:
+    """Tests for Legal Request Files."""
     
     def test_create_legal_request_file(self):
-        """Test creating a legal request file"""
+        """Test creating a legal request file."""
         test_file = SimpleUploadedFile(
             "new_document.pdf",
             b"New file content",
@@ -117,15 +124,16 @@ class TestLegalRequestFiles:
         assert file_obj.created_at is not None
     
     def test_str_representation(self, legal_request_file):
-        """Test string representation of legal request file"""
+        """Test string representation of legal request file."""
         file_name = os.path.basename(legal_request_file.file.name)
         assert str(legal_request_file) == file_name
 
 @pytest.mark.django_db
 class TestLegalRequest:
+    """Tests for Legal Request."""
 
     def test_create_legal_request(self, legal_request_type, legal_discipline, user):
-        """Test creating a legal request"""
+        """Test creating a legal request."""
         request = LegalRequest.objects.create(
             user=user,
             request_type=legal_request_type,
@@ -143,7 +151,7 @@ class TestLegalRequest:
         assert request.files.count() == 0
     
     def test_add_files_to_legal_request(self, legal_request, legal_request_file):
-        """Test adding files to a legal request"""
+        """Test adding files to a legal request."""
         # Add the existing file
         legal_request.files.add(legal_request_file)
         
@@ -166,7 +174,7 @@ class TestLegalRequest:
         assert any("additional_document" in name for name in file_names)
     
     def test_remove_file_from_legal_request(self, legal_request, legal_request_file):
-        """Test removing a file from a legal request"""
+        """Test removing a file from a legal request."""
         # First add the file
         legal_request.files.add(legal_request_file)
         assert legal_request.files.count() == 1
@@ -181,14 +189,17 @@ class TestLegalRequest:
         assert LegalRequestFiles.objects.filter(id=legal_request_file.id).exists()
     
     def test_str_representation(self, legal_request):
-        """Test string representation of legal request"""
+        """Test string representation of legal request."""
         expected = f"{legal_request.request_number} - {legal_request.user.first_name} {legal_request.user.last_name}"
         assert str(legal_request) == expected
 
 
 @pytest.mark.django_db
 class TestLegalRequestResponse:
+    """Tests for Legal Request Response."""
+
     def test_response_ordering_by_created_at(self, legal_request, user):
+        """Verify response ordering by created at."""
         older = LegalRequestResponse.objects.create(
             legal_request=legal_request,
             response_text="Primera",
@@ -222,7 +233,10 @@ class TestLegalRequestResponse:
 
 @pytest.mark.django_db
 class TestLegalRequestEdges:
+    """Tests for Legal Request Edges."""
+
     def test_request_number_auto_generated(self, client_user):
+        """Verify request number auto generated."""
         rt = LegalRequestType.objects.create(name="Consulta")
         ld = LegalDiscipline.objects.create(name="Civil")
         lr = LegalRequest.objects.create(
@@ -233,6 +247,7 @@ class TestLegalRequestEdges:
         assert lr.request_number.startswith(f"SOL-{year}-")
 
     def test_request_number_increments(self, client_user):
+        """Verify request number increments."""
         rt = LegalRequestType.objects.create(name="Consulta")
         ld = LegalDiscipline.objects.create(name="Civil")
         lr1 = LegalRequest.objects.create(
@@ -246,6 +261,7 @@ class TestLegalRequestEdges:
         assert seq2 == seq1 + 1
 
     def test_legal_request_str_with_user(self, client_user):
+        """Verify legal request str with user."""
         rt = LegalRequestType.objects.create(name="Consulta")
         ld = LegalDiscipline.objects.create(name="Civil")
         lr = LegalRequest.objects.create(
@@ -256,6 +272,7 @@ class TestLegalRequestEdges:
         assert client_user.first_name in s
 
     def test_legal_request_response_str(self, client_user):
+        """Verify legal request response str."""
         rt = LegalRequestType.objects.create(name="Consulta")
         ld = LegalDiscipline.objects.create(name="Civil")
         lr = LegalRequest.objects.create(
@@ -269,11 +286,13 @@ class TestLegalRequestEdges:
         assert "client response" in s
 
     def test_legal_request_files_str(self):
+        """Verify legal request files str."""
         f = SimpleUploadedFile("legal.pdf", b"x", content_type="application/pdf")
         lrf = LegalRequestFiles.objects.create(file=f)
         assert "legal" in str(lrf)
 
     def test_legal_request_files_delete_signal(self):
+        """Verify legal request files delete signal."""
         f = SimpleUploadedFile("del.pdf", b"x", content_type="application/pdf")
         lrf = LegalRequestFiles.objects.create(file=f)
         path = lrf.file.path
@@ -291,9 +310,11 @@ class TestLegalRequestEdges:
 
 @pytest.mark.django_db
 class TestLegalRequestStrWithoutUser:
+    """Tests for Legal Request Str Without User."""
+
     def test_str_returns_request_number_only_when_user_is_none(self):
-        """
-        LegalRequest.__str__() should return just the request_number
+        """LegalRequest.__str__() should return just the request_number.
+        
         when the user field is None (line 121).
 
         The user FK is NOT NULL at DB level, so we temporarily replace

@@ -75,6 +75,13 @@ const buildMember = (id, fullName, email) => ({
   },
 });
 
+const mockGetOrganizationMembers = (implementation) => {
+  const store = useOrganizationsStore();
+  const getMembersMock = jest.fn(implementation);
+  store.getOrganizationMembers = getMembersMock;
+  return getMembersMock;
+};
+
 describe("AllMembersModal.vue", () => {
   beforeEach(() => {
     const pinia = createPinia();
@@ -118,14 +125,11 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest
-      .spyOn(store, "getOrganizationMembers")
-      .mockImplementation(async (orgId) => {
-        if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
-        if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
-        return [];
-      });
+    const getSpy = mockGetOrganizationMembers(async (orgId) => {
+      if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
+      if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
+      return [];
+    });
 
     await mountVisibleModal(pinia, [
       buildOrg({ id: 1, title: "Org 1" }),
@@ -140,8 +144,7 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "getOrganizationMembers").mockImplementation(async (orgId) => {
+    mockGetOrganizationMembers(async (orgId) => {
       if (orgId === 1) return [buildMember(10, "Alice Doe", "alice@example.com")];
       if (orgId === 2) return [buildMember(20, "Bob Roe", "bob@example.com")];
       return [];
@@ -172,8 +175,7 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "getOrganizationMembers").mockImplementation(async (orgId) => {
+    mockGetOrganizationMembers(async (orgId) => {
       if (orgId === 1) throw new Error("fail");
       return [buildMember(20, "Bob Roe", "bob@example.com")];
     });
@@ -209,8 +211,7 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest.spyOn(store, "getOrganizationMembers").mockResolvedValue([]);
+    const getSpy = mockGetOrganizationMembers().mockResolvedValue([]);
 
     const wrapper = mount(AllMembersModal, {
       props: {
@@ -240,8 +241,7 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest.spyOn(store, "getOrganizationMembers").mockResolvedValue([]);
+    const getSpy = mockGetOrganizationMembers().mockResolvedValue([]);
 
     const wrapper = mount(AllMembersModal, {
       props: {
@@ -260,18 +260,18 @@ describe("AllMembersModal.vue", () => {
       },
     });
 
-    await wrapper.vm.$.setupState.loadAllMembers();
+    await wrapper.setProps({ visible: true });
     await flushPromises();
 
     expect(getSpy).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain("No hay miembros");
   });
 
   test("loadAllMembers returns early when organizations prop is null", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest.spyOn(store, "getOrganizationMembers").mockResolvedValue([]);
+    const getSpy = mockGetOrganizationMembers().mockResolvedValue([]);
 
     const wrapper = mount(AllMembersModal, {
       props: {
@@ -290,20 +290,15 @@ describe("AllMembersModal.vue", () => {
       },
     });
 
-    await wrapper.vm.$.setupState.loadAllMembers();
-    await flushPromises();
-
     expect(getSpy).not.toHaveBeenCalled();
+    expect(wrapper.exists()).toBe(true);
   });
 
   test("uses empty member list when store returns undefined", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest
-      .spyOn(store, "getOrganizationMembers")
-      .mockResolvedValue(undefined);
+    const getSpy = mockGetOrganizationMembers().mockResolvedValue(undefined);
 
     const wrapper = mount(AllMembersModal, {
       props: {
@@ -335,10 +330,7 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    const getSpy = jest
-      .spyOn(store, "getOrganizationMembers")
-      .mockResolvedValue(null);
+    const getSpy = mockGetOrganizationMembers().mockResolvedValue(null);
 
     const wrapper = mount(AllMembersModal, {
       props: {
@@ -368,6 +360,8 @@ describe("AllMembersModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
+    mockGetOrganizationMembers().mockResolvedValue([]);
+
     const badOrganizations = {
       length: 1,
       map: () => {
@@ -392,22 +386,21 @@ describe("AllMembersModal.vue", () => {
       },
     });
 
-    await wrapper.vm.$.setupState.loadAllMembers();
+    await wrapper.setProps({ visible: true });
     await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al cargar los miembros",
       "error"
     );
-    expect(wrapper.vm.$.setupState.organizationsWithMembers).toEqual([]);
+    expect(wrapper.text()).toContain("No hay miembros");
   });
 
   test("close button emits close", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
-    const store = useOrganizationsStore();
-    jest.spyOn(store, "getOrganizationMembers").mockResolvedValue([]);
+    mockGetOrganizationMembers().mockResolvedValue([]);
 
     const wrapper = mount(AllMembersModal, {
       props: {

@@ -164,6 +164,22 @@ export async function installProcessFormApiMocks(
       return { status: 200, contentType: "application/json", body: "[]" };
     }
 
+    if (apiPath === "google-captcha/site-key/") {
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-key" }) };
+    }
+
+    if (apiPath === "recent-processes/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+
+    if (apiPath === "dynamic-documents/recent/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+
+    if (apiPath === "legal-updates/active/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+
     return null;
   });
 }

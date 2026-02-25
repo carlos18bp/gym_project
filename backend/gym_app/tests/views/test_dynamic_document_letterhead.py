@@ -1,20 +1,22 @@
+"""Tests for dynamic_document_letterhead module."""
 import io
 import os
+
 import pytest
-from PIL import Image
-from django.urls import reverse
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from PIL import Image
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
 from gym_app.models import DynamicDocument
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -25,6 +27,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic@example.com",
         password="testpassword",
@@ -35,6 +38,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc letterhead",
         content="<p>x</p>",
@@ -45,7 +49,10 @@ def document(lawyer_user):
 
 @pytest.mark.django_db
 class TestUserGlobalLetterhead:
+    """Tests for User Global Letterhead."""
+
     def test_upload_user_letterhead_image_basic_user_forbidden(self, api_client, basic_user):
+        """Verify upload user letterhead image basic user forbidden."""
         api_client.force_authenticate(user=basic_user)
 
         url = reverse("upload-user-letterhead-image")
@@ -56,6 +63,7 @@ class TestUserGlobalLetterhead:
         assert "Los usuarios básicos" in response.data["error"]
 
     def test_upload_user_letterhead_image_no_image(self, api_client, lawyer_user):
+        """Verify upload user letterhead image no image."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-user-letterhead-image")
@@ -65,6 +73,7 @@ class TestUserGlobalLetterhead:
         assert "Se requiere un archivo de imagen" in response.data["detail"]
 
     def test_upload_user_letterhead_image_wrong_extension(self, api_client, lawyer_user):
+        """Verify upload user letterhead image wrong extension."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-user-letterhead-image")
@@ -75,6 +84,7 @@ class TestUserGlobalLetterhead:
         assert "Solo se permiten archivos PNG" in response.data["detail"]
 
     def test_upload_user_letterhead_image_too_large(self, api_client, lawyer_user):
+        """Verify upload user letterhead image too large."""
         api_client.force_authenticate(user=lawyer_user)
 
         large_content = b"0" * (10 * 1024 * 1024 + 1)
@@ -87,6 +97,7 @@ class TestUserGlobalLetterhead:
         assert "demasiado grande" in response.data["detail"].lower()
 
     def test_upload_user_letterhead_image_invalid_image(self, api_client, lawyer_user):
+        """Verify upload user letterhead image invalid image."""
         api_client.force_authenticate(user=lawyer_user)
 
         image = SimpleUploadedFile("membrete.png", b"not-an-image", content_type="image/png")
@@ -98,6 +109,7 @@ class TestUserGlobalLetterhead:
         assert "imagen inválido" in response.data["detail"].lower()
 
     def test_get_user_letterhead_image_not_configured(self, api_client, lawyer_user):
+        """Verify get user letterhead image not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-user-letterhead-image")
@@ -107,6 +119,7 @@ class TestUserGlobalLetterhead:
         assert "No tienes una imagen de membrete global configurada" in response.data["detail"]
 
     def test_delete_user_letterhead_image_not_configured(self, api_client, lawyer_user):
+        """Verify delete user letterhead image not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-user-letterhead-image")
@@ -116,6 +129,7 @@ class TestUserGlobalLetterhead:
         assert "para eliminar" in response.data["detail"].lower()
 
     def test_delete_user_letterhead_image_basic_user_forbidden(self, api_client, basic_user):
+        """Verify delete user letterhead image basic user forbidden."""
         api_client.force_authenticate(user=basic_user)
 
         url = reverse("delete-user-letterhead-image")
@@ -125,6 +139,7 @@ class TestUserGlobalLetterhead:
         assert "Los usuarios básicos" in response.data["error"]
 
     def test_get_user_letterhead_image_internal_error(self, api_client, lawyer_user, settings, tmp_path, monkeypatch):
+        """Verify get user letterhead image internal error."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -148,6 +163,7 @@ class TestUserGlobalLetterhead:
         assert "Error al obtener la imagen" in response.data["detail"]
 
     def test_delete_user_letterhead_image_internal_error(self, api_client, lawyer_user, settings, tmp_path, monkeypatch):
+        """Verify delete user letterhead image internal error."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -171,6 +187,7 @@ class TestUserGlobalLetterhead:
         assert "Error al eliminar la imagen" in response.data["detail"]
 
     def test_upload_get_delete_user_letterhead_image_success(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify upload get delete user letterhead image success."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -185,7 +202,8 @@ class TestUserGlobalLetterhead:
 
         assert response.status_code == status.HTTP_201_CREATED
         lawyer_user.refresh_from_db()
-        assert lawyer_user.letterhead_image is not None and lawyer_user.letterhead_image.name != ""
+        assert lawyer_user.letterhead_image is not None
+        assert lawyer_user.letterhead_image.name != ""
 
         get_url = reverse("get-user-letterhead-image")
         response = api_client.get(get_url)
@@ -201,6 +219,7 @@ class TestUserGlobalLetterhead:
         assert not lawyer_user.letterhead_image
 
     def test_upload_user_letterhead_image_warning_aspect_ratio(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify upload user letterhead image warning aspect ratio."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -217,6 +236,7 @@ class TestUserGlobalLetterhead:
         assert "warnings" in response.data
 
     def test_get_user_letterhead_image_missing_file(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify get user letterhead image missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -239,6 +259,7 @@ class TestUserGlobalLetterhead:
         assert "no se encuentra en el servidor" in response.data["detail"].lower()
 
     def test_delete_document_word_template_missing_file(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify delete document word template missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -262,6 +283,7 @@ class TestUserGlobalLetterhead:
         assert not document.letterhead_word_template
 
     def test_delete_user_word_template_missing_file(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify delete user word template missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -285,6 +307,7 @@ class TestUserGlobalLetterhead:
         assert not lawyer_user.letterhead_word_template
 
     def test_delete_letterhead_image_missing_file(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify delete letterhead image missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -308,6 +331,7 @@ class TestUserGlobalLetterhead:
         assert not document.letterhead_image
 
     def test_delete_user_letterhead_image_missing_file(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify delete user letterhead image missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -333,7 +357,10 @@ class TestUserGlobalLetterhead:
 
 @pytest.mark.django_db
 class TestDocumentLetterhead:
+    """Tests for Document Letterhead."""
+
     def test_upload_letterhead_image_no_image(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image no image."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
@@ -343,6 +370,7 @@ class TestDocumentLetterhead:
         assert "No se proporcionó ninguna imagen" in response.data["detail"]
 
     def test_upload_letterhead_image_wrong_extension(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image wrong extension."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
@@ -353,6 +381,7 @@ class TestDocumentLetterhead:
         assert "Solo se permiten archivos PNG" in response.data["detail"]
 
     def test_upload_letterhead_image_too_large(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image too large."""
         api_client.force_authenticate(user=lawyer_user)
 
         large_content = b"0" * (10 * 1024 * 1024 + 1)
@@ -365,6 +394,7 @@ class TestDocumentLetterhead:
         assert "demasiado grande" in response.data["detail"].lower()
 
     def test_upload_letterhead_image_invalid_image(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image invalid image."""
         api_client.force_authenticate(user=lawyer_user)
 
         image = SimpleUploadedFile("doc.png", b"not-an-image", content_type="image/png")
@@ -376,6 +406,7 @@ class TestDocumentLetterhead:
         assert "imagen inválido" in response.data["detail"].lower()
 
     def test_get_letterhead_image_not_configured(self, api_client, lawyer_user, document):
+        """Verify get letterhead image not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-letterhead-image", kwargs={"pk": document.id})
@@ -385,6 +416,7 @@ class TestDocumentLetterhead:
         assert "no tiene imagen de membrete" in response.data["detail"]
 
     def test_get_letterhead_image_not_found(self, api_client, lawyer_user):
+        """Verify get letterhead image not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-letterhead-image", kwargs={"pk": 9999})
@@ -394,6 +426,7 @@ class TestDocumentLetterhead:
         assert "document not found" in response.data["detail"].lower()
 
     def test_get_letterhead_image_forbidden_when_no_visibility(self, api_client, lawyer_user, document):
+        """Verify get letterhead image forbidden when no visibility."""
         client_user = User.objects.create_user(
             email="client@example.com",
             password="testpassword",
@@ -408,6 +441,7 @@ class TestDocumentLetterhead:
         assert "permission to view" in response.data["detail"].lower()
 
     def test_delete_letterhead_image_not_configured(self, api_client, lawyer_user, document):
+        """Verify delete letterhead image not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-letterhead-image", kwargs={"pk": document.id})
@@ -417,6 +451,7 @@ class TestDocumentLetterhead:
         assert "para eliminar" in response.data["detail"].lower()
 
     def test_delete_letterhead_image_not_found(self, api_client, lawyer_user):
+        """Verify delete letterhead image not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-letterhead-image", kwargs={"pk": 9999})
@@ -426,6 +461,7 @@ class TestDocumentLetterhead:
         assert "document not found" in response.data["detail"].lower()
 
     def test_delete_letterhead_image_forbidden_when_no_usability(self, api_client, lawyer_user, document):
+        """Verify delete letterhead image forbidden when no usability."""
         client_user = User.objects.create_user(
             email="client2@example.com",
             password="testpassword",
@@ -440,6 +476,7 @@ class TestDocumentLetterhead:
         assert "permission to access" in response.data["detail"].lower()
 
     def test_upload_letterhead_image_not_found(self, api_client, lawyer_user):
+        """Verify upload letterhead image not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-letterhead-image", kwargs={"pk": 9999})
@@ -449,6 +486,7 @@ class TestDocumentLetterhead:
         assert "document not found" in response.data["detail"].lower()
 
     def test_upload_letterhead_image_forbidden_when_no_usability(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image forbidden when no usability."""
         client_user = User.objects.create_user(
             email="client3@example.com",
             password="testpassword",
@@ -463,6 +501,7 @@ class TestDocumentLetterhead:
         assert "permission to access" in response.data["detail"].lower()
 
     def test_upload_get_delete_letterhead_image_success(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify upload get delete letterhead image success."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -477,7 +516,8 @@ class TestDocumentLetterhead:
 
         assert response.status_code == status.HTTP_201_CREATED
         document.refresh_from_db()
-        assert document.letterhead_image is not None and document.letterhead_image.name != ""
+        assert document.letterhead_image is not None
+        assert document.letterhead_image.name != ""
 
         get_url = reverse("get-letterhead-image", kwargs={"pk": document.id})
         response = api_client.get(get_url)
@@ -493,6 +533,7 @@ class TestDocumentLetterhead:
         assert not document.letterhead_image
 
     def test_upload_letterhead_image_warning_aspect_ratio(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify upload letterhead image warning aspect ratio."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -509,6 +550,7 @@ class TestDocumentLetterhead:
         assert "warnings" in response.data
 
     def test_get_letterhead_image_missing_file(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify get letterhead image missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -533,7 +575,10 @@ class TestDocumentLetterhead:
 
 @pytest.mark.django_db
 class TestUserWordLetterheadTemplate:
+    """Tests for User Word Letterhead Template."""
+
     def test_upload_user_word_template_basic_user_forbidden(self, api_client, basic_user):
+        """Verify upload user word template basic user forbidden."""
         api_client.force_authenticate(user=basic_user)
 
         url = reverse("upload-user-letterhead-word-template")
@@ -549,6 +594,7 @@ class TestUserWordLetterheadTemplate:
         assert "Los usuarios básicos" in response.data["error"]
 
     def test_delete_user_word_template_basic_user_forbidden(self, api_client, basic_user):
+        """Verify delete user word template basic user forbidden."""
         api_client.force_authenticate(user=basic_user)
 
         url = reverse("delete-user-letterhead-word-template")
@@ -558,6 +604,7 @@ class TestUserWordLetterheadTemplate:
         assert "Los usuarios básicos" in response.data["error"]
 
     def test_upload_user_word_template_missing_file(self, api_client, lawyer_user):
+        """Verify upload user word template missing file."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-user-letterhead-word-template")
@@ -567,6 +614,7 @@ class TestUserWordLetterheadTemplate:
         assert "Se requiere un archivo de plantilla" in response.data["detail"]
 
     def test_upload_user_word_template_invalid_extension(self, api_client, lawyer_user):
+        """Verify upload user word template invalid extension."""
         api_client.force_authenticate(user=lawyer_user)
 
         template = SimpleUploadedFile("template.txt", b"docx-content", content_type="text/plain")
@@ -578,6 +626,7 @@ class TestUserWordLetterheadTemplate:
         assert "Solo se permiten archivos .docx" in response.data["detail"]
 
     def test_get_user_word_template_not_configured(self, api_client, lawyer_user):
+        """Verify get user word template not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-user-letterhead-word-template")
@@ -587,6 +636,7 @@ class TestUserWordLetterheadTemplate:
         assert "plantilla word de membrete global configurada" in response.data["detail"].lower()
 
     def test_delete_user_word_template_not_configured(self, api_client, lawyer_user):
+        """Verify delete user word template not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-user-letterhead-word-template")
@@ -596,6 +646,7 @@ class TestUserWordLetterheadTemplate:
         assert "para eliminar" in response.data["detail"].lower()
 
     def test_upload_get_delete_user_word_template(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify upload get delete user word template."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -610,7 +661,8 @@ class TestUserWordLetterheadTemplate:
 
         assert response.status_code == status.HTTP_201_CREATED
         lawyer_user.refresh_from_db()
-        assert lawyer_user.letterhead_word_template is not None and lawyer_user.letterhead_word_template.name != ""
+        assert lawyer_user.letterhead_word_template is not None
+        assert lawyer_user.letterhead_word_template.name != ""
 
         get_url = reverse("get-user-letterhead-word-template")
         response = api_client.get(get_url)
@@ -626,6 +678,7 @@ class TestUserWordLetterheadTemplate:
         assert not lawyer_user.letterhead_word_template
 
     def test_upload_user_word_template_too_large(self, api_client, lawyer_user):
+        """Verify upload user word template too large."""
         api_client.force_authenticate(user=lawyer_user)
 
         large_content = b"0" * (10 * 1024 * 1024 + 1)
@@ -642,6 +695,7 @@ class TestUserWordLetterheadTemplate:
         assert "demasiado grande" in response.data["detail"].lower()
 
     def test_get_user_word_template_missing_file(self, api_client, lawyer_user, settings, tmp_path):
+        """Verify get user word template missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -666,7 +720,10 @@ class TestUserWordLetterheadTemplate:
 
 @pytest.mark.django_db
 class TestDocumentWordLetterheadTemplate:
+    """Tests for Document Word Letterhead Template."""
+
     def test_get_document_word_template_forbidden_when_no_visibility(self, api_client, lawyer_user, document):
+        """Verify get document word template forbidden when no visibility."""
         client_user = User.objects.create_user(
             email="client4@example.com",
             password="testpassword",
@@ -681,6 +738,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "permission to view" in response.data["detail"].lower()
 
     def test_delete_document_word_template_forbidden_when_no_usability(self, api_client, lawyer_user, document):
+        """Verify delete document word template forbidden when no usability."""
         client_user = User.objects.create_user(
             email="client5@example.com",
             password="testpassword",
@@ -695,6 +753,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "permission to access" in response.data["detail"].lower()
 
     def test_upload_document_word_template_forbidden_when_no_usability(self, api_client, lawyer_user, document):
+        """Verify upload document word template forbidden when no usability."""
         client_user = User.objects.create_user(
             email="client6@example.com",
             password="testpassword",
@@ -708,6 +767,7 @@ class TestDocumentWordLetterheadTemplate:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert "permission to access" in response.data["detail"].lower()
     def test_upload_document_word_template_missing_file(self, api_client, lawyer_user, document):
+        """Verify upload document word template missing file."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
@@ -717,6 +777,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "Se requiere un archivo de plantilla" in response.data["detail"]
 
     def test_upload_document_word_template_invalid_extension(self, api_client, lawyer_user, document):
+        """Verify upload document word template invalid extension."""
         api_client.force_authenticate(user=lawyer_user)
 
         template = SimpleUploadedFile("doc-template.txt", b"docx-content", content_type="text/plain")
@@ -728,6 +789,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "Solo se permiten archivos .docx" in response.data["detail"]
 
     def test_get_document_word_template_not_configured(self, api_client, lawyer_user, document):
+        """Verify get document word template not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-document-letterhead-word-template", kwargs={"pk": document.id})
@@ -737,6 +799,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "plantilla word de membrete" in response.data["detail"].lower()
 
     def test_delete_document_word_template_not_configured(self, api_client, lawyer_user, document):
+        """Verify delete document word template not configured."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-document-letterhead-word-template", kwargs={"pk": document.id})
@@ -746,6 +809,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "para eliminar" in response.data["detail"].lower()
 
     def test_get_document_word_template_not_found(self, api_client, lawyer_user):
+        """Verify get document word template not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("get-document-letterhead-word-template", kwargs={"pk": 9999})
@@ -755,6 +819,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "document not found" in response.data["detail"].lower()
 
     def test_delete_document_word_template_not_found(self, api_client, lawyer_user):
+        """Verify delete document word template not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("delete-document-letterhead-word-template", kwargs={"pk": 9999})
@@ -764,6 +829,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "document not found" in response.data["detail"].lower()
 
     def test_upload_document_word_template_not_found(self, api_client, lawyer_user):
+        """Verify upload document word template not found."""
         api_client.force_authenticate(user=lawyer_user)
 
         template = SimpleUploadedFile(
@@ -779,6 +845,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "document not found" in response.data["detail"].lower()
 
     def test_upload_get_delete_document_word_template(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify upload get delete document word template."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -793,7 +860,8 @@ class TestDocumentWordLetterheadTemplate:
 
         assert response.status_code == status.HTTP_201_CREATED
         document.refresh_from_db()
-        assert document.letterhead_word_template is not None and document.letterhead_word_template.name != ""
+        assert document.letterhead_word_template is not None
+        assert document.letterhead_word_template.name != ""
 
         get_url = reverse("get-document-letterhead-word-template", kwargs={"pk": document.id})
         response = api_client.get(get_url)
@@ -809,6 +877,7 @@ class TestDocumentWordLetterheadTemplate:
         assert not document.letterhead_word_template
 
     def test_upload_document_word_template_too_large(self, api_client, lawyer_user, document):
+        """Verify upload document word template too large."""
         api_client.force_authenticate(user=lawyer_user)
 
         large_content = b"0" * (10 * 1024 * 1024 + 1)
@@ -825,6 +894,7 @@ class TestDocumentWordLetterheadTemplate:
         assert "demasiado grande" in response.data["detail"].lower()
 
     def test_get_document_word_template_missing_file(self, api_client, lawyer_user, document, settings, tmp_path):
+        """Verify get document word template missing file."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=lawyer_user)
 
@@ -862,12 +932,12 @@ Targets uncovered lines:
 """
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
-from gym_app.models.dynamic_document import DynamicDocument
+from gym_app.models.dynamic_document import DynamicDocument  # noqa: F811
 
 User = get_user_model()
 
@@ -878,6 +948,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def b10_lawyer_user():
+    """B10 lawyer user."""
     return User.objects.create_user(
         email="lawyer_b10@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -887,6 +958,7 @@ def b10_lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def b10_basic_user():
+    """B10 basic user."""
     return User.objects.create_user(
         email="basic_b10@test.com", password="pw", role="basic",
     )
@@ -895,6 +967,7 @@ def b10_basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def b10_document(b10_lawyer_user):
+    """B10 document."""
     return DynamicDocument.objects.create(
         title="Doc B10", content="<p>Hello</p>", state="Draft",
         created_by=b10_lawyer_user, is_public=True,
@@ -907,6 +980,7 @@ def b10_document(b10_lawyer_user):
 
 @pytest.mark.django_db
 class TestDocumentLetterheadImage:
+    """Tests for Document Letterhead Image."""
 
     def test_upload_letterhead_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 925-931: document not found."""
@@ -950,6 +1024,7 @@ class TestDocumentLetterheadImage:
 
 @pytest.mark.django_db
 class TestDocumentWordTemplate:
+    """Tests for Document Word Template."""
 
     def test_upload_word_template_doc_not_found(self, api_client, b10_lawyer_user):
         """Line 1080-1086: document not found."""
@@ -1017,6 +1092,7 @@ class TestDocumentWordTemplate:
 
 @pytest.mark.django_db
 class TestUserWordTemplate:
+    """Tests for User Word Template."""
 
     def test_upload_user_word_template_no_file(self, api_client, b10_lawyer_user):
         """Line 1183-1187: no template file provided."""
@@ -1069,6 +1145,7 @@ class TestUserWordTemplate:
 
 @pytest.mark.django_db
 class TestUserLetterheadImage:
+    """Tests for User Letterhead Image."""
 
     def test_upload_user_letterhead_basic_forbidden(self, api_client, b10_basic_user):
         """Line 1359-1362: basic user forbidden."""
@@ -1104,30 +1181,36 @@ class TestUserLetterheadImage:
 # ======================================================================
 
 """Batch 20 – 20 tests: user letterhead image/word CRUD + helper."""
-import io, os, pytest
-from unittest.mock import patch, MagicMock
-from PIL import Image as PILImage
+import io  # noqa: F811
+import os  # noqa: F811
+
+import pytest
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-from gym_app.models import DynamicDocument
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from PIL import Image as PILImage
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models import DynamicDocument  # noqa: F811
 
 User = get_user_model()
 
 @pytest.fixture
 def b20_api():
+    """B20 api."""
     return APIClient()
 
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(email="law_b20@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 @pytest.mark.django_db
 def b20_basic_user():
+    """B20 basic user."""
     return User.objects.create_user(email="basic_b20@t.com", password="pw", role="basic", first_name="B", last_name="U")
 
 def _png(w=100, h=100):
@@ -1143,91 +1226,123 @@ def _docx():
 
 @pytest.mark.django_db
 class TestUploadUserLetterhead:
+    """Tests for Upload User Letterhead."""
+
     def test_success(self, b20_api, lawyer):
+        """Verify success."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 201
 
     def test_no_file(self, b20_api, lawyer):
+        """Verify no file."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {}, format="multipart").status_code == 400
 
     def test_bad_ext(self, b20_api, lawyer):
+        """Verify bad ext."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.jpg", b"d", content_type="image/jpeg")}, format="multipart").status_code == 400
 
     def test_too_large(self, b20_api, lawyer):
+        """Verify too large."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"x"*(11*1024*1024), content_type="image/png")}, format="multipart").status_code == 400
 
     def test_invalid_img(self, b20_api, lawyer):
+        """Verify invalid img."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": SimpleUploadedFile("b.png", b"bad", content_type="image/png")}, format="multipart").status_code == 400
 
     def test_basic_forbidden(self, b20_api, b20_basic_user):
+        """Verify basic forbidden."""
         b20_api.force_authenticate(user=b20_basic_user)
         assert b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart").status_code == 403
 
     def test_aspect_warning(self, b20_api, lawyer):
+        """Verify aspect warning."""
         b20_api.force_authenticate(user=lawyer)
         r = b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png(500, 100)}, format="multipart")
-        assert r.status_code == 201 and "warnings" in r.data
+        assert r.status_code == 201
+        assert "warnings" in r.data
 
 @pytest.mark.django_db
 class TestGetUserLetterhead:
+    """Tests for Get User Letterhead."""
+
     def test_no_image(self, b20_api, lawyer):
+        """Verify no image."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.get(reverse("get-user-letterhead-image")).status_code == 404
 
 @pytest.mark.django_db
 class TestDeleteUserLetterhead:
+    """Tests for Delete User Letterhead."""
+
     def test_no_image(self, b20_api, lawyer):
+        """Verify no image."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 404
 
     def test_basic_forbidden(self, b20_api, b20_basic_user):
+        """Verify basic forbidden."""
         b20_api.force_authenticate(user=b20_basic_user)
         assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 403
 
     def test_success(self, b20_api, lawyer):
+        """Verify success."""
         b20_api.force_authenticate(user=lawyer)
         b20_api.post(reverse("upload-user-letterhead-image"), {"image": _png()}, format="multipart")
         assert b20_api.delete(reverse("delete-user-letterhead-image")).status_code == 200
 
 @pytest.mark.django_db
 class TestUploadUserWordTpl:
+    """Tests for Upload User Word Tpl."""
+
     def test_success(self, b20_api, lawyer):
+        """Verify success."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 201
 
     def test_no_file(self, b20_api, lawyer):
+        """Verify no file."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-word-template"), {}, format="multipart").status_code == 400
 
     def test_bad_ext(self, b20_api, lawyer):
+        """Verify bad ext."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": SimpleUploadedFile("b.txt", b"d")}, format="multipart").status_code == 400
 
     def test_basic_forbidden(self, b20_api, b20_basic_user):
+        """Verify basic forbidden."""
         b20_api.force_authenticate(user=b20_basic_user)
         assert b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart").status_code == 403
 
 @pytest.mark.django_db
 class TestGetUserWordTpl:
+    """Tests for Get User Word Tpl."""
+
     def test_no_tpl(self, b20_api, lawyer):
+        """Verify no tpl."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.get(reverse("get-user-letterhead-word-template")).status_code == 404
 
 @pytest.mark.django_db
 class TestDeleteUserWordTpl:
+    """Tests for Delete User Word Tpl."""
+
     def test_no_tpl(self, b20_api, lawyer):
+        """Verify no tpl."""
         b20_api.force_authenticate(user=lawyer)
         assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 404
 
     def test_basic_forbidden(self, b20_api, b20_basic_user):
+        """Verify basic forbidden."""
         b20_api.force_authenticate(user=b20_basic_user)
         assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 403
 
     def test_success(self, b20_api, lawyer):
+        """Verify success."""
         b20_api.force_authenticate(user=lawyer)
         b20_api.post(reverse("upload-user-letterhead-word-template"), {"template": _docx()}, format="multipart")
         assert b20_api.delete(reverse("delete-user-letterhead-word-template")).status_code == 200
@@ -1238,32 +1353,38 @@ class TestDeleteUserWordTpl:
 # ======================================================================
 
 """Batch 32 – 20 tests: document_views.py Part 2 – letterhead upload/delete, word template, user letterhead, create doc edges."""
-import io
+import io  # noqa: F811
+
 import pytest
-from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from gym_app.models.dynamic_document import DynamicDocument
-from PIL import Image as PILImage
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from PIL import Image as PILImage  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models.dynamic_document import DynamicDocument  # noqa: F811
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(email="law32@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="cli32@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
 def basic():
+    """Create a basic fixture."""
     return User.objects.create_user(email="bas32@t.com", password="pw", role="basic", first_name="B", last_name="U")
 
 def _png_file(name="test.png", w=100, h=100):
@@ -1275,7 +1396,10 @@ def _png_file(name="test.png", w=100, h=100):
 
 # -- upload_letterhead_image (document) --
 class TestUploadDocLetterhead:
+    """Tests for Upload Doc Letterhead."""
+
     def test_upload_no_image(self, api, law):
+        """Verify upload no image."""
         doc = DynamicDocument.objects.create(title="UL1", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1284,6 +1408,7 @@ class TestUploadDocLetterhead:
         assert "imagen" in resp.data["detail"].lower() or "image" in resp.data["detail"].lower()
 
     def test_upload_wrong_extension(self, api, law):
+        """Verify upload wrong extension."""
         doc = DynamicDocument.objects.create(title="UL2", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1293,6 +1418,7 @@ class TestUploadDocLetterhead:
         assert "PNG" in resp.data["detail"]
 
     def test_upload_success(self, api, law):
+        """Verify upload success."""
         doc = DynamicDocument.objects.create(title="UL3", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1305,7 +1431,10 @@ class TestUploadDocLetterhead:
 
 # -- delete_letterhead_image (document) --
 class TestDeleteDocLetterhead:
+    """Tests for Delete Doc Letterhead."""
+
     def test_delete_no_image(self, api, law):
+        """Verify delete no image."""
         doc = DynamicDocument.objects.create(title="DL1", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1313,6 +1442,7 @@ class TestDeleteDocLetterhead:
         assert resp.status_code == 404
 
     def test_delete_success(self, api, law):
+        """Verify delete success."""
         doc = DynamicDocument.objects.create(title="DL2", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         doc.letterhead_image = _png_file("lh.png")
@@ -1325,24 +1455,30 @@ class TestDeleteDocLetterhead:
 
 
 # -- upload_user_letterhead_image --
-class TestUploadUserLetterhead:
+class TestUploadUserLetterhead:  # noqa: F811
+    """Tests for Upload User Letterhead."""
+
     def test_basic_user_forbidden(self, api, basic):
+        """Verify basic user forbidden."""
         api.force_authenticate(user=basic)
         resp = api.post(reverse("upload-user-letterhead-image"), {"image": _png_file()})
         assert resp.status_code == 403
 
     def test_no_image_field(self, api, law):
+        """Verify no image field."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("upload-user-letterhead-image"))
         assert resp.status_code == 400
 
     def test_wrong_extension(self, api, law):
+        """Verify wrong extension."""
         api.force_authenticate(user=law)
         f = SimpleUploadedFile("test.gif", b"fake", content_type="image/gif")
         resp = api.post(reverse("upload-user-letterhead-image"), {"image": f})
         assert resp.status_code == 400
 
     def test_upload_success(self, api, law):
+        """Verify upload success."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("upload-user-letterhead-image"), {"image": _png_file()})
         assert resp.status_code == 201
@@ -1352,18 +1488,23 @@ class TestUploadUserLetterhead:
 
 
 # -- delete_user_letterhead_image --
-class TestDeleteUserLetterhead:
+class TestDeleteUserLetterhead:  # noqa: F811
+    """Tests for Delete User Letterhead."""
+
     def test_basic_user_forbidden(self, api, basic):
+        """Verify basic user forbidden."""
         api.force_authenticate(user=basic)
         resp = api.delete(reverse("delete-user-letterhead-image"))
         assert resp.status_code == 403
 
     def test_no_image_to_delete(self, api, law):
+        """Verify no image to delete."""
         api.force_authenticate(user=law)
         resp = api.delete(reverse("delete-user-letterhead-image"))
         assert resp.status_code == 404
 
     def test_delete_success(self, api, law):
+        """Verify delete success."""
         law.letterhead_image = _png_file("ulh.png")
         law.save()
         api.force_authenticate(user=law)
@@ -1375,7 +1516,10 @@ class TestDeleteUserLetterhead:
 
 # -- upload_document_letterhead_word_template --
 class TestUploadDocWordTemplate:
+    """Tests for Upload Doc Word Template."""
+
     def test_no_template_field(self, api, law):
+        """Verify no template field."""
         doc = DynamicDocument.objects.create(title="WT1", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1383,6 +1527,7 @@ class TestUploadDocWordTemplate:
         assert resp.status_code == 400
 
     def test_wrong_extension(self, api, law):
+        """Verify wrong extension."""
         doc = DynamicDocument.objects.create(title="WT2", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1391,6 +1536,7 @@ class TestUploadDocWordTemplate:
         assert resp.status_code == 400
 
     def test_upload_success(self, api, law):
+        """Verify upload success."""
         doc = DynamicDocument.objects.create(title="WT3", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1403,7 +1549,10 @@ class TestUploadDocWordTemplate:
 
 # -- get/delete document word template --
 class TestDocWordTemplateGetDelete:
+    """Tests for Doc Word Template Get Delete."""
+
     def test_get_no_template(self, api, law):
+        """Verify get no template."""
         doc = DynamicDocument.objects.create(title="GT1", content="<p>x</p>", state="Draft", created_by=law)
         doc.visibility_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1411,6 +1560,7 @@ class TestDocWordTemplateGetDelete:
         assert resp.status_code == 404
 
     def test_delete_no_template(self, api, law):
+        """Verify delete no template."""
         doc = DynamicDocument.objects.create(title="DT1", content="<p>x</p>", state="Draft", created_by=law)
         doc.usability_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1420,7 +1570,10 @@ class TestDocWordTemplateGetDelete:
 
 # -- create_dynamic_document edge --
 class TestCreateDynDocEdge:
+    """Tests for Create Dyn Doc Edge."""
+
     def test_create_assigns_to_self_on_progress(self, api, cli):
+        """Verify create assigns to self on progress."""
         api.force_authenticate(user=cli)
         resp = api.post(
             reverse("create_dynamic_document"),
@@ -1434,13 +1587,17 @@ class TestCreateDynDocEdge:
 
 # -- upload_user_letterhead_word_template --
 class TestUploadUserWordTemplate:
+    """Tests for Upload User Word Template."""
+
     def test_basic_user_forbidden(self, api, basic):
+        """Verify basic user forbidden."""
         api.force_authenticate(user=basic)
         f = SimpleUploadedFile("tpl.docx", b"PK\x03\x04fake", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         resp = api.post(reverse("upload-user-letterhead-word-template"), {"template": f})
         assert resp.status_code == 403
 
     def test_no_template_field(self, api, law):
+        """Verify no template field."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("upload-user-letterhead-word-template"))
         assert resp.status_code == 400

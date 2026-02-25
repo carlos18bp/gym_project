@@ -7,7 +7,8 @@ import { useUserStore } from "@/stores/auth/user";
 
 import RequestDetailView from "@/components/organizations/shared/RequestDetailView.vue";
 
-// quality: disable global_state_leak (Legacy suite relies on many per-test spies; beforeEach resets shared mocks and refactor to fn stubs will be incremental)
+
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
 
 const mockRouterPush = jest.fn();
 const mockRoute = reactive({ query: { id: "6001" } });
@@ -117,6 +118,10 @@ describe("RequestDetailView.vue", () => {
       configurable: true,
       enumerable: true,
     });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test("shows error when no request id is provided", async () => {

@@ -272,6 +272,7 @@ describe("ElectronicSignature.vue", () => {
       props: { initialShowOptions: true },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.saveSignature({
       signatureImage: "data:image/png;base64",
       traceabilityData: { method: "draw", date: "2026-01-31T00:00:00Z" },
@@ -292,6 +293,7 @@ describe("ElectronicSignature.vue", () => {
       props: { initialShowOptions: true },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.saveSignature({
       signatureImage: "not-a-data-url",
       traceabilityData: { method: "draw", date: "2026-01-31T00:00:00Z" },
@@ -312,6 +314,7 @@ describe("ElectronicSignature.vue", () => {
       props: { initialShowOptions: true },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.saveSignature({
       traceabilityData: { method: "draw", date: "2026-01-31T00:00:00Z" },
     });
@@ -406,6 +409,7 @@ describe("ElectronicSignature.vue", () => {
 
     expect(wrapper.find("[data-test='modal-opened']").exists()).toBe(false);
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.openModal();
     await flushPromises();
 

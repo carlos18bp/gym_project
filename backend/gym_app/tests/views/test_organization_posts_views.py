@@ -1,16 +1,17 @@
+"""Tests for organization_posts_views module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
-from gym_app.models import Organization, OrganizationPost, OrganizationMembership
-
+from gym_app.models import Organization, OrganizationMembership, OrganizationPost
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -24,6 +25,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -36,6 +38,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic@example.com",
         password="testpassword",
@@ -48,6 +51,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org Title",
         description="Org Description",
@@ -58,6 +62,7 @@ def organization(corporate_client):
 @pytest.fixture
 @pytest.mark.django_db
 def organization_post(corporate_client, organization):
+    """Organization post."""
     return OrganizationPost.objects.create(
         title="Post 1",
         content="Content 1",
@@ -71,8 +76,11 @@ def organization_post(corporate_client, organization):
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationPostsCreateAndList:
+    """Tests for Organization Posts Create And List."""
+
     @pytest.mark.contract
     def test_create_organization_post_corporate_leader_only(self, api_client, corporate_client, client_user, organization):
+        """Verify create organization post corporate leader only."""
         url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
         data = {"title": "Nuevo post", "content": "Contenido"}
 
@@ -93,6 +101,7 @@ class TestOrganizationPostsCreateAndList:
 
     @pytest.mark.edge
     def test_create_organization_post_invalid_link_validation(self, api_client, corporate_client, organization):
+        """Verify create organization post invalid link validation."""
         api_client.force_authenticate(user=corporate_client)
         url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
 
@@ -110,7 +119,7 @@ class TestOrganizationPostsCreateAndList:
 
     @pytest.mark.contract
     def test_get_organization_posts_pinned_first(self, api_client, corporate_client, organization):
-        """Test posts are ordered with pinned first"""
+        """Test posts are ordered with pinned first."""
         OrganizationPost.objects.create(title="Active", content="C", organization=organization, author=corporate_client, is_active=True, is_pinned=False)
         pinned = OrganizationPost.objects.create(title="Pinned", content="C", organization=organization, author=corporate_client, is_active=True, is_pinned=True)
 
@@ -123,7 +132,7 @@ class TestOrganizationPostsCreateAndList:
 
     @pytest.mark.contract
     def test_get_organization_posts_filter_inactive(self, api_client, corporate_client, organization):
-        """Test filtering posts by is_active=false"""
+        """Test filtering posts by is_active=false."""
         OrganizationPost.objects.create(title="Inactive", content="C", organization=organization, author=corporate_client, is_active=False)
         OrganizationPost.objects.create(title="Active", content="C", organization=organization, author=corporate_client, is_active=True)
 
@@ -136,7 +145,7 @@ class TestOrganizationPostsCreateAndList:
 
     @pytest.mark.contract
     def test_get_organization_posts_filter_pinned(self, api_client, corporate_client, organization):
-        """Test filtering posts by is_pinned=true"""
+        """Test filtering posts by is_pinned=true."""
         OrganizationPost.objects.create(title="Not pinned", content="C", organization=organization, author=corporate_client, is_pinned=False)
         OrganizationPost.objects.create(title="Pinned", content="C", organization=organization, author=corporate_client, is_pinned=True)
 
@@ -175,6 +184,7 @@ class TestOrganizationPostsCreateAndList:
 
     @pytest.mark.edge
     def test_get_organization_posts_requires_corporate_client(self, api_client, client_user, organization):
+        """Verify get organization posts requires corporate client."""
         url = reverse("get-organization-posts", kwargs={"organization_id": organization.id})
         api_client.force_authenticate(user=client_user)
         response = api_client.get(url)
@@ -184,8 +194,11 @@ class TestOrganizationPostsCreateAndList:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationPostsPublicAndDetail:
+    """Tests for Organization Posts Public And Detail."""
+
     @pytest.mark.edge
     def test_get_organization_posts_public_permissions(self, api_client, corporate_client, client_user, basic_user, organization):
+        """Verify get organization posts public permissions."""
         # Crear algunos posts (solo activos deben aparecer)
         OrganizationPost.objects.create(
             title="Active 1",
@@ -230,6 +243,7 @@ class TestOrganizationPostsPublicAndDetail:
 
     @pytest.mark.edge
     def test_get_organization_post_detail_corporate_only(self, api_client, corporate_client, client_user, organization, organization_post):
+        """Verify get organization post detail corporate only."""
         url = reverse(
             "get-organization-post-detail",
             kwargs={"organization_id": organization.id, "post_id": organization_post.id},
@@ -250,8 +264,11 @@ class TestOrganizationPostsPublicAndDetail:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationPostsUpdateDeleteToggle:
+    """Tests for Organization Posts Update Delete Toggle."""
+
     @pytest.mark.edge
     def test_update_organization_post_success_and_validation(self, api_client, corporate_client, client_user, organization, organization_post):
+        """Verify update organization post success and validation."""
         url = reverse(
             "update-organization-post",
             kwargs={"organization_id": organization.id, "post_id": organization_post.id},
@@ -281,6 +298,7 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
     @pytest.mark.edge
     def test_update_organization_post_not_found(self, api_client, corporate_client, organization):
+        """Verify update organization post not found."""
         url = reverse(
             "update-organization-post",
             kwargs={"organization_id": organization.id, "post_id": 9999},
@@ -292,6 +310,7 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
     @pytest.mark.edge
     def test_delete_organization_post(self, api_client, corporate_client, client_user, organization, organization_post):
+        """Verify delete organization post."""
         url = reverse(
             "delete-organization-post",
             kwargs={"organization_id": organization.id, "post_id": organization_post.id},
@@ -320,6 +339,7 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
     @pytest.mark.edge
     def test_delete_organization_post_not_found(self, api_client, corporate_client, organization):
+        """Verify delete organization post not found."""
         url = reverse(
             "delete-organization-post",
             kwargs={"organization_id": organization.id, "post_id": 9999},
@@ -331,6 +351,7 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
     @pytest.mark.edge
     def test_toggle_organization_post_pin(self, api_client, corporate_client, client_user, organization, organization_post):
+        """Verify toggle organization post pin."""
         url = reverse(
             "toggle-organization-post-pin",
             kwargs={"organization_id": organization.id, "post_id": organization_post.id},
@@ -357,8 +378,10 @@ class TestOrganizationPostsUpdateDeleteToggle:
 
 @pytest.mark.django_db
 class TestOrganizationPostsRest:
+    """Tests for Organization Posts Rest."""
+
     def test_rest_create_and_list_post(self, api_client, corporate_client, organization):
-        """Test creating and listing organization posts"""
+        """Test creating and listing organization posts."""
         api_client.force_authenticate(user=corporate_client)
         create_url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
 
@@ -372,7 +395,7 @@ class TestOrganizationPostsRest:
         assert any(item["id"] == post_id for item in response.data["results"])
 
     def test_rest_toggle_pin_and_status(self, api_client, corporate_client, organization):
-        """Test toggling post pin and status"""
+        """Test toggling post pin and status."""
         api_client.force_authenticate(user=corporate_client)
         post = OrganizationPost.objects.create(
             organization=organization, author=corporate_client, title="Test", content="Content"
@@ -391,7 +414,7 @@ class TestOrganizationPostsRest:
         assert post.is_active is False
 
     def test_rest_delete_post(self, api_client, corporate_client, organization):
-        """Test deleting organization post"""
+        """Test deleting organization post."""
         api_client.force_authenticate(user=corporate_client)
         post = OrganizationPost.objects.create(
             organization=organization, author=corporate_client, title="ToDelete", content="X"
@@ -403,13 +426,14 @@ class TestOrganizationPostsRest:
         assert not OrganizationPost.objects.filter(id=post.id).exists()
 
     def test_rest_create_forbidden_for_client(self, api_client, client_user, organization):
-        """Test client user cannot create posts"""
+        """Test client user cannot create posts."""
         api_client.force_authenticate(user=client_user)
         create_url = reverse("create-organization-post", kwargs={"organization_id": organization.id})
         response = api_client.post(create_url, {"title": "No", "content": "x"}, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_rest_public_posts_permissions(self, api_client, corporate_client, client_user, basic_user, organization):
+        """Verify rest public posts permissions."""
         OrganizationPost.objects.create(
             title="Active",
             content="C",
@@ -446,6 +470,7 @@ class TestOrganizationPostsRest:
 
     @pytest.mark.edge
     def test_toggle_organization_post_status_not_found(self, api_client, corporate_client, organization):
+        """Verify toggle organization post status not found."""
         url = reverse(
             "toggle-organization-post-status",
             kwargs={"organization_id": organization.id, "post_id": 9999},
@@ -457,6 +482,7 @@ class TestOrganizationPostsRest:
 
     @pytest.mark.edge
     def test_toggle_organization_post_pin_not_found(self, api_client, corporate_client, organization):
+        """Verify toggle organization post pin not found."""
         url = reverse(
             "toggle-organization-post-pin",
             kwargs={"organization_id": organization.id, "post_id": 9999},
@@ -468,6 +494,7 @@ class TestOrganizationPostsRest:
 
     @pytest.mark.edge
     def test_toggle_organization_post_status(self, api_client, corporate_client, client_user, organization, organization_post):
+        """Verify toggle organization post status."""
         url = reverse(
             "toggle-organization-post-status",
             kwargs={"organization_id": organization.id, "post_id": organization_post.id},
@@ -500,15 +527,12 @@ class TestOrganizationPostsRest:
 Batch 17 – final sweep: legal_request file validation, admin, org posts CRUD,
 reports user_id filters, userAuth verify_passcode.
 """
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-from gym_app.models import Organization, OrganizationPost
 
 User = get_user_model()
 @pytest.fixture
@@ -534,31 +558,37 @@ def _b17_organization(_b17_corp_user):
 # === 1. validate_file_security ===
 @pytest.mark.django_db
 class TestFileValidation:
+    """Tests for File Validation."""
+
     def _mk(self, name, size=100, content=b"x"):
         f = MagicMock(); f.name=name; f.size=size; f.read=MagicMock(return_value=content); f.seek=MagicMock()
         return f
 
     def test_too_large(self):
+        """Verify too large."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="exceeds") as exc_info:
             validate_file_security(self._mk("big.pdf", size=31*1024*1024))
         assert exc_info.value is not None
 
     def test_bad_ext(self):
+        """Verify bad ext."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="not allowed") as exc_info:
             validate_file_security(self._mk("h.exe"))
         assert exc_info.value is not None
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="application/octet-stream")
-    def test_mime_not_allowed(self, _m):
+    def test_mime_not_allowed(self, _m):  # noqa: PT019
+        """Verify mime not allowed."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="MIME") as exc_info:
             validate_file_security(self._mk("t.pdf"))
         assert exc_info.value is not None
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="image/png")
-    def test_ext_mismatch(self, _m):
+    def test_ext_mismatch(self, _m):  # noqa: PT019
+        """Verify ext mismatch."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="doesn't match") as exc_info:
             validate_file_security(self._mk("t.pdf"))
@@ -566,6 +596,7 @@ class TestFileValidation:
 
     @patch("gym_app.views.legal_request.magic.from_buffer", return_value="application/zip")
     def test_docx_zip_valid(self, mock_from_buffer):
+        """Verify docx zip valid."""
         from gym_app.views.legal_request import validate_file_security
         c = b"PK\x03\x04word/document.xml"
         f = self._mk("t.docx", content=c); f.read=MagicMock(return_value=c)
@@ -574,6 +605,7 @@ class TestFileValidation:
 
     @patch("gym_app.views.legal_request.magic.from_buffer", side_effect=Exception("err"))
     def test_magic_exc(self, mock_from_buffer):
+        """Verify magic exc."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="Unable") as exc_info:
             validate_file_security(self._mk("t.pdf"))
@@ -583,10 +615,14 @@ class TestFileValidation:
 # === 2. process_file_upload exception ===
 @pytest.mark.django_db
 class TestProcessFileUpload:
+    """Tests for Process File Upload."""
+
     def test_general_exception(self, client_user):
-        from gym_app.views.legal_request import process_file_upload
-        from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline
+        """Verify general exception."""
         from types import SimpleNamespace
+
+        from gym_app.models import LegalDiscipline, LegalRequest, LegalRequestType
+        from gym_app.views.legal_request import process_file_upload
         lr = LegalRequest.objects.create(
             user=client_user, request_type=LegalRequestType.objects.create(name="T17"),
             discipline=LegalDiscipline.objects.create(name="D17"), description="T", status="OPEN",
@@ -600,7 +636,10 @@ class TestProcessFileUpload:
 # === 3. admin GyMAdminSite ===
 @pytest.mark.django_db
 class TestGyMAdminSite:
+    """Tests for Gy MAdmin Site."""
+
     def test_get_app_list(self):
+        """Verify get app list."""
         from gym_app.admin import GyMAdminSite
         site = GyMAdminSite(name="testadmin")
         req = RequestFactory().get("/admin/")
@@ -611,20 +650,25 @@ class TestGyMAdminSite:
 # === 4. org posts CRUD ===
 @pytest.mark.django_db
 class TestOrgPostsCRUD:
-    def test_get_detail(self, api_client, _b17_corp_user, _b17_organization):
+    """Tests for Org Posts CRUD."""
+
+    def test_get_detail(self, api_client, _b17_corp_user, _b17_organization):  # noqa: PT019
+        """Verify get detail."""
         p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="D", content="C", is_active=True)
         api_client.force_authenticate(user=_b17_corp_user)
         url = reverse("get-organization-post-detail", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
         assert api_client.get(url).status_code == status.HTTP_200_OK
 
-    def test_update(self, api_client, _b17_corp_user, _b17_organization):
+    def test_update(self, api_client, _b17_corp_user, _b17_organization):  # noqa: PT019
+        """Verify update."""
         p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="U", content="C", is_active=True)
         api_client.force_authenticate(user=_b17_corp_user)
         url = reverse("update-organization-post", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
         resp = api_client.put(url, {"title": "Updated"}, format="json")
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_delete(self, api_client, _b17_corp_user, _b17_organization):
+    def test_delete(self, api_client, _b17_corp_user, _b17_organization):  # noqa: PT019
+        """Verify delete."""
         p = OrganizationPost.objects.create(organization=_b17_organization, author=_b17_corp_user, title="X", content="C", is_active=True)
         api_client.force_authenticate(user=_b17_corp_user)
         url = reverse("delete-organization-post", kwargs={"organization_id": _b17_organization.id, "post_id": p.id})
@@ -633,19 +677,24 @@ class TestOrgPostsCRUD:
 # === 5. reports user_id filters ===
 @pytest.mark.django_db
 class TestReportsUserFilters:
-    def test_processes_by_lawyer_with_user_id(self, api_client, _b17_lawyer_user):
+    """Tests for Reports User Filters."""
+
+    def test_processes_by_lawyer_with_user_id(self, api_client, _b17_lawyer_user):  # noqa: PT019
+        """Verify processes by lawyer with user id."""
         api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
         resp = api_client.post(url, {"report_type": "processes_by_lawyer", "user_id": _b17_lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
         assert resp.status_code in (200, 400)
 
-    def test_processes_by_client_with_user_id(self, api_client, _b17_lawyer_user, _b17_client_user):
+    def test_processes_by_client_with_user_id(self, api_client, _b17_lawyer_user, _b17_client_user):  # noqa: PT019
+        """Verify processes by client with user id."""
         api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
         resp = api_client.post(url, {"report_type": "processes_by_client", "user_id": _b17_client_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
         assert resp.status_code in (200, 400)
 
-    def test_lawyers_workload_with_user_id(self, api_client, _b17_lawyer_user):
+    def test_lawyers_workload_with_user_id(self, api_client, _b17_lawyer_user):  # noqa: PT019
+        """Verify lawyers workload with user id."""
         api_client.force_authenticate(user=_b17_lawyer_user)
         url = reverse("generate-excel-report")
         resp = api_client.post(url, {"report_type": "lawyers_workload", "user_id": _b17_lawyer_user.id, "start_date": "2024-01-01", "end_date": "2025-12-31"}, format="json")
@@ -654,8 +703,11 @@ class TestReportsUserFilters:
 # === 6. userAuth verify_passcode User.DoesNotExist ===
 @pytest.mark.django_db
 class TestVerifyPasscode:
+    """Tests for Verify Passcode."""
+
     @patch("gym_app.views.userAuth.requests.post")
     def test_valid_captcha_invalid_code(self, mock_post):
+        """Verify valid captcha invalid code."""
         from types import SimpleNamespace
         mock_resp = SimpleNamespace(json=lambda: {"success": True}, raise_for_status=lambda: None)
         mock_post.return_value = mock_resp
@@ -677,6 +729,7 @@ class TestVerifyPasscode:
 
     @patch("gym_app.views.userAuth.requests.post")
     def test_captcha_failure(self, mock_post):
+        """Verify captcha failure."""
         from types import SimpleNamespace
         mock_resp = SimpleNamespace(json=lambda: {"success": False}, raise_for_status=lambda: None)
         mock_post.return_value = mock_resp
@@ -736,8 +789,9 @@ def _b14_membership(_b14_org, _b14_client):
 
 @pytest.mark.django_db
 class TestOrganizationPostsAdditionalScenarios:
+    """Tests for Organization Posts Additional Scenarios."""
 
-    def test_create_post_success(self, api_client, _b14_corp_user, _b14_org):
+    def test_create_post_success(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 42-63: create post."""
         api_client.force_authenticate(user=_b14_corp_user)
         url = reverse("create-organization-post", kwargs={"organization_id": _b14_org.id})
@@ -747,14 +801,14 @@ class TestOrganizationPostsAdditionalScenarios:
         }, format="json")
         assert resp.status_code == status.HTTP_201_CREATED
 
-    def test_create_post_missing_title(self, api_client, _b14_corp_user, _b14_org):
+    def test_create_post_missing_title(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 65-72: validation error on missing title."""
         api_client.force_authenticate(user=_b14_corp_user)
         url = reverse("create-organization-post", kwargs={"organization_id": _b14_org.id})
         resp = api_client.post(url, {"content": "No title"}, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_get_posts(self, api_client, _b14_corp_user, _b14_org):
+    def test_get_posts(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 78-120: list posts with filters."""
         OrganizationPost.objects.create(
             organization=_b14_org, author=_b14_corp_user,
@@ -765,7 +819,7 @@ class TestOrganizationPostsAdditionalScenarios:
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_get_posts_public_member(self, api_client, _b14_client, _b14_org, _b14_membership):
+    def test_get_posts_public_member(self, api_client, _b14_client, _b14_org, _b14_membership):  # noqa: PT019
         """Lines 125-172: public posts for member."""
         OrganizationPost.objects.create(
             organization=_b14_org, author=_b14_org.corporate_client,
@@ -776,7 +830,7 @@ class TestOrganizationPostsAdditionalScenarios:
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_200_OK
 
-    def test_get_posts_public_non_member_forbidden(self, api_client, _b14_org):
+    def test_get_posts_public_non_member_forbidden(self, api_client, _b14_org):  # noqa: PT019
         """Lines 144-147: non-member forbidden."""
         outsider = User.objects.create_user(
             email="outsider_b14@test.com", password="pw", role="client",
@@ -786,7 +840,7 @@ class TestOrganizationPostsAdditionalScenarios:
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_toggle_pin(self, api_client, _b14_corp_user, _b14_org):
+    def test_toggle_pin(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 272-294: toggle pin status."""
         post = OrganizationPost.objects.create(
             organization=_b14_org, author=_b14_corp_user,
@@ -801,7 +855,7 @@ class TestOrganizationPostsAdditionalScenarios:
         post.refresh_from_db()
         assert post.is_pinned is True
 
-    def test_toggle_status(self, api_client, _b14_corp_user, _b14_org):
+    def test_toggle_status(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 300-327: toggle active status."""
         post = OrganizationPost.objects.create(
             organization=_b14_org, author=_b14_corp_user,
@@ -816,7 +870,7 @@ class TestOrganizationPostsAdditionalScenarios:
         post.refresh_from_db()
         assert post.is_active is False
 
-    def test_delete_post(self, api_client, _b14_corp_user, _b14_org):
+    def test_delete_post(self, api_client, _b14_corp_user, _b14_org):  # noqa: PT019
         """Lines 245-266: delete post."""
         post = OrganizationPost.objects.create(
             organization=_b14_org, author=_b14_corp_user,

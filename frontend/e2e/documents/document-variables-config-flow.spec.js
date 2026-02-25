@@ -6,7 +6,7 @@ import {
   installTinyMceCloudStub,
 } from "../helpers/documentEditorMocks.js";
 
-test("lawyer can go from DocumentEditor to Variables Config and save draft", async ({ page }) => {
+test("lawyer can go from DocumentEditor to Variables Config and save draft", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 1600;
   const documentId = 555;
 
@@ -77,14 +77,14 @@ test("lawyer can go from DocumentEditor to Variables Config and save draft", asy
   await expect(page.getByRole("heading", { name: "value" })).toBeVisible();
 
   // Fill required display names
-  await page.locator("#name_es_0").fill("Contraparte");
-  await page.locator("#name_es_1").fill("Valor");
+  await page.locator("#name_es_0").fill("Contraparte"); // quality: allow-fragile-selector (stable DOM id)
+  await page.locator("#name_es_1").fill("Valor"); // quality: allow-fragile-selector (stable DOM id)
 
   await page.locator("#app").getByRole("button", { name: "Guardar como borrador" }).click();
 
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("Documento guardado como borrador");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-popup")).toContainText("Documento guardado como borrador"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(page).toHaveURL(/\/dynamic_document_dashboard/);
 });

@@ -39,7 +39,7 @@ async function fillRequiredFormFields(page, { plaintiff, defendant, subcase, ref
   await getVisibleStageInputs(page).fill(stage);
 }
 
-test("process form renders with all required fields and save button disabled initially", async ({ page }) => {
+test("process form renders with all required fields and save button disabled initially", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -75,7 +75,7 @@ test("process form renders with all required fields and save button disabled ini
   await expect(page.getByRole("button", { name: "Cancelar" })).toBeVisible();
 });
 
-test("save button becomes enabled when all required fields are filled", async ({ page }) => {
+test("save button becomes enabled when all required fields are filled", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -106,7 +106,7 @@ test("save button becomes enabled when all required fields are filled", async ({
   await expect(saveBtn).toBeEnabled();
 });
 
-test("clicking Guardar Proceso with missing case type shows validation warning", async ({ page }) => {
+test("clicking Guardar Proceso with missing case type shows validation warning", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -148,7 +148,7 @@ test("clicking Guardar Proceso with missing case type shows validation warning",
   await expect(validationDialog).toContainText("obligatorio");
 });
 
-test("lawyer can add process stages", async ({ page }) => {
+test("lawyer can add process stages", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -187,7 +187,7 @@ test("lawyer can add process stages", async ({ page }) => {
   await expect(visibleStageInputs[1]).toHaveValue("Etapa 2");
 });
 
-test("cancel button navigates away from the form", async ({ page }) => {
+test("cancel button navigates away from the form", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {

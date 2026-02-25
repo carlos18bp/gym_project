@@ -3,24 +3,26 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = process.env.E2E_PORT ? Number(process.env.E2E_PORT) : 4173;
 const baseURL = process.env.E2E_BASE_URL || `http://127.0.0.1:${PORT}`;
 const reuseExistingServer = process.env.E2E_REUSE_SERVER === "1" && !process.env.CI;
-const isE2ECoverage = process.env.E2E_COVERAGE === "1";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: isE2ECoverage ? 120_000 : 30_000,
+  timeout: 30_000,
   expect: {
-    timeout: isE2ECoverage ? 15_000 : 5_000,
+    timeout: 5_000,
   },
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 1,
+  workers: 1, // Reduced to 1 for environments with limited resources
   reporter: [
     ["list"],
     ["html", { open: "never" }],
-    ["json", { outputFile: "coverage-e2e/results.json" }],
+    ["json", { outputFile: "e2e-results/results.json" }],
+    ["./e2e/reporters/flow-coverage-reporter.mjs", { outputDir: "e2e-results" }],
   ],
   use: {
     baseURL,
-    navigationTimeout: isE2ECoverage ? 60_000 : 30_000,
+    navigationTimeout: 30_000,
     trace: "retain-on-failure",
     screenshot: "off",
     video: "off",
@@ -33,10 +35,24 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "Desktop Chrome",
       use: {
         ...devices["Desktop Chrome"],
       },
     },
+    /** 
+    {
+      name: "Mobile Chrome",
+      use: {
+        ...devices["Pixel 5"],
+      },
+    },
+    {
+      name: "Tablet",
+      use: {
+        ...devices["iPad Mini"],
+      },
+    },
+    */
   ],
 });

@@ -6,17 +6,18 @@ auto_execution_mode: 2
 
 ## Goal
 
-Review E2E coverage and identify all untested user flows. Reach **100% E2E coverage** for all main features and integration points, focusing on the **contract between Frontend and Backend** to ensure data integrity across the stack.
+Review E2E coverage and identify all untested user flows. Reach **100% E2E flow coverage** for all main features and integration points, focusing on the **contract between Frontend and Backend** to ensure data integrity across the stack.
 
 ## Quality Standards Reference
 
 Before writing any E2E test, you **must consult**:
 
 ```
-testing-quality-standards.md
+docs/USER_FLOW_MAP.md
+docs/TESTING_QUALITY_STANDARDS.md
 ```
 
-This document defines the **mandatory quality criteria** for every test. Key sections for E2E:
+This document defines **all user flows** and the **mandatory quality criteria** for every test. Key sections for E2E:
 
 | When writing... | Consult section... |
 |-----------------|-------------------|
@@ -44,7 +45,14 @@ This document defines the **mandatory quality criteria** for every test. Key sec
 
 2. **Run only modified test files** — never the entire suite:
    ```bash
-   npx playwright test path/to/spec.spec.ts
+   # Standard run
+   npx playwright test e2e/path/to/spec.spec.ts
+
+   # Reuse already running dev server (faster)
+   E2E_REUSE_SERVER=1 npx playwright test e2e/path/to/spec.spec.ts
+
+   # Serial flows (describe.serial) — always use single worker
+   npx playwright test e2e/path/to/spec.spec.ts --workers=1
    ```
 
 3. **Maximum per execution:**
@@ -78,10 +86,28 @@ For each flow you test, cover:
 - ✅ **Edge cases** — empty data, boundary conditions, timeouts
 - ✅ **Contract validation** — data integrity between frontend and backend
 
+### Test File Naming & Directory Convention
+
+```
+e2e/<module>/<action>-<context>.spec.ts
+
+Examples:
+  e2e/documents/document-send-email-flow.spec.ts
+  e2e/auth/auth-register-branches.spec.ts
+  e2e/checkout/subscription-checkout-branches.spec.ts
+  e2e/organizations/corporate/organizations-corporate-posts-edit.spec.ts
+```
+
+- Place specs under the **module subdirectory** matching the flow's `module` field in `flow-definitions.json`
+- Use lowercase kebab-case for all filenames
+- Suffix branch/multi-path tests with `-branches`
+- Suffix consolidated flow tests with `-flow`
+
 ### Per-Test Checklist (from Testing Quality Standards)
 
 ```
 □ Test name describes ONE specific user flow
+□ Test has @flow: <flow-id> tag matching an ID in e2e/flow-definitions.json
 □ Selectors use hierarchy: getByRole > getByTestId > locator
 □ No .locator('.class') or .locator('#id') without justification
 □ No .nth(), .first(), .last() without justification
@@ -92,13 +118,28 @@ For each flow you test, cover:
 □ Assertions verify user-observable outcomes
 ```
 
+### @flow: Tag Convention
+
+```javascript
+// The @flow: tag must appear in the describe or test title
+describe('@flow: document-create — Create a new document', () => {
+  test('creates a document with valid fields', async ({ page }) => { ... });
+  test('shows validation error when title is empty', async ({ page }) => { ... });
+});
+
+// For branch specs covering multiple flows
+describe('@flow: auth-register-branches — Registration branch scenarios', () => {
+  test('@flow: auth-register-basic — registers as basic user', async ({ page }) => { ... });
+  test('@flow: auth-register-lawyer — registers as lawyer', async ({ page }) => { ... });
+});
+```
+
 ### Selector Quick Reference
 
 ```javascript
 // ✅ PREFERRED (in order)
 await page.getByRole('button', { name: 'Submit' }).click();
 await page.getByTestId('submit-btn').click();
-await page.locator('[data-testid="submit-btn"]').click();
 
 // ❌ AVOID
 await page.locator('.btn-primary').click();
@@ -122,12 +163,24 @@ await page.waitForTimeout(3000);
 
 ## Workflow
 
-1. **Review** the coverage report provided below
-2. **Identify** untested critical user flows
-3. **Consult** `testing-quality-standards.md` → **E2E-Specific Standards**
-4. **Implement** tests following the quality criteria
-5. **Run** only the new/modified test files
-6. **Verify** tests pass and demonstrate contract integrity
+1. **Read the current coverage files:**
+   - `e2e/flow-definitions.json` — source of truth for all flow IDs, priorities, modules, and roles
+   - `e2e-results/flow-coverage.json` — current coverage status per flow (`missing`, `partial`, `covered`, `failing`)
+   - `e2e-results/results.json` — results from the last Playwright run
+2. **Identify** untested or partial flows by filtering `flow-coverage.json` on `status: 'missing'` / `status: 'partial'`, ordered by priority
+3. **Look up** the target flow in `docs/USER_FLOW_MAP.md` to understand its steps, branching conditions, and role restrictions before writing any code
+4. **Consult** `docs/TESTING_QUALITY_STANDARDS.md` → **E2E-Specific Standards**
+5. **Implement** tests following the quality criteria and naming conventions
+6. **Run** only the new/modified test files
+7. **Verify** tests pass and demonstrate contract integrity
+8. **Validate quality compliance** after writing tests:
+   ```bash
+   python scripts/test_quality_gate.py --files e2e/path/to/spec.spec.ts
+   ```
+9. **Regenerate the coverage report** to confirm the flow is now tracked as covered:
+   ```bash
+   node frontend/scripts/generate-coverage.js
+   ```
 
 ---
 
@@ -150,7 +203,7 @@ For each batch of tests, report:
 - Data integrity: <what was verified>
 
 **Command executed:**
-npx playwright test <path> --headed
+npx playwright test <path> [--headed] [--workers=1]  # --headed for local debug only; --workers=1 for serial flows
 
 **Result:** ✅ Pass / ❌ Fail (reason)
 ```
@@ -159,4 +212,22 @@ npx playwright test <path> --headed
 
 ## Coverage Report
 
-<!-- Paste coverage data or list of untested flows here -->
+Read coverage files directly — do not paste data manually:
+
+```
+e2e/flow-definitions.json          — all defined flows (ID, module, role, priority)
+e2e-results/flow-coverage.json     — status per flow: covered | partial | missing | failing
+e2e-results/results.json           — results from the last Playwright run
+```
+
+To identify flows without coverage, filter `flow-coverage.json` by:
+```json
+{ "status": "missing" }
+{ "status": "partial" }
+{ "status": "failing" }
+```
+
+To regenerate after writing new tests:
+```bash
+node frontend/scripts/generate-coverage.js
+```

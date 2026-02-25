@@ -1,20 +1,18 @@
-import json
+"""Tests for subscription_views module."""
 import hashlib
 import hmac
+import json
 import unittest.mock as mock
 from datetime import date
 from decimal import Decimal
 
 import pytest
-import requests
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from django.utils import timezone
+from requests.exceptions import RequestException
 from rest_framework import status
-from rest_framework.test import APIClient
 
-from gym_app.models import Subscription, PaymentHistory
-
+from gym_app.models import PaymentHistory, Subscription
 
 User = get_user_model()
 FIXED_BILLING_DATE = date(2099, 1, 1)
@@ -23,6 +21,7 @@ FIXED_BILLING_DATE = date(2099, 1, 1)
 @pytest.fixture
 @pytest.mark.django_db
 def subscription_user():
+    """Subscription user."""
     return User.objects.create_user(
         email="subscriber@example.com",
         password="testpassword",
@@ -34,6 +33,7 @@ def subscription_user():
 
 @pytest.fixture
 def wompi_settings(settings):
+    """Wompi settings."""
     settings.WOMPI_PUBLIC_KEY = "pub_test_123"
     settings.WOMPI_ENVIRONMENT = "test"
     settings.WOMPI_INTEGRITY_KEY = "integrity_test_key"
@@ -45,7 +45,10 @@ def wompi_settings(settings):
 
 @pytest.mark.django_db
 class TestWompiConfigAndSignature:
+    """Tests for Wompi Config And Signature."""
+
     def test_get_wompi_config(self, api_client, wompi_settings):
+        """Verify get wompi config."""
         url = reverse("subscription-wompi-config")
 
         response = api_client.get(url)
@@ -55,6 +58,7 @@ class TestWompiConfigAndSignature:
         assert response.data["environment"] == wompi_settings.WOMPI_ENVIRONMENT
 
     def test_debug_signature_missing_fields(self, api_client, wompi_settings):
+        """Verify debug signature missing fields."""
         url = reverse("subscription-debug-signature")
 
         response = api_client.post(url, {}, format="json")
@@ -63,6 +67,7 @@ class TestWompiConfigAndSignature:
         assert "amount_in_cents and reference are required" in response.data["error"]
 
     def test_debug_signature_success(self, api_client, wompi_settings):
+        """Verify debug signature success."""
         url = reverse("subscription-debug-signature")
         payload = {
             "amount_in_cents": 1000,
@@ -83,6 +88,7 @@ class TestWompiConfigAndSignature:
         assert response.data["concatenated_string"] == expected_concatenated
 
     def test_generate_signature_unauthenticated(self, api_client, wompi_settings):
+        """Verify generate signature unauthenticated."""
         url = reverse("subscription-generate-signature")
         payload = {"amount_in_cents": 1000, "reference": "REF123"}
 
@@ -91,6 +97,7 @@ class TestWompiConfigAndSignature:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_generate_signature_missing_fields_authenticated(self, api_client, subscription_user, wompi_settings):
+        """Verify generate signature missing fields authenticated."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-generate-signature")
 
@@ -100,6 +107,7 @@ class TestWompiConfigAndSignature:
         assert "amount_in_cents and reference are required" in response.data["error"]
 
     def test_generate_signature_success(self, api_client, subscription_user, wompi_settings):
+        """Verify generate signature success."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-generate-signature")
 
@@ -115,12 +123,16 @@ class TestWompiConfigAndSignature:
 
 @pytest.mark.django_db
 class TestCreateSubscription:
+    """Tests for Create Subscription."""
+
     def test_create_subscription_unauthenticated(self, api_client):
+        """Verify create subscription unauthenticated."""
         url = reverse("subscription-create")
         response = api_client.post(url, {"plan_type": "basico"}, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_subscription_missing_plan_type(self, api_client, subscription_user):
+        """Verify create subscription missing plan type."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -130,6 +142,7 @@ class TestCreateSubscription:
         assert response.data["error"] == "plan_type is required"
 
     def test_create_subscription_invalid_plan_type(self, api_client, subscription_user):
+        """Verify create subscription invalid plan type."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -139,6 +152,7 @@ class TestCreateSubscription:
         assert "Invalid plan_type. Must be: basico, cliente, or corporativo" in response.data["error"]
 
     def test_create_free_subscription_basico(self, api_client, subscription_user):
+        """Verify create free subscription basico."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -156,6 +170,7 @@ class TestCreateSubscription:
 
     @pytest.mark.contract
     def test_create_subscription_response_contract(self, api_client, subscription_user):
+        """Verify create subscription response contract."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -173,6 +188,7 @@ class TestCreateSubscription:
         }
 
     def test_create_paid_subscription_with_existing_payment_source(self, api_client, subscription_user):
+        """Verify create paid subscription with existing payment source."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -187,6 +203,7 @@ class TestCreateSubscription:
         assert subscription_user.role == "client"
 
     def test_create_paid_subscription_missing_session_and_token(self, api_client, subscription_user):
+        """Verify create paid subscription missing session and token."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -206,6 +223,7 @@ class TestCreateSubscription:
         subscription_user,
         wompi_settings,
     ):
+        """Verify create paid subscription with session and token success."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -237,11 +255,12 @@ class TestCreateSubscription:
 
     @mock.patch("gym_app.views.subscription.requests.get")
     def test_create_paid_subscription_error_fetching_tokens(self, mock_get, api_client, subscription_user, wompi_settings):
+        """Verify create paid subscription error fetching tokens."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
         # Simulate network error when fetching merchant info
-        mock_get.side_effect = requests.RequestException("boom")
+        mock_get.side_effect = RequestException("boom")
 
         payload = {"plan_type": "cliente", "session_id": "sess_1", "token": "card_tok"}
         response = api_client.post(url, payload, format="json")
@@ -261,6 +280,7 @@ class TestCreateSubscription:
         subscription_user,
         wompi_settings,
     ):
+        """Verify create paid subscription wompi payment source error."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -300,6 +320,7 @@ class TestCreateSubscription:
         subscription_user,
         wompi_settings,
     ):
+        """Verify create paid subscription wompi payment source missing id."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-create")
 
@@ -330,7 +351,10 @@ class TestCreateSubscription:
 
 @pytest.mark.django_db
 class TestSubscriptionManagement:
+    """Tests for Subscription Management."""
+
     def test_get_current_subscription_no_active(self, api_client, subscription_user):
+        """Verify get current subscription no active."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-current")
 
@@ -341,6 +365,7 @@ class TestSubscriptionManagement:
         assert response.data["message"] == "No active subscription found"
 
     def test_get_current_subscription_with_active(self, api_client, subscription_user):
+        """Verify get current subscription with active."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -358,6 +383,7 @@ class TestSubscriptionManagement:
         assert response.data["plan_type"] == sub.plan_type
 
     def test_cancel_subscription_no_active(self, api_client, subscription_user):
+        """Verify cancel subscription no active."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-cancel")
 
@@ -367,6 +393,7 @@ class TestSubscriptionManagement:
         assert response.data["error"] == "No active subscription found"
 
     def test_cancel_subscription_success(self, api_client, subscription_user):
+        """Verify cancel subscription success."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -386,7 +413,8 @@ class TestSubscriptionManagement:
         assert subscription_user.role == "basic"
 
     def test_cancel_subscription_already_cancelled(self, api_client, subscription_user):
-        sub = Subscription.objects.create(
+        """Verify cancel subscription already cancelled."""
+        _sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
             status="cancelled",
@@ -402,6 +430,7 @@ class TestSubscriptionManagement:
         assert response.data["error"] == "Subscription is already cancelled"
 
     def test_update_payment_method_missing_payment_source_id(self, api_client, subscription_user):
+        """Verify update payment method missing payment source id."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-update-payment-method")
 
@@ -411,6 +440,7 @@ class TestSubscriptionManagement:
         assert response.data["error"] == "payment_source_id is required"
 
     def test_update_payment_method_no_active_subscription(self, api_client, subscription_user):
+        """Verify update payment method no active subscription."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-update-payment-method")
 
@@ -420,6 +450,7 @@ class TestSubscriptionManagement:
         assert response.data["error"] == "No active subscription found"
 
     def test_update_payment_method_success(self, api_client, subscription_user):
+        """Verify update payment method success."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -440,6 +471,7 @@ class TestSubscriptionManagement:
         assert sub.payment_source_id == "src_new"
 
     def test_get_payment_history_success(self, api_client, subscription_user):
+        """Verify get payment history success."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -484,7 +516,10 @@ class TestSubscriptionManagement:
 
 @pytest.mark.django_db
 class TestWompiWebhook:
+    """Tests for Wompi Webhook."""
+
     def test_wompi_webhook_missing_signature(self, api_client, wompi_settings):
+        """Verify wompi webhook missing signature."""
         url = reverse("subscription-webhook")
         payload = {"event": "transaction.updated", "data": {}}
         raw_body = json.dumps(payload)
@@ -499,6 +534,7 @@ class TestWompiWebhook:
         assert response.json()["error"] == "Missing signature"
 
     def test_wompi_webhook_invalid_signature(self, api_client, wompi_settings):
+        """Verify wompi webhook invalid signature."""
         url = reverse("subscription-webhook")
         payload = {"event": "transaction.updated", "data": {}}
         raw_body = json.dumps(payload)
@@ -514,6 +550,7 @@ class TestWompiWebhook:
         assert response.json()["error"] == "Invalid signature"
 
     def test_wompi_webhook_invalid_json(self, api_client, wompi_settings):
+        """Verify wompi webhook invalid json."""
         url = reverse("subscription-webhook")
         raw_body = "{bad-json"
         expected_signature = hmac.new(
@@ -533,6 +570,7 @@ class TestWompiWebhook:
         assert response.json()["error"] == "Invalid JSON"
 
     def test_wompi_webhook_missing_transaction_data(self, api_client, wompi_settings):
+        """Verify wompi webhook missing transaction data."""
         url = reverse("subscription-webhook")
         payload = {"event": "transaction.updated", "data": {}}
         raw_body = json.dumps(payload)
@@ -553,6 +591,7 @@ class TestWompiWebhook:
         assert response.json()["error"] == "Missing transaction data"
 
     def test_wompi_webhook_subscription_approved(self, api_client, subscription_user, wompi_settings):
+        """Verify wompi webhook subscription approved."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -596,6 +635,7 @@ class TestWompiWebhook:
         assert subscription_user.role == "client"
 
     def test_wompi_webhook_subscription_declined(self, api_client, subscription_user, wompi_settings):
+        """Verify wompi webhook subscription declined."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -638,6 +678,7 @@ class TestWompiWebhook:
 
     @pytest.mark.parametrize("status_value", ["VOIDED", "ERROR"])
     def test_wompi_webhook_subscription_voided_or_error(self, api_client, subscription_user, wompi_settings, status_value):
+        """Verify wompi webhook subscription voided or error."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -677,6 +718,7 @@ class TestWompiWebhook:
         assert sub.status == "active"
 
     def test_wompi_webhook_invalid_reference_format(self, api_client, wompi_settings):
+        """Verify wompi webhook invalid reference format."""
         url = reverse("subscription-webhook")
         payload = {
             "event": "transaction.updated",
@@ -706,6 +748,7 @@ class TestWompiWebhook:
         assert response.json()["status"] == "success"
 
     def test_wompi_webhook_subscription_not_found(self, api_client, wompi_settings):
+        """Verify wompi webhook subscription not found."""
         url = reverse("subscription-webhook")
         payload = {
             "event": "transaction.updated",
@@ -737,7 +780,10 @@ class TestWompiWebhook:
 
 @pytest.mark.django_db
 class TestCancelSubscriptionById:
+    """Tests for Cancel Subscription By Id."""
+
     def test_cancel_subscription_view_success(self, api_client, subscription_user):
+        """Verify cancel subscription view success."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -758,6 +804,7 @@ class TestCancelSubscriptionById:
         assert response.data["message"] == "Subscription cancelled successfully"
 
     def test_cancel_subscription_view_not_found(self, api_client, subscription_user):
+        """Verify cancel subscription view not found."""
         api_client.force_authenticate(user=subscription_user)
         url = reverse("subscription-cancel-by-id", kwargs={"subscription_id": 9999})
 
@@ -767,6 +814,7 @@ class TestCancelSubscriptionById:
         assert response.data["error"] == "Subscription not found"
 
     def test_cancel_subscription_view_already_cancelled(self, api_client, subscription_user):
+        """Verify cancel subscription view already cancelled."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -788,20 +836,24 @@ class TestCancelSubscriptionById:
 # ======================================================================
 
 """Tests for uncovered branches in subscription.py (91%→higher)."""
-import pytest
-import json
-import hashlib
-import hmac
+import hashlib  # noqa: F811
+import hmac  # noqa: F811
+import json  # noqa: F811
+from datetime import timedelta
+from decimal import Decimal  # noqa: F811
 from unittest import mock
-from django.urls import reverse
+
+import pytest
 from django.conf import settings
-from rest_framework.test import APIClient
-from rest_framework import status
-from gym_app.models import User, Subscription
-from datetime import datetime, timedelta
-from decimal import Decimal
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+
+from gym_app.models import Subscription, User  # noqa: F811
+
+
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_sc@e.com', password='p', role='client',
         first_name='C', last_name='S')
@@ -809,6 +861,7 @@ def client_u():
 
 @pytest.fixture
 def active_sub(client_u):
+    """Active sub."""
     return Subscription.objects.create(
         user=client_u, plan_type='cliente', status='active',
         amount=Decimal('50000.00'),
@@ -817,6 +870,7 @@ def active_sub(client_u):
 
 @pytest.mark.django_db
 class TestSubscriptionRegressionScenarios:
+    """Tests for Subscription Regression Scenarios."""
 
     # --- create_subscription: Wompi merchant fetch fails (lines 198-203) ---
     def test_create_sub_wompi_merchant_error(self, api_client, client_u):
@@ -888,8 +942,9 @@ class TestSubscriptionRegressionScenarios:
     def test_create_sub_payment_source_exception(self, api_client, client_u):
         """Lines 262-267: requests.RequestException creating payment source."""
         api_client.force_authenticate(user=client_u)
-        import requests as req_lib
         from types import SimpleNamespace
+
+        import requests as req_lib
         merchant_resp = SimpleNamespace(
             status_code=200,
             json=lambda: {

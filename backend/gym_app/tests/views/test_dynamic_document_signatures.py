@@ -1,20 +1,22 @@
+"""Tests for dynamic_document_signatures module."""
 import datetime
+from contextlib import ExitStack
 from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import patch, mock_open
 from unittest import mock
-from contextlib import ExitStack
+from unittest.mock import patch
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models import DynamicDocument, DocumentSignature, UserSignature
-from gym_app.models.dynamic_document import DocumentVariable, RecentDocument
+from gym_app.models import DocumentSignature, DynamicDocument, UserSignature
+from gym_app.models.dynamic_document import DocumentVariable
 
 try:
     from PIL import Image as PILImage
@@ -22,7 +24,7 @@ except ImportError:
     PILImage = None
 
 try:
-    from PyPDF2 import PdfWriter, PdfReader
+    from PyPDF2 import PdfReader, PdfWriter
 except ImportError:
     PdfWriter = PdfReader = None
 
@@ -32,18 +34,17 @@ except ImportError:
     rl_canvas = None
 from gym_app.views.dynamic_documents import signature_views
 from gym_app.views.dynamic_documents.signature_views import (
-    get_client_ip,
-    generate_encrypted_document_id,
-    format_datetime_spanish,
     expire_overdue_documents,
+    generate_encrypted_document_id,
+    get_client_ip,
     get_letterhead_for_document,
 )
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def signer_user():
+    """Signer user."""
     return User.objects.create_user(
         email="signer@example.com",
         password="testpassword",
@@ -56,6 +57,7 @@ def signer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -66,6 +68,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document_requiring_signature(lawyer_user, signer_user):
+    """Document requiring signature."""
     doc = DynamicDocument.objects.create(
         title="Doc firmas",
         content="<p>Firmar {{var}}</p>",
@@ -80,7 +83,10 @@ def document_requiring_signature(lawyer_user, signer_user):
 
 @pytest.mark.django_db
 class TestGetDocumentSignaturesAndPending:
+    """Tests for Get Document Signatures And Pending."""
+
     def test_get_document_signatures(self, api_client, lawyer_user, signer_user, document_requiring_signature):
+        """Verify get document signatures."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-document-signatures", kwargs={"document_id": document_requiring_signature.id})
         response = api_client.get(url)
@@ -90,6 +96,7 @@ class TestGetDocumentSignaturesAndPending:
         assert response.data[0]["signer_email"] == signer_user.email
 
     def test_get_document_signatures_forbidden_when_cannot_view(self, api_client, signer_user, lawyer_user):
+        """Verify get document signatures forbidden when cannot view."""
         doc = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>x</p>",
@@ -106,6 +113,7 @@ class TestGetDocumentSignaturesAndPending:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_document_signatures_not_found(self, api_client, lawyer_user):
+        """Verify get document signatures not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-document-signatures", kwargs={"document_id": 9999})
         response = api_client.get(url)
@@ -113,6 +121,7 @@ class TestGetDocumentSignaturesAndPending:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_pending_signatures_for_user(self, api_client, signer_user, document_requiring_signature):
+        """Verify get pending signatures for user."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("get-pending-signatures")
         response = api_client.get(url)
@@ -122,7 +131,9 @@ class TestGetDocumentSignaturesAndPending:
         doc_ids = {doc["id"] for doc in response.data}
         assert document_requiring_signature.id in doc_ids
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_get_pending_signatures_expires_overdue_document(self, api_client, signer_user, lawyer_user):
+        """Verify get pending signatures expires overdue document."""
         overdue_doc = DynamicDocument.objects.create(
             title="Overdue",
             content="<p>x</p>",
@@ -147,7 +158,10 @@ class TestGetDocumentSignaturesAndPending:
 
 @pytest.mark.django_db
 class TestSignAndRejectDocument:
+    """Tests for Sign And Reject Document."""
+
     def test_sign_document_success(self, api_client, signer_user, document_requiring_signature):
+        """Verify sign document success."""
         # Crear firma electrónica del usuario
         UserSignature.objects.create(user=signer_user, signature_image="signatures/test.png", method="upload")
 
@@ -161,6 +175,7 @@ class TestSignAndRejectDocument:
         assert sig.rejected is False
 
     def test_sign_document_sets_fully_signed(self, api_client, signer_user, lawyer_user):
+        """Verify sign document sets fully signed."""
         other_signer = User.objects.create_user(
             email="other-signer@example.com",
             password="testpassword",
@@ -195,6 +210,7 @@ class TestSignAndRejectDocument:
         assert doc.fully_signed is True
 
     def test_sign_document_not_found(self, api_client, signer_user):
+        """Verify sign document not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("sign-document", kwargs={"document_id": 9999, "user_id": signer_user.id})
         response = api_client.post(url, {}, format="json")
@@ -202,6 +218,7 @@ class TestSignAndRejectDocument:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_sign_document_requires_user_signature(self, api_client, signer_user, document_requiring_signature):
+        """Verify sign document requires user signature."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("sign-document", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
         response = api_client.post(url, {}, format="json")
@@ -210,6 +227,7 @@ class TestSignAndRejectDocument:
         assert 'needs to create a signature' in response.data['detail']
 
     def test_sign_document_forbidden_when_cannot_view(self, api_client, signer_user, lawyer_user):
+        """Verify sign document forbidden when cannot view."""
         doc = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>x</p>",
@@ -228,6 +246,7 @@ class TestSignAndRejectDocument:
         assert "permission" in response.data["detail"].lower()
 
     def test_sign_document_staff_can_sign_for_user(self, api_client, signer_user, lawyer_user, document_requiring_signature):
+        """Verify sign document staff can sign for user."""
         UserSignature.objects.create(user=signer_user, signature_image="signatures/test.png", method="upload")
         lawyer_user.is_staff = True
         lawyer_user.save(update_fields=["is_staff"])
@@ -241,6 +260,7 @@ class TestSignAndRejectDocument:
         assert sig.signed is True
 
     def test_sign_document_user_not_authorized_signer(self, api_client, signer_user, lawyer_user):
+        """Verify sign document user not authorized signer."""
         doc = DynamicDocument.objects.create(
             title="Doc",
             content="<p>x</p>",
@@ -259,6 +279,7 @@ class TestSignAndRejectDocument:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_sign_document_already_signed(self, api_client, signer_user, lawyer_user):
+        """Verify sign document already signed."""
         doc = DynamicDocument.objects.create(
             title="Doc",
             content="<p>x</p>",
@@ -277,6 +298,7 @@ class TestSignAndRejectDocument:
         assert "not authorized" in response.data["detail"].lower()
 
     def test_sign_document_user_not_found(self, api_client, lawyer_user):
+        """Verify sign document user not found."""
         lawyer_user.is_staff = True
         lawyer_user.save(update_fields=["is_staff"])
 
@@ -296,6 +318,7 @@ class TestSignAndRejectDocument:
         assert response.data["detail"] == "User not found."
 
     def test_sign_document_error_saving_signature(self, api_client, signer_user, document_requiring_signature, monkeypatch):
+        """Verify sign document error saving signature."""
         UserSignature.objects.create(user=signer_user, signature_image="signatures/test.png", method="upload")
 
         def raise_error(*args, **kwargs):
@@ -311,6 +334,7 @@ class TestSignAndRejectDocument:
         assert "Error saving signature" in response.data["detail"]
 
     def test_sign_document_requires_signature_and_authorization(self, api_client, signer_user, lawyer_user):
+        """Verify sign document requires signature and authorization."""
         # Documento que NO requiere firma
         doc = DynamicDocument.objects.create(
             title="Sin firma",
@@ -341,6 +365,7 @@ class TestSignAndRejectDocument:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_reject_document_success(self, api_client, signer_user, document_requiring_signature):
+        """Verify reject document success."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("reject-document", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
         payload = {"comment": "No estoy de acuerdo"}
@@ -352,6 +377,7 @@ class TestSignAndRejectDocument:
         assert sig.rejection_comment == "No estoy de acuerdo"
 
     def test_reject_document_no_comment(self, api_client, signer_user, document_requiring_signature):
+        """Verify reject document no comment."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("reject-document", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
         response = api_client.post(url, {}, format="json")
@@ -362,6 +388,7 @@ class TestSignAndRejectDocument:
         assert not sig.rejection_comment
 
     def test_reject_document_staff_can_reject_for_user(self, api_client, signer_user, lawyer_user, document_requiring_signature):
+        """Verify reject document staff can reject for user."""
         lawyer_user.is_staff = True
         lawyer_user.save(update_fields=["is_staff"])
 
@@ -374,6 +401,7 @@ class TestSignAndRejectDocument:
         assert sig.rejected is True
 
     def test_reject_document_already_signed(self, api_client, signer_user, lawyer_user):
+        """Verify reject document already signed."""
         doc = DynamicDocument.objects.create(
             title="Doc",
             content="<p>x</p>",
@@ -391,6 +419,7 @@ class TestSignAndRejectDocument:
         assert "not authorized" in response.data["detail"].lower()
 
     def test_reject_document_not_found(self, api_client, signer_user):
+        """Verify reject document not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("reject-document", kwargs={"document_id": 9999, "user_id": signer_user.id})
         response = api_client.post(url, {"comment": "X"}, format="json")
@@ -398,6 +427,7 @@ class TestSignAndRejectDocument:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_reject_document_user_not_found(self, api_client, lawyer_user, document_requiring_signature):
+        """Verify reject document user not found."""
         lawyer_user.is_staff = True
         lawyer_user.save(update_fields=["is_staff"])
 
@@ -409,6 +439,7 @@ class TestSignAndRejectDocument:
         assert response.data["detail"] == "User not found."
 
     def test_reject_document_unauthorized_other_user(self, api_client, signer_user, lawyer_user, document_requiring_signature):
+        """Verify reject document unauthorized other user."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("reject-document", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
         response = api_client.post(url, {"comment": "X"}, format="json")
@@ -416,6 +447,7 @@ class TestSignAndRejectDocument:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_reject_document_requires_signatures(self, api_client, signer_user, lawyer_user):
+        """Verify reject document requires signatures."""
         doc = DynamicDocument.objects.create(
             title="Sin firmas",
             content="<p>x</p>",
@@ -432,6 +464,7 @@ class TestSignAndRejectDocument:
         assert response.data["detail"] == "This document does not require signatures."
 
     def test_reject_document_requires_pending_signature(self, api_client, signer_user, lawyer_user):
+        """Verify reject document requires pending signature."""
         # Documento donde no hay signature pendiente
         doc = DynamicDocument.objects.create(
             title="Doc",
@@ -450,7 +483,10 @@ class TestSignAndRejectDocument:
 
 @pytest.mark.django_db
 class TestReopenAndRemoveSignatureRequest:
+    """Tests for Reopen And Remove Signature Request."""
+
     def test_reopen_document_signatures_from_rejected(self, api_client, lawyer_user, signer_user, document_requiring_signature):
+        """Verify reopen document signatures from rejected."""
         # Marcar el documento como Rejected
         document_requiring_signature.state = "Rejected"
         document_requiring_signature.save(update_fields=["state"])
@@ -464,6 +500,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert document_requiring_signature.state == "PendingSignatures"
 
     def test_reopen_document_signatures_forbidden_for_non_owner(self, api_client, signer_user, lawyer_user):
+        """Verify reopen document signatures forbidden for non owner."""
         doc = DynamicDocument.objects.create(
             title="Rejected",
             content="<p>x</p>",
@@ -479,6 +516,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_reopen_document_signatures_from_expired(self, api_client, lawyer_user, signer_user):
+        """Verify reopen document signatures from expired."""
         doc = DynamicDocument.objects.create(
             title="Expired",
             content="<p>x</p>",
@@ -504,6 +542,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert sig.rejected is False
 
     def test_reopen_document_signatures_requires_signature(self, api_client, lawyer_user):
+        """Verify reopen document signatures requires signature."""
         doc = DynamicDocument.objects.create(
             title="NoSign",
             content="<p>x</p>",
@@ -520,6 +559,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert "does not require signatures" in response.data["detail"]
 
     def test_reopen_document_signatures_invalid_state(self, api_client, lawyer_user):
+        """Verify reopen document signatures invalid state."""
         doc = DynamicDocument.objects.create(
             title="Completed",
             content="<p>x</p>",
@@ -536,6 +576,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert "Only rejected or expired" in response.data["detail"]
 
     def test_reopen_document_signatures_not_found(self, api_client, lawyer_user):
+        """Verify reopen document signatures not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("reopen-document-signatures", kwargs={"document_id": 9999})
         response = api_client.post(url, {}, format="json")
@@ -543,6 +584,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_remove_signature_request_only_creator_and_not_signed(self, api_client, lawyer_user, signer_user, document_requiring_signature):
+        """Verify remove signature request only creator and not signed."""
         sig = DocumentSignature.objects.get(document=document_requiring_signature, signer=signer_user)
 
         # Caso éxito: creador puede eliminar solicitud pendiente
@@ -553,12 +595,13 @@ class TestReopenAndRemoveSignatureRequest:
         assert not DocumentSignature.objects.filter(id=sig.id).exists()
 
         # Crear otra firma y marcarla como firmada
-        sig2 = DocumentSignature.objects.create(document=document_requiring_signature, signer=signer_user, signed=True)
+        _sig2 = DocumentSignature.objects.create(document=document_requiring_signature, signer=signer_user, signed=True)
         url = reverse("remove-signature-request", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
         response = api_client.delete(url)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_remove_signature_request_not_found(self, api_client, lawyer_user, signer_user, document_requiring_signature):
+        """Verify remove signature request not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("remove-signature-request", kwargs={"document_id": document_requiring_signature.id, "user_id": 9999})
         response = api_client.delete(url)
@@ -566,6 +609,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_remove_signature_request_document_not_found(self, api_client, lawyer_user, signer_user):
+        """Verify remove signature request document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("remove-signature-request", kwargs={"document_id": 9999, "user_id": signer_user.id})
         response = api_client.delete(url)
@@ -573,6 +617,7 @@ class TestReopenAndRemoveSignatureRequest:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_remove_signature_request_forbidden_for_non_creator(self, api_client, signer_user, document_requiring_signature):
+        """Verify remove signature request forbidden for non creator."""
         # Creador es lawyer_user, autenticamos como signer_user
         api_client.force_authenticate(user=signer_user)
         url = reverse("remove-signature-request", kwargs={"document_id": document_requiring_signature.id, "user_id": signer_user.id})
@@ -582,6 +627,7 @@ class TestReopenAndRemoveSignatureRequest:
 
 @pytest.mark.django_db
 class TestUserSignatureAndDocumentsByUser:
+    """Tests for User Signature And Documents By User."""
 
     def test_get_user_pending_documents_full(self, api_client, signer_user, lawyer_user):
         """get_user_pending_documents_full devuelve solo documentos PendingSignatures visibles para el usuario objetivo."""
@@ -615,6 +661,7 @@ class TestUserSignatureAndDocumentsByUser:
         assert doc_other.id not in ids
 
     def test_get_user_pending_documents_full_filters_by_visibility(self, api_client, signer_user, lawyer_user):
+        """Verify get user pending documents full filters by visibility."""
         other_user = User.objects.create_user(
             email="other@example.com",
             password="testpassword",
@@ -637,6 +684,7 @@ class TestUserSignatureAndDocumentsByUser:
         assert response.data == []
 
     def test_get_user_pending_documents_full_user_not_found(self, api_client, signer_user):
+        """Verify get user pending documents full user not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("get-user-pending-documents-full", kwargs={"user_id": 9999})
         response = api_client.get(url)
@@ -685,6 +733,7 @@ class TestUserSignatureAndDocumentsByUser:
         assert "Other" not in titles
 
     def test_get_user_archived_documents_user_not_found(self, api_client, signer_user):
+        """Verify get user archived documents user not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("get-user-archived-documents", kwargs={"user_id": 9999})
         response = api_client.get(url)
@@ -721,6 +770,7 @@ class TestUserSignatureAndDocumentsByUser:
         assert "NotSigned" not in titles
 
     def test_get_user_signed_documents_user_not_found(self, api_client, signer_user):
+        """Verify get user signed documents user not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("get-user-signed-documents", kwargs={"user_id": 9999})
         response = api_client.get(url)
@@ -728,6 +778,7 @@ class TestUserSignatureAndDocumentsByUser:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_user_signature_present_and_absent(self, api_client, signer_user):
+        """Verify get user signature present and absent."""
         api_client.force_authenticate(user=signer_user)
 
         # Caso sin firma
@@ -744,12 +795,14 @@ class TestUserSignatureAndDocumentsByUser:
         assert "signature" in response.data
 
     def test_get_user_signature_user_not_found(self, api_client, signer_user):
+        """Verify get user signature user not found."""
         api_client.force_authenticate(user=signer_user)
         url = reverse("get-user-signature", kwargs={"user_id": 9999})
         response = api_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_user_signature_internal_error(self, api_client, signer_user, monkeypatch):
+        """Verify get user signature internal error."""
         api_client.force_authenticate(user=signer_user)
 
         def raise_error(*args, **kwargs):
@@ -766,7 +819,10 @@ class TestUserSignatureAndDocumentsByUser:
 
 @pytest.mark.django_db
 class TestGenerateSignaturesPdf:
+    """Tests for Generate Signatures Pdf."""
+
     def test_generate_signatures_pdf_requires_fully_signed(self, api_client, lawyer_user):
+        """Verify generate signatures pdf requires fully signed."""
         doc = DynamicDocument.objects.create(
             title="Not signed",
             content="<p>x</p>",
@@ -784,6 +840,7 @@ class TestGenerateSignaturesPdf:
         assert 'completamente firmado' in response.data['detail']
 
     def test_generate_signatures_pdf_not_found(self, api_client, lawyer_user):
+        """Verify generate signatures pdf not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("generate-signatures-pdf", kwargs={"pk": 9999})
         response = api_client.get(url)
@@ -792,6 +849,7 @@ class TestGenerateSignaturesPdf:
         assert "document not found" in response.data["detail"].lower()
 
     def test_generate_signatures_pdf_forbidden_when_cannot_view(self, api_client, signer_user, lawyer_user):
+        """Verify generate signatures pdf forbidden when cannot view."""
         doc = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>x</p>",
@@ -809,6 +867,7 @@ class TestGenerateSignaturesPdf:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_generate_signatures_pdf_internal_error(self, api_client, lawyer_user):
+        """Verify generate signatures pdf internal error."""
         doc = DynamicDocument.objects.create(
             title="Signed",
             content="<p>x</p>",
@@ -840,6 +899,7 @@ class TestGenerateSignaturesPdf:
         assert "Error al generar el PDF de firmas" in response.data["detail"]
 
     def test_generate_signatures_pdf_requires_signatures(self, api_client, lawyer_user):
+        """Verify generate signatures pdf requires signatures."""
         doc = DynamicDocument.objects.create(
             title="No signatures",
             content="<p>x</p>",
@@ -856,6 +916,7 @@ class TestGenerateSignaturesPdf:
         assert 'no tiene firmas' in response.data['detail']
 
     def test_generate_signatures_pdf_success(self, api_client, lawyer_user):
+        """Verify generate signatures pdf success."""
         doc = DynamicDocument.objects.create(
             title="Signed",
             content="<p>x</p>",
@@ -909,11 +970,13 @@ class TestGenerateSignaturesPdf:
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(
         email="law28@t.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -922,6 +985,7 @@ def law():
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(
         email="cli28@t.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -930,6 +994,7 @@ def cli():
 
 @pytest.fixture
 def sig_doc(law, cli):
+    """Sig doc."""
     doc = DynamicDocument.objects.create(
         title="SigDoc", content="<p>body</p>", state="PendingSignatures",
         created_by=law, requires_signature=True,
@@ -940,8 +1005,12 @@ def sig_doc(law, cli):
 
 @pytest.mark.django_db
 class TestExpireOverdue:
+    """Tests for Expire Overdue."""
+
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue_updates_state(self, mock_email, law):
+        """Verify expire overdue updates state."""
         doc = DynamicDocument.objects.create(
             title="Overdue", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
@@ -952,7 +1021,9 @@ class TestExpireOverdue:
         assert doc.state == "Expired"
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue_sends_email(self, mock_email, law):
+        """Verify expire overdue sends email."""
         doc = DynamicDocument.objects.create(
             title="Overdue2", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
@@ -963,7 +1034,9 @@ class TestExpireOverdue:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_no_overdue_noop(self, law):
+        """Verify expire no overdue noop."""
         DynamicDocument.objects.create(
             title="NotOverdue", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
@@ -974,7 +1047,10 @@ class TestExpireOverdue:
 
 @pytest.mark.django_db
 class TestGetDocumentSignatures:
+    """Tests for Get Document Signatures."""
+
     def test_get_signatures_success(self, api, law, sig_doc):
+        """Verify get signatures success."""
         DocumentSignature.objects.create(document=sig_doc, signer=law)
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-document-signatures", args=[sig_doc.id]))
@@ -982,11 +1058,13 @@ class TestGetDocumentSignatures:
         assert len(resp.data) == 1
 
     def test_get_signatures_doc_not_found(self, api, law):
+        """Verify get signatures doc not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-document-signatures", args=[999999]))
         assert resp.status_code == 404
 
     def test_get_signatures_no_permission(self, api, sig_doc):
+        """Verify get signatures no permission."""
         outsider = User.objects.create_user(email="out@t.com", password="pw", role="client")
         api.force_authenticate(user=outsider)
         resp = api.get(reverse("get-document-signatures", args=[sig_doc.id]))
@@ -997,12 +1075,16 @@ class TestGetDocumentSignatures:
 
 @pytest.mark.django_db
 class TestSignDocument:
+    """Tests for Sign Document."""
+
     def test_sign_doc_not_found(self, api, law):
+        """Verify sign doc not found."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("sign-document", args=[999999, law.id]))
         assert resp.status_code == 404
 
     def test_sign_doc_no_signature_required(self, api, law):
+        """Verify sign doc no signature required."""
         doc = DynamicDocument.objects.create(
             title="NoSig", content="<p>x</p>", state="Draft",
             created_by=law, requires_signature=False,
@@ -1013,6 +1095,7 @@ class TestSignDocument:
         assert "does not require" in resp.data["detail"]
 
     def test_sign_on_behalf_forbidden(self, api, law, cli, sig_doc):
+        """Verify sign on behalf forbidden."""
         DocumentSignature.objects.create(document=sig_doc, signer=cli)
         api.force_authenticate(user=law)
         resp = api.post(reverse("sign-document", args=[sig_doc.id, cli.id]))
@@ -1027,12 +1110,14 @@ class TestSignDocument:
 
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
-def law():
+def law():  # noqa: F811
+    """Law."""
     return User.objects.create_user(
         email="law29@t.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -1040,7 +1125,8 @@ def law():
 
 
 @pytest.fixture
-def cli():
+def cli():  # noqa: F811
+    """Cli."""
     return User.objects.create_user(
         email="cli29@t.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -1061,7 +1147,10 @@ def _make_sig_doc(law, cli, state="PendingSignatures"):
 
 @pytest.mark.django_db
 class TestSignDocumentEdges:
+    """Tests for Sign Document Edges."""
+
     def test_sign_user_not_found_non_staff_gets_403(self, api, law, cli):
+        """Verify sign user not found non staff gets 403."""
         doc = _make_sig_doc(law, cli)
         api.force_authenticate(user=law)
         resp = api.post(reverse("sign-document", args=[doc.id, 999999]))
@@ -1069,6 +1158,7 @@ class TestSignDocumentEdges:
         assert resp.status_code == 403
 
     def test_sign_not_authorized_signer(self, api, law, cli):
+        """Verify sign not authorized signer."""
         doc = _make_sig_doc(law, cli)
         # no DocumentSignature record for cli
         api.force_authenticate(user=cli)
@@ -1076,6 +1166,7 @@ class TestSignDocumentEdges:
         assert resp.status_code == 403
 
     def test_sign_no_electronic_signature(self, api, law, cli):
+        """Verify sign no electronic signature."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1085,6 +1176,7 @@ class TestSignDocumentEdges:
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
     def test_sign_success(self, mock_email, api, law, cli):
+        """Verify sign success."""
         doc = _make_sig_doc(law, cli)
         sig = DocumentSignature.objects.create(document=doc, signer=cli)
         UserSignature.objects.create(user=cli, signature_image="sig.png")
@@ -1096,6 +1188,7 @@ class TestSignDocumentEdges:
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
     def test_sign_all_signers_fully_signed(self, mock_email, api, law, cli):
+        """Verify sign all signers fully signed."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         UserSignature.objects.create(user=cli, signature_image="sig.png")
@@ -1110,12 +1203,16 @@ class TestSignDocumentEdges:
 
 @pytest.mark.django_db
 class TestRejectDocument:
+    """Tests for Reject Document."""
+
     def test_reject_doc_not_found(self, api, law):
+        """Verify reject doc not found."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("reject-document", args=[999999, law.id]))
         assert resp.status_code == 404
 
     def test_reject_no_sig_required(self, api, law):
+        """Verify reject no sig required."""
         doc = DynamicDocument.objects.create(
             title="NoSig", content="<p>x</p>", state="Draft",
             created_by=law, requires_signature=False,
@@ -1125,6 +1222,7 @@ class TestRejectDocument:
         assert resp.status_code == 400
 
     def test_reject_on_behalf_forbidden(self, api, law, cli):
+        """Verify reject on behalf forbidden."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=law)
@@ -1132,6 +1230,7 @@ class TestRejectDocument:
         assert resp.status_code == 403
 
     def test_reject_user_not_found_non_staff_gets_403(self, api, law, cli):
+        """Verify reject user not found non staff gets 403."""
         doc = _make_sig_doc(law, cli)
         api.force_authenticate(user=law)
         resp = api.post(reverse("reject-document", args=[doc.id, 999999]))
@@ -1139,6 +1238,7 @@ class TestRejectDocument:
         assert resp.status_code == 403
 
     def test_reject_not_pending_signer(self, api, cli, law):
+        """Verify reject not pending signer."""
         doc = _make_sig_doc(law, cli)
         # no signature record
         api.force_authenticate(user=cli)
@@ -1147,6 +1247,7 @@ class TestRejectDocument:
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
     def test_reject_success(self, mock_email, api, law, cli):
+        """Verify reject success."""
         doc = _make_sig_doc(law, cli)
         sig = DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1164,6 +1265,7 @@ class TestRejectDocument:
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
     def test_reject_without_comment(self, mock_email, api, law, cli):
+        """Verify reject without comment."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1175,12 +1277,16 @@ class TestRejectDocument:
 
 @pytest.mark.django_db
 class TestReopenSignatures:
+    """Tests for Reopen Signatures."""
+
     def test_reopen_doc_not_found(self, api, law):
+        """Verify reopen doc not found."""
         api.force_authenticate(user=law)
         resp = api.post(reverse("reopen-document-signatures", args=[999999]))
         assert resp.status_code == 404
 
     def test_reopen_no_sig_required(self, api, law):
+        """Verify reopen no sig required."""
         doc = DynamicDocument.objects.create(
             title="NoSig", content="<p>x</p>", state="Draft",
             created_by=law, requires_signature=False,
@@ -1190,13 +1296,16 @@ class TestReopenSignatures:
         assert resp.status_code == 400
 
     def test_reopen_wrong_state(self, api, law, cli):
+        """Verify reopen wrong state."""
         doc = _make_sig_doc(law, cli, state="PendingSignatures")
         api.force_authenticate(user=law)
         resp = api.post(reverse("reopen-document-signatures", args=[doc.id]))
         assert resp.status_code == 400
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    @freeze_time("2025-01-15 12:00:00")
     def test_reopen_rejected_success(self, mock_email, api, law, cli):
+        """Verify reopen rejected success."""
         doc = _make_sig_doc(law, cli, state="Rejected")
         sig = DocumentSignature.objects.create(
             document=doc, signer=cli, rejected=True,
@@ -1216,12 +1325,16 @@ class TestReopenSignatures:
 
 @pytest.mark.django_db
 class TestRemoveSignatureRequest:
+    """Tests for Remove Signature Request."""
+
     def test_remove_doc_not_found(self, api, law):
+        """Verify remove doc not found."""
         api.force_authenticate(user=law)
         resp = api.delete(reverse("remove-signature-request", args=[999999, law.id]))
         assert resp.status_code == 404
 
     def test_remove_not_creator_forbidden(self, api, law, cli):
+        """Verify remove not creator forbidden."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1229,12 +1342,15 @@ class TestRemoveSignatureRequest:
         assert resp.status_code == 403
 
     def test_remove_sig_not_found(self, api, law, cli):
+        """Verify remove sig not found."""
         doc = _make_sig_doc(law, cli)
         api.force_authenticate(user=law)
         resp = api.delete(reverse("remove-signature-request", args=[doc.id, 999999]))
         assert resp.status_code == 404
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_remove_already_signed(self, api, law, cli):
+        """Verify remove already signed."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(
             document=doc, signer=cli, signed=True, signed_at=timezone.now(),
@@ -1244,6 +1360,7 @@ class TestRemoveSignatureRequest:
         assert resp.status_code == 400
 
     def test_remove_success(self, api, law, cli):
+        """Verify remove success."""
         doc = _make_sig_doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=law)
@@ -1260,15 +1377,18 @@ class TestRemoveSignatureRequest:
 
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
-def law():
+def law():  # noqa: F811
+    """Law."""
     return User.objects.create_user(email="law30@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
-def cli():
+def cli():  # noqa: F811
+    """Cli."""
     return User.objects.create_user(email="cli30@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 def _doc(law, cli, state="PendingSignatures"):
@@ -1280,7 +1400,10 @@ def _doc(law, cli, state="PendingSignatures"):
 # -- get_user_pending_documents_full --
 @pytest.mark.django_db
 class TestGetUserPendingDocsFull:
+    """Tests for Get User Pending Docs Full."""
+
     def test_pending_docs_success(self, api, law, cli):
+        """Verify pending docs success."""
         doc = _doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1289,11 +1412,14 @@ class TestGetUserPendingDocsFull:
         assert len(resp.data) >= 1
 
     def test_pending_docs_user_not_found(self, api, law):
+        """Verify pending docs user not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-pending-documents-full", args=[999999]))
         assert resp.status_code == 404
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_pending_docs_excludes_signed(self, api, law, cli):
+        """Verify pending docs excludes signed."""
         doc = _doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli, signed=True, signed_at=timezone.now())
         api.force_authenticate(user=cli)
@@ -1301,7 +1427,9 @@ class TestGetUserPendingDocsFull:
         assert resp.status_code == 200
         assert len(resp.data) == 0
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_pending_docs_excludes_rejected(self, api, law, cli):
+        """Verify pending docs excludes rejected."""
         doc = _doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=cli, rejected=True, rejected_at=timezone.now())
         api.force_authenticate(user=cli)
@@ -1312,7 +1440,11 @@ class TestGetUserPendingDocsFull:
 # -- get_user_signed_documents --
 @pytest.mark.django_db
 class TestGetUserSignedDocs:
+    """Tests for Get User Signed Docs."""
+
+    @freeze_time("2025-01-15 12:00:00")
     def test_signed_docs_success(self, api, law, cli):
+        """Verify signed docs success."""
         doc = _doc(law, cli, state="FullySigned")
         DocumentSignature.objects.create(document=doc, signer=cli, signed=True, signed_at=timezone.now())
         api.force_authenticate(user=cli)
@@ -1321,11 +1453,13 @@ class TestGetUserSignedDocs:
         assert len(resp.data) >= 1
 
     def test_signed_docs_user_not_found(self, api, law):
+        """Verify signed docs user not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-signed-documents", args=[999999]))
         assert resp.status_code == 404
 
     def test_signed_docs_empty(self, api, law, cli):
+        """Verify signed docs empty."""
         api.force_authenticate(user=cli)
         resp = api.get(reverse("get-user-signed-documents", args=[cli.id]))
         assert resp.status_code == 200
@@ -1334,7 +1468,10 @@ class TestGetUserSignedDocs:
 # -- get_user_archived_documents --
 @pytest.mark.django_db
 class TestGetUserArchivedDocs:
+    """Tests for Get User Archived Docs."""
+
     def test_archived_docs_rejected(self, api, law, cli):
+        """Verify archived docs rejected."""
         doc = _doc(law, cli, state="Rejected")
         DocumentSignature.objects.create(document=doc, signer=cli, rejected=True)
         api.force_authenticate(user=cli)
@@ -1343,6 +1480,7 @@ class TestGetUserArchivedDocs:
         assert len(resp.data) >= 1
 
     def test_archived_docs_expired(self, api, law, cli):
+        """Verify archived docs expired."""
         doc = _doc(law, cli, state="Expired")
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1351,11 +1489,13 @@ class TestGetUserArchivedDocs:
         assert len(resp.data) >= 1
 
     def test_archived_docs_user_not_found(self, api, law):
+        """Verify archived docs user not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-archived-documents", args=[999999]))
         assert resp.status_code == 404
 
     def test_archived_excludes_pending(self, api, law, cli):
+        """Verify archived excludes pending."""
         doc = _doc(law, cli, state="PendingSignatures")
         DocumentSignature.objects.create(document=doc, signer=cli)
         api.force_authenticate(user=cli)
@@ -1366,7 +1506,10 @@ class TestGetUserArchivedDocs:
 # -- get_user_signature --
 @pytest.mark.django_db
 class TestGetUserSignature:
+    """Tests for Get User Signature."""
+
     def test_user_has_signature(self, api, law):
+        """Verify user has signature."""
         UserSignature.objects.create(user=law, signature_image="sig.png")
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-signature", args=[law.id]))
@@ -1374,12 +1517,14 @@ class TestGetUserSignature:
         assert resp.data["has_signature"] is True
 
     def test_user_no_signature(self, api, law):
+        """Verify user no signature."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-signature", args=[law.id]))
         assert resp.status_code == 200
         assert resp.data["has_signature"] is False
 
     def test_user_signature_not_found(self, api, law):
+        """Verify user signature not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-signature", args=[999999]))
         assert resp.status_code == 404
@@ -1387,7 +1532,10 @@ class TestGetUserSignature:
 # -- get_pending_signatures --
 @pytest.mark.django_db
 class TestGetPendingSignatures:
+    """Tests for Get Pending Signatures."""
+
     def test_pending_sigs_success(self, api, law, cli):
+        """Verify pending sigs success."""
         doc = _doc(law, cli)
         DocumentSignature.objects.create(document=doc, signer=law)
         api.force_authenticate(user=law)
@@ -1395,18 +1543,23 @@ class TestGetPendingSignatures:
         assert resp.status_code == 200
 
     def test_pending_sigs_unauthenticated(self, api):
+        """Verify pending sigs unauthenticated."""
         resp = api.get(reverse("get-pending-signatures"))
         assert resp.status_code in (401, 403)
 
 # -- generate_signatures_pdf --
 @pytest.mark.django_db
-class TestGenerateSignaturesPdf:
+class TestGenerateSignaturesPdf:  # noqa: F811
+    """Tests for Generate Signatures Pdf."""
+
     def test_pdf_doc_not_found(self, api, law):
+        """Verify pdf doc not found."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("generate-signatures-pdf", args=[999999]))
         assert resp.status_code == 404
 
     def test_pdf_not_fully_signed(self, api, law, cli):
+        """Verify pdf not fully signed."""
         doc = _doc(law, cli, state="PendingSignatures")
         doc.visibility_permissions.get_or_create(user=law, defaults={"granted_by": law})
         api.force_authenticate(user=law)
@@ -1414,6 +1567,7 @@ class TestGenerateSignaturesPdf:
         assert resp.status_code == 400
 
     def test_pdf_no_signatures(self, api, law):
+        """Verify pdf no signatures."""
         doc = DynamicDocument.objects.create(
             title="FS_NoSig", content="<p>x</p>", state="FullySigned",
             created_by=law, requires_signature=True, fully_signed=True,
@@ -1424,6 +1578,7 @@ class TestGenerateSignaturesPdf:
         assert resp.status_code == 400
 
     def test_pdf_no_permission(self, api, law, cli):
+        """Verify pdf no permission."""
         doc = DynamicDocument.objects.create(
             title="FS_NoPerm", content="<p>x</p>", state="FullySigned",
             created_by=law, requires_signature=True, fully_signed=True,
@@ -1461,7 +1616,8 @@ Targets uncovered lines:
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b8@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -1471,6 +1627,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client_b8@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -1480,6 +1637,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def doc_fully_signed(lawyer_user, client_user):  # pragma: no cover – unused fixture
+    """Doc fully signed."""
     doc = DynamicDocument.objects.create(
         title="FullySigned B8",
         content="<p>Hello {{var1}}</p>",
@@ -1488,7 +1646,7 @@ def doc_fully_signed(lawyer_user, client_user):  # pragma: no cover – unused f
         requires_signature=True,
         fully_signed=True,
     )
-    sig = DocumentSignature.objects.create(
+    _sig = DocumentSignature.objects.create(
         document=doc, signer=client_user, signed=True,
         signed_at=timezone.now(),
         ip_address="1.2.3.4",
@@ -1502,6 +1660,7 @@ def doc_fully_signed(lawyer_user, client_user):  # pragma: no cover – unused f
 
 @pytest.mark.django_db
 class TestHelperFunctions:
+    """Tests for Helper Functions."""
 
     def test_get_client_ip_x_forwarded_for(self):
         """Line 56-60: X-Forwarded-For header."""
@@ -1571,6 +1730,7 @@ class TestHelperFunctions:
 
 @pytest.mark.django_db
 class TestGetLetterheadForDocument:
+    """Tests for Get Letterhead For Document."""
 
     def test_document_letterhead_priority(self, lawyer_user):
         """Lines 772-773: document letterhead takes priority."""
@@ -1600,6 +1760,7 @@ class TestGetLetterheadForDocument:
 
 @pytest.mark.django_db
 class TestPdfHelpers:
+    """Tests for Pdf Helpers."""
 
     @patch('gym_app.views.dynamic_documents.signature_views.os.path.exists', return_value=False)
     def test_register_carlito_fonts_missing_file(self, mock_exists):
@@ -1700,13 +1861,14 @@ class TestPdfHelpers:
 
 @pytest.mark.django_db
 class TestSignatureViewExceptionPaths:
+    """Tests for Signature View Exception Paths."""
 
     def test_get_document_signatures_doc_not_found_inner(
         self, api_client, lawyer_user
     ):
         """Line 186-187: DynamicDocument.DoesNotExist inside view."""
         api_client.force_authenticate(user=lawyer_user)
-        url = f"/api/dynamic-documents/99999/signatures/"
+        url = "/api/dynamic-documents/99999/signatures/"
         resp = api_client.get(url)
         assert resp.status_code in (status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN)
 
@@ -1738,7 +1900,8 @@ class TestSignatureViewExceptionPaths:
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b9@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -1747,7 +1910,8 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="client_b9@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -1757,6 +1921,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc B9", content="<p>Hello</p>", state="Draft",
         created_by=lawyer_user,
@@ -1769,7 +1934,9 @@ def document(lawyer_user):
 
 @pytest.mark.django_db
 class TestCreateSignaturesPdf:
+    """Tests for Create Signatures Pdf."""
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_create_signatures_pdf_basic(self, lawyer_user, client_user):
         """Lines 941-1143: create_signatures_pdf with signed signature."""
         doc = DynamicDocument.objects.create(
@@ -1787,6 +1954,7 @@ class TestCreateSignaturesPdf:
         content = result.read()
         assert content[:4] == b'%PDF'
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_create_signatures_pdf_no_signature_images(self, lawyer_user, client_user):
         """Lines 1116-1118: no signature images branch."""
         doc = DynamicDocument.objects.create(
@@ -1823,7 +1991,9 @@ class TestCreateSignaturesPdf:
 
 @pytest.mark.django_db
 class TestExpireOverdueDocuments:
+    """Tests for Expire Overdue Documents."""
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_email_failure_does_not_block(self, lawyer_user, client_user):
         """Lines 162-164: email failure is silently caught."""
         doc = DynamicDocument.objects.create(
@@ -1840,6 +2010,7 @@ class TestExpireOverdueDocuments:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_skips_creator_without_email(self, client_user):
         """Lines 144-145: skip if creator has no email."""
         doc = DynamicDocument.objects.create(
@@ -1859,6 +2030,7 @@ class TestExpireOverdueDocuments:
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email='law_svc@e.com', password='p', role='lawyer',
         first_name='L', last_name='S')
@@ -1866,6 +2038,7 @@ def lawyer():
 
 @pytest.fixture
 def signer():
+    """Signer."""
     return User.objects.create_user(
         email='sig_svc@e.com', password='p', role='client',
         first_name='S', last_name='V')
@@ -1900,6 +2073,7 @@ def pending_doc(lawyer, signer):
 
 @pytest.mark.django_db
 class TestSignatureViewsRegressionScenarios:
+    """Tests for Signature Views Regression Scenarios."""
 
     # --- Helper: get_client_ip with X-Forwarded-For ---
     def test_get_client_ip_forwarded_for(self):
@@ -1950,6 +2124,7 @@ class TestSignatureViewsRegressionScenarios:
         assert r['Content-Type'] == 'application/pdf'
 
     # --- get_user_archived_documents ---
+    @freeze_time("2025-01-15 12:00:00")
     def test_get_archived_docs(self, api_client, lawyer, signer):
         """Lines 644-673: archived documents for user."""
         doc = DynamicDocument.objects.create(
@@ -1974,6 +2149,7 @@ class TestSignatureViewsRegressionScenarios:
         assert r.status_code == 200
 
     # --- expire_overdue_documents (triggered via get_pending) ---
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue(self, api_client, lawyer, signer):
         """Lines 125-164: overdue document gets expired."""
         doc = DynamicDocument.objects.create(
@@ -2034,6 +2210,7 @@ class TestSignatureViewsRegressionScenarios:
         assert r.status_code == 404
 
     # --- generate_signatures_pdf: signer with doc_type & identification ---
+    @freeze_time("2025-01-15 12:00:00")
     def test_gen_sig_pdf_with_identification(self, api_client, lawyer):
         """Lines 1081, 1083, 1085: signer with document_type/identification."""
         signer2 = User.objects.create_user(
@@ -2055,9 +2232,9 @@ class TestSignatureViewsRegressionScenarios:
         assert r['Content-Type'] == 'application/pdf'
 
     # --- generate_signatures_pdf: signer with UserSignature image ---
+    @freeze_time("2025-01-15 12:00:00")
     def test_gen_sig_pdf_with_user_signature_image(self, api_client, lawyer):
         """Lines 1096-1109: signer has a UserSignature with image."""
-
         signer3 = User.objects.create_user(
             email='sig3_svc@e.com', password='p', role='client',
             first_name='S3', last_name='V3')
@@ -2083,6 +2260,7 @@ class TestSignatureViewsRegressionScenarios:
         assert r.status_code == 200
         assert r['Content-Type'] == 'application/pdf'
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_reject_document_with_comment(self, api_client, lawyer, signer):
         """Lines 434-473: rejection with comment and email notification."""
         doc = DynamicDocument.objects.create(
@@ -2105,6 +2283,7 @@ class TestSignatureViewsRegressionScenarios:
 
     # ========== Email exception tests (system boundary) ==========
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_sign_document_email_exception(self, api_client, lawyer, signer):
         """Lines 347-348: email send failure during sign is caught silently."""
         doc = DynamicDocument.objects.create(
@@ -2134,6 +2313,7 @@ class TestSignatureViewsRegressionScenarios:
         doc.refresh_from_db()
         assert doc.state == 'FullySigned'
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_reject_document_email_exception(self, api_client, lawyer, signer):
         """Lines 469-471: email send failure during reject is caught silently."""
         doc = DynamicDocument.objects.create(
@@ -2158,6 +2338,7 @@ class TestSignatureViewsRegressionScenarios:
 
     # ========== sign_document generic exception (lines 377-378) ==========
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_sign_document_generic_exception(self, api_client, lawyer, signer):
         """Lines 377-378: generic exception in sign_document → 500."""
         doc = DynamicDocument.objects.create(
@@ -2261,7 +2442,8 @@ class TestSignatureViewsRegressionScenarios:
 
 
 @pytest.fixture
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="sv2-lawyer@example.com",
         password="testpassword",
@@ -2271,6 +2453,7 @@ def lawyer_user():
 
 @pytest.fixture
 def another_lawyer():
+    """Another lawyer."""
     return User.objects.create_user(
         email="sv2-lawyer2@example.com",
         password="testpassword",
@@ -2279,7 +2462,8 @@ def another_lawyer():
 
 
 @pytest.fixture
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="sv2-client@example.com",
         password="testpassword",
@@ -2289,6 +2473,7 @@ def client_user():
 
 @pytest.fixture
 def document_with_signature(lawyer_user, client_user):
+    """Document with signature."""
     doc = DynamicDocument.objects.create(
         title="SV2 Doc",
         content="<p>test</p>",
@@ -2307,11 +2492,15 @@ def document_with_signature(lawyer_user, client_user):
 
 @pytest.mark.django_db
 class TestRemoveSignatureRequestPermission:
+    """Tests for Remove Signature Request Permission."""
+
     def test_lawyer_non_creator_gets_403(
         self, api_client, another_lawyer, document_with_signature
     ):
-        """Line 565: A lawyer who is NOT the document creator gets 403
-        when trying to remove a signature request."""
+        """Line 565: A lawyer who is NOT the document creator gets 403.
+        
+        when trying to remove a signature request.
+        """
         doc, sig = document_with_signature
         api_client.force_authenticate(user=another_lawyer)
         url = reverse(
@@ -2329,7 +2518,9 @@ class TestRemoveSignatureRequestPermission:
 # ── Line 771: get_letterhead_for_document returns document letterhead ──
 
 @pytest.mark.django_db
-class TestGetLetterheadForDocument:
+class TestGetLetterheadForDocument:  # noqa: F811
+    """Tests for Get Letterhead For Document."""
+
     def test_returns_document_letterhead_when_set(self, lawyer_user):
         """Line 771: When document has letterhead_image, it takes priority."""
         from gym_app.views.dynamic_documents.signature_views import (

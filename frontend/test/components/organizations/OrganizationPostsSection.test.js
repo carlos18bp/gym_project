@@ -45,7 +45,7 @@ describe("OrganizationPostsSection.vue", () => {
   });
 
   afterEach(() => {
-    console.error.mockRestore();
+    jest.restoreAllMocks();
   });
 
   test("loads posts on mount and renders pinned posts first", async () => {

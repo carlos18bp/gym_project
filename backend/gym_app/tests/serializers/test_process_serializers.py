@@ -1,17 +1,20 @@
+"""Tests for process_serializers module."""
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models import Case, CaseFile, Stage, Process, RecentProcess, User
+
+from gym_app.models import Case, CaseFile, Process, RecentProcess, Stage, User
 from gym_app.serializers.process import (
+    CaseFileSerializer,
     CaseSerializer,
-    CaseFileSerializer, 
-    StageSerializer,
     ProcessSerializer,
     RecentProcessSerializer,
+    StageSerializer,
 )
+
 
 @pytest.fixture
 def user_client():
-    """Create a client user for testing"""
+    """Create a client user for testing."""
     return User.objects.create_user(
         email='client@example.com',
         password='testpassword',
@@ -22,7 +25,7 @@ def user_client():
 
 @pytest.fixture
 def user_lawyer():
-    """Create a lawyer user for testing"""
+    """Create a lawyer user for testing."""
     return User.objects.create_user(
         email='lawyer@example.com',
         password='testpassword',
@@ -33,17 +36,17 @@ def user_lawyer():
 
 @pytest.fixture
 def case():
-    """Create a case type for testing"""
+    """Create a case type for testing."""
     return Case.objects.create(type='Criminal')
 
 @pytest.fixture
 def stage():
-    """Create a stage for testing"""
+    """Create a stage for testing."""
     return Stage.objects.create(status='In Progress')
 
 @pytest.fixture
 def case_file():
-    """Create a case file for testing"""
+    """Create a case file for testing."""
     test_file = SimpleUploadedFile(
         "case_document.pdf", 
         b"file_content", 
@@ -53,7 +56,7 @@ def case_file():
 
 @pytest.fixture
 def process(user_client, user_lawyer, case, stage, case_file):
-    """Create a complete process for testing"""
+    """Create a complete process for testing."""
     process = Process.objects.create(
         authority='Supreme Court',
         plaintiff='John Smith',
@@ -71,21 +74,22 @@ def process(user_client, user_lawyer, case, stage, case_file):
 
 @pytest.fixture
 def recent_process(user_client, process):
-    """Create a RecentProcess entry for testing"""
+    """Create a RecentProcess entry for testing."""
     return RecentProcess.objects.create(user=user_client, process=process)
 
 @pytest.mark.django_db
 class TestCaseSerializer:
+    """Tests for Case Serializer."""
     
     def test_serialize_case(self, case):
-        """Test the serialization of a case type"""
+        """Test the serialization of a case type."""
         serializer = CaseSerializer(case)
         
         assert serializer.data['id'] == case.id
         assert serializer.data['type'] == case.type
     
     def test_deserialize_case(self):
-        """Test the deserialization to create a new case type"""
+        """Test the deserialization to create a new case type."""
         data = {'type': 'Civil'}
         
         serializer = CaseSerializer(data=data)
@@ -96,16 +100,17 @@ class TestCaseSerializer:
 
 @pytest.mark.django_db
 class TestCaseFileSerializer:
+    """Tests for Case File Serializer."""
     
     def test_serialize_case_file(self, case_file):
-        """Test the serialization of a case file"""
+        """Test the serialization of a case file."""
         serializer = CaseFileSerializer(case_file)
         
         assert serializer.data['id'] == case_file.id
         assert 'file' in serializer.data
     
     def test_deserialize_case_file(self):
-        """Test the deserialization to create a new case file"""
+        """Test the deserialization to create a new case file."""
         test_file = SimpleUploadedFile(
             "new_case_file.pdf", 
             b"new_content", 
@@ -122,16 +127,17 @@ class TestCaseFileSerializer:
 
 @pytest.mark.django_db
 class TestStageSerializer:
+    """Tests for Stage Serializer."""
     
     def test_serialize_stage(self, stage):
-        """Test the serialization of a stage"""
+        """Test the serialization of a stage."""
         serializer = StageSerializer(stage)
         
         assert serializer.data['id'] == stage.id
         assert serializer.data['status'] == stage.status
     
     def test_deserialize_stage(self):
-        """Test the deserialization to create a new stage"""
+        """Test the deserialization to create a new stage."""
         data = {'status': 'Completed'}
         
         serializer = StageSerializer(data=data)
@@ -142,9 +148,10 @@ class TestStageSerializer:
 
 @pytest.mark.django_db
 class TestProcessSerializer:
+    """Tests for Process Serializer."""
     
     def test_serialize_process_basic_fields(self, process):
-        """Test the serialization of a complete process - basic fields"""
+        """Test the serialization of a complete process - basic fields."""
         serializer = ProcessSerializer(process)
         
         assert serializer.data['id'] == process.id
@@ -155,7 +162,7 @@ class TestProcessSerializer:
         assert serializer.data['subcase'] == process.subcase
 
     def test_serialize_process_relationships(self, process):
-        """Test the serialization of a complete process - relationships"""
+        """Test the serialization of a complete process - relationships."""
         serializer = ProcessSerializer(process)
         
         assert serializer.data['case']['id'] == process.case.id
@@ -170,7 +177,7 @@ class TestProcessSerializer:
         assert serializer.data['lawyer']['email'] == process.lawyer.email
 
     def test_serialize_process_collections(self, process):
-        """Test the serialization of a complete process - collections"""
+        """Test the serialization of a complete process - collections."""
         serializer = ProcessSerializer(process)
         
         assert len(serializer.data['stages']) == 1
@@ -180,9 +187,9 @@ class TestProcessSerializer:
         assert serializer.data['case_files'][0]['id'] == process.case_files.first().id
     
     def test_update_process(self, process, stage):
-        """Test updating a process with the custom update method"""
+        """Test updating a process with the custom update method."""
         # Create a second stage to add
-        new_stage = Stage.objects.create(status='New Stage')
+        _new_stage = Stage.objects.create(status='New Stage')
         
         # Prepare data for update
         data = {
@@ -226,7 +233,7 @@ class TestProcessSerializer:
         assert updated_process.stages.count() == 2
 
     def test_update_process_stages_changes(self, process, stage):
-        """Test updating a process - stages changes"""
+        """Test updating a process - stages changes."""
         new_stage = Stage.objects.create(status='New Stage')
         
         data = {
@@ -251,7 +258,7 @@ class TestProcessSerializer:
         assert not updated_process.stages.filter(id=new_stage.id).exists()
     
     def test_update_process_without_stages(self, process):
-        """Test updating a process without touching the stages"""
+        """Test updating a process without touching the stages."""
         # Count initial stages
         initial_stages_count = process.stages.count()
         
@@ -280,9 +287,10 @@ class TestProcessSerializer:
 
 @pytest.mark.django_db
 class TestRecentProcessSerializer:
+    """Tests for Recent Process Serializer."""
 
     def test_serialize_recent_process(self, recent_process):
-        """Test the serialization of a RecentProcess with nested ProcessSerializer"""
+        """Test the serialization of a RecentProcess with nested ProcessSerializer."""
         serializer = RecentProcessSerializer(recent_process)
         data = serializer.data
 
@@ -300,6 +308,8 @@ class TestRecentProcessSerializer:
 
 @pytest.mark.django_db
 class TestProcessSerializerUpdate:
+    """Tests for Process Serializer Update."""
+
     def test_update_simple_fields(self, process, rf):
         """Cover lines 68-74: update simple fields."""
         request = rf.get("/")
@@ -372,7 +382,7 @@ class TestProcessSerializerUpdate:
 
 
 def serializer_update_helper(process, validated_data):
-    """Helper to call ProcessSerializer.update directly."""
+    """Call ProcessSerializer.update directly."""
     serializer = ProcessSerializer()
     return serializer.update(process, validated_data)
 

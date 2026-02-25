@@ -25,6 +25,7 @@ describe("ProcessStageProgress.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.progressPercentage).toBe(50);
 
     const segments = wrapper.vm.progressSegments;
@@ -41,6 +42,7 @@ describe("ProcessStageProgress.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.progressPercentage).toBe(100);
 
     const firstClip = wrapper.vm.getChevronClipPath(0);

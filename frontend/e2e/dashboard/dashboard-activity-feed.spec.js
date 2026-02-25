@@ -68,7 +68,7 @@ async function installDashboardWithActivitiesMocks(page, { userId, role, activit
   });
 }
 
-test("dashboard renders activity feed with entries", async ({ page }) => {
+test("dashboard renders activity feed with entries", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4000;
   const now = new Date();
 
@@ -112,7 +112,7 @@ test("dashboard renders activity feed with entries", async ({ page }) => {
   await expect(page.getByText("Finalizaste el proceso Civil")).toBeVisible();
 });
 
-test("dashboard renders empty activity feed message when no activities", async ({ page }) => {
+test("dashboard renders empty activity feed message when no activities", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4001;
 
   await installDashboardWithActivitiesMocks(page, {

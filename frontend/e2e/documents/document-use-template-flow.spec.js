@@ -6,8 +6,8 @@ import {
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test.describe("UseDocumentCard: template selection and use flow", () => {
-  test("client can view published templates in Nuevo Documento section", async ({ page }) => {
+test.describe("UseDocumentCard: template selection and use flow", { tag: ['@flow:docs-use-template', '@module:documents', '@priority:P1', '@role:client'] }, () => {
+  test("client can view published templates in Nuevo Documento section", { tag: ['@flow:docs-use-template', '@module:documents', '@priority:P1', '@role:client'] }, async ({ page }) => {
     const userId = 900;
 
     const docs = [
@@ -50,7 +50,7 @@ test.describe("UseDocumentCard: template selection and use flow", () => {
     await expect(page.getByText("Plantilla Poder")).toBeVisible();
   });
 
-  test("client can select a template and see name input", async ({ page }) => {
+  test("client can select a template and see name input", { tag: ['@flow:docs-use-template', '@module:documents', '@priority:P1', '@role:client'] }, async ({ page }) => {
     const userId = 901;
 
     const docs = [
@@ -88,11 +88,11 @@ test.describe("UseDocumentCard: template selection and use flow", () => {
     await page.getByText("Plantilla de Prueba", { exact: true }).click();
 
     // Name input should appear
-    const nameInput = page.locator("#document-name");
+    const nameInput = page.locator("#document-name"); // quality: allow-fragile-selector (stable DOM id)
     await expect(nameInput).toBeVisible();
   });
 
-  test("client can go back from template selection", async ({ page }) => {
+  test("client can go back from template selection", { tag: ['@flow:docs-use-template', '@module:documents', '@priority:P1', '@role:client'] }, async ({ page }) => {
     const userId = 902;
 
     const docs = [
@@ -129,7 +129,7 @@ test.describe("UseDocumentCard: template selection and use flow", () => {
     await expect(page.getByRole("button", { name: "Nuevo Documento" })).toBeVisible();
   });
 
-  test("client sees empty state when no templates available", async ({ page }) => {
+  test("client sees empty state when no templates available", { tag: ['@flow:docs-use-template', '@module:documents', '@priority:P1', '@role:client'] }, async ({ page }) => {
     const userId = 903;
 
     await installDynamicDocumentApiMocks(page, {

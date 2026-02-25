@@ -2,7 +2,9 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installProfileApiMocks } from "../helpers/profileMocks.js";
 
-test("user can open profile modal and view their information", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("user can open profile modal and view their information", { tag: ['@flow:profile-view-edit', '@module:profile', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 7000;
 
   await installProfileApiMocks(page, {
@@ -36,13 +38,13 @@ test("user can open profile modal and view their information", async ({ page }) 
   await profileLink.click();
 
   // Profile modal should be visible with user information
-  const profileModal = page.locator("#viewProfileModal");
+  const profileModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
   await expect(profileModal).toBeVisible({ timeout: 10_000 });
   await expect(profileModal.getByText("Carlos García")).toBeVisible();
   await expect(profileModal.getByText("carlos@example.com")).toBeVisible();
 });
 
-test("user can navigate to edit profile form and update fields", async ({ page }) => {
+test("user can navigate to edit profile form and update fields", { tag: ['@flow:profile-view-edit', '@module:profile', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 7001;
 
   await installProfileApiMocks(page, {
@@ -73,7 +75,7 @@ test("user can navigate to edit profile form and update fields", async ({ page }
   await page.getByText("Perfil").click();
 
   // Wait for profile modal
-  const profileModal = page.locator("#viewProfileModal");
+  const profileModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
   await expect(profileModal).toBeVisible({ timeout: 10_000 });
   await expect(profileModal.getByText("María López")).toBeVisible();
 
@@ -84,13 +86,13 @@ test("user can navigate to edit profile form and update fields", async ({ page }
   await expect(page.getByText("Editar perfil")).toBeVisible({ timeout: 10_000 });
 
   // Update first name
-  const firstNameInput = page.locator("#firstName");
+  const firstNameInput = page.locator("#firstName"); // quality: allow-fragile-selector (stable DOM id)
   await expect(firstNameInput).toBeVisible();
   await firstNameInput.clear();
   await firstNameInput.fill("María Elena");
 
   // Update phone number
-  const phoneInput = page.locator("#phone-number");
+  const phoneInput = page.locator("#phone-number"); // quality: allow-fragile-selector (stable DOM id)
   await phoneInput.clear();
   await phoneInput.fill("3109876543");
 
@@ -98,11 +100,11 @@ test("user can navigate to edit profile form and update fields", async ({ page }
   await page.getByRole("button", { name: "Guardar" }).click();
 
   // After save, profile slides back to view mode — verify view profile is shown
-  const viewModal = page.locator("#viewProfileModal");
+  const viewModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
   await expect(viewModal).toBeVisible({ timeout: 10_000 });
 });
 
-test("incomplete profile shows 'Completa tu perfil' button", async ({ page }) => {
+test("incomplete profile shows 'Completa tu perfil' button", { tag: ['@flow:profile-view-edit', '@module:profile', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 7002;
 
   await installProfileApiMocks(page, {

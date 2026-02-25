@@ -1,16 +1,16 @@
+"""Tests for dynamic_document_relationships module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
-from gym_app.models import DynamicDocument, DocumentRelationship
-
+from gym_app.models import DocumentRelationship, DynamicDocument
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -21,6 +21,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def other_user():
+    """Other user."""
     return User.objects.create_user(
         email="other@example.com",
         password="testpassword",
@@ -31,6 +32,7 @@ def other_user():
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -41,6 +43,8 @@ def lawyer_user():
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestListDocumentRelationships:
+    """Tests for List Document Relationships."""
+
     @pytest.mark.contract
     def test_list_document_relationships_success(self, api_client, client_user):
         """Debe listar las relaciones de un documento cuando el usuario puede verlo."""
@@ -57,7 +61,7 @@ class TestListDocumentRelationships:
             created_by=client_user,
         )
 
-        rel = DocumentRelationship.objects.create(
+        _rel = DocumentRelationship.objects.create(
             source_document=doc1,
             target_document=doc2,
             created_by=client_user,
@@ -77,6 +81,7 @@ class TestListDocumentRelationships:
 
     @pytest.mark.edge
     def test_list_document_relationships_empty(self, api_client, client_user):
+        """Verify list document relationships empty."""
         doc1 = DynamicDocument.objects.create(
             title="Doc Empty",
             content="<p>x</p>",
@@ -93,6 +98,7 @@ class TestListDocumentRelationships:
 
     @pytest.mark.edge
     def test_list_document_relationships_includes_target_side(self, api_client, client_user):
+        """Verify list document relationships includes target side."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -140,6 +146,7 @@ class TestListDocumentRelationships:
 
     @pytest.mark.edge
     def test_list_document_relationships_not_found(self, api_client, client_user):
+        """Verify list document relationships not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("list-document-relationships", kwargs={"document_id": 9999})
         response = api_client.get(url)
@@ -150,6 +157,8 @@ class TestListDocumentRelationships:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestListRelatedAndAvailableDocuments:
+    """Tests for List Related And Available Documents."""
+
     @pytest.mark.contract
     def test_list_related_documents_returns_related_docs(self, api_client, client_user):
         """list_related_documents debe devolver documentos relacionados y filtrados por permisos."""
@@ -182,6 +191,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_related_documents_filters_non_final_state(self, api_client, client_user):
+        """Verify list related documents filters non final state."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -209,6 +219,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_related_documents_empty(self, api_client, client_user):
+        """Verify list related documents empty."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -225,6 +236,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_related_documents_forbidden_when_cannot_view(self, api_client, client_user, other_user):
+        """Verify list related documents forbidden when cannot view."""
         source = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>hidden</p>",
@@ -241,6 +253,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_related_documents_not_found(self, api_client, client_user):
+        """Verify list related documents not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("list-related-documents", kwargs={"document_id": 9999})
         response = api_client.get(url)
@@ -315,6 +328,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_available_documents_excludes_reverse_relationship(self, api_client, client_user):
+        """Verify list available documents excludes reverse relationship."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -349,6 +363,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_available_documents_forbidden_when_cannot_view(self, api_client, client_user, other_user):
+        """Verify list available documents forbidden when cannot view."""
         source = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>hidden</p>",
@@ -365,6 +380,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_available_documents_not_found(self, api_client, client_user):
+        """Verify list available documents not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("list-available-documents-for-relationship", kwargs={"document_id": 9999})
         response = api_client.get(url)
@@ -373,6 +389,7 @@ class TestListRelatedAndAvailableDocuments:
 
     @pytest.mark.edge
     def test_list_available_documents_empty(self, api_client, client_user):
+        """Verify list available documents empty."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -391,8 +408,11 @@ class TestListRelatedAndAvailableDocuments:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestCreateDocumentRelationship:
+    """Tests for Create Document Relationship."""
+
     @pytest.mark.contract
     def test_create_document_relationship_success(self, api_client, client_user):
+        """Verify create document relationship success."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -418,6 +438,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_missing_payload(self, api_client, client_user):
+        """Verify create document relationship missing payload."""
         api_client.force_authenticate(user=client_user)
         url = reverse("create-document-relationship")
         response = api_client.post(url, {}, format="json")
@@ -427,6 +448,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_target_not_found(self, api_client, client_user):
+        """Verify create document relationship target not found."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -444,6 +466,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_pending_signatures_requires_flag(self, api_client, client_user):
+        """Verify create document relationship pending signatures requires flag."""
         source = DynamicDocument.objects.create(
             title="Pending",
             content="<p>pending</p>",
@@ -473,6 +496,7 @@ class TestCreateDocumentRelationship:
         client_user,
         target_state,
     ):
+        """Verify create document relationship pending signatures allowed with flag."""
         source = DynamicDocument.objects.create(
             title="Pending",
             content="<p>pending</p>",
@@ -500,6 +524,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_blocks_fully_signed_source(self, api_client, client_user):
+        """Verify create document relationship blocks fully signed source."""
         source = DynamicDocument.objects.create(
             title="Signed",
             content="<p>signed</p>",
@@ -524,6 +549,7 @@ class TestCreateDocumentRelationship:
     @pytest.mark.edge
     @pytest.mark.parametrize("target_state", ["PendingSignatures", "FullySigned"])
     def test_create_document_relationship_blocks_locked_target(self, api_client, client_user, target_state):
+        """Verify create document relationship blocks locked target."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -547,6 +573,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_forbidden_when_cannot_view_source(self, api_client, client_user, other_user):
+        """Verify create document relationship forbidden when cannot view source."""
         source = DynamicDocument.objects.create(
             title="Hidden",
             content="<p>secret</p>",
@@ -571,6 +598,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_forbidden_when_cannot_view_target(self, api_client, client_user, other_user):
+        """Verify create document relationship forbidden when cannot view target."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -595,6 +623,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_forbidden_when_source_not_owned(self, api_client, client_user, other_user):
+        """Verify create document relationship forbidden when source not owned."""
         source = DynamicDocument.objects.create(
             title="Public Source",
             content="<p>src</p>",
@@ -619,6 +648,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_forbidden_when_target_not_owned(self, api_client, client_user, other_user):
+        """Verify create document relationship forbidden when target not owned."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -643,6 +673,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_requires_final_states(self, api_client, client_user):
+        """Verify create document relationship requires final states."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -666,6 +697,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_rejects_invalid_target_state(self, api_client, client_user):
+        """Verify create document relationship rejects invalid target state."""
         source = DynamicDocument.objects.create(
             title="Pending",
             content="<p>pending</p>",
@@ -693,6 +725,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_prevents_duplicates(self, api_client, client_user):
+        """Verify create document relationship prevents duplicates."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -722,6 +755,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_prevents_reverse_duplicate(self, api_client, client_user):
+        """Verify create document relationship prevents reverse duplicate."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -751,6 +785,7 @@ class TestCreateDocumentRelationship:
 
     @pytest.mark.edge
     def test_create_document_relationship_rejects_self_relationship(self, api_client, client_user):
+        """Verify create document relationship rejects self relationship."""
         source = DynamicDocument.objects.create(
             title="Self",
             content="<p>self</p>",
@@ -770,8 +805,11 @@ class TestCreateDocumentRelationship:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestDeleteDocumentRelationship:
+    """Tests for Delete Document Relationship."""
+
     @pytest.mark.contract
     def test_delete_relationship_as_creator(self, api_client, client_user):
+        """Verify delete relationship as creator."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -799,6 +837,7 @@ class TestDeleteDocumentRelationship:
 
     @pytest.mark.edge
     def test_delete_relationship_forbidden_for_non_creator_non_lawyer(self, api_client, client_user, other_user):
+        """Verify delete relationship forbidden for non creator non lawyer."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -825,6 +864,7 @@ class TestDeleteDocumentRelationship:
 
     @pytest.mark.contract
     def test_delete_relationship_as_lawyer(self, api_client, client_user, lawyer_user):
+        """Verify delete relationship as lawyer."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -851,6 +891,7 @@ class TestDeleteDocumentRelationship:
         assert DocumentRelationship.objects.count() == 0
 
     def test_delete_relationship_not_found(self, api_client, lawyer_user):
+        """Verify delete relationship not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-document-relationship", kwargs={"relationship_id": 9999})
         response = api_client.delete(url)
@@ -858,7 +899,7 @@ class TestDeleteDocumentRelationship:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.parametrize(
-        "locked_state,lock_on",
+        ("locked_state", "lock_on"),
         [("PendingSignatures", "source"), ("FullySigned", "target")]
     )
     def test_delete_relationship_blocked_for_locked_documents(
@@ -868,6 +909,7 @@ class TestDeleteDocumentRelationship:
         locked_state,
         lock_on,
     ):
+        """Verify delete relationship blocked for locked documents."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -904,7 +946,10 @@ class TestDeleteDocumentRelationship:
 
 @pytest.mark.django_db
 class TestDocumentRelationshipsRest:
+    """Tests for Document Relationships Rest."""
+
     def test_rest_list_document_relationships(self, api_client, client_user):
+        """Verify rest list document relationships."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",
@@ -936,6 +981,7 @@ class TestDocumentRelationshipsRest:
         assert item["target_document_title"] == target.title
 
     def test_rest_create_document_relationship(self, api_client, client_user):
+        """Verify rest create document relationship."""
         source = DynamicDocument.objects.create(
             title="Source",
             content="<p>src</p>",

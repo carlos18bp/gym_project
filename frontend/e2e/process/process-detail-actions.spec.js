@@ -1,12 +1,14 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installProcessApiMocks,
   buildMockProcess,
   buildMockUser,
 } from "../helpers/processMocks.js";
 
-test("lawyer sees multiple case types and can navigate to detail", async ({ page }) => {
+test("lawyer sees multiple case types and can navigate to detail", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 7000;
   const clientId = 7001;
 
@@ -76,7 +78,7 @@ test("lawyer sees multiple case types and can navigate to detail", async ({ page
   await expect(page.getByText("Derecho Salud")).toBeVisible();
 });
 
-test("lawyer can search processes by plaintiff name", async ({ page }) => {
+test("lawyer can search processes by plaintiff name", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 7010;
 
   const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", isGymLawyer: true });

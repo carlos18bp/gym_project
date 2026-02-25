@@ -754,9 +754,6 @@ class QualityReport:
         
         # Analyze frontend unit tests
         if self.suite is None or self.suite == "frontend-unit":
-            if self.verbose:
-                print(f"\n{Colors.BLUE}[Frontend Unit Tests]{Colors.RESET}")
-            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_unit_analyzer import FrontendUnitAnalyzer
@@ -776,9 +773,6 @@ class QualityReport:
         
         # Analyze frontend E2E tests
         if self.suite is None or self.suite == "frontend-e2e":
-            if self.verbose:
-                print(f"\n{Colors.BLUE}[Frontend E2E Tests]{Colors.RESET}")
-            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_e2e_analyzer import FrontendE2EAnalyzer
@@ -826,7 +820,27 @@ class QualityReport:
         self._dedupe_issues(backend, unit, e2e)
         self._apply_suite_findings(backend, unit, e2e, semantic_suppressed, active_exceptions)
         active_exceptions_summary = self._active_exceptions_summary(active_exceptions, invalid_markers)
-        
+
+        # Print accurate per-suite summaries after all post-processing
+        if self.verbose:
+            for label, suite_result in (
+                ("Frontend Unit Tests", unit),
+                ("Frontend E2E Tests", e2e),
+            ):
+                if not suite_result.files:
+                    continue
+                kind = "unit" if "Unit" in label else "E2E"
+                print(f"\n{Colors.BLUE}[{label}]{Colors.RESET}")
+                print(f"  Found {suite_result.file_count} {kind} test files")
+                for fr in suite_result.files:
+                    if fr.issues:
+                        print(f"    {Path(fr.file).name}: {fr.issue_count} issues")
+                print(
+                    f"  Total: {suite_result.test_count} tests, "
+                    f"{suite_result.error_count} errors, "
+                    f"{suite_result.warning_count} warnings"
+                )
+
         # Build summary
         all_issues = backend.all_issues + unit.all_issues + e2e.all_issues
         

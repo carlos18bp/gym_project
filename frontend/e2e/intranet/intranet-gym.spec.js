@@ -2,12 +2,14 @@ import { test, expect } from "../helpers/test.js";
 
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   buildMockIntranetDoc,
   installIntranetGymApiMocks,
   installUnsplashImageStub,
 } from "../helpers/intranetGymMocks.js";
 
-test("intranet G&M loads docs, filters search, opens modals, and submits report", async ({ page }) => {
+test("intranet G&M loads docs, filters search, opens modals, and submits report", { tag: ['@flow:intranet-main', '@module:intranet', '@priority:P2', '@role:lawyer-gym'] }, async ({ page }) => {
   const userId = 2000;
 
   await installUnsplashImageStub(page);
@@ -61,13 +63,13 @@ test("intranet G&M loads docs, filters search, opens modals, and submits report"
   await page.getByRole("button", { name: "Enviar Informe" }).click();
   await expect(page.getByRole("heading", { name: "Presentar Informe" })).toBeVisible();
 
-  await page.locator("#document-number").fill("CT-001");
-  await page.locator("#initial-report-period").fill("2026-01-01");
-  await page.locator("#final-report-period").fill("2026-01-31");
+  await page.locator("#document-number").fill("CT-001"); // quality: allow-fragile-selector (stable DOM id)
+  await page.locator("#initial-report-period").fill("2026-01-01"); // quality: allow-fragile-selector (stable DOM id)
+  await page.locator("#final-report-period").fill("2026-01-31"); // quality: allow-fragile-selector (stable DOM id)
 
   // FacturationForm has duplicate id="payment-concept" (concept + amount). Use nth.
-  await page.locator("input#payment-concept").nth(0).fill("Honorarios");
-  await page.locator("input#payment-concept").nth(1).fill("500000");
+  await page.locator("input#payment-concept").nth(0).fill("Honorarios"); // quality: allow-fragile-selector (positional selector for specific list item)
+  await page.locator("input#payment-concept").nth(1).fill("500000"); // quality: allow-fragile-selector (positional selector for specific list item)
 
   await page.locator("input#file-upload").setInputFiles({
     name: "invoice.pdf",
@@ -79,9 +81,9 @@ test("intranet G&M loads docs, filters search, opens modals, and submits report"
 
   // Success notification
   // showLoading() opens a Swal without a confirm button; showNotification() opens the success Swal with confirm.
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("¡Solicitud creada exitosamente!");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("¡Solicitud creada exitosamente!"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(page).toHaveURL(/\/dashboard/);
 });

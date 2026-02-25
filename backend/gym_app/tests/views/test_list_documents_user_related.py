@@ -1,9 +1,10 @@
 """Tests for the user_related, signer_signed, and unassigned query params on list_dynamic_documents."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
-from django.contrib.auth import get_user_model
-from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
+
+from gym_app.models.dynamic_document import DocumentSignature, DynamicDocument
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
@@ -13,11 +14,13 @@ URL = "list_dynamic_documents"
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="law_ur@test.com", password="pw", role="lawyer", first_name="L", last_name="W"
     )
@@ -25,6 +28,7 @@ def lawyer():
 
 @pytest.fixture
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="cli_ur@test.com", password="pw", role="client", first_name="C", last_name="L"
     )
@@ -32,6 +36,7 @@ def client_user():
 
 @pytest.fixture
 def other_client():
+    """Other client."""
     return User.objects.create_user(
         email="other_ur@test.com", password="pw", role="client", first_name="O", last_name="C"
     )
@@ -42,6 +47,8 @@ def other_client():
 # ---------------------------------------------------------------------------
 
 class TestUserRelatedFilter:
+    """Tests for User Related Filter."""
+
     def test_user_related_returns_created_docs(self, api, lawyer, client_user, other_client):
         """Documents created by the requesting user are returned with user_related=true."""
         my_doc = DynamicDocument.objects.create(
@@ -118,6 +125,8 @@ class TestUserRelatedFilter:
 # ---------------------------------------------------------------------------
 
 class TestSignerSignedFilter:
+    """Tests for Signer Signed Filter."""
+
     def test_signer_signed_excludes_unsigned(self, api, lawyer, client_user):
         """With signer_signed=true, docs where user has signed=False are excluded (unless creator)."""
         doc = DynamicDocument.objects.create(
@@ -153,6 +162,8 @@ class TestSignerSignedFilter:
 # ---------------------------------------------------------------------------
 
 class TestUnassignedFilter:
+    """Tests for Unassigned Filter."""
+
     def test_unassigned_filter(self, api, lawyer, client_user):
         """unassigned=true returns only docs with assigned_to IS NULL."""
         template = DynamicDocument.objects.create(

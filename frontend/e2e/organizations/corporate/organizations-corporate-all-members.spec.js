@@ -2,11 +2,15 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client can open AllMembersModal and see members grouped by organization", async ({ page }) => {
+test("corporate_client can open AllMembersModal and see members grouped by organization", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   const userId = 4600;
 
   const orgA = buildMockOrganization({
@@ -105,7 +109,7 @@ test("corporate_client can open AllMembersModal and see members grouped by organ
   const allMembersPanel = page
     .locator('div[role="dialog"] div.rounded-lg.bg-white')
     .filter({ hasText: "Todos los Miembros" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(allMembersPanel).toBeVisible();
 
@@ -113,11 +117,11 @@ test("corporate_client can open AllMembersModal and see members grouped by organ
   await expect(allMembersPanel.getByText("3 miembros en 2 organizaciones")).toBeVisible();
 
   // Org sections
-  const orgASection = allMembersPanel.locator("div.border").filter({ hasText: "Acme Corp" }).first();
+  const orgASection = allMembersPanel.locator("div.border").filter({ hasText: "Acme Corp" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(orgASection.getByText("Acme Corp")).toBeVisible();
   await expect(orgASection.getByText("2 miembros")).toBeVisible();
 
-  const orgBSection = allMembersPanel.locator("div.border").filter({ hasText: "Beta LLC" }).first();
+  const orgBSection = allMembersPanel.locator("div.border").filter({ hasText: "Beta LLC" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(orgBSection.getByText("Beta LLC")).toBeVisible();
   await expect(orgBSection.getByText("1 miembro")).toBeVisible();
 

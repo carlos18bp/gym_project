@@ -80,6 +80,7 @@ describe("DocumentsNavigation.vue", () => {
   test("handleSignatureSaved updates auth store and closes modal", async () => {
     const wrapper = mountView({ role: "lawyer" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.showElectronicSignatureModal = true;
 
     await wrapper.vm.handleSignatureSaved({});
@@ -102,6 +103,7 @@ describe("DocumentsNavigation.vue", () => {
 
     const wrapper = mountView({ role: "lawyer" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.handleSignatureSaved({});
 
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -119,6 +121,7 @@ describe("DocumentsNavigation.vue", () => {
   test("emits global letterhead events", async () => {
     const wrapper = mountView({ role: "lawyer" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.handleGlobalLetterheadUploaded({ id: 1 });
     wrapper.vm.handleGlobalLetterheadDeleted();
 

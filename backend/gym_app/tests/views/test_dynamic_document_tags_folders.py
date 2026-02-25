@@ -1,16 +1,16 @@
+"""Tests for dynamic_document_tags_folders module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
-from gym_app.models import Tag, DocumentFolder, DynamicDocument
-
+from gym_app.models import DocumentFolder, DynamicDocument, Tag
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -21,6 +21,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -30,7 +31,10 @@ def client_user():
 
 @pytest.mark.django_db
 class TestTagViews:
+    """Tests for Tag Views."""
+
     def test_list_tags_empty(self, api_client, lawyer_user):
+        """Verify list tags empty."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("list-tags")
         response = api_client.get(url)
@@ -39,6 +43,7 @@ class TestTagViews:
         assert response.data == []
 
     def test_list_tags_returns_all(self, api_client, lawyer_user):
+        """Verify list tags returns all."""
         Tag.objects.create(name="A", color_id=1, created_by=lawyer_user)
         Tag.objects.create(name="B", color_id=2, created_by=lawyer_user)
 
@@ -50,6 +55,7 @@ class TestTagViews:
         assert len(response.data) == 2
 
     def test_create_tag_as_lawyer(self, api_client, lawyer_user):
+        """Verify create tag as lawyer."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("create-tag")
         data = {"name": "Importante", "color_id": 3}
@@ -60,6 +66,7 @@ class TestTagViews:
         assert tag.created_by == lawyer_user
 
     def test_create_tag_duplicate_name(self, api_client, lawyer_user):
+        """Verify create tag duplicate name."""
         Tag.objects.create(name="Duplicado", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -70,6 +77,7 @@ class TestTagViews:
         assert "name" in response.data
 
     def test_create_tag_invalid_payload(self, api_client, lawyer_user):
+        """Verify create tag invalid payload."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("create-tag")
         response = api_client.post(url, {"color_id": 1}, format="json")
@@ -77,6 +85,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_tag_forbidden_for_non_lawyer(self, api_client, client_user):
+        """Verify create tag forbidden for non lawyer."""
         api_client.force_authenticate(user=client_user)
         url = reverse("create-tag")
         data = {"name": "Tag", "color_id": 1}
@@ -85,6 +94,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_tag_as_lawyer(self, api_client, lawyer_user):
+        """Verify update tag as lawyer."""
         tag = Tag.objects.create(name="Old", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -97,6 +107,7 @@ class TestTagViews:
         assert tag.name == "New"
 
     def test_update_tag_patch_partial(self, api_client, lawyer_user):
+        """Verify update tag patch partial."""
         tag = Tag.objects.create(name="Old", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -109,6 +120,7 @@ class TestTagViews:
         assert tag.name == "Old"
 
     def test_update_tag_invalid_payload(self, api_client, lawyer_user):
+        """Verify update tag invalid payload."""
         tag = Tag.objects.create(name="Old", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -118,6 +130,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_tag_not_found(self, api_client, lawyer_user):
+        """Verify update tag not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("update-tag", kwargs={"pk": 9999})
         response = api_client.put(url, {"name": "New"}, format="json")
@@ -125,6 +138,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_tag_forbidden_for_non_lawyer(self, api_client, client_user, lawyer_user):
+        """Verify update tag forbidden for non lawyer."""
         tag = Tag.objects.create(name="Old", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=client_user)
@@ -134,6 +148,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_tag_as_lawyer(self, api_client, lawyer_user):
+        """Verify delete tag as lawyer."""
         tag = Tag.objects.create(name="ToDelete", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -144,6 +159,7 @@ class TestTagViews:
         assert Tag.objects.count() == 0
 
     def test_delete_tag_not_found(self, api_client, lawyer_user):
+        """Verify delete tag not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-tag", kwargs={"pk": 9999})
         response = api_client.delete(url)
@@ -151,6 +167,7 @@ class TestTagViews:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_tag_forbidden_for_non_lawyer(self, api_client, client_user, lawyer_user):
+        """Verify delete tag forbidden for non lawyer."""
         tag = Tag.objects.create(name="ToDelete", color_id=1, created_by=lawyer_user)
 
         api_client.force_authenticate(user=client_user)
@@ -162,7 +179,10 @@ class TestTagViews:
 
 @pytest.mark.django_db
 class TestFolderViews:
+    """Tests for Folder Views."""
+
     def test_list_folders_empty(self, api_client, client_user):
+        """Verify list folders empty."""
         api_client.force_authenticate(user=client_user)
         url = reverse("list-folders")
         response = api_client.get(url)
@@ -171,6 +191,7 @@ class TestFolderViews:
         assert response.data == []
 
     def test_list_folders_returns_only_owner_folders(self, api_client, client_user):
+        """Verify list folders returns only owner folders."""
         other = User.objects.create_user(
             email="other@example.com",
             password="testpassword",
@@ -190,6 +211,7 @@ class TestFolderViews:
         assert response.data[0]["name"] == "Mine"
 
     def test_create_folder_sets_owner(self, api_client, client_user):
+        """Verify create folder sets owner."""
         api_client.force_authenticate(user=client_user)
 
         # Crear algunos documentos
@@ -221,6 +243,7 @@ class TestFolderViews:
         assert doc_ids == {doc1.id, doc2.id}
 
     def test_create_folder_invalid_payload(self, api_client, client_user):
+        """Verify create folder invalid payload."""
         api_client.force_authenticate(user=client_user)
         url = reverse("create-folder")
         response = api_client.post(url, {"color_id": 1}, format="json")
@@ -228,6 +251,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_folder_invalid_document_ids(self, api_client, client_user):
+        """Verify create folder invalid document ids."""
         api_client.force_authenticate(user=client_user)
         url = reverse("create-folder")
         response = api_client.post(
@@ -240,6 +264,7 @@ class TestFolderViews:
         assert "document_ids" in response.data
 
     def test_get_folder_only_owner_can_access(self, api_client, client_user):
+        """Verify get folder only owner can access."""
         other = User.objects.create_user(
             email="other2@example.com",
             password="testpassword",
@@ -259,6 +284,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_folder_returns_documents(self, api_client, client_user):
+        """Verify get folder returns documents."""
         doc1 = DynamicDocument.objects.create(
             title="Doc 1",
             content="<p>1</p>",
@@ -285,12 +311,14 @@ class TestFolderViews:
         assert doc_ids == {doc1.id, doc2.id}
 
     def test_get_folder_not_found(self, api_client, client_user):
+        """Verify get folder not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("get-folder", kwargs={"pk": 9999})
         response = api_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_folder_owner_only(self, api_client, client_user):
+        """Verify update folder owner only."""
         other = User.objects.create_user(
             email="other3@example.com",
             password="testpassword",
@@ -312,6 +340,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_folder_document_ids_updates_documents(self, api_client, client_user):
+        """Verify update folder document ids updates documents."""
         doc1 = DynamicDocument.objects.create(
             title="Doc A",
             content="<p>a</p>",
@@ -337,6 +366,7 @@ class TestFolderViews:
         assert doc_ids == {doc2.id}
 
     def test_update_folder_not_found(self, api_client, client_user):
+        """Verify update folder not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("update-folder", kwargs={"pk": 9999})
         response = api_client.patch(url, {"name": "Missing"}, format="json")
@@ -344,6 +374,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_folder_invalid_payload(self, api_client, client_user):
+        """Verify update folder invalid payload."""
         folder = DocumentFolder.objects.create(name="Old", color_id=1, owner=client_user)
 
         api_client.force_authenticate(user=client_user)
@@ -353,6 +384,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_folder_invalid_document_ids(self, api_client, client_user):
+        """Verify update folder invalid document ids."""
         folder = DocumentFolder.objects.create(name="Old", color_id=1, owner=client_user)
 
         api_client.force_authenticate(user=client_user)
@@ -363,6 +395,7 @@ class TestFolderViews:
         assert "document_ids" in response.data
 
     def test_delete_folder_owner_only(self, api_client, client_user):
+        """Verify delete folder owner only."""
         other = User.objects.create_user(
             email="other4@example.com",
             password="testpassword",
@@ -385,6 +418,7 @@ class TestFolderViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_folder_not_found(self, api_client, client_user):
+        """Verify delete folder not found."""
         api_client.force_authenticate(user=client_user)
         url = reverse("delete-folder", kwargs={"pk": 9999})
         response = api_client.delete(url)
@@ -398,20 +432,24 @@ class TestFolderViews:
 
 @pytest.mark.django_db
 class TestTagViewsBasic:
+    """Tests for Tag Views Basic."""
 
     def test_list_tags(self, api_client, lawyer_user):
+        """Verify list tags."""
         Tag.objects.create(name="Tag36", created_by=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.get(reverse("list-tags"))
         assert resp.status_code == 200
 
     def test_create_tag(self, api_client, lawyer_user):
+        """Verify create tag."""
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.post(reverse("create-tag"), {"name": "NewTag36"}, format="json")
         assert resp.status_code == 201
         assert Tag.objects.filter(name="NewTag36").exists()
 
     def test_delete_tag(self, api_client, lawyer_user):
+        """Verify delete tag."""
         tag = Tag.objects.create(name="DelTag36", created_by=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.delete(reverse("delete-tag", args=[tag.id]))
@@ -421,20 +459,24 @@ class TestTagViewsBasic:
 
 @pytest.mark.django_db
 class TestFolderViewsBasic:
+    """Tests for Folder Views Basic."""
 
     def test_list_folders(self, api_client, lawyer_user):
+        """Verify list folders."""
         DocumentFolder.objects.create(name="Folder36", owner=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.get(reverse("list-folders"))
         assert resp.status_code == 200
 
     def test_create_folder(self, api_client, lawyer_user):
+        """Verify create folder."""
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.post(reverse("create-folder"), {"name": "NewFolder36"}, format="json")
         assert resp.status_code == 201
         assert DocumentFolder.objects.filter(name="NewFolder36").exists()
 
     def test_delete_folder(self, api_client, lawyer_user):
+        """Verify delete folder."""
         folder = DocumentFolder.objects.create(name="DelFolder36", owner=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.delete(reverse("delete-folder", args=[folder.id]))

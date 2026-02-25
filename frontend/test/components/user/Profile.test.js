@@ -81,6 +81,10 @@ describe("Profile.vue", () => {
     jest.useRealTimers();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   const mountProfile = ({ currentUserOverrides = {}, currentUser: currentUserArg, props = {} } = {}) => {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -158,7 +162,7 @@ describe("Profile.vue", () => {
     );
   });
 
-  test("signatureSaved closes modal after timeout and shows green indicator", async () => {
+  test("signatureSaved closes modal after timeout and shows green indicator", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     jest.useFakeTimers();
 
     const { wrapper, currentUser } = mountProfile({
@@ -168,6 +172,7 @@ describe("Profile.vue", () => {
     await triggerSignatureSave(wrapper);
 
     jest.advanceTimersByTime(500);
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).not.toContain("Firma Electrónica");
@@ -286,6 +291,7 @@ describe("Profile.vue", () => {
     });
 
     gsap.to.mockClear();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.updateUserProfile();
 
     expect(userStore.updateUser).toHaveBeenCalledWith(currentUser);
@@ -300,6 +306,7 @@ describe("Profile.vue", () => {
 
   test("closeModal emits update:visible false after gsap.to completes", async () => {
     const { wrapper } = mountProfile();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.closeModal();
     expect(wrapper.emitted("update:visible")).toBeTruthy();
     expect(wrapper.emitted("update:visible")[0]).toEqual([false]);

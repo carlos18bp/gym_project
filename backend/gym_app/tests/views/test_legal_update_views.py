@@ -1,16 +1,16 @@
+"""Tests for legal_update_views module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
 from gym_app.models import LegalUpdate
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def user():
+    """User."""
     return User.objects.create_user(
         email="user@example.com",
         password="testpassword",
@@ -21,6 +21,7 @@ def user():
 @pytest.fixture
 @pytest.mark.django_db
 def legal_update_active():
+    """Legal update active."""
     return LegalUpdate.objects.create(
         title="Active Update",
         content="Content",
@@ -33,6 +34,7 @@ def legal_update_active():
 @pytest.fixture
 @pytest.mark.django_db
 def legal_update_inactive():
+    """Legal update inactive."""
     return LegalUpdate.objects.create(
         title="Inactive Update",
         content="Content",
@@ -45,14 +47,18 @@ def legal_update_inactive():
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestLegalUpdateListAndActive:
+    """Tests for Legal Update List And Active."""
+
     @pytest.mark.edge
     def test_legal_update_list_requires_authentication(self, api_client):
+        """Verify legal update list requires authentication."""
         url = reverse("legal-updates-list")
         response = api_client.get(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.contract
     def test_legal_update_list_returns_only_active(self, api_client, user, legal_update_active, legal_update_inactive):
+        """Verify legal update list returns only active."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-list")
 
@@ -64,6 +70,7 @@ class TestLegalUpdateListAndActive:
 
     @pytest.mark.contract
     def test_active_legal_updates_endpoint(self, api_client, user, legal_update_active, legal_update_inactive):
+        """Verify active legal updates endpoint."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-active")
 
@@ -76,6 +83,7 @@ class TestLegalUpdateListAndActive:
 
     @pytest.mark.edge
     def test_create_legal_update_invalid_payload(self, api_client, user):
+        """Verify create legal update invalid payload."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-list")
 
@@ -90,8 +98,11 @@ class TestLegalUpdateListAndActive:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestLegalUpdateDetail:
+    """Tests for Legal Update Detail."""
+
     @pytest.mark.edge
     def test_legal_update_detail_not_found_when_inactive(self, api_client, user, legal_update_inactive):
+        """Verify legal update detail not found when inactive."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-detail", kwargs={"pk": legal_update_inactive.id})
 
@@ -102,6 +113,7 @@ class TestLegalUpdateDetail:
 
     @pytest.mark.contract
     def test_get_legal_update_detail_success(self, api_client, user, legal_update_active):
+        """Verify get legal update detail success."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-detail", kwargs={"pk": legal_update_active.id})
 
@@ -113,6 +125,7 @@ class TestLegalUpdateDetail:
 
     @pytest.mark.contract
     def test_update_legal_update_success(self, api_client, user, legal_update_active):
+        """Verify update legal update success."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-detail", kwargs={"pk": legal_update_active.id})
         data = {
@@ -130,6 +143,7 @@ class TestLegalUpdateDetail:
 
     @pytest.mark.contract
     def test_delete_legal_update_marks_inactive(self, api_client, user, legal_update_active):
+        """Verify delete legal update marks inactive."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-detail", kwargs={"pk": legal_update_active.id})
 
@@ -141,6 +155,7 @@ class TestLegalUpdateDetail:
 
     @pytest.mark.contract
     def test_create_legal_update_via_list_endpoint(self, api_client, user):
+        """Verify create legal update via list endpoint."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-list")
         data = {
@@ -158,6 +173,8 @@ class TestLegalUpdateDetail:
 
 @pytest.mark.django_db
 class TestLegalUpdateValidation:
+    """Tests for Legal Update Validation."""
+
     def test_update_legal_update_invalid_data(self, api_client, user, legal_update_active):
         """Line 46: PUT with invalid data returns serializer errors (400)."""
         api_client.force_authenticate(user=user)
@@ -175,7 +192,10 @@ class TestLegalUpdateValidation:
 
 @pytest.mark.django_db
 class TestLegalUpdateRest:
+    """Tests for Legal Update Rest."""
+
     def test_legal_update_list_create_and_active_rest(self, api_client, user, legal_update_active, legal_update_inactive):
+        """Verify legal update list create and active rest."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-list")
 
@@ -202,6 +222,7 @@ class TestLegalUpdateRest:
         assert LegalUpdate.objects.filter(title="Rest Update").exists()
 
     def test_legal_update_detail_update_delete_rest(self, api_client, user, legal_update_active):
+        """Verify legal update detail update delete rest."""
         api_client.force_authenticate(user=user)
         url = reverse("legal-updates-detail", kwargs={"pk": legal_update_active.id})
 
@@ -233,13 +254,16 @@ class TestLegalUpdateRest:
 
 @pytest.mark.django_db
 class TestLegalUpdatesViewsAdditionalScenarios:
+    """Tests for Legal Updates Views Additional Scenarios."""
 
     def test_list_legal_updates(self, api_client, user):
+        """Verify list legal updates."""
         LegalUpdate.objects.create(title="LU36", content="Body", is_active=True)
         api_client.force_authenticate(user=user)
         resp = api_client.get(reverse("legal-updates-list"))
         assert resp.status_code == 200
 
     def test_list_legal_updates_unauthenticated(self, api_client):
+        """Verify list legal updates unauthenticated."""
         resp = api_client.get(reverse("legal-updates-list"))
         assert resp.status_code in (401, 403)

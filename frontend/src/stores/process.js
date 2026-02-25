@@ -292,6 +292,9 @@ export const useProcessStore = defineStore("process", {
         lawyerId: formData.lawyerId,
         progress: formData.progress,
         stages: formData.stages,
+        caseFileIds: (formData.caseFiles || [])
+          .filter((cf) => cf.id)
+          .map((cf) => cf.id),
       };
 
       try {

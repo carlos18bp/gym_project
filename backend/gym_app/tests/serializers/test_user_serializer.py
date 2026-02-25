@@ -1,25 +1,28 @@
-import pytest
+"""Tests for user_serializer module."""
 from datetime import date
-from django.core.files.uploadedfile import SimpleUploadedFile
+
+import pytest
 from django.contrib.auth.hashers import make_password
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
-from gym_app.models.user import User, UserSignature, ActivityFeed
-from unittest.mock import patch, MagicMock, PropertyMock
+
+from gym_app.models.user import ActivityFeed, User, UserSignature
 from gym_app.serializers.user import (
+    ActivityFeedSerializer,
     UserSerializer,
     UserSignatureSerializer,
-    ActivityFeedSerializer,
 )
+
 
 @pytest.fixture
 def api_rf():
-    """APIRequestFactory para pruebas de serializers con request en contexto"""
+    """APIRequestFactory para pruebas de serializers con request en contexto."""
     return APIRequestFactory()
 
 
 @pytest.fixture
 def user_data():
-    """Basic data to create a user"""
+    """Provide basic data to create a user."""
     return {
         'email': 'test@example.com',
         'password': 'securepassword123',
@@ -30,7 +33,7 @@ def user_data():
 
 @pytest.fixture
 def complete_user_data():
-    """Complete data to create a user with all fields"""
+    """Complete data to create a user with all fields."""
     return {
         'email': 'complete@example.com',
         'password': 'securepassword123',
@@ -47,7 +50,7 @@ def complete_user_data():
 
 @pytest.fixture
 def existing_user():
-    """Create an existing user for testing"""
+    """Create an existing user for testing."""
     return User.objects.create_user(
         email='existing@example.com',
         password='existingpassword',
@@ -62,6 +65,7 @@ def existing_user():
 
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -71,9 +75,10 @@ def user():
 
 @pytest.mark.django_db
 class TestUserSerializer:
+    """Tests for User Serializer."""
     
     def test_serialize_user_basic_fields(self, existing_user):
-        """Test the serialization of an existing user - basic fields"""
+        """Test the serialization of an existing user - basic fields."""
         serializer = UserSerializer(existing_user)
         
         # Verify that data is serialized correctly
@@ -86,7 +91,7 @@ class TestUserSerializer:
         assert 'password' not in serializer.data
 
     def test_serialize_user_extended_fields(self, existing_user):
-        """Test the serialization of an existing user - extended fields"""
+        """Test the serialization of an existing user - extended fields."""
         serializer = UserSerializer(existing_user)
         
         assert serializer.data['identification'] == existing_user.identification
@@ -94,7 +99,7 @@ class TestUserSerializer:
         assert serializer.data['role'] == existing_user.role
     
     def test_create_minimal_user_basic_fields(self, user_data):
-        """Test the creation of a user with minimal data - basic fields"""
+        """Test the creation of a user with minimal data - basic fields."""
         # Hash the password manually before creating the user
         user_data_with_hashed_password = user_data.copy()
         user_data_with_hashed_password['password'] = make_password(user_data['password'])
@@ -111,7 +116,7 @@ class TestUserSerializer:
         assert user.check_password(user_data['password'])
 
     def test_create_minimal_user_default_values(self):
-        """Test the creation of a user with minimal data - default values"""
+        """Test the creation of a user with minimal data - default values."""
         user_data = {
             'email': 'minimal@example.com',
             'password': make_password('testpassword'),
@@ -133,7 +138,7 @@ class TestUserSerializer:
         assert user.is_profile_completed is False
     
     def test_create_complete_user_basic_fields(self, complete_user_data):
-        """Test the creation of a user with all fields - basic fields"""
+        """Test the creation of a user with all fields - basic fields."""
         # Hash the password manually
         complete_user_data_with_hashed_password = complete_user_data.copy()
         complete_user_data_with_hashed_password['password'] = make_password(complete_user_data['password'])
@@ -152,7 +157,7 @@ class TestUserSerializer:
         assert user.birthday == complete_user_data['birthday']
 
     def test_create_complete_user_extended_fields(self, complete_user_data):
-        """Test the creation of a user with all fields - extended fields"""
+        """Test the creation of a user with all fields - extended fields."""
         complete_user_data_with_hashed_password = complete_user_data.copy()
         complete_user_data_with_hashed_password['email'] = 'complete2@example.com'
         complete_user_data_with_hashed_password['password'] = make_password(complete_user_data['password'])
@@ -168,7 +173,7 @@ class TestUserSerializer:
         assert user.is_profile_completed == complete_user_data['is_profile_completed']
     
     def test_update_user_changes_fields(self, existing_user):
-        """Test updating an existing user - fields are updated"""
+        """Test updating an existing user - fields are updated."""
         update_data = {
             'first_name': 'Updated',
             'last_name': 'Name',
@@ -188,7 +193,7 @@ class TestUserSerializer:
         assert updated_user.document_type == update_data['document_type']
 
     def test_update_user_preserves_unchanged_fields(self, existing_user):
-        """Test updating an existing user - unchanged fields preserved"""
+        """Test updating an existing user - unchanged fields preserved."""
         original_email = existing_user.email
         original_identification = existing_user.identification
         original_role = existing_user.role
@@ -204,7 +209,7 @@ class TestUserSerializer:
         assert updated_user.role == original_role
     
     def test_update_user_password(self, existing_user):
-        """Test updating a user's password"""
+        """Test updating a user's password."""
         original_password_hash = existing_user.password
         
         # Hash the password manually
@@ -223,7 +228,7 @@ class TestUserSerializer:
         assert updated_user.check_password(new_password)
     
     def test_unique_email_validation(self, existing_user, user_data):
-        """Test unique email validation"""
+        """Test unique email validation."""
         # Use an existing user's email
         user_data['email'] = existing_user.email
         
@@ -234,7 +239,7 @@ class TestUserSerializer:
         assert 'email' in serializer.errors
     
     def test_invalid_document_type(self, user_data):
-        """Test document type validation"""
+        """Test document type validation."""
         user_data['document_type'] = 'INVALID_TYPE'  # Not allowed value
         
         serializer = UserSerializer(data=user_data)
@@ -244,7 +249,7 @@ class TestUserSerializer:
         assert 'document_type' in serializer.errors
     
     def test_profile_photo_upload(self, existing_user):
-        """Test uploading a profile photo"""
+        """Test uploading a profile photo."""
         # For this test, we need to do something different since there seems to be an issue with
         # the validation of the photo_profile field in tests. Instead, we'll verify if we can
         # directly update the field in the model.
@@ -272,9 +277,10 @@ class TestUserSerializer:
 
 @pytest.mark.django_db
 class TestUserSignatureSerializer:
+    """Tests for User Signature Serializer."""
 
     def test_signature_serializer_builds_absolute_url(self, api_rf):
-        """La representación incluye URL absoluta de la firma cuando hay request en contexto"""
+        """La representación incluye URL absoluta de la firma cuando hay request en contexto."""
         user = User.objects.create_user(
             email='signature-serializer@example.com',
             password='testpassword'
@@ -305,6 +311,7 @@ class TestUserSignatureSerializer:
         assert data['signature_image'].endswith('.png')
 
     def test_signature_serializer_handles_absolute_url_error(self, user):
+        """Verify signature serializer handles absolute url error."""
         test_signature = SimpleUploadedFile(
             "signature.png",
             b"file_content",
@@ -335,9 +342,10 @@ class TestUserSignatureSerializer:
 
 @pytest.mark.django_db
 class TestActivityFeedSerializer:
+    """Tests for Activity Feed Serializer."""
 
     def test_activity_feed_serializer_basic_fields(self, user):
-        """Test basic field serialization for ActivityFeed"""
+        """Test basic field serialization for ActivityFeed."""
         activity = ActivityFeed.objects.create(
             user=user,
             action_type='create',
@@ -354,7 +362,7 @@ class TestActivityFeedSerializer:
         assert data['description'] == 'Created a resource'
 
     def test_activity_feed_serializer_time_fields(self, user):
-        """Test time-related fields for ActivityFeed"""
+        """Test time-related fields for ActivityFeed."""
         activity = ActivityFeed.objects.create(
             user=user,
             action_type='create',
@@ -370,6 +378,7 @@ class TestActivityFeedSerializer:
         assert data['time_ago'] != ''
 
     def test_activity_feed_serializer_action_display_fallback(self, user):
+        """Verify activity feed serializer action display fallback."""
         activity = ActivityFeed.objects.create(
             user=user,
             action_type='custom',
@@ -386,6 +395,8 @@ class TestActivityFeedSerializer:
 
 @pytest.mark.django_db
 class TestUserSignatureSerializerEdges:
+    """Tests for User Signature Serializer Edges."""
+
     def test_to_representation_with_request_and_image(self, user, rf):
         """Cover lines 38-40: request present, signature_image exists."""
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -453,6 +464,8 @@ class TestUserSignatureSerializerEdges:
 
 @pytest.mark.django_db
 class TestActivityFeedSerializerEdges:
+    """Tests for Activity Feed Serializer Edges."""
+
     def test_get_time_ago(self, user):
         """Cover lines 72-75: get_time_ago returns timesince string."""
         activity = ActivityFeed.objects.create(

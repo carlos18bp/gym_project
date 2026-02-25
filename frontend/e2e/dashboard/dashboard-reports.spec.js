@@ -81,7 +81,7 @@ async function installDashboardWithReportsMocks(page, { userId, role, reportResp
   });
 }
 
-test("lawyer navigates to Reportes tab and generates an Excel report", async ({ page }) => {
+test("lawyer navigates to Reportes tab and generates an Excel report", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 4100;
 
   await installDashboardWithReportsMocks(page, {
@@ -121,7 +121,7 @@ test("lawyer navigates to Reportes tab and generates an Excel report", async ({ 
   await expect(page.getByLabel("Tipo de Reporte")).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer sees validation when only one date is provided", async ({ page }) => {
+test("lawyer sees validation when only one date is provided", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 4101;
 
   await installDashboardWithReportsMocks(page, {
@@ -148,8 +148,11 @@ test("lawyer sees validation when only one date is provided", async ({ page }) =
   // Select report type
   await page.getByLabel("Tipo de Reporte").selectOption("active_processes");
 
+  // Wait for date inputs to render after report type selection
+  await expect(page.locator("#startDate")).toBeVisible({ timeout: 5_000 }); // quality: allow-fragile-selector (stable DOM id)
+
   // Fill only start date (not end date)
-  await page.locator("#startDate").fill("2026-01-01");
+  await page.locator("#startDate").fill("2026-01-01"); // quality: allow-fragile-selector (stable DOM id)
 
   // Validation message should appear
   await expect(page.getByText("Si proporcionas una fecha, debes proporcionar ambas fechas")).toBeVisible();
@@ -159,7 +162,7 @@ test("lawyer sees validation when only one date is provided", async ({ page }) =
   await expect(generateBtn).toBeDisabled();
 
   // Fill end date too — validation should disappear and button should enable
-  await page.locator("#endDate").fill("2026-01-31");
+  await page.locator("#endDate").fill("2026-01-31"); // quality: allow-fragile-selector (stable DOM id)
 
   await expect(page.getByText("Si proporcionas una fecha, debes proporcionar ambas fechas")).toBeHidden();
   await expect(generateBtn).toBeEnabled();

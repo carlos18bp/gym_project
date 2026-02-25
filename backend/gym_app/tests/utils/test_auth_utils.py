@@ -1,17 +1,17 @@
+"""Tests for auth_utils module."""
 import pytest
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-
 from gym_app.utils.auth_utils import generate_auth_tokens
-
 
 User = get_user_model()
 
 
 @pytest.mark.django_db
 class TestGenerateAuthTokens:
+    """Tests for Generate Auth Tokens."""
+
     def test_generate_auth_tokens_structure(self):
-        """Test that generate_auth_tokens returns expected keys"""
+        """Test that generate_auth_tokens returns expected keys."""
         user = User.objects.create_user(
             email="user@example.com",
             password="testpassword",
@@ -26,11 +26,13 @@ class TestGenerateAuthTokens:
         assert "access" in data
         assert "user" in data
         # Tokens deben ser strings no vacíos
-        assert isinstance(data["refresh"], str) and data["refresh"]
-        assert isinstance(data["access"], str) and data["access"]
+        assert isinstance(data["refresh"], str)
+        assert data["refresh"]
+        assert isinstance(data["access"], str)
+        assert data["access"]
 
     def test_generate_auth_tokens_user_data(self):
-        """Test that generate_auth_tokens returns correct user data"""
+        """Test that generate_auth_tokens returns correct user data."""
         user = User.objects.create_user(
             email="user2@example.com",
             password="testpassword",

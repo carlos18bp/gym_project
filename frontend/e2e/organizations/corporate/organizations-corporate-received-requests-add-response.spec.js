@@ -2,12 +2,14 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   buildMockCorporateRequest,
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client can add a response in request detail and response_count updates in list", async ({ page }) => {
+test("corporate_client can add a response in request detail and response_count updates in list", { tag: ['@flow:org-corporate-requests', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const userId = 4800;
@@ -64,7 +66,7 @@ test("corporate_client can add a response in request detail and response_count u
   const reqCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-7100" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(reqCard).toBeVisible();
   await expect(reqCard.getByText(/0 respuestas/)).toBeVisible();
@@ -93,7 +95,7 @@ test("corporate_client can add a response in request detail and response_count u
   const updatedCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-7100" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(updatedCard).toBeVisible();
   await expect(updatedCard.getByText(/1 respuestas/)).toBeVisible();
 });

@@ -1,15 +1,29 @@
-import pytest
+"""Tests for legal_request module."""
 import json
-from unittest.mock import patch
 from datetime import timedelta
-from django.utils import timezone
-from django.urls import reverse
+from unittest.mock import patch
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
 from rest_framework.test import APIClient
-from gym_app.models import User, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse
+
+from gym_app.models import (
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestFiles,
+    LegalRequestResponse,
+    LegalRequestType,
+    User,
+)
+
+
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -20,18 +34,21 @@ def user():
 
 @pytest.fixture
 def legal_request_type():
+    """Legal request type."""
     return LegalRequestType.objects.create(
         name='Consultation'
     )
 
 @pytest.fixture
 def legal_discipline():
+    """Legal discipline."""
     return LegalDiscipline.objects.create(
         name='Corporate Law'
     )
 
 @pytest.fixture
 def legal_request(legal_request_type, legal_discipline, user):
+    """Legal request."""
     return LegalRequest.objects.create(
         user=user,
         request_type=legal_request_type,
@@ -41,6 +58,7 @@ def legal_request(legal_request_type, legal_discipline, user):
 
 @pytest.fixture
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email='lawyer@example.com',
         password='testpassword',
@@ -52,10 +70,11 @@ def lawyer_user():
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestLegalRequestViews:
+    """Tests for Legal Request Views."""
     
     @pytest.mark.contract
     def test_create_legal_request_response(self, api_client, user, legal_request_type, legal_discipline):
-        """Test creating a legal request returns correct response"""
+        """Test creating a legal request returns correct response."""
         api_client.force_authenticate(user=user)
         
         main_data = {
@@ -78,7 +97,7 @@ class TestLegalRequestViews:
 
     @pytest.mark.contract
     def test_create_legal_request_db_state(self, api_client, user, legal_request_type, legal_discipline):
-        """Test creating a legal request creates correct database record"""
+        """Test creating a legal request creates correct database record."""
         api_client.force_authenticate(user=user)
         
         main_data = {
@@ -102,9 +121,7 @@ class TestLegalRequestViews:
     
     @pytest.mark.edge
     def test_create_legal_request_invalid_type(self, api_client, user, legal_discipline):
-        """
-        Test creating a legal request with an invalid request type ID.
-        """
+        """Test creating a legal request with an invalid request type ID."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -135,9 +152,7 @@ class TestLegalRequestViews:
     
     @pytest.mark.edge
     def test_create_legal_request_invalid_discipline(self, api_client, user, legal_request_type):
-        """
-        Test creating a legal request with an invalid discipline ID.
-        """
+        """Test creating a legal request with an invalid discipline ID."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -168,9 +183,7 @@ class TestLegalRequestViews:
 
     @pytest.mark.contract
     def test_upload_legal_request_file(self, api_client, user, legal_request):
-        """
-        Test uploading a file to an existing legal request.
-        """
+        """Test uploading a file to an existing legal request."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
 
@@ -213,9 +226,7 @@ class TestLegalRequestViews:
 
     @pytest.mark.edge
     def test_upload_file_to_nonexistent_request(self, api_client, user):
-        """
-        Test uploading a file to a non-existent legal request.
-        """
+        """Test uploading a file to a non-existent legal request."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -245,9 +256,7 @@ class TestLegalRequestViews:
     
     @pytest.mark.edge
     def test_upload_file_without_file(self, api_client, user, legal_request):
-        """
-        Test uploading without providing a file.
-        """
+        """Test uploading without providing a file."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -271,9 +280,7 @@ class TestLegalRequestViews:
     
     @pytest.mark.contract
     def test_get_dropdown_options(self, api_client, user, legal_request_type, legal_discipline):
-        """
-        Test retrieving dropdown options for legal request types and disciplines.
-        """
+        """Test retrieving dropdown options for legal request types and disciplines."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -295,9 +302,7 @@ class TestLegalRequestViews:
     
     @pytest.mark.edge
     def test_unauthenticated_access(self, api_client, legal_request_type, legal_discipline):
-        """
-        Test that unauthenticated users cannot access the legal request endpoints.
-        """
+        """Test that unauthenticated users cannot access the legal request endpoints."""
         # Test create legal request
         create_url = reverse('create-legal-request')
         create_response = api_client.post(create_url, {}, format='multipart')
@@ -501,6 +506,7 @@ class TestLegalRequestViews:
         assert response.data['requests'][0]['id'] == matching.id
 
     @pytest.mark.edge
+    @freeze_time("2025-01-15 12:00:00")
     def test_list_legal_requests_date_filters_and_invalid_dates(self, api_client, user, legal_request_type, legal_discipline):
         """Date filters should work with valid dates and ignore invalid ones without crashing."""
         today = timezone.now().date()
@@ -788,7 +794,10 @@ class TestLegalRequestViews:
 
 @pytest.mark.django_db
 class TestLegalRequestRest:
+    """Tests for Legal Request Rest."""
+
     def test_rest_list_and_detail(self, api_client, user, legal_request_type, legal_discipline):
+        """Verify rest list and detail."""
         request_obj = LegalRequest.objects.create(
             user=user,
             request_type=legal_request_type,
@@ -813,6 +822,7 @@ class TestLegalRequestRest:
 
     @patch('gym_app.views.legal_request.send_status_update_notification')
     def test_rest_update_status_and_delete(self, mock_notify, api_client, lawyer_user, user, legal_request_type, legal_discipline):
+        """Verify rest update status and delete."""
         request_obj = LegalRequest.objects.create(
             user=user,
             request_type=legal_request_type,
@@ -933,7 +943,7 @@ class TestLegalRequestRest:
         assert response.data['detail'] == 'An error occurred while adding files.'
 
     def _create_file_for_request(self, legal_request):
-        """Helper to create and attach a file to a legal request for download tests."""
+        """Create and attach a file to a legal request for download tests."""
         file_content = b'Test file content'
         test_file = SimpleUploadedFile('test.txt', file_content, content_type='text/plain')
         file_obj = LegalRequestFiles.objects.create(file=test_file)
@@ -1051,25 +1061,29 @@ Batch 12 – 20 tests for:
     get_my_memberships, leave_organization, get_organization_public_detail
 """
 import os
-import tempfile
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from django.utils import timezone
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from django.utils import timezone  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
 from gym_app.models import (
-    Organization, OrganizationInvitation, OrganizationMembership,
+    Organization,
+    OrganizationInvitation,
+    OrganizationMembership,
 )
 from gym_app.models.legal_request import (
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles,
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestFiles,  # noqa: F811
+    LegalRequestType,  # noqa: F811
 )
 
-User = get_user_model()
+User = get_user_model()  # noqa: F811
 
 
 # ---------------------------------------------------------------------------
@@ -1078,6 +1092,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def b12_lawyer_user():
+    """B12 lawyer user."""
     return User.objects.create_user(
         email="lawyer_b12@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -1087,6 +1102,7 @@ def b12_lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def b12_client_user():
+    """B12 client user."""
     return User.objects.create_user(
         email="client_b12@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -1096,6 +1112,7 @@ def b12_client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def b12_corp_user():
+    """B12 corp user."""
     return User.objects.create_user(
         email="corp_b12@test.com", password="pw", role="corporate_client",
         first_name="Corp", last_name="Client",
@@ -1105,18 +1122,21 @@ def b12_corp_user():
 @pytest.fixture
 @pytest.mark.django_db
 def b12_legal_request_type():
+    """B12 legal request type."""
     return LegalRequestType.objects.create(name="Consulta General")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def b12_legal_discipline():
+    """B12 legal discipline."""
     return LegalDiscipline.objects.create(name="Civil")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def b12_legal_req(b12_client_user, b12_legal_request_type, b12_legal_discipline):
+    """B12 legal req."""
     return LegalRequest.objects.create(
         user=b12_client_user,
         request_type=b12_legal_request_type,
@@ -1129,6 +1149,7 @@ def b12_legal_req(b12_client_user, b12_legal_request_type, b12_legal_discipline)
 @pytest.fixture
 @pytest.mark.django_db
 def b12_organization(b12_corp_user):
+    """B12 organization."""
     return Organization.objects.create(
         title="Test Org B12",
         description="Org description",
@@ -1140,6 +1161,7 @@ def b12_organization(b12_corp_user):
 @pytest.fixture
 @pytest.mark.django_db
 def b12_membership(b12_organization, b12_client_user):
+    """B12 membership."""
     return OrganizationMembership.objects.create(
         organization=b12_organization,
         user=b12_client_user,
@@ -1154,6 +1176,7 @@ def b12_membership(b12_organization, b12_client_user):
 
 @pytest.mark.django_db
 class TestDownloadLegalRequestFile:
+    """Tests for Download Legal Request File."""
 
     def test_download_file_permission_denied(self, api_client, b12_lawyer_user, b12_client_user, b12_legal_req):
         """Lines 833-838: non-owner non-lawyer denied."""
@@ -1218,6 +1241,7 @@ class TestDownloadLegalRequestFile:
 
 @pytest.mark.django_db
 class TestAddFilesToLegalRequest:
+    """Tests for Add Files To Legal Request."""
 
     def test_add_files_non_owner_forbidden(self, api_client, b12_lawyer_user, b12_legal_req):
         """Lines 753-758: non-owner cannot add files."""
@@ -1265,6 +1289,7 @@ class TestAddFilesToLegalRequest:
 
 @pytest.mark.django_db
 class TestDeleteLegalRequest:
+    """Tests for Delete Legal Request."""
 
     def test_delete_by_non_lawyer(self, api_client, b12_client_user, b12_legal_req):
         """Lines 711-715: non-lawyer forbidden."""
@@ -1288,6 +1313,7 @@ class TestDeleteLegalRequest:
 
 @pytest.mark.django_db
 class TestOrganizationStats:
+    """Tests for Organization Stats."""
 
     def test_get_stats(self, api_client, b12_corp_user, b12_organization):
         """Lines 447-493: organization dashboard stats."""
@@ -1308,6 +1334,7 @@ class TestOrganizationStats:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationsAndMemberships:
+    """Tests for Organization Invitations And Memberships."""
 
     def test_get_my_invitations(self, api_client, b12_client_user, b12_organization, b12_corp_user):
         """Lines 502-540: client gets their invitations."""
@@ -1340,7 +1367,7 @@ class TestOrganizationInvitationsAndMemberships:
 
     def test_leave_organization_leader_forbidden(self, api_client, b12_corp_user, b12_organization):
         """Lines 631-634: leader cannot leave."""
-        leader_membership = OrganizationMembership.objects.create(
+        _leader_membership = OrganizationMembership.objects.create(
             organization=b12_organization,
             user=b12_corp_user,
             role="LEADER",
@@ -1351,7 +1378,7 @@ class TestOrganizationInvitationsAndMemberships:
         client_leader = User.objects.create_user(
             email="clientleader@test.com", password="pw", role="client",
         )
-        leader_mem = OrganizationMembership.objects.create(
+        _leader_mem = OrganizationMembership.objects.create(
             organization=b12_organization,
             user=client_leader,
             role="LEADER",
@@ -1365,6 +1392,7 @@ class TestOrganizationInvitationsAndMemberships:
 
 @pytest.mark.django_db
 class TestOrganizationPublicDetail:
+    """Tests for Organization Public Detail."""
 
     def test_public_detail_corp_owner(self, api_client, b12_corp_user, b12_organization):
         """Lines 660-661: corp client who owns org can view."""
@@ -1396,18 +1424,25 @@ class TestOrganizationPublicDetail:
 # ======================================================================
 
 """Batch 33 – 20 tests: legal_request & corporate_request view edges."""
-import json
+import json  # noqa: F811
+
 import pytest
-from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles,
-    LegalRequestResponse, Organization, OrganizationMembership,
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestFiles,  # noqa: F811
+    LegalRequestResponse,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    Organization,  # noqa: F811
+    OrganizationMembership,  # noqa: F811
 )
 from gym_app.models.corporate_request import (
-    CorporateRequest, CorporateRequestType, CorporateRequestResponse,
+    CorporateRequestType,
 )
 
 User = get_user_model()
@@ -1415,22 +1450,27 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(email="law33@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="cli33@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
 def corp():
+    """Corp."""
     return User.objects.create_user(email="corp33@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Rp")
 
 @pytest.fixture
 def lr_deps():
+    """Lr deps."""
     rt = LegalRequestType.objects.create(name="TestType33")
     di = LegalDiscipline.objects.create(name="TestDisc33")
     return rt, di
@@ -1438,35 +1478,43 @@ def lr_deps():
 
 # -- create_legal_request edges --
 class TestCreateLegalRequest:
+    """Tests for Create Legal Request."""
+
     def test_missing_main_data(self, api, cli):
+        """Verify missing main data."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("create-legal-request"), {}, format="multipart")
         assert resp.status_code == 400
 
     def test_invalid_json(self, api, cli):
+        """Verify invalid json."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("create-legal-request"), {"mainData": "{bad json"}, format="multipart")
         assert resp.status_code == 400
 
     def test_missing_required_fields(self, api, cli):
+        """Verify missing required fields."""
         api.force_authenticate(user=cli)
         data = json.dumps({"requestTypeId": 1})
         resp = api.post(reverse("create-legal-request"), {"mainData": data}, format="multipart")
         assert resp.status_code == 400
 
     def test_request_type_not_found(self, api, cli, lr_deps):
+        """Verify request type not found."""
         api.force_authenticate(user=cli)
         data = json.dumps({"requestTypeId": 999999, "disciplineId": lr_deps[1].id, "description": "D"})
         resp = api.post(reverse("create-legal-request"), {"mainData": data}, format="multipart")
         assert resp.status_code == 404
 
     def test_discipline_not_found(self, api, cli, lr_deps):
+        """Verify discipline not found."""
         api.force_authenticate(user=cli)
         data = json.dumps({"requestTypeId": lr_deps[0].id, "disciplineId": 999999, "description": "D"})
         resp = api.post(reverse("create-legal-request"), {"mainData": data}, format="multipart")
         assert resp.status_code == 404
 
     def test_create_success(self, api, cli, lr_deps):
+        """Verify create success."""
         api.force_authenticate(user=cli)
         data = json.dumps({"requestTypeId": lr_deps[0].id, "disciplineId": lr_deps[1].id, "description": "Help me"})
         resp = api.post(reverse("create-legal-request"), {"mainData": data}, format="multipart")
@@ -1476,17 +1524,22 @@ class TestCreateLegalRequest:
 
 # -- upload_legal_request_file edges --
 class TestUploadLegalRequestFile:
+    """Tests for Upload Legal Request File."""
+
     def test_no_request_id(self, api, cli):
+        """Verify no request id."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("upload-legal-request-file"), {}, format="multipart")
         assert resp.status_code == 400
 
     def test_request_not_found(self, api, cli):
+        """Verify request not found."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("upload-legal-request-file"), {"legalRequestId": 999999}, format="multipart")
         assert resp.status_code == 404
 
     def test_no_files_provided(self, api, cli, lr_deps):
+        """Verify no files provided."""
         api.force_authenticate(user=cli)
         lr = LegalRequest.objects.create(user=cli, request_type=lr_deps[0], discipline=lr_deps[1], description="D")
         resp = api.post(reverse("upload-legal-request-file"), {"legalRequestId": lr.id}, format="multipart")
@@ -1495,20 +1548,27 @@ class TestUploadLegalRequestFile:
 
 # -- send_confirmation_email edges --
 class TestSendConfirmationEmail:
+    """Tests for Send Confirmation Email."""
+
     def test_no_request_id(self, api, cli):
+        """Verify no request id."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("send-confirmation-email"), {}, format="json")
         assert resp.status_code == 400
 
     def test_request_not_found(self, api, cli):
+        """Verify request not found."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("send-confirmation-email"), {"legal_request_id": 999999}, format="json")
         assert resp.status_code == 404
 
 
 # -- add_files_to_legal_request edges --
-class TestAddFilesToLegalRequest:
+class TestAddFilesToLegalRequest:  # noqa: F811
+    """Tests for Add Files To Legal Request."""
+
     def test_not_owner_forbidden(self, api, cli, law, lr_deps):
+        """Verify not owner forbidden."""
         lr = LegalRequest.objects.create(user=cli, request_type=lr_deps[0], discipline=lr_deps[1], description="D")
         api.force_authenticate(user=law)
         f = SimpleUploadedFile("t.pdf", b"%PDF-1.4 fake", content_type="application/pdf")
@@ -1516,6 +1576,7 @@ class TestAddFilesToLegalRequest:
         assert resp.status_code == 403
 
     def test_no_files(self, api, cli, lr_deps):
+        """Verify no files."""
         lr = LegalRequest.objects.create(user=cli, request_type=lr_deps[0], discipline=lr_deps[1], description="D")
         api.force_authenticate(user=cli)
         resp = api.post(reverse("add-files-to-legal-request", args=[lr.id]), {})
@@ -1524,17 +1585,22 @@ class TestAddFilesToLegalRequest:
 
 # -- corporate_request role decorators --
 class TestCorporateRequestRoles:
+    """Tests for Corporate Request Roles."""
+
     def test_client_endpoint_blocks_lawyer(self, api, law):
+        """Verify client endpoint blocks lawyer."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("client-get-my-organizations"))
         assert resp.status_code == 403
 
     def test_corporate_endpoint_blocks_client(self, api, cli):
+        """Verify corporate endpoint blocks client."""
         api.force_authenticate(user=cli)
         resp = api.get(reverse("corporate-get-received-requests"))
         assert resp.status_code == 403
 
     def test_client_get_request_types(self, api, cli):
+        """Verify client get request types."""
         CorporateRequestType.objects.create(name="CT33")
         api.force_authenticate(user=cli)
         resp = api.get(reverse("client-get-request-types"))
@@ -1542,12 +1608,14 @@ class TestCorporateRequestRoles:
         assert resp.data["total_count"] >= 1
 
     def test_client_get_my_orgs_empty(self, api, cli):
+        """Verify client get my orgs empty."""
         api.force_authenticate(user=cli)
         resp = api.get(reverse("client-get-my-organizations"))
         assert resp.status_code == 200
         assert resp.data["total_count"] == 0
 
     def test_client_get_my_orgs_with_membership(self, api, cli, corp):
+        """Verify client get my orgs with membership."""
         org = Organization.objects.create(title="Org33", corporate_client=corp)
         OrganizationMembership.objects.create(organization=org, user=cli, role="MEMBER", is_active=True)
         api.force_authenticate(user=cli)
@@ -1557,11 +1625,13 @@ class TestCorporateRequestRoles:
         assert resp.data["organizations"][0]["title"] == "Org33"
 
     def test_corporate_dashboard_stats(self, api, corp):
+        """Verify corporate dashboard stats."""
         api.force_authenticate(user=corp)
         resp = api.get(reverse("corporate-get-dashboard-stats"))
         assert resp.status_code == 200
 
     def test_corporate_received_requests_empty(self, api, corp):
+        """Verify corporate received requests empty."""
         api.force_authenticate(user=corp)
         resp = api.get(reverse("corporate-get-received-requests"))
         assert resp.status_code == 200
@@ -1572,20 +1642,28 @@ class TestCorporateRequestRoles:
 # ======================================================================
 
 """Tests for uncovered branches in legal_request.py (93%→100%)."""
-import pytest
 import unittest.mock as mock
-from django.urls import reverse
-from django.utils import timezone
-from rest_framework.test import APIClient
-from rest_framework import status
-from django.core.files.uploadedfile import SimpleUploadedFile
+
+import pytest
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from django.utils import timezone  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    User, LegalRequest, LegalRequestType, LegalDiscipline,
-    LegalRequestFiles,
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestFiles,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    User,  # noqa: F811
 )
+
+
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email='law_lrc@e.com', password='p', role='lawyer',
         first_name='L', last_name='R')
@@ -1593,6 +1671,7 @@ def lawyer():
 
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_lrc@e.com', password='p', role='client',
         first_name='C', last_name='R')
@@ -1600,16 +1679,19 @@ def client_u():
 
 @pytest.fixture
 def lrc_req_type():
+    """Lrc req type."""
     return LegalRequestType.objects.create(name="ConsLRC")
 
 
 @pytest.fixture
 def lrc_discipline():
+    """Lrc discipline."""
     return LegalDiscipline.objects.create(name="CivLRC")
 
 
 @pytest.fixture
 def lrc_legal_req(client_u, lrc_req_type, lrc_discipline):
+    """Lrc legal req."""
     return LegalRequest.objects.create(
         user=client_u, request_type=lrc_req_type, discipline=lrc_discipline,
         description="Test request")
@@ -1617,6 +1699,7 @@ def lrc_legal_req(client_u, lrc_req_type, lrc_discipline):
 
 @pytest.mark.django_db
 class TestLegalRequestRegressionScenarios:
+    """Tests for Legal Request Regression Scenarios."""
 
     # --- File validation: file too large (line 47) ---
     def test_upload_file_too_large(self, api_client, client_u, lrc_legal_req):
@@ -1728,17 +1811,20 @@ class TestLegalRequestRegressionScenarios:
     @mock.patch('gym_app.views.legal_request.magic')
     def test_docx_inner_read_exception(self, mock_magic):
         """Lines 74-75: exception during .docx inner structure verification.
+        
         The inner except logs a warning and falls through to standard MIME
-        validation which accepts application/zip + .docx."""
+        validation which accepts application/zip + .docx.
+        """
         mock_magic.from_buffer.return_value = 'application/zip'
-        from gym_app.views.legal_request import validate_file_security
         from types import SimpleNamespace
+
+        from gym_app.views.legal_request import validate_file_security
         call_count = {'n': 0}
         def _read(n=-1):
             call_count['n'] += 1
             if call_count['n'] == 1:
                 return b'PK\x03\x04' + b'\x00' * 100
-            raise IOError("simulated read failure")
+            raise OSError("simulated read failure")
         mock_file = SimpleNamespace(name="doc.docx", size=500, read=_read, seek=lambda x: None)
         # Inner except (line 74-75) logs warning, then standard MIME check
         # passes because application/zip + .docx is allowed.
@@ -1848,18 +1934,28 @@ Targets: validate_file_security edges, create_legal_request error paths,
 get_or_delete DELETE path, delete_legal_request, download content types,
 upload failed files, outer exception handlers.
 """
-import pytest
-import json
-import os
-from unittest.mock import patch, MagicMock
-from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework import status
-from rest_framework.test import APIClient
+import json  # noqa: F811
+import os  # noqa: F811
+from unittest.mock import patch
 
-from gym_app.models import User, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models import (
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestFiles,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    User,  # noqa: F811
+)
+
+
 @pytest.fixture
 def lre_client_user(db):
+    """Lre client user."""
     return User.objects.create_user(
         email="lre-client@example.com",
         password="testpassword",
@@ -1871,6 +1967,7 @@ def lre_client_user(db):
 
 @pytest.fixture
 def lre_lawyer_user(db):
+    """Lre lawyer user."""
     return User.objects.create_user(
         email="lre-lawyer@example.com",
         password="testpassword",
@@ -1882,16 +1979,19 @@ def lre_lawyer_user(db):
 
 @pytest.fixture
 def lre_req_type(db):
+    """Lre req type."""
     return LegalRequestType.objects.create(name="LRE-Type")
 
 
 @pytest.fixture
 def lre_discipline(db):
+    """Lre discipline."""
     return LegalDiscipline.objects.create(name="LRE-Disc")
 
 
 @pytest.fixture
 def lre_legal_request(db, lre_client_user, lre_req_type, lre_discipline):
+    """Lre legal request."""
     return LegalRequest.objects.create(
         user=lre_client_user,
         request_type=lre_req_type,
@@ -1905,6 +2005,8 @@ def lre_legal_request(db, lre_client_user, lre_req_type, lre_discipline):
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestValidateFileSecurityEdges:
+    """Tests for Validate File Security Edges."""
+
     def test_file_exceeds_max_size(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 47: file size > MAX_FILE_SIZE."""
         api_client.force_authenticate(user=lre_client_user)
@@ -1940,6 +2042,8 @@ class TestValidateFileSecurityEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCreateLegalRequestEdges:
+    """Tests for Create Legal Request Edges."""
+
     def test_empty_main_data(self, api_client, lre_client_user):
         """Cover line 175: empty mainData."""
         api_client.force_authenticate(user=lre_client_user)
@@ -1987,6 +2091,8 @@ class TestCreateLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestUploadLegalRequestFileEdges:
+    """Tests for Upload Legal Request File Edges."""
+
     def test_missing_legal_request_id(self, api_client, lre_client_user):
         """Cover line 262: missing legalRequestId."""
         api_client.force_authenticate(user=lre_client_user)
@@ -2032,6 +2138,8 @@ class TestUploadLegalRequestFileEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestGetOrDeleteLegalRequestEdges:
+    """Tests for Get Or Delete Legal Request Edges."""
+
     def test_get_forbidden_for_unrelated_client(self, api_client, lre_legal_request):
         """Cover lines 521-522: client cannot access others' request."""
         other = User.objects.create_user(
@@ -2064,6 +2172,8 @@ class TestGetOrDeleteLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDeleteLegalRequestEdges:
+    """Tests for Delete Legal Request Edges."""
+
     def test_delete_forbidden_for_non_lawyer(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 712: non-lawyer cannot delete."""
         api_client.force_authenticate(user=lre_client_user)
@@ -2085,6 +2195,8 @@ class TestDeleteLegalRequestEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestSendConfirmationEmailEdges:
+    """Tests for Send Confirmation Email Edges."""
+
     def test_outer_exception(self, api_client, lre_client_user):
         """Cover lines 407-409: outer exception returns 500."""
         api_client.force_authenticate(user=lre_client_user)
@@ -2099,6 +2211,8 @@ class TestSendConfirmationEmailEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestListLegalRequestsEdges:
+    """Tests for List Legal Requests Edges."""
+
     def test_date_to_filter(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 477-478: date_to filter applied."""
         api_client.force_authenticate(user=lre_client_user)
@@ -2120,6 +2234,8 @@ class TestListLegalRequestsEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestUpdateStatusEdges:
+    """Tests for Update Status Edges."""
+
     def test_exception_returns_500(self, api_client, lre_lawyer_user, lre_legal_request):
         """Cover lines 618-620: exception returns 500."""
         api_client.force_authenticate(user=lre_lawyer_user)
@@ -2134,6 +2250,8 @@ class TestUpdateStatusEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCreateResponseEdges:
+    """Tests for Create Response Edges."""
+
     def test_exception_returns_500(self, api_client, lre_client_user, lre_legal_request):
         """Cover lines 692-694: exception returns 500."""
         api_client.force_authenticate(user=lre_client_user)
@@ -2148,8 +2266,10 @@ class TestCreateResponseEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDownloadContentTypeEdges:
+    """Tests for Download Content Type Edges."""
+
     def _create_file(self, lre_legal_request, name, content=b"content"):
-        """Helper to create and attach a file."""
+        """Create and attach a file."""
         f = SimpleUploadedFile(name, content, content_type="application/octet-stream")
         file_obj = LegalRequestFiles.objects.create(file=f)
         lre_legal_request.files.add(file_obj)

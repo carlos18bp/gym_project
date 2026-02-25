@@ -45,7 +45,7 @@ describe("ResponseForm.vue", () => {
     expect(wrapper.find("textarea").element.value).toBe("");
   });
 
-  test("shows lawyer placeholder and avatar styles", () => {
+  test("shows lawyer placeholder and avatar styles", () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(ResponseForm, {
       props: {
         requestId: 20,

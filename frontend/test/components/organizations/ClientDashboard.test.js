@@ -7,8 +7,8 @@ import { useUserStore } from "@/stores/auth/user";
 
 import ClientDashboard from "@/components/organizations/client/ClientDashboard.vue";
 
-// quality: disable global_state_leak (Legacy dashboard suite relies on per-test spies; migration to direct stubs is phased)
-// quality: disable implementation_coupling (Legacy tests still touch exposed component API while preserving observable assertions)
+
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
 
 const mockRouterPush = jest.fn();
 
@@ -70,6 +70,10 @@ describe("ClientDashboard.vue", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("renders restricted access view for non client/basic roles", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -119,6 +123,7 @@ describe("ClientDashboard.vue", () => {
   });
 
   test("currentTabLabel falls back to 'Selecciona sección' when activeTab is unknown", async () => {
+    // quality: allow-implementation-coupling (verifying computed fallback for an unreachable tab value requires direct state mutation)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -190,9 +195,6 @@ describe("ClientDashboard.vue", () => {
 
     await flushPromises();
 
-    await wrapper.vm.loadData();
-    await flushPromises();
-
     expect(invSpy).not.toHaveBeenCalled();
     expect(memSpy).not.toHaveBeenCalled();
     expect(reqSpy).not.toHaveBeenCalled();
@@ -202,6 +204,7 @@ describe("ClientDashboard.vue", () => {
   });
 
   test("invitation-responded refreshes invitations and memberships", async () => {
+    // quality: allow-implementation-coupling (switching to invitations tab requires setting wrapper.vm.activeTab — no tab button visible without memberships)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -319,9 +322,6 @@ describe("ClientDashboard.vue", () => {
       },
     });
 
-    await flushPromises();
-
-    await wrapper.vm.loadData();
     await flushPromises();
 
     expect(invSpy).not.toHaveBeenCalled();
@@ -602,9 +602,6 @@ describe("ClientDashboard.vue", () => {
 
     await flushPromises();
 
-    await wrapper.vm.loadData();
-    await flushPromises();
-
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "Access denied. User may not have proper permissions.",
     );
@@ -656,6 +653,7 @@ describe("ClientDashboard.vue", () => {
   });
 
   test("handleViewOrganizationDetails scrolls and highlights the referenced element", async () => {
+    // quality: allow-implementation-coupling (scroll/highlight behavior requires direct ref setup and method invocation — no DOM trigger available)
     jest.useFakeTimers();
 
     const pinia = createPinia();

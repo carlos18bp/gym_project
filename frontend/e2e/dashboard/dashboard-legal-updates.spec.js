@@ -87,7 +87,7 @@ async function installDashboardWithLegalUpdatesMocks(page, { userId, role, legal
   });
 }
 
-test("dashboard renders legal updates carousel with content and links", async ({ page }) => {
+test("dashboard renders legal updates carousel with content and links", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 4200;
 
   const updates = [
@@ -132,7 +132,7 @@ test("dashboard renders legal updates carousel with content and links", async ({
   await expect(link).toHaveAttribute("href", "https://example.com/reforma");
 });
 
-test("dashboard renders empty state when no legal updates exist", async ({ page }) => {
+test("dashboard renders empty state when no legal updates exist", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 4201;
 
   await installDashboardWithLegalUpdatesMocks(page, {
@@ -159,7 +159,7 @@ test("dashboard renders empty state when no legal updates exist", async ({ page 
   await expect(page.getByText("Feed")).toBeVisible();
 });
 
-test("client also sees legal updates on dashboard", async ({ page }) => {
+test("client also sees legal updates on dashboard", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 4202;
 
   const updates = [

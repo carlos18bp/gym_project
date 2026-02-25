@@ -1,15 +1,20 @@
-import pytest
+"""Tests for user module."""
 from datetime import date
+
+import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
-from gym_app.models.user import User, UserManager, UserSignature, ActivityFeed
+
+from gym_app.models.user import ActivityFeed, User, UserSignature
+
 
 @pytest.mark.django_db
 class TestUserManager:
+    """Tests for User Manager."""
     
     def test_create_user_basic_fields(self):
-        """Test creating a regular user with the UserManager - basic fields"""
+        """Test creating a regular user with the UserManager - basic fields."""
         user = User.objects.create_user(
             email='test@example.com',
             password='testpassword',
@@ -24,7 +29,7 @@ class TestUserManager:
         assert user.last_name == 'User'
 
     def test_create_user_default_flags(self):
-        """Test creating a regular user with the UserManager - default flags"""
+        """Test creating a regular user with the UserManager - default flags."""
         user = User.objects.create_user(
             email='test_flags@example.com',
             password='testpassword',
@@ -35,14 +40,14 @@ class TestUserManager:
         assert user.role == 'basic'  # Default role for new users
     
     def test_create_user_without_email(self):
-        """Test that creating a user without an email raises an error"""
-        with pytest.raises(ValueError) as excinfo:
+        """Test that creating a user without an email raises an error."""
+        with pytest.raises(ValueError, match="The email must be defined") as excinfo:
             User.objects.create_user(email='', password='testpassword')
         
         assert 'The email must be defined' in str(excinfo.value)
     
     def test_create_superuser(self):
-        """Test creating a superuser with the UserManager"""
+        """Test creating a superuser with the UserManager."""
         admin = User.objects.create_superuser(
             email='admin@example.com',
             password='adminpassword',
@@ -59,8 +64,8 @@ class TestUserManager:
         assert admin.is_superuser is True
     
     def test_create_superuser_with_invalid_flags(self):
-        """Test that creating a superuser with invalid flags raises an error"""
-        with pytest.raises(ValueError) as excinfo:
+        """Test that creating a superuser with invalid flags raises an error."""
+        with pytest.raises(ValueError, match="Superuser must have is_staff=True") as excinfo:
             User.objects.create_superuser(
                 email='admin@example.com',
                 password='adminpassword',
@@ -69,7 +74,7 @@ class TestUserManager:
         
         assert 'Superuser must have is_staff=True' in str(excinfo.value)
         
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Superuser must have is_superuser=True") as excinfo:
             User.objects.create_superuser(
                 email='admin@example.com',
                 password='adminpassword',
@@ -80,9 +85,10 @@ class TestUserManager:
 
 @pytest.mark.django_db
 class TestUser:
+    """Tests for User."""
     
     def test_user_creation_minimal_basic(self):
-        """Test creating a user with minimal fields - basic fields"""
+        """Test creating a user with minimal fields - basic fields."""
         user = User.objects.create(
             email='minimal@example.com',
             password='raw_password'  # Note: This doesn't hash the password
@@ -96,7 +102,7 @@ class TestUser:
         assert user.birthday is None
 
     def test_user_creation_minimal_defaults(self):
-        """Test creating a user with minimal fields - default values"""
+        """Test creating a user with minimal fields - default values."""
         user = User.objects.create(
             email='minimal_defaults@example.com',
             password='raw_password'
@@ -109,7 +115,7 @@ class TestUser:
         assert user.is_profile_completed is False  # Default value
     
     def test_user_creation_complete_basic_fields(self):
-        """Test creating a user with all fields - basic fields"""
+        """Test creating a user with all fields - basic fields."""
         test_photo = SimpleUploadedFile(
             "profile.jpg",
             b"file_content",
@@ -139,7 +145,7 @@ class TestUser:
         assert user.birthday == date(1990, 1, 1)
 
     def test_user_creation_complete_extended_fields(self):
-        """Test creating a user with all fields - extended fields"""
+        """Test creating a user with all fields - extended fields."""
         test_photo = SimpleUploadedFile(
             "profile2.jpg",
             b"file_content",
@@ -165,7 +171,7 @@ class TestUser:
         assert user.is_profile_completed is True
     
     def test_user_document_type_choices(self):
-        """Test document type choices validation"""
+        """Test document type choices validation."""
         # Valid document types
         valid_types = ['NIT', 'CC', 'NUIP', 'EIN']
         for doc_type in valid_types:
@@ -188,7 +194,7 @@ class TestUser:
         assert exc_info.value is not None
     
     def test_user_role_choices(self):
-        """Test role choices validation"""
+        """Test role choices validation."""
         # Valid roles
         valid_roles = ['client', 'lawyer']
         for role in valid_roles:
@@ -211,7 +217,7 @@ class TestUser:
         assert exc_info.value is not None
     
     def test_unique_email_constraint(self):
-        """Test unique email constraint"""
+        """Test unique email constraint."""
         # Create first user
         User.objects.create(
             email='duplicate@example.com',
@@ -229,18 +235,18 @@ class TestUser:
         assert User.objects.filter(email='duplicate@example.com').count() == 1
     
     def test_str_representation(self):
-        """Test string representation of user"""
+        """Test string representation of user."""
         user = User.objects.create(
             email='test@example.com',
             first_name='John',
             last_name='Doe'
         )
         
-        expected = f"test@example.com (Doe John)"
+        expected = "test@example.com (Doe John)"
         assert str(user) == expected
     
     def test_update_user(self):
-        """Test updating a user"""
+        """Test updating a user."""
         user = User.objects.create(
             email='update@example.com',
             first_name='Before',
@@ -264,7 +270,7 @@ class TestUser:
         assert user.is_profile_completed is True
     
     def test_profile_photo_upload(self):
-        """Test uploading a profile photo"""
+        """Test uploading a profile photo."""
         user = User.objects.create(
             email='photo@example.com'
         )
@@ -291,9 +297,10 @@ class TestUser:
 
 @pytest.mark.django_db
 class TestUserSignature:
+    """Tests for User Signature."""
 
     def test_create_user_signature_upload_method(self):
-        """Test creating a user signature using the upload method"""
+        """Test creating a user signature using the upload method."""
         user = User.objects.create_user(
             email='signature@example.com',
             password='testpassword'
@@ -320,7 +327,7 @@ class TestUserSignature:
         assert str(signature) == f"Signature for {user.email} (upload)"
 
     def test_user_signature_one_to_one_constraint(self):
-        """Test that a user cannot have more than one signature (OneToOne constraint)"""
+        """Test that a user cannot have more than one signature (OneToOne constraint)."""
         user = User.objects.create_user(
             email='signature2@example.com',
             password='testpassword'
@@ -357,9 +364,10 @@ class TestUserSignature:
 
 @pytest.mark.django_db
 class TestActivityFeed:
+    """Tests for Activity Feed."""
 
     def test_activity_feed_str_representation(self):
-        """Test string representation of an activity feed entry"""
+        """Test string representation of an activity feed entry."""
         user = User.objects.create_user(
             email='activity@example.com',
             password='testpassword'
@@ -376,7 +384,7 @@ class TestActivityFeed:
         assert 'create' in result
 
     def test_activity_feed_keeps_maximum_20_entries_per_user(self):
-        """Test that only the 20 most recent activities per user are kept"""
+        """Test that only the 20 most recent activities per user are kept."""
         user = User.objects.create_user(
             email='activity-limit@example.com',
             password='testpassword'

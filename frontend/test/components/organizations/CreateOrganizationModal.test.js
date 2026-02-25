@@ -5,6 +5,8 @@ import { useOrganizationsStore } from "@/stores/organizations";
 
 import CreateOrganizationModal from "@/components/organizations/modals/CreateOrganizationModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({
@@ -72,6 +74,10 @@ describe("CreateOrganizationModal.vue", () => {
         }
       }
     };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test("submit is disabled until title and description are provided", async () => {

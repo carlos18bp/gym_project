@@ -1,15 +1,16 @@
+"""Tests for captcha_views module."""
 import json
 from unittest import mock
 
 import pytest
 from django.urls import reverse
-from django.conf import settings
 
 
 @pytest.mark.django_db
 @pytest.mark.integration
 @pytest.mark.contract
 def test_get_site_key(client, settings):
+    """Verify get site key."""
     settings.RECAPTCHA_SITE_KEY = "test_site_key_123"
     url = reverse("google-captcha-site-key")
 
@@ -23,12 +24,16 @@ def test_get_site_key(client, settings):
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestVerifyRecaptcha:
+    """Tests for Verify Recaptcha."""
+
     @pytest.fixture(autouse=True)
     def setup_settings(self, settings):
+        """Set up settings."""
         settings.RECAPTCHA_SECRET_KEY = "secret_test_key"
 
     @pytest.mark.edge
     def test_verify_recaptcha_missing_token(self, client):
+        """Verify verify recaptcha missing token."""
         url = reverse("google-captcha-verify")
 
         # Sin body ni form-data
@@ -42,6 +47,7 @@ class TestVerifyRecaptcha:
     @mock.patch("gym_app.views.captcha.requests.post")
     @pytest.mark.contract
     def test_verify_recaptcha_success(self, mock_post, client):
+        """Verify verify recaptcha success."""
         url = reverse("google-captcha-verify")
 
         # Mock respuesta de Google
@@ -61,6 +67,7 @@ class TestVerifyRecaptcha:
     @mock.patch("gym_app.views.captcha.requests.post")
     @pytest.mark.edge
     def test_verify_recaptcha_failure_from_google(self, mock_post, client):
+        """Verify verify recaptcha failure from google."""
         url = reverse("google-captcha-verify")
 
         mock_response = mock.Mock()
@@ -78,6 +85,7 @@ class TestVerifyRecaptcha:
     @mock.patch("gym_app.views.captcha.requests.post")
     @pytest.mark.edge
     def test_verify_recaptcha_request_exception(self, mock_post, client):
+        """Verify verify recaptcha request exception."""
         url = reverse("google-captcha-verify")
 
         mock_post.side_effect = Exception("network error")
@@ -92,11 +100,15 @@ class TestVerifyRecaptcha:
 
 @pytest.mark.django_db
 class TestVerifyRecaptchaRest:
+    """Tests for Verify Recaptcha Rest."""
+
     @pytest.fixture(autouse=True)
     def setup_settings(self, settings):
+        """Set up settings."""
         settings.RECAPTCHA_SECRET_KEY = "rest_secret_key"
 
     def test_get_site_key_rest(self, client, settings):
+        """Verify get site key rest."""
         settings.RECAPTCHA_SITE_KEY = "rest_site_key"
         url = reverse("google-captcha-site-key")
 
@@ -108,6 +120,7 @@ class TestVerifyRecaptchaRest:
 
     @mock.patch("gym_app.views.captcha.requests.post")
     def test_verify_recaptcha_json_success(self, mock_post, client):
+        """Verify verify recaptcha json success."""
         url = reverse("google-captcha-verify")
 
         mock_response = mock.Mock()
@@ -128,6 +141,7 @@ class TestVerifyRecaptchaRest:
         mock_post.assert_called_once()
 
     def test_verify_recaptcha_json_invalid_body(self, client):
+        """Verify verify recaptcha json invalid body."""
         url = reverse("google-captcha-verify")
 
         response = client.post(
@@ -143,6 +157,7 @@ class TestVerifyRecaptchaRest:
 
     @mock.patch("gym_app.views.captcha.requests.post", side_effect=Exception("boom"))
     def test_verify_recaptcha_request_exception_rest(self, mock_post, client):
+        """Verify verify recaptcha request exception rest."""
         url = reverse("google-captcha-verify")
 
         response = client.post(url, data={"token": "test_token"})

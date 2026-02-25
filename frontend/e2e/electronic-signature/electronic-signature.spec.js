@@ -6,7 +6,7 @@ import {
   PNG_1X1_BASE64,
 } from "../helpers/electronicSignatureMocks.js";
 
-test("upload electronic signature from Profile", async ({ page }) => {
+test("upload electronic signature from Profile", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 123;
 
   await installElectronicSignatureApiMocks(page, { userId });
@@ -60,5 +60,5 @@ test("upload electronic signature from Profile", async ({ page }) => {
   ).toBeHidden({ timeout: 10_000 });
 
   // Green indicator dot should now be visible in Profile next to the button
-  await expect(page.locator("button", { hasText: "Firma electrónica" }).locator(".bg-green-500")).toBeVisible();
+  await expect(page.locator("button", { hasText: "Firma electrónica" }).locator(".bg-green-500")).toBeVisible(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 });

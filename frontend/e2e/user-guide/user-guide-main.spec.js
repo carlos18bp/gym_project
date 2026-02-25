@@ -35,8 +35,8 @@ async function installUserGuideMocks(page, { userId, role }) {
   });
 }
 
-test.describe("user guide: main page", () => {
-  test("user guide page loads for lawyer", async ({ page }) => {
+test.describe("user guide: main page", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("user guide page loads for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6000;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -47,13 +47,13 @@ test.describe("user guide: main page", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // User guide should load
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("user guide page loads for client", async ({ page }) => {
+  test("user guide page loads for client", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6001;
 
     await installUserGuideMocks(page, { userId, role: "client" });
@@ -64,13 +64,13 @@ test.describe("user guide: main page", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // User guide should load
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("user guide shows navigation structure", async ({ page }) => {
+  test("user guide shows navigation structure", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6002;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -81,15 +81,15 @@ test.describe("user guide: main page", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("domcontentloaded");
 
     // Should have navigation elements
     await expect(page.locator("body")).toBeVisible();
   });
 });
 
-test.describe("user guide: navigation component", () => {
-  test("user can navigate between guide sections", async ({ page }) => {
+test.describe("user guide: navigation component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("user can navigate between guide sections", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6010;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -100,7 +100,7 @@ test.describe("user guide: navigation component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Look for navigation links or buttons
     const navLinks = page.getByRole("link").or(page.getByRole("button"));
@@ -110,7 +110,7 @@ test.describe("user guide: navigation component", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("navigation highlights current section", async ({ page }) => {
+  test("navigation highlights current section", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6011;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -121,15 +121,15 @@ test.describe("user guide: navigation component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Page should be stable
     await expect(page.locator("body")).toBeVisible();
   });
 });
 
-test.describe("user guide: search component", () => {
-  test("user guide has search functionality", async ({ page }) => {
+test.describe("user guide: search component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("user guide has search functionality", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6020;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -140,7 +140,7 @@ test.describe("user guide: search component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Look for search input
     const searchInput = page.getByPlaceholder(/buscar|search/i).first();
@@ -153,7 +153,7 @@ test.describe("user guide: search component", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("search filters guide content", async ({ page }) => {
+  test("search filters guide content", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6021;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -164,7 +164,7 @@ test.describe("user guide: search component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Look for search input
     const searchInput = page.getByPlaceholder(/buscar|search/i).first();
@@ -182,8 +182,8 @@ test.describe("user guide: search component", () => {
   });
 });
 
-test.describe("user guide: module guide component", () => {
-  test("module guide displays content sections", async ({ page }) => {
+test.describe("user guide: module guide component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("module guide displays content sections", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6030;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -194,13 +194,13 @@ test.describe("user guide: module guide component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Should have content sections
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("module guide is scrollable", async ({ page }) => {
+  test("module guide is scrollable", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6031;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -211,7 +211,7 @@ test.describe("user guide: module guide component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Scroll the page
     await page.evaluate(() => window.scrollBy(0, 300));
@@ -222,8 +222,8 @@ test.describe("user guide: module guide component", () => {
   });
 });
 
-test.describe("user guide: example modal component", () => {
-  test("user can view examples in modal", async ({ page }) => {
+test.describe("user guide: example modal component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("user can view examples in modal", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6040;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -234,7 +234,7 @@ test.describe("user guide: example modal component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Look for example buttons or links
     const exampleBtn = page.getByRole("button", { name: /ejemplo|example|ver/i }).first();
@@ -248,8 +248,8 @@ test.describe("user guide: example modal component", () => {
   });
 });
 
-test.describe("user guide: role info card component", () => {
-  test("role info card shows relevant information", async ({ page }) => {
+test.describe("user guide: role info card component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("role info card shows relevant information", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6050;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -260,15 +260,15 @@ test.describe("user guide: role info card component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Page should display role-appropriate content
     await expect(page.locator("body")).toBeVisible();
   });
 });
 
-test.describe("user guide: quick links card component", () => {
-  test("quick links provide shortcuts", async ({ page }) => {
+test.describe("user guide: quick links card component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("quick links provide shortcuts", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 6060;
 
     await installUserGuideMocks(page, { userId, role: "lawyer" });
@@ -279,7 +279,7 @@ test.describe("user guide: quick links card component", () => {
     });
 
     await page.goto("/user-guide");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Look for quick links
     const links = page.getByRole("link");

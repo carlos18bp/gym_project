@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 
 import HierarchicalMenu from "@/components/dynamic_document/cards/HierarchicalMenu.vue";
 
@@ -82,12 +83,12 @@ describe("HierarchicalMenu.vue", () => {
       },
     });
 
-    const groupHeader = wrapper.find(".submenu-container .w-full");
+    const groupHeader = wrapper.find("[data-testid='submenu-trigger']");
     expect(groupHeader.exists()).toBe(true);
 
     await groupHeader.trigger("mouseenter");
 
-    expect(wrapper.find(".z-60").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(true);
 
     const childBtn = wrapper
       .findAll("button")
@@ -98,7 +99,7 @@ describe("HierarchicalMenu.vue", () => {
 
     expect(wrapper.emitted("menu-action")).toBeTruthy();
     expect(wrapper.emitted("menu-action")[0][0]).toBe("editDocument");
-    expect(wrapper.find(".z-60").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(false);
   });
 
   test("hides submenu after mouseleave delay", async () => {
@@ -128,19 +129,19 @@ describe("HierarchicalMenu.vue", () => {
       },
     });
 
-    const groupHeader = wrapper.find(".submenu-container .w-full");
+    const groupHeader = wrapper.find("[data-testid='submenu-trigger']");
     await groupHeader.trigger("mouseenter");
-    expect(wrapper.find(".z-60").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(true);
 
     await groupHeader.trigger("mouseleave");
 
     // Still visible before timer
-    expect(wrapper.find(".z-60").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(true);
 
     jest.advanceTimersByTime(160);
-    await wrapper.vm.$nextTick();
+    await nextTick();
 
-    expect(wrapper.find(".z-60").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(false);
 
     jest.useRealTimers();
   });
@@ -172,15 +173,15 @@ describe("HierarchicalMenu.vue", () => {
       },
     });
 
-    wrapper.vm.$.setupState.showSubmenu("edit");
-    wrapper.vm.$.setupState.hideSubmenu("edit");
-
-    wrapper.vm.$.setupState.showSubmenu("edit");
+    const groupHeader = wrapper.find("[data-testid='submenu-trigger']");
+    await groupHeader.trigger("mouseenter");
+    await groupHeader.trigger("mouseleave");
+    await groupHeader.trigger("mouseenter");
 
     jest.advanceTimersByTime(200);
-    await wrapper.vm.$nextTick();
+    await nextTick();
 
-    expect(wrapper.vm.$.setupState.activeSubmenu).toBe("edit");
+    expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(true);
 
     jest.useRealTimers();
   });

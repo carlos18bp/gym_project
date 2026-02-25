@@ -54,6 +54,7 @@ describe("DocumentSummaryModal.vue", () => {
     expect(wrapper.text()).toContain("2026-01-10");
     expect(wrapper.text()).toContain("2026-01-11");
     expect(wrapper.text()).toContain("2026-12-31");
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.formatDate("2026-02-01T10:00:00Z")).toBe("2026-02-01");
   });
 

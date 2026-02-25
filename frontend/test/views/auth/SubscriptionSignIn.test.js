@@ -148,6 +148,7 @@ describe("SubscriptionSignIn.vue", () => {
       "warning"
     );
     expect(axios.post).not.toHaveBeenCalled();
+    expect(wrapper.get("#email").element.value).toBe("");
   });
 
   test("warns when max attempts reached", async () => {
@@ -176,6 +177,7 @@ describe("SubscriptionSignIn.vue", () => {
       "warning"
     );
     expect(axios.post).not.toHaveBeenCalled();
+    expect(authStore.signInTries).toBe(3);
   });
 
   test("handles Google login flow", async () => {
@@ -205,5 +207,6 @@ describe("SubscriptionSignIn.vue", () => {
       name: "checkout",
       params: { plan: "cliente" },
     });
+    expect(localStorage.getItem("token")).toBeNull();
   });
 });

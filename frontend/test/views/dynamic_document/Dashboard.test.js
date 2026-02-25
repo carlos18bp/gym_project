@@ -136,6 +136,10 @@ describe("DynamicDocument Dashboard.vue", () => {
     localStorage.clear();
   });
 
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   test("redirects to login when currentUser is missing", async () => {
     const wrapper = mountView();
 
@@ -159,6 +163,7 @@ describe("DynamicDocument Dashboard.vue", () => {
 
     expect(mockUserStore.init).toHaveBeenCalled();
     expect(mockFolderStore.init).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeLawyerTab).toBe("archived-documents");
     expect(mockDocumentStore.selectedDocument).toBe(null);
     expect(mockDocumentStore.lastUpdatedDocumentId).toBe(10);
@@ -177,6 +182,7 @@ describe("DynamicDocument Dashboard.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeTab).toBe("signed-documents");
 
     await wrapper.vm.$.setupState.handleSection("useDocument");

@@ -4,7 +4,11 @@ import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { buildMockOrganization } from "../../helpers/organizationsDashboardMocks.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate removes client member and client loses access + corporate stats update", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+test("cross-role: corporate removes client member and client loses access + corporate stats update", { tag: ['@flow:org-cross-member-management', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4800;

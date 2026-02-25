@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client posts section: renders pinned post and link", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client posts section: renders pinned post and link", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3590;
 
   await installOrganizationsClientApiMocks(page, {
@@ -37,7 +39,7 @@ test("client posts section: renders pinned post and link", async ({ page }) => {
   const postCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "Bienvenido a Acme Corp" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(postCard).toBeVisible();
   await expect(postCard).toContainText("Fijado");
@@ -48,7 +50,7 @@ test("client posts section: renders pinned post and link", async ({ page }) => {
   await expect(link).toHaveAttribute("href", "https://example.com");
 });
 
-test("client posts section: empty state when organization has no posts", async ({ page }) => {
+test("client posts section: empty state when organization has no posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3591;
 
   await installOrganizationsClientApiMocks(page, {
@@ -83,7 +85,7 @@ test("client posts section: empty state when organization has no posts", async (
   ).toBeVisible();
 });
 
-test("client posts section: access denied friendly empty state when 403", async ({ page }) => {
+test("client posts section: access denied friendly empty state when 403", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3592;
 
   await installOrganizationsClientApiMocks(page, {

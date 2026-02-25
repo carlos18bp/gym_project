@@ -2,11 +2,13 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client dashboard empty state: no organizations and no received requests", async ({ page }) => {
+test("corporate_client dashboard empty state: no organizations and no received requests", { tag: ['@flow:org-corporate-requests', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   const userId = 4800;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -50,7 +52,7 @@ test("corporate_client dashboard empty state: no organizations and no received r
   await expect(page.getByRole("button", { name: "Limpiar Filtros" })).toHaveCount(0);
 });
 
-test("corporate_client dashboard empty state: organizations exist but no received requests", async ({ page }) => {
+test("corporate_client dashboard empty state: organizations exist but no received requests", { tag: ['@flow:org-corporate-requests', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   const userId = 4801;
 
   const orgA = buildMockOrganization({

@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client create request modal: submit disabled until form valid", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client create request modal: submit disabled until form valid", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3580;
 
   await installOrganizationsClientApiMocks(page, {
@@ -50,14 +52,14 @@ test("client create request modal: submit disabled until form valid", async ({ p
   await dialog.locator("select#request_type").selectOption("1");
   await expect(submitBtn).toBeDisabled();
 
-  await dialog.locator("#title").fill("Título E2E");
+  await dialog.locator("#title").fill("Título E2E"); // quality: allow-fragile-selector (stable DOM id)
   await expect(submitBtn).toBeDisabled();
 
-  await dialog.locator("#description").fill("Descripción E2E");
+  await dialog.locator("#description").fill("Descripción E2E"); // quality: allow-fragile-selector (stable DOM id)
   await expect(submitBtn).toBeEnabled();
 });
 
-test("client create request modal: shows validation errors on 400 and stays open", async ({ page }) => {
+test("client create request modal: shows validation errors on 400 and stays open", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3581;
 
   await installOrganizationsClientApiMocks(page, {
@@ -96,8 +98,8 @@ test("client create request modal: shows validation errors on 400 and stays open
 
   await dialog.locator("select#organization").selectOption("1");
   await dialog.locator("select#request_type").selectOption("1");
-  await dialog.locator("#title").fill("Título que falla");
-  await dialog.locator("#description").fill("Descripción E2E");
+  await dialog.locator("#title").fill("Título que falla"); // quality: allow-fragile-selector (stable DOM id)
+  await dialog.locator("#description").fill("Descripción E2E"); // quality: allow-fragile-selector (stable DOM id)
 
   const submitBtn = dialog.getByRole("button", { name: "Enviar Solicitud" }).first();
   await expect(submitBtn).toBeEnabled();

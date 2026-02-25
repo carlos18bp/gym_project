@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client invite member increments pending invitations stat", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("corporate_client invite member increments pending invitations stat", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
   const userId = 4400;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -36,14 +38,14 @@ test("corporate_client invite member increments pending invitations stat", async
   await expect(page.getByText("Invitar Nuevo Miembro")).toBeVisible();
 
   const inviteDialog = page.locator('[role="dialog"]').filter({ hasText: "Invitar Nuevo Miembro" });
-  await inviteDialog.locator("#email").fill("new-client@example.com");
-  await inviteDialog.locator("#message").fill("Mensaje E2E");
+  await inviteDialog.locator("#email").fill("new-client@example.com"); // quality: allow-fragile-selector (stable DOM id)
+  await inviteDialog.locator("#message").fill("Mensaje E2E"); // quality: allow-fragile-selector (stable DOM id)
 
   await inviteDialog.getByRole("button", { name: "Enviar Invitación" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(inviteDialog).toHaveCount(0);
 

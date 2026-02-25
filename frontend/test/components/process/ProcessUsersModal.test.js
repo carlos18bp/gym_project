@@ -46,7 +46,7 @@ describe("ProcessUsersModal.vue", () => {
     expect(wrapper.text()).toContain("Sin usuarios asociados");
   });
 
-  test("shows initials fallback when names are missing", () => {
+  test("shows initials fallback when names are missing", () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(ProcessUsersModal, {
       props: {
         isOpen: true,

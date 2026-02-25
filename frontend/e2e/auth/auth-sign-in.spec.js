@@ -71,7 +71,7 @@ async function bypassCaptcha(page) {
   });
 }
 
-test("client can sign in and is redirected to dashboard", async ({ page }) => {
+test("client can sign in and is redirected to dashboard", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 1000;
   const email = authEmailForRole("client", userId);
 
@@ -104,7 +104,7 @@ test("client can sign in and is redirected to dashboard", async ({ page }) => {
   expect(userAuth.role).toBe("client");
 });
 
-test("lawyer can sign in and is redirected to dashboard", async ({ page }) => {
+test("lawyer can sign in and is redirected to dashboard", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 1100;
   const email = authEmailForRole("lawyer", userId);
 
@@ -137,7 +137,7 @@ test("lawyer can sign in and is redirected to dashboard", async ({ page }) => {
   expect(userAuth.role).toBe("lawyer");
 });
 
-test("invalid credentials shows warning", async ({ page }) => {
+test("invalid credentials shows warning", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 1200;
   const email = authEmailForRole("client", userId);
 

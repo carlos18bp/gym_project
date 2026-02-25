@@ -48,6 +48,8 @@ describe("Auth Store", () => {
 
     expect(store.token).toBe("tkn");
     expect(store.userAuth).toEqual({ id: 1, role: "lawyer" });
+
+    localStorage.clear();
   });
 
   test("login sets token, userAuth, axios Authorization header, and saves to localStorage", () => {
@@ -106,6 +108,8 @@ describe("Auth Store", () => {
 
     expect(store.signInIntervalId).toBe(null);
     expect(localStorage.getItem("signInIntervalId")).toBe("null");
+
+    localStorage.removeItem("signInIntervalId");
 
     jest.useRealTimers();
   });
@@ -229,6 +233,8 @@ describe("Auth Store", () => {
 
     expect(result).toBe(true);
     expect(validateSpy).toHaveBeenCalled();
+
+    validateSpy.mockRestore();
   });
 
   test("attempsSignIn increases tries and starts 60s cooldown on 3rd try", () => {

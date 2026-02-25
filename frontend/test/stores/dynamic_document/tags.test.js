@@ -180,7 +180,7 @@ describe("Dynamic Document Store - Tags", () => {
       id: 1,
       action_type: "update",
       description: "Actualizaste la etiqueta \"sin nombre\"",
-      created_at: new Date().toISOString(),
+      created_at: "2025-01-15T12:00:00.000Z",
     });
 
     await store.updateTag(1, { color_id: 1 });

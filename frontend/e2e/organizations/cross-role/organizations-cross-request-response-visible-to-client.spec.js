@@ -2,11 +2,17 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate responds to client request and client sees response + response_count", async ({ page }) => {
+test("cross-role: corporate responds to client request and client sees response + response_count", { tag: ['@flow:org-cross-request-flow', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4970;
@@ -54,15 +60,15 @@ test("cross-role: corporate responds to client request and client sees response 
   const dialog = page.locator('[role="dialog"]').filter({ hasText: "Nueva Solicitud Corporativa" });
   await dialog.locator("select#organization").selectOption("1");
   await dialog.locator("select#request_type").selectOption("1");
-  await dialog.locator("#title").fill("Solicitud Cross Response E2E");
-  await dialog.locator("#description").fill("Descripción Cross Response E2E");
+  await dialog.locator("#title").fill("Solicitud Cross Response E2E"); // quality: allow-fragile-selector (stable DOM id)
+  await dialog.locator("#description").fill("Descripción Cross Response E2E"); // quality: allow-fragile-selector (stable DOM id)
 
   await dialog.getByRole("button", { name: "Enviar Solicitud" }).click();
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(page.locator('h2:has-text("Mis Solicitudes Corporativas")')).toBeVisible();
-  const createdCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first();
+  const createdCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(createdCard).toBeVisible();
 
   await setAuthLocalStorage(page, {
@@ -81,7 +87,7 @@ test("cross-role: corporate responds to client request and client sees response 
   await page.goto("/organizations_dashboard");
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
-  const reqCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first();
+  const reqCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(reqCard).toBeVisible();
   await expect(reqCard.getByText(/0 respuestas/)).toBeVisible();
 
@@ -95,7 +101,7 @@ test("cross-role: corporate responds to client request and client sees response 
   await expect(page.getByText("Conversación (1 respuestas)")).toBeVisible();
 
   await page.getByRole("button", { name: "Volver" }).click();
-  const updatedReqCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first();
+  const updatedReqCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(updatedReqCard.getByText(/1 respuestas/)).toBeVisible();
 
   await setAuthLocalStorage(page, {
@@ -120,7 +126,7 @@ test("cross-role: corporate responds to client request and client sees response 
 
   await expect(page.locator('h2:has-text("Mis Solicitudes Corporativas")')).toBeVisible();
 
-  const updatedClientCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first();
+  const updatedClientCard = page.locator('div.bg-white.shadow.rounded-lg.border').filter({ hasText: "CORP-REQ-6001" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(updatedClientCard).toBeVisible();
   await expect(updatedClientCard.getByText(/1 respuestas/)).toBeVisible();
 

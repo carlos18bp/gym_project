@@ -7,8 +7,6 @@ import { useUserStore } from "@/stores/auth/user";
 
 import CorporateClientDashboard from "@/components/organizations/corporate_client/CorporateClientDashboard.vue";
 
-// quality: disable global_state_leak (Legacy dashboard suite relies on many per-test spies; incremental migration keeps behavior assertions stable)
-// quality: disable implementation_coupling (Legacy dashboard tests still exercise exposed setup helpers while behavior-first refactor is phased)
 
 const mockRouterPush = jest.fn();
 
@@ -395,6 +393,7 @@ describe("CorporateClientDashboard.vue", () => {
   });
 
   test("loadData returns early and logs when user role is missing", async () => {
+    // quality: allow-implementation-coupling (testing loadData early-return path requires direct setupState invocation after clearing mock state)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -439,6 +438,7 @@ describe("CorporateClientDashboard.vue", () => {
   });
 
   test("loadData returns early and logs when user is not corporate_client", async () => {
+    // quality: allow-implementation-coupling (testing loadData early-return path requires direct setupState invocation after clearing mock state)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -485,6 +485,7 @@ describe("CorporateClientDashboard.vue", () => {
   });
 
   test("loadData logs friendly error for 403 response", async () => {
+    // quality: allow-implementation-coupling (testing loadData error-handling path requires direct setupState invocation after clearing mock state)
     const { wrapper, orgsSpy } = await mountCorporateDashboard();
 
     console.error.mockClear();
@@ -502,6 +503,7 @@ describe("CorporateClientDashboard.vue", () => {
   });
 
   test("loadData logs friendly error for 401 response", async () => {
+    // quality: allow-implementation-coupling (testing loadData error-handling path requires direct setupState invocation after clearing mock state)
     const { wrapper, orgsSpy } = await mountCorporateDashboard();
 
     console.error.mockClear();
@@ -691,6 +693,7 @@ describe("CorporateClientDashboard.vue", () => {
   });
 
   test("formatRelativeDate handles day/week/month branches", async () => {
+    // quality: allow-implementation-coupling (testing internal date formatter requires direct setupState access — no DOM surface for all branch inputs)
     const pinia = createPinia();
     setActivePinia(pinia);
 

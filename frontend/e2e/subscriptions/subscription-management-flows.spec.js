@@ -12,7 +12,7 @@ import {
  * - Checkout.vue (62.6%) — free plan submission flow
  */
 
-test("active basico plan shows plan features and current plan badge", async ({ page }) => {
+test("active basico plan shows plan features and current plan badge", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9850;
 
   await installSubscriptionsApiMocks(page, {
@@ -48,7 +48,7 @@ test("active basico plan shows plan features and current plan badge", async ({ p
   await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
 });
 
-test("free plan checkout submits without payment method section", async ({ page }) => {
+test("free plan checkout submits without payment method section", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9851;
 
   await installSubscriptionsApiMocks(page, {
@@ -93,7 +93,7 @@ test("free plan checkout submits without payment method section", async ({ page 
   await expect(page.locator('input[placeholder*="tarjeta"]')).toHaveCount(0);
 });
 
-test("corporativo plan checkout shows payment form with card inputs", async ({ page }) => {
+test("corporativo plan checkout shows payment form with card inputs", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9852;
 
   await installSubscriptionsApiMocks(page, {

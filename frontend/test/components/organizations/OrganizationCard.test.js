@@ -103,6 +103,10 @@ describe("OrganizationCard.vue", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("emits create-request and view-details with organization id", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

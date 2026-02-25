@@ -1,0 +1,821 @@
+{
+  "version": "1.0.1",
+  "lastUpdated": "2026-02-23",
+  "flows": {
+    "auth-login-email": {
+      "name": "Login con email/password",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Usuario inicia sesión con email y contraseña",
+      "expectedSpecs": 1
+    },
+    "auth-login-google": {
+      "name": "Login con Google OAuth",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Usuario inicia sesión con cuenta de Google",
+      "expectedSpecs": 1,
+      "knownGaps": ["Tests actuales solo verifican render, no OAuth real"]
+    },
+    "auth-register": {
+      "name": "Registro de usuario",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Usuario crea cuenta nueva con verificación por código",
+      "expectedSpecs": 1
+    },
+    "auth-forgot-password": {
+      "name": "Recuperar contraseña",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Enviar passcode y resetear password",
+      "expectedSpecs": 1
+    },
+    "auth-subscription-signup": {
+      "name": "Registro vía suscripción",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Usuario se registra a través del flujo de suscripción",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura — no existe spec para SubscriptionSignUp.vue"]
+    },
+    "auth-subscription-signin": {
+      "name": "Login vía suscripción",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Usuario inicia sesión en contexto de suscripción",
+      "expectedSpecs": 1
+    },
+    "auth-logout": {
+      "name": "Cerrar sesión",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Usuario cierra sesión y limpia estado local",
+      "expectedSpecs": 1
+    },
+    "auth-edge-cases": {
+      "name": "Auth edge cases",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Token expirado, OAuth callback, credenciales inválidas, captcha",
+      "expectedSpecs": 1
+    },
+    "auth-idle-logout": {
+      "name": "Idle logout automático",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Desconexión automática por inactividad",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura — useIdleLogout.js sin test"]
+    },
+    "auth-login-attempts": {
+      "name": "Control de intentos de login",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Bloqueo progresivo tras intentos fallidos",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin test específico de bloqueo progresivo"]
+    },
+    "auth-router-guards": {
+      "name": "Router guards de autenticación",
+      "module": "auth",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Redirecciones por rol y estado de autenticación",
+      "expectedSpecs": 1
+    },
+    "profile-view-edit": {
+      "name": "Ver y editar perfil",
+      "module": "profile",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Modal de perfil con datos personales, edición y foto",
+      "expectedSpecs": 1
+    },
+    "profile-complete": {
+      "name": "Completar perfil (primer login)",
+      "module": "profile",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Modal forzado al primer acceso para completar datos",
+      "expectedSpecs": 1
+    },
+    "dashboard-welcome-card": {
+      "name": "Dashboard tarjeta de bienvenida",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Saludo personalizado con stats y acciones rápidas",
+      "expectedSpecs": 1
+    },
+    "dashboard-activity-feed": {
+      "name": "Dashboard feed de actividad",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Historial de acciones recientes con rangos de tiempo",
+      "expectedSpecs": 1
+    },
+    "dashboard-quick-actions": {
+      "name": "Dashboard botones de acción rápida",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Accesos directos contextuales por rol",
+      "expectedSpecs": 1
+    },
+    "dashboard-recent-documents": {
+      "name": "Dashboard documentos recientes",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Lista de documentos recientes en dashboard",
+      "expectedSpecs": 1
+    },
+    "dashboard-navigation": {
+      "name": "Dashboard navegación sidebar",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Menú lateral filtrado por rol con navegación",
+      "expectedSpecs": 1
+    },
+    "dashboard-legal-updates": {
+      "name": "Legal updates / notificaciones",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Actualizaciones legales activas en dashboard",
+      "expectedSpecs": 1
+    },
+    "dashboard-reports": {
+      "name": "Generar reportes Excel",
+      "module": "dashboard",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Exportar datos a Excel desde el dashboard",
+      "expectedSpecs": 1,
+      "knownGaps": ["Test cubre form y validación, falta test de descarga exitosa"]
+    },
+    "dashboard-folder-components": {
+      "name": "Dashboard carpetas y contactos",
+      "module": "dashboard",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Pestañas de carpetas y contactos en dashboard",
+      "expectedSpecs": 1
+    },
+    "subscriptions-view-plans": {
+      "name": "Ver planes de suscripción",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Visualizar planes disponibles y plan actual",
+      "expectedSpecs": 1
+    },
+    "subscriptions-checkout-free": {
+      "name": "Checkout plan gratuito",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Activar plan gratuito sin método de pago",
+      "expectedSpecs": 1
+    },
+    "subscriptions-checkout-paid": {
+      "name": "Checkout plan pago (Wompi)",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P1",
+      "description": "Pagar suscripción con tarjeta vía Wompi",
+      "expectedSpecs": 1
+    },
+    "subscriptions-management": {
+      "name": "Gestión de suscripción",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Cancelar, reactivar, ver historial de pagos",
+      "expectedSpecs": 1,
+      "knownGaps": ["Test verifica opción visible, no ejecución de cancelación"]
+    },
+    "process-list-view": {
+      "name": "Ver lista de procesos",
+      "module": "processes",
+      "roles": ["lawyer", "client"],
+      "priority": "P1",
+      "description": "Pestañas Mis/Todos/Archivados con búsqueda y filtros",
+      "expectedSpecs": 1
+    },
+    "process-create": {
+      "name": "Radicar (crear) proceso",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Formulario completo de nuevo proceso con etapas",
+      "expectedSpecs": 1
+    },
+    "process-edit": {
+      "name": "Editar proceso existente",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Actualizar info y etapas de proceso existente",
+      "expectedSpecs": 1,
+      "knownGaps": ["Tests cubren creación pero no edición con datos precargados"]
+    },
+    "process-detail": {
+      "name": "Ver detalle de proceso",
+      "module": "processes",
+      "roles": ["lawyer", "client"],
+      "priority": "P1",
+      "description": "Info, timeline, expediente del proceso",
+      "expectedSpecs": 1
+    },
+    "process-history": {
+      "name": "Ver histórico procesal",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Modal de línea de tiempo con etapas ordenadas",
+      "expectedSpecs": 1
+    },
+    "process-form-validation": {
+      "name": "Validación de formulario de proceso",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Campos requeridos, botón guardar, agregar etapas",
+      "expectedSpecs": 1
+    },
+    "process-search": {
+      "name": "Búsqueda de procesos",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P3",
+      "description": "Filtrar procesos por nombre de demandante",
+      "expectedSpecs": 1
+    },
+    "process-case-file-upload": {
+      "name": "Subir archivos al expediente",
+      "module": "processes",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Gestionar documentos del caso (upload/download)",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura — endpoint update_case_file sin test"]
+    },
+    "docs-create-template": {
+      "name": "Crear minuta/plantilla",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Abogado crea documento plantilla con editor TinyMCE",
+      "expectedSpecs": 1
+    },
+    "docs-editor": {
+      "name": "Editor de documentos",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P1",
+      "description": "Editor TinyMCE con toolbar, navegación, contenido protegido",
+      "expectedSpecs": 1
+    },
+    "docs-variables-config": {
+      "name": "Configurar variables de minuta",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Definir campos dinámicos, tipos, clasificación, permisos",
+      "expectedSpecs": 1
+    },
+    "docs-use-template": {
+      "name": "Usar documento (completar minuta)",
+      "module": "documents",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Cliente llena campos variables de plantilla asignada",
+      "expectedSpecs": 1,
+      "knownGaps": ["Tests cubren render, falta test end-to-end completo"]
+    },
+    "docs-form-interactions": {
+      "name": "Formulario de documento interacciones",
+      "module": "documents",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Campos, botones, validación, tipos de campo",
+      "expectedSpecs": 1
+    },
+    "docs-dashboard-lawyer": {
+      "name": "Dashboard documentos (abogado)",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Vista de abogado con minutas, tabs, modales, acciones",
+      "expectedSpecs": 1
+    },
+    "docs-dashboard-client": {
+      "name": "Dashboard documentos (cliente)",
+      "module": "documents",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Vista de cliente con docs asignados, tabs, carpetas",
+      "expectedSpecs": 1
+    },
+    "docs-permissions": {
+      "name": "Asignar documento a cliente",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Permisos de visibilidad/uso por usuario y rol",
+      "expectedSpecs": 1,
+      "knownGaps": ["Falta test de grant/revoke combinado users+roles"]
+    },
+    "docs-card-actions": {
+      "name": "Acciones de tarjeta de documento",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Menú de acciones, click en fila, ejecución de acciones",
+      "expectedSpecs": 1
+    },
+    "docs-filters": {
+      "name": "Filtros y búsqueda de documentos",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Filtros avanzados, búsqueda, menús jerárquicos",
+      "expectedSpecs": 1
+    },
+    "docs-tags": {
+      "name": "Gestionar etiquetas (tags)",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Crear, editar, eliminar, asignar tags a documentos",
+      "expectedSpecs": 1
+    },
+    "docs-folders": {
+      "name": "Gestionar carpetas",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Crear, mover docs, eliminar carpetas, colores",
+      "expectedSpecs": 1
+    },
+    "docs-download": {
+      "name": "Descargar PDF/Word",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Exportar documento en formato PDF o Word",
+      "expectedSpecs": 1
+    },
+    "docs-send-email": {
+      "name": "Enviar email con documentos",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Enviar documentos por correo electrónico",
+      "expectedSpecs": 1
+    },
+    "docs-duplicate": {
+      "name": "Duplicar documento",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P3",
+      "description": "Copiar documento existente",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura"]
+    },
+    "docs-delete": {
+      "name": "Eliminar documento",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P3",
+      "description": "Eliminar documento con confirmación",
+      "expectedSpecs": 1
+    },
+    "docs-state-transitions": {
+      "name": "Transiciones de estado de documento",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Draft, Published, Completed, signing states",
+      "expectedSpecs": 1
+    },
+    "docs-relationships": {
+      "name": "Asociar documentos",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P3",
+      "description": "Vincular docs relacionados entre sí",
+      "expectedSpecs": 1
+    },
+    "docs-key-fields": {
+      "name": "Clasificar campos clave",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P3",
+      "description": "Marcar variables como info clave del documento",
+      "expectedSpecs": 1
+    },
+    "docs-letterhead": {
+      "name": "Configurar membrete",
+      "module": "documents",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Encabezado/pie global para documentos",
+      "expectedSpecs": 1
+    },
+    "docs-preview": {
+      "name": "Vista previa de documento",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Modal de preview con contenido renderizado",
+      "expectedSpecs": 1
+    },
+    "docs-summary": {
+      "name": "Resumen de documento",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Modal de resumen con campos clave",
+      "expectedSpecs": 1
+    },
+    "docs-list-table": {
+      "name": "Tabla de documentos interacciones",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Ordenamiento, export, interacciones de tabla",
+      "expectedSpecs": 1
+    },
+    "docs-empty-states": {
+      "name": "Estados vacíos de documentos",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P4",
+      "description": "UI cuando no hay documentos, carpetas, etc.",
+      "expectedSpecs": 1
+    },
+    "docs-multiple": {
+      "name": "Múltiples documentos",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P4",
+      "description": "Renderizado con múltiples documentos simultáneos",
+      "expectedSpecs": 1
+    },
+    "docs-profile-navigation": {
+      "name": "Perfil y navegación desde documentos",
+      "module": "documents",
+      "roles": ["shared"],
+      "priority": "P4",
+      "description": "Navegación entre documentos y perfil",
+      "expectedSpecs": 1
+    },
+    "sign-electronic-signature": {
+      "name": "Firma electrónica (dibujar/subir)",
+      "module": "signatures",
+      "roles": ["lawyer", "client"],
+      "priority": "P1",
+      "description": "Dibujar o subir firma electrónica personal",
+      "expectedSpecs": 1
+    },
+    "sign-document-flow": {
+      "name": "Formalizar documento con firmas",
+      "module": "signatures",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Usar minuta, completar, enviar a firma",
+      "expectedSpecs": 1
+    },
+    "sign-client-flow": {
+      "name": "Firmar documento (cliente)",
+      "module": "signatures",
+      "roles": ["client", "corporate"],
+      "priority": "P1",
+      "description": "Cliente firma documento electrónicamente",
+      "expectedSpecs": 1,
+      "knownGaps": ["Test solo verifica render, no firma real"]
+    },
+    "sign-reject": {
+      "name": "Rechazar documento",
+      "module": "signatures",
+      "roles": ["client", "corporate"],
+      "priority": "P1",
+      "description": "Rechazar documento con motivo",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura dedicada"]
+    },
+    "sign-reopen": {
+      "name": "Reabrir documento rechazado",
+      "module": "signatures",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Editar y reenviar documento rechazado a firma",
+      "expectedSpecs": 1,
+      "knownGaps": ["Falta test del flujo completo reopen-edit-resubmit"]
+    },
+    "sign-signed-documents": {
+      "name": "Ver documentos firmados",
+      "module": "signatures",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Lista de documentos completamente firmados",
+      "expectedSpecs": 1
+    },
+    "sign-pending-documents": {
+      "name": "Ver documentos pendientes de firma",
+      "module": "signatures",
+      "roles": ["lawyer", "client"],
+      "priority": "P2",
+      "description": "Documentos esperando firma",
+      "expectedSpecs": 1
+    },
+    "sign-archived-documents": {
+      "name": "Ver documentos archivados",
+      "module": "signatures",
+      "roles": ["lawyer", "client"],
+      "priority": "P3",
+      "description": "Rechazados y expirados",
+      "expectedSpecs": 1
+    },
+    "sign-status-modal": {
+      "name": "Estado de firmas modal",
+      "module": "signatures",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Modal con estado de cada firmante",
+      "expectedSpecs": 1
+    },
+    "legal-create-request": {
+      "name": "Crear solicitud legal",
+      "module": "legal-requests",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Nueva consulta/asesoría legal con archivos",
+      "expectedSpecs": 1
+    },
+    "legal-list-client": {
+      "name": "Ver solicitudes (cliente)",
+      "module": "legal-requests",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Lista de solicitudes propias del cliente",
+      "expectedSpecs": 1
+    },
+    "legal-detail-client": {
+      "name": "Detalle solicitud (cliente)",
+      "module": "legal-requests",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Detalle con archivos, thread, estado",
+      "expectedSpecs": 1
+    },
+    "legal-add-files": {
+      "name": "Agregar archivos a solicitud",
+      "module": "legal-requests",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Modal para subir archivos adicionales",
+      "expectedSpecs": 1
+    },
+    "legal-management-lawyer": {
+      "name": "Gestión de solicitudes (abogado)",
+      "module": "legal-requests",
+      "roles": ["lawyer"],
+      "priority": "P1",
+      "description": "Ver, responder, cambiar estado de solicitudes",
+      "expectedSpecs": 1
+    },
+    "legal-response-thread": {
+      "name": "Thread de conversación",
+      "module": "legal-requests",
+      "roles": ["lawyer", "client"],
+      "priority": "P1",
+      "description": "Chat entre cliente y abogado en solicitud",
+      "expectedSpecs": 1
+    },
+    "legal-status-update": {
+      "name": "Actualizar estado de solicitud",
+      "module": "legal-requests",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Cambiar estado y eliminar solicitudes",
+      "expectedSpecs": 1
+    },
+    "legal-lawyer-modals": {
+      "name": "Modales de abogado en solicitudes",
+      "module": "legal-requests",
+      "roles": ["lawyer"],
+      "priority": "P3",
+      "description": "StatusUpdateModal, DeleteConfirmModal",
+      "expectedSpecs": 1
+    },
+    "org-create": {
+      "name": "Crear organización",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P1",
+      "description": "Crear organización con nombre, descripción, imágenes",
+      "expectedSpecs": 1
+    },
+    "org-edit": {
+      "name": "Editar organización",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P2",
+      "description": "Actualizar info y portada de organización",
+      "expectedSpecs": 1
+    },
+    "org-invite-members": {
+      "name": "Invitar miembros",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P1",
+      "description": "Enviar invitaciones por email con validación",
+      "expectedSpecs": 1
+    },
+    "org-members-list": {
+      "name": "Ver miembros",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P2",
+      "description": "Lista de miembros del equipo",
+      "expectedSpecs": 1
+    },
+    "org-posts-management": {
+      "name": "Gestión de publicaciones",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P2",
+      "description": "Crear, editar, eliminar, fijar publicaciones",
+      "expectedSpecs": 1
+    },
+    "org-posts-visibility": {
+      "name": "Visibilidad de publicaciones",
+      "module": "organizations",
+      "roles": ["corporate", "client"],
+      "priority": "P2",
+      "description": "Posts visibles para clientes, filtros, orden",
+      "expectedSpecs": 1
+    },
+    "org-corporate-requests": {
+      "name": "Solicitudes corporativas (recibir/responder)",
+      "module": "organizations",
+      "roles": ["corporate"],
+      "priority": "P2",
+      "description": "Ver solicitudes de miembros y responder",
+      "expectedSpecs": 1
+    },
+    "org-client-view": {
+      "name": "Vista de cliente en organizaciones",
+      "module": "organizations",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Ver orgs, posts, tabs móvil",
+      "expectedSpecs": 1
+    },
+    "org-client-invitations": {
+      "name": "Aceptar/rechazar invitación",
+      "module": "organizations",
+      "roles": ["client"],
+      "priority": "P1",
+      "description": "Responder invitaciones de organización",
+      "expectedSpecs": 1
+    },
+    "org-client-requests": {
+      "name": "Solicitudes corporativas (cliente)",
+      "module": "organizations",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Crear, ver, filtrar solicitudes en organización",
+      "expectedSpecs": 1
+    },
+    "org-client-leave": {
+      "name": "Salir de organización",
+      "module": "organizations",
+      "roles": ["client"],
+      "priority": "P3",
+      "description": "Cliente abandona organización",
+      "expectedSpecs": 1
+    },
+    "org-cross-invite-flow": {
+      "name": "Cross-role: flujo de invitación completo",
+      "module": "organizations",
+      "roles": ["corporate", "client"],
+      "priority": "P1",
+      "description": "Invitar, aceptar/rechazar, verificar stats",
+      "expectedSpecs": 1
+    },
+    "org-cross-request-flow": {
+      "name": "Cross-role: flujo de solicitud corporativa",
+      "module": "organizations",
+      "roles": ["corporate", "client"],
+      "priority": "P2",
+      "description": "Cliente crea, corporate ve y responde",
+      "expectedSpecs": 1
+    },
+    "org-cross-member-management": {
+      "name": "Cross-role: gestión de miembros",
+      "module": "organizations",
+      "roles": ["corporate", "client"],
+      "priority": "P2",
+      "description": "Remover miembro, desactivar org, salir",
+      "expectedSpecs": 1
+    },
+    "org-request-detail": {
+      "name": "Detalle de solicitud organizacional",
+      "module": "organizations",
+      "roles": ["corporate", "client"],
+      "priority": "P3",
+      "description": "Vista detallada de solicitud corporativa",
+      "expectedSpecs": 1
+    },
+    "directory-search": {
+      "name": "Buscar usuarios en directorio",
+      "module": "directory",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Buscar por nombre/email/rol y ver detalle",
+      "expectedSpecs": 1
+    },
+    "schedule-appointment": {
+      "name": "Agendar cita",
+      "module": "schedule",
+      "roles": ["client", "corporate", "basic"],
+      "priority": "P2",
+      "description": "Calendly integrado para agendar cita",
+      "expectedSpecs": 1
+    },
+    "intranet-main": {
+      "name": "Intranet G&M página principal",
+      "module": "intranet",
+      "roles": ["lawyer-gym"],
+      "priority": "P2",
+      "description": "Perfil de firma, procedimientos, organigrama",
+      "expectedSpecs": 1
+    },
+    "intranet-interactions": {
+      "name": "Intranet G&M interacciones",
+      "module": "intranet",
+      "roles": ["lawyer-gym"],
+      "priority": "P3",
+      "description": "Búsqueda, modales, secciones, informe",
+      "expectedSpecs": 1
+    },
+    "user-guide-navigation": {
+      "name": "Manual de usuario navegación",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Navegación por módulos, roles, quick links",
+      "expectedSpecs": 1
+    },
+    "misc-policies": {
+      "name": "Políticas y páginas informativas",
+      "module": "misc",
+      "roles": ["shared"],
+      "priority": "P4",
+      "description": "Privacy policy, terms of use, no connection",
+      "expectedSpecs": 1
+    },
+    "misc-pwa-install": {
+      "name": "Instalar PWA",
+      "module": "misc",
+      "roles": ["shared"],
+      "priority": "P4",
+      "description": "Botón de instalación PWA y service worker",
+      "expectedSpecs": 1
+    },
+    "misc-error-handling": {
+      "name": "Error handling",
+      "module": "misc",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "404, 401, 403, 500, network errors, timeouts",
+      "expectedSpecs": 1
+    },
+    "basic-restrictions": {
+      "name": "Restricciones usuario básico",
+      "module": "auth",
+      "roles": ["basic"],
+      "priority": "P3",
+      "description": "Toast de restricción, funciones limitadas",
+      "expectedSpecs": 1,
+      "knownGaps": ["Sin cobertura — ningún test usa rol basic"]
+    }
+  }
+}

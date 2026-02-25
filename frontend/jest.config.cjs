@@ -21,6 +21,9 @@ module.exports = {
       '/node_modules/',
       '/e2e/',
       'src/components/dynamic_document/common/folders/index\\.js$',
+      'scripts/e2e-coverage-module\\.cjs$',
+      'scripts/e2e-module\\.cjs$',
+      'scripts/e2e-modules\\.cjs$',
     ],
     setupFilesAfterEnv: ['./jest.setup.js']
   };

@@ -1,23 +1,25 @@
+"""Tests for organization_views module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
 from rest_framework.test import APIClient
-from django.utils import timezone
 
-from django.contrib.auth import get_user_model
 from gym_app.models import (
+    CorporateRequest,
+    CorporateRequestType,
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
-    CorporateRequest,
-    CorporateRequestType,
 )
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -30,6 +32,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -42,6 +45,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org Title",
         description="Org Description",
@@ -52,8 +56,11 @@ def organization(corporate_client):
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationCrudAndMembers:
+    """Tests for Organization Crud And Members."""
+
     @pytest.mark.contract
     def test_create_organization_corporate_only(self, api_client, corporate_client, client_user):
+        """Verify create organization corporate only."""
         url = reverse("create-organization")
         data = {"title": "Nueva Org", "description": "Desc"}
 
@@ -72,9 +79,10 @@ class TestOrganizationCrudAndMembers:
 
     @pytest.mark.contract
     def test_get_my_organizations_filters_by_leader(self, api_client, corporate_client):
+        """Verify get my organizations filters by leader."""
         # Org del corporate_client
-        org1 = Organization.objects.create(title="Org1", description="D1", corporate_client=corporate_client)
-        org2 = Organization.objects.create(title="Org2", description="D2", corporate_client=corporate_client)
+        _org1 = Organization.objects.create(title="Org1", description="D1", corporate_client=corporate_client)
+        _org2 = Organization.objects.create(title="Org2", description="D2", corporate_client=corporate_client)
         # Org de otro corporate
         other_corp = User.objects.create_user(
             email="othercorp@example.com",
@@ -98,6 +106,7 @@ class TestOrganizationCrudAndMembers:
 
     @pytest.mark.edge
     def test_delete_organization_prevents_when_active_requests(self, api_client, corporate_client, organization, client_user):
+        """Verify delete organization prevents when active requests."""
         # Crear membresía activa para el cliente y una corporate request asociada a la org
         OrganizationMembership.objects.create(
             organization=organization,
@@ -128,8 +137,9 @@ class TestOrganizationCrudAndMembers:
 
     @pytest.mark.contract
     def test_get_organization_members_and_remove_member(self, api_client, corporate_client, client_user, organization):
+        """Verify get organization members and remove member."""
         # Leader membership
-        leader_membership = OrganizationMembership.objects.create(
+        _leader_membership = OrganizationMembership.objects.create(
             organization=organization,
             user=corporate_client,
             role="LEADER",
@@ -168,9 +178,11 @@ class TestOrganizationCrudAndMembers:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationInvitationsAndMemberships:
+    """Tests for Organization Invitations And Memberships."""
+
     @pytest.mark.contract
     def test_send_invitation(self, api_client, corporate_client, client_user, organization):
-        """Test sending an invitation"""
+        """Test sending an invitation."""
         api_client.force_authenticate(user=corporate_client)
         url_send = reverse("send-organization-invitation", kwargs={"organization_id": organization.id})
         data = {"invited_user_email": client_user.email, "message": "Únete"}
@@ -180,8 +192,9 @@ class TestOrganizationInvitationsAndMemberships:
         assert OrganizationInvitation.objects.filter(organization=organization, invited_user=client_user).exists()
 
     @pytest.mark.contract
+    @freeze_time("2025-01-15 12:00:00")
     def test_list_invitations(self, api_client, corporate_client, client_user, organization):
-        """Test listing invitations"""
+        """Test listing invitations."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization, invited_user=client_user, invited_by=corporate_client,
             status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10)
@@ -196,8 +209,9 @@ class TestOrganizationInvitationsAndMemberships:
         assert any(inv["id"] == invitation.id for inv in invites)
 
     @pytest.mark.contract
+    @freeze_time("2025-01-15 12:00:00")
     def test_client_accepts_invitation(self, api_client, corporate_client, client_user, organization):
-        """Test client accepting an invitation"""
+        """Test client accepting an invitation."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization, invited_user=client_user, invited_by=corporate_client,
             status="PENDING", expires_at=timezone.now() + timezone.timedelta(days=10)
@@ -213,7 +227,9 @@ class TestOrganizationInvitationsAndMemberships:
         assert OrganizationMembership.objects.filter(organization=organization, user=client_user, is_active=True).exists()
 
     @pytest.mark.edge
+    @freeze_time("2025-01-15 12:00:00")
     def test_cancel_invitation_only_pending(self, api_client, corporate_client, client_user, organization):
+        """Verify cancel invitation only pending."""
         api_client.force_authenticate(user=corporate_client)
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
@@ -242,6 +258,7 @@ class TestOrganizationInvitationsAndMemberships:
 
     @pytest.mark.contract
     def test_get_my_memberships_and_leave_organization(self, api_client, client_user, corporate_client, organization):
+        """Verify get my memberships and leave organization."""
         # Crear membresía MEMBER
         membership = OrganizationMembership.objects.create(
             organization=organization,
@@ -266,7 +283,7 @@ class TestOrganizationInvitationsAndMemberships:
         assert membership.is_active is False
 
         # Líder no puede dejar su propia organización
-        leader_membership = OrganizationMembership.objects.create(
+        _leader_membership = OrganizationMembership.objects.create(
             organization=organization,
             user=corporate_client,
             role="LEADER",
@@ -281,8 +298,12 @@ class TestOrganizationInvitationsAndMemberships:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestOrganizationStatsAndPublicDetail:
+    """Tests for Organization Stats And Public Detail."""
+
     @pytest.mark.contract
+    @freeze_time("2025-01-15 12:00:00")
     def test_get_organization_stats_for_corporate(self, api_client, corporate_client, client_user, organization):
+        """Verify get organization stats for corporate."""
         # Crear algunos datos
         OrganizationMembership.objects.create(
             organization=organization,
@@ -323,6 +344,7 @@ class TestOrganizationStatsAndPublicDetail:
 
     @pytest.mark.edge
     def test_get_organization_public_detail_access_rules(self, api_client, corporate_client, client_user, organization):
+        """Verify get organization public detail access rules."""
         # Añadir membresía del cliente
         OrganizationMembership.objects.create(
             organization=organization,
@@ -355,7 +377,10 @@ class TestOrganizationStatsAndPublicDetail:
 
 @pytest.mark.django_db
 class TestOrganizationRest:
+    """Tests for Organization Rest."""
+
     def test_rest_create_update_delete_and_detail(self, api_client, corporate_client):
+        """Verify rest create update delete and detail."""
         api_client.force_authenticate(user=corporate_client)
 
         create_url = reverse("create-organization")
@@ -382,6 +407,7 @@ class TestOrganizationRest:
         assert not Organization.objects.filter(id=organization_id).exists()
 
     def test_rest_get_my_organizations_and_stats(self, api_client, corporate_client, client_user):
+        """Verify rest get my organizations and stats."""
         Organization.objects.create(title="Org A", description="A", corporate_client=corporate_client)
         Organization.objects.create(title="Org B", description="B", corporate_client=corporate_client)
         other_corp = User.objects.create_user(
@@ -419,18 +445,28 @@ class TestOrganizationRest:
 
 """Batch 26 – 20 tests: model __str__, invitation accept/reject, request numbers, documents_by_state report."""
 import pytest
-from django.urls import reverse
-from django.core.exceptions import ValidationError
-from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.urls import reverse  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    Process, Case, Stage, DynamicDocument, LegalRequest,
-    LegalRequestType, LegalDiscipline, LegalRequestResponse,
-    Organization, OrganizationInvitation, OrganizationMembership,
+    Case,
+    DynamicDocument,
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestResponse,
+    LegalRequestType,
+    Organization,  # noqa: F811
+    OrganizationInvitation,  # noqa: F811
+    OrganizationMembership,  # noqa: F811
     OrganizationPost,
+    Process,
 )
 from gym_app.models.corporate_request import (
-    CorporateRequest, CorporateRequestType, CorporateRequestResponse,
+    CorporateRequest,  # noqa: F811
+    CorporateRequestResponse,
+    CorporateRequestType,  # noqa: F811
 )
 
 User = get_user_model()
@@ -439,29 +475,37 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(email="l26@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="c26@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
 def corp():
+    """Corp."""
     return User.objects.create_user(email="co26@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Rp")
 
 
 # 1-3. Organization model __str__ and invitation __str__
 class TestOrgModelStr:
+    """Tests for Org Model Str."""
+
     def test_org_str(self, corp):
+        """Verify org str."""
         org = Organization.objects.create(title="MyOrg", corporate_client=corp)
         assert "MyOrg" in str(org)
         assert corp.email in str(org)
 
     def test_invitation_str(self, corp, cli):
+        """Verify invitation str."""
         org = Organization.objects.create(title="O2", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         s = str(inv)
@@ -469,6 +513,7 @@ class TestOrgModelStr:
         assert "PENDING" in s
 
     def test_membership_str(self, corp, cli):
+        """Verify membership str."""
         org = Organization.objects.create(title="O3", corporate_client=corp)
         mem = OrganizationMembership.objects.create(organization=org, user=cli, role="MEMBER")
         assert str(mem)  # just ensure no crash
@@ -476,7 +521,10 @@ class TestOrgModelStr:
 
 # 4-6. Invitation accept and reject
 class TestInvitationActions:
+    """Tests for Invitation Actions."""
+
     def test_accept_creates_membership(self, corp, cli):
+        """Verify accept creates membership."""
         org = Organization.objects.create(title="AccOrg", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         inv.accept()
@@ -485,6 +533,7 @@ class TestInvitationActions:
         assert OrganizationMembership.objects.filter(organization=org, user=cli, is_active=True).exists()
 
     def test_accept_already_member_raises(self, corp, cli):
+        """Verify accept already member raises."""
         org = Organization.objects.create(title="DupOrg", corporate_client=corp)
         OrganizationMembership.objects.create(organization=org, user=cli, role="MEMBER", is_active=True)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
@@ -495,6 +544,7 @@ class TestInvitationActions:
         assert inv.status == "PENDING"
 
     def test_reject_invitation(self, corp, cli):
+        """Verify reject invitation."""
         org = Organization.objects.create(title="RejOrg", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         inv.reject()
@@ -505,7 +555,10 @@ class TestInvitationActions:
 
 # 7-9. LegalRequest model gaps
 class TestLegalRequestModel:
+    """Tests for Legal Request Model."""
+
     def test_str_with_user(self, cli):
+        """Verify str with user."""
         rt = LegalRequestType.objects.create(name="Q")
         di = LegalDiscipline.objects.create(name="C")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
@@ -514,6 +567,7 @@ class TestLegalRequestModel:
         assert "C" in s
 
     def test_request_number_sequence(self, cli):
+        """Verify request number sequence."""
         rt = LegalRequestType.objects.create(name="Q2")
         di = LegalDiscipline.objects.create(name="C2")
         lr1 = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D1")
@@ -523,6 +577,7 @@ class TestLegalRequestModel:
         assert n2 == n1 + 1
 
     def test_response_str(self, cli, law):
+        """Verify response str."""
         rt = LegalRequestType.objects.create(name="Q3")
         di = LegalDiscipline.objects.create(name="C3")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
@@ -534,7 +589,10 @@ class TestLegalRequestModel:
 
 # 10-12. CorporateRequest model gaps
 class TestCorporateRequestModel:
+    """Tests for Corporate Request Model."""
+
     def test_str(self, cli, corp):
+        """Verify str."""
         ct = CorporateRequestType.objects.create(name="T")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="TT", description="D")
         s = str(cr)
@@ -542,6 +600,7 @@ class TestCorporateRequestModel:
         assert cli.email in s
 
     def test_request_number_sequence(self, cli, corp):
+        """Verify request number sequence."""
         ct = CorporateRequestType.objects.create(name="T2")
         cr1 = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="A", description="D")
         cr2 = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="B", description="D")
@@ -550,6 +609,7 @@ class TestCorporateRequestModel:
         assert n2 == n1 + 1
 
     def test_response_str(self, cli, corp, law):
+        """Verify response str."""
         ct = CorporateRequestType.objects.create(name="T3")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         r = CorporateRequestResponse.objects.create(corporate_request=cr, user=law, response_text="ok", user_type="lawyer")
@@ -558,12 +618,16 @@ class TestCorporateRequestModel:
 
 # 13-14. OrganizationPost model
 class TestOrgPostModel:
+    """Tests for Org Post Model."""
+
     def test_post_str(self, corp):
+        """Verify post str."""
         org = Organization.objects.create(title="PostOrg", corporate_client=corp)
         p = OrganizationPost.objects.create(organization=org, author=corp, title="News", content="Body")
         assert str(p)
 
     def test_post_has_link_false(self, corp):
+        """Verify post has link false."""
         org = Organization.objects.create(title="PostOrg2", corporate_client=corp)
         p = OrganizationPost.objects.create(organization=org, author=corp, title="N", content="B")
         assert p.has_link is False
@@ -571,19 +635,26 @@ class TestOrgPostModel:
     
 # 15-16. Process model __str__ and edge cases
 class TestProcessModel:
+    """Tests for Process Model."""
+
     def test_process_str(self, law):
+        """Verify process str."""
         c = Case.objects.create(type="Civil")
         p = Process.objects.create(ref="REF-001", case=c, lawyer=law)
         assert str(p)
 
     def test_case_str(self):
+        """Verify case str."""
         c = Case.objects.create(type="Penal")
         assert "Penal" in str(c)
 
 
 # 17. documents_by_state report
 class TestDocByStateReport:
+    """Tests for Doc By State Report."""
+
     def test_documents_by_state(self, api, law):
+        """Verify documents by state."""
         DynamicDocument.objects.create(title="D1", content="<p>x</p>", state="Draft", created_by=law)
         DynamicDocument.objects.create(title="D2", content="<p>y</p>", state="Completed", created_by=law)
         api.force_authenticate(user=law)
@@ -594,13 +665,17 @@ class TestDocByStateReport:
 
 # 18. Invitation can_be_responded after rejection
 class TestInvitationEdge:
+    """Tests for Invitation Edge."""
+
     def test_cannot_respond_after_reject(self, corp, cli):
+        """Verify cannot respond after reject."""
         org = Organization.objects.create(title="E1", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         inv.reject()
         assert inv.can_be_responded() is False
 
     def test_cannot_accept_after_accept(self, corp, cli):
+        """Verify cannot accept after accept."""
         org = Organization.objects.create(title="E2", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         inv.accept()
@@ -612,7 +687,10 @@ class TestInvitationEdge:
 
 # 20. DynamicDocument __str__
 class TestDynamicDocStr:
+    """Tests for Dynamic Doc Str."""
+
     def test_dynamic_doc_str(self, law):
+        """Verify dynamic doc str."""
         d = DynamicDocument.objects.create(title="MyDoc", content="<p>x</p>", state="Draft", created_by=law)
         assert "MyDoc" in str(d)
 
@@ -622,64 +700,79 @@ class TestDynamicDocStr:
 # ======================================================================
 
 """Batch 34 – 20 tests: organization views, subscription views, intranet views edges."""
-import pytest
-from unittest.mock import patch, MagicMock
-from django.urls import reverse
-from rest_framework.test import APIClient
-from django.contrib.auth import get_user_model
-from gym_app.models import (
-    Organization, OrganizationInvitation, OrganizationMembership,
-    OrganizationPost, Subscription,
-)
-from decimal import Decimal
 import datetime
+from decimal import Decimal
+
+import pytest
+from django.contrib.auth import get_user_model
+from django.urls import reverse  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models import (
+    Organization,  # noqa: F811
+    OrganizationInvitation,  # noqa: F811
+    OrganizationMembership,  # noqa: F811
+    OrganizationPost,  # noqa: F811
+    Subscription,
+)
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
-def law():
+def law():  # noqa: F811
+    """Law."""
     return User.objects.create_user(email="law34@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
-def cli():
+def cli():  # noqa: F811
+    """Cli."""
     return User.objects.create_user(email="cli34@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
-def corp():
+def corp():  # noqa: F811
+    """Corp."""
     return User.objects.create_user(email="corp34@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Rp")
 
 
 # -- Organization views --
 class TestOrganizationViews:
+    """Tests for Organization Views."""
+
     def test_create_org_non_corporate_forbidden(self, api, cli):
+        """Verify create org non corporate forbidden."""
         api.force_authenticate(user=cli)
         resp = api.post(reverse("create-organization"), {"title": "O", "description": "D"}, format="json")
         assert resp.status_code == 403
 
     def test_create_org_success(self, api, corp):
+        """Verify create org success."""
         api.force_authenticate(user=corp)
         resp = api.post(reverse("create-organization"), {"title": "NewOrg", "description": "Desc"}, format="json")
         assert resp.status_code == 201
         assert Organization.objects.filter(title="NewOrg").exists()
 
     def test_get_my_orgs(self, api, corp):
+        """Verify get my orgs."""
         Organization.objects.create(title="MyOrg", corporate_client=corp)
         api.force_authenticate(user=corp)
         resp = api.get(reverse("get-my-organizations"))
         assert resp.status_code == 200
 
     def test_get_org_detail(self, api, corp):
+        """Verify get org detail."""
         org = Organization.objects.create(title="Det", corporate_client=corp)
         api.force_authenticate(user=corp)
         resp = api.get(reverse("get-organization-detail", args=[org.id]))
         assert resp.status_code == 200
 
     def test_delete_org(self, api, corp):
+        """Verify delete org."""
         org = Organization.objects.create(title="DelOrg", corporate_client=corp)
         api.force_authenticate(user=corp)
         resp = api.delete(reverse("delete-organization", args=[org.id]))
@@ -687,6 +780,7 @@ class TestOrganizationViews:
         assert not Organization.objects.filter(id=org.id).exists()
 
     def test_send_invitation(self, api, corp, cli):
+        """Verify send invitation."""
         org = Organization.objects.create(title="InvOrg", corporate_client=corp)
         api.force_authenticate(user=corp)
         resp = api.post(
@@ -697,6 +791,7 @@ class TestOrganizationViews:
         assert OrganizationInvitation.objects.filter(organization=org, invited_user=cli).exists()
 
     def test_get_invitations(self, api, corp, cli):
+        """Verify get invitations."""
         org = Organization.objects.create(title="GI", corporate_client=corp)
         OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         api.force_authenticate(user=corp)
@@ -704,6 +799,7 @@ class TestOrganizationViews:
         assert resp.status_code == 200
 
     def test_get_my_invitations(self, api, corp, cli):
+        """Verify get my invitations."""
         org = Organization.objects.create(title="MI", corporate_client=corp)
         OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         api.force_authenticate(user=cli)
@@ -711,6 +807,7 @@ class TestOrganizationViews:
         assert resp.status_code == 200
 
     def test_respond_accept_invitation(self, api, corp, cli):
+        """Verify respond accept invitation."""
         org = Organization.objects.create(title="RA", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         api.force_authenticate(user=cli)
@@ -721,6 +818,7 @@ class TestOrganizationViews:
         assert OrganizationMembership.objects.filter(organization=org, user=cli, is_active=True).exists()
 
     def test_respond_reject_invitation(self, api, corp, cli):
+        """Verify respond reject invitation."""
         org = Organization.objects.create(title="RR", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         api.force_authenticate(user=cli)
@@ -730,12 +828,14 @@ class TestOrganizationViews:
         assert inv.status == "REJECTED"
 
     def test_get_org_stats(self, api, corp):
+        """Verify get org stats."""
         Organization.objects.create(title="S1", corporate_client=corp)
         api.force_authenticate(user=corp)
         resp = api.get(reverse("get-organization-stats"))
         assert resp.status_code == 200
 
     def test_leave_organization(self, api, corp, cli):
+        """Verify leave organization."""
         org = Organization.objects.create(title="LV", corporate_client=corp)
         OrganizationMembership.objects.create(organization=org, user=cli, role="MEMBER", is_active=True)
         api.force_authenticate(user=cli)
@@ -746,17 +846,22 @@ class TestOrganizationViews:
 
 # -- Subscription views --
 class TestSubscriptionViews:
+    """Tests for Subscription Views."""
+
     def test_get_wompi_config(self, api, law):
+        """Verify get wompi config."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("subscription-wompi-config"))
         assert resp.status_code == 200
 
     def test_get_current_no_subscription(self, api, law):
+        """Verify get current no subscription."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("subscription-current"))
         assert resp.status_code in (200, 404)
 
     def test_get_current_with_subscription(self, api, law):
+        """Verify get current with subscription."""
         Subscription.objects.create(
             user=law, plan_type="cliente", status="active",
             amount=Decimal("50000"), next_billing_date=datetime.date.today(),
@@ -766,11 +871,13 @@ class TestSubscriptionViews:
         assert resp.status_code == 200
 
     def test_cancel_no_subscription(self, api, law):
+        """Verify cancel no subscription."""
         api.force_authenticate(user=law)
         resp = api.patch(reverse("subscription-cancel"))
         assert resp.status_code in (400, 404)
 
     def test_get_payment_history_empty(self, api, law):
+        """Verify get payment history empty."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("subscription-payments"))
         assert resp.status_code == 200
@@ -778,12 +885,16 @@ class TestSubscriptionViews:
 
 # -- Intranet views --
 class TestIntranetViews:
+    """Tests for Intranet Views."""
+
     def test_list_legal_intranet_documents(self, api, law):
+        """Verify list legal intranet documents."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("list-legal-intranet-documents"))
         assert resp.status_code == 200
 
     def test_create_report_request(self, api, law):
+        """Verify create report request."""
         api.force_authenticate(user=law)
         resp = api.post(
             reverse("create-report-request"),
@@ -793,6 +904,7 @@ class TestIntranetViews:
         assert resp.status_code in (200, 201, 400)
 
     def test_list_intranet_unauthenticated(self, api):
+        """Verify list intranet unauthenticated."""
         resp = api.get(reverse("list-legal-intranet-documents"))
         assert resp.status_code in (401, 403)
 
@@ -802,20 +914,25 @@ class TestIntranetViews:
 # ======================================================================
 
 """Tests for uncovered branches in organization.py (91%→higher)."""
-import pytest
 import unittest.mock as mock
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework import status
+
+import pytest
 from django.contrib.auth import get_user_model
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    Organization, OrganizationInvitation, OrganizationMembership,
+    Organization,  # noqa: F811
+    OrganizationInvitation,  # noqa: F811
+    OrganizationMembership,  # noqa: F811
 )
 from gym_app.views.organization import OrganizationPagination
 
 User = get_user_model()
 @pytest.fixture
 def corp_client():
+    """Corp client."""
     return User.objects.create_user(
         email='corp_oc@e.com', password='p', role='corporate_client',
         first_name='C', last_name='O')
@@ -823,6 +940,7 @@ def corp_client():
 
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_oc@e.com', password='p', role='client',
         first_name='Cl', last_name='O')
@@ -830,6 +948,7 @@ def client_u():
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email='law_oc@e.com', password='p', role='lawyer',
         first_name='L', last_name='O')
@@ -837,12 +956,14 @@ def lawyer():
 
 @pytest.fixture
 def org(corp_client):
+    """Org."""
     return Organization.objects.create(
         title='OrgOC', description='Desc', corporate_client=corp_client)
 
 
 @pytest.mark.django_db
 class TestOrganizationViewsRegressionScenarios:
+    """Tests for Organization Views Regression Scenarios."""
 
     # --- Line 57: require_client_or_corporate_client blocks lawyer ---
     def test_public_detail_blocked_for_lawyer(self, api_client, lawyer, org):
@@ -950,7 +1071,7 @@ class TestOrganizationViewsRegressionScenarios:
     # --- Line 632: leader cannot leave organization ---
     def test_leader_cannot_leave(self, api_client, client_u, corp_client, org):
         """Line 632: leader role gets 400 when trying to leave."""
-        mem = OrganizationMembership.objects.create(
+        _mem = OrganizationMembership.objects.create(
             organization=org, user=client_u, role='LEADER', is_active=True)
         api_client.force_authenticate(user=client_u)
         r = api_client.post(

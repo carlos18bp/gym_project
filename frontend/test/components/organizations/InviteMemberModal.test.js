@@ -5,6 +5,8 @@ import { useOrganizationsStore } from "@/stores/organizations";
 
 import InviteMemberModal from "@/components/organizations/modals/InviteMemberModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({
@@ -75,7 +77,7 @@ describe("InviteMemberModal.vue", () => {
   });
 
   afterEach(() => {
-    console.error.mockRestore();
+    jest.restoreAllMocks();
   });
 
   test("opening the modal resets form and sets default message when organization becomes available", async () => {

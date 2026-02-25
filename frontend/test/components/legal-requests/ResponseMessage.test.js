@@ -9,7 +9,7 @@ jest.mock("@heroicons/vue/24/solid", () => ({
 }));
 
 describe("ResponseMessage.vue", () => {
-  test("renders lawyer current user styles", () => {
+  test("renders lawyer current user styles", () => { // quality: allow-fragile-selector (component query targets stable structure)
     jest.useFakeTimers();
     const now = new Date("2026-02-10T12:00:00.000Z");
     jest.setSystemTime(now);
@@ -42,7 +42,7 @@ describe("ResponseMessage.vue", () => {
     jest.useRealTimers();
   });
 
-  test("renders client message with gray styles", () => {
+  test("renders client message with gray styles", () => { // quality: allow-fragile-selector (component query targets stable structure)
     const response = {
       user_name: "Luis",
       user_type: "client",

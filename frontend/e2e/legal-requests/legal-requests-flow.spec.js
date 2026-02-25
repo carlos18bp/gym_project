@@ -3,7 +3,7 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installLegalRequestsApiMocks } from "../helpers/legalRequestsMocks.js";
 
-test("client can create a legal request and is redirected to list", async ({ page }) => {
+test("client can create a legal request and is redirected to list", { tag: ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 900;
 
   await installLegalRequestsApiMocks(page, {
@@ -32,7 +32,7 @@ test("client can create a legal request and is redirected to list", async ({ pag
   await page.getByRole("option", { name: "Civil" }).click();
 
   // Description
-  await page.locator("#comment").fill("Necesito ayuda con un contrato.");
+  await page.locator("#comment").fill("Necesito ayuda con un contrato."); // quality: allow-fragile-selector (stable DOM id)
 
   // Submit
   await page.getByRole("button", { name: "Guardar" }).click();
@@ -45,7 +45,7 @@ test("client can create a legal request and is redirected to list", async ({ pag
   await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible();
 });
 
-test("lawyer can view legal requests list and open a request detail", async ({ page }) => {
+test("lawyer can view legal requests list and open a request detail", { tag: ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 901;
 
   await installLegalRequestsApiMocks(page, {

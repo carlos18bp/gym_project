@@ -5,6 +5,8 @@ import { useActivityFeedStore } from "@/stores/dashboard/activity_feed";
 
 import FeedWidget from "@/components/dashboard/widgets/FeedWidget.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 jest.mock("@heroicons/vue/24/outline", () => ({
   __esModule: true,
   ArrowUpIcon: { name: "ArrowUpIcon", template: "<span data-test='icon-update' />" },
@@ -62,6 +64,7 @@ describe("FeedWidget.vue", () => {
     await flushPromises();
 
     expect(fetchSpy).toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   test("renders loading, error, empty, and list states", async () => {
@@ -113,6 +116,7 @@ describe("FeedWidget.vue", () => {
 
     expect(wrapper.text()).toContain("Did something");
     expect(wrapper.text()).toContain("Hace 1 minuto");
+    jest.restoreAllMocks();
   });
 
   const mountWithActivities = async () => {
@@ -178,8 +182,8 @@ describe("FeedWidget.vue", () => {
     const wrapper = await mountWithActivities();
 
     const iconContainers = wrapper
-      .findAll(".timeline-icon")
-      .map((c) => c.find(".w-10.h-10"));
+      .findAll("[class*='timeline-icon']")
+      .map((container) => container.find("div[class*='rounded-full']"));
     const expectedPairs = [
       ["bg-blue-100", "border-blue-600"],
       ["bg-blue-50", "border-blue-500"],

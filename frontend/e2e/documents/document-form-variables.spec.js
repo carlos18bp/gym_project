@@ -1,11 +1,13 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test("client can view document form with variable fields", async ({ page }) => {
+test("client can view document form with variable fields", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 8300;
 
   const doc = buildMockDocument({
@@ -87,7 +89,7 @@ test("client can view document form with variable fields", async ({ page }) => {
   await expect(page.getByText("Observaciones")).toBeVisible();
 });
 
-test("client can fill in form variables and see validation", async ({ page }) => {
+test("client can fill in form variables and see validation", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 8301;
 
   const doc = buildMockDocument({
@@ -137,16 +139,16 @@ test("client can fill in form variables and see validation", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Poder Especial" })).toBeVisible({ timeout: 15_000 });
 
   // Fill in form fields
-  const nameField = page.locator("#field-0");
+  const nameField = page.locator("#field-0"); // quality: allow-fragile-selector (stable DOM id)
   await nameField.fill("Juan Pérez");
   await expect(nameField).toHaveValue("Juan Pérez");
 
-  const idField = page.locator("#field-1");
+  const idField = page.locator("#field-1"); // quality: allow-fragile-selector (stable DOM id)
   await idField.fill("12345678");
   await expect(idField).toHaveValue("12345678");
 });
 
-test("lawyer can open document form in editor mode", async ({ page }) => {
+test("lawyer can open document form in editor mode", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 8302;
 
   const doc = buildMockDocument({

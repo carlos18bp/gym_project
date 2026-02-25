@@ -2,12 +2,14 @@ import { test, expect } from "../helpers/test.js";
 
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installProcessApiMocks,
   buildMockProcess,
   buildMockUser,
 } from "../helpers/processMocks.js";
 
-test("lawyer can view process list and open process detail", async ({ page }) => {
+test("lawyer can view process list and open process detail", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const lawyerId = 700;
   const clientId = 701;
   const processId = 9001;
@@ -78,7 +80,7 @@ test("lawyer can view process list and open process detail", async ({ page }) =>
   await expect(page.getByText("RAD-9001")).toBeVisible();
 });
 
-test("client sees only their processes in My Processes and can search", async ({ page }) => {
+test("client sees only their processes in My Processes and can search", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const clientId = 710;
   const otherClientId = 711;
 

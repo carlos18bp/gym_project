@@ -82,11 +82,12 @@ describe("Reports Store", () => {
   });
 
   test("generateExcelReport creates a download link", async () => {
-    const { clickSpy, createObjectURLSpy, cleanup } = await runExcelReport();
+    const { store, clickSpy, createObjectURLSpy, cleanup } = await runExcelReport();
 
     try {
       expect(createObjectURLSpy).toHaveBeenCalled();
       expect(clickSpy).toHaveBeenCalled();
+      expect(store.error).toBeNull();
     } finally {
       cleanup();
     }
@@ -142,6 +143,7 @@ describe("Reports Store", () => {
     expect(removeSpy).toHaveBeenCalled();
     expect(createObjectURLSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
+    expect(store.isGenerating).toBe(false);
 
     appendSpy.mockRestore();
     removeSpy.mockRestore();

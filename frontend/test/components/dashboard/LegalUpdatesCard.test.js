@@ -87,13 +87,14 @@ describe("LegalUpdatesCard.vue", () => {
     const wrapper = mount(LegalUpdatesCard);
     await flushPromises();
 
-    const placeholderImage = wrapper.vm.$.setupState.placeholderImage;
-    const target = { src: "https://example.com/broken.png" };
+    const img = wrapper.find("img");
 
-    wrapper.vm.$.setupState.handleImageError({ target });
-    expect(target.src).toBe(placeholderImage);
+    await img.trigger("error");
 
-    wrapper.vm.$.setupState.handleImageError({ target });
-    expect(target.src).toBe(placeholderImage);
+    expect(img.element.src).toMatch(/^data:image\/svg\+xml;base64,/);
+
+    const placeholderSrc = img.element.src;
+    await img.trigger("error");
+    expect(img.element.src).toBe(placeholderSrc);
   });
 });

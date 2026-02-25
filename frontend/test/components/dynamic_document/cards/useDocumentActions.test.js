@@ -62,6 +62,8 @@ jest.mock("@/stores/dashboard/activity_feed", () => ({
 import { create_request } from "@/stores/services/request_http";
 import { useDocumentActions, useCardModals } from "@/components/dynamic_document/cards";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 describe("useDocumentActions", () => {
   beforeEach(() => {
     jest.clearAllMocks();

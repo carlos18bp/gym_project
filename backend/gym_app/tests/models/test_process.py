@@ -1,5 +1,6 @@
+"""Tests for process module."""
 import os
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -7,12 +8,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from gym_app.models.process import Case, CaseFile, Stage, Process, RecentProcess
+from gym_app.models.process import Case, CaseFile, Process, RecentProcess, Stage
 from gym_app.models.user import User  # Asumiendo que User está en este módulo
+
+FIXED_NOW = timezone.make_aware(datetime(2026, 2, 19, 12, 0, 0))
 
 @pytest.fixture
 def user_client():
-    """Create a client user for testing"""
+    """Create a client user for testing."""
     return User.objects.create_user(
         email='client@example.com',
         password='testpassword',
@@ -23,7 +26,7 @@ def user_client():
 
 @pytest.fixture
 def user_lawyer():
-    """Create a lawyer user for testing"""
+    """Create a lawyer user for testing."""
     return User.objects.create_user(
         email='lawyer@example.com',
         password='testpassword',
@@ -34,17 +37,17 @@ def user_lawyer():
 
 @pytest.fixture
 def case_type():
-    """Create a case type for testing"""
+    """Create a case type for testing."""
     return Case.objects.create(type='Criminal')
 
 @pytest.fixture
 def stage():
-    """Create a stage for testing"""
+    """Create a stage for testing."""
     return Stage.objects.create(status='In Progress')
 
 @pytest.fixture
 def case_file():
-    """Create a case file for testing"""
+    """Create a case file for testing."""
     test_file = SimpleUploadedFile(
         "case_document.pdf", 
         b"File content for testing",
@@ -54,7 +57,7 @@ def case_file():
 
 @pytest.fixture
 def process(user_client, user_lawyer, case_type):
-    """Create a process for testing"""
+    """Create a process for testing."""
     process = Process.objects.create(
         authority='Supreme Court',
         plaintiff='John Smith',
@@ -69,23 +72,25 @@ def process(user_client, user_lawyer, case_type):
 
 @pytest.mark.django_db
 class TestCase:
+    """Tests for Case."""
     
     def test_create_case(self):
-        """Test creating a case type"""
+        """Test creating a case type."""
         case = Case.objects.create(type='Civil')
         
         assert case.id is not None
         assert case.type == 'Civil'
     
     def test_str_representation(self, case_type):
-        """Test string representation of case type"""
+        """Test string representation of case type."""
         assert str(case_type) == case_type.type
 
 @pytest.mark.django_db
 class TestCaseFile:
+    """Tests for Case File."""
     
     def test_create_case_file(self):
-        """Test creating a case file"""
+        """Test creating a case file."""
         test_file = SimpleUploadedFile(
             "new_document.pdf",
             b"New file content",
@@ -99,12 +104,12 @@ class TestCaseFile:
         assert file_obj.created_at is not None
     
     def test_str_representation(self, case_file):
-        """Test string representation of case file"""
+        """Test string representation of case file."""
         file_name = os.path.basename(case_file.file.name)
         assert str(case_file) == file_name
 
     def test_delete_case_file_removes_physical_file(self, case_file):
-        """Deleting a CaseFile instance should remove the underlying file from the filesystem"""
+        """Deleting a CaseFile instance should remove the underlying file from the filesystem."""
         file_path = case_file.file.path
 
         # Aseguramos que el archivo exista antes de borrar
@@ -117,9 +122,10 @@ class TestCaseFile:
 
 @pytest.mark.django_db
 class TestStage:
+    """Tests for Stage."""
     
     def test_create_stage(self):
-        """Test creating a stage"""
+        """Test creating a stage."""
         stage = Stage.objects.create(status='Initial Review')
         
         assert stage.id is not None
@@ -127,14 +133,15 @@ class TestStage:
         assert stage.created_at is not None
     
     def test_str_representation(self, stage):
-        """Test string representation of stage"""
+        """Test string representation of stage."""
         assert str(stage) == stage.status
 
 @pytest.mark.django_db
 class TestProcess:
+    """Tests for Process."""
     
     def test_create_process_basic_fields(self, user_client, user_lawyer, case_type):
-        """Test creating a process - basic fields"""
+        """Test creating a process - basic fields."""
         process = Process.objects.create(
             authority='District Court',
             plaintiff='Company Inc.',
@@ -155,7 +162,7 @@ class TestProcess:
         assert process.created_at is not None
 
     def test_create_process_relationships(self, user_client, user_lawyer, case_type):
-        """Test creating a process - relationships"""
+        """Test creating a process - relationships."""
         process = Process.objects.create(
             authority='District Court',
             lawyer=user_lawyer,
@@ -171,7 +178,7 @@ class TestProcess:
         assert process.case_files.count() == 0
     
     def test_add_stages_to_process(self, process):
-        """Test adding stages to a process"""
+        """Test adding stages to a process."""
         # Create multiple stages
         stage1 = Stage.objects.create(status='Initial Review')
         stage2 = Stage.objects.create(status='Documentation')
@@ -188,7 +195,7 @@ class TestProcess:
         assert 'Final Decision' in stage_statuses
     
     def test_add_files_to_process(self, process, case_file):
-        """Test adding files to a process"""
+        """Test adding files to a process."""
         # Add existing file
         process.case_files.add(case_file)
         
@@ -208,25 +215,25 @@ class TestProcess:
         assert any("additional_document" in name for name in file_names)
     
     def test_str_representation(self, process):
-        """Test string representation of process"""
+        """Test string representation of process."""
         assert str(process) == process.ref
     
     def test_client_process_relationship(self, user_client, process):
-        """Test the relationship between client and process"""
+        """Test the relationship between client and process."""
         # Verify the client can access their processes
         client_processes = user_client.client_processes.all()
         assert client_processes.count() == 1
         assert client_processes.first() == process
     
     def test_lawyer_process_relationship(self, user_lawyer, process):
-        """Test the relationship between lawyer and process"""
+        """Test the relationship between lawyer and process."""
         # Verify the lawyer can access their processes
         lawyer_processes = user_lawyer.lawyer_processes.all()
         assert lawyer_processes.count() == 1
         assert lawyer_processes.first() == process
 
     def test_process_progress_within_valid_range(self, user_client, user_lawyer, case_type):
-        """Process.progress debe aceptar valores entre 0 y 100 inclusive"""
+        """Process.progress debe aceptar valores entre 0 y 100 inclusive."""
         process = Process(
             authority='Court',
             plaintiff='A',
@@ -243,7 +250,7 @@ class TestProcess:
         assert process.progress == 50
 
     def test_process_progress_below_zero_raises_validation_error(self, user_client, user_lawyer, case_type):
-        """Process.progress < 0 debe lanzar ValidationError por el validador de rango"""
+        """Process.progress < 0 debe lanzar ValidationError por el validador de rango."""
         process = Process(
             authority='Court',
             plaintiff='A',
@@ -260,7 +267,7 @@ class TestProcess:
         assert exc_info.value is not None
 
     def test_process_progress_above_hundred_raises_validation_error(self, user_client, user_lawyer, case_type):
-        """Process.progress > 100 debe lanzar ValidationError por el validador de rango"""
+        """Process.progress > 100 debe lanzar ValidationError por el validador de rango."""
         process = Process(
             authority='Court',
             plaintiff='A',
@@ -279,9 +286,10 @@ class TestProcess:
 
 @pytest.mark.django_db
 class TestRecentProcess:
+    """Tests for Recent Process."""
 
     def test_recent_process_unique_per_user_and_process(self, user_lawyer, process):
-        """Solo debe existir un RecentProcess por combinación (user, process)"""
+        """Solo debe existir un RecentProcess por combinación (user, process)."""
         RecentProcess.objects.create(user=user_lawyer, process=process)
 
         with transaction.atomic():
@@ -291,7 +299,7 @@ class TestRecentProcess:
         assert RecentProcess.objects.filter(user=user_lawyer, process=process).count() == 1
 
     def test_recent_process_ordering_by_last_viewed(self, user_lawyer, process, case_type):
-        """Las instancias de RecentProcess deben ordenarse por last_viewed descendente"""
+        """Las instancias de RecentProcess deben ordenarse por last_viewed descendente."""
         other_process = Process.objects.create(
             authority='District Court',
             plaintiff='X',
@@ -306,10 +314,10 @@ class TestRecentProcess:
         recent_second = RecentProcess.objects.create(user=user_lawyer, process=other_process)
 
         # Ajustamos manualmente las fechas para simular un acceso más reciente
-        recent_first.last_viewed = timezone.now() - timezone.timedelta(days=1)
+        recent_first.last_viewed = FIXED_NOW - timezone.timedelta(days=1)
         recent_first.save(update_fields=['last_viewed'])
 
-        recent_second.last_viewed = timezone.now()
+        recent_second.last_viewed = FIXED_NOW
         recent_second.save(update_fields=['last_viewed'])
 
         recents = list(RecentProcess.objects.filter(user=user_lawyer))
@@ -322,6 +330,7 @@ class TestRecentProcess:
 # ======================================================================
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="lawyer-b1@example.com", password="testpassword",
         first_name="Lawyer", last_name="B1", role="lawyer",
@@ -335,11 +344,15 @@ def lawyer():
 
 @pytest.mark.django_db
 class TestStageEdges:
+    """Tests for Stage Edges."""
+
     def test_stage_with_explicit_date(self):
+        """Verify stage with explicit date."""
         stage = Stage.objects.create(status="Filed", date=date(2024, 6, 15))
         assert stage.date == date(2024, 6, 15)
 
     def test_stage_date_defaults_to_null(self):
+        """Verify stage date defaults to null."""
         stage = Stage.objects.create(status="Open")
         assert stage.date is None
 
@@ -351,6 +364,8 @@ class TestStageEdges:
 
 @pytest.mark.django_db
 class TestCaseFileSignalEdge:
+    """Tests for Case File Signal Edge."""
+
     def test_delete_casefile_no_physical_file_does_not_raise(self):
         """Signal should not fail when file was already removed from disk."""
         f = SimpleUploadedFile("gone.pdf", b"x", content_type="application/pdf")
@@ -370,7 +385,10 @@ class TestCaseFileSignalEdge:
 
 @pytest.mark.django_db
 class TestProcessEdges:
+    """Tests for Process Edges."""
+
     def test_process_multiple_clients(self, lawyer, case_type):
+        """Verify process multiple clients."""
         c1 = User.objects.create_user(email="c1@x.com", password="p", role="client")
         c2 = User.objects.create_user(email="c2@x.com", password="p", role="client")
         proc = Process.objects.create(
@@ -381,6 +399,7 @@ class TestProcessEdges:
         assert proc.clients.count() == 2
 
     def test_process_authority_email_nullable(self, lawyer, case_type, client_user):
+        """Verify process authority email nullable."""
         proc = Process.objects.create(
             authority="A", plaintiff="P", defendant="D",
             ref="NO-EMAIL", lawyer=lawyer, case=case_type, subcase="S",
@@ -388,6 +407,7 @@ class TestProcessEdges:
         assert proc.authority_email is None
 
     def test_process_progress_default_zero(self, lawyer, case_type):
+        """Verify process progress default zero."""
         proc = Process.objects.create(
             authority="A", plaintiff="P", defendant="D",
             ref="PROG-0", lawyer=lawyer, case=case_type, subcase="S",
@@ -402,7 +422,10 @@ class TestProcessEdges:
 
 @pytest.mark.django_db
 class TestRecentProcessStr:
+    """Tests for Recent Process Str."""
+
     def test_str_contains_ref_and_user(self, lawyer, case_type):
+        """Verify str contains ref and user."""
         proc = Process.objects.create(
             authority="A", plaintiff="P", defendant="D",
             ref="REF-STR", lawyer=lawyer, case=case_type, subcase="S",

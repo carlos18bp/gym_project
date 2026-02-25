@@ -63,6 +63,10 @@ describe("Document Folders Store", () => {
     mockGetColorById.mockImplementation((id) => ({ id, hex: `#${id}` }));
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("initial state and available colors", () => {
     const store = setupStore();
 

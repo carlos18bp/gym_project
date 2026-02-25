@@ -6,7 +6,7 @@ import {
   installTinyMceCloudStub,
 } from "../helpers/documentEditorMocks.js";
 
-test("lawyer can open DocumentEditor and save draft", async ({ page }) => {
+test("lawyer can open DocumentEditor and save draft", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 1500;
   const documentId = 101;
 
@@ -46,9 +46,9 @@ test("lawyer can open DocumentEditor and save draft", async ({ page }) => {
   await page.getByRole("button", { name: "Guardar como borrador" }).click();
 
   // SweetAlert success
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("¡Borrador guardado exitosamente!");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-popup")).toContainText("¡Borrador guardado exitosamente!"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Redirect to dashboard
   await expect(page).toHaveURL(/\/dynamic_document_dashboard/);

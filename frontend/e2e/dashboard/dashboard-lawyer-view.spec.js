@@ -5,8 +5,8 @@ import {
   installDynamicDocumentApiMocks,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test.describe("dashboard: lawyer view", () => {
-  test("lawyer sees dashboard after login", async ({ page }) => {
+test.describe("dashboard: lawyer view", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, () => {
+  test("lawyer sees dashboard after login", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
     const userId = 8000;
 
     await installDynamicDocumentApiMocks(page, {
@@ -28,7 +28,7 @@ test.describe("dashboard: lawyer view", () => {
     await expect(page.getByRole("heading").first()).toBeVisible();
   });
 
-  test("lawyer dashboard has navigation tabs", async ({ page }) => {
+  test("lawyer dashboard has navigation tabs", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
     const userId = 8001;
 
     await installDynamicDocumentApiMocks(page, {
@@ -51,7 +51,7 @@ test.describe("dashboard: lawyer view", () => {
     await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible();
   });
 
-  test("lawyer can access Minutas section", async ({ page }) => {
+  test("lawyer can access Minutas section", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
     const userId = 8002;
 
     await installDynamicDocumentApiMocks(page, {
@@ -73,7 +73,7 @@ test.describe("dashboard: lawyer view", () => {
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();
   });
 
-  test("lawyer can access Carpetas section", async ({ page }) => {
+  test("lawyer can access Carpetas section", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
     const userId = 8003;
 
     await installDynamicDocumentApiMocks(page, {

@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { markRaw } from "vue";
+import { markRaw, nextTick } from "vue";
 
 import BaseDocumentCard from "@/components/dynamic_document/cards/BaseDocumentCard.vue";
 
@@ -49,6 +49,8 @@ jest.mock("@/shared/color_palette", () => ({
 
 jest.mock("@/components/dynamic_document/cards/index.js", () => {
   const { ref } = require("vue");
+
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
 
   if (!mockActiveModalsRef) {
     mockActiveModalsRef = ref({
@@ -442,6 +444,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("showMenuOptions=false hides menu when menuOptions is null, but menuOptions override still renders", async () => {
+    // quality: allow-multi-render (contrasting prop configurations)
     const wrapperHidden = mount(BaseDocumentCard, {
       props: baseProps({
         showMenuOptions: false,
@@ -525,6 +528,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("edit action navigates using editRoute when provided, otherwise opens edit modal", async () => {
+    // quality: allow-multi-render (contrasting editRoute vs modal branches)
     const doc = { id: 7, title: "My Doc", state: "Draft", tags: [] };
 
     const wrapperNav = mount(BaseDocumentCard, {
@@ -580,6 +584,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("lawyer Draft publish option disabled when variables missing name_es, enabled otherwise", async () => {
+    // quality: allow-multi-render (contrasting disabled vs enabled states)
     const wrapperDisabled = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
         cardType: "lawyer",
@@ -687,7 +692,7 @@ describe("BaseDocumentCard.vue", () => {
       },
     });
 
-    expect(wrapper.vm.organizedMenuItems).toEqual([]);
+    expect(wrapper.findAll("[data-test='menu-item']").length).toBe(0);
   });
 
   test("status text/classes handle progress", () => {
@@ -992,6 +997,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("signatures cardType hides sign when signatures missing or user not listed", async () => {
+    // quality: allow-multi-render (contrasting empty vs non-matching signatures)
     const wrapperNoSignatures = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
         cardType: "signatures",
@@ -1042,6 +1048,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("handles useDocument/use branches and unknown-action warn", async () => {
+    // quality: allow-multi-render (contrasting default vs lawyer cardType branches)
     const doc = { id: 30, title: "Default", state: "Draft", tags: [] };
 
     const wrapperDefault = mount(BaseDocumentCard, {
@@ -1111,7 +1118,7 @@ describe("BaseDocumentCard.vue", () => {
     mockActiveModalsRef.value.letterhead.document = { id: 40 };
     mockActiveModalsRef.value.relationships.isOpen = true;
     mockActiveModalsRef.value.relationships.document = { id: 40 };
-    await wrapper.vm.$nextTick();
+    await nextTick();
 
     expect(wrapper.find("[data-test='modal-signatures']").exists()).toBe(true);
     expect(wrapper.find("[data-test='modal-permissions']").exists()).toBe(true);
@@ -1135,7 +1142,7 @@ describe("BaseDocumentCard.vue", () => {
     mockActiveModalsRef.value.permissions.isOpen = true;
     mockActiveModalsRef.value.letterhead.isOpen = true;
     mockActiveModalsRef.value.relationships.isOpen = true;
-    await wrapper.vm.$nextTick();
+    await nextTick();
 
     await wrapper.find("[data-test='refresh-signatures']").trigger("click");
     expect(wrapper.emitted("refresh")).toBeTruthy();
@@ -1167,7 +1174,7 @@ describe("BaseDocumentCard.vue", () => {
     mockActiveModalsRef.value.permissions.isOpen = true;
     mockActiveModalsRef.value.letterhead.isOpen = true;
     mockActiveModalsRef.value.relationships.isOpen = true;
-    await wrapper.vm.$nextTick();
+    await nextTick();
 
     await wrapper.find("[data-test='close-signatures']").trigger("click");
     await wrapper.find("[data-test='close-permissions']").trigger("click");

@@ -173,6 +173,7 @@ describe("SignaturesListTable.vue", () => {
     await flushPromises();
 
     expect(mockDocumentStore.fetchDocumentsForTab).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.tabDocuments).toHaveLength(2);
   });
 
@@ -180,6 +181,7 @@ describe("SignaturesListTable.vue", () => {
     const wrapper = mountView();
     const document = { id: 10, title: "Preview", created_by: 1, signatures: [] };
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleMenuAction("preview", document);
 
     expect(mockHandlePreviewDocument).toHaveBeenCalledWith(document);
@@ -189,6 +191,7 @@ describe("SignaturesListTable.vue", () => {
     const wrapper = mountView();
     const document = { id: 5, title: "Reject", created_by: 1, signatures: [] };
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.documentToReject = document;
     wrapper.vm.$.setupState.rejectComment = "Motivo";
 

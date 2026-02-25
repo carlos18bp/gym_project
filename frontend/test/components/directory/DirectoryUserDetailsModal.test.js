@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { useProcessStore } from "@/stores/process";
 import DirectoryUserDetailsModal from "@/components/directory/DirectoryUserDetailsModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockRouterPush = jest.fn();
 
 jest.mock("vue-router", () => ({
@@ -120,6 +122,7 @@ describe("DirectoryUserDetailsModal.vue", () => {
     await Promise.resolve();
 
     expect(fetchSpy).toHaveBeenCalled();
+    fetchSpy.mockRestore();
     wrapper.unmount();
   });
 

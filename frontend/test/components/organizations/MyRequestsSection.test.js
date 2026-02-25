@@ -2,6 +2,8 @@ import { mount } from "@vue/test-utils";
 
 import MyRequestsSection from "@/components/organizations/client/sections/MyRequestsSection.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 jest.mock("@heroicons/vue/24/outline", () => {
   const IconStub = {
     name: "IconStub",
@@ -212,7 +214,7 @@ describe("MyRequestsSection.vue", () => {
     expect(wrapper.text()).toContain("Cuando envíes solicitudes corporativas");
   });
 
-  test("clicking header 'Nueva Solicitud' emits create-request", async () => {
+  test("clicking header 'Nueva Solicitud' emits create-request", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(MyRequestsSection, {
       props: {
         requests: [],

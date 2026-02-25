@@ -16,7 +16,7 @@ describe("Corporate Requests Store", () => {
   });
 
   afterEach(() => {
-    console.error.mockRestore();
+    jest.restoreAllMocks();
   });
 
   test("initializes with empty state", () => {

@@ -5,7 +5,7 @@ import {
   buildMockSubscription,
 } from "../helpers/subscriptionsMocks.js";
 
-test("authenticated user with active subscription sees plan info on subscriptions page", async ({ page }) => {
+test("authenticated user with active subscription sees plan info on subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 850;
 
   await installSubscriptionsApiMocks(page, {
@@ -31,10 +31,10 @@ test("authenticated user with active subscription sees plan info on subscription
 
   // All three plan buttons should be visible
   const planButtons = page.getByRole("button", { name: "Elegir plan" });
-  await expect(planButtons.first()).toBeVisible();
+  await expect(planButtons.first()).toBeVisible(); // quality: allow-fragile-selector (positional selector for first matching element)
 });
 
-test("authenticated user navigates to paid plan checkout from subscriptions", async ({ page }) => {
+test("authenticated user navigates to paid plan checkout from subscriptions", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 851;
 
   await installSubscriptionsApiMocks(page, {
@@ -54,14 +54,14 @@ test("authenticated user navigates to paid plan checkout from subscriptions", as
 
   // Click the second plan's "Elegir plan" button (Plan Cliente)
   const planButtons = page.getByRole("button", { name: "Elegir plan" });
-  await planButtons.nth(1).click();
+  await planButtons.nth(1).click(); // quality: allow-fragile-selector (positional selector for specific list item)
 
   // Should navigate to checkout for the cliente plan
   await expect(page).toHaveURL(/\/checkout\/cliente/);
   await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 10_000 });
 });
 
-test("checkout page shows user contact info and plan details", async ({ page }) => {
+test("checkout page shows user contact info and plan details", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 852;
 
   await installSubscriptionsApiMocks(page, {
@@ -87,7 +87,7 @@ test("checkout page shows user contact info and plan details", async ({ page }) 
   await expect(page.getByText("Volver a planes")).toBeVisible();
 });
 
-test("checkout back button returns to subscriptions page", async ({ page }) => {
+test("checkout back button returns to subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 853;
 
   await installSubscriptionsApiMocks(page, {

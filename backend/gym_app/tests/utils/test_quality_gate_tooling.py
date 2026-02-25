@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+import test_quality_gate as quality_gate_module  # noqa: E402
 from quality.backend_analyzer import ASTAnalyzer  # noqa: E402
 from quality.base import (  # noqa: E402
     Config,
@@ -25,12 +25,15 @@ from quality.base import (  # noqa: E402
     Severity,
     SuiteResult,
 )
-from quality.external_lint import ExternalLintRunResult, ExternalLintRunner  # noqa: E402
+from quality.external_lint import (  # noqa: E402
+    CURATED_RUFF_RULE_SELECTORS,
+    ExternalLintRunner,
+    ExternalLintRunResult,
+)
 from quality.frontend_e2e_analyzer import FrontendE2EAnalyzer  # noqa: E402
 from quality.frontend_unit_analyzer import FrontendUnitAnalyzer  # noqa: E402
 from quality.js_ast_bridge import JSFileResult, JSIssueInfo, JSTestInfo  # noqa: E402
 from quality.patterns import Patterns  # noqa: E402
-import test_quality_gate as quality_gate_module  # noqa: E402
 from test_quality_gate import QualityReport  # noqa: E402
 
 
@@ -84,6 +87,118 @@ def _build_backend_report_for_source(tmp_path: Path, relative_path: str, source:
         suite="backend",
         include_files=[str(target)],
     ).build()
+
+
+def _build_excessive_steps_e2e_source(test_name: str, assertion_lines: list[str]) -> str:
+    """Build long-flow E2E source used to validate EXCESSIVE_STEPS heuristics."""
+    step_lines = [
+        "  await page.goto('/a');",
+        "  await page.click('#a1');",
+        "  await page.fill('#f1', 'x');",
+        "  await page.click('#a2');",
+        "  await page.fill('#f2', 'y');",
+        "  await page.click('#a3');",
+        "  await page.fill('#f3', 'z');",
+        "  await page.click('#a4');",
+        "  await page.click('#a5');",
+        "  await page.click('#a6');",
+        "  await page.click('#a7');",
+        "  await page.click('#a8');",
+        "  await page.click('#a9');",
+    ]
+    lines = [
+        f"test('{test_name}', async ({{ page }}) => {{",
+        *step_lines,
+        *assertion_lines,
+        "});",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _run_ruff_with_captured_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[ExternalLintRunResult, list[str]]:
+    """Execute Ruff runner with mocked subprocess and return emitted command."""
+    target = _write_backend_test(
+        tmp_path,
+        "backend/gym_app/tests/models/test_ruff_selector_payload.py",
+        "def test_ruff_selector_payload():\n    assert True\n",
+    )
+    captured_command: list[str] = []
+
+    def _fake_run(  # type: ignore[no-untyped-def]
+        command,
+        *,
+        capture_output,
+        text,
+        cwd,
+        check,
+    ):
+        _ = (capture_output, text, cwd, check)
+        captured_command[:] = list(command)
+        return subprocess.CompletedProcess(command, 0, stdout="[]", stderr="")
+
+    monkeypatch.setattr(ExternalLintRunner, "_ruff_binary", lambda self: "ruff")
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    return ExternalLintRunner(tmp_path).run_ruff([target]), captured_command
+
+
+def _build_wait_timeout_overlap_target(tmp_path: Path) -> tuple[str, Path]:
+    """Create synthetic Playwright test file used for cross-engine dedupe checks."""
+    rel_path = "frontend/e2e/test_sleep_overlap.spec.js"
+    target = tmp_path / rel_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        "test('sleep overlap', async ({ page }) => { await page.waitForTimeout(200); });\n",
+        encoding="utf-8",
+    )
+    return rel_path, target
+
+
+def _fake_e2e_suite_with_wait_timeout(rel_path: str, target: Path):
+    """Build analyzer stub that returns an internal wait_for_timeout issue."""
+
+    def _fake_e2e_analyze_suite(self, _test_root: Path, file_matcher=None):  # type: ignore[no-untyped-def]
+        suite = SuiteResult(suite_name="frontend_e2e")
+        if file_matcher and not file_matcher(target):
+            return suite
+        suite.add_file(
+            FileResult(
+                file=rel_path,
+                area="e2e",
+                location_ok=True,
+                tests=[],
+                issues=[
+                    Issue(
+                        file=rel_path,
+                        message="waitForTimeout used",
+                        severity=Severity.WARNING,
+                        category=IssueCategory.SLEEP_CALL,
+                        line=9,
+                        rule_id="wait_for_timeout",
+                    )
+                ],
+            )
+        )
+        return suite
+
+    return _fake_e2e_analyze_suite
+
+
+def _wait_timeout_external_finding(rel_path: str) -> ExternalLintFinding:
+    """Build external ESLint finding for wait_for_timeout overlap tests."""
+    return ExternalLintFinding(
+        source="eslint",
+        file=rel_path,
+        line=3,
+        col=1,
+        external_rule_id="playwright/no-wait-for-timeout",
+        message="Prefer web-first assertions",
+        severity_raw="1",
+        normalized_rule_id="wait_for_timeout",
+        fingerprint="fp:sleep-overlap",
+    )
 
 
 def test_quality_report_include_file_filters_backend_suite(tmp_path: Path) -> None:
@@ -1154,51 +1269,25 @@ def test_ast_parser_e2e_excessive_steps_uses_strong_assert_density(tmp_path: Pat
     """EXCESSIVE_STEPS uses strong assertions, not weak ones, as density signal."""
     weak_only = tmp_path / "excessive-steps-weak-asserts.spec.js"
     weak_only.write_text(
-        """
-test('long flow weak assertions', async ({ page }) => {
-  await page.goto('/a');
-  await page.click('#a1');
-  await page.fill('#f1', 'x');
-  await page.click('#a2');
-  await page.fill('#f2', 'y');
-  await page.click('#a3');
-  await page.fill('#f3', 'z');
-  await page.click('#a4');
-  await page.click('#a5');
-  await page.click('#a6');
-  await page.click('#a7');
-  await page.click('#a8');
-  await page.click('#a9');
-  expect(page).toBeTruthy();
-  expect(true).toBe(true);
-});
-""".strip()
-        + "\n",
+        _build_excessive_steps_e2e_source(
+            "long flow weak assertions",
+            [
+                "  expect(page).toBeTruthy();",
+                "  expect(true).toBe(true);",
+            ],
+        ),
         encoding="utf-8",
     )
 
     strong_two = tmp_path / "excessive-steps-strong-asserts.spec.js"
     strong_two.write_text(
-        """
-test('long flow strong assertions', async ({ page }) => {
-  await page.goto('/a');
-  await page.click('#a1');
-  await page.fill('#f1', 'x');
-  await page.click('#a2');
-  await page.fill('#f2', 'y');
-  await page.click('#a3');
-  await page.fill('#f3', 'z');
-  await page.click('#a4');
-  await page.click('#a5');
-  await page.click('#a6');
-  await page.click('#a7');
-  await page.click('#a8');
-  await page.click('#a9');
-  await expect(page).toHaveURL(/done/);
-  await expect(page.getByRole('main')).toBeVisible();
-});
-""".strip()
-        + "\n",
+        _build_excessive_steps_e2e_source(
+            "long flow strong assertions",
+            [
+                "  await expect(page).toHaveURL(/done/);",
+                "  await expect(page.getByRole('main')).toBeVisible();",
+            ],
+        ),
         encoding="utf-8",
     )
 
@@ -1478,6 +1567,20 @@ def test_performance_budget_issues_skip_when_thresholds_not_exceeded(tmp_path: P
     assert issues == []
 
 
+def test_external_lint_runner_ruff_uses_curated_selectors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ruff runner sends the curated selector set to --select."""
+    result, captured_command = _run_ruff_with_captured_command(tmp_path, monkeypatch)
+
+    assert result.status == "ok"
+    assert result.findings == []
+    assert "--select" in captured_command
+
+    select_index = captured_command.index("--select")
+    selected_rules = set(captured_command[select_index + 1].split(","))
+    assert selected_rules == set(CURATED_RUFF_RULE_SELECTORS)
+    assert "PT028" not in selected_rules
+
+
 def test_external_lint_misconfigured_is_warning_in_soft_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Misconfigured external linter is warning in soft mode."""
     _write_backend_test(
@@ -1733,48 +1836,13 @@ def test_external_lint_deduplicates_by_fingerprint(tmp_path: Path, monkeypatch: 
 
 def test_cross_engine_dedupe_relaxes_line_mismatch_for_wait_for_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Internal/external wait_for_timeout overlap dedupes even when reported lines differ."""
-    rel_path = "frontend/e2e/test_sleep_overlap.spec.js"
-    target = tmp_path / rel_path
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text("test('sleep overlap', async ({ page }) => { await page.waitForTimeout(200); });\n", encoding="utf-8")
-
-    def _fake_e2e_analyze_suite(self, _test_root: Path, file_matcher=None):  # type: ignore[no-untyped-def]
-        suite = SuiteResult(suite_name="frontend_e2e")
-        if file_matcher and not file_matcher(target):
-            return suite
-        suite.add_file(
-            FileResult(
-                file=rel_path,
-                area="e2e",
-                location_ok=True,
-                tests=[],
-                issues=[
-                    Issue(
-                        file=rel_path,
-                        message="waitForTimeout used",
-                        severity=Severity.WARNING,
-                        category=IssueCategory.SLEEP_CALL,
-                        line=9,
-                        rule_id="wait_for_timeout",
-                    )
-                ],
-            )
-        )
-        return suite
-
-    monkeypatch.setattr(FrontendE2EAnalyzer, "analyze_suite", _fake_e2e_analyze_suite)
-
-    external_finding = ExternalLintFinding(
-        source="eslint",
-        file=rel_path,
-        line=3,
-        col=1,
-        external_rule_id="playwright/no-wait-for-timeout",
-        message="Prefer web-first assertions",
-        severity_raw="1",
-        normalized_rule_id="wait_for_timeout",
-        fingerprint="fp:sleep-overlap",
+    rel_path, target = _build_wait_timeout_overlap_target(tmp_path)
+    monkeypatch.setattr(
+        FrontendE2EAnalyzer,
+        "analyze_suite",
+        _fake_e2e_suite_with_wait_timeout(rel_path, target),
     )
+    external_finding = _wait_timeout_external_finding(rel_path)
 
     monkeypatch.setattr(
         quality_gate_module.ExternalLintRunner,

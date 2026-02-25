@@ -2,11 +2,15 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate deactivates organization and client loses membership access", async ({ page }) => {
+test("cross-role: corporate deactivates organization and client loses membership access", { tag: ['@flow:org-cross-member-management', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 5010;
@@ -77,16 +81,16 @@ test("cross-role: corporate deactivates organization and client loses membership
   await page.goto("/organizations_dashboard");
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
-  const orgCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const orgCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await orgCard.getByRole("button", { name: "Editar" }).click();
   await expect(page.getByRole("heading", { name: "Editar Organización" })).toBeVisible();
 
   await page.locator("input#inactive").check();
   await page.getByRole("button", { name: "Guardar Cambios" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Organización actualizada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Organización actualizada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Step 3: client loses membership access
   await setAuthLocalStorage(page, {

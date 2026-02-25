@@ -14,7 +14,7 @@ import { mockApi } from "../helpers/api.js";
  * - legal_requests_management.js store (25.7%) — delete/status actions
  */
 
-test("lawyer opens StatusUpdateModal from detail page and selects new status", async ({ page }) => {
+test("lawyer opens StatusUpdateModal from detail page and selects new status", { tag: ['@flow:legal-lawyer-modals', '@module:legal-requests', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9840;
 
   await installLegalRequestsApiMocks(page, {
@@ -71,7 +71,7 @@ test("lawyer opens StatusUpdateModal from detail page and selects new status", a
   await expect(page.getByText("Actualizar Estado")).toBeHidden({ timeout: 10_000 });
 });
 
-test("lawyer opens DeleteConfirmModal from detail page, types confirmation text", async ({ page }) => {
+test("lawyer opens DeleteConfirmModal from detail page, types confirmation text", { tag: ['@flow:legal-lawyer-modals', '@module:legal-requests', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9841;
 
   await installLegalRequestsApiMocks(page, {
@@ -108,7 +108,7 @@ test("lawyer opens DeleteConfirmModal from detail page, types confirmation text"
   await expect(deleteBtn).toBeEnabled();
 });
 
-test("DeleteConfirmModal shows validation error when wrong text is typed", async ({ page }) => {
+test("DeleteConfirmModal shows validation error when wrong text is typed", { tag: ['@flow:legal-lawyer-modals', '@module:legal-requests', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9842;
 
   await installLegalRequestsApiMocks(page, {

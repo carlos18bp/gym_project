@@ -44,6 +44,10 @@ describe("usePWAInstall", () => {
     setUserAgent("Mozilla/5.0");
   });
 
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   test("detects browser: chrome / edge / firefox / safari / unknown", async () => {
     let usePWAInstall = await loadUsePWAInstall();
 

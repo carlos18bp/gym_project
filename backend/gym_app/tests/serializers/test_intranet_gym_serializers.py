@@ -1,11 +1,17 @@
+"""Tests for intranet_gym_serializers module."""
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models.intranet_gym import LegalDocument, IntranetProfile
-from gym_app.serializers.intranet_gym import LegalDocumentSerializer, IntranetProfileSerializer
+
+from gym_app.models.intranet_gym import IntranetProfile, LegalDocument
+from gym_app.serializers.intranet_gym import (
+    IntranetProfileSerializer,
+    LegalDocumentSerializer,
+)
+
 
 @pytest.fixture
 def legal_document():
-    """Crear un documento legal de prueba con un archivo"""
+    """Crear un documento legal de prueba con un archivo."""
     test_file = SimpleUploadedFile(
         "test_document.pdf", 
         b"file_content", 
@@ -19,6 +25,7 @@ def legal_document():
 
 @pytest.fixture
 def intranet_profile():
+    """Intranet profile."""
     cover = SimpleUploadedFile(
         "cover.jpg",
         b"cover-content",
@@ -36,9 +43,10 @@ def intranet_profile():
 
 @pytest.mark.django_db
 class TestLegalDocumentSerializer:
+    """Tests for Legal Document Serializer."""
     
     def test_serialize_legal_document(self, legal_document):
-        """Test la serialización de un documento legal"""
+        """Test la serialización de un documento legal."""
         # Crear un contexto de request simulado
         class MockRequest:
             def __init__(self):
@@ -62,7 +70,7 @@ class TestLegalDocumentSerializer:
         assert legal_document.file.name in serializer.data['file_url']
     
     def test_serialize_legal_document_without_request(self, legal_document):
-        """Test la serialización sin un objeto request en el contexto"""
+        """Test la serialización sin un objeto request en el contexto."""
         # Crear el serializador sin contexto de request
         serializer = LegalDocumentSerializer(legal_document)
         
@@ -76,7 +84,7 @@ class TestLegalDocumentSerializer:
         assert legal_document.file.name in serializer.data['file_url']
     
     def test_deserialize_legal_document(self):
-        """Test la deserialización para crear un nuevo documento legal"""
+        """Test la deserialización para crear un nuevo documento legal."""
         # Crear un archivo de prueba
         test_file = SimpleUploadedFile(
             "new_document.pdf", 
@@ -104,7 +112,7 @@ class TestLegalDocumentSerializer:
         assert 'new_document' in legal_document.file.name
     
     def test_update_legal_document(self, legal_document):
-        """Test la actualización de un documento legal existente"""
+        """Test la actualización de un documento legal existente."""
         # Archivo original
         original_file_name = legal_document.file.name
         
@@ -133,7 +141,7 @@ class TestLegalDocumentSerializer:
         assert updated_document.file.name != original_file_name
     
     def test_partial_update_legal_document(self, legal_document):
-        """Test la actualización parcial de un documento legal"""
+        """Test la actualización parcial de un documento legal."""
         # Archivo original
         original_file_name = legal_document.file.name
         
@@ -153,7 +161,7 @@ class TestLegalDocumentSerializer:
         assert updated_document.file.name == original_file_name  # Archivo sin cambios
     
     def test_invalid_document_data(self):
-        """Test la validación de datos inválidos"""
+        """Test la validación de datos inválidos."""
         # Datos sin archivo (campo requerido)
         invalid_data = {
             'name': 'Document Without File'
@@ -167,7 +175,10 @@ class TestLegalDocumentSerializer:
 
 @pytest.mark.django_db
 class TestIntranetProfileSerializer:
+    """Tests for Intranet Profile Serializer."""
+
     def test_profile_serializer_with_request(self, intranet_profile):
+        """Verify profile serializer with request."""
         class MockRequest:
             def build_absolute_uri(self, url):
                 return f"http://testserver{url}"
@@ -184,6 +195,7 @@ class TestIntranetProfileSerializer:
         assert intranet_profile.profile_image.name in data["profile_image_url"]
 
     def test_profile_serializer_without_request(self, intranet_profile):
+        """Verify profile serializer without request."""
         serializer = IntranetProfileSerializer(intranet_profile)
         data = serializer.data
 
@@ -193,6 +205,8 @@ class TestIntranetProfileSerializer:
 
 @pytest.mark.django_db
 class TestIntranetProfileSerializerEdges:
+    """Tests for Intranet Profile Serializer Edges."""
+
     def test_cover_image_url_no_image(self, rf):
         """Cover line 49: cover_image is falsy → return None."""
         profile = IntranetProfile.objects.create()
@@ -256,6 +270,8 @@ class TestIntranetProfileSerializerEdges:
 
 @pytest.mark.django_db
 class TestLegalDocumentSerializerEdges:
+    """Tests for Legal Document Serializer Edges."""
+
     def test_file_url_without_request(self):
         """Cover line 26: no request in context → return raw file.url."""
         f = SimpleUploadedFile("doc.pdf", b"%PDF", content_type="application/pdf")

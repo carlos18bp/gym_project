@@ -137,6 +137,7 @@ describe("ProcessList.vue", () => {
       routeParams: { display: "history" },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeTab).toBe("archived_processes");
     expect(wrapper.vm.$.setupState.filteredAndSortedProcesses.map((p) => p.id)).toEqual([1]);
 
@@ -166,6 +167,7 @@ describe("ProcessList.vue", () => {
       routeQuery: { group: "general" },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.searchQuery = "ana";
     await flushPromises();
     expect(wrapper.vm.$.setupState.filteredAndSortedProcesses.map((p) => p.id)).toEqual([5]);
@@ -185,6 +187,7 @@ describe("ProcessList.vue", () => {
     const processes = [buildProcess({ id: 10 }), buildProcess({ id: 11 })];
     const { wrapper } = await mountView({ processes });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.toggleSelectAll();
     expect(wrapper.vm.$.setupState.selectedProcesses).toEqual([10, 11]);
     expect(wrapper.vm.$.setupState.allSelected).toBe(true);

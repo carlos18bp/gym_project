@@ -1,12 +1,15 @@
-import pytest
+"""Tests for subscription_serializers module."""
 import datetime
 from decimal import Decimal
 
+import pytest
 from django.contrib.auth import get_user_model
 
-from gym_app.models import Subscription, PaymentHistory
-from gym_app.serializers.subscription import PaymentHistorySerializer, SubscriptionSerializer
-
+from gym_app.models import PaymentHistory, Subscription
+from gym_app.serializers.subscription import (
+    PaymentHistorySerializer,
+    SubscriptionSerializer,
+)
 
 User = get_user_model()
 FIXED_BILLING_DATE = datetime.date(2026, 1, 15)
@@ -16,6 +19,7 @@ FIXED_FUTURE_BILLING_DATE = FIXED_BILLING_DATE + datetime.timedelta(days=30)
 @pytest.fixture
 @pytest.mark.django_db
 def subscription_user():
+    """Subscription user."""
     return User.objects.create_user(
         email="subscriber@example.com",
         password="testpassword",
@@ -27,6 +31,8 @@ def subscription_user():
 
 @pytest.mark.django_db
 class TestPaymentHistorySerializer:
+    """Tests for Payment History Serializer."""
+
     def test_serialize_payment_history(self, subscription_user):
         """PaymentHistorySerializer debe exponer los campos básicos y respetar read_only."""
         sub = Subscription.objects.create(
@@ -59,6 +65,8 @@ class TestPaymentHistorySerializer:
 
 @pytest.mark.django_db
 class TestSubscriptionSerializer:
+    """Tests for Subscription Serializer."""
+
     def test_serialize_subscription_basic_fields(self, subscription_user):
         """SubscriptionSerializer basic field serialization."""
         sub = Subscription.objects.create(
@@ -98,7 +106,10 @@ class TestSubscriptionSerializer:
 
 @pytest.mark.django_db
 class TestSubscriptionSerializerEdges:
+    """Tests for Subscription Serializer Edges."""
+
     def test_user_name_fallback_to_email(self):
+        """Verify user name fallback to email."""
         user = User.objects.create_user(
             email="noname-sub@example.com", password="p",
             first_name="", last_name="",
@@ -112,6 +123,7 @@ class TestSubscriptionSerializerEdges:
         assert s.data["user_name"] == user.email
 
     def test_read_only_fields(self):
+        """Verify read only fields."""
         user = User.objects.create_user(
             email="ro@example.com", password="p", role="client",
         )

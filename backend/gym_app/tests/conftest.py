@@ -1,13 +1,12 @@
-"""
-Shared fixtures for gym_app tests.
+"""Shared fixtures for gym_app tests.
 
 These fixtures are available to all test files under gym_app/tests/.
 Local fixtures in individual test files take precedence over these.
 """
 import pytest
-from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
+from rest_framework.test import APIClient
 
 from gym_app.models import (
     Case,
@@ -60,7 +59,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
-    """Basic (free-tier) role user."""
+    """Create basic (free-tier) role user."""
     return User.objects.create_user(
         email="basic_conftest@test.com",
         password="testpassword",
@@ -98,14 +97,14 @@ def organization(corporate_user):
 @pytest.fixture
 @pytest.mark.django_db
 def case_type():
-    """A Case (case type) instance."""
+    """Create a Case (case type) instance."""
     return Case.objects.create(type="Civil")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
-    """A DynamicDocument in Draft state owned by lawyer_user."""
+    """Create a DynamicDocument in Draft state owned by lawyer_user."""
     return DynamicDocument.objects.create(
         title="ConftestDoc",
         content="<p>conftest test content</p>",

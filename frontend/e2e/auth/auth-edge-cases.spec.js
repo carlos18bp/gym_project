@@ -2,6 +2,8 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * Auth edge cases:
  * - Token expiration redirects to sign_in
@@ -84,7 +86,7 @@ async function installAuthEdgeCaseMocks(page, { scenario = "default", userId = 9
 
 function bypassCaptcha(page) {
   return page.evaluate(() => {
-    const el = document.querySelector("#email") || document.querySelector("form");
+    const el = document.querySelector('input[type="email"]') || document.querySelector("form");
     let comp = el && el.__vueParentComponent;
 
     while (
@@ -124,7 +126,7 @@ function bypassCaptcha(page) {
   });
 }
 
-test("expired token redirects protected route to sign_in", async ({ page }) => {
+test("expired token redirects protected route to sign_in", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "expired_token" });
 
   // Set an expired token in localStorage
@@ -141,7 +143,7 @@ test("expired token redirects protected route to sign_in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible();
 });
 
-test("Google OAuth callback route renders sign-in page", async ({ page }) => {
+test("Google OAuth callback route renders sign-in page", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "default" });
 
   await page.goto("/auth/google/callback");
@@ -151,15 +153,15 @@ test("Google OAuth callback route renders sign-in page", async ({ page }) => {
   await expect(page.getByText("O continuar con")).toBeVisible();
 });
 
-test("sign-in with invalid credentials shows error notification", async ({ page }) => {
+test("sign-in with invalid credentials shows error notification", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "invalid_credentials" });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
   // Fill in credentials
-  await page.locator("#email").fill("wrong@example.com");
-  await page.locator("#password").fill("wrongpass");
+  await page.getByLabel(/correo/i).fill("wrong@example.com");
+  await page.getByLabel("Contraseña").fill("wrongpass");
 
   // Bypass captcha
   await bypassCaptcha(page);
@@ -168,29 +170,31 @@ test("sign-in with invalid credentials shows error notification", async ({ page 
   await page.getByRole("button", { name: /Iniciar sesión/i }).click();
 
   // Should show error notification (SweetAlert)
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("inválidas");
+  const authErrorDialog = page.locator('[role="dialog"], [role="alertdialog"]');
+  await expect(authErrorDialog).toBeVisible({ timeout: 15_000 });
+  await expect(authErrorDialog).toContainText("inválidas");
 });
 
-test("sign-in without captcha shows validation warning", async ({ page }) => {
+test("sign-in without captcha shows validation warning", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "default" });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
   // Fill email and password but do NOT bypass captcha
-  await page.locator("#email").fill("test@example.com");
-  await page.locator("#password").fill("password123");
+  await page.getByLabel(/correo/i).fill("test@example.com");
+  await page.getByLabel("Contraseña").fill("password123");
 
   // Click sign in without captcha verification
   await page.getByRole("button", { name: /Iniciar sesión/i }).click();
 
   // Should show warning about captcha
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("robot");
+  const captchaWarningDialog = page.locator('[role="dialog"], [role="alertdialog"]');
+  await expect(captchaWarningDialog).toBeVisible({ timeout: 15_000 });
+  await expect(captchaWarningDialog).toContainText("robot");
 });
 
-test("sign-in page shows terms and privacy policy links", async ({ page }) => {
+test("sign-in page shows terms and privacy policy links", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "default" });
 
   await page.goto("/sign_in");

@@ -5,6 +5,8 @@ import { useCorporateRequestsStore } from "@/stores/corporate_requests";
 
 import CreateRequestModal from "@/components/organizations/modals/CreateRequestModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({
@@ -79,7 +81,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue({ not: "an-array" });
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue({ not: "an-array" });
 
     const wrapper = mount(CreateRequestModal, {
       props: {
@@ -114,7 +116,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockRejectedValue({
+    requestsStore.getRequestTypes = jest.fn().mockRejectedValue({
       response: { status: 403 },
     });
 
@@ -151,7 +153,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockRejectedValue({
+    requestsStore.getRequestTypes = jest.fn().mockRejectedValue({
       response: { status: 401 },
     });
 
@@ -188,7 +190,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockRejectedValue({
+    requestsStore.getRequestTypes = jest.fn().mockRejectedValue({
       response: { status: 500 },
     });
 
@@ -226,7 +228,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
 
@@ -271,19 +273,18 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
 
-    const createSpy = jest
-      .spyOn(requestsStore, "createCorporateRequest")
-      .mockResolvedValue({
+    const createSpy = jest.fn().mockResolvedValue({
         corporate_request: {
           id: 500,
           request_number: "CORP-REQ-500",
           organization_info: { title: "Acme Corp" },
         },
       });
+    requestsStore.createCorporateRequest = createSpy;
 
     const wrapper = mount(CreateRequestModal, {
       props: {
@@ -340,11 +341,11 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
 
-    jest.spyOn(requestsStore, "createCorporateRequest").mockRejectedValue({
+    requestsStore.createCorporateRequest = jest.fn().mockRejectedValue({
       response: {
         data: {
           details: {
@@ -392,10 +393,10 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
-    jest.spyOn(requestsStore, "createCorporateRequest").mockRejectedValue({
+    requestsStore.createCorporateRequest = jest.fn().mockRejectedValue({
       response: { data: { error: "Backend says no" } },
     });
 
@@ -438,10 +439,10 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
-    jest.spyOn(requestsStore, "createCorporateRequest").mockRejectedValue(new Error("fail"));
+    requestsStore.createCorporateRequest = jest.fn().mockRejectedValue(new Error("fail"));
 
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
@@ -485,10 +486,10 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
-    jest.spyOn(requestsStore, "createCorporateRequest").mockResolvedValue({
+    requestsStore.createCorporateRequest = jest.fn().mockResolvedValue({
       corporate_request: {
         id: 500,
         request_number: "CORP-REQ-500",
@@ -542,9 +543,16 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
+    let resolveCreate;
+    const createRequestPromise = new Promise((resolve) => {
+      resolveCreate = resolve;
+    });
+    requestsStore.createCorporateRequest = jest
+      .fn()
+      .mockImplementation(() => createRequestPromise);
 
     const wrapper = mount(CreateRequestModal, {
       props: {
@@ -565,17 +573,43 @@ describe("CreateRequestModal.vue", () => {
 
     await flushPromises();
 
-    await wrapper.vm.handleClose();
-    expect(wrapper.emitted("close")).toBeTruthy();
+    const getCloseButton = () =>
+      wrapper.findAll("button").find((button) => button.classes().includes("text-gray-400"));
 
-    const closeEventsBefore = wrapper.emitted("close").length;
+    const initialCloseButton = getCloseButton();
+    expect(initialCloseButton).toBeTruthy();
+    await initialCloseButton.trigger("click");
+    expect(wrapper.emitted("close")?.length ?? 0).toBe(1);
 
-    wrapper.vm.isLoading = true;
+    await wrapper.find("select#organization").setValue("1");
+    await wrapper.find("select#request_type").setValue("1");
+    await wrapper.find("input#title").setValue("Título");
+    await wrapper.find("textarea#description").setValue("Descripción");
+
+    await wrapper.find("form").trigger("submit");
+    await flushPromises();
+    expect(wrapper.text()).toContain("Enviando solicitud...");
+
+    const closeEventsBefore = wrapper.emitted("close")?.length ?? 0;
+    const loadingCloseButton = getCloseButton();
+    expect(loadingCloseButton).toBeTruthy();
+    await loadingCloseButton.trigger("click");
+    expect(wrapper.emitted("close")?.length ?? 0).toBe(closeEventsBefore);
+
+    resolveCreate({
+      corporate_request: {
+        id: 500,
+        request_number: "CORP-REQ-500",
+        organization_info: { title: "Acme Corp" },
+      },
+    });
     await flushPromises();
 
-    await wrapper.vm.handleClose();
+    const finalCloseButton = getCloseButton();
+    expect(finalCloseButton).toBeTruthy();
+    await finalCloseButton.trigger("click");
 
-    expect(wrapper.emitted("close").length).toBe(closeEventsBefore);
+    expect(wrapper.emitted("close")?.length ?? 0).toBe(closeEventsBefore + 1);
   });
 
   test("re-opening the modal resets the form", async () => {
@@ -583,7 +617,7 @@ describe("CreateRequestModal.vue", () => {
     setActivePinia(pinia);
 
     const requestsStore = useCorporateRequestsStore();
-    jest.spyOn(requestsStore, "getRequestTypes").mockResolvedValue([
+    requestsStore.getRequestTypes = jest.fn().mockResolvedValue([
       { id: 1, name: "Consulta" },
     ]);
 

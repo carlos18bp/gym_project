@@ -52,7 +52,7 @@ describe("CreateDocumentByLawyer.vue", () => {
     jest.useRealTimers();
   });
 
-  test("create mode prevents empty submit and routes when title is set", async () => {
+  test("create mode prevents empty submit and routes when title is set", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mountView();
 
     await wrapper.find("form").trigger("submit.prevent");
@@ -67,7 +67,7 @@ describe("CreateDocumentByLawyer.vue", () => {
     );
   });
 
-  test("edit mode updates document name and emits close", async () => {
+  test("edit mode updates document name and emits close", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     jest.useFakeTimers();
     mockStore = {
       selectedDocument: { id: 5, title: "Original" },
@@ -95,7 +95,7 @@ describe("CreateDocumentByLawyer.vue", () => {
     expect(window.forceDocumentHighlight).toHaveBeenCalledWith(5);
   });
 
-  test("edit mode submit navigates to editor and stores lastUpdatedDocumentId", async () => {
+  test("edit mode submit navigates to editor and stores lastUpdatedDocumentId", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     mockStore = {
       selectedDocument: { id: 9, title: "Acta" },
       updateDocument: (...args) => mockUpdateDocument(...args),

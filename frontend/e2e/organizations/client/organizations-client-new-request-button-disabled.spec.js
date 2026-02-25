@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client without memberships: 'Nueva Solicitud' button is disabled and does not open modal", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client without memberships: 'Nueva Solicitud' button is disabled and does not open modal", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3540;
 
   await installOrganizationsClientApiMocks(page, {

@@ -16,8 +16,8 @@ from pathlib import Path
 from .base import ExternalLintFinding
 
 
-# Curated PT selection for pytest-style checks (avoid enabling full PT set at once).
-CURATED_RUFF_PT_RULES: tuple[str, ...] = (
+# Curated Ruff selection focused on pytest hygiene plus selected foundational families.
+CURATED_RUFF_RULE_SELECTORS: tuple[str, ...] = (
     "PT001",
     "PT002",
     "PT003",
@@ -25,8 +25,21 @@ CURATED_RUFF_PT_RULES: tuple[str, ...] = (
     "PT007",
     "PT011",
     "PT012",
+    "PT013",
+    "PT014",
     "PT015",
+    "PT016",
     "PT018",
+    "PT019",
+    "PT020",
+    "PT023",
+    "PT025",
+    "PT026",
+    "PT027",
+    "F",
+    "I",
+    "UP",
+    "D",
 )
 
 
@@ -67,7 +80,7 @@ class ExternalLintRunner:
         ]
 
     def run_ruff(self, targets: list[Path]) -> ExternalLintRunResult:
-        """Run Ruff on backend pytest targets and normalize PT findings."""
+        """Run Ruff on backend targets and normalize selected findings."""
         if not targets:
             return ExternalLintRunResult(source="ruff")
 
@@ -85,7 +98,7 @@ class ExternalLintRunner:
             "--output-format",
             "json",
             "--select",
-            ",".join(CURATED_RUFF_PT_RULES),
+            ",".join(CURATED_RUFF_RULE_SELECTORS),
             *[str(path) for path in targets],
         ]
 

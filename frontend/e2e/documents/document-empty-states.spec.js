@@ -5,8 +5,8 @@ import {
   installDynamicDocumentApiMocks,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test.describe("document dashboard: empty states", () => {
-  test("lawyer sees empty state when no documents", async ({ page }) => {
+test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, () => {
+  test("lawyer sees empty state when no documents", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 5000;
 
     await installDynamicDocumentApiMocks(page, {
@@ -31,7 +31,7 @@ test.describe("document dashboard: empty states", () => {
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();
   });
 
-  test("client sees empty state when no assigned documents", async ({ page }) => {
+  test("client sees empty state when no assigned documents", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 5001;
 
     await installDynamicDocumentApiMocks(page, {
@@ -54,7 +54,7 @@ test.describe("document dashboard: empty states", () => {
     await expect(page.getByRole("heading").first()).toBeVisible();
   });
 
-  test("dashboard shows tabs for navigation", async ({ page }) => {
+  test("dashboard shows tabs for navigation", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 5002;
 
     await installDynamicDocumentApiMocks(page, {
@@ -78,7 +78,7 @@ test.describe("document dashboard: empty states", () => {
     await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible();
   });
 
-  test("folders tab shows empty state when no folders", async ({ page }) => {
+  test("folders tab shows empty state when no folders", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 5003;
 
     await installDynamicDocumentApiMocks(page, {

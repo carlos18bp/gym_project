@@ -43,6 +43,7 @@
               <MenuItem>
                 <div
                   class="w-full text-left px-4 py-2 text-sm font-regular hover:bg-gray-100 transition cursor-pointer flex items-center justify-between"
+                  data-testid="submenu-trigger"
                   @mouseenter="showSubmenu(item.id)"
                   @mouseleave="hideSubmenu(item.id)"
                 >
@@ -65,6 +66,7 @@
                 <div
                   v-if="activeSubmenu === item.id"
                   class="absolute left-full top-0 mt-0 w-52 rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none z-60"
+                  data-testid="submenu-panel"
                   @mouseenter="showSubmenu(item.id)"
                   @mouseleave="hideSubmenu(item.id)"
                 >

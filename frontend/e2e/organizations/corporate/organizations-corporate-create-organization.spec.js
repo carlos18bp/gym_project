@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client can create an organization from the empty state", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("corporate_client can create an organization from the empty state", { tag: ['@flow:org-create', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
   const userId = 4200;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -44,9 +46,9 @@ test("corporate_client can create an organization from the empty state", async (
 
   await page.getByRole("button", { name: "Crear Organización" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Organización creada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Organización creada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Modal should close and new organization should appear
   await expect(page.getByRole("heading", { name: "Crear Nueva Organización" })).toHaveCount(0);

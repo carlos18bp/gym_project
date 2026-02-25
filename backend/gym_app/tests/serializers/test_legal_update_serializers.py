@@ -1,3 +1,5 @@
+"""Tests for LegalUpdate serializer output behavior."""
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -7,6 +9,8 @@ from gym_app.serializers.legal_update import LegalUpdateSerializer
 
 @pytest.mark.django_db
 class TestLegalUpdateSerializer:
+    """Serializer tests for LegalUpdate fields and image URL behavior."""
+
     def test_serialize_legal_update_basic_fields(self):
         """Test basic field serialization."""
         image = SimpleUploadedFile(

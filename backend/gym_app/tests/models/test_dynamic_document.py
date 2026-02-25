@@ -1,22 +1,22 @@
-import os
+"""Tests for dynamic_document module."""
 
 import pytest
-from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 
 from gym_app.models.dynamic_document import (
-    DynamicDocument, DocumentVariable, DocumentFolder,
-    DocumentVisibilityPermission, DocumentUsabilityPermission,
-    RecentDocument, Tag,
+    DocumentFolder,
+    DocumentVariable,
+    DynamicDocument,
+    RecentDocument,
+    Tag,
 )
 from gym_app.models.user import User
 
+
 @pytest.fixture
 def user():
-    """Create a user for testing"""
+    """Create a user for testing."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -26,7 +26,7 @@ def user():
 
 @pytest.fixture
 def document(user):
-    """Create a dynamic document for testing"""
+    """Create a dynamic document for testing."""
     return DynamicDocument.objects.create(
         title='Test Document',
         content='<p>This is a test document with {{variable1}} and {{variable2}}.</p>',
@@ -36,7 +36,7 @@ def document(user):
 
 @pytest.fixture
 def document_variable(document):
-    """Create a document variable for testing"""
+    """Create a document variable for testing."""
     return DocumentVariable.objects.create(
         document=document,
         name_en='variable1',
@@ -48,9 +48,10 @@ def document_variable(document):
 
 @pytest.mark.django_db
 class TestDynamicDocument:
+    """Tests for Dynamic Document."""
     
     def test_create_document(self, user):
-        """Test creating a dynamic document"""
+        """Test creating a dynamic document."""
         document = DynamicDocument.objects.create(
             title='New Document',
             content='<p>Content with {{variable}}.</p>',
@@ -67,7 +68,7 @@ class TestDynamicDocument:
         assert document.updated_at is not None
         
     def test_document_state_choices(self, document):
-        """Test document state choices validation"""
+        """Test document state choices validation."""
         # Valid state update
         document.state = 'Published'
         document.save()
@@ -87,11 +88,11 @@ class TestDynamicDocument:
         assert document.state == 'Completed'
         
     def test_document_str_representation(self, document):
-        """Test string representation of document"""
+        """Test string representation of document."""
         assert str(document) == document.title
     
     def test_document_assign_to_user(self, document, user):
-        """Test assigning document to a user"""
+        """Test assigning document to a user."""
         another_user = User.objects.create_user(
             email='another@example.com',
             password='anotherpassword',
@@ -108,9 +109,10 @@ class TestDynamicDocument:
 
 @pytest.mark.django_db
 class TestDocumentVariable:
+    """Tests for Document Variable."""
     
     def test_create_document_variable(self, document):
-        """Test creating a document variable"""
+        """Test creating a document variable."""
         variable = DocumentVariable.objects.create(
             document=document,
             name_en='new_variable',
@@ -129,7 +131,7 @@ class TestDocumentVariable:
         assert variable.document == document
     
     def test_document_variable_field_type_choices(self, document_variable):
-        """Test document variable field type choices validation"""
+        """Test document variable field type choices validation."""
         # Valid field type update
         document_variable.field_type = 'text_area'
         document_variable.save()
@@ -143,13 +145,13 @@ class TestDocumentVariable:
         assert document_variable.field_type == 'input'
     
     def test_document_variable_str_representation(self, document_variable):
-        """Test string representation of document variable"""
+        """Test string representation of document variable."""
         assert str(document_variable) == document_variable.name_en
     
     def test_document_with_multiple_variables(self, document, document_variable):
-        """Test a document with multiple variables"""
+        """Test a document with multiple variables."""
         # Create multiple variables for the document
-        variables = [
+        _variables = [
             DocumentVariable.objects.create(
                 document=document,
                 name_en=f'variable{i}',
@@ -175,6 +177,7 @@ class TestDocumentVariable:
 # ======================================================================
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="lawyer-b1@example.com", password="testpassword",
         first_name="Lawyer", last_name="B1", role="lawyer",
@@ -187,6 +190,7 @@ def lawyer():
 
 @pytest.fixture
 def user_factory():
+    """User factory."""
     def create_user(email, role="client", is_gym_lawyer=False):
         return User.objects.create_user(
             email=email,
@@ -199,6 +203,7 @@ def user_factory():
 
 @pytest.fixture
 def document_factory():
+    """Document factory."""
     def create_document(created_by, **kwargs):
         return DynamicDocument.objects.create(
             title=kwargs.pop("title", "Doc"),
@@ -216,7 +221,10 @@ def document_factory():
 
 @pytest.mark.django_db
 class TestDocumentVariableClean:
+    """Tests for Document Variable Clean."""
+
     def test_clean_number_invalid(self, lawyer):
+        """Verify clean number invalid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="number", value="abc",
@@ -226,6 +234,7 @@ class TestDocumentVariableClean:
         assert exc_info.value is not None
 
     def test_clean_date_invalid(self, lawyer):
+        """Verify clean date invalid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="date", value="not-a-date",
@@ -235,6 +244,7 @@ class TestDocumentVariableClean:
         assert exc_info.value is not None
 
     def test_clean_email_invalid(self, lawyer):
+        """Verify clean email invalid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="email", value="bad-email",
@@ -244,6 +254,7 @@ class TestDocumentVariableClean:
         assert exc_info.value is not None
 
     def test_clean_number_valid(self, lawyer):
+        """Verify clean number valid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="number", value="42.5",
@@ -252,6 +263,7 @@ class TestDocumentVariableClean:
         assert var.value == "42.5"
 
     def test_clean_date_valid(self, lawyer):
+        """Verify clean date valid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="date", value="2024-01-15",
@@ -260,6 +272,7 @@ class TestDocumentVariableClean:
         assert var.value == "2024-01-15"
 
     def test_clean_email_valid(self, lawyer):
+        """Verify clean email valid."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable(
             document=doc, name_en="v", field_type="email", value="ok@example.com",
@@ -275,7 +288,10 @@ class TestDocumentVariableClean:
 
 @pytest.mark.django_db
 class TestDocumentVariableFormattedValue:
+    """Tests for Document Variable Formatted Value."""
+
     def test_non_value_field_returns_raw(self, lawyer):
+        """Verify non value field returns raw."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable.objects.create(
             document=doc, name_en="v", field_type="input",
@@ -284,6 +300,7 @@ class TestDocumentVariableFormattedValue:
         assert var.get_formatted_value() == "hello"
 
     def test_value_without_currency(self, lawyer):
+        """Verify value without currency."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable.objects.create(
             document=doc, name_en="v", field_type="input",
@@ -293,6 +310,7 @@ class TestDocumentVariableFormattedValue:
         assert "1.000.000" in result
 
     def test_value_usd_currency(self, lawyer):
+        """Verify value usd currency."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable.objects.create(
             document=doc, name_en="v", field_type="input",
@@ -302,6 +320,7 @@ class TestDocumentVariableFormattedValue:
         assert "US $" in result
 
     def test_value_eur_currency(self, lawyer):
+        """Verify value eur currency."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable.objects.create(
             document=doc, name_en="v", field_type="input",
@@ -311,6 +330,7 @@ class TestDocumentVariableFormattedValue:
         assert "EUR" in result
 
     def test_empty_string_value(self, lawyer):
+        """Verify empty string value."""
         doc = DynamicDocument.objects.create(title="D", content="C", created_by=lawyer)
         var = DocumentVariable.objects.create(
             document=doc, name_en="v", field_type="input",
@@ -326,16 +346,21 @@ class TestDocumentVariableFormattedValue:
 
 @pytest.mark.django_db
 class TestTagAndFolderAndRecentDoc:
+    """Tests for Tag And Folder And Recent Doc."""
+
     def test_tag_str(self, lawyer):
+        """Verify tag str."""
         tag = Tag.objects.create(name="Important", created_by=lawyer)
         assert str(tag) == "Important"
 
     def test_document_folder_str(self, client_user):
+        """Verify document folder str."""
         folder = DocumentFolder.objects.create(name="MyFolder", owner=client_user)
         assert "MyFolder" in str(folder)
         assert client_user.email in str(folder)
 
     def test_recent_document_str(self, lawyer):
+        """Verify recent document str."""
         doc = DynamicDocument.objects.create(title="RD", content="C", created_by=lawyer)
         rd = RecentDocument.objects.create(user=lawyer, document=doc)
         assert "RD" in str(rd)
@@ -350,9 +375,11 @@ class TestTagAndFolderAndRecentDoc:
 
 @pytest.mark.django_db
 class TestDocumentVariableCurrencyFormatting:
+    """Tests for Document Variable Currency Formatting."""
+
     def test_get_formatted_value_whole_number_cop(self, document):
-        """
-        Whole-number COP values are formatted with thousands separators
+        """Whole-number COP values are formatted with thousands separators.
+        
         and two decimal places.
         """
         var = DocumentVariable.objects.create(
@@ -377,6 +404,7 @@ class TestDocumentVariableCurrencyFormatting:
 
 @pytest.mark.django_db
 def test_document_variable_invalid_number_raises(user_factory, document_factory):
+    """Verify document variable invalid number raises."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -393,6 +421,7 @@ def test_document_variable_invalid_number_raises(user_factory, document_factory)
 
 @pytest.mark.django_db
 def test_document_variable_invalid_date_raises(user_factory, document_factory):
+    """Verify document variable invalid date raises."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -409,6 +438,7 @@ def test_document_variable_invalid_date_raises(user_factory, document_factory):
 
 @pytest.mark.django_db
 def test_document_variable_invalid_email_raises(user_factory, document_factory):
+    """Verify document variable invalid email raises."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -425,6 +455,7 @@ def test_document_variable_invalid_email_raises(user_factory, document_factory):
 
 @pytest.mark.django_db
 def test_document_variable_valid_number_no_error(user_factory, document_factory):
+    """Verify document variable valid number no error."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -440,6 +471,7 @@ def test_document_variable_valid_number_no_error(user_factory, document_factory)
 
 @pytest.mark.django_db
 def test_document_variable_valid_date_no_error(user_factory, document_factory):
+    """Verify document variable valid date no error."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -455,6 +487,7 @@ def test_document_variable_valid_date_no_error(user_factory, document_factory):
 
 @pytest.mark.django_db
 def test_document_variable_valid_email_no_error(user_factory, document_factory):
+    """Verify document variable valid email no error."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -470,6 +503,7 @@ def test_document_variable_valid_email_no_error(user_factory, document_factory):
 
 @pytest.mark.django_db
 def test_document_variable_get_formatted_value_usd_label(user_factory, document_factory):
+    """Verify document variable get formatted value usd label."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -487,6 +521,7 @@ def test_document_variable_get_formatted_value_usd_label(user_factory, document_
 
 @pytest.mark.django_db
 def test_document_variable_get_formatted_value_returns_raw_when_not_value(user_factory, document_factory):
+    """Verify document variable get formatted value returns raw when not value."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -503,6 +538,7 @@ def test_document_variable_get_formatted_value_returns_raw_when_not_value(user_f
 
 @pytest.mark.django_db
 def test_document_variable_get_formatted_value_without_currency_label(user_factory, document_factory):
+    """Verify document variable get formatted value without currency label."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -519,6 +555,7 @@ def test_document_variable_get_formatted_value_without_currency_label(user_facto
 
 @pytest.mark.django_db
 def test_document_variable_get_formatted_value_unknown_currency_label(user_factory, document_factory):
+    """Verify document variable get formatted value unknown currency label."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -536,6 +573,7 @@ def test_document_variable_get_formatted_value_unknown_currency_label(user_facto
 
 @pytest.mark.django_db
 def test_recent_document_str(user_factory, document_factory):
+    """Verify recent document str."""
     user = user_factory("recent@example.com")
     document = document_factory(created_by=user, title="Recent Doc")
 
@@ -547,6 +585,7 @@ def test_recent_document_str(user_factory, document_factory):
 
 @pytest.mark.django_db
 def test_recent_document_unique_together(user_factory, document_factory):
+    """Verify recent document unique together."""
     user = user_factory("unique@example.com")
     document = document_factory(created_by=user)
 
@@ -565,11 +604,14 @@ def test_recent_document_unique_together(user_factory, document_factory):
 
 @pytest.mark.django_db
 class TestDocumentVariableStr:
+    """Tests for Document Variable Str."""
 
     def test_variable_str(self, user):
+        """Verify variable str."""
         doc = DynamicDocument.objects.create(title="V36", content="<p>x</p>", state="Draft", created_by=user)
         v = DocumentVariable.objects.create(document=doc, name_en="full_name", name_es="Nombre", field_type="input", value="John")
         s = str(v)
-        assert isinstance(s, str) and len(s) > 0, "Expected non-empty string representation"
+        assert isinstance(s, str), "Expected string representation"
+        assert len(s) > 0, "Expected non-empty string representation"
 
 

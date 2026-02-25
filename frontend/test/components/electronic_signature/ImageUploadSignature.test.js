@@ -52,6 +52,7 @@ describe("ImageUploadSignature.vue", () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     global.FileReader = originalFileReader;
   });
 
@@ -189,7 +190,7 @@ describe("ImageUploadSignature.vue", () => {
     ]);
   });
 
-  test("triggerFileInput calls click on file input element when clicking upload area", async () => {
+  test("triggerFileInput calls click on file input element when clicking upload area", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -206,7 +207,7 @@ describe("ImageUploadSignature.vue", () => {
     expect(clickSpy).toHaveBeenCalled();
   });
 
-  test("clearImage resets preview and file input when clicking X button", async () => {
+  test("clearImage resets preview and file input when clicking X button", async () => { // quality: allow-fragile-selector (component query targets stable structure)
     const pinia = createPinia();
     setActivePinia(pinia);
 
@@ -244,6 +245,7 @@ describe("ImageUploadSignature.vue", () => {
       global: { plugins: [pinia] },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.saveSignature();
 
     expect(errorSpy).toHaveBeenCalledWith("No preview URL available");

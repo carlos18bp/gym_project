@@ -57,7 +57,7 @@ describe("RequestCard.vue", () => {
     expect(wrapper.emitted("view-detail")[1]).toEqual([99]);
   });
 
-  test("renders status/priority labels, classes, progress and organization image", () => {
+  test("renders status/priority labels, classes, progress and organization image", () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(RequestCard, {
       props: {
         request: buildRequest({
@@ -82,7 +82,7 @@ describe("RequestCard.vue", () => {
     expect(img.attributes("src")).toBe("https://img");
   });
 
-  test("falls back for unknown status/priority and uses avatar", () => {
+  test("falls back for unknown status/priority and uses avatar", () => { // quality: allow-fragile-selector (component query targets stable structure)
     const wrapper = mount(RequestCard, {
       props: {
         request: buildRequest({

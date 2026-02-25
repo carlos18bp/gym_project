@@ -13,7 +13,7 @@ Analyze the backend codebase focusing on **Models, Serializers, Views, Utils, an
 Before writing any test, you **must consult**:
 
 ```
-testing-quality-standards.md
+docs/TESTING_QUALITY_STANDARDS.md
 ```
 
 This document defines the **mandatory quality criteria** for every test. Key sections to review:
@@ -89,7 +89,7 @@ For each file you test, cover:
 
 1. **Review** the coverage report provided below
 2. **Identify** the lowest-coverage, highest-impact files
-3. **Consult** `testing-quality-standards.md` for applicable standards
+3. **Consult** `docs/TESTING_QUALITY_STANDARDS.md` for applicable standards
 4. **Implement** tests following the quality criteria
 5. **Run** only the new/modified test files
 6. **Verify** tests pass and coverage improves

@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can accept an organization invitation and gains membership", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client can accept an organization invitation and gains membership", { tag: ['@flow:org-client-invitations', '@module:organizations', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 3510;
 
   await installOrganizationsClientApiMocks(page, {
@@ -38,15 +40,15 @@ test("client can accept an organization invitation and gains membership", async 
   await invitationsTab.click();
   await expect(page.locator('h2:has-text("Invitaciones Recibidas")')).toBeVisible();
 
-  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(invitationCard.getByRole("button", { name: "Aceptar" })).toBeVisible();
   await expect(invitationCard.getByRole("button", { name: "Rechazar" })).toBeVisible();
 
   await invitationCard.getByRole("button", { name: "Aceptar" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación aceptada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación aceptada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // After accept, the invitation is no longer pending.
   await expect(invitationCard.locator('span:has-text("Aceptada")')).toBeVisible();

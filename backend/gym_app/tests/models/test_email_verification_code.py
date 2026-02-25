@@ -1,3 +1,5 @@
+"""Tests for EmailVerificationCode model behavior."""
+
 import pytest
 
 from gym_app.models import EmailVerificationCode

@@ -149,7 +149,7 @@ async function installCheckoutMocks(
 
 test.describe.configure({ timeout: 90_000 });
 
-test("paid checkout keeps subscribe disabled before payment tokenization", async ({ page }) => {
+test("paid checkout keeps subscribe disabled before payment tokenization", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5400, role: "client" });
 
   await installWompiExternalMocks(page);
@@ -165,7 +165,7 @@ test("paid checkout keeps subscribe disabled before payment tokenization", async
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test("paid checkout tokenizes card then posts subscription payload", async ({ page }) => {
+test("paid checkout tokenizes card then posts subscription payload", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5401, role: "client" });
   const subscriptionRequests = [];
 
@@ -186,10 +186,10 @@ test("paid checkout tokenizes card then posts subscription payload", async ({ pa
 
   await page.getByRole("button", { name: "Guardar método de pago" }).click();
 
-  const tokenizationDialog = page.locator(".swal2-popup");
+  const tokenizationDialog = page.locator('[role="dialog"], [role="alertdialog"]');
   await expect(tokenizationDialog).toBeVisible({ timeout: 15_000 });
   await expect(tokenizationDialog).toContainText("Método de pago agregado");
-  await page.locator(".swal2-confirm").click();
+  await tokenizationDialog.getByRole("button", { name: /ok|aceptar/i }).click();
 
   await expect(page.getByText("Método de pago configurado")).toBeVisible();
 
@@ -197,10 +197,10 @@ test("paid checkout tokenizes card then posts subscription payload", async ({ pa
   await expect(subscribeButton).toBeEnabled();
   await subscribeButton.click();
 
-  const subscriptionDialog = page.locator(".swal2-popup");
+  const subscriptionDialog = page.locator('[role="dialog"], [role="alertdialog"]');
   await expect(subscriptionDialog).toBeVisible({ timeout: 15_000 });
   await expect(subscriptionDialog).toContainText("Suscripción Creada");
-  await page.locator(".swal2-confirm").click();
+  await subscriptionDialog.getByRole("button", { name: /ok|aceptar/i }).click();
 
   await expect
     .poll(() => page.evaluate(() => window.location.pathname), { timeout: 45_000 })
@@ -214,7 +214,7 @@ test("paid checkout tokenizes card then posts subscription payload", async ({ pa
   });
 });
 
-test("paid checkout shows incomplete-card warning on empty tokenize submit", async ({ page }) => {
+test("paid checkout shows incomplete-card warning on empty tokenize submit", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5402, role: "client" });
 
   await installWompiExternalMocks(page);
@@ -225,15 +225,15 @@ test("paid checkout shows incomplete-card warning on empty tokenize submit", asy
 
   await page.getByRole("button", { name: "Guardar método de pago" }).click();
 
-  const warningDialog = page.locator(".swal2-popup");
+  const warningDialog = page.locator('[role="dialog"], [role="alertdialog"]');
   await expect(warningDialog).toBeVisible({ timeout: 15_000 });
   await expect(warningDialog).toContainText("Información incompleta");
-  await page.locator(".swal2-confirm").click();
+  await warningDialog.getByRole("button", { name: /ok|aceptar/i }).click();
 
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test("free checkout creates subscription without payment tokenization", async ({ page }) => {
+test("free checkout creates subscription without payment tokenization", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5403, role: "client" });
   const subscriptionRequests = [];
 
@@ -247,10 +247,10 @@ test("free checkout creates subscription without payment tokenization", async ({
 
   await page.getByRole("button", { name: "Activar Plan Gratuito" }).click();
 
-  const successDialog = page.locator(".swal2-popup");
+  const successDialog = page.locator('[role="dialog"], [role="alertdialog"]');
   await expect(successDialog).toBeVisible({ timeout: 15_000 });
   await expect(successDialog).toContainText("Suscripción Activada");
-  await page.locator(".swal2-confirm").click();
+  await successDialog.getByRole("button", { name: /ok|aceptar/i }).click();
 
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   expect(subscriptionRequests).toHaveLength(1);

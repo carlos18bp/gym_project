@@ -15,6 +15,11 @@ describe("Legal Requests Management Store", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+    localStorage.clear();
+  });
+
   test("getters filter requests", () => {
     const store = useLegalRequestsStore();
 

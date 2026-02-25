@@ -122,6 +122,7 @@ describe("DocumentActionsModal.vue", () => {
 
     expect(actionButton.attributes("disabled")).toBeDefined();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleAction("relationships");
 
     expect(mockHandleFeatureAccess).toHaveBeenCalledWith(

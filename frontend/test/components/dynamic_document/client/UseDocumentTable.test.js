@@ -118,6 +118,7 @@ describe("UseDocumentTable.vue", () => {
 
     await wrapper.find("tbody tr").trigger("click");
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.showUseModal).toBe(true);
     expect(wrapper.vm.$.setupState.selectedTemplateId).toBe(1);
     expect(mockDocumentStore.selectedDocument).toBe(null);

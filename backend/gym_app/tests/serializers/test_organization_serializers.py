@@ -1,11 +1,10 @@
-import pytest
+"""Tests for organization_serializers module."""
 import datetime
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
+import pytest
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import RequestFactory
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.test import APIRequestFactory
@@ -14,23 +13,11 @@ from gym_app.models import (
     CorporateRequest,
     CorporateRequestType,
     DynamicDocument,
-    DocumentRelationship,
-    DocumentSignature,
-    DocumentVariable,
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
     OrganizationPost,
     User,
-)
-from gym_app.models.user import ActivityFeed, UserSignature
-from gym_app.serializers.corporate_request import (
-    CorporateRequestListSerializer,
-    CorporateRequestSerializer,
-)
-from gym_app.serializers.dynamic_document import (
-    DocumentRelationshipSerializer,
-    DynamicDocumentSerializer,
 )
 from gym_app.serializers.organization import (
     OrganizationCreateSerializer,
@@ -48,10 +35,6 @@ from gym_app.serializers.organization import (
     OrganizationStatsSerializer,
     UserBasicInfoSerializer,
 )
-from gym_app.serializers.user import (
-    ActivityFeedSerializer,
-    UserSignatureSerializer,
-)
 
 factory = APIRequestFactory()
 FIXED_NOW = timezone.make_aware(datetime.datetime.combine(datetime.date.today(), datetime.time(10, 0, 0)))
@@ -62,6 +45,7 @@ FIXED_RECENT_EXPIRY = FIXED_NOW + timezone.timedelta(days=3)
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -74,6 +58,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -86,6 +71,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org Title",
         description="Org Description",
@@ -95,6 +81,8 @@ def organization(corporate_client):
 
 @pytest.mark.django_db
 class TestUserBasicInfoSerializer:
+    """Tests for User Basic Info Serializer."""
+
     def test_full_name_and_profile_image_url(self, corporate_client, settings):
         """UserBasicInfoSerializer debe devolver full_name y URL de imagen de perfil."""
         # Asignar foto de perfil simulada
@@ -117,6 +105,8 @@ class TestUserBasicInfoSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationCreateSerializer:
+    """Tests for Organization Create Serializer."""
+
     def test_corporate_client_can_create_organization_and_leader_membership(self, corporate_client):
         """Solo corporate_client puede crear organización y se crea membership LEADER."""
 
@@ -145,6 +135,7 @@ class TestOrganizationCreateSerializer:
         assert membership.role == "LEADER"
 
     def test_non_corporate_client_cannot_create_organization(self, client_user):
+        """Verify non corporate client cannot create organization."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -164,7 +155,10 @@ class TestOrganizationCreateSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationSerializers:
+    """Tests for Organization Invitation Serializers."""
+
     def test_organization_invitation_serializer_flags(self, organization, client_user, corporate_client):
+        """Verify organization invitation serializer flags."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -255,7 +249,10 @@ class TestOrganizationInvitationSerializers:
 
 @pytest.mark.django_db
 class TestOrganizationPostCreateSerializer:
+    """Tests for Organization Post Create Serializer."""
+
     def test_leader_corporate_client_can_create_post(self, organization, corporate_client):
+        """Verify leader corporate client can create post."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -278,6 +275,7 @@ class TestOrganizationPostCreateSerializer:
         assert post.organization == organization
 
     def test_non_corporate_client_cannot_create_post(self, organization, client_user):
+        """Verify non corporate client cannot create post."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -296,6 +294,7 @@ class TestOrganizationPostCreateSerializer:
         assert not serializer.is_valid()
 
     def test_post_create_serializer_validates_links_and_leader(self, organization, corporate_client, client_user):
+        """Verify post create serializer validates links and leader."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -346,7 +345,10 @@ class TestOrganizationPostCreateSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationListSerializer:
+    """Tests for Organization List Serializer."""
+
     def test_list_serializer_defaults_without_images_or_members(self, organization):
+        """Verify list serializer defaults without images or members."""
         serializer = OrganizationListSerializer(organization)
         data = serializer.data
 
@@ -356,7 +358,7 @@ class TestOrganizationListSerializer:
         assert data["cover_image_url"] is None
 
     def test_list_serializer_counts_and_images_with_request(self, organization, corporate_client, client_user):
-        """Test list serializer with members, invitations and images"""
+        """Test list serializer with members, invitations and images."""
         organization.profile_image.name = "organization_images/profiles/test.jpg"
         organization.cover_image.name = "organization_images/covers/test.jpg"
 
@@ -379,6 +381,7 @@ class TestOrganizationListSerializer:
         assert "organization_images/profiles/test.jpg" in data["profile_image_url"]
 
     def test_list_serializer_images_without_request(self, organization):
+        """Verify list serializer images without request."""
         organization.profile_image.name = "organization_images/profiles/test.jpg"
         organization.cover_image.name = "organization_images/covers/test.jpg"
 
@@ -391,7 +394,10 @@ class TestOrganizationListSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationSerializer:
+    """Tests for Organization Serializer."""
+
     def test_detail_serializer_defaults_without_members_or_images(self, organization):
+        """Verify detail serializer defaults without members or images."""
         serializer = OrganizationSerializer(organization)
         data = serializer.data
 
@@ -403,7 +409,7 @@ class TestOrganizationSerializer:
         assert data["cover_image_url"] is None
 
     def test_detail_serializer_counts(self, organization, corporate_client, client_user):
-        """Test organization serializer counts members, invitations, and requests"""
+        """Test organization serializer counts members, invitations, and requests."""
         OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
 
@@ -457,7 +463,7 @@ class TestOrganizationSerializer:
         assert "/organization_images/covers/" in data["cover_image_url"]
 
     def test_detail_serializer_members_list(self, organization, corporate_client, client_user):
-        """Test organization serializer members list excludes inactive"""
+        """Test organization serializer members list excludes inactive."""
         OrganizationMembership.objects.create(organization=organization, user=corporate_client, role="LEADER")
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER")
         inactive_user = User.objects.create_user(email="inactive@example.com", password="testpassword", role="client")
@@ -477,7 +483,10 @@ class TestOrganizationSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationMembershipSerializer:
+    """Tests for Organization Membership Serializer."""
+
     def test_membership_serializer_fields(self, organization, client_user):
+        """Verify membership serializer fields."""
         membership = OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -495,7 +504,10 @@ class TestOrganizationMembershipSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationStatsSerializer:
+    """Tests for Organization Stats Serializer."""
+
     def test_stats_serializer_valid_data(self):
+        """Verify stats serializer valid data."""
         payload = {
             "total_organizations": 2,
             "total_members": 5,
@@ -513,7 +525,10 @@ class TestOrganizationStatsSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationSearchSerializer:
+    """Tests for Organization Search Serializer."""
+
     def test_search_serializer_valid_data(self):
+        """Verify search serializer valid data."""
         payload = {
             "search": "Org",
             "is_active": True,
@@ -528,11 +543,13 @@ class TestOrganizationSearchSerializer:
         assert serializer.validated_data["search"] == "Org"
 
     def test_search_serializer_invalid_min_members(self):
+        """Verify search serializer invalid min members."""
         serializer = OrganizationSearchSerializer(data={"min_members": -1})
         assert not serializer.is_valid()
         assert "min_members" in serializer.errors
 
     def test_search_serializer_invalid_max_members(self):
+        """Verify search serializer invalid max members."""
         serializer = OrganizationSearchSerializer(data={"max_members": -5})
         assert not serializer.is_valid()
         assert "max_members" in serializer.errors
@@ -540,7 +557,10 @@ class TestOrganizationSearchSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationPostSerializer:
+    """Tests for Organization Post Serializer."""
+
     def test_post_serializer_create_and_representation(self, organization, corporate_client):
+        """Verify post serializer create and representation."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -568,6 +588,7 @@ class TestOrganizationPostSerializer:
         assert data["author_info"]["full_name"] == "Corp Leader"
 
     def test_post_serializer_rejects_missing_link_url(self, organization, corporate_client):
+        """Verify post serializer rejects missing link url."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -586,6 +607,7 @@ class TestOrganizationPostSerializer:
         assert "Si se proporciona un nombre de enlace" in serializer.errors["non_field_errors"][0]
 
     def test_post_serializer_rejects_missing_link_name(self, organization, corporate_client):
+        """Verify post serializer rejects missing link name."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -604,6 +626,7 @@ class TestOrganizationPostSerializer:
         assert "Si se proporciona una URL" in serializer.errors["non_field_errors"][0]
 
     def test_post_serializer_rejects_non_leader(self, organization):
+        """Verify post serializer rejects non leader."""
         other_corp = User.objects.create_user(
             email="othercorp@example.com",
             password="testpassword",
@@ -627,6 +650,7 @@ class TestOrganizationPostSerializer:
         assert "Solo el líder" in serializer.errors["non_field_errors"][0]
 
     def test_post_serializer_create_rejects_non_corporate_user(self, organization, client_user):
+        """Verify post serializer create rejects non corporate user."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -649,7 +673,10 @@ class TestOrganizationPostSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationPostListSerializer:
+    """Tests for Organization Post List Serializer."""
+
     def test_post_list_serializer_fields(self, organization, corporate_client):
+        """Verify post list serializer fields."""
         post = OrganizationPost.objects.create(
             title="Post",
             content="Contenido",
@@ -666,6 +693,7 @@ class TestOrganizationPostListSerializer:
         assert data["has_link"] is True
 
     def test_post_list_serializer_has_link_false(self, organization, corporate_client):
+        """Verify post list serializer has link false."""
         post = OrganizationPost.objects.create(
             title="Post",
             content="Contenido",
@@ -681,7 +709,10 @@ class TestOrganizationPostListSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationPostUpdateSerializer:
+    """Tests for Organization Post Update Serializer."""
+
     def test_post_update_serializer_validates_link_pairing(self, organization, corporate_client):
+        """Verify post update serializer validates link pairing."""
         post = OrganizationPost.objects.create(
             title="Post",
             content="Contenido",
@@ -704,6 +735,8 @@ class TestOrganizationPostUpdateSerializer:
 
 @pytest.mark.django_db
 class TestOrganizationListSerializerEdges:
+    """Tests for Organization List Serializer Edges."""
+
     def test_profile_image_url_none(self, organization, rf):
         """Cover line 110: no profile_image → None."""
         request = rf.get("/")
@@ -742,6 +775,8 @@ class TestOrganizationListSerializerEdges:
 
 @pytest.mark.django_db
 class TestOrganizationCreateSerializerEdges:
+    """Tests for Organization Create Serializer Edges."""
+
     def test_validate_no_user_raises(self):
         """Cover line 150: no request user → ValidationError."""
         serializer = OrganizationCreateSerializer(
@@ -781,6 +816,8 @@ class TestOrganizationCreateSerializerEdges:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationResponseSerializerEdges:
+    """Tests for Organization Invitation Response Serializer Edges."""
+
     def test_accept_raises_django_validation_error(self, organization, basic_user, corporate_user):
         """Cover lines 321-322: DjangoValidationError mapped to DRF ValidationError."""
         invitation = OrganizationInvitation.objects.create(
@@ -817,6 +854,8 @@ class TestOrganizationInvitationResponseSerializerEdges:
 
 @pytest.mark.django_db
 class TestOrganizationDetailSerializerEdges:
+    """Tests for Organization Detail Serializer Edges."""
+
     def test_profile_image_url_no_request(self, organization):
         """Cover line 109: profile_image without request → raw url."""
         organization.profile_image = SimpleUploadedFile("detail_prof.png", b"\x89PNG", content_type="image/png")
@@ -843,6 +882,8 @@ class TestOrganizationDetailSerializerEdges:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationCreateSerializerEdges:
+    """Tests for Organization Invitation Create Serializer Edges."""
+
     def test_validate_email_user_not_found(self, organization, corporate_user, rf):
         """Cover lines 240-241: user with email not found → ValidationError."""
         request = rf.post("/")
@@ -916,6 +957,8 @@ class TestOrganizationInvitationCreateSerializerEdges:
 
 @pytest.mark.django_db
 class TestOrganizationPostSerializerEdges:
+    """Tests for Organization Post Serializer Edges."""
+
     def test_create_post_non_corporate_raises(self, organization, basic_user, rf):
         """Cover line 445: non-corporate user creating post → ValidationError."""
         request = rf.post("/")
@@ -959,7 +1002,8 @@ class TestOrganizationPostSerializerEdges:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def corporate_client():
+def corporate_client():  # noqa: F811
+    """Corporate client."""
     return User.objects.create_user(
         email="corp_scov@test.com",
         password="pw",
@@ -971,6 +1015,7 @@ def corporate_client():
 
 @pytest.fixture
 def normal_client():
+    """Create a normal client."""
     return User.objects.create_user(
         email="client_scov@test.com",
         password="pw",
@@ -982,6 +1027,7 @@ def normal_client():
 
 @pytest.fixture
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic_scov@test.com",
         password="pw",
@@ -993,6 +1039,7 @@ def basic_user():
 
 @pytest.fixture
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_scov@test.com",
         password="pw",
@@ -1003,7 +1050,8 @@ def lawyer_user():
 
 
 @pytest.fixture
-def organization(corporate_client):
+def organization(corporate_client):  # noqa: F811
+    """Organization."""
     return Organization.objects.create(
         title="Org Scov",
         description="Desc",
@@ -1013,12 +1061,14 @@ def organization(corporate_client):
 
 @pytest.fixture
 def request_type():
+    """Request type."""
     return CorporateRequestType.objects.create(name="Scov Type")
 
 
 @pytest.fixture
 def corporate_request(normal_client, corporate_client, organization, request_type):
-    membership = OrganizationMembership.objects.create(
+    """Corporate request."""
+    _membership = OrganizationMembership.objects.create(
         organization=organization,
         user=normal_client,
         role="MEMBER",
@@ -1035,6 +1085,7 @@ def corporate_request(normal_client, corporate_client, organization, request_typ
 
 @pytest.fixture
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Scov Doc",
         content="<p>test</p>",
@@ -1064,11 +1115,13 @@ def document_by_basic(basic_user):
 
 @pytest.mark.django_db
 class TestOrganizationPostCreateNonCorporate:
+    """Tests for Organization Post Create Non Corporate."""
+
     def test_create_post_by_non_corporate_user_raises_error(
         self, organization, basic_user
     ):
-        """
-        OrganizationPostCreateSerializer.create() raises ValidationError
+        """OrganizationPostCreateSerializer.create() raises ValidationError.
+        
         when the request user is not a corporate_client (line 445).
         The validate() method also checks org leadership, so we use the
         corporate_client (org leader) role but patch the role after validation.
@@ -1104,11 +1157,13 @@ class TestOrganizationPostCreateNonCorporate:
 
 @pytest.mark.django_db
 class TestOrganizationPostCreateNonCorporateDirect:
+    """Tests for Organization Post Create Non Corporate Direct."""
+
     def test_create_directly_by_non_corporate_user_raises_error(
         self, organization, normal_client, corporate_client
     ):
-        """
-        Calling create() directly (bypassing validate) with a non-corporate
+        """Calling create() directly (bypassing validate) with a non-corporate.
+        
         user triggers the role check on line 444-445.
         """
         request = factory.post("/fake/")
@@ -1131,9 +1186,11 @@ class TestOrganizationPostCreateNonCorporateDirect:
 
 @pytest.mark.django_db
 class TestOrganizationPostUpdateValidateLinkUrl:
+    """Tests for Organization Post Update Validate Link Url."""
+
     def test_validate_raises_when_link_url_provided_without_link_name(self):
-        """
-        OrganizationPostUpdateSerializer.validate() raises ValidationError
+        """OrganizationPostUpdateSerializer.validate() raises ValidationError.
+        
         when link_url is provided but link_name is empty (lines 499-502).
         """
         serializer = OrganizationPostUpdateSerializer(
@@ -1151,8 +1208,8 @@ class TestOrganizationPostUpdateValidateLinkUrl:
         assert "link_name" in serializer.errors
 
     def test_validate_passes_when_no_link_fields(self):
-        """
-        OrganizationPostUpdateSerializer.validate() returns data
+        """OrganizationPostUpdateSerializer.validate() returns data.
+        
         when no link fields are provided (line 504).
         """
         serializer = OrganizationPostUpdateSerializer(
@@ -1168,6 +1225,7 @@ class TestOrganizationPostUpdateValidateLinkUrl:
 
 @pytest.fixture
 def user(db):
+    """User."""
     return User.objects.create_user(
         email="sertest@example.com",
         password="testpassword",
@@ -1179,6 +1237,8 @@ def user(db):
 
 @pytest.mark.django_db
 class TestUserBasicInfoSerializerEdges:
+    """Tests for User Basic Info Serializer Edges."""
+
     def test_profile_image_url_no_image(self, basic_user, rf):
         """Cover line 32: no photo_profile → return None."""
         request = rf.get("/")

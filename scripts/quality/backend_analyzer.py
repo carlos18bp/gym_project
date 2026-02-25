@@ -372,25 +372,43 @@ class ASTAnalyzer:
     @classmethod
     def get_global_state_signals(cls, node: ast.FunctionDef) -> set[str]:
         """Collect global-state mutation signals within test function body."""
+        param_names = {arg.arg for arg in node.args.args}
+        settings_is_fixture = "settings" in param_names
+
         signals: set[str] = set()
         for child in ast.walk(node):
             if isinstance(child, ast.Assign):
                 for target in child.targets:
                     if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                         signals.add("os.environ mutation")
-                    elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                    elif (
+                        not settings_is_fixture
+                        and isinstance(target, ast.Attribute)
+                        and isinstance(target.value, ast.Name)
+                        and target.value.id == "settings"
+                    ):
                         signals.add(f"settings.{target.attr} mutation")
             elif isinstance(child, ast.AnnAssign):
                 target = child.target
                 if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                     signals.add("os.environ mutation")
-                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                elif (
+                    not settings_is_fixture
+                    and isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "settings"
+                ):
                     signals.add(f"settings.{target.attr} mutation")
             elif isinstance(child, ast.AugAssign):
                 target = child.target
                 if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                     signals.add("os.environ mutation")
-                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
+                elif (
+                    not settings_is_fixture
+                    and isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "settings"
+                ):
                     signals.add(f"settings.{target.attr} mutation")
 
             if isinstance(child, ast.Call):

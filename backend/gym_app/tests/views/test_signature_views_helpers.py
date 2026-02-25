@@ -1,3 +1,4 @@
+"""Tests for signature_views_helpers module."""
 import datetime
 import hashlib
 from types import SimpleNamespace
@@ -7,10 +8,10 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models import DynamicDocument
 from gym_app.views.dynamic_documents import signature_views
-
 
 User = get_user_model()
 
@@ -18,6 +19,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -27,16 +29,21 @@ def lawyer_user():
 
 @pytest.fixture
 def request_factory():
+    """Request factory."""
     return RequestFactory()
 
 
 class TestGetClientIp:
+    """Tests for Get Client Ip."""
+
     def test_get_client_ip_prefers_x_forwarded_for(self, request_factory):
+        """Verify get client ip prefers x forwarded for."""
         request = request_factory.get("/", HTTP_X_FORWARDED_FOR="1.2.3.4, 5.6.7.8")
 
         assert signature_views.get_client_ip(request) == "1.2.3.4"
 
     def test_get_client_ip_uses_x_real_ip_when_forwarded_empty(self, request_factory):
+        """Verify get client ip uses x real ip when forwarded empty."""
         request = request_factory.get(
             "/",
             HTTP_X_FORWARDED_FOR=" , ",
@@ -46,13 +53,17 @@ class TestGetClientIp:
         assert signature_views.get_client_ip(request) == "9.9.9.9"
 
     def test_get_client_ip_falls_back_to_remote_addr(self, request_factory):
+        """Verify get client ip falls back to remote addr."""
         request = request_factory.get("/", REMOTE_ADDR="3.3.3.3")
 
         assert signature_views.get_client_ip(request) == "3.3.3.3"
 
 
 class TestGenerateEncryptedDocumentId:
+    """Tests for Generate Encrypted Document Id."""
+
     def test_generate_encrypted_document_id_hash(self):
+        """Verify generate encrypted document id hash."""
         created_at = datetime.datetime(2024, 2, 1, 10, 5, 6)
 
         timestamp_str = created_at.strftime("%Y%m%d%H%M%S")
@@ -64,6 +75,7 @@ class TestGenerateEncryptedDocumentId:
         assert signature_views.generate_encrypted_document_id(5, created_at) == expected
 
     def test_generate_encrypted_document_id_fallback_when_hash_fails(self):
+        """Verify generate encrypted document id fallback when hash fails."""
         created_at = datetime.datetime(2024, 2, 1, 10, 5, 6)
 
         with patch(
@@ -76,7 +88,10 @@ class TestGenerateEncryptedDocumentId:
 
 
 class TestFormatDatetimeSpanish:
+    """Tests for Format Datetime Spanish."""
+
     def test_format_datetime_spanish_format(self):
+        """Verify format datetime spanish format."""
         dt = datetime.datetime(2025, 12, 25, 14, 30, 15)
 
         assert (
@@ -87,7 +102,11 @@ class TestFormatDatetimeSpanish:
 
 @pytest.mark.django_db
 class TestExpireOverdueDocuments:
+    """Tests for Expire Overdue Documents."""
+
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue_documents_updates_state_and_sends_email(self, lawyer_user):
+        """Verify expire overdue documents updates state and sends email."""
         doc = DynamicDocument.objects.create(
             title="Overdue",
             content="<p>x</p>",
@@ -105,7 +124,9 @@ class TestExpireOverdueDocuments:
         email_cls.assert_called_once()
         email_cls.return_value.send.assert_called_once()
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue_documents_skips_missing_creator(self):
+        """Verify expire overdue documents skips missing creator."""
         doc = DynamicDocument.objects.create(
             title="No creator",
             content="<p>x</p>",
@@ -122,7 +143,9 @@ class TestExpireOverdueDocuments:
         assert doc.state == "Expired"
         email_cls.assert_not_called()
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_expire_overdue_documents_swallows_email_errors(self, lawyer_user):
+        """Verify expire overdue documents swallows email errors."""
         doc = DynamicDocument.objects.create(
             title="Overdue",
             content="<p>x</p>",
@@ -146,33 +169,38 @@ class TestExpireOverdueDocuments:
 # ======================================================================
 
 """Batch 21 – signature_views.py helper functions."""
-import datetime, pytest
+import datetime  # noqa: F811
 from io import BytesIO
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch  # noqa: F811
+
+import pytest
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory
+from django.test import RequestFactory  # noqa: F811
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import timezone  # noqa: F811
 from rest_framework import status
-from rest_framework.test import APIClient
-from gym_app.models import DynamicDocument, DocumentSignature, DocumentVariable
-from gym_app.views.dynamic_documents import signature_views
+
+from gym_app.models import DocumentSignature, DynamicDocument  # noqa: F811
+from gym_app.views.dynamic_documents import signature_views  # noqa: F811
 
 User = get_user_model()
 
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(email="law_b21@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(email="cli_b21@t.com", password="pw", role="client", first_name="C", last_name="L")
 
 @pytest.fixture
 @pytest.mark.django_db
 def doc(lawyer):
+    """Doc."""
     return DynamicDocument.objects.create(title="DocB21", content="<p>hi</p>", state="Draft", created_by=lawyer)
 
 
@@ -181,18 +209,23 @@ def doc(lawyer):
 # ===========================================================================
 
 @pytest.mark.django_db
-class TestGetClientIp:
+class TestGetClientIp:  # noqa: F811
+    """Tests for Get Client Ip."""
+
     def test_x_forwarded_for(self):
+        """Verify x forwarded for."""
         req = RequestFactory().get("/")
         req.META["HTTP_X_FORWARDED_FOR"] = "1.2.3.4, 5.6.7.8"
         assert signature_views.get_client_ip(req) == "1.2.3.4"
 
     def test_x_real_ip(self):
+        """Verify x real ip."""
         req = RequestFactory().get("/")
         req.META["HTTP_X_REAL_IP"] = "9.8.7.6"
         assert signature_views.get_client_ip(req) == "9.8.7.6"
 
     def test_remote_addr_fallback(self):
+        """Verify remote addr fallback."""
         req = RequestFactory().get("/")
         req.META["REMOTE_ADDR"] = "127.0.0.1"
         # Remove proxy headers if present
@@ -201,6 +234,7 @@ class TestGetClientIp:
         assert signature_views.get_client_ip(req) == "127.0.0.1"
 
     def test_empty_forwarded_for_falls_through(self):
+        """Verify empty forwarded for falls through."""
         req = RequestFactory().get("/")
         req.META["HTTP_X_FORWARDED_FOR"] = ""
         req.META["HTTP_X_REAL_IP"] = "10.0.0.1"
@@ -213,13 +247,17 @@ class TestGetClientIp:
 
 @pytest.mark.django_db
 class TestGenerateEncryptedDocId:
+    """Tests for Generate Encrypted Doc Id."""
+
     def test_normal(self):
+        """Verify normal."""
         dt = datetime.datetime(2025, 1, 15, 10, 30, 0)
         result = signature_views.generate_encrypted_document_id(42, dt)
         assert "-" in result
         assert len(result) == 19  # XXXX-XXXX-XXXX-XXXX
 
     def test_fallback_on_exception(self):
+        """Verify fallback on exception."""
         class FailingDate:
             def __init__(self) -> None:
                 self.calls = 0
@@ -240,14 +278,18 @@ class TestGenerateEncryptedDocId:
 # 3. format_datetime_spanish
 # ===========================================================================
 
-class TestFormatDatetimeSpanish:
+class TestFormatDatetimeSpanish:  # noqa: F811
+    """Tests for Format Datetime Spanish."""
+
     def test_december(self):
+        """Verify december."""
         dt = datetime.datetime(2025, 12, 25, 14, 30, 15)
         result = signature_views.format_datetime_spanish(dt)
         assert "diciembre" in result
         assert "25" in result
 
     def test_january(self):
+        """Verify january."""
         dt = datetime.datetime(2025, 1, 1, 0, 0, 0)
         result = signature_views.format_datetime_spanish(dt)
         assert "enero" in result
@@ -258,8 +300,12 @@ class TestFormatDatetimeSpanish:
 # ===========================================================================
 
 @pytest.mark.django_db
-class TestExpireOverdueDocuments:
+class TestExpireOverdueDocuments:  # noqa: F811
+    """Tests for Expire Overdue Documents."""
+
+    @freeze_time("2025-01-15 12:00:00")
     def test_expires_overdue(self, lawyer, client_user):
+        """Verify expires overdue."""
         doc = DynamicDocument.objects.create(
             title="Overdue", content="<p>x</p>", state="PendingSignatures",
             created_by=lawyer, requires_signature=True,
@@ -271,6 +317,7 @@ class TestExpireOverdueDocuments:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_skips_creator_none(self, client_user, lawyer):
         """When created_by is None, email notification is skipped."""
         doc = DynamicDocument.objects.create(
@@ -290,16 +337,21 @@ class TestExpireOverdueDocuments:
 
 @pytest.mark.django_db
 class TestGetLetterheadForDocument:
+    """Tests for Get Letterhead For Document."""
+
     def test_doc_letterhead_priority(self, lawyer, doc):
+        """Verify doc letterhead priority."""
         doc.letterhead_image = "some/path.png"
         assert signature_views.get_letterhead_for_document(doc, lawyer) == doc.letterhead_image
 
     def test_user_letterhead_fallback(self, lawyer, doc):
+        """Verify user letterhead fallback."""
         doc.letterhead_image = ""
         lawyer.letterhead_image = "user/path.png"
         assert signature_views.get_letterhead_for_document(doc, lawyer) == lawyer.letterhead_image
 
     def test_no_letterhead(self, lawyer, doc):
+        """Verify no letterhead."""
         doc.letterhead_image = ""
         lawyer.letterhead_image = ""
         assert signature_views.get_letterhead_for_document(doc, lawyer) is None
@@ -318,34 +370,30 @@ Batch 4 – Coverage-gap tests for:
   • user views edge cases (photo upload, serializer validation error)
   • intranet_gym views edge cases (no profile, create_report exception, userEmail as list)
 """
-import datetime
-import hashlib
+import datetime  # noqa: F811
+import hashlib  # noqa: F811
 import json
 import unittest.mock as mock
-from decimal import Decimal
-from io import BytesIO
-from unittest.mock import MagicMock, patch, PropertyMock
+from io import BytesIO  # noqa: F811
+from unittest.mock import patch  # noqa: F811
 
 import pytest
 import requests as req_lib
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from django.utils import timezone
+from django.urls import reverse  # noqa: F811
+from django.utils import timezone  # noqa: F811
 from PIL import Image
-from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework import status  # noqa: F811
 
 from gym_app.models import (
-    DynamicDocument,
-    DocumentSignature,
-    Subscription,
-    PaymentHistory,
-    LegalDocument,
+    DocumentSignature,  # noqa: F811
+    DynamicDocument,  # noqa: F811
     IntranetProfile,
+    LegalDocument,
 )
 from gym_app.models.user import UserSignature
-from gym_app.views.dynamic_documents import signature_views
+from gym_app.views.dynamic_documents import signature_views  # noqa: F811
 
 User = get_user_model()
 
@@ -355,7 +403,8 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b4@example.com",
         password="testpassword",
@@ -368,6 +417,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic_b4@example.com",
         password="testpassword",
@@ -379,6 +429,7 @@ def basic_user():
 
 @pytest.fixture
 def wompi_settings(settings):
+    """Wompi settings."""
     settings.WOMPI_PUBLIC_KEY = "pub_test_b4"
     settings.WOMPI_ENVIRONMENT = "test"
     settings.WOMPI_INTEGRITY_KEY = "integrity_b4"
@@ -399,34 +450,45 @@ def _png_file(name="test.png"):
 # 1. signature_views – helper functions (unit tests, no DB required)
 # ===========================================================================
 
-class TestGetClientIp:
+class TestGetClientIp:  # noqa: F811
+    """Tests for Get Client Ip."""
+
     def test_x_forwarded_for_single(self):
+        """Verify x forwarded for single."""
         request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "1.2.3.4"})
         assert signature_views.get_client_ip(request) == "1.2.3.4"
 
     def test_x_forwarded_for_multiple(self):
+        """Verify x forwarded for multiple."""
         request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "10.0.0.1, 10.0.0.2, 10.0.0.3"})
         assert signature_views.get_client_ip(request) == "10.0.0.1"
 
     def test_x_forwarded_for_empty_string_falls_through(self):
+        """Verify x forwarded for empty string falls through."""
         request = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "", "HTTP_X_REAL_IP": "5.5.5.5"})
         assert signature_views.get_client_ip(request) == "5.5.5.5"
 
     def test_x_real_ip(self):
+        """Verify x real ip."""
         request = SimpleNamespace(META={"HTTP_X_REAL_IP": "9.8.7.6"})
         assert signature_views.get_client_ip(request) == "9.8.7.6"
 
     def test_remote_addr_fallback(self):
+        """Verify remote addr fallback."""
         request = SimpleNamespace(META={"REMOTE_ADDR": "127.0.0.1"})
         assert signature_views.get_client_ip(request) == "127.0.0.1"
 
     def test_no_headers_returns_none(self):
+        """Verify no headers returns none."""
         request = SimpleNamespace(META={})
         assert signature_views.get_client_ip(request) is None
 
 
-class TestGenerateEncryptedDocumentId:
+class TestGenerateEncryptedDocumentId:  # noqa: F811
+    """Tests for Generate Encrypted Document Id."""
+
     def test_deterministic_output(self):
+        """Verify deterministic output."""
         dt = datetime.datetime(2025, 6, 15, 10, 30, 45)
         result = signature_views.generate_encrypted_document_id(42, dt)
         # Format: XXXX-XXXX-XXXX-XXXX
@@ -436,18 +498,21 @@ class TestGenerateEncryptedDocumentId:
         assert all(len(p) == 4 for p in parts)
 
     def test_same_inputs_same_output(self):
+        """Verify same inputs same output."""
         dt = datetime.datetime(2025, 1, 1, 0, 0, 0)
         a = signature_views.generate_encrypted_document_id(1, dt)
         b = signature_views.generate_encrypted_document_id(1, dt)
         assert a == b
 
     def test_different_ids_different_output(self):
+        """Verify different ids different output."""
         dt = datetime.datetime(2025, 1, 1, 0, 0, 0)
         a = signature_views.generate_encrypted_document_id(1, dt)
         b = signature_views.generate_encrypted_document_id(2, dt)
         assert a != b
 
     def test_exception_fallback(self):
+        """Verify exception fallback."""
         # Pass an object whose strftime raises on first call but returns a
         # date string on the second call (used by the fallback path).
         class FailingDate:
@@ -466,8 +531,11 @@ class TestGenerateEncryptedDocumentId:
         assert bad_dt.calls == 2
 
 
-class TestFormatDatetimeSpanish:
+class TestFormatDatetimeSpanish:  # noqa: F811
+    """Tests for Format Datetime Spanish."""
+
     def test_known_date(self):
+        """Verify known date."""
         dt = datetime.datetime(2025, 12, 25, 14, 30, 15)
         result = signature_views.format_datetime_spanish(dt)
         assert "diciembre" in result
@@ -476,28 +544,35 @@ class TestFormatDatetimeSpanish:
         assert "14:30:15" in result
 
     def test_january(self):
+        """Verify january."""
         dt = datetime.datetime(2025, 1, 5, 8, 0, 0)
         result = signature_views.format_datetime_spanish(dt)
         assert "enero" in result
 
 
-class TestGetLetterheadForDocument:
+class TestGetLetterheadForDocument:  # noqa: F811
+    """Tests for Get Letterhead For Document."""
+
     def test_document_letterhead_priority(self):
+        """Verify document letterhead priority."""
         doc = SimpleNamespace(letterhead_image="doc_letterhead.png")
         user = SimpleNamespace(letterhead_image="user_letterhead.png")
         assert signature_views.get_letterhead_for_document(doc, user) == "doc_letterhead.png"
 
     def test_user_letterhead_fallback(self):
+        """Verify user letterhead fallback."""
         doc = SimpleNamespace(letterhead_image=None)
         user = SimpleNamespace(letterhead_image="user_letterhead.png")
         assert signature_views.get_letterhead_for_document(doc, user) == "user_letterhead.png"
 
     def test_no_letterhead(self):
+        """Verify no letterhead."""
         doc = SimpleNamespace(letterhead_image=None)
         user = SimpleNamespace(letterhead_image=None)
         assert signature_views.get_letterhead_for_document(doc, user) is None
 
     def test_no_user(self):
+        """Verify no user."""
         doc = SimpleNamespace(letterhead_image=None)
         assert signature_views.get_letterhead_for_document(doc, None) is None
 
@@ -507,8 +582,12 @@ class TestGetLetterheadForDocument:
 # ===========================================================================
 
 @pytest.mark.django_db
-class TestExpireOverdueDocuments:
+class TestExpireOverdueDocuments:  # noqa: F811
+    """Tests for Expire Overdue Documents."""
+
+    @freeze_time("2025-01-15 12:00:00")
     def test_marks_overdue_document_as_expired(self, lawyer_user):
+        """Verify marks overdue document as expired."""
         doc = DynamicDocument.objects.create(
             title="Overdue doc",
             content="<p>x</p>",
@@ -523,7 +602,9 @@ class TestExpireOverdueDocuments:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_skips_non_overdue_documents(self, lawyer_user):
+        """Verify skips non overdue documents."""
         doc = DynamicDocument.objects.create(
             title="Future doc",
             content="<p>x</p>",
@@ -536,7 +617,9 @@ class TestExpireOverdueDocuments:
         doc.refresh_from_db()
         assert doc.state == "PendingSignatures"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_skips_document_without_creator_email(self):
+        """Verify skips document without creator email."""
         doc = DynamicDocument.objects.create(
             title="No creator",
             content="<p>x</p>",
@@ -550,7 +633,9 @@ class TestExpireOverdueDocuments:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
+    @freeze_time("2025-01-15 12:00:00")
     def test_email_failure_does_not_block(self, lawyer_user):
+        """Verify email failure does not block."""
         doc = DynamicDocument.objects.create(
             title="Email fail",
             content="<p>x</p>",
@@ -573,6 +658,7 @@ class TestExpireOverdueDocuments:
 
 @pytest.mark.django_db
 class TestSubscriptionEdgeCases:
+    """Tests for Subscription Edge Cases."""
 
     @mock.patch("gym_app.views.subscription.requests.get")
     def test_create_subscription_missing_acceptance_tokens(
@@ -776,6 +862,7 @@ class TestSubscriptionEdgeCases:
 
 @pytest.mark.django_db
 class TestUserViewEdgeCases:
+    """Tests for User View Edge Cases."""
 
     @mock.patch("django.core.files.storage.FileSystemStorage.save", return_value="profile_photos/photo.png")
     def test_update_profile_with_photo(self, mock_save, api_client):
@@ -860,6 +947,7 @@ class TestUserViewEdgeCases:
 
 @pytest.mark.django_db
 class TestIntranetGymEdgeCases:
+    """Tests for Intranet Gym Edge Cases."""
 
     def test_list_legal_intranet_documents_with_profile(self, api_client, lawyer_user):
         """Lines 28-32: profile exists and is serialized."""
@@ -892,20 +980,18 @@ class TestIntranetGymEdgeCases:
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("create-report-request")
 
-        response = api_client.post(
-            url,
-            {
-                "contract": "C-001",
-                "initialDate": "2025-01-01",
-                "endDate": "2025-01-31",
-                "paymentConcept": "Honorarios",
-                "paymentAmount": "5000000",
-                "userName": "Test",
-                "userLastName": "User",
-                "userEmail": ["test@example.com"],
-            },
-            format="json",
+        report_data = {
+            "contract": "C-001",
+            "initialDate": "2025-01-01",
+            "endDate": "2025-01-31",
+            "paymentConcept": "Honorarios",
+            "paymentAmount": "5000000",
+        }
+        report_data.update(
+            userName="Test", userLastName="User",
+            userEmail=["test@example.com"],
         )
+        response = api_client.post(url, report_data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
         # send_template_email should be called twice: main + confirmation

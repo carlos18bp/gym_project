@@ -15,6 +15,10 @@ describe("User Store (Auth)", () => {
     localStorage.clear();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("getters: userById, clients, allClientTypes, clientsAndLawyers, getCurrentUser", () => {
     const store = useUserStore();
 

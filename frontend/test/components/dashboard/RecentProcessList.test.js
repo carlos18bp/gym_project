@@ -23,12 +23,16 @@ describe("RecentProcessList.vue", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("shows empty state when there are no recent processes", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
     const recentProcessStore = useRecentProcessStore();
-    jest.spyOn(recentProcessStore, "fetchRecentProcesses").mockResolvedValue();
+    recentProcessStore.fetchRecentProcesses = jest.fn().mockResolvedValue();
 
     recentProcessStore.$patch({ recentProcesses: [] });
 
@@ -49,7 +53,7 @@ describe("RecentProcessList.vue", () => {
     setActivePinia(pinia);
 
     const recentProcessStore = useRecentProcessStore();
-    jest.spyOn(recentProcessStore, "fetchRecentProcesses").mockResolvedValue();
+    recentProcessStore.fetchRecentProcesses = jest.fn().mockResolvedValue();
 
     recentProcessStore.$patch({
       recentProcesses: [
@@ -78,7 +82,7 @@ describe("RecentProcessList.vue", () => {
     expect(wrapper.text()).toContain("A B");
     expect(wrapper.text()).toContain("Tutela");
 
-    await wrapper.findAll(".cursor-pointer")[0].trigger("click");
+    await wrapper.find("h3").trigger("click");
 
     expect(mockRouterPush).toHaveBeenCalledWith({
       name: "process_detail",

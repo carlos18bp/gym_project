@@ -1,18 +1,18 @@
-import pytest
-import re
+"""Tests for password_code module."""
 from datetime import datetime, timedelta
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
-from django.utils import timezone
-from gym_app.models.user import User  # Asumiendo que User está en este módulo
-from gym_app.models.password_code import PasswordCode
 
+import pytest
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+from gym_app.models.password_code import PasswordCode
+from gym_app.models.user import User  # Asumiendo que User está en este módulo
 
 FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 
 @pytest.fixture
 def user():
-    """Create a user for testing"""
+    """Create a user for testing."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -22,7 +22,7 @@ def user():
 
 @pytest.fixture
 def password_code(user):
-    """Create a password reset code for testing"""
+    """Create a password reset code for testing."""
     return PasswordCode.objects.create(
         user=user,
         code='123456'
@@ -30,9 +30,10 @@ def password_code(user):
 
 @pytest.mark.django_db
 class TestPasswordCode:
+    """Tests for Password Code."""
     
     def test_create_password_code(self, user):
-        """Test creating a password reset code"""
+        """Test creating a password reset code."""
         code = PasswordCode.objects.create(
             user=user,
             code='654321'
@@ -45,7 +46,7 @@ class TestPasswordCode:
         assert code.created_at is not None
     
     def test_code_validation(self, user):
-        """Test validation of the password code format"""
+        """Test validation of the password code format."""
         # Valid 6-digit code
         valid_code = PasswordCode(user=user, code='123456')
         valid_code.full_clean()  # Should not raise ValidationError
@@ -69,7 +70,7 @@ class TestPasswordCode:
             invalid_code_alpha.full_clean()
     
     def test_mark_code_as_used(self, password_code):
-        """Test marking a password code as used"""
+        """Test marking a password code as used."""
         assert password_code.used is False
         
         # Mark as used
@@ -81,12 +82,12 @@ class TestPasswordCode:
         assert password_code.used is True
     
     def test_str_representation(self, password_code):
-        """Test string representation of a password code"""
+        """Test string representation of a password code."""
         expected = f'{password_code.user.email} - {password_code.code}'
         assert str(password_code) == expected
     
     def test_ordering(self, user):
-        """Test that password codes are ordered by created_at in descending order"""
+        """Test that password codes are ordered by created_at in descending order."""
         # Create codes with different timestamps
         code1 = PasswordCode.objects.create(user=user, code='111111')
         
@@ -95,7 +96,7 @@ class TestPasswordCode:
             created_at=FIXED_NOW - timedelta(days=1)
         )
         
-        code2 = PasswordCode.objects.create(user=user, code='222222')
+        _code2 = PasswordCode.objects.create(user=user, code='222222')
         
         # Retrieve codes and check ordering
         codes = PasswordCode.objects.all()
@@ -103,7 +104,7 @@ class TestPasswordCode:
         assert codes[1].code == '111111'  # Oldest last
     
     def test_multiple_codes_per_user(self, user):
-        """Test creating multiple password codes for the same user"""
+        """Test creating multiple password codes for the same user."""
         codes = ['111111', '222222', '333333']
         
         # Create multiple codes for the same user
@@ -120,8 +121,8 @@ class TestPasswordCode:
             assert code in db_codes
     
     def test_delete_user_cascades_to_codes(self, user, password_code):
-        """Test that deleting a user cascades to delete their password codes"""
-        user_id = user.id
+        """Test that deleting a user cascades to delete their password codes."""
+        _user_id = user.id
         code_id = password_code.id
         
         # Delete the user

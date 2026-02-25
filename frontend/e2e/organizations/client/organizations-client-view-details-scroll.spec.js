@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can use 'Ver Detalles' to highlight organization posts section", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client can use 'Ver Detalles' to highlight organization posts section", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3700;
 
   await installOrganizationsClientApiMocks(page, {
@@ -31,7 +33,7 @@ test("client can use 'Ver Detalles' to highlight organization posts section", as
 
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
 
-  const organizationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const organizationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(organizationCard).toBeVisible();
 
   // Ensure we're scrolled away from the posts section so the click must scroll back to it.
@@ -46,7 +48,7 @@ test("client can use 'Ver Detalles' to highlight organization posts section", as
   const highlighted = page
     .locator(".ring-2.ring-blue-500.ring-offset-2")
     .filter({ hasText: "Acme Corp" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(highlighted).toBeVisible({ timeout: 3_000 });
   await expect(highlighted).toContainText("Acme Corp");
 

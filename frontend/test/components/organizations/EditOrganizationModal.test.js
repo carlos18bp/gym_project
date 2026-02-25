@@ -5,6 +5,8 @@ import { useOrganizationsStore } from "@/stores/organizations";
 
 import EditOrganizationModal from "@/components/organizations/modals/EditOrganizationModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({
@@ -83,6 +85,10 @@ describe("EditOrganizationModal.vue", () => {
         }
       }
     };
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test("opening modal resets form fields from organization props", async () => {
@@ -555,6 +561,7 @@ describe("EditOrganizationModal.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.isLoading = true;
     await wrapper.vm.$nextTick();
 

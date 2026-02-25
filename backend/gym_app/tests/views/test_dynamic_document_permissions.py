@@ -1,16 +1,21 @@
+"""Tests for dynamic_document_permissions module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
-from gym_app.models import DynamicDocument, DocumentVisibilityPermission, DocumentUsabilityPermission
-
+from gym_app.models import (
+    DocumentUsabilityPermission,
+    DocumentVisibilityPermission,
+    DynamicDocument,
+)
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -21,6 +26,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -33,6 +39,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc permisos",
         content="<p>x</p>",
@@ -44,6 +51,8 @@ def document(lawyer_user):
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestGetDocumentPermissions:
+    """Tests for Get Document Permissions."""
+
     @pytest.mark.contract
     def test_get_document_permissions_as_lawyer(self, api_client, lawyer_user, client_user, document):
         """get_document_permissions devuelve resumen de visibilidad/usabilidad y roles activos."""
@@ -76,6 +85,7 @@ class TestGetDocumentPermissions:
 
     @pytest.mark.edge
     def test_get_document_permissions_not_found(self, api_client, lawyer_user):
+        """Verify get document permissions not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-document-permissions", kwargs={"pk": 9999})
         response = api_client.get(url)
@@ -84,6 +94,7 @@ class TestGetDocumentPermissions:
 
     @pytest.mark.edge
     def test_get_document_permissions_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify get document permissions forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("get-document-permissions", kwargs={"pk": document.id})
         response = api_client.get(url)
@@ -93,6 +104,7 @@ class TestGetDocumentPermissions:
 
     @pytest.mark.edge
     def test_get_document_permissions_internal_error(self, api_client, lawyer_user, document, monkeypatch):
+        """Verify get document permissions internal error."""
         api_client.force_authenticate(user=lawyer_user)
 
         def raise_error(*args, **kwargs):
@@ -142,6 +154,8 @@ class TestGetDocumentPermissions:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestManageDocumentPermissionsUnified:
+    """Tests for Manage Document Permissions Unified."""
+
     @pytest.mark.contract
     def test_manage_permissions_unified_basic_flow(self, api_client, lawyer_user, client_user, document):
         """manage_document_permissions_unified maneja is_public, visibility y usability."""
@@ -248,6 +262,7 @@ class TestManageDocumentPermissionsUnified:
 
     @pytest.mark.edge
     def test_manage_permissions_unified_empty_payload(self, api_client, lawyer_user, document):
+        """Verify manage permissions unified empty payload."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("manage-document-permissions-unified", kwargs={"pk": document.id})
@@ -259,6 +274,7 @@ class TestManageDocumentPermissionsUnified:
 
     @pytest.mark.edge
     def test_manage_permissions_unified_usability_requires_visibility(self, api_client, lawyer_user, client_user, document):
+        """Verify manage permissions unified usability requires visibility."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("manage-document-permissions-unified", kwargs={"pk": document.id})
@@ -278,6 +294,7 @@ class TestManageDocumentPermissionsUnified:
 
     @pytest.mark.edge
     def test_manage_permissions_unified_usability_granted_when_public(self, api_client, lawyer_user, client_user, document):
+        """Verify manage permissions unified usability granted when public."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("manage-document-permissions-unified", kwargs={"pk": document.id})
@@ -296,6 +313,7 @@ class TestManageDocumentPermissionsUnified:
 
     @pytest.mark.edge
     def test_manage_permissions_unified_visibility_empty_clears_permissions(self, api_client, lawyer_user, client_user, document):
+        """Verify manage permissions unified visibility empty clears permissions."""
         DocumentVisibilityPermission.objects.create(
             document=document,
             user=client_user,
@@ -312,6 +330,7 @@ class TestManageDocumentPermissionsUnified:
 
     @pytest.mark.edge
     def test_manage_permissions_unified_usability_empty_clears_permissions(self, api_client, lawyer_user, client_user, document):
+        """Verify manage permissions unified usability empty clears permissions."""
         DocumentVisibilityPermission.objects.create(
             document=document,
             user=client_user,
@@ -345,8 +364,11 @@ class TestManageDocumentPermissionsUnified:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestTogglePublicAccess:
+    """Tests for Toggle Public Access."""
+
     @pytest.mark.contract
     def test_toggle_public_access_auto_toggle(self, api_client, lawyer_user, document):
+        """Verify toggle public access auto toggle."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("toggle-public-access", kwargs={"pk": document.id})
@@ -363,6 +385,7 @@ class TestTogglePublicAccess:
 
     @pytest.mark.contract
     def test_toggle_public_access_set_explicit_value(self, api_client, lawyer_user, document):
+        """Verify toggle public access set explicit value."""
         api_client.force_authenticate(user=lawyer_user)
 
         url = reverse("toggle-public-access", kwargs={"pk": document.id})
@@ -373,6 +396,7 @@ class TestTogglePublicAccess:
 
     @pytest.mark.edge
     def test_toggle_public_access_not_found(self, api_client, lawyer_user):
+        """Verify toggle public access not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("toggle-public-access", kwargs={"pk": 9999})
         response = api_client.post(url, {}, format="json")
@@ -380,6 +404,7 @@ class TestTogglePublicAccess:
 
     @pytest.mark.edge
     def test_toggle_public_access_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify toggle public access forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("toggle-public-access", kwargs={"pk": document.id})
         response = api_client.post(url, {}, format="json")
@@ -404,12 +429,14 @@ Targets uncovered lines:
 """
 import pytest
 from django.contrib.auth import get_user_model
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
 from gym_app.models.dynamic_document import (
-    DynamicDocument, DocumentVisibilityPermission, DocumentUsabilityPermission,
+    DocumentUsabilityPermission,  # noqa: F811
+    DocumentVisibilityPermission,  # noqa: F811
+    DynamicDocument,  # noqa: F811
 )
 
 User = get_user_model()
@@ -420,7 +447,8 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b11@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -429,7 +457,8 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="client_b11@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -438,7 +467,8 @@ def client_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def document(lawyer_user):
+def document(lawyer_user):  # noqa: F811
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc B11", content="<p>Hello</p>", state="Draft",
         created_by=lawyer_user,
@@ -451,6 +481,7 @@ def document(lawyer_user):
 
 @pytest.mark.django_db
 class TestGrantUsabilityByRole:
+    """Tests for Grant Usability By Role."""
 
     def test_empty_roles(self, api_client, lawyer_user, document):
         """Line 934-938: empty roles list."""
@@ -499,6 +530,7 @@ class TestGrantUsabilityByRole:
 
 @pytest.mark.django_db
 class TestRevokePermissionsByRole:
+    """Tests for Revoke Permissions By Role."""
 
     def test_empty_roles(self, api_client, lawyer_user, document):
         """Lines 1037-1041: empty roles list."""
@@ -546,6 +578,7 @@ class TestRevokePermissionsByRole:
 
 @pytest.mark.django_db
 class TestGrantVisibilityCombined:
+    """Tests for Grant Visibility Combined."""
 
     def test_empty_input(self, api_client, lawyer_user, document):
         """Lines 1142-1146: neither user_ids nor roles."""
@@ -595,6 +628,7 @@ class TestGrantVisibilityCombined:
 
 @pytest.mark.django_db
 class TestGrantUsabilityCombined:
+    """Tests for Grant Usability Combined."""
 
     def test_empty_input(self, api_client, lawyer_user, document):
         """Lines 1262-1266: no user_ids or roles."""
@@ -625,6 +659,7 @@ class TestGrantUsabilityCombined:
 
 @pytest.mark.django_db
 class TestRevokePermissionsCombined:
+    """Tests for Revoke Permissions Combined."""
 
     def test_empty_input(self, api_client, lawyer_user, document):
         """Lines 1401-1405: no user_ids or roles."""
@@ -662,38 +697,50 @@ class TestRevokePermissionsCombined:
 # ======================================================================
 
 """Batch 22 – permission_views.py remaining uncovered edges."""
-import pytest
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
 from unittest.mock import patch
+
+import pytest
 from django.contrib.auth import get_user_model
-from gym_app.models import DynamicDocument, DocumentVisibilityPermission, DocumentUsabilityPermission
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models import (
+    DocumentUsabilityPermission,  # noqa: F811
+    DocumentVisibilityPermission,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+)
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(email="law_b22@t.com", password="pw", role="lawyer")
 
 @pytest.fixture
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(email="cli_b22@t.com", password="pw", role="client", first_name="C", last_name="L")
 
 @pytest.fixture
 def doc(lawyer):
+    """Doc."""
     return DynamicDocument.objects.create(title="DocB22", content="<p>x</p>", state="Draft", created_by=lawyer)
 
 
 class TestPermViewsEdgeScenarios:
+    """Tests for Perm Views Edge Scenarios."""
 
     # 1. get_document_permissions – generic exception
     def test_get_perms_internal_error(self, api, lawyer, doc):
+        """Verify get perms internal error."""
         api.force_authenticate(user=lawyer)
         url = reverse("get-document-permissions", kwargs={"pk": doc.pk})
         with patch("gym_app.views.dynamic_documents.permission_views.DocumentVisibilityPermission.objects") as m:
@@ -703,6 +750,7 @@ class TestPermViewsEdgeScenarios:
 
     # 2. manage unified – invalid usability roles
     def test_manage_unified_invalid_usability_roles(self, api, lawyer, doc):
+        """Verify manage unified invalid usability roles."""
         api.force_authenticate(user=lawyer)
         url = reverse("manage-document-permissions-unified", kwargs={"pk": doc.pk})
         resp = api.post(url, {"usability": {"roles": ["bad_role"]}}, format="json")
@@ -711,6 +759,7 @@ class TestPermViewsEdgeScenarios:
 
     # 3. manage unified – doc not found
     def test_manage_unified_doc_not_found(self, api, lawyer):
+        """Verify manage unified doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("manage-document-permissions-unified", kwargs={"pk": 99999})
         resp = api.post(url, {"is_public": True}, format="json")
@@ -718,6 +767,7 @@ class TestPermViewsEdgeScenarios:
 
     # 4. toggle public – doc not found
     def test_toggle_public_doc_not_found(self, api, lawyer):
+        """Verify toggle public doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("toggle-public-access", kwargs={"pk": 99999})
         resp = api.post(url, {}, format="json")
@@ -725,6 +775,7 @@ class TestPermViewsEdgeScenarios:
 
     # 5. grant visibility – doc not found
     def test_grant_visibility_doc_not_found(self, api, lawyer):
+        """Verify grant visibility doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-visibility-permissions", kwargs={"pk": 99999})
         resp = api.post(url, {"user_ids": [1]}, format="json")
@@ -732,6 +783,7 @@ class TestPermViewsEdgeScenarios:
 
     # 6. grant usability – lawyer skipped
     def test_grant_usability_lawyer_skipped(self, api, lawyer, doc):
+        """Verify grant usability lawyer skipped."""
         law2 = User.objects.create_user(email="law2_b22@t.com", password="pw", role="lawyer")
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions", kwargs={"pk": doc.pk})
@@ -741,6 +793,7 @@ class TestPermViewsEdgeScenarios:
 
     # 7. grant usability – doc not found
     def test_grant_usability_doc_not_found(self, api, lawyer):
+        """Verify grant usability doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions", kwargs={"pk": 99999})
         resp = api.post(url, {"user_ids": [1]}, format="json")
@@ -748,6 +801,7 @@ class TestPermViewsEdgeScenarios:
 
     # 8. revoke visibility – doc not found
     def test_revoke_visibility_doc_not_found(self, api, lawyer, client_user):
+        """Verify revoke visibility doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("revoke-visibility-permission", kwargs={"pk": 99999, "user_id": client_user.pk})
         resp = api.delete(url)
@@ -755,6 +809,7 @@ class TestPermViewsEdgeScenarios:
 
     # 9. revoke usability – user not found
     def test_revoke_usability_user_not_found(self, api, lawyer, doc):
+        """Verify revoke usability user not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("revoke-usability-permission", kwargs={"pk": doc.pk, "user_id": 99999})
         resp = api.delete(url)
@@ -762,6 +817,7 @@ class TestPermViewsEdgeScenarios:
 
     # 10. grant visibility by role – doc not found
     def test_grant_vis_by_role_doc_not_found(self, api, lawyer):
+        """Verify grant vis by role doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-visibility-permissions-by-role", kwargs={"pk": 99999})
         resp = api.post(url, {"roles": ["client"]}, format="json")
@@ -769,6 +825,7 @@ class TestPermViewsEdgeScenarios:
 
     # 11. grant usability by role – public warning
     def test_grant_usab_by_role_public_warning(self, api, lawyer, client_user):
+        """Verify grant usab by role public warning."""
         pub_doc = DynamicDocument.objects.create(title="Pub", content="<p>x</p>", state="Draft", created_by=lawyer, is_public=True)
         # Grant visibility first so model-level clean() passes
         DocumentVisibilityPermission.objects.create(document=pub_doc, user=client_user, granted_by=lawyer)
@@ -780,6 +837,7 @@ class TestPermViewsEdgeScenarios:
 
     # 12. grant usability by role – doc not found
     def test_grant_usab_by_role_doc_not_found(self, api, lawyer):
+        """Verify grant usab by role doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions-by-role", kwargs={"pk": 99999})
         resp = api.post(url, {"roles": ["client"]}, format="json")
@@ -787,6 +845,7 @@ class TestPermViewsEdgeScenarios:
 
     # 13. revoke by role – doc not found
     def test_revoke_by_role_doc_not_found(self, api, lawyer):
+        """Verify revoke by role doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("revoke-permissions-by-role", kwargs={"pk": 99999})
         resp = api.delete(url, {"roles": ["client"], "permission_type": "both"}, format="json")
@@ -794,6 +853,7 @@ class TestPermViewsEdgeScenarios:
 
     # 14. grant visibility combined – doc not found
     def test_grant_vis_combined_doc_not_found(self, api, lawyer):
+        """Verify grant vis combined doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-visibility-permissions-combined", kwargs={"pk": 99999})
         resp = api.post(url, {"roles": ["client"]}, format="json")
@@ -801,6 +861,7 @@ class TestPermViewsEdgeScenarios:
 
     # 15. grant usability combined – roles + excludes + doc not found
     def test_grant_usab_combined_roles_excludes(self, api, lawyer, client_user):
+        """Verify grant usab combined roles excludes."""
         pub_doc = DynamicDocument.objects.create(title="Pub2", content="<p>x</p>", state="Draft", created_by=lawyer, is_public=True)
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions-combined", kwargs={"pk": pub_doc.pk})
@@ -808,6 +869,7 @@ class TestPermViewsEdgeScenarios:
         assert resp.status_code == 200
 
     def test_grant_usab_combined_doc_not_found(self, api, lawyer):
+        """Verify grant usab combined doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions-combined", kwargs={"pk": 99999})
         resp = api.post(url, {"roles": ["client"]}, format="json")
@@ -815,6 +877,7 @@ class TestPermViewsEdgeScenarios:
 
     # 17. revoke combined – roles + excludes + doc not found
     def test_revoke_combined_roles_excludes(self, api, lawyer, client_user, doc):
+        """Verify revoke combined roles excludes."""
         DocumentVisibilityPermission.objects.create(document=doc, user=client_user, granted_by=lawyer)
         api.force_authenticate(user=lawyer)
         url = reverse("revoke-permissions-combined", kwargs={"pk": doc.pk})
@@ -822,6 +885,7 @@ class TestPermViewsEdgeScenarios:
         assert resp.status_code == 200
 
     def test_revoke_combined_doc_not_found(self, api, lawyer):
+        """Verify revoke combined doc not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("revoke-permissions-combined", kwargs={"pk": 99999})
         resp = api.delete(url, {"roles": ["client"], "permission_type": "both"}, format="json")
@@ -829,6 +893,7 @@ class TestPermViewsEdgeScenarios:
 
     # 19. grant visibility combined – lawyer skip (line 1192)
     def test_grant_vis_combined_lawyer_skipped(self, api, lawyer, doc):
+        """Verify grant vis combined lawyer skipped."""
         law2 = User.objects.create_user(email="law3_b22@t.com", password="pw", role="lawyer")
         api.force_authenticate(user=lawyer)
         url = reverse("grant-visibility-permissions-combined", kwargs={"pk": doc.pk})
@@ -838,6 +903,7 @@ class TestPermViewsEdgeScenarios:
 
     # 20. grant usability combined – lawyer skip (line 1313)
     def test_grant_usab_combined_lawyer_skipped(self, api, lawyer, doc):
+        """Verify grant usab combined lawyer skipped."""
         law2 = User.objects.create_user(email="law4_b22@t.com", password="pw", role="lawyer")
         api.force_authenticate(user=lawyer)
         url = reverse("grant-usability-permissions-combined", kwargs={"pk": doc.pk})
@@ -857,29 +923,24 @@ Batch 7 – Coverage-gap tests for:
   • legal_request.py (93%) – filters, date parsing, file validation,
     confirmation email, download file, status update, delete
 """
-import json
-import os
-from io import BytesIO
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch  # noqa: F811
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
 from gym_app.models import (
+    LegalDiscipline,
     LegalRequest,
     LegalRequestType,
-    LegalDiscipline,
-    LegalRequestFiles,
-    LegalRequestResponse,
 )
 from gym_app.models.dynamic_document import (
-    DynamicDocument,
-    DocumentVisibilityPermission,
-    DocumentUsabilityPermission,
+    DocumentUsabilityPermission,  # noqa: F811
+    DocumentVisibilityPermission,  # noqa: F811
+    DynamicDocument,  # noqa: F811
 )
 
 User = get_user_model()
@@ -890,7 +951,8 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b7@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -899,7 +961,8 @@ def lawyer_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="client_b7@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -909,6 +972,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic_b7@test.com", password="pw", role="basic",
     )
@@ -916,7 +980,8 @@ def basic_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def document(lawyer_user):
+def document(lawyer_user):  # noqa: F811
+    """Document."""
     return DynamicDocument.objects.create(
         title="Perm Doc B7",
         content="<p>Hello</p>",
@@ -929,18 +994,21 @@ def document(lawyer_user):
 @pytest.fixture
 @pytest.mark.django_db
 def req_type():
+    """Req type."""
     return LegalRequestType.objects.create(name="Civil B7")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def discipline():
+    """Discipline."""
     return LegalDiscipline.objects.create(name="Penal B7")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def legal_request(client_user, req_type, discipline):
+    """Legal request."""
     return LegalRequest.objects.create(
         user=client_user,
         request_type=req_type,
@@ -956,6 +1024,7 @@ def legal_request(client_user, req_type, discipline):
 
 @pytest.mark.django_db
 class TestManagePermissionsUnified:
+    """Tests for Manage Permissions Unified."""
 
     def test_set_public_and_visibility_roles(
         self, api_client, lawyer_user, document, client_user
@@ -1020,8 +1089,10 @@ class TestManagePermissionsUnified:
     def test_usability_with_public_doc_model_still_validates(
         self, api_client, lawyer_user, document, client_user
     ):
-        """Line 345: view skips visibility check for public doc, but model
-        clean() still enforces it, resulting in a 500 from the generic handler."""
+        """Line 345: view skips visibility check for public doc, but model.
+        
+        clean() still enforces it, resulting in a 500 from the generic handler.
+        """
         document.is_public = True
         document.save()
         api_client.force_authenticate(user=lawyer_user)
@@ -1046,6 +1117,7 @@ class TestManagePermissionsUnified:
 
 @pytest.mark.django_db
 class TestPermissionEndpoints:
+    """Tests for Permission Endpoints."""
 
     def test_toggle_public_auto(self, api_client, lawyer_user, document):
         """Lines 447-448: auto-toggle when no is_public provided."""
@@ -1143,6 +1215,7 @@ class TestPermissionEndpoints:
 
 @pytest.mark.django_db
 class TestLegalRequestListFilters:
+    """Tests for Legal Request List Filters."""
 
     def test_list_as_lawyer_sees_all(
         self, api_client, lawyer_user, legal_request
@@ -1207,6 +1280,7 @@ class TestLegalRequestListFilters:
 
 @pytest.mark.django_db
 class TestLegalRequestActions:
+    """Tests for Legal Request Actions."""
 
     def test_update_status_non_lawyer_forbidden(
         self, api_client, client_user, legal_request
@@ -1313,6 +1387,7 @@ class TestLegalRequestActions:
 
 @pytest.mark.django_db
 class TestConfirmationEmail:
+    """Tests for Confirmation Email."""
 
     def test_missing_legal_request_id(self, api_client, lawyer_user):
         """Lines 348-349: missing legal_request_id."""
@@ -1360,6 +1435,7 @@ class TestConfirmationEmail:
 
 @pytest.mark.django_db
 class TestLegalRequestDetailEdges:
+    """Tests for Legal Request Detail Edges."""
 
     def test_get_detail_no_permission(
         self, api_client, basic_user, legal_request
@@ -1427,18 +1503,22 @@ class TestLegalRequestDetailEdges:
 # ======================================================================
 
 import pytest
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from django.contrib.auth import get_user_model
-from gym_app.models import DynamicDocument, DocumentVisibilityPermission, DocumentUsabilityPermission
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
+from gym_app.models import (
+    DocumentUsabilityPermission,  # noqa: F811
+    DocumentVisibilityPermission,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+)
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 @pytest.fixture
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -1447,7 +1527,8 @@ def lawyer_user():
 
 
 @pytest.fixture
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -1456,7 +1537,8 @@ def client_user():
 
 
 @pytest.fixture
-def basic_user():
+def basic_user():  # noqa: F811
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic@example.com",
         password="testpassword",
@@ -1466,6 +1548,7 @@ def basic_user():
 
 @pytest.fixture
 def corporate_user():
+    """Corporate user."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -1475,6 +1558,7 @@ def corporate_user():
 
 @pytest.fixture
 def other_user():
+    """Other user."""
     return User.objects.create_user(
         email="other@example.com",
         password="testpassword",
@@ -1483,7 +1567,8 @@ def other_user():
 
 
 @pytest.fixture
-def document(lawyer_user):
+def document(lawyer_user):  # noqa: F811
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc permisos",
         content="<p>x</p>",
@@ -1493,8 +1578,10 @@ def document(lawyer_user):
 
 
 class TestGrantVisibilityPermissions:
+    """Tests for Grant Visibility Permissions."""
+
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [({}, "user_ids list is required"), ({"user_ids": [9999]}, "Users not found")],
     )
     def test_grant_visibility_permissions_validation(
@@ -1505,6 +1592,7 @@ class TestGrantVisibilityPermissions:
         payload,
         expected_detail,
     ):
+        """Verify grant visibility permissions validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-visibility-permissions", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -1519,6 +1607,7 @@ class TestGrantVisibilityPermissions:
         client_user,
         document,
     ):
+        """Verify grant visibility permissions public warning skips lawyer."""
         document.is_public = True
         document.save(update_fields=["is_public"])
 
@@ -1534,6 +1623,7 @@ class TestGrantVisibilityPermissions:
         assert lawyer_user.id not in granted_ids
 
     def test_grant_visibility_permissions_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify grant visibility permissions forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("grant-visibility-permissions", kwargs={"pk": document.id})
         response = api_client.post(url, {"user_ids": [client_user.id]}, format="json")
@@ -1542,6 +1632,7 @@ class TestGrantVisibilityPermissions:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_grant_visibility_permissions_document_not_found(self, api_client, lawyer_user):
+        """Verify grant visibility permissions document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-visibility-permissions", kwargs={"pk": 9999})
         response = api_client.post(url, {"user_ids": [lawyer_user.id]}, format="json")
@@ -1551,8 +1642,10 @@ class TestGrantVisibilityPermissions:
 
 
 class TestGrantUsabilityPermissions:
+    """Tests for Grant Usability Permissions."""
+
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [({}, "user_ids list is required"), ({"user_ids": [9999]}, "Users not found")],
     )
     def test_grant_usability_permissions_validation(
@@ -1563,6 +1656,7 @@ class TestGrantUsabilityPermissions:
         payload,
         expected_detail,
     ):
+        """Verify grant usability permissions validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -1571,6 +1665,7 @@ class TestGrantUsabilityPermissions:
         assert expected_detail in response.data["detail"]
 
     def test_grant_usability_permissions_requires_visibility(self, api_client, lawyer_user, client_user, other_user, document):
+        """Verify grant usability permissions requires visibility."""
         DocumentVisibilityPermission.objects.create(
             document=document,
             user=client_user,
@@ -1589,6 +1684,7 @@ class TestGrantUsabilityPermissions:
         assert other_user.id in error_ids
 
     def test_grant_usability_permissions_public_warning(self, api_client, lawyer_user, other_user, document):
+        """Verify grant usability permissions public warning."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -1607,6 +1703,7 @@ class TestGrantUsabilityPermissions:
         assert response.data["granted_permissions"]
 
     def test_grant_usability_permissions_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify grant usability permissions forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("grant-usability-permissions", kwargs={"pk": document.id})
         response = api_client.post(url, {"user_ids": [client_user.id]}, format="json")
@@ -1615,6 +1712,7 @@ class TestGrantUsabilityPermissions:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_grant_usability_permissions_document_not_found(self, api_client, lawyer_user):
+        """Verify grant usability permissions document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions", kwargs={"pk": 9999})
         response = api_client.post(url, {"user_ids": [lawyer_user.id]}, format="json")
@@ -1624,7 +1722,10 @@ class TestGrantUsabilityPermissions:
 
 
 class TestRevokePermissionsByUser:
+    """Tests for Revoke Permissions By User."""
+
     def test_revoke_visibility_permission_not_found(self, api_client, lawyer_user, client_user, document):
+        """Verify revoke visibility permission not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-visibility-permission", kwargs={"pk": document.id, "user_id": client_user.id})
         response = api_client.delete(url)
@@ -1632,6 +1733,7 @@ class TestRevokePermissionsByUser:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_revoke_visibility_permission_user_not_found(self, api_client, lawyer_user, document):
+        """Verify revoke visibility permission user not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-visibility-permission", kwargs={"pk": document.id, "user_id": 9999})
         response = api_client.delete(url)
@@ -1639,6 +1741,7 @@ class TestRevokePermissionsByUser:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_revoke_visibility_permission_forbidden_for_non_owner(self, api_client, client_user, document, other_user):
+        """Verify revoke visibility permission forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("revoke-visibility-permission", kwargs={"pk": document.id, "user_id": other_user.id})
         response = api_client.delete(url)
@@ -1647,6 +1750,7 @@ class TestRevokePermissionsByUser:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_revoke_visibility_permission_document_not_found(self, api_client, lawyer_user, client_user):
+        """Verify revoke visibility permission document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-visibility-permission", kwargs={"pk": 9999, "user_id": client_user.id})
         response = api_client.delete(url)
@@ -1661,6 +1765,7 @@ class TestRevokePermissionsByUser:
         client_user,
         document,
     ):
+        """Verify revoke visibility permission public warning revokes usability."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -1683,6 +1788,7 @@ class TestRevokePermissionsByUser:
         assert response.data["usability_revoked"] is True
 
     def test_revoke_usability_permission_not_found(self, api_client, lawyer_user, client_user, document):
+        """Verify revoke usability permission not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-usability-permission", kwargs={"pk": document.id, "user_id": client_user.id})
         response = api_client.delete(url)
@@ -1690,6 +1796,7 @@ class TestRevokePermissionsByUser:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_revoke_usability_permission_user_not_found(self, api_client, lawyer_user, document):
+        """Verify revoke usability permission user not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-usability-permission", kwargs={"pk": document.id, "user_id": 9999})
         response = api_client.delete(url)
@@ -1697,6 +1804,7 @@ class TestRevokePermissionsByUser:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_revoke_usability_permission_forbidden_for_non_owner(self, api_client, client_user, document, other_user):
+        """Verify revoke usability permission forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("revoke-usability-permission", kwargs={"pk": document.id, "user_id": other_user.id})
         response = api_client.delete(url)
@@ -1705,6 +1813,7 @@ class TestRevokePermissionsByUser:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_revoke_usability_permission_document_not_found(self, api_client, lawyer_user, client_user):
+        """Verify revoke usability permission document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-usability-permission", kwargs={"pk": 9999, "user_id": client_user.id})
         response = api_client.delete(url)
@@ -1713,6 +1822,7 @@ class TestRevokePermissionsByUser:
         assert "document not found" in response.data["detail"].lower()
 
     def test_revoke_usability_permission_public_warning(self, api_client, lawyer_user, client_user, document):
+        """Verify revoke usability permission public warning."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -1735,8 +1845,10 @@ class TestRevokePermissionsByUser:
 
 
 class TestRoleBasedPermissionEndpoints:
+    """Tests for Role Based Permission Endpoints."""
+
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [({}, "roles list is required"), ({"roles": ["invalid"]}, "Invalid roles")],
     )
     def test_grant_visibility_permissions_by_role_validation(
@@ -1747,6 +1859,7 @@ class TestRoleBasedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify grant visibility permissions by role validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-visibility-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -1761,6 +1874,7 @@ class TestRoleBasedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify grant visibility permissions by role skips existing and warns."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -1778,6 +1892,7 @@ class TestRoleBasedPermissionEndpoints:
         assert response.data["skipped_users"]
 
     def test_grant_visibility_permissions_by_role_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify grant visibility permissions by role forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("grant-visibility-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.post(url, {"roles": ["client"]}, format="json")
@@ -1786,6 +1901,7 @@ class TestRoleBasedPermissionEndpoints:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_grant_visibility_permissions_by_role_document_not_found(self, api_client, lawyer_user):
+        """Verify grant visibility permissions by role document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-visibility-permissions-by-role", kwargs={"pk": 9999})
         response = api_client.post(url, {"roles": ["client"]}, format="json")
@@ -1794,7 +1910,7 @@ class TestRoleBasedPermissionEndpoints:
         assert "document not found" in response.data["detail"].lower()
 
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [({}, "roles list is required"), ({"roles": ["invalid"]}, "Invalid roles")],
     )
     def test_grant_usability_permissions_by_role_validation(
@@ -1805,6 +1921,7 @@ class TestRoleBasedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify grant usability permissions by role validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -1819,6 +1936,7 @@ class TestRoleBasedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify grant usability permissions by role requires visibility."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.post(url, {"roles": ["client"]}, format="json")
@@ -1834,6 +1952,7 @@ class TestRoleBasedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify grant usability permissions by role skips existing."""
         DocumentVisibilityPermission.objects.create(
             document=document,
             user=client_user,
@@ -1853,6 +1972,7 @@ class TestRoleBasedPermissionEndpoints:
         assert response.data["skipped_users"]
 
     def test_grant_usability_permissions_by_role_forbidden_for_non_owner(self, api_client, client_user, document):
+        """Verify grant usability permissions by role forbidden for non owner."""
         api_client.force_authenticate(user=client_user)
         url = reverse("grant-usability-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.post(url, {"roles": ["client"]}, format="json")
@@ -1861,6 +1981,7 @@ class TestRoleBasedPermissionEndpoints:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_grant_usability_permissions_by_role_document_not_found(self, api_client, lawyer_user):
+        """Verify grant usability permissions by role document not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions-by-role", kwargs={"pk": 9999})
         response = api_client.post(url, {"roles": ["client"]}, format="json")
@@ -1869,7 +1990,7 @@ class TestRoleBasedPermissionEndpoints:
         assert "document not found" in response.data["detail"].lower()
 
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [
             ({}, "roles list is required"),
             ({"roles": ["invalid"], "permission_type": "both"}, "Invalid roles"),
@@ -1884,6 +2005,7 @@ class TestRoleBasedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify revoke permissions by role validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-permissions-by-role", kwargs={"pk": document.id})
         response = api_client.delete(url, payload, format="json")
@@ -1898,6 +2020,7 @@ class TestRoleBasedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify revoke permissions by role public warning."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -1921,7 +2044,10 @@ class TestRoleBasedPermissionEndpoints:
 
 
 class TestPermissionViewsRest:
+    """Tests for Permission Views Rest."""
+
     def test_toggle_public_access_rest(self, api_client, lawyer_user, document):
+        """Verify toggle public access rest."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("toggle-public-access", kwargs={"pk": document.id})
 
@@ -1938,6 +2064,7 @@ class TestPermissionViewsRest:
         assert document.is_public is False
 
     def test_toggle_public_access_not_found(self, api_client, lawyer_user):
+        """Verify toggle public access not found."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("toggle-public-access", kwargs={"pk": 9999})
 
@@ -1946,6 +2073,7 @@ class TestPermissionViewsRest:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_available_clients_forbidden_for_non_lawyer(self, api_client, client_user):
+        """Verify get available clients forbidden for non lawyer."""
         api_client.force_authenticate(user=client_user)
         url = reverse("get-available-clients")
         response = api_client.get(url)
@@ -1954,6 +2082,7 @@ class TestPermissionViewsRest:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_get_available_roles_forbidden_for_non_lawyer(self, api_client, client_user):
+        """Verify get available roles forbidden for non lawyer."""
         api_client.force_authenticate(user=client_user)
         url = reverse("get-available-roles")
         response = api_client.get(url)
@@ -1962,6 +2091,7 @@ class TestPermissionViewsRest:
         assert "only lawyers" in response.data["detail"].lower()
 
     def test_get_available_clients_and_roles_rest(self, api_client, lawyer_user, client_user, basic_user, corporate_user):
+        """Verify get available clients and roles rest."""
         api_client.force_authenticate(user=lawyer_user)
 
         clients_url = reverse("get-available-clients")
@@ -1983,8 +2113,10 @@ class TestPermissionViewsRest:
 
 
 class TestCombinedPermissionEndpoints:
+    """Tests for Combined Permission Endpoints."""
+
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [
             ({}, "At least one of user_ids or roles must be provided"),
             ({"roles": ["invalid"]}, "Invalid roles"),
@@ -1999,6 +2131,7 @@ class TestCombinedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify grant visibility permissions combined validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-visibility-permissions-combined", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -2014,6 +2147,7 @@ class TestCombinedPermissionEndpoints:
         basic_user,
         document,
     ):
+        """Verify grant visibility permissions combined warning and skipped."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -2036,7 +2170,7 @@ class TestCombinedPermissionEndpoints:
         assert response.data["skipped_users"]
 
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [
             ({}, "At least one of user_ids or roles must be provided"),
             ({"roles": ["invalid"]}, "Invalid roles"),
@@ -2051,6 +2185,7 @@ class TestCombinedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify grant usability permissions combined validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("grant-usability-permissions-combined", kwargs={"pk": document.id})
         response = api_client.post(url, payload, format="json")
@@ -2066,6 +2201,7 @@ class TestCombinedPermissionEndpoints:
         other_user,
         document,
     ):
+        """Verify grant usability permissions combined requires visibility."""
         DocumentVisibilityPermission.objects.create(
             document=document,
             user=client_user,
@@ -2090,6 +2226,7 @@ class TestCombinedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify grant usability permissions combined warning and skipped."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -2113,7 +2250,7 @@ class TestCombinedPermissionEndpoints:
         assert response.data["skipped_users"]
 
     @pytest.mark.parametrize(
-        "payload, expected_detail",
+        ("payload", "expected_detail"),
         [
             ({}, "At least one of user_ids or roles must be provided"),
             ({"roles": ["invalid"], "permission_type": "both"}, "Invalid roles"),
@@ -2129,6 +2266,7 @@ class TestCombinedPermissionEndpoints:
         payload,
         expected_detail,
     ):
+        """Verify revoke permissions combined validation."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("revoke-permissions-combined", kwargs={"pk": document.id})
         response = api_client.delete(url, payload, format="json")
@@ -2143,6 +2281,7 @@ class TestCombinedPermissionEndpoints:
         client_user,
         document,
     ):
+        """Verify revoke permissions combined public warning."""
         document.is_public = True
         document.save(update_fields=["is_public"])
         DocumentVisibilityPermission.objects.create(
@@ -2169,23 +2308,28 @@ class TestCombinedPermissionEndpoints:
 # Tests merged from test_permission_views_coverage.py
 # ======================================================================
 
-import pytest
 from unittest.mock import patch
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
-from rest_framework.response import Response as DRFResponse
 
+import pytest
 from django.contrib.auth import get_user_model
-from gym_app.models import DynamicDocument, DocumentVisibilityPermission, DocumentUsabilityPermission
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
+from rest_framework.response import Response as DRFResponse
+from rest_framework.test import APIClient  # noqa: F811
+
+from gym_app.models import (
+    DocumentUsabilityPermission,  # noqa: F811
+    DocumentVisibilityPermission,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+)
 from gym_app.models.corporate_request import CorporateRequest, CorporateRequestType
 from gym_app.models.organization import Organization, OrganizationMembership
-
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 @pytest.fixture
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="pvc-lawyer@example.com",
         password="testpassword",
@@ -2194,7 +2338,8 @@ def lawyer_user():
 
 
 @pytest.fixture
-def client_user():
+def client_user():  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="pvc-client@example.com",
         password="testpassword",
@@ -2203,7 +2348,8 @@ def client_user():
 
 
 @pytest.fixture
-def document(lawyer_user):
+def document(lawyer_user):  # noqa: F811
+    """Document."""
     return DynamicDocument.objects.create(
         title="PVC Coverage Doc",
         content="<p>test</p>",
@@ -2213,7 +2359,8 @@ def document(lawyer_user):
 
 
 class TestManageUnifiedLawyerSkipBranches:
-    """Tests for lines 269 and 342 in permission_views.py:
+    """Tests for lines 269 and 342 in permission_views.py.
+    
     Lawyer users included in target_users are skipped (continue) when
     granting visibility/usability permissions via the unified endpoint.
     """
@@ -2221,8 +2368,10 @@ class TestManageUnifiedLawyerSkipBranches:
     def test_unified_visibility_skips_lawyer_in_user_ids(
         self, api_client, lawyer_user, client_user, document
     ):
-        """Line 269: lawyer user in visibility.user_ids is skipped,
-        only the client user gets a visibility permission created."""
+        """Line 269: lawyer user in visibility.user_ids is skipped,.
+        
+        only the client user gets a visibility permission created.
+        """
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("manage-document-permissions-unified", kwargs={"pk": document.id})
         payload = {
@@ -2246,8 +2395,10 @@ class TestManageUnifiedLawyerSkipBranches:
     def test_unified_usability_skips_lawyer_in_user_ids(
         self, api_client, lawyer_user, client_user, document
     ):
-        """Line 342: lawyer user in usability.user_ids is skipped,
-        only the client user gets a usability permission created."""
+        """Line 342: lawyer user in usability.user_ids is skipped,.
+        
+        only the client user gets a usability permission created.
+        """
         document.is_public = True
         document.save(update_fields=["is_public"])
 
@@ -2277,14 +2428,21 @@ class TestManageUnifiedLawyerSkipBranches:
 
 
 class TestFilterDocumentsByVisibilityEdgeCases:
-    """Tests for permissions.py line 286: document entry without 'id' is skipped
-    in filter_documents_by_visibility decorator."""
+    """Tests for permissions.py line 286: document entry without 'id' is skipped.
+    
+    in filter_documents_by_visibility decorator.
+    """
 
     def test_document_without_id_is_skipped(self, lawyer_user, client_user):
-        """Line 286: When the wrapped view returns items with missing 'id',
-        the decorator silently skips them and only keeps valid entries."""
+        """Line 286: When the wrapped view returns items with missing 'id',.
+        
+        the decorator silently skips them and only keeps valid entries.
+        """
         from rest_framework.test import APIRequestFactory
-        from gym_app.views.dynamic_documents.permissions import filter_documents_by_visibility
+
+        from gym_app.views.dynamic_documents.permissions import (
+            filter_documents_by_visibility,
+        )
 
         doc = DynamicDocument.objects.create(
             title="Visible Doc",
@@ -2320,11 +2478,14 @@ class TestFilterDocumentsByVisibilityEdgeCases:
 
 
 class TestCorporateRequestSerializerValidation:
-    """Test for corporate_request.py line 258: serializer validation error
-    when client_add_response_to_request receives invalid data."""
+    """Test for corporate_request.py line 258: serializer validation error.
+    
+    when client_add_response_to_request receives invalid data.
+    """
 
     @pytest.fixture
     def corporate_user(self):
+        """Corporate user."""
         return User.objects.create_user(
             email="pvc-corp@example.com",
             password="testpassword",
@@ -2333,6 +2494,7 @@ class TestCorporateRequestSerializerValidation:
 
     @pytest.fixture
     def organization(self, corporate_user):
+        """Organization."""
         return Organization.objects.create(
             title="PVC Test Org",
             description="Test organization",
@@ -2341,6 +2503,7 @@ class TestCorporateRequestSerializerValidation:
 
     @pytest.fixture
     def corp_request(self, client_user, corporate_user, organization):
+        """Corp request."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -2359,8 +2522,10 @@ class TestCorporateRequestSerializerValidation:
     def test_client_add_response_serializer_error_returns_400(
         self, api_client, client_user, corp_request
     ):
-        """Line 258: When the serializer fails validation, the endpoint
-        returns 400 with error details instead of creating the response."""
+        """Line 258: When the serializer fails validation, the endpoint.
+        
+        returns 400 with error details instead of creating the response.
+        """
         api_client.force_authenticate(user=client_user)
         url = reverse(
             "client-add-response-to-request",
@@ -2389,8 +2554,10 @@ class TestCorporateRequestSerializerValidation:
 
 @pytest.mark.django_db
 class TestPermissionViewsAdditionalScenarios:
+    """Tests for Permission Views Additional Scenarios."""
 
     def test_get_document_permissions(self, api_client, lawyer_user):
+        """Verify get document permissions."""
         doc = DynamicDocument.objects.create(title="Perm36", content="<p>x</p>", state="Draft", created_by=lawyer_user)
         doc.visibility_permissions.create(user=lawyer_user, granted_by=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
@@ -2398,6 +2565,7 @@ class TestPermissionViewsAdditionalScenarios:
         assert resp.status_code == 200
 
     def test_toggle_public_access(self, api_client, lawyer_user):
+        """Verify toggle public access."""
         doc = DynamicDocument.objects.create(title="Pub36", content="<p>x</p>", state="Draft", created_by=lawyer_user, is_public=False)
         doc.usability_permissions.create(user=lawyer_user, granted_by=lawyer_user)
         api_client.force_authenticate(user=lawyer_user)
@@ -2407,11 +2575,13 @@ class TestPermissionViewsAdditionalScenarios:
         assert doc.is_public is True
 
     def test_get_available_clients(self, api_client, lawyer_user):
+        """Verify get available clients."""
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.get(reverse("get-available-clients"))
         assert resp.status_code == 200
 
     def test_get_available_roles(self, api_client, lawyer_user):
+        """Verify get available roles."""
         api_client.force_authenticate(user=lawyer_user)
         resp = api_client.get(reverse("get-available-roles"))
         assert resp.status_code == 200

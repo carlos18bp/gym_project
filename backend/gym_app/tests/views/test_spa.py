@@ -1,9 +1,12 @@
-import pytest
+"""Tests for SPAView fallback behavior and static index serving."""
+
 from unittest.mock import mock_open, patch
-from django.test import RequestFactory
 
 from gym_app.views.spa import SPAView
+
+
 def test_spa_view_serves_index_html_when_found(rf):
+    """Serve index HTML content when a candidate index file exists."""
     request = rf.get('/some/route')
 
     with patch('gym_app.views.spa.os.path.exists', return_value=True), patch(
@@ -17,6 +20,7 @@ def test_spa_view_serves_index_html_when_found(rf):
 
 
 def test_spa_view_returns_500_when_missing_index(rf):
+    """Return HTTP 500 with fallback text when index file is missing."""
     request = rf.get('/missing')
 
     with patch('gym_app.views.spa.os.path.exists', return_value=False):

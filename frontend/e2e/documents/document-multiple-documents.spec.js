@@ -6,8 +6,8 @@ import {
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test.describe("document dashboard: multiple documents", () => {
-  test("lawyer sees multiple documents in list", async ({ page }) => {
+test.describe("document dashboard: multiple documents", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, () => {
+  test("lawyer sees multiple documents in list", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 6000;
 
     const docs = [
@@ -41,7 +41,7 @@ test.describe("document dashboard: multiple documents", () => {
     await expect(page.getByText("Documento Cuatro")).toBeVisible();
   });
 
-  test("documents show correct state badges", async ({ page }) => {
+  test("documents show correct state badges", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 6001;
 
     const docs = [
@@ -75,7 +75,7 @@ test.describe("document dashboard: multiple documents", () => {
     await expect(page.getByText("Publicado").first()).toBeVisible();
   });
 
-  test("lawyer can navigate between Minutas and Carpetas tabs", async ({ page }) => {
+  test("lawyer can navigate between Minutas and Carpetas tabs", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 6002;
 
     await installDynamicDocumentApiMocks(page, {

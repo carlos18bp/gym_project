@@ -13,7 +13,7 @@ Conduct a thorough analysis of frontend coverage reports. Reach **100% coverage*
 Before writing any frontend unit test, you **must consult**:
 
 ```
-testing-quality-standards.md
+docs/TESTING_QUALITY_STANDARDS.md
 ```
 
 This document defines the **mandatory quality criteria** for every test. Key sections for Frontend Unit:
@@ -169,7 +169,7 @@ mockRandom.mockRestore();
 
 1. **Review** the coverage report provided below
 2. **Identify** lowest-coverage files in priority order (State → Shared → UI)
-3. **Consult** `testing-quality-standards.md` → **Frontend-Specific Standards**
+3. **Consult** `docs/TESTING_QUALITY_STANDARDS.md` → **Frontend-Specific Standards**
 4. **Implement** tests following the quality criteria
 5. **Run** only the new/modified test files
 6. **Verify** tests pass and coverage improves

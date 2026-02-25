@@ -1,23 +1,20 @@
-"""
-Tests for fake data generation commands to ensure business rule compliance.
+"""Tests for fake data generation commands to ensure business rule compliance.
 
 These tests verify that the management commands for generating fake data
 produce records that comply with model validations, choices, and constraints.
 """
+
 import pytest
-from io import StringIO
-from django.core.management import call_command
 from django.core.exceptions import ValidationError
 from django.db import transaction
-
 from gym_app.models import (
-    User,
-    DynamicDocument,
     ActivityFeed,
+    DynamicDocument,
     LegalRequest,
-    Process,
     Organization,
     OrganizationMembership,
+    Process,
+    User,
 )
 
 

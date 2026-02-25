@@ -2,6 +2,8 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * E2E tests for error handling and error states
  * Target: create tests for empty e2e/error-handling/ directory
@@ -19,8 +21,8 @@ function buildMockUser({ id, role }) {
   };
 }
 
-test.describe("error handling: 404 not found", () => {
-  test("non-existent route shows 404 or redirects", async ({ page }) => {
+test.describe("error handling: 404 not found", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("non-existent route shows 404 or redirects", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await page.goto("/non-existent-page-xyz");
     await page.waitForLoadState("networkidle");
 
@@ -28,7 +30,7 @@ test.describe("error handling: 404 not found", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("invalid document ID shows appropriate error", async ({ page }) => {
+  test("invalid document ID shows appropriate error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4000;
     const user = buildMockUser({ id: userId, role: "lawyer" });
 
@@ -60,8 +62,8 @@ test.describe("error handling: 404 not found", () => {
   });
 });
 
-test.describe("error handling: 401 unauthorized", () => {
-  test("expired token redirects to login", async ({ page }) => {
+test.describe("error handling: 401 unauthorized", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("expired token redirects to login", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4010;
     const user = buildMockUser({ id: userId, role: "lawyer" });
 
@@ -88,7 +90,7 @@ test.describe("error handling: 401 unauthorized", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("missing token redirects to login", async ({ page }) => {
+  test("missing token redirects to login", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     // No auth setup
     await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
@@ -98,8 +100,8 @@ test.describe("error handling: 401 unauthorized", () => {
   });
 });
 
-test.describe("error handling: 403 forbidden", () => {
-  test("access to forbidden resource shows error", async ({ page }) => {
+test.describe("error handling: 403 forbidden", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("access to forbidden resource shows error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4020;
     const user = buildMockUser({ id: userId, role: "client" });
 
@@ -130,8 +132,8 @@ test.describe("error handling: 403 forbidden", () => {
   });
 });
 
-test.describe("error handling: 500 server error", () => {
-  test("server error is handled gracefully", async ({ page }) => {
+test.describe("error handling: 500 server error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("server error is handled gracefully", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4030;
     const user = buildMockUser({ id: userId, role: "lawyer" });
 
@@ -167,8 +169,8 @@ test.describe("error handling: 500 server error", () => {
   });
 });
 
-test.describe("error handling: network errors", () => {
-  test("offline indicator shows when network is unavailable", async ({ page }) => {
+test.describe("error handling: network errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("offline indicator shows when network is unavailable", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     // This test simulates offline behavior
     await page.goto("/");
     await page.waitForLoadState("networkidle");
@@ -177,7 +179,7 @@ test.describe("error handling: network errors", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("app recovers from temporary network failure", async ({ page }) => {
+  test("app recovers from temporary network failure", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4040;
     const user = buildMockUser({ id: userId, role: "lawyer" });
     let requestCount = 0;
@@ -211,8 +213,8 @@ test.describe("error handling: network errors", () => {
   });
 });
 
-test.describe("error handling: form validation errors", () => {
-  test("form shows validation errors for invalid input", async ({ page }) => {
+test.describe("error handling: form validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("form shows validation errors for invalid input", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await page.goto("/sign-in");
     await page.waitForLoadState("networkidle");
 
@@ -227,7 +229,7 @@ test.describe("error handling: form validation errors", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("form shows server validation errors", async ({ page }) => {
+  test("form shows server validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await mockApi(page, async ({ route, apiPath }) => {
       if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
 
@@ -262,8 +264,8 @@ test.describe("error handling: form validation errors", () => {
   });
 });
 
-test.describe("error handling: timeout errors", () => {
-  test("app handles slow responses gracefully", async ({ page }) => {
+test.describe("error handling: timeout errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
+  test("app handles slow responses gracefully", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 4050;
     const user = buildMockUser({ id: userId, role: "lawyer" });
 

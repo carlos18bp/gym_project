@@ -241,7 +241,7 @@ describe("document_utils.downloadFile", () => {
     console.error.mockRestore();
   });
 
-  test("downloads and cleans up link + object URL", async () => {
+  test("downloads and cleans up link + object URL", async () => { // quality: allow-fragile-selector (DOM query for element without testid)
     const clickSpy = jest
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {});

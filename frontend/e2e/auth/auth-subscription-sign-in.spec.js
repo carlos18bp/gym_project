@@ -2,6 +2,8 @@ import { test, expect } from "../helpers/test.js";
 import { mockApi } from "../helpers/api.js";
 import { bypassCaptcha } from "../helpers/captcha.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 function buildMockUser({ id, role }) {
   return {
     id,
@@ -115,7 +117,7 @@ async function installSubscriptionSignInMocks(page, { signInResponse = "success"
   });
 }
 
-test("subscription sign-in page renders form with email, password, and plan link", async ({ page }) => {
+test("subscription sign-in page renders form with email, password, and plan link", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installSubscriptionSignInMocks(page);
 
   await page.goto("/subscription/sign_in?plan=cliente");
@@ -138,7 +140,7 @@ test("subscription sign-in page renders form with email, password, and plan link
   await expect(page.getByText("Regístrate aquí")).toBeVisible();
 });
 
-test("user signs in successfully and is redirected to checkout", async ({ page }) => {
+test("user signs in successfully and is redirected to checkout", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 901;
 
   await installSubscriptionSignInMocks(page, { signInResponse: "success", userId });
@@ -167,7 +169,7 @@ test("user signs in successfully and is redirected to checkout", async ({ page }
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });
 
-test("user sees error notification on invalid credentials", async ({ page }) => {
+test("user sees error notification on invalid credentials", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 902;
 
   await installSubscriptionSignInMocks(page, { signInResponse: "invalid_credentials", userId });

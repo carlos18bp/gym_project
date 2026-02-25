@@ -1,23 +1,25 @@
+"""Tests for dynamic_document_core_methods module."""
+from datetime import datetime
+
 import pytest
-from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from gym_app.models import (
-    DynamicDocument,
-    DocumentSignature,
     DocumentRelationship,
+    DocumentSignature,
     DocumentVariable,
+    DynamicDocument,
 )
 from gym_app.models.user import User
-
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def user_factory():
+    """User factory."""
     def create_user(email, role="client", is_gym_lawyer=False):
         return User.objects.create_user(
             email=email,
@@ -31,6 +33,7 @@ def user_factory():
 
 @pytest.fixture
 def document_factory():
+    """Document factory."""
     def create_document(created_by, **kwargs):
         return DynamicDocument.objects.create(
             title=kwargs.pop("title", "Doc"),
@@ -47,6 +50,7 @@ def document_factory():
 
 
 def test_check_fully_signed_returns_false_when_not_required(user_factory, document_factory):
+    """Verify check fully signed returns false when not required."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator, requires_signature=False, state="Draft")
 
@@ -59,6 +63,7 @@ def test_check_fully_signed_returns_false_when_not_required(user_factory, docume
 
 
 def test_check_fully_signed_returns_false_when_no_signatures(user_factory, document_factory):
+    """Verify check fully signed returns false when no signatures."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator, requires_signature=True, state="PendingSignatures")
 
@@ -71,6 +76,7 @@ def test_check_fully_signed_returns_false_when_no_signatures(user_factory, docum
 
 
 def test_check_fully_signed_returns_false_with_pending_signatures(user_factory, document_factory):
+    """Verify check fully signed returns false with pending signatures."""
     creator = user_factory("creator@example.com")
     signer_1 = user_factory("signer1@example.com")
     signer_2 = user_factory("signer2@example.com")
@@ -92,6 +98,7 @@ def test_check_fully_signed_returns_false_with_pending_signatures(user_factory, 
 
 
 def test_check_fully_signed_sets_fully_signed_and_state(user_factory, document_factory):
+    """Verify check fully signed sets fully signed and state."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator, requires_signature=True, state="PendingSignatures")
@@ -109,6 +116,7 @@ def test_check_fully_signed_sets_fully_signed_and_state(user_factory, document_f
 
 
 def test_check_fully_signed_updates_from_true_to_false(user_factory, document_factory):
+    """Verify check fully signed updates from true to false."""
     creator = user_factory("creator@example.com")
     signer_1 = user_factory("signer1@example.com")
     signer_2 = user_factory("signer2@example.com")
@@ -121,7 +129,7 @@ def test_check_fully_signed_updates_from_true_to_false(user_factory, document_fa
     DocumentSignature.objects.bulk_create(
         [DocumentSignature(document=document, signer=signer_2, signed=False)]
     )
-    past_time = timezone.now() - timedelta(days=1)
+    past_time = timezone.make_aware(datetime(2026, 1, 14, 12, 0, 0))
     DynamicDocument.objects.filter(pk=document.pk).update(updated_at=past_time)
     document.refresh_from_db()
     old_updated_at = document.updated_at
@@ -136,6 +144,7 @@ def test_check_fully_signed_updates_from_true_to_false(user_factory, document_fa
 
 
 def test_document_signature_str_pending(user_factory, document_factory):
+    """Verify document signature str pending."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)
@@ -146,6 +155,7 @@ def test_document_signature_str_pending(user_factory, document_factory):
 
 
 def test_document_signature_str_signed(user_factory, document_factory):
+    """Verify document signature str signed."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)
@@ -156,6 +166,7 @@ def test_document_signature_str_signed(user_factory, document_factory):
 
 
 def test_document_signature_str_rejected(user_factory, document_factory):
+    """Verify document signature str rejected."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)
@@ -166,6 +177,7 @@ def test_document_signature_str_rejected(user_factory, document_factory):
 
 
 def test_document_signature_save_calls_check_fully_signed(user_factory, document_factory, monkeypatch):
+    """Verify document signature save calls check fully signed."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator, requires_signature=True)
@@ -184,6 +196,7 @@ def test_document_signature_save_calls_check_fully_signed(user_factory, document
 
 
 def test_add_relationship_creates_relationship(user_factory, document_factory):
+    """Verify add relationship creates relationship."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator, title="Doc A")
     doc_b = document_factory(created_by=creator, title="Doc B")
@@ -197,6 +210,7 @@ def test_add_relationship_creates_relationship(user_factory, document_factory):
 
 
 def test_remove_relationship_forward(user_factory, document_factory):
+    """Verify remove relationship forward."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator)
     doc_b = document_factory(created_by=creator)
@@ -214,6 +228,7 @@ def test_remove_relationship_forward(user_factory, document_factory):
 
 
 def test_remove_relationship_reverse(user_factory, document_factory):
+    """Verify remove relationship reverse."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator)
     doc_b = document_factory(created_by=creator)
@@ -231,6 +246,7 @@ def test_remove_relationship_reverse(user_factory, document_factory):
 
 
 def test_document_relationship_clean_rejects_self(user_factory, document_factory):
+    """Verify document relationship clean rejects self."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -245,6 +261,7 @@ def test_document_relationship_clean_rejects_self(user_factory, document_factory
 
 
 def test_document_relationship_str(user_factory, document_factory):
+    """Verify document relationship str."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator, title="Doc A")
     doc_b = document_factory(created_by=creator, title="Doc B")
@@ -259,6 +276,7 @@ def test_document_relationship_str(user_factory, document_factory):
 
 
 def test_get_related_documents_without_user_returns_all(user_factory, document_factory):
+    """Verify get related documents without user returns all."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator, title="Doc A")
     doc_b = document_factory(created_by=creator, title="Doc B", state="Completed")
@@ -281,6 +299,7 @@ def test_get_related_documents_without_user_returns_all(user_factory, document_f
 
 
 def test_get_related_documents_with_no_access_returns_empty(user_factory, document_factory):
+    """Verify get related documents with no access returns empty."""
     creator = user_factory("creator@example.com")
     other_user = user_factory("other@example.com")
     doc_a = document_factory(created_by=creator)
@@ -298,6 +317,7 @@ def test_get_related_documents_with_no_access_returns_empty(user_factory, docume
 
 
 def test_get_related_documents_with_access_filters_final_states(user_factory, document_factory):
+    """Verify get related documents with access filters final states."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator)
     doc_b = document_factory(created_by=creator, state="Completed", title="Final Doc")
@@ -320,6 +340,7 @@ def test_get_related_documents_with_access_filters_final_states(user_factory, do
 
 
 def test_document_variable_get_formatted_value_empty(user_factory, document_factory):
+    """Verify document variable get formatted value empty."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -335,6 +356,7 @@ def test_document_variable_get_formatted_value_empty(user_factory, document_fact
 
 
 def test_document_variable_get_formatted_value_with_currency(user_factory, document_factory):
+    """Verify document variable get formatted value with currency."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -351,6 +373,7 @@ def test_document_variable_get_formatted_value_with_currency(user_factory, docum
 
 
 def test_document_variable_get_formatted_value_parse_error(user_factory, document_factory):
+    """Verify document variable get formatted value parse error."""
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
 
@@ -370,6 +393,7 @@ def test_document_variable_get_formatted_value_parse_error(user_factory, documen
 # ======================================================================
 
 def test_add_relationship_duplicate_does_not_create(user_factory, document_factory):
+    """Verify add relationship duplicate does not create."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator)
     doc_b = document_factory(created_by=creator)
@@ -382,6 +406,7 @@ def test_add_relationship_duplicate_does_not_create(user_factory, document_facto
 
 
 def test_remove_relationship_returns_false_when_missing(user_factory, document_factory):
+    """Verify remove relationship returns false when missing."""
     creator = user_factory("creator@example.com")
     doc_a = document_factory(created_by=creator)
     doc_b = document_factory(created_by=creator)
@@ -393,6 +418,7 @@ def test_remove_relationship_returns_false_when_missing(user_factory, document_f
 
 
 def test_get_related_documents_includes_fully_signed_for_owner(user_factory, document_factory):
+    """Verify get related documents includes fully signed for owner."""
     creator = user_factory("creator@example.com")
     source = document_factory(created_by=creator)
     target = document_factory(created_by=creator, state="FullySigned")
@@ -409,6 +435,7 @@ def test_get_related_documents_includes_fully_signed_for_owner(user_factory, doc
 
 
 def test_get_related_documents_allows_assigned_user_access(user_factory, document_factory):
+    """Verify get related documents allows assigned user access."""
     creator = user_factory("creator@example.com")
     assignee = user_factory("assignee@example.com")
     source = document_factory(created_by=creator, assigned_to=assignee)
@@ -426,6 +453,7 @@ def test_get_related_documents_allows_assigned_user_access(user_factory, documen
 
 
 def test_get_related_documents_allows_signer_access(user_factory, document_factory):
+    """Verify get related documents allows signer access."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     source = document_factory(created_by=creator)
@@ -444,6 +472,7 @@ def test_get_related_documents_allows_signer_access(user_factory, document_facto
 
 
 def test_get_related_documents_allows_lawyer_access(user_factory, document_factory):
+    """Verify get related documents allows lawyer access."""
     creator = user_factory("creator@example.com")
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     source = document_factory(created_by=creator)
@@ -467,6 +496,7 @@ def test_get_related_documents_allows_lawyer_access(user_factory, document_facto
 
 
 def test_document_relationship_unique_together(user_factory, document_factory):
+    """Verify document relationship unique together."""
     creator = user_factory("creator@example.com")
     source = document_factory(created_by=creator)
     target = document_factory(created_by=creator)
@@ -489,6 +519,7 @@ def test_document_relationship_unique_together(user_factory, document_factory):
 
 
 def test_document_signature_unique_together(user_factory, document_factory):
+    """Verify document signature unique together."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)
@@ -503,6 +534,7 @@ def test_document_signature_unique_together(user_factory, document_factory):
 
 
 def test_document_signature_ordering_by_signer_email(user_factory, document_factory):
+    """Verify document signature ordering by signer email."""
     creator = user_factory("creator@example.com")
     signer_b = user_factory("b@example.com")
     signer_a = user_factory("a@example.com")
@@ -520,6 +552,7 @@ def test_document_signature_ordering_by_signer_email(user_factory, document_fact
 
 
 def test_document_signature_save_triggers_check_on_update(user_factory, document_factory, monkeypatch):
+    """Verify document signature save triggers check on update."""
     creator = user_factory("creator@example.com")
     signer = user_factory("signer@example.com")
     document = document_factory(created_by=creator)

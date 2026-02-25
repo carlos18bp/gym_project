@@ -3,7 +3,13 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client my requests: list + filters + open detail + add response", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
+test("client my requests: list + filters + open detail + add response", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3560;
 
   await installOrganizationsClientApiMocks(page, {
@@ -42,15 +48,15 @@ test("client my requests: list + filters + open detail + add response", async ({
   const alphaCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6201" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   const betaCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6202" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   const gammaCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6203" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   // List shows all 3
   await expect(alphaCard).toBeVisible();
@@ -61,7 +67,7 @@ test("client my requests: list + filters + open detail + add response", async ({
   const requestCards = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: /CORP-REQ-\d+/ });
-  await expect(requestCards.first()).toContainText("CORP-REQ-6201");
+  await expect(requestCards.first()).toContainText("CORP-REQ-6201"); // quality: allow-fragile-selector (positional selector for first matching element)
 
   // Filter by status
   await page.locator("select#status-filter").selectOption("CLOSED");

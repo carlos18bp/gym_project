@@ -21,6 +21,8 @@ jest.mock("@/shared/notification_message", () => ({
 import { reactive } from "vue";
 import { useDocumentPermissions } from "@/composables/document-variables/useDocumentPermissions";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const buildRoleClients = () => [
   {
     user_id: 1,

@@ -79,6 +79,7 @@ describe("Dashboard view", () => {
     await nextTick();
 
     expect(mockRecentProcessStore.init).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeProcesses).toBe(2);
     expect(wrapper.vm.$.setupState.showRecentProcesses).toBe(true);
     expect(wrapper.vm.$.setupState.showRecentDocuments).toBe(true);
@@ -97,6 +98,7 @@ describe("Dashboard view", () => {
     await nextTick();
 
     expect(mockRecentProcessStore.init).not.toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.showRecentProcesses).toBe(false);
     expect(wrapper.vm.$.setupState.showRecentDocuments).toBe(false);
 

@@ -10,7 +10,7 @@ import { installDashboardNavApiMocks } from "../helpers/dashboardNavMocks.js";
  * - RecentDocumentsList.vue (50%)
  */
 
-test("lawyer dashboard shows welcome card and quick action buttons", async ({ page }) => {
+test("lawyer dashboard shows welcome card and quick action buttons", { tag: ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9830;
 
   await installDashboardNavApiMocks(page, { userId, role: "lawyer", isGymLawyer: true });
@@ -22,8 +22,11 @@ test("lawyer dashboard shows welcome card and quick action buttons", async ({ pa
 
   await page.goto("/dashboard");
 
+  // Wait for dashboard shell to render
+  await expect(page.getByRole("button", { name: "Feed" })).toBeVisible({ timeout: 15_000 });
+
   // UserWelcomeCard should show active processes count
-  await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 10_000 });
 
   // QuickActionButtons for lawyer
   await expect(page.getByText("Todos los Procesos")).toBeVisible({ timeout: 10_000 });
@@ -35,7 +38,7 @@ test("lawyer dashboard shows welcome card and quick action buttons", async ({ pa
   await expect(page.getByText("Feed")).toBeVisible();
 });
 
-test("lawyer dashboard shows recent documents section with empty state", async ({ page }) => {
+test("lawyer dashboard shows recent documents section with empty state", { tag: ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9831;
 
   await installDashboardNavApiMocks(page, { userId, role: "lawyer", isGymLawyer: true });
@@ -55,7 +58,7 @@ test("lawyer dashboard shows recent documents section with empty state", async (
   await expect(page.getByRole("heading", { name: "No hay documentos recientes" })).toBeVisible({ timeout: 10_000 });
 });
 
-test("client dashboard renders welcome card with client-specific quick actions", async ({ page }) => {
+test("client dashboard renders welcome card with client-specific quick actions", { tag: ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9832;
 
   await installDashboardNavApiMocks(page, { userId, role: "client", isGymLawyer: false });

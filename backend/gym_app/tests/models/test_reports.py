@@ -1,31 +1,42 @@
-import pytest
-import io
-import pandas as pd
+"""Tests for reports module."""
 import datetime
+import io
+
+import pandas as pd
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import HttpResponse
 from django.db import models
+from django.http import HttpResponse
+
+from gym_app.models import (
+    ActivityFeed,
+    Case,
+    DynamicDocument,
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestFiles,
+    LegalRequestType,
+    Process,
+    Stage,
+    User,
+)
 from gym_app.views.reports import (
     generate_active_processes_report,
-    generate_processes_by_lawyer_report,
-    generate_processes_by_client_report,
-    generate_process_stages_report,
-    generate_registered_users_report,
-    generate_user_activity_report,
-    generate_lawyers_workload_report,
     generate_documents_by_state_report,
+    generate_lawyers_workload_report,
+    generate_process_stages_report,
+    generate_processes_by_client_report,
+    generate_processes_by_lawyer_report,
     generate_received_legal_requests_report,
-    generate_requests_by_type_discipline_report
-)
-from gym_app.models import (
-    Process, Case, Stage, User, ActivityFeed, DynamicDocument,
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+    generate_registered_users_report,
+    generate_requests_by_type_discipline_report,
+    generate_user_activity_report,
 )
 
 
 @pytest.fixture
 def mock_response():
-    """Create a mock HttpResponse for testing reports"""
+    """Create a mock HttpResponse for testing reports."""
     return HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
@@ -55,7 +66,7 @@ def report_window_naive(report_window):
 
 @pytest.fixture
 def sample_users():
-    """Create sample users for testing reports"""
+    """Create sample users for testing reports."""
     client = User.objects.create_user(
         email='client@example.com',
         password='password123',
@@ -85,7 +96,7 @@ def sample_users():
 
 @pytest.fixture
 def sample_data(sample_users, fixed_now):
-    """Create sample data for testing reports"""
+    """Create sample data for testing reports."""
     # Create case type
     case = Case.objects.create(type='Civil')
     
@@ -177,9 +188,10 @@ def sample_data(sample_users, fixed_now):
 
 @pytest.mark.django_db
 class TestReportFunctions:
+    """Tests for Report Functions."""
     
     def test_active_processes_report(self, mock_response, sample_data, report_window):
-        """Test the active processes report generation function directly"""
+        """Test the active processes report generation function directly."""
         # Get dates for report range
         start_date, end_date = report_window
         
@@ -202,7 +214,7 @@ class TestReportFunctions:
         assert 'Other Company LLC' in df['Demandado'].values
     
     def test_processes_by_lawyer_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
-        """Test the processes by lawyer report generation function directly"""
+        """Test the processes by lawyer report generation function directly."""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
@@ -228,7 +240,7 @@ class TestReportFunctions:
         assert 'TEST-123' in df['Referencia de Proceso'].values
     
     def test_processes_by_client_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
-        """Test the processes by client report generation function directly"""
+        """Test the processes by client report generation function directly."""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
@@ -252,7 +264,7 @@ class TestReportFunctions:
         assert 'TEST-123' in df['Referencia de Proceso'].values
     
     def test_process_stages_report(self, mock_response, sample_data, report_window):
-        """Test the process stages report generation function directly"""
+        """Test the process stages report generation function directly."""
         # Get dates for report range
         start_date, end_date = report_window
         
@@ -273,7 +285,7 @@ class TestReportFunctions:
         assert 'Documentation' in df['Etapa'].values
     
     def test_registered_users_report(self, mock_response, sample_users, report_window_naive):
-        """Test the registered users report generation function directly"""
+        """Test the registered users report generation function directly."""
         # Get dates for report range - use naive datetimes (no timezone)
         start_date, end_date = report_window_naive
         
@@ -299,7 +311,7 @@ class TestReportFunctions:
         assert lawyer_row['Rol'] == 'Abogado'
     
     def test_user_activity_report(self, mock_response, sample_data, sample_users, report_window_naive):
-        """Test the user activity report generation function directly"""
+        """Test the user activity report generation function directly."""
         # Get dates for report range - use naive datetimes (no timezone)
         start_date, end_date = report_window_naive
         
@@ -325,7 +337,7 @@ class TestReportFunctions:
         assert 'TEST-123' in description
     
     def test_lawyers_workload_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
-        """Test the lawyers workload report generation function directly"""
+        """Test the lawyers workload report generation function directly."""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         
@@ -352,7 +364,7 @@ class TestReportFunctions:
         assert lawyer_row['Procesos Activos'] >= 1  # Our test process is active
     
     def test_documents_by_state_report(self, mock_response, sample_data, sample_users, monkeypatch, report_window):
-        """Test the documents by state report generation function directly"""
+        """Test the documents by state report generation function directly."""
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         # Mock the models.Q function since it's used directly in the function
@@ -377,7 +389,7 @@ class TestReportFunctions:
         assert "Borrador" in df['Estado'].values  # "Draft" translated to Spanish
     
     def test_received_legal_requests_report(self, mock_response, sample_data, report_window_naive):
-        """Test the received legal requests report generation function directly"""
+        """Test the received legal requests report generation function directly."""
         # Get dates for report range - use naive datetimes (no timezone)
         start_date, end_date = report_window_naive
         
@@ -403,7 +415,7 @@ class TestReportFunctions:
         assert request_row['Archivos Adjuntos'] == 1  # Our test legal request has one file
     
     def test_requests_by_type_discipline_report(self, mock_response, sample_data, report_window_naive):
-        """Test the requests by type and discipline report generation function directly"""
+        """Test the requests by type and discipline report generation function directly."""
         # Get dates for report range - use naive datetimes (no timezone)
         start_date, end_date = report_window_naive
         

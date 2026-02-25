@@ -6,8 +6,8 @@ import {
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
-test.describe("document states: Draft, Published, Progress", () => {
-  test("lawyer sees Draft documents in Minutas tab", async ({ page }) => {
+test.describe("document states: Draft, Published, Progress", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, () => {
+  test("lawyer sees Draft documents in Minutas tab", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
     const userId = 1500;
 
     const docs = [
@@ -36,7 +36,7 @@ test.describe("document states: Draft, Published, Progress", () => {
     await expect(page.getByText("Borrador Dos")).toBeVisible();
   });
 
-  test("lawyer sees Published documents", async ({ page }) => {
+  test("lawyer sees Published documents", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
     const userId = 1501;
 
     const docs = [
@@ -65,7 +65,7 @@ test.describe("document states: Draft, Published, Progress", () => {
     await expect(page.getByText("Publicado").first()).toBeVisible();
   });
 
-  test("client sees documents in Progress state", async ({ page }) => {
+  test("client sees documents in Progress state", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
     const userId = 1502;
 
     const docs = [
@@ -98,7 +98,7 @@ test.describe("document states: Draft, Published, Progress", () => {
     await expect(page.getByText("Documento En Progreso")).toBeVisible();
   });
 
-  test("completed documents show Completed state", async ({ page }) => {
+  test("completed documents show Completed state", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
     const userId = 1503;
 
     const docs = [
@@ -131,7 +131,7 @@ test.describe("document states: Draft, Published, Progress", () => {
     await expect(page.getByText("Documento Completado")).toBeVisible();
   });
 
-  test("state badge displays correct color/style for each state", async ({ page }) => {
+  test("state badge displays correct color/style for each state", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
     const userId = 1504;
 
     const docs = [

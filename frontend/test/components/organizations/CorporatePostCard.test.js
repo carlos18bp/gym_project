@@ -183,6 +183,7 @@ describe("CorporatePostCard.vue", () => {
         },
       });
 
+      // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
       await wrapper.vm.$nextTick();
       return wrapper;
     };
@@ -222,6 +223,7 @@ describe("CorporatePostCard.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     const { formatRelativeDate } = wrapper.vm.$.setupState;
 
     expect(formatRelativeDate("2026-02-15T12:00:00.000Z")).toBe("hoy");

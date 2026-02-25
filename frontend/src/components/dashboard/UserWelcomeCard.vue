@@ -26,6 +26,14 @@
             >
               <PencilIcon class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
             </button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              data-testid="photo-file-input"
+              @change="handleFileChange"
+            />
           </div>
         </div>
 
@@ -173,12 +181,7 @@ const activeProcesses = computed(() => {
  * Opens the file input dialog for selecting a new profile photo
  */
 const openPhotoEditor = () => {
-  // Create a temporary file input
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.onchange = handleFileChange;
-  input.click();
+  fileInput.value?.click();
 };
 
 /**

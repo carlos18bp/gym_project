@@ -2,6 +2,8 @@ import { shallowMount } from "@vue/test-utils";
 
 import UserWelcomeCard from "@/components/dashboard/UserWelcomeCard.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockProcessInit = jest.fn();
 const mockUpdateUser = jest.fn();
 const mockGetUserInfo = jest.fn();
@@ -139,10 +141,9 @@ describe("UserWelcomeCard.vue", () => {
     const wrapper = mountView({ user });
 
     const file = new File(["avatar"], "avatar.png", { type: "image/png" });
-
-    await wrapper.vm.$.setupState.handleFileChange({
-      target: { files: [file] },
-    });
+    const input = wrapper.find("[data-testid='photo-file-input']");
+    Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+    await input.trigger("change");
 
     await flushPromises();
     jest.runAllTimers();
@@ -161,6 +162,7 @@ describe("UserWelcomeCard.vue", () => {
 
     createUrlSpy.mockRestore();
     revokeUrlSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   test("shows error notification when photo update fails", async () => {
@@ -176,10 +178,11 @@ describe("UserWelcomeCard.vue", () => {
     });
 
     const file = new File(["avatar"], "avatar.png", { type: "image/png" });
+    const input = wrapper.find("[data-testid='photo-file-input']");
+    Object.defineProperty(input.element, "files", { value: [file], configurable: true });
+    await input.trigger("change");
 
-    await wrapper.vm.$.setupState.handleFileChange({
-      target: { files: [file] },
-    });
+    await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al actualizar la foto de perfil",

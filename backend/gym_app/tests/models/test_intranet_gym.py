@@ -1,11 +1,14 @@
+"""Tests for intranet_gym module."""
+
 import pytest
-import os
 from django.core.files.uploadedfile import SimpleUploadedFile
+
 from gym_app.models.intranet_gym import LegalDocument
+
 
 @pytest.fixture
 def sample_pdf():
-    """Create a sample PDF file for testing"""
+    """Create a sample PDF file for testing."""
     return SimpleUploadedFile(
         "sample_document.pdf",
         b"PDF file content",
@@ -14,7 +17,7 @@ def sample_pdf():
 
 @pytest.fixture
 def legal_document(sample_pdf):
-    """Create a legal document with a file for testing"""
+    """Create a legal document with a file for testing."""
     return LegalDocument.objects.create(
         name="Sample Legal Document",
         file=sample_pdf
@@ -22,9 +25,10 @@ def legal_document(sample_pdf):
 
 @pytest.mark.django_db
 class TestLegalDocument:
+    """Tests for Legal Document."""
     
     def test_create_legal_document(self, sample_pdf):
-        """Test creating a legal document"""
+        """Test creating a legal document."""
         document = LegalDocument.objects.create(
             name="Test Legal Document",
             file=sample_pdf
@@ -37,7 +41,7 @@ class TestLegalDocument:
         assert document.file.size > 0
     
     def test_update_legal_document(self, legal_document):
-        """Test updating a legal document"""
+        """Test updating a legal document."""
         # Update the name
         legal_document.name = "Updated Legal Document"
         legal_document.save()
@@ -49,7 +53,7 @@ class TestLegalDocument:
         assert legal_document.name == "Updated Legal Document"
     
     def test_update_legal_document_file(self, legal_document):
-        """Test updating a legal document's file"""
+        """Test updating a legal document's file."""
         # Original file name
         original_file_name = legal_document.file.name
         
@@ -72,9 +76,9 @@ class TestLegalDocument:
         assert "new_document" in legal_document.file.name
     
     def test_delete_legal_document(self, legal_document):
-        """Test deleting a legal document"""
+        """Test deleting a legal document."""
         document_id = legal_document.id
-        file_path = legal_document.file.path
+        _file_path = legal_document.file.path
         
         # Delete document
         legal_document.delete()
@@ -86,11 +90,11 @@ class TestLegalDocument:
         # but in tests Django doesn't always physically save the files to disk
     
     def test_str_representation(self, legal_document):
-        """Test string representation of legal document"""
+        """Test string representation of legal document."""
         assert str(legal_document) == legal_document.name
     
     def test_multiple_legal_documents(self):
-        """Test creating multiple legal documents"""
+        """Test creating multiple legal documents."""
         # Create multiple test files
         test_files = [
             SimpleUploadedFile(
@@ -102,7 +106,7 @@ class TestLegalDocument:
         ]
         
         # Create documents with the files
-        documents = [
+        _documents = [
             LegalDocument.objects.create(
                 name=f"Legal Document {i}",
                 file=test_files[i-1]

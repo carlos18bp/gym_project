@@ -136,6 +136,7 @@ describe("DrawSignature.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.draw({ offsetX: 10, offsetY: 20 });
 
     expect(lineTo).not.toHaveBeenCalled();
@@ -161,6 +162,7 @@ describe("DrawSignature.vue", () => {
 
     const preventDefault = jest.fn();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.handleTouchMove({ preventDefault, touches: [] });
 
     expect(preventDefault).toHaveBeenCalled();
@@ -185,6 +187,7 @@ describe("DrawSignature.vue", () => {
       global: { plugins: [pinia] },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.hasDrawn = true;
     wrapper.vm.$.setupState.clearCanvas();
 
@@ -203,6 +206,7 @@ describe("DrawSignature.vue", () => {
     const canvas = wrapper.find("canvas");
     await canvas.trigger("mousemove", { offsetX: 20, offsetY: 20 });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.hasDrawn).toBe(false);
     const saveBtn = findButtonByText(wrapper, "Guardar");
     expect(saveBtn.attributes("disabled")).toBeDefined();
@@ -280,6 +284,7 @@ describe("DrawSignature.vue", () => {
     canvas.element.dispatchEvent(touchMove);
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.hasDrawn).toBe(false);
     const saveBtn = findButtonByText(wrapper, "Guardar");
     expect(saveBtn.attributes("disabled")).toBeDefined();
@@ -307,6 +312,7 @@ describe("DrawSignature.vue", () => {
       global: { plugins: [pinia] },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.hasDrawn = true;
     wrapper.vm.$.setupState.clearCanvas();
 
@@ -330,6 +336,7 @@ describe("DrawSignature.vue", () => {
       global: { plugins: [pinia] },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.saveSignature();
 
     expect(wrapper.emitted("save")).toBeFalsy();
@@ -346,6 +353,7 @@ describe("DrawSignature.vue", () => {
       global: { plugins: [pinia] },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.hasDrawn = true;
     wrapper.vm.$.setupState.saveSignature();
 

@@ -16,7 +16,7 @@ describe("Organizations Store", () => {
   });
 
   afterEach(() => {
-    console.error.mockRestore();
+    jest.restoreAllMocks();
   });
 
   const collectLoadingResets = async (store, actions) => {

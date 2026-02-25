@@ -3,6 +3,10 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
 async function closeSuccessDialog(page, expectedText) {
   const successDialog = page.getByRole("dialog");
   await expect(successDialog).toBeVisible({ timeout: 15_000 });
@@ -10,7 +14,7 @@ async function closeSuccessDialog(page, expectedText) {
   await successDialog.getByRole("button").click();
 }
 
-test("corporate_client pins an older post and client sees pinned posts first", async ({ page }) => {
+test("corporate_client pins an older post and client sees pinned posts first", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4620;
@@ -98,9 +102,11 @@ test("corporate_client pins an older post and client sees pinned posts first", a
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
+  // OrganizationPostsSection root: div > div.mb-6 > div.flex > div > h2
+  // We need the root div that contains both the header and the posts list
   const orgPostsSection = page
-    .locator("h2", { hasText: "Anuncios de la Organización" })
-    .locator("xpath=ancestor::div[1]");
+    .getByRole("heading", { name: "Anuncios de la Organización" })
+    .locator("xpath=ancestor::div[4]");
   await expect(orgPostsSection).toBeVisible();
 
   const postCards = orgPostsSection

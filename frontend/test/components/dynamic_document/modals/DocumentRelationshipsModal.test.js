@@ -94,6 +94,7 @@ describe("DocumentRelationshipsModal.vue", () => {
     });
     expect(mockLoadRelatedDocuments).toHaveBeenCalled();
     expect(mockLoadRelationships).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeTab).toBe("relate");
   });
 
@@ -104,6 +105,7 @@ describe("DocumentRelationshipsModal.vue", () => {
       pendingRelationships: [1],
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleRelateDocument({ id: 2 });
 
     expect(wrapper.emitted("update-pending")[0][0]).toEqual([1, 2]);
@@ -125,6 +127,7 @@ describe("DocumentRelationshipsModal.vue", () => {
     mockRelationships.value = [{ id: 1 }, { id: 2 }];
     const wrapper = mountView({ isOpen: true });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.closeModal();
 
     expect(wrapper.emitted("update-count")[0][0]).toEqual({
@@ -140,6 +143,7 @@ describe("DocumentRelationshipsModal.vue", () => {
       document: { id: 1, title: "Doc", state: "Progress" },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleRelateDocument({ id: 9 });
 
     expect(mockShowNotification).toHaveBeenCalledWith(

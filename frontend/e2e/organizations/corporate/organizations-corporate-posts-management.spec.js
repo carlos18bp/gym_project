@@ -3,6 +3,10 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
 async function assertSuccessDialog(page, expectedText) {
   const successDialog = page.getByRole("dialog");
   await expect(successDialog).toBeVisible({ timeout: 15_000 });
@@ -10,7 +14,7 @@ async function assertSuccessDialog(page, expectedText) {
   await successDialog.getByRole("button").click();
 }
 
-test("corporate_client can create, pin/unpin, toggle status, edit and delete an organization post", async ({ page }) => {
+test("corporate_client can create, pin/unpin, toggle status, edit and delete an organization post", { tag: ['@flow:org-posts-management', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const userId = 4100;

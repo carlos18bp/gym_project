@@ -13,6 +13,8 @@ var mockRoute;
 
 jest.mock("vue-router", () => {
   const { reactive } = require("vue");
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
   if (!mockRoute) {
     mockRoute = reactive({
       path: "/dashboard",
@@ -92,6 +94,10 @@ describe("SlideBar.vue", () => {
       mockRoute.path = "/dashboard";
       mockRoute.fullPath = "/dashboard";
     }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   const globalStubs = {

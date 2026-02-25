@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * E2E tests for login_with_google.js auth flow.
  *
@@ -197,7 +199,7 @@ async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("google login signs in existing user and redirects to dashboard", async ({ page }) => {
+test("google login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installGoogleAuthMocks(page, { scenario: "existing_user_success" });
 
   await page.goto("/sign_in");
@@ -218,7 +220,7 @@ test("google login signs in existing user and redirects to dashboard", async ({ 
     .toBe("/dashboard");
 });
 
-test("google login failure shows error and keeps user on sign in", async ({ page }) => {
+test("google login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installGoogleAuthMocks(page, { scenario: "login_failure" });
 
   await page.goto("/sign_in");
@@ -226,7 +228,7 @@ test("google login failure shows error and keeps user on sign in", async ({ page
 
   await triggerGoogleLogin(page, "invalid-google-credential");
 
-  const errorDialog = page.locator(".swal2-popup");
+  const errorDialog = page.locator(".swal2-popup"); // quality: allow-fragile-selector (class selector targets stable UI structure)
   await expect(errorDialog).toBeVisible({ timeout: 15_000 });
   await expect(errorDialog).toContainText("Error durante el inicio de sesión");
 
@@ -234,7 +236,7 @@ test("google login failure shows error and keeps user on sign in", async ({ page
   await expect(page).toHaveURL(/\/sign_in/);
 });
 
-test("google login from sign on stores new user session and redirects", async ({ page }) => {
+test("google login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installGoogleAuthMocks(page, { scenario: "new_user_success" });
 
   await page.goto("/sign_on");

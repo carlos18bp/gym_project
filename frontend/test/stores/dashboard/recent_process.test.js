@@ -13,6 +13,10 @@ describe("Recent Process Store", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("fetchRecentProcesses loads recent processes and toggles loading", async () => {
     const store = useRecentProcessStore();
 

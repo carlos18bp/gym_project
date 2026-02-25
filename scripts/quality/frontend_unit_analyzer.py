@@ -270,19 +270,8 @@ class FrontendUnitAnalyzer:
         
         files = self.discover_files(test_root, file_matcher=file_matcher)
         
-        if self.verbose:
-            print(f"  Found {len(files)} unit test files")
-        
         for file_path in files:
             file_result = self.analyze_file(file_path)
             result.add_file(file_result)
-            
-            if self.verbose and file_result.issues:
-                print(f"    {file_path.name}: {len(file_result.issues)} issues")
-        
-        if self.verbose:
-            err = sum(1 for i in result.all_issues if i.severity == Severity.ERROR)
-            warn = sum(1 for i in result.all_issues if i.severity == Severity.WARNING)
-            print(f"  Total: {result.test_count} tests, {err} errors, {warn} warnings")
         
         return result

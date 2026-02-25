@@ -16,9 +16,14 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report",
-    "e2e:coverage": "E2E_COVERAGE=1 playwright test; EXIT_CODE=$?; mkdir -p coverage-e2e; FORCE_COLOR=1 nyc report --temp-dir .nyc_output --report-dir coverage-e2e --reporter=text-summary --reporter=text --reporter=lcov | tee coverage-e2e/coverage-raw.txt; sed 's/\\x1b\\[[0-9;]*m//g' coverage-e2e/coverage-raw.txt > coverage-e2e/coverage.txt; node ./scripts/coverage-color-report.cjs; exit $EXIT_CODE",
-    "e2e:coverage:report": "node ./scripts/coverage-color-report.cjs",
-    "e2e:clean": "node ./scripts/e2e-clean.cjs"
+    "e2e:coverage": "npm run e2e:clean && playwright test",
+    "e2e:desktop": "playwright test --project=\"Desktop Chrome\"",
+    "e2e:mobile": "playwright test --project=\"Mobile Chrome\"",
+    "e2e:tablet": "playwright test --project=\"Tablet\"",
+    "e2e:clean": "node ./scripts/e2e-clean.cjs",
+    "e2e:modules": "npm run e2e:clean && node ./scripts/e2e-modules.cjs",
+    "e2e:coverage:module": "npm run e2e:clean && node ./scripts/e2e-coverage-module.cjs",
+    "e2e:module": "npm run e2e:clean && node ./scripts/e2e-module.cjs"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
@@ -64,7 +69,6 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-transform-stub": "^2.0.0",
-    "nyc": "^15.1.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "vite": "^6.4.1",

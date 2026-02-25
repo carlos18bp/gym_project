@@ -132,6 +132,7 @@ describe("ProcessDetail.vue", () => {
   test("filters case files, paginates, and resets page on search", async () => {
     const { wrapper } = await mountView();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.itemsPerPage = 1;
     wrapper.vm.$.setupState.currentPage = 2;
 
@@ -151,6 +152,7 @@ describe("ProcessDetail.vue", () => {
   test("navigates to list and edit with helper methods", async () => {
     const { wrapper } = await mountView({ currentUser: { id: 9, role: "lawyer" } });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.activeTab = "my_processes";
     expect(wrapper.vm.$.setupState.getActiveTabLabel()).toBe("Mis Procesos");
 
@@ -196,6 +198,7 @@ describe("ProcessDetail.vue", () => {
     const createElementSpy = jest.spyOn(document, "createElement").mockReturnValue(link);
     const openSpy = jest.spyOn(window, "open").mockImplementation(() => {});
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.openFile(fileUrl);
     expect(window.open).toHaveBeenCalledWith(fileUrl, "_blank");
 

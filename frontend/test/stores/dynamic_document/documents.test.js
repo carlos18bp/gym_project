@@ -22,6 +22,11 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+    localStorage.clear();
+  });
+
   test("fetchDocumentById returns cached document when available and not forcing refresh", async () => {
     const store = useDynamicDocumentStore();
 

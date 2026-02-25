@@ -4,6 +4,8 @@ import { setActivePinia, createPinia } from "pinia";
 import SubscriptionSignUp from "@/views/auth/SubscriptionSignUp.vue";
 import { useAuthStore } from "@/stores/auth/auth";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockRouterPush = jest.fn();
 const mockShowNotification = jest.fn();
 const mockFetchSiteKey = jest.fn();

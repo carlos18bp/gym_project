@@ -1,29 +1,28 @@
+"""Tests for dynamic_document module."""
 # backend/gym_app/tests/views/test_dynamic_document.py
 
-import datetime
 import io
-import json
 import os
 from io import BytesIO
 from unittest import mock
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch
 
 import pytest
-from PIL import Image
-
-from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
+from freezegun import freeze_time
+from PIL import Image
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from gym_app.models import User, DynamicDocument, DocumentVariable, RecentDocument
+from gym_app.models import DocumentVariable, DynamicDocument, RecentDocument, User
 from gym_app.views.dynamic_documents import document_views
 
 pytestmark = pytest.mark.django_db
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword'
@@ -31,7 +30,7 @@ def user():
 
 @pytest.fixture
 def sample_document(user):
-    """Create a sample dynamic document for testing"""
+    """Create a sample dynamic document for testing."""
     document = DynamicDocument.objects.create(
         title="Test Document",
         content="<p>This is a test document with {{variable1}} and {{variable2}}.</p>",
@@ -56,9 +55,10 @@ def sample_document(user):
 
 @pytest.mark.django_db
 class TestDynamicDocumentViews:
+    """Tests for Dynamic Document Views."""
     
     def test_list_dynamic_documents_authenticated_pagination(self, api_client, user, sample_document):
-        """Test paginated structure when retrieving list of dynamic documents"""
+        """Test paginated structure when retrieving list of dynamic documents."""
         api_client.force_authenticate(user=user)
         url = reverse('list_dynamic_documents')
         response = api_client.get(url)
@@ -70,7 +70,7 @@ class TestDynamicDocumentViews:
         assert response.data['currentPage'] == 1
 
     def test_list_dynamic_documents_authenticated_content(self, api_client, user, sample_document):
-        """Test document content when retrieving list of dynamic documents"""
+        """Test document content when retrieving list of dynamic documents."""
         api_client.force_authenticate(user=user)
         url = reverse('list_dynamic_documents')
         response = api_client.get(url)
@@ -180,7 +180,7 @@ class TestDynamicDocumentViews:
             created_by=lawyer_1,
         )
         # Documento de otro abogado que no debería aparecer
-        doc_other = DynamicDocument.objects.create(
+        _doc_other = DynamicDocument.objects.create(
             title="L2 Draft",
             content="<p>x</p>",
             state="Draft",
@@ -247,7 +247,7 @@ class TestDynamicDocumentViews:
         assert returned_ids == {doc_progress.id, doc_completed.id}
 
     def test_list_dynamic_documents_unauthenticated(self, api_client, sample_document):
-        """Test that unauthenticated users cannot access the document list"""
+        """Test that unauthenticated users cannot access the document list."""
         url = reverse('list_dynamic_documents')
         response = api_client.get(url)
         
@@ -295,7 +295,7 @@ class TestDynamicDocumentViews:
         assert len(response.data['items']) == 2
     
     def test_create_dynamic_document_authenticated_response(self, api_client, user):
-        """Test creating a new dynamic document - response"""
+        """Test creating a new dynamic document - response."""
         api_client.force_authenticate(user=user)
         
         data = {
@@ -313,7 +313,7 @@ class TestDynamicDocumentViews:
         assert DynamicDocument.objects.count() == 1
 
     def test_create_dynamic_document_authenticated_db_state(self, api_client, user):
-        """Test creating a new dynamic document - database state"""
+        """Test creating a new dynamic document - database state."""
         api_client.force_authenticate(user=user)
         
         data = {
@@ -373,7 +373,7 @@ class TestDynamicDocumentViews:
         assert 'variables' in response.data
     
     def test_update_dynamic_document_authenticated(self, api_client, user, sample_document):
-        """Test updating an existing dynamic document when authenticated"""
+        """Test updating an existing dynamic document when authenticated."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -464,6 +464,7 @@ class TestDynamicDocumentViews:
         assert select_var.select_options == []
 
     def test_get_dynamic_document_not_found(self, api_client, user):
+        """Verify get dynamic document not found."""
         api_client.force_authenticate(user=user)
 
         url = reverse('get_dynamic_document', kwargs={'pk': 9999})
@@ -472,7 +473,7 @@ class TestDynamicDocumentViews:
         assert response.status_code == status.HTTP_404_NOT_FOUND
     
     def test_delete_dynamic_document_authenticated(self, api_client, user, sample_document):
-        """Test deleting a dynamic document when authenticated"""
+        """Test deleting a dynamic document when authenticated."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -489,9 +490,10 @@ class TestDynamicDocumentViews:
 
 @pytest.mark.django_db
 class TestDynamicDocumentExport:
+    """Tests for Dynamic Document Export."""
     
     def test_download_dynamic_document_pdf_authenticated(self, api_client, user, sample_document, monkeypatch):
-        """Test downloading a dynamic document as PDF when authenticated"""
+        """Test downloading a dynamic document as PDF when authenticated."""
         # Mock the pisa.CreatePDF function to avoid actual PDF creation
         class MockPisaStatus:
             err = False
@@ -514,7 +516,7 @@ class TestDynamicDocumentExport:
         assert response['Content-Disposition'] == f'attachment; filename="{sample_document.title}.pdf"'
     
     def test_download_dynamic_document_word_authenticated(self, api_client, user, sample_document, monkeypatch):
-        """Test downloading a dynamic document as Word when authenticated"""
+        """Test downloading a dynamic document as Word when authenticated."""
         _Style = type('Style', (), {'font': type('Font', (), {'name': None})})
         _Para = type('Para', (), {'runs': [], 'add_run': lambda s, t: type('Run', (), {'font': type('Font', (), {'name': None})}), 'alignment': None, 'paragraph_format': type('PF', (), {'left_indent': None, 'line_spacing': None})})
         class MockDocument:  # pragma: no cover
@@ -534,6 +536,7 @@ class TestDynamicDocumentExport:
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     def test_download_dynamic_document_pdf_missing_fonts_returns_500(self, api_client, user, sample_document, monkeypatch):
+        """Verify download dynamic document pdf missing fonts returns 500."""
         api_client.force_authenticate(user=user)
 
         monkeypatch.setattr(document_views.os.path, "exists", lambda path: False)
@@ -545,6 +548,7 @@ class TestDynamicDocumentExport:
         assert "Font file not found" in response.data['detail']
 
     def test_download_dynamic_document_pdf_pisa_error_returns_500(self, api_client, user, sample_document, monkeypatch):
+        """Verify download dynamic document pdf pisa error returns 500."""
         api_client.force_authenticate(user=user)
 
         class MockPisaStatus:
@@ -565,6 +569,7 @@ class TestDynamicDocumentExport:
         assert "Error generating PDF" in response.data['detail']
 
     def test_download_dynamic_document_word_template_error_returns_500(self, api_client, user, sample_document, monkeypatch):
+        """Verify download dynamic document word template error returns 500."""
         api_client.force_authenticate(user=user)
 
         def raise_error(*args, **kwargs):
@@ -579,6 +584,7 @@ class TestDynamicDocumentExport:
         assert "Error generating Word document" in response.data['detail']
 
     def test_download_dynamic_document_word_invalid_template_falls_back(self, api_client, user, sample_document, monkeypatch, settings, tmp_path):
+        """Verify download dynamic document word invalid template falls back."""
         settings.MEDIA_ROOT = tmp_path
         api_client.force_authenticate(user=user)
 
@@ -605,7 +611,7 @@ class TestDynamicDocumentExport:
         assert response.status_code == status.HTTP_200_OK
     
     def test_document_download_unauthenticated(self, api_client, sample_document):
-        """Test that unauthenticated users cannot download documents"""
+        """Test that unauthenticated users cannot download documents."""
         # Try PDF download
         pdf_url = reverse('download_dynamic_document_pdf', kwargs={'pk': sample_document.pk})
         pdf_response = api_client.get(pdf_url)
@@ -617,7 +623,7 @@ class TestDynamicDocumentExport:
         assert word_response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_download_nonexistent_document(self, api_client, user):
-        """Test trying to download a document that doesn't exist"""
+        """Test trying to download a document that doesn't exist."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -633,8 +639,10 @@ class TestDynamicDocumentExport:
 
 @pytest.mark.django_db
 class TestDynamicDocumentRecentViews:
+    """Tests for Dynamic Document Recent Views."""
 
     def test_get_recent_documents_empty(self, api_client, user):
+        """Verify get recent documents empty."""
         api_client.force_authenticate(user=user)
 
         url = reverse('get-recent-documents')
@@ -684,7 +692,7 @@ class TestDynamicDocumentRecentViews:
         assert hidden_doc.id not in doc_ids
 
     def test_update_recent_document_creates_and_updates_entry(self, api_client, user):
-        """update_recent_document debe crear o actualizar la entrada de RecentDocument"""
+        """update_recent_document debe crear o actualizar la entrada de RecentDocument."""
         document = DynamicDocument.objects.create(
             title="Doc reciente",
             content="<p>x</p>",
@@ -711,7 +719,7 @@ class TestDynamicDocumentRecentViews:
         assert recent.last_visited >= first_last_visited
 
     def test_update_recent_document_forbidden_when_no_visibility(self, api_client, user):
-        """update_recent_document debe devolver 403 si el usuario no puede ver el documento"""
+        """update_recent_document debe devolver 403 si el usuario no puede ver el documento."""
         other_user = User.objects.create_user(
             email='other2@example.com',
             password='testpassword',
@@ -733,7 +741,7 @@ class TestDynamicDocumentRecentViews:
         assert 'permission' in response.data['detail'].lower()
 
     def test_update_recent_document_not_found(self, api_client, user):
-        """update_recent_document debe devolver 404 si el documento no existe"""
+        """update_recent_document debe devolver 404 si el documento no existe."""
         api_client.force_authenticate(user=user)
 
         url = reverse('update-recent-document', kwargs={'document_id': 9999})
@@ -762,12 +770,14 @@ Batch 18 – 20 tests: document_views.py coverage gaps.
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="law_b18@t.com", password="pw", role="lawyer",
         first_name="L", last_name="W",
@@ -777,6 +787,7 @@ def lawyer():
 @pytest.fixture
 @pytest.mark.django_db
 def doc(lawyer):
+    """Doc."""
     return DynamicDocument.objects.create(
         title="DocB18", content="<p>Hello {{var1}}</p>",
         state="Draft", created_by=lawyer,
@@ -786,6 +797,7 @@ def doc(lawyer):
 @pytest.fixture
 @pytest.mark.django_db
 def doc_with_var(doc):
+    """Doc with var."""
     DocumentVariable.objects.create(document=doc, name_en="var1", value="World")
     return doc
 
@@ -796,6 +808,7 @@ def doc_with_var(doc):
 
 @pytest.mark.django_db
 class TestDownloadPDF:
+    """Tests for Download PDF."""
 
     def test_not_found(self, api, lawyer):
         """Lines 451-452: DoesNotExist returns 404."""
@@ -816,7 +829,7 @@ class TestDownloadPDF:
     @patch("gym_app.views.dynamic_documents.document_views.pisa.CreatePDF", side_effect=Exception("PDF boom"))
     @patch("gym_app.views.dynamic_documents.document_views.os.path.exists", return_value=True)
     @patch("gym_app.views.dynamic_documents.document_views.pdfmetrics.registerFont")
-    def test_general_error(self, _reg, _exists, _pisa, api, lawyer, doc_with_var):
+    def test_general_error(self, _reg, _exists, _pisa, api, lawyer, doc_with_var):  # noqa: PT019
         """Lines 455-456: general exception returns 500."""
         api.force_authenticate(user=lawyer)
         url = reverse("download_dynamic_document_pdf", kwargs={"pk": doc_with_var.pk})
@@ -830,6 +843,7 @@ class TestDownloadPDF:
 
 @pytest.mark.django_db
 class TestDownloadWord:
+    """Tests for Download Word."""
 
     def test_not_found(self, api, lawyer):
         """Lines 778-779: DoesNotExist returns 404."""
@@ -839,7 +853,7 @@ class TestDownloadWord:
         assert resp.status_code == 404
 
     @patch("gym_app.views.dynamic_documents.document_views.Document", side_effect=Exception("docx boom"))
-    def test_general_error(self, _mock, api, lawyer, doc_with_var):
+    def test_general_error(self, _mock, api, lawyer, doc_with_var):  # noqa: PT019
         """Lines 780-781: general exception returns 500."""
         api.force_authenticate(user=lawyer)
         url = reverse("download_dynamic_document_word", kwargs={"pk": doc_with_var.pk})
@@ -878,13 +892,15 @@ Batch 19 – 20 tests: document_views.py coverage gaps continued.
 
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
 @pytest.mark.django_db
-def lawyer():
+def lawyer():  # noqa: F811
+    """Lawyer."""
     return User.objects.create_user(
         email="law_b19@t.com", password="pw", role="lawyer",
         first_name="L", last_name="W",
@@ -893,7 +909,8 @@ def lawyer():
 
 @pytest.fixture
 @pytest.mark.django_db
-def doc(lawyer):
+def doc(lawyer):  # noqa: F811
+    """Doc."""
     return DynamicDocument.objects.create(
         title="DocB19", content="<p>hi</p>", state="Draft", created_by=lawyer,
     )
@@ -926,8 +943,10 @@ def _make_docx():
 
 @pytest.mark.django_db
 class TestRecentDocuments:
+    """Tests for Recent Documents."""
 
     def test_get_recent_empty(self, api, lawyer):
+        """Verify get recent empty."""
         api.force_authenticate(user=lawyer)
         url = reverse("get-recent-documents")
         resp = api.get(url)
@@ -935,12 +954,14 @@ class TestRecentDocuments:
         assert resp.data == []
 
     def test_update_recent_success(self, api, lawyer, doc):
+        """Verify update recent success."""
         api.force_authenticate(user=lawyer)
         url = reverse("update-recent-document", kwargs={"document_id": doc.pk})
         resp = api.post(url)
         assert resp.status_code == 200
 
     def test_update_recent_not_found(self, api, lawyer):
+        """Verify update recent not found."""
         api.force_authenticate(user=lawyer)
         url = reverse("update-recent-document", kwargs={"document_id": 99999})
         resp = api.post(url)
@@ -953,20 +974,24 @@ class TestRecentDocuments:
 
 @pytest.mark.django_db
 class TestLetterheadImage:
+    """Tests for Letterhead Image."""
 
     def test_upload_success(self, api, lawyer, doc):
+        """Verify upload success."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-letterhead-image", kwargs={"pk": doc.pk})
         resp = api.post(url, {"image": _make_png()}, format="multipart")
         assert resp.status_code == 201
 
     def test_upload_no_file(self, api, lawyer, doc):
+        """Verify upload no file."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-letterhead-image", kwargs={"pk": doc.pk})
         resp = api.post(url, {}, format="multipart")
         assert resp.status_code == 400
 
     def test_upload_bad_ext(self, api, lawyer, doc):
+        """Verify upload bad ext."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-letterhead-image", kwargs={"pk": doc.pk})
         f = SimpleUploadedFile("bad.jpg", b"data", content_type="image/jpeg")
@@ -974,6 +999,7 @@ class TestLetterheadImage:
         assert resp.status_code == 400
 
     def test_upload_too_large(self, api, lawyer, doc):
+        """Verify upload too large."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-letterhead-image", kwargs={"pk": doc.pk})
         f = SimpleUploadedFile("big.png", b"x" * (11 * 1024 * 1024), content_type="image/png")
@@ -1038,20 +1064,24 @@ class TestLetterheadImage:
 
 @pytest.mark.django_db
 class TestDocWordTemplate:
+    """Tests for Doc Word Template."""
 
     def test_upload_success(self, api, lawyer, doc):
+        """Verify upload success."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": doc.pk})
         resp = api.post(url, {"template": _make_docx()}, format="multipart")
         assert resp.status_code == 201
 
     def test_upload_no_file(self, api, lawyer, doc):
+        """Verify upload no file."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": doc.pk})
         resp = api.post(url, {}, format="multipart")
         assert resp.status_code == 400
 
     def test_upload_bad_ext(self, api, lawyer, doc):
+        """Verify upload bad ext."""
         api.force_authenticate(user=lawyer)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": doc.pk})
         f = SimpleUploadedFile("bad.txt", b"data", content_type="text/plain")
@@ -1088,21 +1118,27 @@ class TestDocWordTemplate:
 
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(email="law31@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="cli31@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 
 # -- list_dynamic_documents filter/pagination edges --
 class TestListDynDocEdges:
+    """Tests for List Dyn Doc Edges."""
+
     def test_filter_by_client_id(self, api, law, cli):
+        """Verify filter by client id."""
         DynamicDocument.objects.create(title="ClientDoc", content="<p>x</p>", state="Draft", created_by=law, assigned_to=cli)
         DynamicDocument.objects.create(title="NoClient", content="<p>x</p>", state="Draft", created_by=law)
         api.force_authenticate(user=law)
@@ -1113,6 +1149,7 @@ class TestListDynDocEdges:
         assert "NoClient" not in titles
 
     def test_filter_by_lawyer_id(self, api, law):
+        """Verify filter by lawyer id."""
         law2 = User.objects.create_user(email="law31b@t.com", password="pw", role="lawyer")
         DynamicDocument.objects.create(title="Mine", content="<p>x</p>", state="Draft", created_by=law)
         DynamicDocument.objects.create(title="Other", content="<p>x</p>", state="Draft", created_by=law2)
@@ -1124,6 +1161,7 @@ class TestListDynDocEdges:
         assert "Other" not in titles
 
     def test_pagination_defaults(self, api, law):
+        """Verify pagination defaults."""
         for i in range(15):
             DynamicDocument.objects.create(title=f"P{i}", content="<p>x</p>", state="Draft", created_by=law)
         api.force_authenticate(user=law)
@@ -1134,6 +1172,7 @@ class TestListDynDocEdges:
         assert len(resp.data["items"]) == 10  # default limit
 
     def test_pagination_custom_limit(self, api, law):
+        """Verify pagination custom limit."""
         for i in range(5):
             DynamicDocument.objects.create(title=f"Q{i}", content="<p>x</p>", state="Draft", created_by=law)
         api.force_authenticate(user=law)
@@ -1143,6 +1182,7 @@ class TestListDynDocEdges:
         assert len(resp.data["items"]) == 2
 
     def test_pagination_negative_limit(self, api, law):
+        """Verify pagination negative limit."""
         DynamicDocument.objects.create(title="X", content="<p>x</p>", state="Draft", created_by=law)
         api.force_authenticate(user=law)
         resp = api.get(reverse("list_dynamic_documents"), {"limit": -5})
@@ -1152,7 +1192,10 @@ class TestListDynDocEdges:
 
 # -- get_dynamic_document --
 class TestGetDynDocEdges:
+    """Tests for Get Dyn Doc Edges."""
+
     def test_get_doc_no_permission(self, api, law, cli):
+        """Verify get doc no permission."""
         doc = DynamicDocument.objects.create(title="Priv", content="<p>x</p>", state="Draft", created_by=law)
         api.force_authenticate(user=cli)
         resp = api.get(reverse("get_dynamic_document", args=[doc.id]))
@@ -1161,7 +1204,10 @@ class TestGetDynDocEdges:
 
 # -- recent documents --
 class TestRecentDocs:
+    """Tests for Recent Docs."""
+
     def test_update_recent_creates(self, api, law):
+        """Verify update recent creates."""
         doc = DynamicDocument.objects.create(title="Rec", content="<p>x</p>", state="Draft", created_by=law)
         doc.visibility_permissions.create(user=law, granted_by=law)
         api.force_authenticate(user=law)
@@ -1170,6 +1216,7 @@ class TestRecentDocs:
         assert RecentDocument.objects.filter(user=law, document=doc).exists()
 
     def test_update_recent_updates_timestamp(self, api, law):
+        """Verify update recent updates timestamp."""
         doc = DynamicDocument.objects.create(title="Rec2", content="<p>x</p>", state="Draft", created_by=law)
         doc.visibility_permissions.create(user=law, granted_by=law)
         RecentDocument.objects.create(user=law, document=doc)
@@ -1180,7 +1227,10 @@ class TestRecentDocs:
 
 # -- letterhead endpoints --
 class TestLetterheadEdges:
+    """Tests for Letterhead Edges."""
+
     def test_get_user_letterhead_no_image(self, api, law):
+        """Verify get user letterhead no image."""
         api.force_authenticate(user=law)
         resp = api.get(reverse("get-user-letterhead-image"))
         assert resp.status_code == 404
@@ -1205,6 +1255,7 @@ and get_letterhead_for_document helper.
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b5@example.com",
         password="testpassword",
@@ -1217,6 +1268,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic_b5@example.com",
         password="testpassword",
@@ -1227,6 +1279,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Test Doc B5",
         content="<p>Hello</p>",
@@ -1257,8 +1310,10 @@ def _docx_bytes():
 
 @pytest.mark.django_db
 class TestListDynamicDocumentsEdges:
+    """Tests for List Dynamic Documents Edges."""
 
     def test_filter_by_single_state(self, api_client, lawyer_user):
+        """Verify filter by single state."""
         DynamicDocument.objects.create(title="D1", content="<p>a</p>", state="Draft", created_by=lawyer_user)
         DynamicDocument.objects.create(title="D2", content="<p>b</p>", state="Completed", created_by=lawyer_user)
 
@@ -1272,6 +1327,7 @@ class TestListDynamicDocumentsEdges:
         assert "D1" not in titles
 
     def test_filter_by_multi_states(self, api_client, lawyer_user):
+        """Verify filter by multi states."""
         DynamicDocument.objects.create(title="D1", content="<p>a</p>", state="Draft", created_by=lawyer_user)
         DynamicDocument.objects.create(title="D2", content="<p>b</p>", state="Completed", created_by=lawyer_user)
         DynamicDocument.objects.create(title="D3", content="<p>c</p>", state="Progress", created_by=lawyer_user)
@@ -1287,6 +1343,7 @@ class TestListDynamicDocumentsEdges:
         assert "D2" not in titles
 
     def test_empty_page_falls_to_last(self, api_client, lawyer_user):
+        """Verify empty page falls to last."""
         DynamicDocument.objects.create(title="D1", content="<p>a</p>", state="Draft", created_by=lawyer_user)
 
         api_client.force_authenticate(user=lawyer_user)
@@ -1303,8 +1360,10 @@ class TestListDynamicDocumentsEdges:
 
 @pytest.mark.django_db
 class TestDocumentLetterheadImage:
+    """Tests for Document Letterhead Image."""
 
     def test_upload_letterhead_image_success(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image success."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
         png = _png_file()
@@ -1316,6 +1375,7 @@ class TestDocumentLetterheadImage:
         assert bool(document.letterhead_image)
 
     def test_upload_letterhead_image_missing_file(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image missing file."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
         response = api_client.post(url, {}, format="multipart")
@@ -1324,6 +1384,7 @@ class TestDocumentLetterheadImage:
         assert "imagen" in response.data["detail"].lower()
 
     def test_upload_letterhead_image_wrong_extension(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image wrong extension."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
         jpg = SimpleUploadedFile("bad.jpg", b"content", content_type="image/jpeg")
@@ -1333,6 +1394,7 @@ class TestDocumentLetterheadImage:
         assert "PNG" in response.data["detail"]
 
     def test_upload_letterhead_image_too_large(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image too large."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
         # Create an oversized file (>10MB)
@@ -1343,6 +1405,7 @@ class TestDocumentLetterheadImage:
         assert "grande" in response.data["detail"].lower()
 
     def test_upload_letterhead_image_invalid_image(self, api_client, lawyer_user, document):
+        """Verify upload letterhead image invalid image."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
         bad_png = SimpleUploadedFile("bad.png", b"not-a-real-png", content_type="image/png")
@@ -1352,6 +1415,7 @@ class TestDocumentLetterheadImage:
         assert "inválido" in response.data["detail"].lower()
 
     def test_get_letterhead_image_not_set(self, api_client, lawyer_user, document):
+        """Verify get letterhead image not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-letterhead-image", kwargs={"pk": document.id})
         response = api_client.get(url)
@@ -1359,6 +1423,7 @@ class TestDocumentLetterheadImage:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_letterhead_image_not_set(self, api_client, lawyer_user, document):
+        """Verify delete letterhead image not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-letterhead-image", kwargs={"pk": document.id})
         response = api_client.delete(url)
@@ -1366,6 +1431,7 @@ class TestDocumentLetterheadImage:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_letterhead_image_success(self, api_client, lawyer_user, document):
+        """Verify delete letterhead image success."""
         # First upload
         api_client.force_authenticate(user=lawyer_user)
         upload_url = reverse("upload-letterhead-image", kwargs={"pk": document.id})
@@ -1390,8 +1456,10 @@ class TestDocumentLetterheadImage:
 
 @pytest.mark.django_db
 class TestDocumentLetterheadWordTemplate:
+    """Tests for Document Letterhead Word Template."""
 
     def test_upload_word_template_success(self, api_client, lawyer_user, document):
+        """Verify upload word template success."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
         docx = SimpleUploadedFile("template.docx", _docx_bytes(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1401,6 +1469,7 @@ class TestDocumentLetterheadWordTemplate:
         assert "template_info" in response.data
 
     def test_upload_word_template_missing_file(self, api_client, lawyer_user, document):
+        """Verify upload word template missing file."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
         response = api_client.post(url, {}, format="multipart")
@@ -1408,6 +1477,7 @@ class TestDocumentLetterheadWordTemplate:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_upload_word_template_wrong_extension(self, api_client, lawyer_user, document):
+        """Verify upload word template wrong extension."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
         txt = SimpleUploadedFile("bad.txt", b"content", content_type="text/plain")
@@ -1417,6 +1487,7 @@ class TestDocumentLetterheadWordTemplate:
         assert ".docx" in response.data["detail"]
 
     def test_get_word_template_not_set(self, api_client, lawyer_user, document):
+        """Verify get word template not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-document-letterhead-word-template", kwargs={"pk": document.id})
         response = api_client.get(url)
@@ -1424,6 +1495,7 @@ class TestDocumentLetterheadWordTemplate:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_word_template_not_set(self, api_client, lawyer_user, document):
+        """Verify delete word template not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-document-letterhead-word-template", kwargs={"pk": document.id})
         response = api_client.delete(url)
@@ -1431,6 +1503,7 @@ class TestDocumentLetterheadWordTemplate:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_word_template_success(self, api_client, lawyer_user, document):
+        """Verify delete word template success."""
         api_client.force_authenticate(user=lawyer_user)
         upload_url = reverse("upload-document-letterhead-word-template", kwargs={"pk": document.id})
         docx = SimpleUploadedFile("template.docx", _docx_bytes(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1450,8 +1523,10 @@ class TestDocumentLetterheadWordTemplate:
 
 @pytest.mark.django_db
 class TestUserGlobalLetterhead:
+    """Tests for User Global Letterhead."""
 
     def test_upload_user_letterhead_basic_forbidden(self, api_client, basic_user):
+        """Verify upload user letterhead basic forbidden."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("upload-user-letterhead-image")
         png = _png_file()
@@ -1460,6 +1535,7 @@ class TestUserGlobalLetterhead:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_upload_user_letterhead_success(self, api_client, lawyer_user):
+        """Verify upload user letterhead success."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-user-letterhead-image")
         png = _png_file()
@@ -1470,6 +1546,7 @@ class TestUserGlobalLetterhead:
         assert bool(lawyer_user.letterhead_image)
 
     def test_get_user_letterhead_not_set(self, api_client, lawyer_user):
+        """Verify get user letterhead not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-user-letterhead-image")
         response = api_client.get(url)
@@ -1477,6 +1554,7 @@ class TestUserGlobalLetterhead:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_user_letterhead_basic_forbidden(self, api_client, basic_user):
+        """Verify delete user letterhead basic forbidden."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("delete-user-letterhead-image")
         response = api_client.delete(url)
@@ -1484,6 +1562,7 @@ class TestUserGlobalLetterhead:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_user_letterhead_not_set(self, api_client, lawyer_user):
+        """Verify delete user letterhead not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-user-letterhead-image")
         response = api_client.delete(url)
@@ -1491,6 +1570,7 @@ class TestUserGlobalLetterhead:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_user_letterhead_success(self, api_client, lawyer_user):
+        """Verify delete user letterhead success."""
         api_client.force_authenticate(user=lawyer_user)
         # Upload first
         upload_url = reverse("upload-user-letterhead-image")
@@ -1514,8 +1594,10 @@ class TestUserGlobalLetterhead:
 
 @pytest.mark.django_db
 class TestUserGlobalWordTemplate:
+    """Tests for User Global Word Template."""
 
     def test_upload_user_word_template_basic_forbidden(self, api_client, basic_user):
+        """Verify upload user word template basic forbidden."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("upload-user-letterhead-word-template")
         docx = SimpleUploadedFile("t.docx", _docx_bytes(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1524,6 +1606,7 @@ class TestUserGlobalWordTemplate:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_upload_user_word_template_success(self, api_client, lawyer_user):
+        """Verify upload user word template success."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("upload-user-letterhead-word-template")
         docx = SimpleUploadedFile("t.docx", _docx_bytes(), content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1532,6 +1615,7 @@ class TestUserGlobalWordTemplate:
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_get_user_word_template_not_set(self, api_client, lawyer_user):
+        """Verify get user word template not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("get-user-letterhead-word-template")
         response = api_client.get(url)
@@ -1539,6 +1623,7 @@ class TestUserGlobalWordTemplate:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_user_word_template_basic_forbidden(self, api_client, basic_user):
+        """Verify delete user word template basic forbidden."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("delete-user-letterhead-word-template")
         response = api_client.delete(url)
@@ -1546,6 +1631,7 @@ class TestUserGlobalWordTemplate:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete_user_word_template_not_set(self, api_client, lawyer_user):
+        """Verify delete user word template not set."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("delete-user-letterhead-word-template")
         response = api_client.delete(url)
@@ -1553,6 +1639,7 @@ class TestUserGlobalWordTemplate:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_user_word_template_success(self, api_client, lawyer_user):
+        """Verify delete user word template success."""
         api_client.force_authenticate(user=lawyer_user)
         # Upload first
         upload_url = reverse("upload-user-letterhead-word-template")
@@ -1572,8 +1659,10 @@ class TestUserGlobalWordTemplate:
 
 @pytest.mark.django_db
 class TestRecentDocumentEdges:
+    """Tests for Recent Document Edges."""
 
     def test_update_recent_document_creates_and_updates(self, api_client, lawyer_user, document):
+        """Verify update recent document creates and updates."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("update-recent-document", kwargs={"document_id": document.id})
 
@@ -1595,21 +1684,23 @@ class TestRecentDocumentEdges:
 """Tests for uncovered branches in document_views.py (75%→higher)."""
 
 @pytest.fixture
-def lawyer():
+def lawyer():  # noqa: F811
+    """Lawyer."""
     return User.objects.create_user(
         email='law_dvc@e.com', password='p', role='lawyer',
         first_name='L', last_name='D')
 
 
 @pytest.fixture
-def basic_user():
+def basic_user():  # noqa: F811
+    """Create a basic user."""
     return User.objects.create_user(
         email='basic_dvc@e.com', password='p', role='basic',
         first_name='B', last_name='D')
 
 
 @pytest.fixture
-def doc(lawyer):
+def doc(lawyer):  # noqa: F811
     """Document with rich HTML content for Word/PDF tests."""
     html = (
         '<h1>Title</h1>'
@@ -1639,6 +1730,7 @@ def doc(lawyer):
 
 @pytest.fixture
 def doc_empty(lawyer):
+    """Doc empty."""
     return DynamicDocument.objects.create(
         title='EmptyDoc', content='', state='Draft',
         created_by=lawyer,
@@ -1647,6 +1739,7 @@ def doc_empty(lawyer):
 
 @pytest.mark.django_db
 class TestDocViewsRegressionScenarios:
+    """Tests for Doc Views Regression Scenarios."""
 
     # --- Pagination: non-integer limit (lines 113-114) ---
     def test_list_non_integer_limit(self, api_client, lawyer, doc):
@@ -1791,6 +1884,7 @@ class TestDocViewsRegressionScenarios:
     def test_upload_user_letterhead_valid(self, api_client, lawyer):
         """Lines 1380-1446: upload valid user letterhead image."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(
@@ -1816,6 +1910,7 @@ class TestDocViewsRegressionScenarios:
     def test_upload_letterhead_valid(self, api_client, lawyer, doc):
         """Lines 860-931: upload valid letterhead image to document."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(
@@ -1833,6 +1928,7 @@ class TestDocViewsRegressionScenarios:
     def test_download_pdf_with_letterhead(self, api_client, lawyer, doc):
         """Lines 320-342: PDF with letterhead image from document."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(
@@ -1855,6 +1951,7 @@ class TestDocViewsRegressionScenarios:
     def test_get_and_delete_letterhead(self, api_client, lawyer, doc):
         """Lines 960-1016: get and delete letterhead image."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(
@@ -1879,6 +1976,7 @@ class TestDocViewsRegressionScenarios:
     def test_upload_get_delete_doc_word_template(self, api_client, lawyer, doc):
         """Lines 1059-1165: upload/get/delete doc word template lifecycle."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         buf = BytesIO()
         DocxDoc().save(buf)
@@ -1908,6 +2006,7 @@ class TestDocViewsRegressionScenarios:
     def test_upload_get_delete_user_word_template(self, api_client, lawyer):
         """Lines 1208-1302: upload/get/delete user word template lifecycle."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         buf = BytesIO()
         DocxDoc().save(buf)
@@ -1934,6 +2033,7 @@ class TestDocViewsRegressionScenarios:
     def test_reupload_letterhead_image(self, api_client, lawyer, doc):
         """Lines 898-902: re-upload letterhead covers old file deletion."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         for _ in range(2):
@@ -1952,6 +2052,7 @@ class TestDocViewsRegressionScenarios:
     def test_reupload_user_letterhead_image(self, api_client, lawyer):
         """Lines 1421-1425: re-upload user letterhead covers old file deletion."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         for _ in range(2):
@@ -1970,6 +2071,7 @@ class TestDocViewsRegressionScenarios:
     def test_delete_user_letterhead_after_upload(self, api_client, lawyer):
         """Lines 1525-1526: delete user letterhead image after upload."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(
@@ -1985,6 +2087,7 @@ class TestDocViewsRegressionScenarios:
         assert r.status_code == 200
 
     # --- Word download with malformed styles (lines 599-600, 606-607, 648-649) ---
+    @freeze_time("2025-01-15 12:00:00")
     def test_download_word_malformed_styles(self, api_client, lawyer):
         """Lines 599-607, 648-649: malformed padding/line-height/font-size."""
         malformed_html = (
@@ -2006,6 +2109,7 @@ class TestDocViewsRegressionScenarios:
     def test_download_word_with_template(self, api_client, lawyer, doc):
         """Line 577: Word download uses document word template."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         buf = BytesIO()
         DocxDoc().save(buf)
@@ -2027,6 +2131,7 @@ class TestDocViewsRegressionScenarios:
     def test_pdf_with_user_global_letterhead_fallback(self, api_client, lawyer, doc):
         """Line 1332: PDF uses user global letterhead when document has none."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (816, 1056), color='white').save(buf, format='PNG')
@@ -2049,6 +2154,7 @@ class TestDocViewsRegressionScenarios:
     def test_reupload_letterhead_os_remove_fails(self, api_client, lawyer, doc):
         """Lines 901-902: old image deletion failure is caught silently."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2079,6 +2185,7 @@ class TestDocViewsRegressionScenarios:
     def test_delete_letterhead_os_remove_fails(self, api_client, lawyer, doc):
         """Lines 998-999: file deletion exception during delete is caught."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2103,6 +2210,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1059-1063: old template deletion exception is caught."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2138,6 +2246,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1148-1149: template file deletion exception is caught."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2165,6 +2274,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1424-1425: old user letterhead deletion exception caught."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2196,6 +2306,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1525-1526: user letterhead file deletion exception caught."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2220,6 +2331,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1208-1212: old user template deletion exception caught."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2253,6 +2365,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1290-1291: user template file deletion exception caught."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2280,6 +2393,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1229-1230: generic exception in upload → 500."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2303,6 +2417,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1262-1263: generic exception in get → 500."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2333,6 +2448,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1301-1302: generic exception in delete → 500."""
         from io import BytesIO
+
         from docx import Document as DocxDoc
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2358,6 +2474,7 @@ class TestDocViewsRegressionScenarios:
     ):
         """Lines 1448-1449: generic exception in upload user letterhead → 500."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         api_client.force_authenticate(user=lawyer)
         buf = BytesIO()
@@ -2395,7 +2512,8 @@ class TestDocViewsRegressionScenarios:
 
 
 @pytest.fixture
-def lawyer_user():
+def lawyer_user():  # noqa: F811
+    """Lawyer user."""
     return User.objects.create_user(
         email="dv1-lawyer@example.com",
         password="testpassword",
@@ -2404,7 +2522,8 @@ def lawyer_user():
 
 
 @pytest.fixture
-def basic_user():
+def basic_user():  # noqa: F811
+    """Create a basic user."""
     return User.objects.create_user(
         email="dv1-basic@example.com",
         password="testpassword",
@@ -2413,7 +2532,8 @@ def basic_user():
 
 
 @pytest.fixture
-def document(lawyer_user):
+def document(lawyer_user):  # noqa: F811
+    """Document."""
     return DynamicDocument.objects.create(
         title="DV1 Coverage Doc",
         content="<p>test content</p>",
@@ -2434,6 +2554,8 @@ def _make_png_file(width=100, height=100, name="test.png"):
 # ── Document letterhead image upload validations (lines 856, 864, 888-891, 921) ──
 
 class TestUploadLetterheadImageValidation:
+    """Tests for Upload Letterhead Image Validation."""
+
     def test_upload_letterhead_non_png_returns_400(self, api_client, lawyer_user, document):
         """Line 856: Non-PNG file rejected."""
         api_client.force_authenticate(user=lawyer_user)
@@ -2478,6 +2600,8 @@ class TestUploadLetterheadImageValidation:
 # ── Document letterhead image get/delete edge cases (line 954) ──────
 
 class TestGetLetterheadImageEdgeCases:
+    """Tests for Get Letterhead Image Edge Cases."""
+
     def test_get_letterhead_file_missing_on_disk(self, api_client, lawyer_user, document):
         """Line 954: Letterhead field set but file doesn't exist on disk."""
         document.letterhead_image = "nonexistent/path.png"
@@ -2494,6 +2618,8 @@ class TestGetLetterheadImageEdgeCases:
 # ── Document word template upload validations (lines 1044, 1052) ────
 
 class TestUploadDocWordTemplateValidation:
+    """Tests for Upload Doc Word Template Validation."""
+
     def test_upload_word_template_non_docx_returns_400(self, api_client, lawyer_user, document):
         """Line 1044: Non-DOCX file rejected."""
         api_client.force_authenticate(user=lawyer_user)
@@ -2518,6 +2644,8 @@ class TestUploadDocWordTemplateValidation:
 # ── Document word template get edge case (line 1107) ────────────────
 
 class TestGetDocWordTemplateEdgeCases:
+    """Tests for Get Doc Word Template Edge Cases."""
+
     def test_get_word_template_file_missing_on_disk(self, api_client, lawyer_user, document):
         """Line 1107: Word template field set but file doesn't exist on disk."""
         document.letterhead_word_template = "nonexistent/path.docx"
@@ -2533,6 +2661,8 @@ class TestGetDocWordTemplateEdgeCases:
 # ── User global word template CRUD (lines 1184, 1193, 1201, 1250) ──
 
 class TestUserWordTemplateCRUD:
+    """Tests for User Word Template CRUD."""
+
     def test_upload_user_word_template_no_file_returns_400(self, api_client, lawyer_user):
         """Line 1184: No template file provided."""
         api_client.force_authenticate(user=lawyer_user)
@@ -2577,6 +2707,8 @@ class TestUserWordTemplateCRUD:
 # ── User global letterhead image CRUD (lines 1360, 1377, 1385, 1408-1414, 1444, 1476-1491, 1516) ──
 
 class TestUserLetterheadImageCRUD:
+    """Tests for User Letterhead Image CRUD."""
+
     def test_upload_user_letterhead_basic_user_forbidden(self, api_client, basic_user):
         """Line 1360: Basic users cannot upload letterhead."""
         api_client.force_authenticate(user=basic_user)
@@ -2645,6 +2777,7 @@ class TestUserLetterheadImageCRUD:
 
 
 class TestDocumentViewsCRUDEdges:
+    """Tests for Document Views CRUDEdges."""
 
     def test_update_dynamic_document_not_found(self, api_client, lawyer_user):
         """Line 214-215: doc not found."""
@@ -2697,7 +2830,8 @@ class TestDocumentViewsCRUDEdges:
 
 
 
-class TestListDynamicDocumentsEdges:
+class TestListDynamicDocumentsEdges:  # noqa: F811
+    """Tests for List Dynamic Documents Edges."""
 
     def test_list_page_not_integer(self, api_client, lawyer_user, document):
         """Lines 123-125: PageNotAnInteger fallback."""
@@ -2739,7 +2873,7 @@ class TestListDynamicDocumentsEdges:
 
     def test_list_client_id_and_lawyer_id_filters(self, api_client, lawyer_user, client_user):
         """Lines 99-103: client_id and lawyer_id filters."""
-        doc = DynamicDocument.objects.create(
+        _doc = DynamicDocument.objects.create(
             title="Assigned", content="<p>x</p>", state="Draft",
             created_by=lawyer_user, assigned_to=client_user,
         )

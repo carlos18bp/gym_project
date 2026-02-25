@@ -1,23 +1,25 @@
+"""Tests for corporate_request_views module."""
+from datetime import datetime
+from datetime import timezone as dt_timezone
+
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
-from django.utils import timezone
 
-from django.contrib.auth import get_user_model
 from gym_app.models import (
+    CorporateRequest,
+    CorporateRequestResponse,
+    CorporateRequestType,
     Organization,
     OrganizationMembership,
-    CorporateRequest,
-    CorporateRequestType,
-    CorporateRequestResponse,
 )
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -30,6 +32,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -42,6 +45,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org",
         description="Org desc",
@@ -52,12 +56,14 @@ def organization(corporate_client):
 @pytest.fixture
 @pytest.mark.django_db
 def request_type():
+    """Request type."""
     return CorporateRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_request(organization, corporate_client, client_user, request_type):
+    """Corporate request."""
     OrganizationMembership.objects.create(
         organization=organization,
         user=client_user,
@@ -79,10 +85,13 @@ def corporate_request(organization, corporate_client, client_user, request_type)
 
 @pytest.mark.django_db
 class TestClientSideCorporateRequests:
+    """Tests for Client Side Corporate Requests."""
+
     def test_client_get_my_organizations(self, api_client, client_user, corporate_client):
+        """Verify client get my organizations."""
         org1 = Organization.objects.create(title="Org1", description="D1", corporate_client=corporate_client)
         org2 = Organization.objects.create(title="Org2", description="D2", corporate_client=corporate_client)
-        other_org = Organization.objects.create(title="OtherOrg", description="OD", corporate_client=corporate_client)
+        _other_org = Organization.objects.create(title="OtherOrg", description="OD", corporate_client=corporate_client)
 
         # Membresías solo en org1 y org2
         OrganizationMembership.objects.create(organization=org1, user=client_user, role="MEMBER", is_active=True)
@@ -99,6 +108,7 @@ class TestClientSideCorporateRequests:
         assert "OtherOrg" not in titles
 
     def test_client_get_request_types(self, api_client, client_user):
+        """Verify client get request types."""
         CorporateRequestType.objects.create(name="Tipo1")
         CorporateRequestType.objects.create(name="Tipo2")
 
@@ -110,6 +120,7 @@ class TestClientSideCorporateRequests:
         assert len(response.data["request_types"]) == 2
 
     def test_client_create_corporate_request_requires_membership(self, api_client, client_user, corporate_client, organization, request_type):
+        """Verify client create corporate request requires membership."""
         api_client.force_authenticate(user=client_user)
 
         data = {
@@ -137,7 +148,7 @@ class TestClientSideCorporateRequests:
         assert CorporateRequest.objects.filter(client=client_user, organization=organization).exists()
 
     def test_client_get_my_corporate_requests(self, api_client, client_user, corporate_client, organization, request_type):
-        """Test client can list their own corporate requests"""
+        """Test client can list their own corporate requests."""
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER", is_active=True)
         cr1 = CorporateRequest.objects.create(client=client_user, organization=organization, corporate_client=corporate_client, request_type=request_type, title="Req1", description="D1", priority="MEDIUM", status="PENDING")
         cr2 = CorporateRequest.objects.create(client=client_user, organization=organization, corporate_client=corporate_client, request_type=request_type, title="Req2", description="D2", priority="HIGH", status="IN_REVIEW")
@@ -152,7 +163,7 @@ class TestClientSideCorporateRequests:
         assert {cr1.id, cr2.id}.issubset(ids)
 
     def test_client_get_corporate_request_detail(self, api_client, client_user, corporate_client, organization, request_type):
-        """Test client can view detail of their corporate request"""
+        """Test client can view detail of their corporate request."""
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER", is_active=True)
         cr = CorporateRequest.objects.create(client=client_user, organization=organization, corporate_client=corporate_client, request_type=request_type, title="Req", description="D", priority="MEDIUM", status="PENDING")
 
@@ -164,6 +175,7 @@ class TestClientSideCorporateRequests:
         assert response.data["corporate_request"]["id"] == cr.id
 
     def test_client_add_response_to_request(self, api_client, client_user, corporate_request):
+        """Verify client add response to request."""
         api_client.force_authenticate(user=client_user)
 
         url = reverse("client-add-response-to-request", kwargs={"request_id": corporate_request.id})
@@ -179,8 +191,10 @@ class TestClientSideCorporateRequests:
 
 @pytest.mark.django_db
 class TestCorporateSideCorporateRequests:
+    """Tests for Corporate Side Corporate Requests."""
+
     def test_corporate_get_received_requests_filters_by_corporate(self, api_client, corporate_client, client_user, organization, request_type):
-        """Test corporate gets only their requests"""
+        """Test corporate gets only their requests."""
         OrganizationMembership.objects.create(organization=organization, user=client_user, role="MEMBER", is_active=True)
         cr1 = CorporateRequest.objects.create(client=client_user, organization=organization, corporate_client=corporate_client, request_type=request_type, title="Req1", description="D1", priority="URGENT", status="PENDING")
         cr2 = CorporateRequest.objects.create(client=client_user, organization=organization, corporate_client=corporate_client, request_type=request_type, title="Req2", description="D2", priority="LOW", status="IN_REVIEW")
@@ -195,6 +209,7 @@ class TestCorporateSideCorporateRequests:
         assert {cr1.id, cr2.id}.issubset(ids)
 
     def test_corporate_get_request_detail_and_update_status(self, api_client, corporate_client, corporate_request):
+        """Verify corporate get request detail and update status."""
         api_client.force_authenticate(user=corporate_client)
 
         # Detalle
@@ -212,6 +227,7 @@ class TestCorporateSideCorporateRequests:
         assert corporate_request.status == "RESPONDED"
 
     def test_corporate_add_response_to_request_nested_payload(self, api_client, corporate_client, corporate_request):
+        """Verify corporate add response to request nested payload."""
         api_client.force_authenticate(user=corporate_client)
 
         url = reverse("corporate-add-response-to-request", kwargs={"request_id": corporate_request.id})
@@ -223,6 +239,7 @@ class TestCorporateSideCorporateRequests:
         assert resp.is_internal_note is True
 
     def test_corporate_get_dashboard_stats(self, api_client, corporate_client, client_user, organization, request_type):
+        """Verify corporate get dashboard stats."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -250,7 +267,7 @@ class TestCorporateSideCorporateRequests:
             description="D2",
             priority="LOW",
             status="IN_REVIEW",
-            estimated_completion_date=timezone.now() - timezone.timedelta(days=1),
+            estimated_completion_date=datetime(2025, 6, 14, 12, 0, 0, tzinfo=dt_timezone.utc),
         )
 
         api_client.force_authenticate(user=corporate_client)
@@ -269,38 +286,25 @@ class TestCorporateSideCorporateRequests:
 
 @pytest.mark.django_db
 class TestRequestConversation:
-    def test_get_request_conversation_client_vs_corporate(self, api_client, client_user, corporate_client, organization, request_type):
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client_user,
-            role="MEMBER",
-            is_active=True,
-        )
+    """Tests for Request Conversation."""
 
+    def test_get_request_conversation_client_vs_corporate(self, api_client, client_user, corporate_client, organization, request_type):
+        """Verify get request conversation client vs corporate."""
+        OrganizationMembership.objects.create(
+            organization=organization, user=client_user, role="MEMBER", is_active=True,
+        )
         corporate_request = CorporateRequest.objects.create(
-            client=client_user,
-            organization=organization,
-            corporate_client=corporate_client,
-            request_type=request_type,
-            title="Req",
-            description="Desc",
-            priority="MEDIUM",
-            status="PENDING",
-        )
-        # Respuestas: una interna y una visible
-        CorporateRequestResponse.objects.create(
-            corporate_request=corporate_request,
-            response_text="Visible",
-            user=corporate_client,
-            user_type="corporate_client",
-            is_internal_note=False,
+            client=client_user, organization=organization,
+            corporate_client=corporate_client, request_type=request_type,
+            title="Req", description="Desc", priority="MEDIUM", status="PENDING",
         )
         CorporateRequestResponse.objects.create(
-            corporate_request=corporate_request,
-            response_text="Interna",
-            user=corporate_client,
-            user_type="corporate_client",
-            is_internal_note=True,
+            corporate_request=corporate_request, response_text="Visible",
+            user=corporate_client, user_type="corporate_client", is_internal_note=False,
+        )
+        CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request, response_text="Interna",
+            user=corporate_client, user_type="corporate_client", is_internal_note=True,
         )
 
         url = reverse("get-request-conversation", kwargs={"request_id": corporate_request.id})
@@ -321,6 +325,7 @@ class TestRequestConversation:
         assert "Interna" in texts
 
     def test_get_request_conversation_forbidden_for_other_roles(self, api_client, client_user, organization, corporate_client, request_type):
+        """Verify get request conversation forbidden for other roles."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -363,17 +368,9 @@ responses, member filters, and leader-cannot-leave logic.
 """
 import pytest
 from django.contrib.auth import get_user_model
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
 
 from gym_app.models import (
-    Organization,
     OrganizationInvitation,
-    OrganizationMembership,
-    CorporateRequest,
-    CorporateRequestType,
-    CorporateRequestResponse,
 )
 
 User = get_user_model()
@@ -385,6 +382,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b6@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -394,6 +392,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic_b6@test.com", password="pw", role="basic",
     )
@@ -402,6 +401,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def membership(organization, client_user):
+    """Membership."""
     return OrganizationMembership.objects.create(
         organization=organization,
         user=client_user,
@@ -413,6 +413,7 @@ def membership(organization, client_user):
 @pytest.fixture
 @pytest.mark.django_db
 def req_type():
+    """Req type."""
     return CorporateRequestType.objects.create(name="General")
 
 
@@ -438,6 +439,7 @@ def corp_request(client_user, corporate_client, organization, req_type, membersh
 
 @pytest.mark.django_db
 class TestRoleDecoratorRejections:
+    """Tests for Role Decorator Rejections."""
 
     def test_require_client_only_rejects_lawyer(self, api_client, lawyer_user):
         """corporate_request.py line 31 – lawyer blocked from client endpoint."""
@@ -481,6 +483,7 @@ class TestRoleDecoratorRejections:
 
 @pytest.mark.django_db
 class TestCorporateRequestFilters:
+    """Tests for Corporate Request Filters."""
 
     def test_client_requests_filter_by_status(
         self, api_client, client_user, corp_request
@@ -530,6 +533,7 @@ class TestCorporateRequestFilters:
 
 @pytest.mark.django_db
 class TestCorporateResponseNestedDict:
+    """Tests for Corporate Response Nested Dict."""
 
     def test_corporate_add_response_nested_dict(
         self, api_client, corporate_client, corp_request
@@ -579,6 +583,7 @@ class TestCorporateResponseNestedDict:
 
 @pytest.mark.django_db
 class TestConversationAccess:
+    """Tests for Conversation Access."""
 
     def test_basic_user_blocked_from_conversation(
         self, api_client, basic_user, corp_request
@@ -628,6 +633,7 @@ class TestConversationAccess:
 
 @pytest.mark.django_db
 class TestOrganizationFilters:
+    """Tests for Organization Filters."""
 
     def test_get_my_organizations_with_search(
         self, api_client, corporate_client, organization
@@ -684,6 +690,7 @@ class TestOrganizationFilters:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationFlow:
+    """Tests for Organization Invitation Flow."""
 
     def test_respond_accept_invitation(
         self, api_client, corporate_client, organization, client_user
@@ -707,6 +714,7 @@ class TestOrganizationInvitationFlow:
     def test_respond_reject_invitation(
         self, api_client, corporate_client, organization, client_user
     ):
+        """Verify respond reject invitation."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -796,6 +804,7 @@ class TestOrganizationInvitationFlow:
 
 @pytest.mark.django_db
 class TestOrganizationDelete:
+    """Tests for Organization Delete."""
 
     def test_delete_org_with_active_requests_blocked(
         self, api_client, corporate_client, organization, corp_request
@@ -828,6 +837,7 @@ class TestOrganizationDelete:
 
 @pytest.mark.django_db
 class TestOrganizationPublicDetail:
+    """Tests for Organization Public Detail."""
 
     def test_corp_client_can_view_own_org(
         self, api_client, corporate_client, organization
@@ -875,6 +885,7 @@ class TestOrganizationPublicDetail:
 
 @pytest.mark.django_db
 class TestOrganizationMemberManagement:
+    """Tests for Organization Member Management."""
 
     def test_cancel_pending_invitation(
         self, api_client, corporate_client, organization, client_user
@@ -941,7 +952,7 @@ class TestOrganizationMemberManagement:
         self, api_client, corporate_client, organization
     ):
         """Lines 429-432: cannot remove leader."""
-        leader_membership = OrganizationMembership.objects.create(
+        _leader_membership = OrganizationMembership.objects.create(
             organization=organization,
             user=corporate_client,
             role="LEADER",
@@ -965,21 +976,17 @@ class TestOrganizationMemberManagement:
 # ======================================================================
 
 """Tests for uncovered branches in corporate_request.py (89%→higher)."""
-import pytest
 import unittest.mock as mock
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework import status
+
+import pytest
 from django.contrib.auth import get_user_model
-from gym_app.models import (
-    Organization, OrganizationMembership,
-    CorporateRequest, CorporateRequestType,
-)
+
 from gym_app.views.corporate_request import CorporateRequestPagination
 
 User = get_user_model()
 @pytest.fixture
 def corp_client():
+    """Corp client."""
     return User.objects.create_user(
         email='corp_crc@e.com', password='p', role='corporate_client',
         first_name='C', last_name='R')
@@ -987,6 +994,7 @@ def corp_client():
 
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_crc@e.com', password='p', role='client',
         first_name='Cl', last_name='R')
@@ -994,6 +1002,7 @@ def client_u():
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email='law_crc@e.com', password='p', role='lawyer',
         first_name='L', last_name='R')
@@ -1001,19 +1010,21 @@ def lawyer():
 
 @pytest.fixture
 def org(corp_client):
+    """Org."""
     return Organization.objects.create(
         title='OrgCRC', description='Desc', corporate_client=corp_client)
 
 
 @pytest.fixture
 def crc_req_type():
+    """Crc req type."""
     return CorporateRequestType.objects.create(name='TypeCRC')
 
 
 @pytest.fixture
 def crc_corp_request(client_u, corp_client, org, crc_req_type):
-    """A corporate request for testing filters and conversations."""
-    mem = OrganizationMembership.objects.create(
+    """Create a corporate request for testing filters and conversations."""
+    _mem = OrganizationMembership.objects.create(
         organization=org, user=client_u, role='MEMBER', is_active=True)
     return CorporateRequest.objects.create(
         title='ReqCRC', description='Desc',
@@ -1024,6 +1035,7 @@ def crc_corp_request(client_u, corp_client, org, crc_req_type):
 
 @pytest.mark.django_db
 class TestCorporateRequestRegressionScenarios:
+    """Tests for Corporate Request Regression Scenarios."""
 
     # --- Line 31: require_client_only blocks lawyer ---
     def test_client_only_blocks_lawyer(self, api_client, lawyer):
@@ -1228,6 +1240,7 @@ class TestCorporateRequestRegressionScenarios:
 
 @pytest.mark.django_db
 class TestCorporateRequestViewsAdditionalScenarios:
+    """Tests for Corporate Request Views Additional Scenarios."""
 
     def test_dashboard_stats(self, api_client, corporate_client, organization):
         """Lines covering corporate_get_dashboard_stats."""

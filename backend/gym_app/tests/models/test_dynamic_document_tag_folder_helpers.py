@@ -1,3 +1,4 @@
+"""Tests for dynamic_document_tag_folder_helpers module."""
 import os
 from datetime import datetime, timedelta
 
@@ -5,18 +6,17 @@ import pytest
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+import gym_app.models.dynamic_document as dynamic_document_module
 from gym_app.models.dynamic_document import (
-    Tag,
-    DynamicDocument,
     DocumentFolder,
+    DynamicDocument,
     RecentDocument,
+    Tag,
+    document_letterhead_template_path,
     document_version_path,
     letterhead_image_path,
-    document_letterhead_template_path,
 )
-import gym_app.models.dynamic_document as dynamic_document_module
 from gym_app.models.user import User
-
 
 pytestmark = pytest.mark.django_db
 
@@ -25,6 +25,7 @@ FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 
 @pytest.fixture
 def user_factory():
+    """User factory."""
     def create_user(email, role="client", is_gym_lawyer=False):
         return User.objects.create_user(
             email=email,
@@ -38,6 +39,7 @@ def user_factory():
 
 @pytest.fixture
 def document_factory():
+    """Document factory."""
     def create_document(created_by, **kwargs):
         return DynamicDocument.objects.create(
             title=kwargs.pop("title", "Doc"),
@@ -53,6 +55,7 @@ def document_factory():
 
 @pytest.fixture
 def fixed_uuid(monkeypatch):
+    """Create fixed uuid."""
     class DummyUUID:
         hex = "deadbeef"
 
@@ -61,6 +64,7 @@ def fixed_uuid(monkeypatch):
 
 
 def test_tag_str_returns_name(user_factory):
+    """Verify tag str returns name."""
     creator = user_factory("lawyer@example.com", role="lawyer")
     tag = Tag.objects.create(name="Important", color_id=2, created_by=creator)
 
@@ -68,6 +72,7 @@ def test_tag_str_returns_name(user_factory):
 
 
 def test_tag_ordering_by_name(user_factory):
+    """Verify tag ordering by name."""
     creator = user_factory("lawyer@example.com", role="lawyer")
     Tag.objects.create(name="B", color_id=1, created_by=creator)
     Tag.objects.create(name="A", color_id=1, created_by=creator)
@@ -78,6 +83,7 @@ def test_tag_ordering_by_name(user_factory):
 
 
 def test_tag_unique_name(user_factory):
+    """Verify tag unique name."""
     creator = user_factory("lawyer@example.com", role="lawyer")
     Tag.objects.create(name="Unique", color_id=1, created_by=creator)
 
@@ -89,18 +95,21 @@ def test_tag_unique_name(user_factory):
 
 
 def test_tag_created_by_optional():
+    """Verify tag created by optional."""
     tag = Tag.objects.create(name="NoOwner")
 
     assert tag.created_by is None
 
 
 def test_tag_color_id_default():
+    """Verify tag color id default."""
     tag = Tag.objects.create(name="DefaultColor")
 
     assert tag.color_id == 0
 
 
 def test_document_version_path_uses_document_id_and_uuid(fixed_uuid):
+    """Verify document version path uses document id and uuid."""
     class DummyDocument:
         id = 42
 
@@ -113,6 +122,7 @@ def test_document_version_path_uses_document_id_and_uuid(fixed_uuid):
 
 
 def test_letterhead_image_path_uses_instance_id_and_lowercase_ext(fixed_uuid):
+    """Verify letterhead image path uses instance id and lowercase ext."""
     class DummyInstance:
         id = 7
 
@@ -122,6 +132,7 @@ def test_letterhead_image_path_uses_instance_id_and_lowercase_ext(fixed_uuid):
 
 
 def test_document_letterhead_template_path_uses_instance_id_and_lowercase_ext(fixed_uuid):
+    """Verify document letterhead template path uses instance id and lowercase ext."""
     class DummyInstance:
         id = 5
 
@@ -135,6 +146,7 @@ def test_document_letterhead_template_path_uses_instance_id_and_lowercase_ext(fi
 
 
 def test_document_folder_str(user_factory):
+    """Verify document folder str."""
     owner = user_factory("owner@example.com")
     folder = DocumentFolder.objects.create(name="Folder", owner=owner)
 
@@ -142,6 +154,7 @@ def test_document_folder_str(user_factory):
 
 
 def test_document_folder_ordering_by_created_at(user_factory):
+    """Verify document folder ordering by created at."""
     owner = user_factory("owner@example.com")
     older_time = FIXED_NOW - timedelta(days=1)
     newer_time = FIXED_NOW
@@ -159,6 +172,7 @@ def test_document_folder_ordering_by_created_at(user_factory):
 
 
 def test_document_folder_add_document(user_factory, document_factory):
+    """Verify document folder add document."""
     owner = user_factory("owner@example.com")
     document = document_factory(created_by=owner)
     folder = DocumentFolder.objects.create(name="Folder", owner=owner)
@@ -170,6 +184,7 @@ def test_document_folder_add_document(user_factory, document_factory):
 
 
 def test_document_folder_remove_document(user_factory, document_factory):
+    """Verify document folder remove document."""
     owner = user_factory("owner@example.com")
     document = document_factory(created_by=owner)
     folder = DocumentFolder.objects.create(name="Folder", owner=owner)
@@ -181,6 +196,7 @@ def test_document_folder_remove_document(user_factory, document_factory):
 
 
 def test_document_folder_owner_required():
+    """Verify document folder owner required."""
     with pytest.raises(IntegrityError) as exc_info:
         with transaction.atomic():
             DocumentFolder.objects.create(name="NoOwner")
@@ -189,6 +205,7 @@ def test_document_folder_owner_required():
 
 
 def test_document_folder_color_default(user_factory):
+    """Verify document folder color default."""
     owner = user_factory("owner@example.com")
     folder = DocumentFolder.objects.create(name="DefaultColor", owner=owner)
 
@@ -196,6 +213,7 @@ def test_document_folder_color_default(user_factory):
 
 
 def test_recent_document_ordering_by_last_visited(user_factory, document_factory):
+    """Verify recent document ordering by last visited."""
     user = user_factory("recent@example.com")
     older_doc = document_factory(created_by=user, title="Older")
     newer_doc = document_factory(created_by=user, title="Newer")
@@ -215,6 +233,7 @@ def test_recent_document_ordering_by_last_visited(user_factory, document_factory
 
 
 def test_dynamic_document_delete_removes_folder_relation(user_factory, document_factory):
+    """Verify dynamic document delete removes folder relation."""
     owner = user_factory("owner@example.com")
     document = document_factory(created_by=owner)
     folder = DocumentFolder.objects.create(name="Folder", owner=owner)
@@ -229,6 +248,7 @@ def test_dynamic_document_delete_removes_folder_relation(user_factory, document_
 
 
 def test_is_lawyer_true_for_role_lawyer(user_factory, document_factory):
+    """Verify is lawyer true for role lawyer."""
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
@@ -237,6 +257,7 @@ def test_is_lawyer_true_for_role_lawyer(user_factory, document_factory):
 
 
 def test_is_lawyer_true_for_gym_lawyer(user_factory, document_factory):
+    """Verify is lawyer true for gym lawyer."""
     gym_lawyer = user_factory("gym@example.com", is_gym_lawyer=True)
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
@@ -245,6 +266,7 @@ def test_is_lawyer_true_for_gym_lawyer(user_factory, document_factory):
 
 
 def test_is_lawyer_false_for_client(user_factory, document_factory):
+    """Verify is lawyer false for client."""
     client = user_factory("client@example.com")
     creator = user_factory("creator@example.com")
     document = document_factory(created_by=creator)
@@ -253,6 +275,7 @@ def test_is_lawyer_false_for_client(user_factory, document_factory):
 
 
 def test_get_user_permission_level_prefers_lawyer_over_owner(user_factory, document_factory):
+    """Verify get user permission level prefers lawyer over owner."""
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     document = document_factory(created_by=lawyer)
 

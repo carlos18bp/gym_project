@@ -187,6 +187,7 @@ describe("DocumentListTable.vue", () => {
     const headerCheckbox = wrapper.find("thead input[type='checkbox']");
     await headerCheckbox.trigger("change");
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.selectedDocuments).toEqual([1, 2]);
 
     await headerCheckbox.trigger("change");

@@ -236,6 +236,7 @@ describe("DocumentCard.vue", () => {
   });
 
   test("computed menuOptions: returns undefined when prop is null, and passes through when provided", async () => {
+    // quality: allow-multi-render (contrasting null vs provided menuOptions)
     const doc = { id: 1, title: "My Document", state: "Completed", tags: [] };
 
     const wrapperDefault = mount(DocumentCard, {
@@ -441,17 +442,25 @@ describe("DocumentCard.vue", () => {
   });
 
   test("helper methods branches: getSignatureStatus requires_signature false and fully_signed true", async () => {
-    const wrapper = mount(DocumentCard, {
+    // quality: allow-multi-render (contrasting requires_signature false vs fully_signed true)
+    const wrapperNoSig = mount(DocumentCard, {
       props: {
-        document: { id: 8, title: "Doc", tags: [] },
+        document: { id: 8, title: "Doc", tags: [], requires_signature: false },
+        cardType: "lawyer",
         userStore: { currentUser: { id: 1 }, userById: jest.fn() },
       },
       global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
     });
+    expect(wrapperNoSig.find("[data-test='slot-additional-badges']").text().trim()).toBe("");
 
-    expect(wrapper.vm.getSignatureStatus({ requires_signature: false })).toBe("");
-    expect(
-      wrapper.vm.getSignatureStatus({ requires_signature: true, fully_signed: true })
-    ).toBe("Documento formalizado");
+    const wrapperSigned = mount(DocumentCard, {
+      props: {
+        document: { id: 9, title: "Doc", tags: [], requires_signature: true, fully_signed: true },
+        cardType: "lawyer",
+        userStore: { currentUser: { id: 1 }, userById: jest.fn() },
+      },
+      global: { stubs: { BaseDocumentCard: BaseDocumentCardStub } },
+    });
+    expect(wrapperSigned.find("[data-test='slot-additional-badges']").text()).toContain("Formalizado");
   });
 });

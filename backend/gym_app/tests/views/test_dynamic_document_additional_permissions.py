@@ -1,20 +1,20 @@
+"""Tests for dynamic_document_additional_permissions module."""
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
-from django.contrib.auth import get_user_model
 from gym_app.models import (
-    DynamicDocument,
-    DocumentVisibilityPermission,
     DocumentUsabilityPermission,
+    DocumentVisibilityPermission,
+    DynamicDocument,
 )
-
 
 User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer@example.com",
         password="testpassword",
@@ -25,6 +25,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -35,6 +36,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic@example.com",
         password="testpassword",
@@ -45,6 +47,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def document(lawyer_user):
+    """Document."""
     return DynamicDocument.objects.create(
         title="Doc permisos extra",
         content="<p>x</p>",
@@ -55,8 +58,10 @@ def document(lawyer_user):
 
 @pytest.mark.django_db
 class TestUserBasedGrantAndRevoke:
+    """Tests for User Based Grant And Revoke."""
+
     def test_grant_visibility_and_usability_permissions(self, api_client, lawyer_user, client_user, document):
-        """Test granting visibility and usability permissions"""
+        """Test granting visibility and usability permissions."""
         api_client.force_authenticate(user=lawyer_user)
 
         # Grant visibility to client_user
@@ -72,7 +77,7 @@ class TestUserBasedGrantAndRevoke:
         assert DocumentUsabilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_revoke_usability_preserves_visibility(self, api_client, lawyer_user, client_user, document):
-        """Test revoking usability preserves visibility"""
+        """Test revoking usability preserves visibility."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
         DocumentUsabilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
@@ -85,7 +90,7 @@ class TestUserBasedGrantAndRevoke:
         assert DocumentVisibilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_revoke_visibility_removes_permission(self, api_client, lawyer_user, client_user, document):
-        """Test revoking visibility removes permission"""
+        """Test revoking visibility removes permission."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
 
@@ -96,6 +101,7 @@ class TestUserBasedGrantAndRevoke:
         assert not DocumentVisibilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_revoke_permissions_not_found_cases(self, api_client, lawyer_user, client_user, document):
+        """Verify revoke permissions not found cases."""
         api_client.force_authenticate(user=lawyer_user)
 
         # Usuario sin permisos de visibilidad
@@ -111,8 +117,10 @@ class TestUserBasedGrantAndRevoke:
 
 @pytest.mark.django_db
 class TestRoleAndCombinedPermissionEndpoints:
+    """Tests for Role And Combined Permission Endpoints."""
+
     def test_get_available_clients_as_lawyer(self, api_client, lawyer_user, client_user, basic_user):
-        """Test getting available clients returns expected users"""
+        """Test getting available clients returns expected users."""
         api_client.force_authenticate(user=lawyer_user)
 
         url_clients = reverse("get-available-clients")
@@ -124,7 +132,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert basic_user.email in emails
 
     def test_get_available_roles_as_lawyer(self, api_client, lawyer_user):
-        """Test getting available roles returns expected roles"""
+        """Test getting available roles returns expected roles."""
         api_client.force_authenticate(user=lawyer_user)
 
         url_roles = reverse("get-available-roles")
@@ -136,7 +144,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert "lawyer" in role_codes
 
     def test_grant_visibility_by_role(self, api_client, lawyer_user, client_user, basic_user, document):
-        """Test granting visibility by role"""
+        """Test granting visibility by role."""
         api_client.force_authenticate(user=lawyer_user)
 
         url_grant_by_role = reverse("grant-visibility-permissions-by-role", kwargs={"pk": document.id})
@@ -147,7 +155,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert DocumentVisibilityPermission.objects.filter(document=document, user=basic_user).exists()
 
     def test_grant_usability_by_role(self, api_client, lawyer_user, client_user, document):
-        """Test granting usability by role requires visibility"""
+        """Test granting usability by role requires visibility."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
 
@@ -158,7 +166,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert DocumentUsabilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_revoke_permissions_by_role(self, api_client, lawyer_user, client_user, basic_user, document):
-        """Test revoking permissions by role"""
+        """Test revoking permissions by role."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=basic_user, granted_by=lawyer_user)
@@ -172,7 +180,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert not DocumentVisibilityPermission.objects.filter(document=document, user=basic_user).exists()
 
     def test_grant_visibility_combined_with_exclusion(self, api_client, lawyer_user, client_user, basic_user, document):
-        """Test granting visibility combined with exclusion"""
+        """Test granting visibility combined with exclusion."""
         api_client.force_authenticate(user=lawyer_user)
 
         url_grant_vis_combined = reverse("grant-visibility-permissions-combined", kwargs={"pk": document.id})
@@ -188,7 +196,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert not DocumentVisibilityPermission.objects.filter(document=document, user=basic_user).exists()
 
     def test_grant_usability_combined(self, api_client, lawyer_user, client_user, document):
-        """Test granting usability combined"""
+        """Test granting usability combined."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
 
@@ -200,7 +208,7 @@ class TestRoleAndCombinedPermissionEndpoints:
         assert DocumentUsabilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_revoke_combined(self, api_client, lawyer_user, client_user, document):
-        """Test revoking permissions combined"""
+        """Test revoking permissions combined."""
         api_client.force_authenticate(user=lawyer_user)
         DocumentVisibilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)
         DocumentUsabilityPermission.objects.create(document=document, user=client_user, granted_by=lawyer_user)

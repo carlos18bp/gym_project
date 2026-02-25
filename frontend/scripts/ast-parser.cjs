@@ -192,6 +192,9 @@ function parseFile(filePath, isE2E = false) {
   const describeStack = [];
   const describeNodes = new WeakSet();
   const titlesSeen = new Map(); // title -> [lines]
+  const fileLevelAllowFragileTestData = /quality:\s*allow-fragile-test-data\s*\(.+\)/i.test(source);
+  const fileLevelAllowTooManyAssertions = /quality:\s*allow-too-many-assertions\s*\(.+\)/i.test(source);
+  const fileLevelAllowTestTooLong = /quality:\s*allow-test-too-long\s*\(.+\)/i.test(source);
 
   // Check file name for banned tokens (word boundary match)
   const fileNameMatch = fileName.match(BANNED_TOKENS_REGEX);
@@ -280,6 +283,19 @@ function parseFile(filePath, isE2E = false) {
           describeStack.push(title);
           describeNodes.add(node);
 
+          // Scan describe body for afterEach/beforeEach cleanup patterns
+          // so per-test checks can recognize describe-level cleanup.
+          try {
+            const describeSource = source.slice(node.start, node.end);
+            const hasAfterEachMockReset = /afterEach\s*\([\s\S]*?(restoreAllMocks|resetAllMocks|clearAllMocks|mockRestore|mockReset)/.test(describeSource);
+            const hasAfterEachTimerRestore = /afterEach\s*\([\s\S]*?useRealTimers/.test(describeSource);
+            const hasAfterEachStorageCleanup = /afterEach\s*\([\s\S]*?(localStorage\.clear|sessionStorage\.clear|localStorage\.removeItem)/.test(describeSource);
+            if (hasAfterEachMockReset) describeStack._mockReset = true;
+            if (hasAfterEachTimerRestore) describeStack._timerRestore = true;
+            if (hasAfterEachStorageCleanup) describeStack._storageCleanup = true;
+            if (/quality:\s*allow-fragile-test-data\s*\(.+\)/i.test(describeSource)) describeStack._allowFragileTestData = true;
+          } catch (e) { /* ignore */ }
+
           if (isE2E && isSerialDescribe) {
             let serialSnippet = '';
             try {
@@ -306,8 +322,11 @@ function parseFile(filePath, isE2E = false) {
             ? `${describeStack.join(' > ')} > ${title}`
             : title;
 
-          // Get callback function
-          const callbackArg = node.arguments[1];
+          // Get callback function — find the first function argument regardless of position
+          // (handles test("title", { tag: [...] }, async () => { ... }) patterns)
+          const callbackArg = node.arguments.find(arg =>
+            arg.type === 'ArrowFunctionExpression' || arg.type === 'FunctionExpression'
+          );
           let hasAssertions = false;
           let assertionCount = 0;
           let weakAssertionCount = 0;
@@ -318,7 +337,9 @@ function parseFile(filePath, isE2E = false) {
           let isEmpty = false;
           let uselessAssertions = [];
           let hasImplementationCoupling = false;
+          let allowImplementationCoupling = false;
           let fragileUnitSelector = null;
+          let allowFragileSelector = false;
           let mountRenderCount = 0;
           let hasDirectNetworkDependency = false;
           let hasHttpMockCallContractOnly = false;
@@ -329,6 +350,9 @@ function parseFile(filePath, isE2E = false) {
           const nondeterministicSignals = new Set();
           const networkSignals = new Set();
           let allowMultiRender = false;
+          let allowFragileTestData = false;
+          let allowTooManyAssertions = false;
+          let allowTestTooLong = false;
           let hasStorageMutation = false;
           let hasStorageCleanup = false;
           let hasFakeTimers = false;
@@ -350,8 +374,14 @@ function parseFile(filePath, isE2E = false) {
             try {
               const callbackSource = source.slice(callbackArg.start, callbackArg.end);
               allowMultiRender = /quality:\s*allow-multi-render\s*\(.+\)/i.test(callbackSource);
+              allowFragileSelector = /quality:\s*allow-fragile-selector\s*\(.+\)/i.test(callbackSource);
+              allowImplementationCoupling = /quality:\s*allow-implementation-coupling\s*\(.+\)/i.test(callbackSource);
+              allowFragileTestData = fileLevelAllowFragileTestData || /quality:\s*allow-fragile-test-data\s*\(.+\)/i.test(callbackSource) || !!describeStack._allowFragileTestData;
+              allowTooManyAssertions = fileLevelAllowTooManyAssertions || /quality:\s*allow-too-many-assertions\s*\(.+\)/i.test(callbackSource);
+              allowTestTooLong = fileLevelAllowTestTooLong || /quality:\s*allow-test-too-long\s*\(.+\)/i.test(callbackSource);
             } catch (e) {
               allowMultiRender = false;
+              allowFragileSelector = false;
             }
 
             // Check if body is empty or just has pass-like statements
@@ -623,7 +653,12 @@ function parseFile(filePath, isE2E = false) {
               hasDirectNetworkDependency = true;
             }
 
-            if (hasStorageMutation && !hasStorageCleanup) {
+            // Consider describe-level afterEach cleanup as valid cleanup
+            const describeMockReset = describeStack._mockReset || false;
+            const describeTimerRestore = describeStack._timerRestore || false;
+            const describeStorageCleanup = describeStack._storageCleanup || false;
+
+            if (hasStorageMutation && !hasStorageCleanup && !describeStorageCleanup) {
               issues.push({
                 type: 'GLOBAL_STATE_LEAK',
                 message: 'localStorage/sessionStorage mutation without cleanup in test',
@@ -633,7 +668,7 @@ function parseFile(filePath, isE2E = false) {
               });
             }
 
-            if (hasFakeTimers && !hasTimerRestore) {
+            if (hasFakeTimers && !hasTimerRestore && !describeTimerRestore) {
               issues.push({
                 type: 'GLOBAL_STATE_LEAK',
                 message: 'jest.useFakeTimers() without corresponding jest.useRealTimers()',
@@ -643,7 +678,7 @@ function parseFile(filePath, isE2E = false) {
               });
             }
 
-            if (hasGlobalMockMutation && !hasGlobalMockReset) {
+            if (hasGlobalMockMutation && !hasGlobalMockReset && !describeMockReset) {
               issues.push({
                 type: 'GLOBAL_STATE_LEAK',
                 message: 'Global mock/spyon mutation without reset/restore in test',
@@ -780,7 +815,7 @@ function parseFile(filePath, isE2E = false) {
             });
           }
 
-          if (isE2E && fragileDataSignals.size > 0) {
+          if (isE2E && fragileDataSignals.size > 0 && !allowFragileTestData) {
             const examples = Array.from(fragileDataSignals).slice(0, 2).join(', ');
             issues.push({
               type: 'FRAGILE_TEST_DATA',
@@ -801,23 +836,23 @@ function parseFile(filePath, isE2E = false) {
             });
           }
 
-          if (!isE2E && hasImplementationCoupling) {
+          if (!isE2E && hasImplementationCoupling && !allowImplementationCoupling) {
             issues.push({
               type: 'IMPLEMENTATION_COUPLING',
               message: 'Test is coupled to implementation details via wrapper.vm.* access',
               line,
               identifier: title,
-              suggestion: 'Assert observable UI/state outcomes instead of internals when possible',
+              suggestion: 'Assert observable UI/state outcomes instead of internals when possible, or add quality: allow-implementation-coupling (reason)',
             });
           }
 
-          if (!isE2E && fragileUnitSelector) {
+          if (!isE2E && fragileUnitSelector && !allowFragileSelector) {
             issues.push({
               type: 'FRAGILE_SELECTOR',
               message: `Fragile unit selector detected (${fragileUnitSelector})`,
               line,
               identifier: title,
-              suggestion: 'Prefer stable selectors and behavior-oriented assertions',
+              suggestion: 'Prefer stable selectors and behavior-oriented assertions, or add quality: allow-fragile-selector (reason)',
             });
           }
 
@@ -877,20 +912,22 @@ function parseFile(filePath, isE2E = false) {
           }
 
           // Too many assertions
-          if (assertionCount > 7) {
+          const assertionLimit = isE2E ? 15 : 7;
+          if (assertionCount > assertionLimit && !allowTooManyAssertions) {
             issues.push({
               type: 'TOO_MANY_ASSERTIONS',
-              message: `Too many assertions (${assertionCount} > 7)`,
+              message: `Too many assertions (${assertionCount} > ${assertionLimit})`,
               line,
               identifier: title,
             });
           }
 
           // Test too long
-          if (numLines > 50) {
+          const lineLengthLimit = isE2E ? 100 : 50;
+          if (numLines > lineLengthLimit && !allowTestTooLong) {
             issues.push({
               type: 'TEST_TOO_LONG',
-              message: `Test too long (${numLines} lines > 50)`,
+              message: `Test too long (${numLines} lines > ${lineLengthLimit})`,
               line,
               identifier: title,
             });

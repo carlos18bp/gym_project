@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client without memberships: 'Mis Solicitudes' tab is disabled and 403 does not break dashboard", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client without memberships: 'Mis Solicitudes' tab is disabled and 403 does not break dashboard", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3530;
 
   await installOrganizationsClientApiMocks(page, {

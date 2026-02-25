@@ -1,14 +1,22 @@
+"""Tests for user_auth_views module."""
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
-from django.contrib.auth import get_user_model
-from gym_app.models import PasswordCode, EmailVerificationCode
+
+from gym_app.models import EmailVerificationCode, PasswordCode
 
 User = get_user_model()
+FIXED_REFERENCE_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+
+
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email="auth@example.com",
         password="testpassword",
@@ -19,7 +27,7 @@ def user():
 
 
 def _mock_captcha_success(monkeypatch):
-    """Helper to mock successful captcha verification."""
+    """Mock successful captcha verification."""
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"success": True}
     mock_resp.raise_for_status = MagicMock()
@@ -29,7 +37,7 @@ def _mock_captcha_success(monkeypatch):
 
 
 def _mock_captcha_failure(monkeypatch):
-    """Helper to mock failed captcha verification."""
+    """Mock failed captcha verification."""
     mock_resp = MagicMock()
     mock_resp.json.return_value = {"success": False}
     mock_resp.raise_for_status = MagicMock()
@@ -39,7 +47,7 @@ def _mock_captcha_failure(monkeypatch):
 
 
 def _mock_captcha_exception(monkeypatch):
-    """Helper to mock captcha request exception."""
+    """Mock captcha request exception."""
     import requests as req_lib
     monkeypatch.setattr(
         "gym_app.utils.captcha.requests.post",
@@ -47,12 +55,20 @@ def _mock_captcha_exception(monkeypatch):
     )
 
 
+def _pin_user_auth_now(monkeypatch, fixed_now=FIXED_REFERENCE_TIME):
+    """Pin userAuth timezone.now to a deterministic value for TTL tests."""
+    monkeypatch.setattr("gym_app.views.userAuth.timezone.now", lambda: fixed_now)
+
+
 # =========================================================================
 # sign_on
 # =========================================================================
 @pytest.mark.django_db
 class TestSignOn:
+    """Tests for Sign On."""
+
     def test_sign_on_success(self, api_client, monkeypatch):
+        """Verify sign on success."""
         _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="newuser@example.com", code="123456")
         url = reverse("sign_on")
@@ -73,6 +89,7 @@ class TestSignOn:
         assert EmailVerificationCode.objects.get(email="newuser@example.com").used is True
 
     def test_sign_on_duplicate_email(self, api_client, user, monkeypatch):
+        """Verify sign on duplicate email."""
         _mock_captcha_success(monkeypatch)
         url = reverse("sign_on")
         data = {
@@ -88,6 +105,7 @@ class TestSignOn:
         assert "warning" in response.data
 
     def test_sign_on_invalid_data(self, api_client, monkeypatch):
+        """Verify sign on invalid data."""
         _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="bad", code="123456")
         url = reverse("sign_on")
@@ -96,6 +114,7 @@ class TestSignOn:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_sign_on_default_role_basic(self, api_client, monkeypatch):
+        """Verify sign on default role basic."""
         _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="basic@example.com", code="654321")
         url = reverse("sign_on")
@@ -113,6 +132,7 @@ class TestSignOn:
         assert u.role == "basic"
 
     def test_sign_on_missing_captcha(self, api_client):
+        """Verify sign on missing captcha."""
         url = reverse("sign_on")
         data = {
             "email": "x@x.com",
@@ -124,6 +144,7 @@ class TestSignOn:
         assert response.data["error"] == "Captcha verification is required"
 
     def test_sign_on_missing_passcode(self, api_client, monkeypatch):
+        """Verify sign on missing passcode."""
         _mock_captcha_success(monkeypatch)
         url = reverse("sign_on")
         data = {
@@ -138,6 +159,7 @@ class TestSignOn:
         assert response.data["error"] == "Verification code is required"
 
     def test_sign_on_wrong_passcode(self, api_client, monkeypatch):
+        """Verify sign on wrong passcode."""
         _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="wrong@example.com", code="111111")
         url = reverse("sign_on")
@@ -156,11 +178,10 @@ class TestSignOn:
     def test_sign_on_expired_passcode(self, api_client, monkeypatch):
         """T12: sign_on rejects expired verification code (>30 min)."""
         _mock_captcha_success(monkeypatch)
+        _pin_user_auth_now(monkeypatch)
         code = EmailVerificationCode.objects.create(email="expired@example.com", code="777888")
-        from django.utils import timezone
-        from datetime import timedelta
         EmailVerificationCode.objects.filter(pk=code.pk).update(
-            created_at=timezone.now() - timedelta(minutes=31)
+            created_at=FIXED_REFERENCE_TIME - timedelta(minutes=31)
         )
         url = reverse("sign_on")
         data = {
@@ -199,19 +220,24 @@ class TestSignOn:
 # =========================================================================
 @pytest.mark.django_db
 class TestSendVerificationCode:
+    """Tests for Send Verification Code."""
+
     def test_missing_email(self, api_client):
+        """Verify missing email."""
         url = reverse("send_verification_code")
         response = api_client.post(url, {"captcha_token": "tok"}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Email is required"
 
     def test_missing_captcha(self, api_client):
+        """Verify missing captcha."""
         url = reverse("send_verification_code")
         response = api_client.post(url, {"email": "x@x.com"}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Captcha verification is required"
 
     def test_captcha_failure(self, api_client, monkeypatch):
+        """Verify captcha failure."""
         _mock_captcha_failure(monkeypatch)
         url = reverse("send_verification_code")
         response = api_client.post(
@@ -221,6 +247,7 @@ class TestSendVerificationCode:
         assert response.data["error"] == "Captcha verification failed"
 
     def test_captcha_exception(self, api_client, monkeypatch):
+        """Verify captcha exception."""
         _mock_captcha_exception(monkeypatch)
         url = reverse("send_verification_code")
         response = api_client.post(
@@ -230,6 +257,7 @@ class TestSendVerificationCode:
         assert response.data["error"] == "Error verifying captcha"
 
     def test_email_already_registered(self, api_client, user, monkeypatch):
+        """Verify email already registered."""
         _mock_captcha_success(monkeypatch)
         url = reverse("send_verification_code")
         response = api_client.post(
@@ -239,6 +267,7 @@ class TestSendVerificationCode:
 
     @patch("gym_app.views.userAuth.send_template_email")
     def test_success(self, mock_email, api_client, monkeypatch):
+        """Verify success."""
         _mock_captcha_success(monkeypatch)
         url = reverse("send_verification_code")
         response = api_client.post(
@@ -259,13 +288,17 @@ class TestSendVerificationCode:
 # =========================================================================
 @pytest.mark.django_db
 class TestSignIn:
+    """Tests for Sign In."""
+
     def test_missing_credentials(self, api_client):
+        """Verify missing credentials."""
         url = reverse("sign_in")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Email and password are required"
 
     def test_missing_captcha(self, api_client):
+        """Verify missing captcha."""
         url = reverse("sign_in")
         response = api_client.post(
             url, {"email": "x@x.com", "password": "pass"}, format="json"
@@ -274,6 +307,7 @@ class TestSignIn:
         assert response.data["error"] == "Captcha verification is required"
 
     def test_captcha_failure(self, api_client, monkeypatch):
+        """Verify captcha failure."""
         _mock_captcha_failure(monkeypatch)
         url = reverse("sign_in")
         response = api_client.post(
@@ -285,6 +319,7 @@ class TestSignIn:
         assert response.data["error"] == "Captcha verification failed"
 
     def test_captcha_exception(self, api_client, monkeypatch):
+        """Verify captcha exception."""
         _mock_captcha_exception(monkeypatch)
         url = reverse("sign_in")
         response = api_client.post(
@@ -295,6 +330,7 @@ class TestSignIn:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_user_not_found(self, api_client, monkeypatch):
+        """Verify user not found."""
         _mock_captcha_success(monkeypatch)
         url = reverse("sign_in")
         response = api_client.post(
@@ -305,6 +341,7 @@ class TestSignIn:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_wrong_password(self, api_client, user, monkeypatch):
+        """Verify wrong password."""
         _mock_captcha_success(monkeypatch)
         url = reverse("sign_in")
         response = api_client.post(
@@ -315,6 +352,7 @@ class TestSignIn:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_success(self, api_client, user, monkeypatch):
+        """Verify success."""
         _mock_captcha_success(monkeypatch)
         url = reverse("sign_in")
         response = api_client.post(
@@ -345,6 +383,8 @@ class TestSignIn:
 # =========================================================================
 @pytest.mark.django_db
 class TestSignInGoogleUser:
+    """Tests for Sign In Google User."""
+
     def test_google_user_no_password(self, api_client, monkeypatch):
         """T11: Google-registered user without password gets descriptive error."""
         _mock_captcha_success(monkeypatch)
@@ -371,7 +411,7 @@ class TestSignInGoogleUser:
     def test_google_user_with_set_password_can_login(self, api_client, monkeypatch):
         """T11: Google user who has set a password via Forgot Password can log in."""
         _mock_captcha_success(monkeypatch)
-        google_user = User.objects.create_user(
+        _google_user = User.objects.create_user(
             email="google2@example.com",
             password="SetViaForgotPw123!",
             first_name="Google",
@@ -393,7 +433,7 @@ class TestSignInGoogleUser:
 # =========================================================================
 
 def _mock_google_token(monkeypatch, payload):
-    """Helper: mock google_id_token.verify_oauth2_token to return *payload*."""
+    """Mock google_id_token.verify_oauth2_token to return *payload*."""
     monkeypatch.setattr(
         "gym_app.views.userAuth.google_id_token.verify_oauth2_token",
         lambda *a, **kw: payload,
@@ -402,7 +442,10 @@ def _mock_google_token(monkeypatch, payload):
 
 @pytest.mark.django_db
 class TestGoogleLogin:
+    """Tests for Google Login."""
+
     def test_missing_credential(self, api_client):
+        """Verify missing credential."""
         url = reverse("google_login")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -430,6 +473,7 @@ class TestGoogleLogin:
         assert response.data["error_message"] == "Email not found in Google token."
 
     def test_create_new_user(self, api_client, monkeypatch):
+        """Verify create new user."""
         _mock_google_token(monkeypatch, {
             "email": "google@example.com",
             "given_name": "G",
@@ -443,6 +487,7 @@ class TestGoogleLogin:
         assert User.objects.filter(email="google@example.com").exists()
 
     def test_existing_user(self, api_client, user, monkeypatch):
+        """Verify existing user."""
         _mock_google_token(monkeypatch, {"email": user.email})
         url = reverse("google_login")
         response = api_client.post(url, {"credential": "valid_token"}, format="json")
@@ -494,6 +539,7 @@ class TestGoogleLogin:
         mock_file_save.assert_called_once()
 
     def test_create_user_without_picture(self, api_client, monkeypatch):
+        """Verify create user without picture."""
         _mock_google_token(monkeypatch, {
             "email": "nopic@example.com",
             "given_name": "No",
@@ -511,18 +557,23 @@ class TestGoogleLogin:
 # =========================================================================
 @pytest.mark.django_db
 class TestUpdatePassword:
+    """Tests for Update Password."""
+
     def test_unauthenticated(self, api_client):
+        """Verify unauthenticated."""
         url = reverse("update_password")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_missing_passwords(self, api_client, user):
+        """Verify missing passwords."""
         api_client.force_authenticate(user=user)
         url = reverse("update_password")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_wrong_current_password(self, api_client, user):
+        """Verify wrong current password."""
         api_client.force_authenticate(user=user)
         url = reverse("update_password")
         response = api_client.post(
@@ -534,6 +585,7 @@ class TestUpdatePassword:
         assert "Current password is incorrect" in response.data["error"]
 
     def test_success(self, api_client, user):
+        """Verify success."""
         api_client.force_authenticate(user=user)
         url = reverse("update_password")
         response = api_client.post(
@@ -546,6 +598,7 @@ class TestUpdatePassword:
         assert user.check_password("newpass123")
 
     def test_weak_new_password(self, api_client, user):
+        """Verify weak new password."""
         api_client.force_authenticate(user=user)
         url = reverse("update_password")
         response = api_client.post(
@@ -564,17 +617,22 @@ class TestUpdatePassword:
 # =========================================================================
 @pytest.mark.django_db
 class TestSendPasscode:
+    """Tests for Send Passcode."""
+
     def test_missing_email(self, api_client):
+        """Verify missing email."""
         url = reverse("send_passcode")
         response = api_client.post(url, {"captcha_token": "tok"}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_missing_captcha(self, api_client):
+        """Verify missing captcha."""
         url = reverse("send_passcode")
         response = api_client.post(url, {"email": "x@x.com"}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_captcha_failure(self, api_client, monkeypatch):
+        """Verify captcha failure."""
         _mock_captcha_failure(monkeypatch)
         url = reverse("send_passcode")
         response = api_client.post(
@@ -583,6 +641,7 @@ class TestSendPasscode:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_captcha_exception(self, api_client, monkeypatch):
+        """Verify captcha exception."""
         _mock_captcha_exception(monkeypatch)
         url = reverse("send_passcode")
         response = api_client.post(
@@ -591,6 +650,7 @@ class TestSendPasscode:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_user_not_found(self, api_client, monkeypatch):
+        """Verify user not found."""
         _mock_captcha_success(monkeypatch)
         url = reverse("send_passcode")
         response = api_client.post(
@@ -600,6 +660,7 @@ class TestSendPasscode:
 
     @patch("gym_app.views.userAuth.send_template_email")
     def test_success(self, mock_email, api_client, user, monkeypatch):
+        """Verify success."""
         _mock_captcha_success(monkeypatch)
         url = reverse("send_passcode")
         response = api_client.post(
@@ -621,12 +682,16 @@ class TestSendPasscode:
 # =========================================================================
 @pytest.mark.django_db
 class TestVerifyPasscodeAndResetPassword:
+    """Tests for Verify Passcode And Reset Password."""
+
     def test_missing_fields(self, api_client):
+        """Verify missing fields."""
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(url, {}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_missing_captcha(self, api_client):
+        """Verify missing captcha."""
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
             url, {"passcode": "123456", "new_password": "pw", "email": "x@x.com"}, format="json"
@@ -634,6 +699,7 @@ class TestVerifyPasscodeAndResetPassword:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_captcha_failure(self, api_client, monkeypatch):
+        """Verify captcha failure."""
         _mock_captcha_failure(monkeypatch)
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
@@ -644,6 +710,7 @@ class TestVerifyPasscodeAndResetPassword:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_captcha_exception(self, api_client, monkeypatch):
+        """Verify captcha exception."""
         _mock_captcha_exception(monkeypatch)
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
@@ -654,6 +721,7 @@ class TestVerifyPasscodeAndResetPassword:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_invalid_passcode(self, api_client, monkeypatch):
+        """Verify invalid passcode."""
         _mock_captcha_success(monkeypatch)
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
@@ -665,6 +733,7 @@ class TestVerifyPasscodeAndResetPassword:
         assert response.data["error"] == "Invalid or expired code"
 
     def test_success(self, api_client, user, monkeypatch):
+        """Verify success."""
         _mock_captcha_success(monkeypatch)
         code = PasswordCode.objects.create(user=user, code="654321")
         url = reverse("verify_passcode_and_reset_password")
@@ -685,12 +754,16 @@ class TestVerifyPasscodeAndResetPassword:
 # =========================================================================
 @pytest.mark.django_db
 class TestValidateToken:
+    """Tests for Validate Token."""
+
     def test_unauthenticated(self, api_client):
+        """Verify unauthenticated."""
         url = reverse("validate_token")
         response = api_client.get(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_authenticated(self, api_client, user):
+        """Verify authenticated."""
         api_client.force_authenticate(user=user)
         url = reverse("validate_token")
         response = api_client.get(url)
@@ -703,6 +776,8 @@ class TestValidateToken:
 # =========================================================================
 @pytest.mark.django_db
 class TestSendVerificationCodeEmailFailure:
+    """Tests for Send Verification Code Email Failure."""
+
     def test_email_failure_returns_500(self, api_client, monkeypatch):
         """T1: send_verification_code returns 500 when send_template_email raises."""
         _mock_captcha_success(monkeypatch)
@@ -725,6 +800,8 @@ class TestSendVerificationCodeEmailFailure:
 # =========================================================================
 @pytest.mark.django_db
 class TestSendPasscodeEmailFailure:
+    """Tests for Send Passcode Email Failure."""
+
     def test_email_failure_returns_500(self, api_client, user, monkeypatch):
         """T2: send_passcode returns 500 when send_template_email raises."""
         _mock_captcha_success(monkeypatch)
@@ -749,25 +826,23 @@ class TestSendPasscodeEmailFailure:
 # =========================================================================
 @pytest.mark.django_db
 class TestSignOnMassAssignment:
+    """Tests for Sign On Mass Assignment."""
+
     def test_is_staff_ignored(self, api_client, monkeypatch):
         """T3: sign_on ignores is_staff=True in payload."""
         _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="hacker@evil.com", code="123456")
         url = reverse("sign_on")
-        response = api_client.post(
-            url,
-            {
-                "email": "hacker@evil.com",
-                "password": "SecurePass123!",
-                "first_name": "Hack",
-                "last_name": "Er",
-                "is_staff": True,
-                "is_superuser": True,
-                "passcode": "123456",
-                "captcha_token": "tok",
-            },
-            format="json",
-        )
+        payload = {
+            "email": "hacker@evil.com",
+            "password": "SecurePass123!",
+            "first_name": "Hack",
+            "last_name": "Er",
+            "passcode": "123456",
+            "captcha_token": "tok",
+        }
+        payload.update(is_staff=True, is_superuser=True)
+        response = api_client.post(url, payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         from django.contrib.auth import get_user_model
         created_user = get_user_model().objects.get(email="hacker@evil.com")
@@ -781,6 +856,8 @@ class TestSignOnMassAssignment:
 # =========================================================================
 @pytest.mark.django_db
 class TestSignOnWeakPassword:
+    """Tests for Sign On Weak Password."""
+
     def test_short_password_rejected(self, api_client, monkeypatch):
         """T4: sign_on rejects password that is too short."""
         _mock_captcha_success(monkeypatch)
@@ -827,15 +904,16 @@ class TestSignOnWeakPassword:
 # =========================================================================
 @pytest.mark.django_db
 class TestResetPasswordExpiredCode:
+    """Tests for Reset Password Expired Code."""
+
     def test_expired_code_rejected(self, api_client, user, monkeypatch):
         """T8: verify_passcode_and_reset_password rejects codes older than 30 minutes."""
         _mock_captcha_success(monkeypatch)
+        _pin_user_auth_now(monkeypatch)
         code = PasswordCode.objects.create(user=user, code="999888")
         # Manually set created_at to 31 minutes ago
-        from django.utils import timezone
-        from datetime import timedelta
         PasswordCode.objects.filter(pk=code.pk).update(
-            created_at=timezone.now() - timedelta(minutes=31)
+            created_at=FIXED_REFERENCE_TIME - timedelta(minutes=31)
         )
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
@@ -852,12 +930,11 @@ class TestResetPasswordExpiredCode:
     def test_code_within_ttl_accepted(self, api_client, user, monkeypatch):
         """T8: Code within 30 min TTL is accepted."""
         _mock_captcha_success(monkeypatch)
+        _pin_user_auth_now(monkeypatch)
         code = PasswordCode.objects.create(user=user, code="999777")
         # Set created_at to 29 minutes ago (within TTL)
-        from django.utils import timezone
-        from datetime import timedelta
         PasswordCode.objects.filter(pk=code.pk).update(
-            created_at=timezone.now() - timedelta(minutes=29)
+            created_at=FIXED_REFERENCE_TIME - timedelta(minutes=29)
         )
         url = reverse("verify_passcode_and_reset_password")
         response = api_client.post(
@@ -875,6 +952,8 @@ class TestResetPasswordExpiredCode:
 # =========================================================================
 @pytest.mark.django_db
 class TestResetPasswordEmailMismatch:
+    """Tests for Reset Password Email Mismatch."""
+
     def test_wrong_email_rejected(self, api_client, user, monkeypatch):
         """T9: verify_passcode_and_reset_password rejects when email doesn't match code's user."""
         _mock_captcha_success(monkeypatch)
@@ -897,6 +976,8 @@ class TestResetPasswordEmailMismatch:
 # =========================================================================
 @pytest.mark.django_db
 class TestResetPasswordWeakPassword:
+    """Tests for Reset Password Weak Password."""
+
     def test_weak_password_rejected(self, api_client, user, monkeypatch):
         """T5: verify_passcode_and_reset_password rejects weak passwords."""
         _mock_captcha_success(monkeypatch)

@@ -3,7 +3,11 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can filter and search in My Requests", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
+test("client can filter and search in My Requests", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3400;
 
   await installOrganizationsClientApiMocks(page, {

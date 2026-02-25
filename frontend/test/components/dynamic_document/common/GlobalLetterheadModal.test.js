@@ -84,6 +84,7 @@ describe("GlobalLetterheadModal.vue", () => {
     await flushPromises();
 
     expect(mockStore.getGlobalLetterheadImage).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.currentImageUrl).toBe("blob:mock");
   });
 
@@ -91,6 +92,7 @@ describe("GlobalLetterheadModal.vue", () => {
     const wrapper = mountView();
     const file = new File(["img"], "letterhead.png", { type: "image/png" });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.selectedFile = file;
 
     await wrapper.vm.$.setupState.uploadFile();
@@ -106,6 +108,7 @@ describe("GlobalLetterheadModal.vue", () => {
     mockShowConfirmationAlert.mockResolvedValue(true);
 
     const wrapper = mountView();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.currentImageUrl = "blob:mock";
 
     await wrapper.vm.$.setupState.confirmDelete();

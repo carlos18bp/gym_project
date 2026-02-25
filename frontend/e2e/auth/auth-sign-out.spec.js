@@ -2,7 +2,7 @@ import { test, expect } from "../helpers/test.js";
 import { installAuthSignInApiMocks } from "../helpers/authSignInMocks.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 
-test("authenticated user can sign out and is redirected to sign_in", async ({ page }) => {
+test("authenticated user can sign out and is redirected to sign_in", { tag: ['@flow:auth-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 3000;
 
   await installAuthSignInApiMocks(page, {
@@ -41,7 +41,7 @@ test("authenticated user can sign out and is redirected to sign_in", async ({ pa
   expect(token === null || token === "null").toBeTruthy();
 });
 
-test("unauthenticated user accessing protected route is redirected to sign_in", async ({ page }) => {
+test("unauthenticated user accessing protected route is redirected to sign_in", { tag: ['@flow:auth-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   // Mock API to return 401 for token validation
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());

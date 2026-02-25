@@ -14,6 +14,10 @@ describe("Legal Request Store", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("fetchDropDownOptionsData loads options", async () => {
     const store = useLegalRequestStore();
 

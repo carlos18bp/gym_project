@@ -1,3 +1,4 @@
+"""Tests for send_email module."""
 import os
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +7,6 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from gym_app.models import User
 from gym_app.views.layouts.sendEmail import send_template_email
@@ -14,6 +14,7 @@ from gym_app.views.layouts.sendEmail import send_template_email
 pytestmark = pytest.mark.django_db
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='emailer@example.com',
         password='testpassword',
@@ -27,6 +28,7 @@ def _mock_template(html="<html><body>{{ content_html }}</body></html>"):
 
 
 def test_send_template_email_missing_layout_template_raises():
+    """Verify send template email missing layout template raises."""
     with patch('gym_app.views.layouts.sendEmail.get_template', side_effect=Exception('missing layout')):
         with pytest.raises(FileNotFoundError) as exc_info:
             send_template_email(
@@ -38,6 +40,7 @@ def test_send_template_email_missing_layout_template_raises():
 
 
 def test_send_template_email_missing_content_template_raises():
+    """Verify send template email missing content template raises."""
     layout_template = _mock_template()
 
     with patch('gym_app.views.layouts.sendEmail.get_template', side_effect=[layout_template, Exception('missing content')]):
@@ -51,6 +54,7 @@ def test_send_template_email_missing_content_template_raises():
 
 
 def test_send_template_email_skips_missing_attachments():
+    """Verify send template email skips missing attachments."""
     layout_template = _mock_template()
     content_template = _mock_template("<p>content</p>")
 
@@ -72,6 +76,7 @@ def test_send_template_email_skips_missing_attachments():
 
 
 def test_send_email_with_attachments_missing_to_email(api_client, user):
+    """Verify send email with attachments missing to email."""
     api_client.force_authenticate(user=user)
 
     url = reverse('send_email_with_attachments')
@@ -86,6 +91,7 @@ def test_send_email_with_attachments_missing_to_email(api_client, user):
 @patch('os.remove')
 @patch('django.core.files.storage.default_storage.save', return_value='tmp/upload.txt')
 def test_send_email_with_attachments_success(mock_save, mock_remove, mock_send, api_client, user):
+    """Verify send email with attachments success."""
     api_client.force_authenticate(user=user)
 
     file1 = SimpleUploadedFile('doc.txt', b'data', content_type='text/plain')
@@ -111,6 +117,7 @@ def test_send_email_with_attachments_success(mock_save, mock_remove, mock_send, 
 @patch('os.remove')
 @patch('django.core.files.storage.default_storage.save', return_value='tmp/upload.txt')
 def test_send_email_with_attachments_rest_success(mock_save, mock_remove, mock_send, api_client, user):
+    """Verify send email with attachments rest success."""
     api_client.force_authenticate(user=user)
 
     file1 = SimpleUploadedFile('doc.txt', b'data', content_type='text/plain')
@@ -132,6 +139,7 @@ def test_send_email_with_attachments_rest_success(mock_save, mock_remove, mock_s
 
 @patch('gym_app.views.layouts.sendEmail.send_template_email')
 def test_send_email_with_attachments_invalid_context_defaults(mock_send, api_client, user):
+    """Verify send email with attachments invalid context defaults."""
     api_client.force_authenticate(user=user)
 
     url = reverse('send_email_with_attachments')
@@ -148,6 +156,7 @@ def test_send_email_with_attachments_invalid_context_defaults(mock_send, api_cli
 
 @patch('gym_app.views.layouts.sendEmail.send_template_email', side_effect=FileNotFoundError('missing'))
 def test_send_email_with_attachments_returns_404_on_missing_template(mock_send, api_client, user):
+    """Verify send email with attachments returns 404 on missing template."""
     api_client.force_authenticate(user=user)
 
     url = reverse('send_email_with_attachments')
@@ -163,6 +172,7 @@ def test_send_email_with_attachments_returns_404_on_missing_template(mock_send, 
 
 @patch('gym_app.views.layouts.sendEmail.send_template_email', side_effect=Exception('boom'))
 def test_send_email_with_attachments_returns_500_on_unexpected_error(mock_send, api_client, user):
+    """Verify send email with attachments returns 500 on unexpected error."""
     api_client.force_authenticate(user=user)
 
     url = reverse('send_email_with_attachments')
@@ -187,6 +197,7 @@ def test_send_email_with_attachments_context_list_and_cleanup_error(
     api_client,
     user,
 ):
+    """Verify send email with attachments context list and cleanup error."""
     api_client.force_authenticate(user=user)
 
     file1 = SimpleUploadedFile('doc.txt', b'data', content_type='text/plain')
@@ -221,23 +232,24 @@ Batch 16 – 20 tests for remaining small gaps:
   • user.py: update_profile User.DoesNotExist
   • sendEmail.py: context is non-dict non-string type
 """
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch  # noqa: F811
 
+import pytest
 from django.contrib.auth import get_user_model
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
 
 from gym_app.models import (
-    Organization, OrganizationMembership, OrganizationPost,
-    OrganizationInvitation, PasswordCode,
+    Organization,
+    OrganizationMembership,
+    OrganizationPost,
 )
 from gym_app.models.corporate_request import (
-    CorporateRequest, CorporateRequestType,
+    CorporateRequest,
+    CorporateRequestType,
 )
 
-User = get_user_model()
+User = get_user_model()  # noqa: F811
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +258,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b16@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -255,6 +268,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client_b16@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -264,6 +278,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def corp_user():
+    """Corp user."""
     return User.objects.create_user(
         email="corp_b16@test.com", password="pw", role="corporate_client",
         first_name="Corp", last_name="Client",
@@ -273,6 +288,7 @@ def corp_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corp_user):
+    """Organization."""
     return Organization.objects.create(
         title="Org B16", corporate_client=corp_user, is_active=True,
     )
@@ -281,6 +297,7 @@ def organization(corp_user):
 @pytest.fixture
 @pytest.mark.django_db
 def membership(organization, client_user):
+    """Membership."""
     return OrganizationMembership.objects.create(
         organization=organization, user=client_user, role="MEMBER", is_active=True,
     )
@@ -292,11 +309,17 @@ def membership(organization, client_user):
 
 @pytest.mark.django_db
 class TestEmailNotifications:
+    """Tests for Email Notifications."""
 
     @patch("gym_app.utils.email_notifications.send_template_email", return_value=True)
     def test_notify_new_response_lawyer_subject(self, mock_send, lawyer_user, client_user):
         """Line 118: lawyer response generates specific subject."""
-        from gym_app.models import LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestResponse
+        from gym_app.models import (
+            LegalDiscipline,
+            LegalRequest,
+            LegalRequestResponse,
+            LegalRequestType,
+        )
         from gym_app.utils.email_notifications import send_new_response_notification
 
         lr_type = LegalRequestType.objects.create(name="C_b16")
@@ -328,6 +351,7 @@ class TestEmailNotifications:
 
 @pytest.mark.django_db
 class TestCorporateRequestViewsB16:
+    """Tests for Corporate Request Views B16."""
 
     def test_client_get_detail(self, api_client, client_user, corp_user, organization, membership):
         """Lines covering client_get_corporate_request_detail."""
@@ -396,6 +420,7 @@ class TestCorporateRequestViewsB16:
 
 @pytest.mark.django_db
 class TestOrganizationViewsB16:
+    """Tests for Organization Views B16."""
 
     def test_create_org_validation_error(self, api_client, corp_user):
         """Line 95: create org with missing required fields."""
@@ -433,6 +458,7 @@ class TestOrganizationViewsB16:
 
 @pytest.mark.django_db
 class TestOrganizationPostsB16:
+    """Tests for Organization Posts B16."""
 
     def test_public_posts_lawyer_forbidden(self, api_client, lawyer_user, organization):
         """Line 149: lawyer role forbidden on public posts."""
@@ -459,6 +485,7 @@ class TestOrganizationPostsB16:
 
 @pytest.mark.django_db
 class TestUserAuthB16:
+    """Tests for User Auth B16."""
 
     def test_google_login_exception(self, api_client):
         """Lines 268-273: google_login exception path."""
@@ -501,6 +528,7 @@ class TestUserAuthB16:
 
 @pytest.mark.django_db
 class TestSendEmailB16:
+    """Tests for Send Email B16."""
 
     @patch("gym_app.views.layouts.sendEmail.send_template_email", return_value=True)
     def test_send_email_context_non_dict_non_string(self, mock_send, api_client, lawyer_user):
@@ -526,17 +554,18 @@ Tests for send_email_with_attachments API view in gym_app/views/layouts/sendEmai
 
 Targets uncovered lines: 123-177 (the API endpoint).
 """
-import pytest
 from unittest.mock import patch
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
+
+import pytest
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from rest_framework import status  # noqa: F811
 
 User = get_user_model()
 @pytest.fixture
-def user():
+def user():  # noqa: F811
+    """User."""
     return User.objects.create_user(
         email="sendemail@example.com",
         password="testpassword",
@@ -546,14 +575,18 @@ def user():
 
 @pytest.mark.django_db
 class TestSendEmailWithAttachments:
+    """Tests for Send Email With Attachments."""
+
     def _url(self):
         return reverse("send_email_with_attachments")
 
     def test_unauthenticated_returns_401(self, api_client):
+        """Verify unauthenticated returns 401."""
         response = api_client.post(self._url(), {})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_missing_to_email_returns_400(self, api_client, user):
+        """Verify missing to email returns 400."""
         api_client.force_authenticate(user=user)
         response = api_client.post(self._url(), {}, format="multipart")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -561,6 +594,7 @@ class TestSendEmailWithAttachments:
 
     @patch("gym_app.views.layouts.sendEmail.send_template_email")
     def test_success_without_attachments(self, mock_send, api_client, user):
+        """Verify success without attachments."""
         api_client.force_authenticate(user=user)
         data = {"to_email": "recipient@example.com"}
         response = api_client.post(self._url(), data, format="multipart")
@@ -569,6 +603,7 @@ class TestSendEmailWithAttachments:
 
     @patch("gym_app.views.layouts.sendEmail.send_template_email")
     def test_success_with_file_attachment(self, mock_send, api_client, user):
+        """Verify success with file attachment."""
         api_client.force_authenticate(user=user)
         f = SimpleUploadedFile("doc.txt", b"content", content_type="text/plain")
         data = {"to_email": "recipient@example.com", "file1": f}

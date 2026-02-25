@@ -7,6 +7,8 @@ import {
 } from "../helpers/legalRequestsMocks.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * Deep coverage for:
  * - legal_requests_management.js (25.7%) — updateRequestStatus, deleteRequest,
@@ -69,7 +71,7 @@ function installLegalRequestDeepMocks(page, { userId, role, detail, statusUpdate
   });
 }
 
-test("lawyer completes status update cycle — exercises store.updateRequestStatus", async ({ page }) => {
+test("lawyer completes status update cycle — exercises store.updateRequestStatus", { tag: ['@flow:legal-status-update', '@module:legal-requests', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9850;
   const detail = buildMockLegalRequestDetail({
     id: REQUEST_ID, userId, requestNumber: "REQ-1001", status: "PENDING",
@@ -103,7 +105,7 @@ test("lawyer completes status update cycle — exercises store.updateRequestStat
   await expect(page.getByRole("heading", { name: "Actualizar Estado" })).toBeHidden({ timeout: 10_000 });
 });
 
-test("lawyer completes delete cycle — exercises store.deleteRequest + redirect", async ({ page }) => {
+test("lawyer completes delete cycle — exercises store.deleteRequest + redirect", { tag: ['@flow:legal-status-update', '@module:legal-requests', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9851;
   const detail = buildMockLegalRequestDetail({
     id: REQUEST_ID, userId, requestNumber: "REQ-1001", status: "PENDING",
@@ -137,7 +139,7 @@ test("lawyer completes delete cycle — exercises store.deleteRequest + redirect
   await expect(page).toHaveURL(/\/legal_requests/, { timeout: 10_000 });
 });
 
-test("lawyer presses Enter in DeleteConfirmModal to trigger delete via handleEnterKey", async ({ page }) => {
+test("lawyer presses Enter in DeleteConfirmModal to trigger delete via handleEnterKey", { tag: ['@flow:legal-status-update', '@module:legal-requests', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9852;
   const detail = buildMockLegalRequestDetail({
     id: REQUEST_ID, userId, requestNumber: "REQ-1001", status: "PENDING",

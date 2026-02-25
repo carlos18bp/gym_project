@@ -277,6 +277,7 @@ describe("LegalRequestDetail.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleDeleted();
 
     expect(mockRouterReplace).toHaveBeenCalledWith({ name: "legal_requests_list" });
@@ -308,6 +309,7 @@ describe("LegalRequestDetail.vue", () => {
 
     await flushPromises();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.request.value = baseRequest;
 
     jest.useFakeTimers();

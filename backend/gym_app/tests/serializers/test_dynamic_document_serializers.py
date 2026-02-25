@@ -1,40 +1,43 @@
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import patch, MagicMock, PropertyMock
+"""Tests for dynamic_document_serializers module."""
+from datetime import datetime
+from datetime import timezone as dt_timezone
+from unittest.mock import patch
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory
-from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models.dynamic_document import (
-    DynamicDocument,
-    DocumentVariable,
-    RecentDocument,
-    DocumentSignature,
-    Tag,
-    DocumentFolder,
-    DocumentVisibilityPermission,
-    DocumentUsabilityPermission,
     DocumentRelationship,
+    DocumentSignature,
+    DocumentUsabilityPermission,
+    DocumentVariable,
+    DocumentVisibilityPermission,
+    DynamicDocument,
+    RecentDocument,
+    Tag,
 )
+from gym_app.models.intranet_gym import LegalDocument
 from gym_app.serializers.dynamic_document import (
-    DynamicDocumentSerializer,
-    DocumentVariableSerializer,
-    TagSerializer,
-    DocumentSignatureSerializer,
-    RecentDocumentSerializer,
     DocumentFolderSerializer,
-    DocumentVisibilityPermissionSerializer,
-    DocumentUsabilityPermissionSerializer,
     DocumentRelationshipSerializer,
+    DocumentSignatureSerializer,
+    DocumentUsabilityPermissionSerializer,
+    DocumentVariableSerializer,
+    DocumentVisibilityPermissionSerializer,
+    DynamicDocumentSerializer,
+    RecentDocumentSerializer,
+    TagSerializer,
 )
+
 User = get_user_model()
 factory = RequestFactory()
 
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword'
@@ -42,6 +45,7 @@ def user():
 
 @pytest.fixture
 def document_variable_data():
+    """Document variable data."""
     return {
         'name_en': 'test_variable',
         'name_es': 'variable_prueba',
@@ -52,6 +56,7 @@ def document_variable_data():
 
 @pytest.fixture
 def document_data():
+    """Document data."""
     return {
         'title': 'Test Document',
         'content': '<p>This is a test document with {{test_variable}}.</p>',
@@ -60,6 +65,7 @@ def document_data():
 
 @pytest.fixture
 def document_with_variables(user):
+    """Document with variables."""
     document = DynamicDocument.objects.create(
         title='Existing Document',
         content='<p>This is an existing document with {{variable1}} and {{variable2}}.</p>',
@@ -89,7 +95,7 @@ def document_with_variables(user):
 
 @pytest.fixture
 def legal_document():
-    """Create a test legal document with a file"""
+    """Create a test legal document with a file."""
     test_file = SimpleUploadedFile(
         "test_document.pdf", 
         b"file_content", 
@@ -102,9 +108,10 @@ def legal_document():
 
 @pytest.mark.django_db
 class TestDocumentVariableSerializer:
+    """Tests for Document Variable Serializer."""
     
     def test_serialize_document_variable(self, document_with_variables):
-        """Test serializing a document variable"""
+        """Test serializing a document variable."""
         variable = document_with_variables.variables.first()
         serializer = DocumentVariableSerializer(variable)
         
@@ -115,7 +122,7 @@ class TestDocumentVariableSerializer:
         assert serializer.data['value'] == variable.value
     
     def test_deserialize_document_variable(self, document_variable_data):
-        """Test deserializing document variable data"""
+        """Test deserializing document variable data."""
         serializer = DocumentVariableSerializer(data=document_variable_data)
         
         assert serializer.is_valid()
@@ -126,7 +133,7 @@ class TestDocumentVariableSerializer:
         assert serializer.validated_data['value'] == document_variable_data['value']
     
     def test_invalid_document_variable(self):
-        """Test deserializing invalid document variable data"""
+        """Test deserializing invalid document variable data."""
         # Invalid field_type value
         invalid_data = {
             'name_en': 'test_variable',
@@ -182,9 +189,10 @@ class TestDocumentVariableSerializer:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializer:
+    """Tests for Dynamic Document Serializer."""
     
     def test_serialize_document(self, document_with_variables):
-        """Test serializing a document with variables"""
+        """Test serializing a document with variables."""
         serializer = DynamicDocumentSerializer(document_with_variables)
         
         assert serializer.data['title'] == document_with_variables.title
@@ -197,7 +205,7 @@ class TestDynamicDocumentSerializer:
         assert 'variable2' in variable_names
     
     def test_create_document_basic_fields(self, document_data, document_variable_data, user):
-        """Test creating a document with variables - basic fields"""
+        """Test creating a document with variables - basic fields."""
         document_data['variables'] = [document_variable_data]
         
         class MockRequest:
@@ -216,7 +224,7 @@ class TestDynamicDocumentSerializer:
         assert document.created_by == user
 
     def test_create_document_variables(self, document_data, document_variable_data, user):
-        """Test creating a document with variables - variables creation"""
+        """Test creating a document with variables - variables creation."""
         document_data['variables'] = [document_variable_data]
         
         class MockRequest:
@@ -235,7 +243,7 @@ class TestDynamicDocumentSerializer:
         assert variable.value == document_variable_data['value']
     
     def test_update_document(self, document_with_variables, user):
-        """Test updating a document and its variables"""
+        """Test updating a document and its variables."""
         ev = list(document_with_variables.variables.all())
         update_data = {
             'title': 'Updated Document', 'content': '<p>Updated.</p>', 'state': 'Progress',
@@ -254,7 +262,7 @@ class TestDynamicDocumentSerializer:
         assert doc.variables.count() == 2
 
     def test_update_document_variables_changes(self, document_with_variables, user):
-        """Test that updating a document correctly modifies variables"""
+        """Test that updating a document correctly modifies variables."""
         existing_variables = list(document_with_variables.variables.all())
         
         update_data = {
@@ -303,7 +311,7 @@ class TestDynamicDocumentSerializer:
         assert new_var.value == 'New value'
     
     def test_partial_update_document(self, document_with_variables, user):
-        """Test partially updating a document without affecting variables"""
+        """Test partially updating a document without affecting variables."""
         # Count initial variables
         initial_variable_count = document_with_variables.variables.count()
         
@@ -338,7 +346,7 @@ class TestDynamicDocumentSerializer:
         assert updated_document.variables.count() == initial_variable_count
     
     def test_invalid_document_data(self):
-        """Test deserializing invalid document data"""
+        """Test deserializing invalid document data."""
         # Missing required field (title)
         invalid_data = {
             'content': '<p>Content without title</p>',
@@ -351,7 +359,6 @@ class TestDynamicDocumentSerializer:
 
     def test_create_document_with_requires_signature_adds_suffix_and_creates_signatures(self, user):
         """Al requerir firma se agrega sufijo _firma y se crean firmas para creador y firmantes."""
-
         # Creador abogado
         lawyer = User.objects.create_user(
             email='lawyer@example.com',
@@ -397,7 +404,6 @@ class TestDynamicDocumentSerializer:
 
     def test_create_document_with_visibility_and_usability_permissions(self):
         """Crear documento debe generar permisos de visibilidad/usabilidad coherentes."""
-
         lawyer = User.objects.create_user(
             email='lawyer@example.com',
             password='testpassword',
@@ -448,7 +454,10 @@ class TestDynamicDocumentSerializer:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerExtras:
+    """Tests for Dynamic Document Serializer Extras."""
+
     def test_tag_serializer_sets_created_by_from_request(self, user):
+        """Verify tag serializer sets created by from request."""
         class MockRequest:
             def __init__(self, user):
                 self.user = user
@@ -464,6 +473,7 @@ class TestDynamicDocumentSerializerExtras:
         assert tag.created_by == user
 
     def test_document_signature_serializer_signer_name_fallback(self):
+        """Verify document signature serializer signer name fallback."""
         creator = User.objects.create_user(
             email="creator@example.com",
             password="testpassword",
@@ -490,6 +500,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["signer_name"] == signer.email
 
     def test_document_folder_serializer_sets_owner_and_documents(self):
+        """Verify document folder serializer sets owner and documents."""
         owner = User.objects.create_user(
             email="owner@example.com",
             password="testpassword",
@@ -522,6 +533,7 @@ class TestDynamicDocumentSerializerExtras:
         assert len(data["documents"]) == 1
 
     def test_recent_document_serializer_includes_document_data(self):
+        """Verify recent document serializer includes document data."""
         viewer = User.objects.create_user(
             email="viewer@example.com",
             password="testpassword",
@@ -541,6 +553,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["document"]["title"] == document.title
 
     def test_document_visibility_permission_serializer_full_name(self):
+        """Verify document visibility permission serializer full name."""
         creator = User.objects.create_user(
             email="creator@example.com",
             password="testpassword",
@@ -574,6 +587,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["document_title"] == document.title
 
     def test_document_usability_permission_serializer_full_name(self):
+        """Verify document usability permission serializer full name."""
         creator = User.objects.create_user(
             email="creator@example.com",
             password="testpassword",
@@ -612,6 +626,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["document_title"] == document.title
 
     def test_document_relationship_serializer_sets_created_by(self):
+        """Verify document relationship serializer sets created by."""
         creator = User.objects.create_user(
             email="rel@example.com",
             password="testpassword",
@@ -649,6 +664,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["created_by_name"] == creator.email
 
     def test_document_relationship_serializer_rejects_self_relation(self):
+        """Verify document relationship serializer rejects self relation."""
         creator = User.objects.create_user(
             email="rel2@example.com",
             password="testpassword",
@@ -668,6 +684,7 @@ class TestDynamicDocumentSerializerExtras:
         assert "cannot be related" in str(serializer.errors)
 
     def test_dynamic_document_serializer_signature_counts_and_ids(self):
+        """Verify dynamic document serializer signature counts and ids."""
         creator = User.objects.create_user(
             email="owner@example.com",
             password="testpassword",
@@ -694,7 +711,9 @@ class TestDynamicDocumentSerializerExtras:
         assert data["total_signatures"] == 2
         assert set(data["signer_ids"]) == {creator.id, signer.id}
 
+    @freeze_time("2025-06-15 10:00:00")
     def test_dynamic_document_serializer_get_signers_flags_current_user(self):
+        """Verify dynamic document serializer get signers flags current user."""
         owner = User.objects.create_user(
             email="owner-sign@example.com",
             password="testpassword",
@@ -712,20 +731,13 @@ class TestDynamicDocumentSerializerExtras:
             created_by=owner,
             requires_signature=True,
         )
-        signed_at = timezone.now()
-        rejected_at = timezone.now()
+        ts = datetime(2025, 6, 15, 10, 0, 0, tzinfo=dt_timezone.utc)
         DocumentSignature.objects.create(
-            document=document,
-            signer=owner,
-            signed=True,
-            signed_at=signed_at,
+            document=document, signer=owner, signed=True, signed_at=ts,
         )
         DocumentSignature.objects.create(
-            document=document,
-            signer=other,
-            rejected=True,
-            rejected_at=rejected_at,
-            rejection_comment="Nope",
+            document=document, signer=other, rejected=True,
+            rejected_at=ts, rejection_comment="Nope",
         )
 
         class MockRequest:
@@ -746,6 +758,7 @@ class TestDynamicDocumentSerializerExtras:
         assert by_email[other.email]["rejection_comment"] == "Nope"
 
     def test_dynamic_document_serializer_permission_flags_for_owner(self):
+        """Verify dynamic document serializer permission flags for owner."""
         owner = User.objects.create_user(
             email="perm@example.com",
             password="testpassword",
@@ -773,6 +786,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["can_delete"] is True
 
     def test_dynamic_document_serializer_relationships_count_without_request(self):
+        """Verify dynamic document serializer relationships count without request."""
         creator = User.objects.create_user(
             email="relcount@example.com",
             password="testpassword",
@@ -801,6 +815,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["relationships_count"] == 1
 
     def test_dynamic_document_serializer_summary_counterparty_from_variable(self):
+        """Verify dynamic document serializer summary counterparty from variable."""
         creator = User.objects.create_user(
             email="summary@example.com",
             password="testpassword",
@@ -825,6 +840,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["summary_counterparty"] == "Acme"
 
     def test_dynamic_document_serializer_summary_counterparty_fallback_assigned(self):
+        """Verify dynamic document serializer summary counterparty fallback assigned."""
         owner = User.objects.create_user(
             email="owner2@example.com",
             password="testpassword",
@@ -849,6 +865,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["summary_counterparty"] == "Assigned User"
 
     def test_dynamic_document_serializer_summary_value_and_currency(self):
+        """Verify dynamic document serializer summary value and currency."""
         creator = User.objects.create_user(
             email="value@example.com",
             password="testpassword",
@@ -875,6 +892,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["summary_value_currency"] == "USD"
 
     def test_dynamic_document_serializer_summary_fields_from_variables(self):
+        """Verify dynamic document serializer summary fields from variables."""
         creator = User.objects.create_user(
             email="summary-fields@example.com",
             password="testpassword",
@@ -923,6 +941,7 @@ class TestDynamicDocumentSerializerExtras:
         assert data["summary_end_date"] == "2025-12-31"
 
     def test_dynamic_document_serializer_summary_subscription_date_fallback(self):
+        """Verify dynamic document serializer summary subscription date fallback."""
         creator = User.objects.create_user(
             email="date@example.com",
             password="testpassword",
@@ -933,25 +952,29 @@ class TestDynamicDocumentSerializerExtras:
             state="Draft",
             created_by=creator,
         )
-        created_at = timezone.now() - timedelta(days=2)
+        created_at = datetime(2025, 6, 13, 10, 0, 0, tzinfo=dt_timezone.utc)
         DynamicDocument.objects.filter(pk=document.pk).update(created_at=created_at)
         document.refresh_from_db()
 
         serializer = DynamicDocumentSerializer(document)
         data = serializer.data
 
-        assert data["summary_subscription_date"] == created_at.date().isoformat()
+        assert data["summary_subscription_date"] == "2025-06-13"
 
 
 @pytest.mark.django_db
 
 class MockRequest:
+    """Tests for Mock Request."""
+
     def __init__(self, user):
+        """Initialize instance."""
         self.user = user
 
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="lawyer-s2@example.com", password="testpassword",
         first_name="Lawyer", last_name="S2", role="lawyer", is_gym_lawyer=True,
@@ -960,6 +983,7 @@ def lawyer():
 
 @pytest.fixture
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client-s2@example.com", password="testpassword",
         first_name="Client", last_name="S2", role="client",
@@ -968,6 +992,7 @@ def client_user():
 
 @pytest.fixture
 def document(lawyer):
+    """Document."""
     return DynamicDocument.objects.create(
         title="SerDoc", content="<p>body</p>", state="Draft", created_by=lawyer,
     )
@@ -975,11 +1000,13 @@ def document(lawyer):
 
 @pytest.fixture
 def tag(lawyer):
+    """Tag."""
     return Tag.objects.create(name="EdgeTag", created_by=lawyer)
 
 
 @pytest.fixture
 def client_user2():
+    """Client user2."""
     return User.objects.create_user(
         email="client2-edge@example.com", password="testpassword",
         first_name="Client2", last_name="Edge", role="client",
@@ -988,6 +1015,7 @@ def client_user2():
 
 @pytest.fixture
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic-edge@example.com", password="testpassword",
         first_name="Basic", last_name="Edge", role="basic",
@@ -996,6 +1024,7 @@ def basic_user():
 
 @pytest.fixture
 def normal_client():
+    """Create a normal client."""
     return User.objects.create_user(
         email="normal-client-edge@example.com", password="testpassword",
         first_name="Normal", last_name="Client", role="client",
@@ -1004,6 +1033,7 @@ def normal_client():
 
 @pytest.fixture
 def document_by_basic(basic_user):
+    """Document by basic."""
     return DynamicDocument.objects.create(
         title="BasicDoc", content="<p>basic</p>", state="Draft", created_by=basic_user,
     )
@@ -1013,29 +1043,36 @@ def document_by_basic(basic_user):
 
 @pytest.mark.django_db
 class TestDocumentVariableSerializerValidation:
+    """Tests for Document Variable Serializer Validation."""
+
     def test_number_invalid(self):
+        """Verify number invalid."""
         data = {"name_en": "v", "field_type": "number", "value": "abc"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
         assert "value" in s.errors
 
     def test_date_invalid(self):
+        """Verify date invalid."""
         data = {"name_en": "v", "field_type": "date", "value": "not-a-date"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
 
     def test_email_invalid(self):
+        """Verify email invalid."""
         data = {"name_en": "v", "field_type": "email", "value": "bad"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
 
     def test_select_without_options(self):
+        """Verify select without options."""
         data = {"name_en": "v", "field_type": "select", "value": "x"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
         assert "select_options" in s.errors
 
     def test_select_with_options_valid(self):
+        """Verify select with options valid."""
         data = {
             "name_en": "v", "field_type": "select",
             "select_options": ["opt1", "opt2"],
@@ -1044,21 +1081,25 @@ class TestDocumentVariableSerializerValidation:
         assert s.is_valid(), s.errors
 
     def test_number_valid(self):
+        """Verify number valid."""
         data = {"name_en": "v", "field_type": "number", "value": "42"}
         s = DocumentVariableSerializer(data=data)
         assert s.is_valid(), s.errors
 
     def test_date_valid(self):
+        """Verify date valid."""
         data = {"name_en": "v", "field_type": "date", "value": "2024-06-15"}
         s = DocumentVariableSerializer(data=data)
         assert s.is_valid(), s.errors
 
     def test_email_valid(self):
+        """Verify email valid."""
         data = {"name_en": "v", "field_type": "email", "value": "ok@example.com"}
         s = DocumentVariableSerializer(data=data)
         assert s.is_valid(), s.errors
 
     def test_input_type_no_special_validation(self):
+        """Verify input type no special validation."""
         data = {"name_en": "v", "field_type": "input", "value": "anything"}
         s = DocumentVariableSerializer(data=data)
         assert s.is_valid(), s.errors
@@ -1068,7 +1109,10 @@ class TestDocumentVariableSerializerValidation:
 
 @pytest.mark.django_db
 class TestTagSerializer:
+    """Tests for Tag Serializer."""
+
     def test_create_attaches_user(self, lawyer):
+        """Verify create attaches user."""
         data = {"name": "Urgent", "color_id": 1}
         s = TagSerializer(data=data, context={"request": MockRequest(lawyer)})
         assert s.is_valid(), s.errors
@@ -1081,13 +1125,17 @@ class TestTagSerializer:
 
 @pytest.mark.django_db
 class TestDocumentSignatureSerializer:
+    """Tests for Document Signature Serializer."""
+
     def test_signer_name_with_names(self, lawyer, document):
+        """Verify signer name with names."""
         sig = DocumentSignature.objects.create(document=document, signer=lawyer)
         s = DocumentSignatureSerializer(sig)
         assert s.data["signer_name"] == "Lawyer S2"
         assert s.data["signer_email"] == lawyer.email
 
     def test_signer_name_falls_back_to_email(self, document):
+        """Verify signer name falls back to email."""
         no_name = User.objects.create_user(
             email="anon@example.com", password="p", first_name="", last_name="",
         )
@@ -1100,7 +1148,10 @@ class TestDocumentSignatureSerializer:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerSummary:
+    """Tests for Dynamic Document Serializer Summary."""
+
     def test_summary_counterparty_from_variable(self, lawyer, document):
+        """Verify summary counterparty from variable."""
         DocumentVariable.objects.create(
             document=document, name_en="cp", field_type="input",
             summary_field="counterparty", value="ACME Corp",
@@ -1109,6 +1160,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_counterparty"] == "ACME Corp"
 
     def test_summary_counterparty_fallback_assigned_to(self, lawyer, client_user):
+        """Verify summary counterparty fallback assigned to."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer, assigned_to=client_user,
         )
@@ -1116,6 +1168,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_counterparty"] == "Client S2"
 
     def test_summary_counterparty_fallback_signer(self, lawyer, client_user):
+        """Verify summary counterparty fallback signer."""
         doc = DynamicDocument.objects.create(
             title="D", content="C", created_by=lawyer, requires_signature=True,
         )
@@ -1124,10 +1177,12 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_counterparty"] == "Client S2"
 
     def test_summary_counterparty_none(self, lawyer, document):
+        """Verify summary counterparty none."""
         s = DynamicDocumentSerializer(document, context={"request": MockRequest(lawyer)})
         assert s.data["summary_counterparty"] is None
 
     def test_summary_object(self, lawyer, document):
+        """Verify summary object."""
         DocumentVariable.objects.create(
             document=document, name_en="obj", field_type="input",
             summary_field="object", value="Service Agreement",
@@ -1136,6 +1191,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_object"] == "Service Agreement"
 
     def test_summary_value_and_currency(self, lawyer, document):
+        """Verify summary value and currency."""
         DocumentVariable.objects.create(
             document=document, name_en="val", field_type="input",
             summary_field="value", value="5000", currency="USD",
@@ -1145,10 +1201,12 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_value_currency"] == "USD"
 
     def test_summary_value_currency_none_when_no_var(self, lawyer, document):
+        """Verify summary value currency none when no var."""
         s = DynamicDocumentSerializer(document, context={"request": MockRequest(lawyer)})
         assert s.data["summary_value_currency"] is None
 
     def test_summary_term(self, lawyer, document):
+        """Verify summary term."""
         DocumentVariable.objects.create(
             document=document, name_en="t", field_type="input",
             summary_field="term", value="12 months",
@@ -1157,6 +1215,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_term"] == "12 months"
 
     def test_summary_subscription_date_from_variable(self, lawyer, document):
+        """Verify summary subscription date from variable."""
         DocumentVariable.objects.create(
             document=document, name_en="sd", field_type="date",
             summary_field="subscription_date", value="2024-03-15",
@@ -1165,6 +1224,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_subscription_date"] == "2024-03-15"
 
     def test_summary_start_date(self, lawyer, document):
+        """Verify summary start date."""
         DocumentVariable.objects.create(
             document=document, name_en="sd", field_type="date",
             summary_field="start_date", value="2024-01-01",
@@ -1173,6 +1233,7 @@ class TestDynamicDocumentSerializerSummary:
         assert s.data["summary_start_date"] == "2024-01-01"
 
     def test_summary_end_date(self, lawyer, document):
+        """Verify summary end date."""
         DocumentVariable.objects.create(
             document=document, name_en="ed", field_type="date",
             summary_field="end_date", value="2024-12-31",
@@ -1185,7 +1246,10 @@ class TestDynamicDocumentSerializerSummary:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerPermissions:
+    """Tests for Dynamic Document Serializer Permissions."""
+
     def test_lawyer_can_view_edit_delete(self, lawyer, document):
+        """Verify lawyer can view edit delete."""
         s = DynamicDocumentSerializer(document, context={"request": MockRequest(lawyer)})
         assert s.data["can_view"] is True
         assert s.data["can_edit"] is True
@@ -1193,6 +1257,7 @@ class TestDynamicDocumentSerializerPermissions:
         assert s.data["user_permission_level"] == "lawyer"
 
     def test_client_no_access(self, lawyer, client_user, document):
+        """Verify client no access."""
         s = DynamicDocumentSerializer(document, context={"request": MockRequest(client_user)})
         assert s.data["can_view"] is False
         assert s.data["can_edit"] is False
@@ -1200,6 +1265,7 @@ class TestDynamicDocumentSerializerPermissions:
         assert s.data["user_permission_level"] is None
 
     def test_client_view_only(self, lawyer, client_user, document):
+        """Verify client view only."""
         DocumentVisibilityPermission.objects.create(
             document=document, user=client_user, granted_by=lawyer,
         )
@@ -1210,6 +1276,7 @@ class TestDynamicDocumentSerializerPermissions:
         assert s.data["user_permission_level"] == "view_only"
 
     def test_owner_can_view_edit_delete(self, client_user):
+        """Verify owner can view edit delete."""
         doc = DynamicDocument.objects.create(
             title="Own", content="C", created_by=client_user,
         )
@@ -1219,6 +1286,7 @@ class TestDynamicDocumentSerializerPermissions:
         assert s.data["can_delete"] is True
 
     def test_no_request_context(self, document):
+        """Verify no request context."""
         s = DynamicDocumentSerializer(document, context={})
         assert s.data["can_view"] is False
         assert s.data["user_permission_level"] is None
@@ -1228,7 +1296,10 @@ class TestDynamicDocumentSerializerPermissions:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerSignatureCounts:
+    """Tests for Dynamic Document Serializer Signature Counts."""
+
     def test_completed_and_total_signatures(self, lawyer, client_user):
+        """Verify completed and total signatures."""
         doc = DynamicDocument.objects.create(
             title="Sig", content="C", created_by=lawyer, requires_signature=True,
         )
@@ -1239,6 +1310,7 @@ class TestDynamicDocumentSerializerSignatureCounts:
         assert s.data["total_signatures"] == 2
 
     def test_no_signature_required(self, lawyer, document):
+        """Verify no signature required."""
         s = DynamicDocumentSerializer(document, context={"request": MockRequest(lawyer)})
         assert s.data["completed_signatures"] == 0
         assert s.data["total_signatures"] == 0
@@ -1248,7 +1320,10 @@ class TestDynamicDocumentSerializerSignatureCounts:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerSignerIds:
+    """Tests for Dynamic Document Serializer Signer Ids."""
+
     def test_signer_ids(self, lawyer, client_user):
+        """Verify signer ids."""
         doc = DynamicDocument.objects.create(
             title="S", content="C", created_by=lawyer, requires_signature=True,
         )
@@ -1261,7 +1336,10 @@ class TestDynamicDocumentSerializerSignerIds:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerRelationshipsCount:
+    """Tests for Dynamic Document Serializer Relationships Count."""
+
     def test_relationships_count_with_user(self, lawyer):
+        """Verify relationships count with user."""
         doc_a = DynamicDocument.objects.create(title="A", content="C", created_by=lawyer)
         doc_b = DynamicDocument.objects.create(title="B", content="C", created_by=lawyer, state="Completed")
         DocumentRelationship.objects.create(
@@ -1271,6 +1349,7 @@ class TestDynamicDocumentSerializerRelationshipsCount:
         assert s.data["relationships_count"] == 1
 
     def test_relationships_count_without_user(self, lawyer):
+        """Verify relationships count without user."""
         doc_a = DynamicDocument.objects.create(title="A", content="C", created_by=lawyer)
         doc_b = DynamicDocument.objects.create(title="B", content="C", created_by=lawyer)
         DocumentRelationship.objects.create(
@@ -1284,7 +1363,10 @@ class TestDynamicDocumentSerializerRelationshipsCount:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerCreate:
+    """Tests for Dynamic Document Serializer Create."""
+
     def test_create_basic_document(self, lawyer):
+        """Verify create basic document."""
         data = {"title": "New", "content": "<p>C</p>", "state": "Draft"}
         s = DynamicDocumentSerializer(data=data, context={"request": MockRequest(lawyer)})
         assert s.is_valid(), s.errors
@@ -1293,6 +1375,7 @@ class TestDynamicDocumentSerializerCreate:
         assert doc.title == "New"
 
     def test_create_with_signature_appends_firma(self, lawyer, client_user):
+        """Verify create with signature appends firma."""
         data = {
             "title": "Contract",
             "content": "<p>C</p>",
@@ -1308,6 +1391,7 @@ class TestDynamicDocumentSerializerCreate:
         assert doc.signatures.filter(signer=client_user).exists()
 
     def test_create_with_variables(self, lawyer):
+        """Verify create with variables."""
         data = {
             "title": "Vars", "content": "C", "state": "Draft",
             "variables": [
@@ -1324,7 +1408,10 @@ class TestDynamicDocumentSerializerCreate:
 
 @pytest.mark.django_db
 class TestDynamicDocumentSerializerUpdate:
+    """Tests for Dynamic Document Serializer Update."""
+
     def test_update_title_and_state(self, lawyer, document):
+        """Verify update title and state."""
         data = {"title": "Updated", "state": "Progress"}
         s = DynamicDocumentSerializer(
             document, data=data, partial=True,
@@ -1336,6 +1423,7 @@ class TestDynamicDocumentSerializerUpdate:
         assert doc.state == "Progress"
 
     def test_update_removes_relationships_on_completed_to_progress(self, lawyer):
+        """Verify update removes relationships on completed to progress."""
         doc_a = DynamicDocument.objects.create(
             title="A", content="C", created_by=lawyer, state="Completed",
         )
@@ -1355,6 +1443,7 @@ class TestDynamicDocumentSerializerUpdate:
         assert DocumentRelationship.objects.filter(source_document=doc_a).count() == 0
 
     def test_update_variables_replaces_all(self, lawyer, document):
+        """Verify update variables replaces all."""
         DocumentVariable.objects.create(
             document=document, name_en="old", field_type="input",
         )
@@ -1375,7 +1464,10 @@ class TestDynamicDocumentSerializerUpdate:
 
 @pytest.mark.django_db
 class TestRecentDocumentSerializer:
+    """Tests for Recent Document Serializer."""
+
     def test_serializes_nested_document(self, lawyer, document):
+        """Verify serializes nested document."""
         rd = RecentDocument.objects.create(user=lawyer, document=document)
         s = RecentDocumentSerializer(rd, context={"request": MockRequest(lawyer)})
         assert s.data["document"]["title"] == "SerDoc"
@@ -1386,7 +1478,10 @@ class TestRecentDocumentSerializer:
 
 @pytest.mark.django_db
 class TestDocumentFolderSerializer:
+    """Tests for Document Folder Serializer."""
+
     def test_create_attaches_owner(self, client_user, document):
+        """Verify create attaches owner."""
         data = {"name": "MyFolder", "document_ids": [document.id]}
         s = DocumentFolderSerializer(
             data=data, context={"request": MockRequest(client_user)},
@@ -1401,7 +1496,10 @@ class TestDocumentFolderSerializer:
 
 @pytest.mark.django_db
 class TestDocumentVisibilityPermissionSerializer:
+    """Tests for Document Visibility Permission Serializer."""
+
     def test_serialize(self, lawyer, client_user, document):
+        """Verify serialize."""
         perm = DocumentVisibilityPermission.objects.create(
             document=document, user=client_user, granted_by=lawyer,
         )
@@ -1412,6 +1510,7 @@ class TestDocumentVisibilityPermissionSerializer:
         assert s.data["document_title"] == document.title
 
     def test_user_full_name_falls_back_to_email(self, lawyer, document):
+        """Verify user full name falls back to email."""
         anon = User.objects.create_user(
             email="anon@example.com", password="p", first_name="", last_name="",
         )
@@ -1426,7 +1525,10 @@ class TestDocumentVisibilityPermissionSerializer:
 
 @pytest.mark.django_db
 class TestDocumentUsabilityPermissionSerializer:
+    """Tests for Document Usability Permission Serializer."""
+
     def test_serialize(self, lawyer, client_user, document):
+        """Verify serialize."""
         DocumentVisibilityPermission.objects.create(
             document=document, user=client_user, granted_by=lawyer,
         )
@@ -1443,7 +1545,10 @@ class TestDocumentUsabilityPermissionSerializer:
 
 @pytest.mark.django_db
 class TestDocumentRelationshipSerializer:
+    """Tests for Document Relationship Serializer."""
+
     def test_validate_self_relationship_rejected(self, lawyer, document):
+        """Verify validate self relationship rejected."""
         data = {
             "source_document": document.id,
             "target_document": document.id,
@@ -1454,6 +1559,7 @@ class TestDocumentRelationshipSerializer:
         assert not s.is_valid()
 
     def test_created_by_name_empty_when_no_creator(self, lawyer):
+        """Verify created by name empty when no creator."""
         doc_a = DynamicDocument.objects.create(title="A", content="C", created_by=lawyer)
         doc_b = DynamicDocument.objects.create(title="B", content="C", created_by=lawyer)
         rel = DocumentRelationship.objects.create(
@@ -1469,6 +1575,8 @@ class TestDocumentRelationshipSerializer:
 
 @pytest.mark.django_db
 class TestDocumentVariableSerializerEdges:
+    """Tests for Document Variable Serializer Edges."""
+
     def test_validate_number_invalid(self):
         """Cover lines 47-50: invalid number raises."""
         serializer = DocumentVariableSerializer(data={
@@ -1517,6 +1625,8 @@ class TestDocumentVariableSerializerEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDynamicDocumentPermissionEdges:
+    """Tests for Dynamic Document Permission Edges."""
+
     def test_get_can_edit_no_request(self, document):
         """Cover line 308: no request → False."""
         serializer = DynamicDocumentSerializer()
@@ -1565,10 +1675,12 @@ class TestDynamicDocumentPermissionEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDynamicDocumentSummaryEdges:
+    """Tests for Dynamic Document Summary Edges."""
+
     def test_get_signers_signer_none(self, document, lawyer, rf):
         """Cover line 228: signer is None → continue."""
         # Create a signature then mock its signer to be None
-        sig = DocumentSignature.objects.create(document=document, signer=lawyer)
+        _sig = DocumentSignature.objects.create(document=document, signer=lawyer)
         serializer = DynamicDocumentSerializer(context={"request": rf.get("/")})
         # Mock the queryset to return a signature with signer=None
         from types import SimpleNamespace
@@ -1634,23 +1746,31 @@ class TestDynamicDocumentSummaryEdges:
 # ---------------------------------------------------------------------------
 # DynamicDocumentSerializer.create edges (signatures, tags, permissions)
 # ---------------------------------------------------------------------------
+def _make_doc_validated(**overrides):
+    base = {
+        "title": "Doc",
+        "content": "<p>c</p>",
+        "state": "Progress",
+        "tags": [],
+        "variables": [],
+        "signers": [],
+        "visibility_user_ids": [],
+        "usability_user_ids": [],
+    }
+    base.update(overrides)
+    return base
+
+
 @pytest.mark.django_db
 class TestDynamicDocumentCreateEdges:
+    """Tests for Dynamic Document Create Edges."""
+
     def test_create_with_tags(self, lawyer, tag, rf):
         """Cover line 446: tags assigned during creation."""
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Tagged Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "tags": [tag],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [],
-            "usability_user_ids": [],
-        }
+        validated = _make_doc_validated(title="Tagged Doc", tags=[tag])
         doc = serializer.create(validated)
         assert tag in doc.tags.all()
 
@@ -1659,17 +1779,9 @@ class TestDynamicDocumentCreateEdges:
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Sig Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "requires_signature": True,
-            "tags": [],
-            "variables": [],
-            "signers": [client_user],
-            "visibility_user_ids": [],
-            "usability_user_ids": [],
-        }
+        validated = _make_doc_validated(
+            title="Sig Doc", requires_signature=True, signers=[client_user],
+        )
         doc = serializer.create(validated)
         assert doc.signatures.count() == 2  # lawyer + client
 
@@ -1678,17 +1790,9 @@ class TestDynamicDocumentCreateEdges:
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Private Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "is_public": False,
-            "tags": [],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [client_user],
-            "usability_user_ids": [],
-        }
+        validated = _make_doc_validated(
+            title="Private Doc", is_public=False, visibility_user_ids=[client_user],
+        )
         doc = serializer.create(validated)
         assert DocumentVisibilityPermission.objects.filter(document=doc, user=client_user).exists()
 
@@ -1697,17 +1801,10 @@ class TestDynamicDocumentCreateEdges:
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Usable Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "is_public": False,
-            "tags": [],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [client_user],
-            "usability_user_ids": [client_user],
-        }
+        validated = _make_doc_validated(
+            title="Usable Doc", is_public=False,
+            visibility_user_ids=[client_user], usability_user_ids=[client_user],
+        )
         doc = serializer.create(validated)
         assert DocumentUsabilityPermission.objects.filter(document=doc, user=client_user).exists()
 
@@ -1716,17 +1813,11 @@ class TestDynamicDocumentCreateEdges:
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Usable Skip Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "is_public": False,
-            "tags": [],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [client_user],
-            "usability_user_ids": [client_user2],  # client2 has no visibility
-        }
+        validated = _make_doc_validated(
+            title="Usable Skip Doc", is_public=False,
+            visibility_user_ids=[client_user],
+            usability_user_ids=[client_user2],  # client2 has no visibility
+        )
         doc = serializer.create(validated)
         assert not DocumentUsabilityPermission.objects.filter(document=doc, user=client_user2).exists()
 
@@ -1744,17 +1835,9 @@ class TestDynamicDocumentCreateEdges:
                 raise Exception("Duplicate signature")
             return orig_create(**kwargs)
         with patch.object(DocumentSignature.objects, 'create', side_effect=fail_on_duplicate):
-            validated = {
-                "title": "Sig Exc Doc",
-                "content": "<p>c</p>",
-                "state": "Progress",
-                "requires_signature": True,
-                "tags": [],
-                "variables": [],
-                "signers": [client_user],
-                "visibility_user_ids": [],
-                "usability_user_ids": [],
-            }
+            validated = _make_doc_validated(
+                title="Sig Exc Doc", requires_signature=True, signers=[client_user],
+            )
             doc = serializer.create(validated)
             # Document still created despite signature error
             assert doc.id is not None
@@ -1768,17 +1851,9 @@ class TestDynamicDocumentCreateEdges:
             'gym_app.serializers.dynamic_document.DocumentVisibilityPermission.objects.get_or_create',
             side_effect=Exception("DB error"),
         ):
-            validated = {
-                "title": "Vis Exc Doc",
-                "content": "<p>c</p>",
-                "state": "Progress",
-                "is_public": False,
-                "tags": [],
-                "variables": [],
-                "signers": [],
-                "visibility_user_ids": [client_user],
-                "usability_user_ids": [],
-            }
+            validated = _make_doc_validated(
+                title="Vis Exc Doc", is_public=False, visibility_user_ids=[client_user],
+            )
             doc = serializer.create(validated)
             assert doc.id is not None
 
@@ -1788,17 +1863,9 @@ class TestDynamicDocumentCreateEdges:
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
         # First give visibility, then make usability creation fail
-        validated = {
-            "title": "Usa Exc Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "is_public": True,
-            "tags": [],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [],
-            "usability_user_ids": [client_user],
-        }
+        validated = _make_doc_validated(
+            title="Usa Exc Doc", is_public=True, usability_user_ids=[client_user],
+        )
         with patch(
             'gym_app.serializers.dynamic_document.DocumentUsabilityPermission.objects.get_or_create',
             side_effect=Exception("DB error"),
@@ -1815,17 +1882,9 @@ class TestDynamicDocumentCreateEdges:
         request = rf.post("/")
         request.user = lawyer
         serializer = DynamicDocumentSerializer(context={"request": request})
-        validated = {
-            "title": "Lawyer Skip Doc",
-            "content": "<p>c</p>",
-            "state": "Progress",
-            "is_public": False,
-            "tags": [],
-            "variables": [],
-            "signers": [],
-            "visibility_user_ids": [lawyer2],
-            "usability_user_ids": [],
-        }
+        validated = _make_doc_validated(
+            title="Lawyer Skip Doc", is_public=False, visibility_user_ids=[lawyer2],
+        )
         doc = serializer.create(validated)
         assert not DocumentVisibilityPermission.objects.filter(document=doc, user=lawyer2).exists()
 
@@ -1835,6 +1894,8 @@ class TestDynamicDocumentCreateEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDynamicDocumentUpdateEdges:
+    """Tests for Dynamic Document Update Edges."""
+
     def test_update_tags(self, document, tag, rf, lawyer):
         """Cover line 556: update tags."""
         request = rf.put("/")
@@ -1858,7 +1919,7 @@ class TestDynamicDocumentUpdateEdges:
             partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"signers": [client_user], "requires_signature": True})
+        _result = serializer.update(document, {"signers": [client_user], "requires_signature": True})
         assert document.signatures.filter(signer=client_user).exists()
 
     def test_update_visibility_permissions(self, document, client_user, rf, lawyer):
@@ -1871,7 +1932,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"title": document.title}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"visibility_user_ids": [client_user]})
+        _result = serializer.update(document, {"visibility_user_ids": [client_user]})
         assert DocumentVisibilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_update_usability_permissions(self, document, client_user, rf, lawyer):
@@ -1888,7 +1949,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"title": document.title}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"usability_user_ids": [client_user]})
+        _result = serializer.update(document, {"usability_user_ids": [client_user]})
         assert DocumentUsabilityPermission.objects.filter(document=document, user=client_user).exists()
 
     def test_update_signers_exception_silenced(self, document, client_user, rf, lawyer):
@@ -1916,7 +1977,7 @@ class TestDynamicDocumentUpdateEdges:
             context={"request": request},
         )
         # Include the creator (lawyer) in visibility_user_ids - should be skipped
-        result = serializer.update(document, {"visibility_user_ids": [lawyer, client_user]})
+        _result = serializer.update(document, {"visibility_user_ids": [lawyer, client_user]})
         # Creator should not get an explicit visibility permission
         assert not DocumentVisibilityPermission.objects.filter(document=document, user=lawyer).exists()
         assert DocumentVisibilityPermission.objects.filter(document=document, user=client_user).exists()
@@ -1948,7 +2009,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"title": document.title}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"usability_user_ids": [lawyer, client_user]})
+        _result = serializer.update(document, {"usability_user_ids": [lawyer, client_user]})
         assert not DocumentUsabilityPermission.objects.filter(document=document, user=lawyer).exists()
 
     def test_update_usability_no_visibility_skip(self, document, client_user, client_user2, rf, lawyer):
@@ -1962,7 +2023,7 @@ class TestDynamicDocumentUpdateEdges:
             context={"request": request},
         )
         # client_user2 has no visibility permission and is not in visibility_user_ids
-        result = serializer.update(document, {"usability_user_ids": [client_user2]})
+        _result = serializer.update(document, {"usability_user_ids": [client_user2]})
         assert not DocumentUsabilityPermission.objects.filter(document=document, user=client_user2).exists()
 
     def test_update_usability_exception_silenced(self, document, client_user, rf, lawyer):
@@ -1996,7 +2057,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"title": document.title}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"visibility_user_ids": [lawyer2]})
+        _result = serializer.update(document, {"visibility_user_ids": [lawyer2]})
         assert not DocumentVisibilityPermission.objects.filter(document=document, user=lawyer2).exists()
 
     def test_update_skip_lawyer_in_usability(self, document, rf, lawyer):
@@ -2013,7 +2074,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"title": document.title}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"usability_user_ids": [lawyer2]})
+        _result = serializer.update(document, {"usability_user_ids": [lawyer2]})
         assert not DocumentUsabilityPermission.objects.filter(document=document, user=lawyer2).exists()
 
     def test_update_state_completed_to_progress_deletes_relationships(self, document, lawyer, rf):
@@ -2034,7 +2095,7 @@ class TestDynamicDocumentUpdateEdges:
             instance=document, data={"state": "Progress"}, partial=True,
             context={"request": request},
         )
-        result = serializer.update(document, {"state": "Progress"})
+        _result = serializer.update(document, {"state": "Progress"})
         assert DocumentRelationship.objects.filter(source_document=document).count() == 0
 
 
@@ -2043,6 +2104,8 @@ class TestDynamicDocumentUpdateEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDocumentRelationshipSerializerEdges:
+    """Tests for Document Relationship Serializer Edges."""
+
     def test_get_created_by_name_with_user(self, document, lawyer, rf):
         """Cover lines 779-783: created_by has name."""
         doc2 = DynamicDocument.objects.create(
@@ -2062,7 +2125,7 @@ class TestDocumentRelationshipSerializerEdges:
         doc2 = DynamicDocument.objects.create(
             title="Doc3", content="<p>c</p>", state="Progress", created_by=lawyer,
         )
-        rel = DocumentRelationship.objects.create(
+        _rel = DocumentRelationship.objects.create(
             source_document=document, target_document=doc2, created_by=lawyer,
         )
         serializer = DocumentRelationshipSerializer(context={"request": rf.get("/")})
@@ -2107,6 +2170,8 @@ class TestDocumentRelationshipSerializerEdges:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDocumentFolderSerializerEdges:
+    """Tests for Document Folder Serializer Edges."""
+
     def test_create_folder_attaches_user(self, client_user, rf):
         """Cover lines 706-707: create attaches request.user as owner."""
         request = rf.post("/")
@@ -2122,11 +2187,13 @@ class TestDocumentFolderSerializerEdges:
 @pytest.mark.django_db
 
 class TestDynamicDocumentSummarySubscriptionDateNone:
+    """Tests for Dynamic Document Summary Subscription Date None."""
+
     def test_get_summary_subscription_date_returns_none_when_no_created_at(
         self, lawyer_user
     ):
-        """
-        get_summary_subscription_date returns None when the document has
+        """get_summary_subscription_date returns None when the document has.
+        
         no subscription_date variable and created_at is None (line 402).
         """
         doc = DynamicDocument.objects.create(
@@ -2150,9 +2217,11 @@ class TestDynamicDocumentSummarySubscriptionDateNone:
 
 @pytest.mark.django_db
 class TestDynamicDocumentCreateSignatureException:
+    """Tests for Dynamic Document Create Signature Exception."""
+
     def test_create_silently_catches_duplicate_signature_error(self, lawyer_user):
-        """
-        When creating a document with requires_signature and the creator
+        """When creating a document with requires_signature and the creator.
+        
         signature creation raises an exception (e.g., IntegrityError),
         it is silently caught (lines 463-464).
         """
@@ -2191,11 +2260,13 @@ class TestDynamicDocumentCreateSignatureException:
 
 @pytest.mark.django_db
 class TestDynamicDocumentUpdateVisibilityError:
+    """Tests for Dynamic Document Update Visibility Error."""
+
     def test_update_visibility_permission_error_is_printed(
         self, document, lawyer_user, basic_user
     ):
-        """
-        When updating visibility permissions, if get_or_create raises an
+        """When updating visibility permissions, if get_or_create raises an.
+        
         exception, it is caught and printed (line 607 area via line 615-616).
         """
         request = factory.patch("/fake/")
@@ -2231,11 +2302,13 @@ class TestDynamicDocumentUpdateVisibilityError:
 
 @pytest.mark.django_db
 class TestDynamicDocumentUpdateUsabilityNoVisibility:
+    """Tests for Dynamic Document Update Usability No Visibility."""
+
     def test_update_usability_skipped_when_user_has_no_visibility(
         self, document, lawyer_user, basic_user
     ):
-        """
-        When updating usability permissions on a non-public document,
+        """When updating usability permissions on a non-public document,.
+        
         a user without visibility permission is skipped (lines 639-646).
         """
         request = factory.patch("/fake/")
@@ -2271,9 +2344,11 @@ class TestDynamicDocumentUpdateUsabilityNoVisibility:
 
 @pytest.mark.django_db
 class TestDocumentRelationshipSerializerGetCreatedByName:
+    """Tests for Document Relationship Serializer Get Created By Name."""
+
     def test_get_created_by_name_with_full_name(self, document, lawyer_user):
-        """
-        get_created_by_name returns 'first_name last_name' when
+        """get_created_by_name returns 'first_name last_name' when.
+        
         created_by has a name set (lines 779-783).
         """
         doc2 = DynamicDocument.objects.create(
@@ -2294,8 +2369,8 @@ class TestDocumentRelationshipSerializerGetCreatedByName:
         assert result == lawyer_user.get_full_name().strip()
 
     def test_get_created_by_name_falls_back_to_email(self, document):
-        """
-        get_created_by_name returns email when first/last name are empty
+        """get_created_by_name returns email when first/last name are empty.
+        
         (line 783 branch).
         """
         no_name_user = User.objects.create_user(
@@ -2323,8 +2398,8 @@ class TestDocumentRelationshipSerializerGetCreatedByName:
         assert result == "noname_scov@test.com"
 
     def test_get_created_by_name_returns_empty_when_no_creator(self, document, lawyer_user):
-        """
-        get_created_by_name returns '' when created_by is None (line 784).
+        """get_created_by_name returns '' when created_by is None (line 784).
+        
         created_by FK is NOT NULL at DB level, so we patch the descriptor.
         """
         doc2 = DynamicDocument.objects.create(
@@ -2353,10 +2428,10 @@ class TestDocumentRelationshipSerializerGetCreatedByName:
 
 @pytest.mark.django_db
 class TestDocumentRelationshipSerializerValidate:
+    """Tests for Document Relationship Serializer Validate."""
+
     def test_validate_rejects_self_relationship(self, document):
-        """
-        validate raises ValidationError when source == target (lines 793-796).
-        """
+        """Validate raises ValidationError when source == target (lines 793-796)."""
         serializer = DocumentRelationshipSerializer(
             data={
                 "source_document": document.pk,
@@ -2376,10 +2451,10 @@ class TestDocumentRelationshipSerializerValidate:
 
 @pytest.mark.django_db
 class TestDocumentRelationshipSerializerCreate:
+    """Tests for Document Relationship Serializer Create."""
+
     def test_create_sets_created_by_from_request(self, document, lawyer_user):
-        """
-        create() sets created_by from request.user (lines 805-809).
-        """
+        """create() sets created_by from request.user (lines 805-809)."""
         doc2 = DynamicDocument.objects.create(
             title="Target Create",
             content="<p>c</p>",
@@ -2413,9 +2488,11 @@ class TestDocumentRelationshipSerializerCreate:
 
 @pytest.mark.django_db
 class TestDynamicDocumentUpdateVisibilitySkipsCreator:
+    """Tests for Dynamic Document Update Visibility Skips Creator."""
+
     def test_update_visibility_skips_document_creator(self, document_by_basic, basic_user, lawyer_user):
-        """
-        When the document creator (non-lawyer) is included in
+        """When the document creator (non-lawyer) is included in.
+        
         visibility_user_ids, they are skipped at the creator check
         (line 606-607 continue), not the lawyer check.
         """
@@ -2451,18 +2528,20 @@ class TestDynamicDocumentUpdateVisibilitySkipsCreator:
 
 @pytest.mark.django_db
 class TestDynamicDocumentUpdateUsabilitySkipsCreator:
+    """Tests for Dynamic Document Update Usability Skips Creator."""
+
     def test_update_usability_skips_document_creator(
         self, document_by_basic, basic_user, lawyer_user, normal_client
     ):
-        """
-        When the document creator (non-lawyer) is included in
+        """When the document creator (non-lawyer) is included in.
+        
         usability_user_ids, they are skipped at the creator check
         (line 635-636 continue), not the lawyer check.
         """
         # Grant visibility to normal_client so usability can proceed for them
         from gym_app.models.dynamic_document import (
-            DocumentVisibilityPermission,
             DocumentUsabilityPermission,
+            DocumentVisibilityPermission,
         )
         DocumentVisibilityPermission.objects.create(
             document=document_by_basic, user=normal_client, granted_by=lawyer_user

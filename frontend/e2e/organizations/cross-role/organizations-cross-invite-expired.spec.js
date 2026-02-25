@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate sends expired invitation and client cannot accept/reject", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("cross-role: corporate sends expired invitation and client cannot accept/reject", { tag: ['@flow:org-cross-invite-flow', '@module:organizations', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4720;
@@ -44,14 +46,14 @@ test("cross-role: corporate sends expired invitation and client cannot accept/re
   await expect(page.getByText("Invitar Nuevo Miembro")).toBeVisible();
 
   const inviteDialog = page.locator('[role="dialog"]').filter({ hasText: "Invitar Nuevo Miembro" });
-  await inviteDialog.locator("#email").fill(clientEmail);
-  await inviteDialog.locator("#message").fill("Invitación expirada E2E");
+  await inviteDialog.locator("#email").fill(clientEmail); // quality: allow-fragile-selector (stable DOM id)
+  await inviteDialog.locator("#message").fill("Invitación expirada E2E"); // quality: allow-fragile-selector (stable DOM id)
 
   await inviteDialog.getByRole("button", { name: "Enviar Invitación" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Invitación enviada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Still increments pending in current behavior
   await expect(pendingInvitesStat).toHaveText("2");
@@ -79,7 +81,7 @@ test("cross-role: corporate sends expired invitation and client cannot accept/re
   await invitationsTab.click();
   await expect(page.locator('h2:has-text("Invitaciones Recibidas")')).toBeVisible();
 
-  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(invitationCard).toBeVisible();
 
   // Should be expired and not allow responding

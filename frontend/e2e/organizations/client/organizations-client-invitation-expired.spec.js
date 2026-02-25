@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client sees an expired organization invitation and cannot accept or reject", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client sees an expired organization invitation and cannot accept or reject", { tag: ['@flow:org-client-invitations', '@module:organizations', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 3520;
 
   await installOrganizationsClientApiMocks(page, {
@@ -39,7 +41,7 @@ test("client sees an expired organization invitation and cannot accept or reject
   await invitationsTab.click();
   await expect(page.locator('h2:has-text("Invitaciones Recibidas")')).toBeVisible();
 
-  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const invitationCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(invitationCard.getByText("Esta invitación ha expirado")).toBeVisible();
   await expect(invitationCard.getByRole("button", { name: "Aceptar" })).toHaveCount(0);

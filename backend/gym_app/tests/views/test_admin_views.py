@@ -1,36 +1,52 @@
-"""
-Batch 13 – 20 tests for:
-  • admin.py: custom admin methods (get_primary_client, get_user_name, get_response_preview,
-    get_client_name, get_corporate_client_name, get_assigned_to_name, get_member_count,
-    get_pending_invitations_count, get_invited_user_name, get_invited_by_name, get_is_expired,
-    get_document_count, get_author_name, has_link, get_queryset, get_app_list)
-  • reports.py: generate_excel_report endpoint coverage
-"""
-import pytest
-from unittest.mock import MagicMock, patch
+"""Batch 13 – 20 tests for admin and reports.
 
+• admin.py: custom admin methods (get_primary_client, get_user_name, get_response_preview,
+get_client_name, get_corporate_client_name, get_assigned_to_name, get_member_count,
+get_pending_invitations_count, get_invited_user_name, get_invited_by_name, get_is_expired,
+get_document_count, get_author_name, has_link, get_queryset, get_app_list)
+• reports.py: generate_excel_report endpoint coverage.
+"""
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 from django.urls import reverse
-from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from gym_app.admin import (
-    ProcessAdmin, LegalRequestAdmin, LegalRequestResponseAdmin,
-    CorporateRequestAdmin, CorporateRequestResponseAdmin,
-    OrganizationAdmin, OrganizationInvitationAdmin, OrganizationMembershipAdmin,
-    OrganizationPostAdmin, TagAdmin, DocumentFolderAdmin, DynamicDocumentAdmin,
+    CorporateRequestAdmin,
+    CorporateRequestResponseAdmin,
+    DocumentFolderAdmin,
+    DynamicDocumentAdmin,
     GyMAdminSite,
+    LegalRequestAdmin,
+    LegalRequestResponseAdmin,
+    OrganizationAdmin,
+    OrganizationInvitationAdmin,
+    OrganizationMembershipAdmin,
+    OrganizationPostAdmin,
+    ProcessAdmin,
+    TagAdmin,
 )
 from gym_app.models import (
-    Process, Case, Stage, User as UserModel,
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestResponse,
-    Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost,
-    DynamicDocument, Tag, DocumentFolder,
+    Case,
+    DocumentFolder,
+    DynamicDocument,
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestResponse,
+    LegalRequestType,
+    Organization,
+    OrganizationInvitation,
+    OrganizationMembership,
+    OrganizationPost,
+    Process,
+    Tag,
 )
 from gym_app.models.corporate_request import (
-    CorporateRequest, CorporateRequestType, CorporateRequestResponse,
+    CorporateRequest,
+    CorporateRequestResponse,
+    CorporateRequestType,
 )
 
 User = get_user_model()
@@ -42,6 +58,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email="lawyer_b13@test.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -51,6 +68,7 @@ def lawyer_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client_b13@test.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -60,6 +78,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def corp_user():
+    """Corp user."""
     return User.objects.create_user(
         email="corp_b13@test.com", password="pw", role="corporate_client",
         first_name="Corp", last_name="Client",
@@ -72,6 +91,7 @@ def corp_user():
 
 @pytest.mark.django_db
 class TestProcessAdminMethods:
+    """Tests for Process Admin Methods."""
 
     def test_get_primary_client_with_client(self, lawyer_user, client_user):
         """Lines 109-116: get_primary_client returns name + email."""
@@ -100,6 +120,7 @@ class TestProcessAdminMethods:
 
 @pytest.mark.django_db
 class TestLegalRequestAdminMethods:
+    """Tests for Legal Request Admin Methods."""
 
     def test_get_user_name(self, client_user):
         """Lines 146-149: user full name."""
@@ -127,6 +148,7 @@ class TestLegalRequestAdminMethods:
 
 @pytest.mark.django_db
 class TestLegalRequestResponseAdminMethods:
+    """Tests for Legal Request Response Admin Methods."""
 
     def test_get_response_preview_short(self, client_user):
         """Lines 202-204: short response text returned as-is."""
@@ -165,6 +187,7 @@ class TestLegalRequestResponseAdminMethods:
 
 @pytest.mark.django_db
 class TestCorporateRequestAdminMethods:
+    """Tests for Corporate Request Admin Methods."""
 
     def test_get_client_and_corporate_names(self, client_user, corp_user):
         """Lines 225-238: client, corporate client, assigned_to names."""
@@ -204,6 +227,7 @@ class TestCorporateRequestAdminMethods:
 
 @pytest.mark.django_db
 class TestOrganizationAdminMethods:
+    """Tests for Organization Admin Methods."""
 
     def test_get_corporate_client_name(self, corp_user):
         """Lines 300-303: corporate client name."""
@@ -239,6 +263,7 @@ class TestOrganizationAdminMethods:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationAdminMethods:
+    """Tests for Organization Invitation Admin Methods."""
 
     def test_get_invited_names_and_expired(self, corp_user, client_user):
         """Lines 330-343: invited user/by names, is_expired."""
@@ -258,6 +283,7 @@ class TestOrganizationInvitationAdminMethods:
 
 @pytest.mark.django_db
 class TestTagAndFolderAdminMethods:
+    """Tests for Tag And Folder Admin Methods."""
 
     def test_tag_get_document_count(self, lawyer_user):
         """Lines 523-526: tag document count."""
@@ -278,6 +304,7 @@ class TestTagAndFolderAdminMethods:
 
 @pytest.mark.django_db
 class TestGenerateExcelReport:
+    """Tests for Generate Excel Report."""
 
     def test_missing_report_type(self, api_client, lawyer_user):
         """Lines 37-41: reportType is required."""
@@ -340,70 +367,64 @@ class TestGenerateExcelReport:
 
 """Batch 25 – admin helpers + GyMAdminSite + model gaps."""
 import pytest
-from django.test import RequestFactory
-from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
-from gym_app.admin import (
-    ProcessAdmin, LegalRequestAdmin, LegalRequestResponseAdmin,
-    CorporateRequestAdmin, CorporateRequestResponseAdmin,
-    OrganizationAdmin, OrganizationInvitationAdmin,
-    OrganizationMembershipAdmin, OrganizationPostAdmin,
-    TagAdmin, DocumentFolderAdmin, DynamicDocumentAdmin, GyMAdminSite,
-)
-from gym_app.models import (
-    Process, Case, LegalRequest, LegalRequestType, LegalDiscipline,
-    LegalRequestResponse, DynamicDocument, Tag, Organization,
-    OrganizationInvitation, OrganizationMembership, OrganizationPost,
-    DocumentFolder,
-)
-from gym_app.models.corporate_request import (
-    CorporateRequest, CorporateRequestType, CorporateRequestResponse,
-)
+from django.contrib.auth import get_user_model
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def site():
+    """Site."""
     return AdminSite()
 
 @pytest.fixture
 def law():
+    """Law."""
     return User.objects.create_user(email="l25@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="c25@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
 def corp():
+    """Corp."""
     return User.objects.create_user(email="co25@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Rp")
 
 class TestAdminHelpers:
+    """Tests for Admin Helpers."""
+
     def test_process_client(self, site, law, cli):
+        """Verify process client."""
         c = Case.objects.create(type="X")
         p = Process.objects.create(ref="R", case=c, lawyer=law)
         p.clients.add(cli)
         assert cli.email in ProcessAdmin(Process, site).get_primary_client(p)
 
     def test_process_no_client(self, site, law):
+        """Verify process no client."""
         c = Case.objects.create(type="Y")
         p = Process.objects.create(ref="R2", case=c, lawyer=law)
         assert ProcessAdmin(Process, site).get_primary_client(p) is None
 
     def test_lr_user_name(self, site, cli):
+        """Verify lr user name."""
         rt = LegalRequestType.objects.create(name="Q")
         di = LegalDiscipline.objects.create(name="C")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
         assert LegalRequestAdmin(LegalRequest, site).get_user_name(lr) == "C E"
 
     def test_lr_user_email(self, site, cli):
+        """Verify lr user email."""
         rt = LegalRequestType.objects.create(name="Q2")
         di = LegalDiscipline.objects.create(name="C2")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
         assert LegalRequestAdmin(LegalRequest, site).get_user_email(lr) == cli.email
 
     def test_lr_resp_user_name(self, site, cli, law):
+        """Verify lr resp user name."""
         rt = LegalRequestType.objects.create(name="Q3")
         di = LegalDiscipline.objects.create(name="C3")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
@@ -411,6 +432,7 @@ class TestAdminHelpers:
         assert "L W" == LegalRequestResponseAdmin(LegalRequestResponse, site).get_user_name(r)
 
     def test_lr_resp_preview_short(self, site, cli, law):
+        """Verify lr resp preview short."""
         rt = LegalRequestType.objects.create(name="Q4")
         di = LegalDiscipline.objects.create(name="C4")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
@@ -418,6 +440,7 @@ class TestAdminHelpers:
         assert LegalRequestResponseAdmin(LegalRequestResponse, site).get_response_preview(r) == "short"
 
     def test_lr_resp_preview_long(self, site, cli, law):
+        """Verify lr resp preview long."""
         rt = LegalRequestType.objects.create(name="Q5")
         di = LegalDiscipline.objects.create(name="C5")
         lr = LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
@@ -427,33 +450,39 @@ class TestAdminHelpers:
         assert len(prev) == 103
 
     def test_corp_req_client_name(self, site, cli, corp):
+        """Verify corp req client name."""
         ct = CorporateRequestType.objects.create(name="T")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         assert cli.email in CorporateRequestAdmin(CorporateRequest, site).get_client_name(cr)
 
     def test_corp_req_corp_name(self, site, cli, corp):
+        """Verify corp req corp name."""
         ct = CorporateRequestType.objects.create(name="T2")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         assert corp.email in CorporateRequestAdmin(CorporateRequest, site).get_corporate_client_name(cr)
 
     def test_corp_req_assigned_none(self, site, cli, corp):
+        """Verify corp req assigned none."""
         ct = CorporateRequestType.objects.create(name="T3")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         assert "No asignado" in CorporateRequestAdmin(CorporateRequest, site).get_assigned_to_name(cr)
 
     def test_corp_resp_user_name(self, site, cli, corp, law):
+        """Verify corp resp user name."""
         ct = CorporateRequestType.objects.create(name="T4")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         r = CorporateRequestResponse.objects.create(corporate_request=cr, user=law, response_text="ok", user_type="lawyer")
         assert "L W" in CorporateRequestResponseAdmin(CorporateRequestResponse, site).get_user_name(r)
 
     def test_corp_resp_preview(self, site, cli, corp, law):
+        """Verify corp resp preview."""
         ct = CorporateRequestType.objects.create(name="T5")
         cr = CorporateRequest.objects.create(client=cli, corporate_client=corp, request_type=ct, title="T", description="D")
         r = CorporateRequestResponse.objects.create(corporate_request=cr, user=law, response_text="y" * 200, user_type="lawyer")
         assert CorporateRequestResponseAdmin(CorporateRequestResponse, site).get_response_preview(r).endswith("...")
 
     def test_org_admin_helpers(self, site, corp):
+        """Verify org admin helpers."""
         org = Organization.objects.create(title="Org", corporate_client=corp)
         oa = OrganizationAdmin(Organization, site)
         assert corp.email in oa.get_corporate_client_name(org)
@@ -461,6 +490,7 @@ class TestAdminHelpers:
         assert oa.get_pending_invitations_count(org) == 0
 
     def test_org_invite_helpers(self, site, corp, cli):
+        """Verify org invite helpers."""
         org = Organization.objects.create(title="Org2", corporate_client=corp)
         inv = OrganizationInvitation.objects.create(organization=org, invited_user=cli, invited_by=corp)
         oia = OrganizationInvitationAdmin(OrganizationInvitation, site)
@@ -469,11 +499,13 @@ class TestAdminHelpers:
         assert isinstance(oia.get_is_expired(inv), bool)
 
     def test_org_membership_helper(self, site, corp, cli):
+        """Verify org membership helper."""
         org = Organization.objects.create(title="Org3", corporate_client=corp)
         mem = OrganizationMembership.objects.create(organization=org, user=cli, role="member")
         assert cli.email in OrganizationMembershipAdmin(OrganizationMembership, site).get_user_name(mem)
 
     def test_org_post_helpers(self, site, corp):
+        """Verify org post helpers."""
         org = Organization.objects.create(title="Org4", corporate_client=corp)
         post = OrganizationPost.objects.create(organization=org, author=corp, title="P", content="C")
         opa = OrganizationPostAdmin(OrganizationPost, site)
@@ -481,14 +513,17 @@ class TestAdminHelpers:
         assert opa.has_link(post) is False
 
     def test_tag_doc_count(self, site, law):
+        """Verify tag doc count."""
         t = Tag.objects.create(name="T1", color_id=1, created_by=law)
         assert TagAdmin(Tag, site).get_document_count(t) == 0
 
     def test_folder_doc_count(self, site, cli):
+        """Verify folder doc count."""
         f = DocumentFolder.objects.create(name="F1", owner=cli)
         assert DocumentFolderAdmin(DocumentFolder, site).get_document_count(f) == 0
 
     def test_gym_admin_get_app_list(self, law):
+        """Verify gym admin get app list."""
         gas = GyMAdminSite(name="testadmin")
         rf = RequestFactory()
         req = rf.get("/admin/")
@@ -498,6 +533,7 @@ class TestAdminHelpers:
         assert len(result) > 0
 
     def test_dynamic_doc_admin_queryset(self, site, law):
+        """Verify dynamic doc admin queryset."""
         DynamicDocument.objects.create(title="QS", content="<p>x</p>", state="Draft", created_by=law)
         adm = DynamicDocumentAdmin(DynamicDocument, site)
         rf = RequestFactory()

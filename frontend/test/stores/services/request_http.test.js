@@ -44,6 +44,10 @@ describe("request_http", () => {
     setCookieValue("csrftoken=abc");
   });
 
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   const runUploadRequest = async () => {
     localStorage.setItem("token", "tkn");
 
@@ -103,7 +107,8 @@ describe("request_http", () => {
 
     mockAxiosGet.mockResolvedValueOnce({ status: 200, data: { ok: true } });
 
-    await get_request("other/endpoint/");
+    const res = await get_request("other/endpoint/");
+    expect(res.status).toBe(200);
 
     expect(mockAxiosGet).toHaveBeenCalledWith(
       "/api/other/endpoint/",
@@ -120,7 +125,8 @@ describe("request_http", () => {
 
     mockAxiosGet.mockResolvedValueOnce({ status: 200, data: { ok: true } });
 
-    await get_request("getter/endpoint/");
+    const res = await get_request("getter/endpoint/");
+    expect(res.status).toBe(200);
 
     expect(mockAxiosGet).toHaveBeenCalledWith(
       "/api/getter/endpoint/",
@@ -137,7 +143,8 @@ describe("request_http", () => {
 
     mockAxiosGet.mockResolvedValueOnce({ status: 200, data: { ok: true } });
 
-    await get_request("empty/cookie/");
+    const res = await get_request("empty/cookie/");
+    expect(res.status).toBe(200);
 
     expect(mockAxiosGet).toHaveBeenCalledWith(
       "/api/empty/cookie/",
@@ -154,7 +161,8 @@ describe("request_http", () => {
 
     mockAxiosGet.mockResolvedValueOnce({ status: 200, data: { ok: true } });
 
-    await get_request("missing/csrf/");
+    const res = await get_request("missing/csrf/");
+    expect(res.status).toBe(200);
 
     expect(mockAxiosGet).toHaveBeenCalledWith(
       "/api/missing/csrf/",
@@ -220,9 +228,11 @@ describe("request_http", () => {
     mockAxiosPatch.mockResolvedValueOnce({ status: 200, data: { ok: true } });
     mockAxiosDelete.mockResolvedValueOnce({ status: 204, data: {} });
 
-    await update_request("endpoint/1/", { x: 1 });
-    await patch_request("endpoint/1/", { y: 2 });
-    await delete_request("endpoint/1/");
+    const r1 = await update_request("endpoint/1/", { x: 1 });
+    const r2 = await patch_request("endpoint/1/", { y: 2 });
+    const r3 = await delete_request("endpoint/1/");
+
+    expect([r1.status, r2.status, r3.status]).toEqual([200, 200, 204]);
 
     expect(mockAxiosPut).toHaveBeenCalledWith(
       "/api/endpoint/1/",
@@ -260,7 +270,8 @@ describe("request_http", () => {
   test("__makeRequest supports PATCH requests", async () => {
     mockAxiosPatch.mockResolvedValueOnce({ status: 200, data: { ok: true } });
 
-    await __makeRequest("PATCH", "endpoint/patch/", { x: 1 });
+    const res = await __makeRequest("PATCH", "endpoint/patch/", { x: 1 });
+    expect(res.status).toBe(200);
 
     expect(mockAxiosPatch).toHaveBeenCalledWith(
       "/api/endpoint/patch/",

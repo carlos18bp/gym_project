@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { installAuthSignOnApiMocks } from "../helpers/authSignOnMocks.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 async function bypassCaptcha(page) {
   await page.evaluate(() => {
     const el = document.querySelector("#email") || document.querySelector("form");
@@ -45,7 +47,7 @@ async function bypassCaptcha(page) {
   });
 }
 
-test("new user can register and is redirected to dashboard", async ({ page }) => {
+test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 2000;
 
   await installAuthSignOnApiMocks(page, {
@@ -104,7 +106,7 @@ test("new user can register and is redirected to dashboard", async ({ page }) =>
     .toBe("e2e-access-token");
 });
 
-test("registration with mismatched passwords shows warning", async ({ page }) => {
+test("registration with mismatched passwords shows warning", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 2001;
 
   await installAuthSignOnApiMocks(page, {
@@ -135,7 +137,7 @@ test("registration with mismatched passwords shows warning", async ({ page }) =>
   await expect(page).toHaveURL(/\/sign_on/);
 });
 
-test("registration with existing email shows error", async ({ page }) => {
+test("registration with existing email shows error", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 2002;
 
   await installAuthSignOnApiMocks(page, {
@@ -165,7 +167,7 @@ test("registration with existing email shows error", async ({ page }) => {
   await expect(page).toHaveURL(/\/sign_on/);
 });
 
-test("sign on page has link to sign in", async ({ page }) => {
+test("sign on page has link to sign in", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 2003;
 
   await installAuthSignOnApiMocks(page, { userId, role: "client" });

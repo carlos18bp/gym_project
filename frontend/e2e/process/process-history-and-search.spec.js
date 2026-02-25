@@ -1,12 +1,14 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installProcessApiMocks,
   buildMockProcess,
   buildMockUser,
 } from "../helpers/processMocks.js";
 
-test("lawyer can switch between active and history processes", async ({ page }) => {
+test("lawyer can switch between active and history processes", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 6000;
   const clientId = 6001;
 
@@ -76,7 +78,7 @@ test("lawyer can switch between active and history processes", async ({ page }) 
   await expect(page.getByText("Demandante Activo")).toHaveCount(0);
 });
 
-test("lawyer can search processes by defendant name", async ({ page }) => {
+test("lawyer can search processes by defendant name", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 6010;
 
   const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", isGymLawyer: true });

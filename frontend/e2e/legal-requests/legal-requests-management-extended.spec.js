@@ -8,6 +8,8 @@ import {
 } from "../helpers/legalRequestsMocks.js";
 import { mockApi } from "../helpers/api.js";
 
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
 /**
  * Extended mock that provides multiple requests with different statuses
  * for testing filter/management scenarios.
@@ -77,7 +79,7 @@ async function installExtendedLegalRequestsMocks(page, { userId, role, requests,
   });
 }
 
-test("lawyer sees multiple legal requests with different statuses", async ({ page }) => {
+test("lawyer sees multiple legal requests with different statuses", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6100;
   const nowIso = new Date().toISOString();
 
@@ -110,7 +112,7 @@ test("lawyer sees multiple legal requests with different statuses", async ({ pag
   await expect(page.getByRole("heading", { name: "Carlos Lopez" })).toBeVisible();
 });
 
-test("lawyer opens a legal request detail from the list", async ({ page }) => {
+test("lawyer opens a legal request detail from the list", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6101;
 
   const requests = [
@@ -140,7 +142,7 @@ test("lawyer opens a legal request detail from the list", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Elena Ruiz" })).toBeVisible();
 });
 
-test("client views their legal request detail with description", async ({ page }) => {
+test("client views their legal request detail with description", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6102;
 
   const requests = [
@@ -179,7 +181,7 @@ test("client views their legal request detail with description", async ({ page }
   await expect(page.getByText("Respuesta del abogado")).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer sees request count in the list", async ({ page }) => {
+test("lawyer sees request count in the list", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6103;
 
   const requests = [

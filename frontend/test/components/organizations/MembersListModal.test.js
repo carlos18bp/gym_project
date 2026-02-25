@@ -5,6 +5,8 @@ import { useOrganizationsStore } from "@/stores/organizations";
 
 import MembersListModal from "@/components/organizations/modals/MembersListModal.vue";
 
+// quality: allow-test-too-long (component tests with complex mount setup and validation)
+
 const mockShowNotification = jest.fn();
 
 jest.mock("@/shared/notification_message", () => ({
@@ -67,6 +69,10 @@ describe("MembersListModal.vue", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test("when visible becomes true, loads members for organization", async () => {
@@ -250,6 +256,7 @@ describe("MembersListModal.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.loadMembers();
 
     expect(spy).not.toHaveBeenCalled();
@@ -352,6 +359,7 @@ describe("MembersListModal.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     const { getInitials } = wrapper.vm.$.setupState;
 
     expect(getInitials("Ana", "Diaz")).toBe("AD");

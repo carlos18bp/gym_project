@@ -3,7 +3,11 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { buildMockOrganization, installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: client leaves organization and corporate stats + org counts update", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+test("cross-role: client leaves organization and corporate stats + org counts update", { tag: ['@flow:org-cross-member-management', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4900;
@@ -133,7 +137,7 @@ test("cross-role: client leaves organization and corporate stats + org counts up
   const orgCard = page
     .locator("div.bg-white.shadow.rounded-lg.overflow-hidden")
     .filter({ hasText: "Acme Corp" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   await expect(orgCard).toBeVisible();
   await expect(orgCard.getByText("2 miembros")).toBeVisible();

@@ -45,13 +45,13 @@ describe("ReportsWidget.vue", () => {
     const button = wrapper.find("button");
     expect(button.attributes("disabled")).toBeDefined();
 
-    await wrapper.find("#reportType").setValue("active_processes");
+    await wrapper.find('select[id="reportType"]').setValue("active_processes");
     await flushPromises();
 
     expect(wrapper.find("button").attributes("disabled")).toBeUndefined();
 
     // Only one date => invalid
-    await wrapper.find("#startDate").setValue("2026-01-10");
+    await wrapper.find('input[id="startDate"]').setValue("2026-01-10");
     await flushPromises();
 
     expect(wrapper.text()).toContain(
@@ -60,16 +60,17 @@ describe("ReportsWidget.vue", () => {
     expect(wrapper.find("button").attributes("disabled")).toBeDefined();
 
     // Both dates but start > end => invalid
-    await wrapper.find("#endDate").setValue("2026-01-01");
+    await wrapper.find('input[id="endDate"]').setValue("2026-01-01");
     await flushPromises();
 
     expect(wrapper.find("button").attributes("disabled")).toBeDefined();
 
     // Valid range => enabled
-    await wrapper.find("#endDate").setValue("2026-01-31");
+    await wrapper.find('input[id="endDate"]').setValue("2026-01-31");
     await flushPromises();
 
     expect(wrapper.find("button").attributes("disabled")).toBeUndefined();
+    jest.restoreAllMocks();
   });
 
   test("calls reportsStore.generateExcelReport with correct payload and shows processing state", async () => {
@@ -92,12 +93,12 @@ describe("ReportsWidget.vue", () => {
       },
     });
 
-    await wrapper.find("#reportType").setValue("legal_requests");
-    await wrapper.find("#startDate").setValue("2026-01-01");
-    await wrapper.find("#endDate").setValue("2026-01-31");
+    await wrapper.find('select[id="reportType"]').setValue("legal_requests");
+    await wrapper.find('input[id="startDate"]').setValue("2026-01-01");
+    await wrapper.find('input[id="endDate"]').setValue("2026-01-31");
 
     await wrapper.find("button").trigger("click");
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(spy).toHaveBeenCalledWith({
       reportType: "legal_requests",
@@ -110,9 +111,9 @@ describe("ReportsWidget.vue", () => {
 
     deferred.resolve(new Blob([]));
     await flushPromises();
-    await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("Generar y Descargar Reporte");
+    jest.restoreAllMocks();
   });
 
   test("alerts when report generation fails", async () => {
@@ -136,7 +137,7 @@ describe("ReportsWidget.vue", () => {
       },
     });
 
-    await wrapper.find("#reportType").setValue("active_processes");
+    await wrapper.find('select[id="reportType"]').setValue("active_processes");
     await wrapper.find("button").trigger("click");
 
     await flushPromises();
@@ -145,14 +146,17 @@ describe("ReportsWidget.vue", () => {
 
     alertSpy.mockRestore();
     consoleSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
-  test("formatDate formats to YYYY-MM-DD with zero padding", async () => {
+  test("sends date payload in YYYY-MM-DD when valid dates are selected", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
 
     const reportsStore = useReportsStore();
-    jest.spyOn(reportsStore, "generateExcelReport").mockResolvedValue(new Blob([]));
+    const spy = jest
+      .spyOn(reportsStore, "generateExcelReport")
+      .mockResolvedValue(new Blob([]));
 
     const wrapper = mount(ReportsWidget, {
       props: {
@@ -163,8 +167,18 @@ describe("ReportsWidget.vue", () => {
       },
     });
 
-    expect(wrapper.vm.formatDate(new Date("2026-01-05T00:00:00Z"))).toBe("2026-01-05");
-    expect(wrapper.vm.formatDate(new Date("2026-11-09T00:00:00Z"))).toBe("2026-11-09");
+    await wrapper.find('select[id="reportType"]').setValue("active_processes");
+    await wrapper.find('input[id="startDate"]').setValue("2026-01-05");
+    await wrapper.find('input[id="endDate"]').setValue("2026-11-09");
+    await wrapper.find("button").trigger("click");
+    await flushPromises();
+
+    expect(spy).toHaveBeenCalledWith({
+      reportType: "active_processes",
+      startDate: "2026-01-05",
+      endDate: "2026-11-09",
+    });
+    jest.restoreAllMocks();
   });
 
   test("generateReport returns early when form is invalid", async () => {
@@ -185,10 +199,11 @@ describe("ReportsWidget.vue", () => {
 
     expect(wrapper.find("button").attributes("disabled")).toBeDefined();
 
-    await wrapper.vm.generateReport();
+    await wrapper.find("button").trigger("click");
     await flushPromises();
 
     expect(spy).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain("Procesando...");
+    jest.restoreAllMocks();
   });
 });

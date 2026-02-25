@@ -45,11 +45,11 @@ describe("QuickActionButtons.vue", () => {
     expect(wrapper.text()).toContain("Radicar Informe");
     expect(wrapper.text()).not.toContain("Mis Procesos");
 
-    expect(wrapper.vm.$.setupState.showFacturationModal).toBe(false);
+    expect(wrapper.find("[data-test='facturation-modal']").isVisible()).toBe(false);
 
     await findClickableCardByText(wrapper, "Radicar Informe").trigger("click");
 
-    expect(wrapper.vm.$.setupState.showFacturationModal).toBe(true);
+    expect(wrapper.find("[data-test='facturation-modal']").isVisible()).toBe(true);
   });
 
   test("renders client actions for non-lawyers", () => {

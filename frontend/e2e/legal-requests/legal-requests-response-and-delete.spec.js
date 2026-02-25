@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installLegalRequestsApiMocks,
   buildMockLegalRequestDetail,
 } from "../helpers/legalRequestsMocks.js";
@@ -13,7 +15,7 @@ import {
  * - LegalRequestDetail.vue — lawyer response flow, delete completion
  */
 
-test("lawyer submits a response on a legal request detail page", async ({ page }) => {
+test("lawyer submits a response on a legal request detail page", { tag: ['@flow:legal-response-thread', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9890;
 
   await installLegalRequestsApiMocks(page, {
@@ -99,7 +101,7 @@ test("lawyer submits a response on a legal request detail page", async ({ page }
   await expect(textarea).toHaveValue("", { timeout: 5_000 });
 });
 
-test("lawyer completes delete action on legal request detail", async ({ page }) => {
+test("lawyer completes delete action on legal request detail", { tag: ['@flow:legal-response-thread', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9891;
 
   await installLegalRequestsApiMocks(page, {
@@ -145,7 +147,7 @@ test("lawyer completes delete action on legal request detail", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Eliminar Solicitud" })).toBeHidden({ timeout: 10_000 });
 });
 
-test("client sees empty response state with client-specific message", async ({ page }) => {
+test("client sees empty response state with client-specific message", { tag: ['@flow:legal-response-thread', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9892;
 
   await installLegalRequestsApiMocks(page, {

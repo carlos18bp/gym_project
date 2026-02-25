@@ -12,6 +12,10 @@ describe("color_palette.js", () => {
     jest.restoreAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test("getColorById returns the matching color and defaults to first entry", () => {
     expect(getColorById(3)).toEqual(COLOR_PALETTE[3]);
     expect(getColorById(999)).toEqual(COLOR_PALETTE[0]);

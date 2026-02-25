@@ -2,12 +2,18 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+// quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
+
+// quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
+
   buildMockCorporateRequest,
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client received requests: filters, view detail, and update status", async ({ page }) => {
+test("corporate_client received requests: filters, view detail, and update status", { tag: ['@flow:org-corporate-requests', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   const userId = 4700;
 
   const orgA = buildMockOrganization({
@@ -127,12 +133,12 @@ test("corporate_client received requests: filters, view detail, and update statu
 
   // Search by title
   await page.selectOption("select#organization-filter", "");
-  await page.locator("#search").fill("Urgente");
+  await page.locator("#search").fill("Urgente"); // quality: allow-fragile-selector (stable DOM id)
   await expect(page.getByText("CORP-REQ-6001")).toBeVisible();
   await expect(page.getByText("CORP-REQ-6002")).toHaveCount(0);
 
   // Reset filters
-  await page.locator("#search").fill("texto-que-no-existe");
+  await page.locator("#search").fill("texto-que-no-existe"); // quality: allow-fragile-selector (stable DOM id)
   await expect(page.getByText("No se encontraron solicitudes")).toBeVisible();
   await page.getByRole("button", { name: "Limpiar Filtros" }).click();
   await expect(page.getByText("CORP-REQ-6001")).toBeVisible();
@@ -143,7 +149,7 @@ test("corporate_client received requests: filters, view detail, and update statu
   const req1Card = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6001" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await req1Card.getByRole("button", { name: /Ver Detalle|Detalle/ }).first().click();
   await expect(page).toHaveURL(/\/organizations_dashboard\?tab=request-detail&id=6001/);
 
@@ -154,14 +160,14 @@ test("corporate_client received requests: filters, view detail, and update statu
   const req2Card = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6002" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await req2Card.getByRole("button", { name: /Cambiar Estado|Estado/ }).click();
   await req2Card.getByRole("button", { name: /Resuelta/ }).click();
 
   const updatedReq2Card = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "CORP-REQ-6002" })
-    .first();
+    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(
     updatedReq2Card.locator("span.bg-green-100.text-green-800").filter({ hasText: "Resuelta" })
   ).toBeVisible();

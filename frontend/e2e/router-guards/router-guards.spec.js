@@ -60,7 +60,7 @@ async function installBasicMocks(page, { userId, role }) {
   });
 }
 
-test("client accessing lawyer-only route is redirected to dashboard", async ({ page }) => {
+test("client accessing lawyer-only route is redirected to dashboard", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 5000;
 
   await installBasicMocks(page, { userId, role: "client" });
@@ -77,7 +77,7 @@ test("client accessing lawyer-only route is redirected to dashboard", async ({ p
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 });
 
-test("lawyer can access lawyer-only route (directory)", async ({ page }) => {
+test("lawyer can access lawyer-only route (directory)", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 5001;
 
   await installBasicMocks(page, { userId, role: "lawyer" });
@@ -93,7 +93,7 @@ test("lawyer can access lawyer-only route (directory)", async ({ page }) => {
   await expect(page).toHaveURL(/\/directory_list/, { timeout: 15_000 });
 });
 
-test("root path redirects authenticated user to dashboard", async ({ page }) => {
+test("root path redirects authenticated user to dashboard", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 5002;
 
   await installBasicMocks(page, { userId, role: "lawyer" });
@@ -109,7 +109,7 @@ test("root path redirects authenticated user to dashboard", async ({ page }) => 
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 });
 
-test("unknown route redirects to sign_in for unauthenticated user", async ({ page }) => {
+test("unknown route redirects to sign_in for unauthenticated user", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const apiPath = url.pathname.replace(/^\/api\//, "");
@@ -130,7 +130,7 @@ test("unknown route redirects to sign_in for unauthenticated user", async ({ pag
   await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
 });
 
-test("page title updates based on route", async ({ page }) => {
+test("page title updates based on route", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 5003;
 
   await installBasicMocks(page, { userId, role: "lawyer" });

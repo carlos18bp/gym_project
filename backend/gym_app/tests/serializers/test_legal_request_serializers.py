@@ -1,36 +1,39 @@
+"""Tests for legal_request_serializers module."""
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import serializers
+
 from gym_app.models import (
-    LegalRequestType,
     LegalDiscipline,
-    LegalRequestFiles,
     LegalRequest,
+    LegalRequestFiles,
     LegalRequestResponse,
+    LegalRequestType,
     User,
 )
 from gym_app.serializers.legal_request import (
-    LegalRequestTypeSerializer,
     LegalDisciplineSerializer,
     LegalRequestFilesSerializer,
-    LegalRequestSerializer,
     LegalRequestListSerializer,
     LegalRequestResponseSerializer,
+    LegalRequestSerializer,
+    LegalRequestTypeSerializer,
 )
+
 
 @pytest.fixture
 def legal_request_type():
-    """Create a legal request type for testing"""
+    """Create a legal request type for testing."""
     return LegalRequestType.objects.create(name="Consulta")
 
 @pytest.fixture
 def legal_discipline():
-    """Create a legal discipline for testing"""
+    """Create a legal discipline for testing."""
     return LegalDiscipline.objects.create(name="Derecho Civil")
 
 @pytest.fixture
 def legal_request_file():
-    """Create a legal request file for testing"""
+    """Create a legal request file for testing."""
     test_file = SimpleUploadedFile(
         "test_document.pdf",
         b"file_content",
@@ -40,7 +43,7 @@ def legal_request_file():
 
 @pytest.fixture
 def legal_request_user():
-    """Create a user to associate with legal requests for serializer tests"""
+    """Create a user to associate with legal requests for serializer tests."""
     return User.objects.create_user(
         email="john.doe@example.com",
         password="testpassword",
@@ -52,7 +55,7 @@ def legal_request_user():
 
 @pytest.fixture
 def legal_request(legal_request_type, legal_discipline, legal_request_file, legal_request_user):
-    """Create a complete legal request for testing"""
+    """Create a complete legal request for testing."""
     legal_request = LegalRequest.objects.create(
         user=legal_request_user,
         request_type=legal_request_type,
@@ -64,16 +67,17 @@ def legal_request(legal_request_type, legal_discipline, legal_request_file, lega
 
 @pytest.mark.django_db
 class TestLegalRequestTypeSerializer:
+    """Tests for Legal Request Type Serializer."""
     
     def test_serialize_legal_request_type(self, legal_request_type):
-        """Test the serialization of a legal request type"""
+        """Test the serialization of a legal request type."""
         serializer = LegalRequestTypeSerializer(legal_request_type)
         
         assert serializer.data['id'] == legal_request_type.id
         assert serializer.data['name'] == legal_request_type.name
     
     def test_deserialize_legal_request_type(self):
-        """Test the deserialization to create a new legal request type"""
+        """Test the deserialization to create a new legal request type."""
         data = {'name': 'New Consultation'}
         
         serializer = LegalRequestTypeSerializer(data=data)
@@ -84,16 +88,17 @@ class TestLegalRequestTypeSerializer:
 
 @pytest.mark.django_db
 class TestLegalDisciplineSerializer:
+    """Tests for Legal Discipline Serializer."""
     
     def test_serialize_legal_discipline(self, legal_discipline):
-        """Test the serialization of a legal discipline"""
+        """Test the serialization of a legal discipline."""
         serializer = LegalDisciplineSerializer(legal_discipline)
         
         assert serializer.data['id'] == legal_discipline.id
         assert serializer.data['name'] == legal_discipline.name
     
     def test_deserialize_legal_discipline(self):
-        """Test the deserialization to create a new legal discipline"""
+        """Test the deserialization to create a new legal discipline."""
         data = {'name': 'Labor Law'}
         
         serializer = LegalDisciplineSerializer(data=data)
@@ -104,16 +109,17 @@ class TestLegalDisciplineSerializer:
 
 @pytest.mark.django_db
 class TestLegalRequestFilesSerializer:
+    """Tests for Legal Request Files Serializer."""
     
     def test_serialize_legal_request_file(self, legal_request_file):
-        """Test the serialization of a legal request file"""
+        """Test the serialization of a legal request file."""
         serializer = LegalRequestFilesSerializer(legal_request_file)
         
         assert serializer.data['id'] == legal_request_file.id
         assert 'file' in serializer.data
     
     def test_deserialize_legal_request_file(self):
-        """Test the deserialization to create a new legal request file"""
+        """Test the deserialization to create a new legal request file."""
         test_file = SimpleUploadedFile(
             "new_document.pdf", 
             b"new_content", 
@@ -130,9 +136,10 @@ class TestLegalRequestFilesSerializer:
 
 @pytest.mark.django_db
 class TestLegalRequestSerializer:
+    """Tests for Legal Request Serializer."""
     
     def test_serialize_legal_request_basic_fields(self, legal_request):
-        """Test the serialization of a complete legal request - basic fields"""
+        """Test the serialization of a complete legal request - basic fields."""
         serializer = LegalRequestSerializer(legal_request)
         
         assert serializer.data['id'] == legal_request.id
@@ -142,7 +149,7 @@ class TestLegalRequestSerializer:
         assert serializer.data['description'] == legal_request.description
 
     def test_serialize_legal_request_relationships(self, legal_request):
-        """Test the serialization of a complete legal request - relationships"""
+        """Test the serialization of a complete legal request - relationships."""
         serializer = LegalRequestSerializer(legal_request)
         
         # Verify nested relationships
@@ -156,8 +163,7 @@ class TestLegalRequestSerializer:
         assert serializer.data['files'][0]['id'] == legal_request.files.first().id
 
     def test_deserialize_legal_request_with_existing_relations(self, legal_request_type, legal_discipline, legal_request_user):
-        """
-        Test the deserialization to create a request with existing relationships.
+        """Test the deserialization to create a request with existing relationships.
         
         Note: This test assumes that the LegalRequestSerializer is configured
         to accept IDs for relationships (request_type, discipline) instead of complete
@@ -186,8 +192,7 @@ class TestLegalRequestSerializer:
         assert legal_request.discipline.id == legal_discipline.id
 
     def test_update_legal_request(self, legal_request):
-        """
-        Test updating a legal request.
+        """Test updating a legal request.
         
         Note: As in the previous test, we assume there is a serializer
         for updating that accepts IDs for relationships.
@@ -213,7 +218,10 @@ class TestLegalRequestSerializer:
 
 @pytest.mark.django_db
 class TestLegalRequestListSerializer:
+    """Tests for Legal Request List Serializer."""
+
     def test_list_serializer_computed_fields(self, legal_request):
+        """Verify list serializer computed fields."""
         LegalRequestResponse.objects.create(
             legal_request=legal_request,
             response_text="Respuesta",
@@ -232,7 +240,10 @@ class TestLegalRequestListSerializer:
 
 @pytest.mark.django_db
 class TestLegalRequestResponseSerializer:
+    """Tests for Legal Request Response Serializer."""
+
     def test_response_serializer_user_name_full(self, legal_request_user, legal_request):
+        """Verify response serializer user name full."""
         response = LegalRequestResponse.objects.create(
             legal_request=legal_request,
             response_text="Hola",
@@ -246,6 +257,7 @@ class TestLegalRequestResponseSerializer:
         assert data["user_name"] == f"{legal_request_user.first_name} {legal_request_user.last_name}".strip()
 
     def test_response_serializer_user_name_empty_when_missing_names(self, legal_request_type, legal_discipline):
+        """Verify response serializer user name empty when missing names."""
         user = User.objects.create_user(
             email="noname@example.com",
             password="testpassword",

@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installLegalRequestsApiMocks,
   buildMockLegalRequestDetail,
 } from "../helpers/legalRequestsMocks.js";
@@ -12,7 +14,7 @@ import {
  * - ResponseThread.vue — response display
  */
 
-test("client sees request detail with empty files and can open AddFilesModal", async ({ page }) => {
+test("client sees request detail with empty files and can open AddFilesModal", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 9880;
 
   await installLegalRequestsApiMocks(page, {
@@ -86,7 +88,7 @@ test("client sees request detail with empty files and can open AddFilesModal", a
   await expect(page.getByRole("heading", { name: "Agregar Archivos" })).toBeHidden({ timeout: 5_000 });
 });
 
-test("client sees request detail with attached files listed", async ({ page }) => {
+test("client sees request detail with attached files listed", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 9881;
 
   await installLegalRequestsApiMocks(page, {
@@ -145,7 +147,7 @@ test("client sees request detail with attached files listed", async ({ page }) =
   await expect(page.getByText("No hay archivos adjuntos")).toBeHidden();
 });
 
-test("client sees response thread section on request detail", async ({ page }) => {
+test("client sees response thread section on request detail", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 9882;
 
   await installLegalRequestsApiMocks(page, {

@@ -124,6 +124,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
     await flushPromises();
 
     expect(mockInit).toHaveBeenCalled();
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.legalRequestTypes).toHaveLength(1);
     expect(wrapper.vm.$.setupState.legalDisciplines).toHaveLength(1);
     expect(wrapper.vm.$.setupState.isSaveButtonEnabled).toBeFalsy();
@@ -157,6 +158,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
       target: { files: [largeFile, invalidFile, pdfFile, docFile, docxFile, jpgFile], value: "x" },
     };
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.handleFileChange(changeEvent);
 
     expect(changeEvent.target.value).toBeNull();
@@ -213,6 +215,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
     const wrapper = await submitValidRequest();
 
     expect([
+      // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
       wrapper.vm.$.setupState.formData.requestTypeId,
       wrapper.vm.$.setupState.formData.description,
       wrapper.vm.$.setupState.files.length,
@@ -228,6 +231,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
     const wrapper = mountView();
 
     fillValidForm(wrapper);
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.handleFileChange({
       target: { files: [pdfFile], value: "x" },
     });
@@ -255,6 +259,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
 
     const wrapper = mountView();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     wrapper.vm.$.setupState.formData.requestTypeId = { id: 1, name: "Consulta" };
     wrapper.vm.$.setupState.formData.disciplineId = { id: 2, name: "Civil" };
     wrapper.vm.$.setupState.formData.description = "Detalle";
@@ -285,6 +290,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
   test("validates email format", () => {
     const wrapper = mountView();
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.isValidEmail("ana@example.com")).toBe(true);
     expect(wrapper.vm.$.setupState.isValidEmail("invalid")).toBe(false);
   });

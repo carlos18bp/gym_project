@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsClientApiMocks } from "../../helpers/organizationsClientMocks.js";
 
-test("client can open request detail from My Requests and add a response", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("client can open request detail from My Requests and add a response", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3300;
 
   await installOrganizationsClientApiMocks(page, {
@@ -34,7 +36,7 @@ test("client can open request detail from My Requests and add a response", async
   await expect(page.locator('h2:has-text("Mis Solicitudes Corporativas")')).toBeVisible();
 
   // Open the seeded request detail
-  const seededCard = page.locator('div:has-text("CORP-REQ-6100")').first();
+  const seededCard = page.locator('div:has-text("CORP-REQ-6100")').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(seededCard).toBeVisible();
   await seededCard.getByRole("button", { name: "Ver Detalle" }).click();
 
@@ -50,7 +52,7 @@ test("client can open request detail from My Requests and add a response", async
 
   await expect(page.locator('h3:has-text("Conversación")')).toContainText("1");
   await expect(page.getByText("Respuesta E2E")).toBeVisible();
-  const responseCard = page.locator("div").filter({ hasText: "Respuesta E2E" }).first();
+  const responseCard = page.locator("div").filter({ hasText: "Respuesta E2E" }).first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(responseCard.getByText("Cliente", { exact: true })).toBeVisible();
 
   // Back to dashboard

@@ -3,7 +3,9 @@ import { test, expect } from "../../helpers/test.js";
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { buildMockOrganization, installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: client creates request and corporate sees it in received requests", async ({ page }) => {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
+test("cross-role: client creates request and corporate sees it in received requests", { tag: ['@flow:org-cross-request-flow', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 4950;
@@ -56,19 +58,19 @@ test("cross-role: client creates request and corporate sees it in received reque
 
   await dialog.locator("select#organization").selectOption("1");
   await dialog.locator("select#request_type").selectOption("1");
-  await dialog.locator("#title").fill("Solicitud Cross E2E");
-  await dialog.locator("#description").fill("Descripción Cross E2E");
+  await dialog.locator("#title").fill("Solicitud Cross E2E"); // quality: allow-fragile-selector (stable DOM id)
+  await dialog.locator("#description").fill("Descripción Cross E2E"); // quality: allow-fragile-selector (stable DOM id)
   await dialog.locator("select#priority").selectOption("HIGH");
 
   await dialog.getByRole("button", { name: "Enviar Solicitud" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Solicitud enviada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Solicitud enviada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   // Client should land on requests tab and see the created request
   await expect(page.locator('h2:has-text("Mis Solicitudes Corporativas")')).toBeVisible();
-  const createdCard = page.locator('div:has-text("CORP-REQ-6001")').first();
+  const createdCard = page.locator('div:has-text("CORP-REQ-6001")').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await expect(createdCard).toBeVisible();
   await expect(createdCard.getByText("Solicitud Cross E2E")).toBeVisible();
 

@@ -1,12 +1,12 @@
+"""Tests for organization module."""
 import os
-from datetime import datetime, timedelta, timezone as dt_timezone
-from unittest.mock import patch
+from datetime import datetime
+from datetime import timezone as dt_timezone
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
-from django.utils import timezone
 
 from gym_app.models.organization import (
     Organization,
@@ -16,7 +16,6 @@ from gym_app.models.organization import (
 )
 from gym_app.models.user import User
 
-
 FUTURE_EXPIRY = datetime(2099, 1, 1, tzinfo=dt_timezone.utc)
 PAST_EXPIRY = datetime(2000, 1, 1, tzinfo=dt_timezone.utc)
 
@@ -24,6 +23,7 @@ PAST_EXPIRY = datetime(2000, 1, 1, tzinfo=dt_timezone.utc)
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -36,6 +36,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def basic_user():
+    """Create a basic user."""
     return User.objects.create_user(
         email="basic@example.com",
         password="testpassword",
@@ -48,6 +49,7 @@ def basic_user():
 @pytest.fixture
 @pytest.mark.django_db
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -60,6 +62,7 @@ def client_user():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org Title",
         description="Org Description",
@@ -69,6 +72,8 @@ def organization(corporate_client):
 
 @pytest.mark.django_db
 class TestOrganizationModel:
+    """Tests for Organization Model."""
+
     def test_organization_clean_requires_corporate_client_role(self, client_user):
         """El líder debe tener rol corporate_client."""
         org = Organization(
@@ -156,7 +161,10 @@ class TestOrganizationModel:
 
 @pytest.mark.django_db
 class TestOrganizationInvitation:
+    """Tests for Organization Invitation."""
+
     def test_invitation_save_sets_default_expires_at(self, organization, client_user, corporate_client):
+        """Verify invitation save sets default expires at."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -171,7 +179,7 @@ class TestOrganizationInvitation:
         assert 25 <= delta.days <= 35
 
     def test_invitation_clean_invalid_invited_role(self, organization):
-        """Test invitation rejects invalid invited_user role"""
+        """Test invitation rejects invalid invited_user role."""
         invalid_invited = User.objects.create_user(email="lawyer@example.com", password="testpassword", role="lawyer")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=invalid_invited, invited_by=organization.corporate_client,
@@ -182,7 +190,7 @@ class TestOrganizationInvitation:
         assert exc_info.value is not None
 
     def test_invitation_clean_invalid_inviter_role(self, organization, client_user):
-        """Test invitation rejects invalid invited_by role"""
+        """Test invitation rejects invalid invited_by role."""
         invalid_inviter = User.objects.create_user(email="notcorp@example.com", password="testpassword", role="client")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=client_user, invited_by=invalid_inviter,
@@ -193,7 +201,7 @@ class TestOrganizationInvitation:
         assert exc_info.value is not None
 
     def test_invitation_clean_inviter_not_leader(self, organization, client_user):
-        """Test invitation rejects inviter who is not organization leader"""
+        """Test invitation rejects inviter who is not organization leader."""
         other_corp = User.objects.create_user(email="othercorp@example.com", password="testpassword", role="corporate_client")
         invitation = OrganizationInvitation(
             organization=organization, invited_user=client_user, invited_by=other_corp,
@@ -204,6 +212,7 @@ class TestOrganizationInvitation:
         assert exc_info.value is not None
 
     def test_invitation_prevents_duplicate_pending(self, organization, client_user, corporate_client):
+        """Verify invitation prevents duplicate pending."""
         OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -226,6 +235,7 @@ class TestOrganizationInvitation:
         assert OrganizationInvitation.objects.filter(organization=organization, invited_user=client_user).count() == 1
 
     def test_invitation_is_expired_and_can_be_responded(self, organization, client_user, corporate_client):
+        """Verify invitation is expired and can be responded."""
         expired = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -253,6 +263,7 @@ class TestOrganizationInvitation:
         assert active.can_be_responded() is True
 
     def test_invitation_accept_creates_membership_and_sets_status(self, organization, client_user, corporate_client):
+        """Verify invitation accept creates membership and sets status."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -269,6 +280,7 @@ class TestOrganizationInvitation:
         assert invitation.responded_at is not None
 
     def test_invitation_accept_raises_if_already_member(self, organization, client_user, corporate_client):
+        """Verify invitation accept raises if already member."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -290,6 +302,7 @@ class TestOrganizationInvitation:
         assert invitation.status == "PENDING"
 
     def test_invitation_reject_updates_status(self, organization, client_user, corporate_client):
+        """Verify invitation reject updates status."""
         invitation = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -305,7 +318,10 @@ class TestOrganizationInvitation:
 
 @pytest.mark.django_db
 class TestOrganizationMembership:
+    """Tests for Organization Membership."""
+
     def test_membership_clean_enforces_single_leader(self, organization, corporate_client, client_user):
+        """Verify membership clean enforces single leader."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=corporate_client,
@@ -324,6 +340,7 @@ class TestOrganizationMembership:
         assert OrganizationMembership.objects.filter(organization=organization, role="LEADER").count() == 1
 
     def test_membership_deactivate_and_reactivate(self, organization, client_user):
+        """Verify membership deactivate and reactivate."""
         membership = OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -341,6 +358,7 @@ class TestOrganizationMembership:
         assert membership.deactivated_at is None
 
     def test_membership_unique_user_per_organization(self, organization, client_user):
+        """Verify membership unique user per organization."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -358,6 +376,7 @@ class TestOrganizationMembership:
         assert OrganizationMembership.objects.filter(organization=organization, user=client_user).count() == 1
 
     def test_membership_str(self, organization, client_user):
+        """Verify membership str."""
         membership = OrganizationMembership.objects.create(
             organization=organization,
             user=client_user,
@@ -372,7 +391,10 @@ class TestOrganizationMembership:
 
 @pytest.mark.django_db
 class TestOrganizationPost:
+    """Tests for Organization Post."""
+
     def test_post_clean_requires_author_is_leader(self, organization, client_user):
+        """Verify post clean requires author is leader."""
         post = OrganizationPost(
             title="Post",
             content="Contenido",
@@ -385,6 +407,7 @@ class TestOrganizationPost:
         assert exc_info.value is not None
 
     def test_post_clean_validates_link_name_and_url(self, organization, corporate_client):
+        """Verify post clean validates link name and url."""
         # link_name sin link_url
         post = OrganizationPost(
             title="Post",
@@ -412,6 +435,7 @@ class TestOrganizationPost:
         assert exc_info.value is not None
 
     def test_post_has_link_and_toggle_pin_and_activation(self, organization, corporate_client):
+        """Verify post has link and toggle pin and activation."""
         post = OrganizationPost.objects.create(
             title="Post",
             content="Contenido",
@@ -437,6 +461,7 @@ class TestOrganizationPost:
         assert post.is_active is True
 
     def test_post_str_includes_pinned_indicator(self, organization, corporate_client):
+        """Verify post str includes pinned indicator."""
         post = OrganizationPost.objects.create(
             title="Post",
             content="Contenido",
@@ -458,7 +483,10 @@ class TestOrganizationPost:
 
 @pytest.mark.django_db
 class TestOrganizationEdges:
+    """Tests for Organization Edges."""
+
     def test_organization_clean_invalid_leader_role(self, client_user):
+        """Verify organization clean invalid leader role."""
         org = Organization(
             title="Bad", description="D", corporate_client=client_user,
         )
@@ -467,12 +495,14 @@ class TestOrganizationEdges:
         assert exc_info.value is not None
 
     def test_get_member_count(self, organization, client_user):
+        """Verify get member count."""
         OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
         )
         assert organization.get_member_count() == 1
 
     def test_get_pending_invitations_count(self, organization, client_user, corporate_client):
+        """Verify get pending invitations count."""
         OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -483,6 +513,7 @@ class TestOrganizationEdges:
         assert organization.get_pending_invitations_count() == 1
 
     def test_organization_str(self, organization, corporate_client):
+        """Verify organization str."""
         s = str(organization)
         assert "Org Title" in s
         assert corporate_client.email in s
@@ -495,7 +526,10 @@ class TestOrganizationEdges:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationEdges:
+    """Tests for Organization Invitation Edges."""
+
     def test_invitation_is_expired(self, organization, client_user, corporate_client):
+        """Verify invitation is expired."""
         inv = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -507,6 +541,7 @@ class TestOrganizationInvitationEdges:
     def test_invitation_can_be_responded_false_when_expired(
         self, organization, client_user, corporate_client
     ):
+        """Verify invitation can be responded false when expired."""
         inv = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -518,6 +553,7 @@ class TestOrganizationInvitationEdges:
     def test_invitation_accept_creates_membership(
         self, organization, client_user, corporate_client
     ):
+        """Verify invitation accept creates membership."""
         inv = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -532,6 +568,7 @@ class TestOrganizationInvitationEdges:
         assert inv.status == "ACCEPTED"
 
     def test_invitation_reject(self, organization, client_user, corporate_client):
+        """Verify invitation reject."""
         inv = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -545,6 +582,7 @@ class TestOrganizationInvitationEdges:
     def test_accept_already_member_raises(
         self, organization, client_user, corporate_client
     ):
+        """Verify accept already member raises."""
         OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
         )
@@ -561,6 +599,7 @@ class TestOrganizationInvitationEdges:
         assert inv.status == "PENDING"
 
     def test_invitation_str(self, organization, client_user, corporate_client):
+        """Verify invitation str."""
         inv = OrganizationInvitation.objects.create(
             organization=organization,
             invited_user=client_user,
@@ -579,7 +618,10 @@ class TestOrganizationInvitationEdges:
 
 @pytest.mark.django_db
 class TestOrganizationMembershipEdges:
+    """Tests for Organization Membership Edges."""
+
     def test_deactivate(self, organization, client_user):
+        """Verify deactivate."""
         m = OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
         )
@@ -589,6 +631,7 @@ class TestOrganizationMembershipEdges:
         assert m.deactivated_at is not None
 
     def test_reactivate(self, organization, client_user):
+        """Verify reactivate."""
         m = OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
             is_active=False,
@@ -599,6 +642,7 @@ class TestOrganizationMembershipEdges:
         assert m.deactivated_at is None
 
     def test_only_one_leader(self, organization, client_user, corporate_client):
+        """Verify only one leader."""
         OrganizationMembership.objects.create(
             organization=organization, user=corporate_client, role="LEADER",
         )
@@ -611,6 +655,7 @@ class TestOrganizationMembershipEdges:
         assert OrganizationMembership.objects.filter(organization=organization, role="LEADER").count() == 1
 
     def test_membership_str(self, organization, client_user):
+        """Verify membership str."""
         m = OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
         )
@@ -626,7 +671,10 @@ class TestOrganizationMembershipEdges:
 
 @pytest.mark.django_db
 class TestOrganizationPostEdges:
+    """Tests for Organization Post Edges."""
+
     def test_toggle_pin(self, organization, corporate_client):
+        """Verify toggle pin."""
         post = OrganizationPost.objects.create(
             title="P", content="C", organization=organization, author=corporate_client,
         )
@@ -636,6 +684,7 @@ class TestOrganizationPostEdges:
         assert post.is_pinned is True
 
     def test_deactivate_and_reactivate(self, organization, corporate_client):
+        """Verify deactivate and reactivate."""
         post = OrganizationPost.objects.create(
             title="P", content="C", organization=organization, author=corporate_client,
         )
@@ -647,6 +696,7 @@ class TestOrganizationPostEdges:
         assert post.is_active is True
 
     def test_has_link_property(self, organization, corporate_client):
+        """Verify has link property."""
         post = OrganizationPost.objects.create(
             title="P", content="C", organization=organization, author=corporate_client,
             link_name="Google", link_url="https://google.com",
@@ -654,12 +704,14 @@ class TestOrganizationPostEdges:
         assert post.has_link is True
 
     def test_has_link_false_when_no_link(self, organization, corporate_client):
+        """Verify has link false when no link."""
         post = OrganizationPost.objects.create(
             title="P", content="C", organization=organization, author=corporate_client,
         )
         assert post.has_link is False
 
     def test_clean_link_name_without_url(self, organization, corporate_client):
+        """Verify clean link name without url."""
         post = OrganizationPost(
             title="P", content="C", organization=organization, author=corporate_client,
             link_name="Name",
@@ -669,6 +721,7 @@ class TestOrganizationPostEdges:
         assert exc_info.value is not None
 
     def test_clean_link_url_without_name(self, organization, corporate_client):
+        """Verify clean link url without name."""
         post = OrganizationPost(
             title="P", content="C", organization=organization, author=corporate_client,
             link_url="https://google.com",
@@ -678,6 +731,7 @@ class TestOrganizationPostEdges:
         assert exc_info.value is not None
 
     def test_post_str_contains_title(self, organization, corporate_client):
+        """Verify post str contains title."""
         post = OrganizationPost.objects.create(
             title="MyPost", content="C", organization=organization,
             author=corporate_client,
@@ -694,11 +748,13 @@ class TestOrganizationPostEdges:
 
 @pytest.mark.django_db
 class TestOrganizationInvitationAcceptReject:
+    """Tests for Organization Invitation Accept Reject."""
+
     def test_accept_raises_when_invitation_already_accepted(
         self, organization, corporate_client, basic_user
     ):
-        """
-        Calling accept() on an already-accepted invitation raises
+        """Calling accept() on an already-accepted invitation raises.
+        
         ValidationError (line 214).
         """
         invitation = OrganizationInvitation.objects.create(
@@ -716,8 +772,8 @@ class TestOrganizationInvitationAcceptReject:
     def test_reject_raises_when_invitation_expired(
         self, organization, corporate_client, basic_user
     ):
-        """
-        Calling reject() on an expired invitation raises
+        """Calling reject() on an expired invitation raises.
+        
         ValidationError (line 241).
         """
         invitation = OrganizationInvitation.objects.create(

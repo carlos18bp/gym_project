@@ -1,17 +1,21 @@
-import pytest
-import json
+"""Tests for user module."""
+from datetime import date
 from io import BytesIO
 from unittest.mock import patch
-from datetime import date
-from PIL import Image
-from django.urls import reverse
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from PIL import Image
 from rest_framework import status
-from rest_framework.test import APIClient
+
 from gym_app.models import User
 from gym_app.models.user import ActivityFeed, UserSignature
+
+
 @pytest.fixture
 def user():
+    """User."""
     return User.objects.create_user(
         email='test@example.com',
         password='testpassword',
@@ -25,6 +29,7 @@ def user():
 
 @pytest.fixture
 def another_user():
+    """Another user."""
     return User.objects.create_user(
         email='another@example.com',
         password='anotherpassword',
@@ -41,9 +46,10 @@ def _png_file(name='sig.png'):
 
 @pytest.mark.django_db
 class TestUserViews:
+    """Tests for User Views."""
     
     def test_user_list_authenticated(self, api_client, user, another_user):
-        """Test that authenticated users can retrieve a list of users"""
+        """Test that authenticated users can retrieve a list of users."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -61,7 +67,7 @@ class TestUserViews:
         assert 'another@example.com' in emails
     
     def test_user_list_unauthenticated(self, api_client, user):
-        """Test that unauthenticated users cannot access the user list"""
+        """Test that unauthenticated users cannot access the user list."""
         url = reverse('user-list')
         response = api_client.get(url)
         
@@ -69,12 +75,12 @@ class TestUserViews:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_update_profile_success(self, api_client, user):
-        """Test successfully updating a user's own profile"""
+        """Test successfully updating a user's own profile."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
         # Create test photo
-        test_photo = SimpleUploadedFile(
+        _test_photo = SimpleUploadedFile(
             "profile.jpg",
             b"file_content",
             content_type="image/jpeg"
@@ -107,7 +113,7 @@ class TestUserViews:
         assert user.is_profile_completed == True
     
     def test_update_profile_partial(self, api_client, user):
-        """Test updating a user's profile with only some fields"""
+        """Test updating a user's profile with only some fields."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -132,7 +138,7 @@ class TestUserViews:
         assert user.is_profile_completed == True  # Should still be complete
     
     def test_update_profile_incomplete(self, api_client):
-        """Test updating a profile to an incomplete state"""
+        """Test updating a profile to an incomplete state."""
         # Create a user with incomplete profile
         incomplete_user = User.objects.create_user(
             email='incomplete@example.com',
@@ -162,7 +168,7 @@ class TestUserViews:
         assert incomplete_user.is_profile_completed == False
     
     def test_update_other_user_profile(self, api_client, user, another_user):
-        """Test that a user cannot update another user's profile"""
+        """Test that a user cannot update another user's profile."""
         # Authenticate as user
         api_client.force_authenticate(user=user)
         
@@ -185,7 +191,7 @@ class TestUserViews:
         assert another_user.first_name == 'Another'  # Unchanged
     
     def test_update_nonexistent_user(self, api_client, user):
-        """Test trying to update a non-existent user profile"""
+        """Test trying to update a non-existent user profile."""
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -200,7 +206,7 @@ class TestUserViews:
         assert response.status_code == status.HTTP_403_FORBIDDEN
     
     def test_update_profile_unauthenticated(self, api_client, user):
-        """Test that unauthenticated users cannot update profiles"""
+        """Test that unauthenticated users cannot update profiles."""
         url = reverse('update_profile', kwargs={'pk': user.id})
         response = api_client.put(url, {}, format='multipart')
         
@@ -314,7 +320,7 @@ class TestUserViews:
     def test_update_signature_updates_existing(self, mock_delete, mock_exists, mock_save, api_client, user):
         """Updating an existing signature should return 200 and keep one record."""
         # Create an existing signature
-        existing_signature = UserSignature.objects.create(
+        _existing_signature = UserSignature.objects.create(
             user=user,
             signature_image=_png_file('old.png'),
             method='upload',
@@ -343,13 +349,11 @@ class TestUserViews:
 
 """Tests for uncovered branches in user.py (91%→higher)."""
 import pytest
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework import status
-from django.core.files.uploadedfile import SimpleUploadedFile
-from gym_app.models import User
+
+
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_uvc@e.com', password='p', role='client',
         first_name='C', last_name='U')
@@ -357,10 +361,12 @@ def client_u():
 
 @pytest.mark.django_db
 class TestUserViewsRegressionScenarios:
+    """Tests for User Views Regression Scenarios."""
 
     def test_update_profile_with_photo(self, api_client, client_u):
         """Lines 60-64: profile update with photo_profile file."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (10, 10), color='red').save(buf, format='PNG')
@@ -391,6 +397,7 @@ class TestUserViewsRegressionScenarios:
     def test_update_signature_with_forwarded_ip(self, api_client, client_u):
         """Line 163: X-Forwarded-For IP extraction in update_signature."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (200, 80), color='white').save(buf, format='PNG')
@@ -408,6 +415,7 @@ class TestUserViewsRegressionScenarios:
     def test_update_signature_invalid_method(self, api_client, client_u):
         """Lines 205-206: serializer validation error (invalid method choice)."""
         from io import BytesIO
+
         from PIL import Image as PILImage
         buf = BytesIO()
         PILImage.new('RGB', (200, 80), color='white').save(buf, format='PNG')
@@ -428,7 +436,7 @@ class TestUserViewsRegressionScenarios:
 
 @pytest.fixture
 def _simple_user():
-    """Simple user without extra profile fields, for profile update tests."""
+    """Create a simple user without extra profile fields, for profile update tests."""
     return User.objects.create_user(
         email='profile_move@example.com',
         password='testpassword',
@@ -440,13 +448,14 @@ def _simple_user():
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestUpdateProfile:
+    """Tests for Update Profile."""
 
     @pytest.mark.contract
-    def test_update_profile_success(self, api_client, _simple_user):
-        """Test successfully updating a user's own profile"""
+    def test_update_profile_success(self, api_client, _simple_user):  # noqa: PT019
+        """Test successfully updating a user's own profile."""
         api_client.force_authenticate(user=_simple_user)
 
-        test_photo = SimpleUploadedFile(
+        _test_photo = SimpleUploadedFile(
             "profile.jpg",
             b"file_content",
             content_type="image/jpeg"
@@ -474,8 +483,8 @@ class TestUpdateProfile:
 
     @patch('gym_app.views.user.default_storage.save')
     @pytest.mark.contract
-    def test_update_profile_with_photo(self, mock_save, api_client, _simple_user):
-        """Test updating profile with photo (multipart)"""
+    def test_update_profile_with_photo(self, mock_save, api_client, _simple_user):  # noqa: PT019
+        """Test updating profile with photo (multipart)."""
         buf = BytesIO()
         Image.new('RGB', (100, 100), color='red').save(buf, format='JPEG')
         buf.seek(0)
@@ -519,13 +528,16 @@ def _b36_lawyer():
 
 @pytest.mark.django_db
 class TestUserViewsAdditionalScenarios:
+    """Tests for User Views Additional Scenarios."""
 
-    def test_user_list(self, api_client, _b36_lawyer):
+    def test_user_list(self, api_client, _b36_lawyer):  # noqa: PT019
+        """Verify user list."""
         api_client.force_authenticate(user=_b36_lawyer)
         resp = api_client.get(reverse("user-list"))
         assert resp.status_code == 200
 
-    def test_update_profile(self, api_client, _b36_lawyer):
+    def test_update_profile(self, api_client, _b36_lawyer):  # noqa: PT019
+        """Verify update profile."""
         api_client.force_authenticate(user=_b36_lawyer)
         resp = api_client.put(
             reverse("update_profile", args=[_b36_lawyer.id]),
@@ -536,13 +548,15 @@ class TestUserViewsAdditionalScenarios:
         _b36_lawyer.refresh_from_db()
         assert _b36_lawyer.first_name == "Updated"
 
-    def test_get_user_activities(self, api_client, _b36_lawyer):
+    def test_get_user_activities(self, api_client, _b36_lawyer):  # noqa: PT019
+        """Verify get user activities."""
         ActivityFeed.objects.create(user=_b36_lawyer, action_type="login", description="Logged in")
         api_client.force_authenticate(user=_b36_lawyer)
         resp = api_client.get(reverse("user-activities"))
         assert resp.status_code == 200
 
-    def test_create_activity(self, api_client, _b36_lawyer):
+    def test_create_activity(self, api_client, _b36_lawyer):  # noqa: PT019
+        """Verify create activity."""
         api_client.force_authenticate(user=_b36_lawyer)
         resp = api_client.post(
             reverse("create-activity"),

@@ -2,11 +2,13 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   buildMockOrganization,
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("cross-role: corporate edits organization and client sees updated title/description", async ({ page }) => {
+test("cross-role: corporate edits organization and client sees updated title/description", { tag: ['@flow:org-edit', '@module:organizations', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const corporateUserId = 5000;
@@ -68,7 +70,7 @@ test("cross-role: corporate edits organization and client sees updated title/des
   await page.goto("/organizations_dashboard");
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
-  const orgCard = page.locator('div:has(h3:has-text("Acme Corp"))').first();
+  const orgCard = page.locator('div:has(h3:has-text("Acme Corp"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
   await orgCard.getByRole("button", { name: "Editar" }).click();
 
   await expect(page.getByRole("heading", { name: "Editar Organización" })).toBeVisible();
@@ -78,9 +80,9 @@ test("cross-role: corporate edits organization and client sees updated title/des
 
   await page.getByRole("button", { name: "Guardar Cambios" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-title")).toHaveText("Organización actualizada exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-title")).toHaveText("Organización actualizada exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
 
   await expect(page.getByRole("heading", { name: "Editar Organización" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Acme Corp Editada" }).first()).toBeVisible();

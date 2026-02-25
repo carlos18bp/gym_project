@@ -1,24 +1,30 @@
-import pytest
+"""Tests for subscription module."""
+from datetime import date, datetime, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
-from datetime import date, datetime, timedelta, timezone as dt_timezone
 
-from gym_app.models.subscription import Subscription, PaymentHistory
+import pytest
+
+from gym_app.models.subscription import PaymentHistory, Subscription
 from gym_app.models.user import User
 
 
 @pytest.fixture
 def fixed_today():
+    """Create fixed today."""
     return date(2026, 1, 15)
 
 
 @pytest.fixture
 def fixed_now():
+    """Create fixed now."""
     return datetime(2026, 1, 15, 10, 0, tzinfo=dt_timezone.utc)
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def subscription_user():
+    """Subscription user."""
     return User.objects.create_user(
         email="subscriber@example.com",
         password="testpassword",
@@ -112,6 +118,7 @@ class TestPaymentHistory:
         assert "approved" in s
 
     def test_payment_history_ordering_by_payment_date(self, subscription_user, fixed_today, fixed_now):
+        """Verify payment history ordering by payment date."""
         sub = Subscription.objects.create(
             user=subscription_user,
             plan_type="cliente",
@@ -152,7 +159,10 @@ class TestPaymentHistory:
 
 @pytest.mark.django_db
 class TestSubscriptionEdges:
+    """Tests for Subscription Edges."""
+
     def test_subscription_str(self, client_user, fixed_today):
+        """Verify subscription str."""
         sub = Subscription.objects.create(
             user=client_user, plan_type="cliente", status="active",
             next_billing_date=fixed_today + timedelta(days=30),
@@ -163,6 +173,7 @@ class TestSubscriptionEdges:
         assert "Cliente" in s
 
     def test_payment_history_str(self, client_user, fixed_today):
+        """Verify payment history str."""
         sub = Subscription.objects.create(
             user=client_user, plan_type="basico", status="active",
             next_billing_date=fixed_today + timedelta(days=30),

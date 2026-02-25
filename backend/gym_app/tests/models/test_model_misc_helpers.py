@@ -1,3 +1,4 @@
+"""Tests for model_misc_helpers module."""
 import os
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -7,38 +8,42 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from gym_app.models.user import User, user_letterhead_image_path, user_letterhead_template_path
 import gym_app.models.user as user_module
+from gym_app.models.corporate_request import (
+    CorporateRequest,
+    CorporateRequestFiles,
+    CorporateRequestType,
+)
+from gym_app.models.intranet_gym import IntranetProfile
+from gym_app.models.legal_request import (
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestFiles,
+    LegalRequestResponse,
+    LegalRequestType,
+)
 from gym_app.models.organization import (
     Organization,
     OrganizationInvitation,
     OrganizationMembership,
     OrganizationPost,
-    organization_profile_image_path,
     organization_cover_image_path,
+    organization_profile_image_path,
 )
-from gym_app.models.legal_request import (
-    LegalRequest,
-    LegalRequestType,
-    LegalDiscipline,
-    LegalRequestFiles,
-    LegalRequestResponse,
-)
-from gym_app.models.corporate_request import (
-    CorporateRequest,
-    CorporateRequestType,
-    CorporateRequestFiles,
-)
-from gym_app.models.subscription import Subscription, PaymentHistory
-from gym_app.models.intranet_gym import IntranetProfile
 from gym_app.models.process import Case, Process, RecentProcess
-
+from gym_app.models.subscription import PaymentHistory, Subscription
+from gym_app.models.user import (
+    User,
+    user_letterhead_image_path,
+    user_letterhead_template_path,
+)
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def user_factory():
+    """User factory."""
     def create_user(email, role="client", is_gym_lawyer=False):
         return User.objects.create_user(
             email=email,
@@ -52,6 +57,7 @@ def user_factory():
 
 @pytest.fixture
 def fixed_uuid(monkeypatch):
+    """Create fixed uuid."""
     class DummyUUID:
         hex = "abc123"
 
@@ -60,6 +66,7 @@ def fixed_uuid(monkeypatch):
 
 
 def test_organization_profile_image_path_uses_instance_id_and_ext():
+    """Verify organization profile image path uses instance id and ext."""
     class DummyOrganization:
         id = 5
 
@@ -72,6 +79,7 @@ def test_organization_profile_image_path_uses_instance_id_and_ext():
 
 
 def test_organization_cover_image_path_uses_instance_id_and_ext():
+    """Verify organization cover image path uses instance id and ext."""
     class DummyOrganization:
         id = 12
 
@@ -84,6 +92,7 @@ def test_organization_cover_image_path_uses_instance_id_and_ext():
 
 
 def test_user_letterhead_image_path_uses_uuid_and_lowercase_ext(fixed_uuid):
+    """Verify user letterhead image path uses uuid and lowercase ext."""
     class DummyUser:
         id = 7
 
@@ -97,6 +106,7 @@ def test_user_letterhead_image_path_uses_uuid_and_lowercase_ext(fixed_uuid):
 
 
 def test_user_letterhead_template_path_uses_uuid_and_lowercase_ext(fixed_uuid):
+    """Verify user letterhead template path uses uuid and lowercase ext."""
     class DummyUser:
         id = 9
 
@@ -110,6 +120,7 @@ def test_user_letterhead_template_path_uses_uuid_and_lowercase_ext(fixed_uuid):
 
 
 def test_legal_request_auto_generates_request_number(user_factory):
+    """Verify legal request auto generates request number."""
     user = user_factory("requester@example.com")
     request_type = LegalRequestType.objects.create(name="Consultation")
     discipline = LegalDiscipline.objects.create(name="Corporate Law")
@@ -127,6 +138,7 @@ def test_legal_request_auto_generates_request_number(user_factory):
 
 
 def test_legal_request_request_number_increments_sequence(user_factory):
+    """Verify legal request request number increments sequence."""
     user = user_factory("sequence@example.com")
     request_type = LegalRequestType.objects.create(name="Review")
     discipline = LegalDiscipline.objects.create(name="Tax")
@@ -151,6 +163,7 @@ def test_legal_request_request_number_increments_sequence(user_factory):
 
 
 def test_legal_request_response_str_includes_request_number_and_user_type(user_factory):
+    """Verify legal request response str includes request number and user type."""
     user = user_factory("lawyer@example.com", role="lawyer")
     request_type = LegalRequestType.objects.create(name="Contract")
     discipline = LegalDiscipline.objects.create(name="Civil")
@@ -172,6 +185,7 @@ def test_legal_request_response_str_includes_request_number_and_user_type(user_f
 
 
 def test_legal_request_file_delete_removes_physical_file():
+    """Verify legal request file delete removes physical file."""
     test_file = SimpleUploadedFile(
         "legal_request.pdf",
         b"PDF content",
@@ -188,6 +202,7 @@ def test_legal_request_file_delete_removes_physical_file():
 
 
 def test_corporate_request_file_str_returns_basename():
+    """Verify corporate request file str returns basename."""
     test_file = SimpleUploadedFile(
         "corp_request.pdf",
         b"PDF content",
@@ -199,6 +214,7 @@ def test_corporate_request_file_str_returns_basename():
 
 
 def test_corporate_request_str_includes_request_number_title_and_emails(user_factory):
+    """Verify corporate request str includes request number title and emails."""
     corporate_client = user_factory("corp@example.com", role="corporate_client")
     client = user_factory("client@example.com", role="client")
     organization = Organization.objects.create(
@@ -231,6 +247,7 @@ def test_corporate_request_str_includes_request_number_title_and_emails(user_fac
 
 
 def test_organization_str_includes_title_and_leader_email(user_factory):
+    """Verify organization str includes title and leader email."""
     corporate_client = user_factory("leader@example.com", role="corporate_client")
     organization = Organization.objects.create(
         title="Org Title",
@@ -242,6 +259,7 @@ def test_organization_str_includes_title_and_leader_email(user_factory):
 
 
 def test_organization_invitation_str_includes_org_user_status(user_factory):
+    """Verify organization invitation str includes org user status."""
     corporate_client = user_factory("corp@example.com", role="corporate_client")
     invited_user = user_factory("invited@example.com", role="client")
     organization = Organization.objects.create(
@@ -265,6 +283,7 @@ def test_organization_invitation_str_includes_org_user_status(user_factory):
 
 
 def test_organization_invitation_unique_together_enforced(user_factory):
+    """Verify organization invitation unique together enforced."""
     corporate_client = user_factory("corp@example.com", role="corporate_client")
     invited_user = user_factory("dup@example.com", role="client")
     organization = Organization.objects.create(
@@ -297,6 +316,7 @@ def test_organization_invitation_unique_together_enforced(user_factory):
 
 
 def test_organization_membership_ordering_by_joined_at(user_factory):
+    """Verify organization membership ordering by joined at."""
     corporate_client = user_factory("corp@example.com", role="corporate_client")
     member_a = user_factory("membera@example.com", role="client")
     member_b = user_factory("memberb@example.com", role="client")
@@ -334,6 +354,7 @@ def test_organization_membership_ordering_by_joined_at(user_factory):
 
 
 def test_organization_post_ordering_pinned_then_created(user_factory):
+    """Verify organization post ordering pinned then created."""
     corporate_client = user_factory("corp@example.com", role="corporate_client")
     organization = Organization.objects.create(
         title="Org",
@@ -379,6 +400,7 @@ def test_organization_post_ordering_pinned_then_created(user_factory):
 
 
 def test_subscription_ordering_by_created_at_desc(user_factory):
+    """Verify subscription ordering by created at desc."""
     user = user_factory("subscriber@example.com", role="client")
     billing_date = datetime(2030, 1, 20).date()
 
@@ -410,6 +432,7 @@ def test_subscription_ordering_by_created_at_desc(user_factory):
 
 
 def test_payment_history_ordering_by_payment_date_desc(user_factory):
+    """Verify payment history ordering by payment date desc."""
     user = user_factory("payer@example.com", role="client")
     billing_date = datetime(2030, 1, 20).date()
     subscription = Subscription.objects.create(
@@ -446,12 +469,14 @@ def test_payment_history_ordering_by_payment_date_desc(user_factory):
 
 
 def test_intranet_profile_str_constant():
+    """Verify intranet profile str constant."""
     profile = IntranetProfile.objects.create()
 
     assert str(profile) == "Intranet Profile"
 
 
 def test_intranet_profile_updated_at_changes_on_save():
+    """Verify intranet profile updated at changes on save."""
     profile = IntranetProfile.objects.create()
     past_time = profile.updated_at - timedelta(days=1)
     IntranetProfile.objects.filter(pk=profile.pk).update(updated_at=past_time)
@@ -464,6 +489,7 @@ def test_intranet_profile_updated_at_changes_on_save():
 
 
 def test_recent_process_str_includes_process_ref(user_factory):
+    """Verify recent process str includes process ref."""
     lawyer = user_factory("lawyer@example.com", role="lawyer")
     case = Case.objects.create(type="Civil")
     process = Process.objects.create(

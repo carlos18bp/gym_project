@@ -1,19 +1,29 @@
-import pytest
-import json
-import pandas as pd
-import io
+"""Tests for reports module."""
 import datetime
+import io
 import unittest.mock as mock
-from django.urls import reverse
+
+import pandas as pd
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
+from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+
 from gym_app.models import (
-    Process, Case, Stage, User, ActivityFeed, DynamicDocument,
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+    ActivityFeed,
+    Case,
+    DynamicDocument,
+    LegalDiscipline,
+    LegalRequest,
+    LegalRequestFiles,
+    LegalRequestType,
+    Process,
+    Stage,
+    User,
 )
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 
 FIXED_TODAY = datetime.date.today()
 FIXED_NOW = timezone.make_aware(datetime.datetime.combine(FIXED_TODAY, datetime.time(10, 0, 0)))
@@ -22,7 +32,7 @@ REPORT_END_DATE = FIXED_TODAY.strftime("%Y-%m-%d")
 
 @pytest.fixture
 def sample_users():
-    """Create sample users for testing reports"""
+    """Create sample users for testing reports."""
     client = User.objects.create_user(
         email='client@example.com',
         password='password123',
@@ -64,7 +74,7 @@ def sample_users():
 
 @pytest.fixture
 def sample_case_types():
-    """Create sample case types for testing"""
+    """Create sample case types for testing."""
     civil = Case.objects.create(type='Civil')
     criminal = Case.objects.create(type='Criminal')
     family = Case.objects.create(type='Family')
@@ -78,7 +88,7 @@ def sample_case_types():
 
 @pytest.fixture
 def sample_processes(sample_users, sample_case_types):
-    """Create sample processes for testing reports"""
+    """Create sample processes for testing reports."""
     # Create a process with stages
     process1 = Process.objects.create(
         authority='District Court',
@@ -139,7 +149,7 @@ def sample_processes(sample_users, sample_case_types):
 
 @pytest.fixture
 def sample_activities(sample_users, sample_processes):
-    """Create sample activity records for testing reports"""
+    """Create sample activity records for testing reports."""
     activities = []
     
     # Create activities for lawyer
@@ -170,7 +180,7 @@ def sample_activities(sample_users, sample_processes):
 
 @pytest.fixture
 def sample_documents(sample_users):
-    """Create sample documents for testing reports"""
+    """Create sample documents for testing reports."""
     documents = []
     
     # Create documents in different states
@@ -206,7 +216,7 @@ def sample_documents(sample_users):
 
 @pytest.fixture
 def sample_legal_requests():
-    """Create sample legal requests for testing reports"""
+    """Create sample legal requests for testing reports."""
     # Create request types
     consultation = LegalRequestType.objects.create(name="Consultation")
     representation = LegalRequestType.objects.create(name="Representation")
@@ -216,7 +226,7 @@ def sample_legal_requests():
     family = LegalDiscipline.objects.create(name="Family Law")
     criminal = LegalDiscipline.objects.create(name="Criminal Law")
     
-    requests = []
+    _requests = []
 
     # Create users for each legal request to match expected report values
     user1 = User.objects.create_user(
@@ -291,9 +301,10 @@ def sample_legal_requests():
 
 @pytest.mark.django_db
 class TestReportViews:
+    """Tests for Report Views."""
     
     def test_generate_excel_report_missing_type(self, api_client, sample_users):
-        """Test report without reportType returns error"""
+        """Test report without reportType returns error."""
         api_client.force_authenticate(user=sample_users['admin'])
         url = reverse('generate-excel-report')
         response = api_client.post(url, {}, format='json')
@@ -302,7 +313,7 @@ class TestReportViews:
         assert 'reportType is required' in response.data['error']
 
     def test_generate_excel_report_missing_end_date(self, api_client, sample_users):
-        """Test report with only one date returns error"""
+        """Test report with only one date returns error."""
         api_client.force_authenticate(user=sample_users['admin'])
         url = reverse('generate-excel-report')
         data = {'reportType': 'active_processes', 'startDate': '2023-01-01'}
@@ -312,7 +323,7 @@ class TestReportViews:
         assert 'Both startDate and endDate must be provided' in response.data['error']
 
     def test_generate_excel_report_invalid_date(self, api_client, sample_users):
-        """Test report with invalid date format returns error"""
+        """Test report with invalid date format returns error."""
         api_client.force_authenticate(user=sample_users['admin'])
         url = reverse('generate-excel-report')
         data = {'reportType': 'active_processes', 'startDate': 'invalid-date', 'endDate': '2023-01-31'}
@@ -322,7 +333,7 @@ class TestReportViews:
         assert 'Invalid date format' in response.data['error']
 
     def test_generate_excel_report_unsupported_type(self, api_client, sample_users):
-        """Test report with unsupported type returns error"""
+        """Test report with unsupported type returns error."""
         api_client.force_authenticate(user=sample_users['admin'])
         url = reverse('generate-excel-report')
         data = {'reportType': 'unsupported_report', 'startDate': '2023-01-01', 'endDate': '2023-01-31'}
@@ -332,7 +343,7 @@ class TestReportViews:
         assert 'Report type unsupported_report not supported' in response.data['error']
     
     def test_active_processes_report(self, api_client, sample_users, sample_processes):
-        """Test generating active processes report"""
+        """Test generating active processes report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -363,7 +374,7 @@ class TestReportViews:
     
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_processes_by_lawyer_report(self, api_client, sample_users, sample_processes):
-        """Test generating processes by lawyer report"""
+        """Test generating processes by lawyer report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -393,7 +404,7 @@ class TestReportViews:
     
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_processes_by_client_report(self, api_client, sample_users, sample_processes):
-        """Test generating processes by client report"""
+        """Test generating processes by client report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -419,7 +430,7 @@ class TestReportViews:
         assert sample_users['client'].first_name in df['Cliente'].values[0]
     
     def test_process_stages_report(self, api_client, sample_users, sample_processes):
-        """Test generating process stages report"""
+        """Test generating process stages report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -447,7 +458,7 @@ class TestReportViews:
         assert 'Fallo' in df['Etapa'].values
     
     def test_registered_users_report(self, api_client, sample_users):
-        """Test generating registered users report"""
+        """Test generating registered users report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -476,7 +487,7 @@ class TestReportViews:
         assert sample_users['admin'].email in df['Email'].values
     
     def test_user_activity_report(self, api_client, sample_users, sample_activities):
-        """Test generating user activity report"""
+        """Test generating user activity report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -510,7 +521,7 @@ class TestReportViews:
     
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_lawyers_workload_report(self, api_client, sample_users, sample_processes):
-        """Test generating lawyers workload report"""
+        """Test generating lawyers workload report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -543,7 +554,7 @@ class TestReportViews:
     @mock.patch('gym_app.views.reports.user_id', None)
     @mock.patch('gym_app.views.reports.models', models)
     def test_documents_by_state_report(self, api_client, sample_users, sample_documents):
-        """Test generating documents by state report"""
+        """Test generating documents by state report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -562,7 +573,7 @@ class TestReportViews:
         assert "Published Document" in df['Título'].values
     
     def test_received_legal_requests_report(self, api_client, sample_users, sample_legal_requests):
-        """Test generating received legal requests report"""
+        """Test generating received legal requests report."""
         api_client.force_authenticate(user=sample_users['admin'])
         
         url = reverse('generate-excel-report')
@@ -581,7 +592,7 @@ class TestReportViews:
     
     @pytest.mark.skip(reason="Chart creation causes issues in test environment")
     def test_requests_by_type_discipline_report(self, api_client, sample_users, sample_legal_requests):  # pragma: no cover
-        """Test generating requests by type and discipline report"""
+        """Test generating requests by type and discipline report."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -603,7 +614,7 @@ class TestReportViews:
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
     def test_report_with_no_date_filters(self, api_client, sample_users, sample_processes):
-        """Test generating a report without date filters (should include all data)"""
+        """Test generating a report without date filters (should include all data)."""
         # Authenticate
         api_client.force_authenticate(user=sample_users['admin'])
         
@@ -630,35 +641,45 @@ class TestReportViews:
 
 """Batch 23 – 20 tests: reports.py dispatch + report generators + serializer gaps."""
 import pytest
-from django.urls import reverse
-from django.utils import timezone
-from rest_framework import status
-from rest_framework.test import APIClient
-from rest_framework.request import Request
-from django.test import RequestFactory
 from django.contrib.auth import get_user_model
+from django.test import RequestFactory
+from django.urls import reverse  # noqa: F811
+from django.utils import timezone
+from rest_framework import status  # noqa: F811
+from rest_framework.request import Request
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    Process, Case, Stage, DynamicDocument, DocumentVariable,
-    DocumentSignature, LegalRequest, LegalRequestType, LegalDiscipline,
+    Case,  # noqa: F811
+    DocumentSignature,
+    DocumentVariable,
+    DynamicDocument,  # noqa: F811
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    Process,  # noqa: F811
+    Stage,  # noqa: F811
 )
 from gym_app.models.dynamic_document import DocumentRelationship
 from gym_app.serializers.dynamic_document import (
+    DocumentSignatureSerializer,
     DocumentVariableSerializer,
     DynamicDocumentSerializer,
-    DocumentSignatureSerializer,
 )
 
-User = get_user_model()
+User = get_user_model()  # noqa: F811
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
 def api():
+    """Create an API client."""
     return APIClient()
 
 
 @pytest.fixture
 def lawyer():
+    """Lawyer."""
     return User.objects.create_user(
         email="law_b23@t.com", password="pw", role="lawyer",
         first_name="Law", last_name="Yer",
@@ -667,6 +688,7 @@ def lawyer():
 
 @pytest.fixture
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email="cli_b23@t.com", password="pw", role="client",
         first_name="Cli", last_name="Ent",
@@ -675,11 +697,13 @@ def client_user():
 
 @pytest.fixture
 def case_obj():
+    """Case obj."""
     return Case.objects.create(type="Civil")
 
 
 @pytest.fixture
 def process_obj(lawyer, client_user, case_obj):
+    """Process obj."""
     p = Process.objects.create(
         ref="REF-001", case=case_obj, lawyer=lawyer,
         subcase="Sub", authority="Auth", plaintiff="P", defendant="D",
@@ -694,7 +718,10 @@ def process_obj(lawyer, client_user, case_obj):
 # ===========================================================================
 
 class TestReportsDispatch:
+    """Tests for Reports Dispatch."""
+
     def test_missing_report_type(self, api, lawyer):
+        """Verify missing report type."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {}, format="json")
@@ -702,24 +729,28 @@ class TestReportsDispatch:
         assert "reportType" in str(resp.data)
 
     def test_invalid_report_type(self, api, lawyer):
+        """Verify invalid report type."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "nonexistent"}, format="json")
         assert resp.status_code == 400
 
     def test_invalid_date_format(self, api, lawyer):
+        """Verify invalid date format."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "active_processes", "startDate": "bad", "endDate": "bad"}, format="json")
         assert resp.status_code == 400
 
     def test_only_start_date(self, api, lawyer):
+        """Verify only start date."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "active_processes", "startDate": "2025-01-01"}, format="json")
         assert resp.status_code == 400
 
     def test_active_processes_report(self, api, lawyer, process_obj):
+        """Verify active processes report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "active_processes", "startDate": "2020-01-01", "endDate": "2030-12-31"}, format="json")
@@ -727,42 +758,49 @@ class TestReportsDispatch:
         assert "spreadsheetml" in resp["Content-Type"]
 
     def test_processes_by_lawyer_report(self, api, lawyer, process_obj):
+        """Verify processes by lawyer report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "processes_by_lawyer", "startDate": "2020-01-01", "endDate": "2030-12-31"}, format="json")
         assert resp.status_code == 200
 
     def test_processes_by_client_report(self, api, lawyer, process_obj):
+        """Verify processes by client report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "processes_by_client", "startDate": "2020-01-01", "endDate": "2030-12-31"}, format="json")
         assert resp.status_code == 200
 
     def test_process_stages_report(self, api, lawyer, process_obj):
+        """Verify process stages report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "process_stages", "startDate": "2020-01-01", "endDate": "2030-12-31"}, format="json")
         assert resp.status_code == 200
 
     def test_registered_users_report(self, api, lawyer):
+        """Verify registered users report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "registered_users"}, format="json")
         assert resp.status_code == 200
 
     def test_user_activity_report(self, api, lawyer):
+        """Verify user activity report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "user_activity"}, format="json")
         assert resp.status_code == 200
 
     def test_lawyers_workload_report(self, api, lawyer, process_obj):
+        """Verify lawyers workload report."""
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
         resp = api.post(url, {"reportType": "lawyers_workload"}, format="json")
         assert resp.status_code == 200
 
     def test_documents_by_state_report(self, api, lawyer):
+        """Verify documents by state report."""
         DynamicDocument.objects.create(title="D1", content="<p>x</p>", state="Draft", created_by=lawyer)
         api.force_authenticate(user=lawyer)
         url = reverse("generate-excel-report")
@@ -775,23 +813,29 @@ class TestReportsDispatch:
 # ===========================================================================
 
 class TestDocumentVariableSerializerValidation:
+    """Tests for Document Variable Serializer Validation."""
+
     def test_invalid_number_value(self):
+        """Verify invalid number value."""
         data = {"name_en": "v1", "name_es": "v1", "field_type": "number", "value": "abc"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
         assert "value" in s.errors
 
     def test_invalid_date_value(self):
+        """Verify invalid date value."""
         data = {"name_en": "v1", "name_es": "v1", "field_type": "date", "value": "not-a-date"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
 
     def test_invalid_email_value(self):
+        """Verify invalid email value."""
         data = {"name_en": "v1", "name_es": "v1", "field_type": "email", "value": "notanemail"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
 
     def test_select_requires_options(self):
+        """Verify select requires options."""
         data = {"name_en": "v1", "name_es": "v1", "field_type": "select", "value": "a"}
         s = DocumentVariableSerializer(data=data)
         assert not s.is_valid()
@@ -799,6 +843,8 @@ class TestDocumentVariableSerializerValidation:
 
 
 class TestDynamicDocumentSerializerSummaryFields:
+    """Tests for Dynamic Document Serializer Summary Fields."""
+
     def _make_request(self, user):
         factory = RequestFactory()
         req = factory.get("/")
@@ -808,6 +854,7 @@ class TestDynamicDocumentSerializerSummaryFields:
         return drf_req
 
     def test_summary_counterparty_from_assigned(self, lawyer):
+        """Verify summary counterparty from assigned."""
         doc = DynamicDocument.objects.create(
             title="D", content="<p>x</p>", state="Draft",
             created_by=lawyer, assigned_to=lawyer,
@@ -817,6 +864,7 @@ class TestDynamicDocumentSerializerSummaryFields:
         assert s.data["summary_counterparty"] is not None
 
     def test_summary_subscription_date_fallback(self, lawyer):
+        """Verify summary subscription date fallback."""
         doc = DynamicDocument.objects.create(
             title="D2", content="<p>x</p>", state="Draft", created_by=lawyer,
         )
@@ -825,6 +873,7 @@ class TestDynamicDocumentSerializerSummaryFields:
         assert s.data["summary_subscription_date"] is not None
 
     def test_relationships_count_no_request(self, lawyer):
+        """Verify relationships count no request."""
         doc = DynamicDocument.objects.create(
             title="D3", content="<p>x</p>", state="Draft", created_by=lawyer,
         )
@@ -832,6 +881,7 @@ class TestDynamicDocumentSerializerSummaryFields:
         assert s.data["relationships_count"] == 0
 
     def test_can_edit_view_only(self, client_user, lawyer):
+        """Verify can edit view only."""
         doc = DynamicDocument.objects.create(
             title="D4", content="<p>x</p>", state="Draft",
             created_by=lawyer, is_public=False,
@@ -848,34 +898,45 @@ class TestDynamicDocumentSerializerSummaryFields:
 
 """Batch 24 – reports + serializer gaps."""
 import pytest
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework.request import Request
-from django.test import RequestFactory
 from django.contrib.auth import get_user_model
+from django.test import RequestFactory  # noqa: F811
+from django.urls import reverse  # noqa: F811
+from rest_framework.request import Request  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    DynamicDocument, DocumentVariable, DocumentSignature,
-    LegalRequest, LegalRequestType, LegalDiscipline,
+    DocumentSignature,  # noqa: F811
+    DocumentVariable,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestType,  # noqa: F811
 )
-from gym_app.models.dynamic_document import DocumentRelationship
+from gym_app.models.dynamic_document import DocumentRelationship  # noqa: F811
 from gym_app.serializers.dynamic_document import (
-    DynamicDocumentSerializer, DocumentRelationshipSerializer,
-    DocumentSignatureSerializer, TagSerializer, DocumentFolderSerializer,
+    DocumentFolderSerializer,
+    DocumentRelationshipSerializer,
+    DocumentSignatureSerializer,  # noqa: F811
+    DynamicDocumentSerializer,  # noqa: F811
+    TagSerializer,
 )
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 @pytest.fixture
-def api():
+def api():  # noqa: F811
+    """Create an API client."""
     return APIClient()
 
 @pytest.fixture
-def lawyer():
+def lawyer():  # noqa: F811
+    """Lawyer."""
     return User.objects.create_user(email="l24@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
 def cli():
+    """Cli."""
     return User.objects.create_user(email="c24@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 def _req(user):
@@ -886,6 +947,8 @@ def _req(user):
     return d
 
 class TestReports24:
+    """Tests for Reports24."""
+
     @pytest.fixture(autouse=True)
     def _s(self, cli):
         rt = LegalRequestType.objects.create(name="Q")
@@ -893,37 +956,46 @@ class TestReports24:
         LegalRequest.objects.create(user=cli, request_type=rt, discipline=di, description="D")
 
     def test_received(self, api, lawyer):
+        """Verify received."""
         api.force_authenticate(user=lawyer)
         r = api.post(reverse("generate-excel-report"), {"reportType": "received_legal_requests"}, format="json")
         assert r.status_code == 200
 
     def test_by_type(self, api, lawyer):
+        """Verify by type."""
         api.force_authenticate(user=lawyer)
         r = api.post(reverse("generate-excel-report"), {"reportType": "requests_by_type_discipline"}, format="json")
         assert r.status_code == 200
 
     def test_received_dates(self, api, lawyer):
+        """Verify received dates."""
         api.force_authenticate(user=lawyer)
         r = api.post(reverse("generate-excel-report"), {"reportType": "received_legal_requests", "startDate": "2020-01-01", "endDate": "2030-12-31"}, format="json")
         assert r.status_code == 200
 
 class TestSerCreate:
+    """Tests for Ser Create."""
+
     def test_firma_suffix(self, lawyer):
+        """Verify firma suffix."""
         s = DynamicDocumentSerializer(data={"title": "C", "content": "<p>x</p>", "state": "PendingSignatures", "requires_signature": True}, context={"request": _req(lawyer)})
         assert s.is_valid(), s.errors
         assert s.save().title.endswith("_firma")
 
     def test_no_firma(self, lawyer):
+        """Verify no firma."""
         s = DynamicDocumentSerializer(data={"title": "N", "content": "<p>x</p>", "state": "Draft"}, context={"request": _req(lawyer)})
         assert s.is_valid(), s.errors
         assert not s.save().title.endswith("_firma")
 
     def test_with_vars(self, lawyer):
+        """Verify with vars."""
         s = DynamicDocumentSerializer(data={"title": "V", "content": "<p>x</p>", "state": "Draft", "variables": [{"name_en": "n", "name_es": "n", "field_type": "input", "value": "v"}]}, context={"request": _req(lawyer)})
         assert s.is_valid(), s.errors
         assert s.save().variables.count() == 1
 
     def test_update_rm_rels(self, lawyer):
+        """Verify update rm rels."""
         d1 = DynamicDocument.objects.create(title="D1", content="<p>x</p>", state="Completed", created_by=lawyer)
         d2 = DynamicDocument.objects.create(title="D2", content="<p>y</p>", state="Completed", created_by=lawyer)
         DocumentRelationship.objects.create(source_document=d1, target_document=d2, created_by=lawyer)
@@ -933,11 +1005,15 @@ class TestSerCreate:
         assert DocumentRelationship.objects.filter(source_document=d1).count() == 0
 
 class TestRelSer:
+    """Tests for Rel Ser."""
+
     def test_self_invalid(self, lawyer):
+        """Verify self invalid."""
         d = DynamicDocument.objects.create(title="S", content="<p>x</p>", state="Draft", created_by=lawyer)
         assert not DocumentRelationshipSerializer(data={"source_document": d.pk, "target_document": d.pk}).is_valid()
 
     def test_valid(self, lawyer):
+        """Verify valid."""
         d1 = DynamicDocument.objects.create(title="A", content="<p>x</p>", state="Draft", created_by=lawyer)
         d2 = DynamicDocument.objects.create(title="B", content="<p>y</p>", state="Draft", created_by=lawyer)
         s = DocumentRelationshipSerializer(data={"source_document": d1.pk, "target_document": d2.pk}, context={"request": _req(lawyer)})
@@ -945,36 +1021,48 @@ class TestRelSer:
         assert s.save().created_by == lawyer
 
 class TestSigSer:
+    """Tests for Sig Ser."""
+
     def test_name(self, lawyer, cli):
+        """Verify name."""
         d = DynamicDocument.objects.create(title="D", content="<p>x</p>", state="PendingSignatures", created_by=lawyer, requires_signature=True)
         sig = DocumentSignature.objects.create(document=d, signer=cli)
         assert DocumentSignatureSerializer(sig).data["signer_name"] == "C E"
 
     def test_no_name(self, lawyer):
+        """Verify no name."""
         u = User.objects.create_user(email="nn@t.com", password="pw", role="client")
         d = DynamicDocument.objects.create(title="D2", content="<p>x</p>", state="PendingSignatures", created_by=lawyer, requires_signature=True)
         sig = DocumentSignature.objects.create(document=d, signer=u)
         assert DocumentSignatureSerializer(sig).data["signer_name"] == "nn@t.com"
 
 class TestTagFolder:
+    """Tests for Tag Folder."""
+
     def test_tag(self, lawyer):
+        """Verify tag."""
         s = TagSerializer(data={"name": "T", "color_id": 1}, context={"request": _req(lawyer)})
         assert s.is_valid(), s.errors
         assert s.save().created_by == lawyer
 
     def test_folder(self, cli):
+        """Verify folder."""
         s = DocumentFolderSerializer(data={"name": "F", "color_id": 2}, context={"request": _req(cli)})
         assert s.is_valid(), s.errors
         assert s.save().owner == cli
 
 class TestSummaryEdge:
+    """Tests for Summary Edge."""
+
     def test_counterparty_signer(self, lawyer, cli):
+        """Verify counterparty signer."""
         d = DynamicDocument.objects.create(title="S", content="<p>x</p>", state="PendingSignatures", created_by=lawyer, requires_signature=True)
         DocumentSignature.objects.create(document=d, signer=cli)
         r = RequestFactory().get("/"); r.user = lawyer; dr = Request(r); dr.user = lawyer
         assert DynamicDocumentSerializer(d, context={"request": dr}).data["summary_counterparty"] == "C E"
 
     def test_currency(self, lawyer):
+        """Verify currency."""
         d = DynamicDocument.objects.create(title="V", content="<p>x</p>", state="Draft", created_by=lawyer)
         DocumentVariable.objects.create(document=d, name_en="a", name_es="a", field_type="number", value="1000", summary_field="value", currency="USD")
         r = RequestFactory().get("/"); r.user = lawyer; dr = Request(r); dr.user = lawyer
@@ -983,11 +1071,13 @@ class TestSummaryEdge:
         assert s.data["summary_value_currency"] == "USD"
 
     def test_owner_can_edit(self, lawyer):
+        """Verify owner can edit."""
         d = DynamicDocument.objects.create(title="O", content="<p>x</p>", state="Draft", created_by=lawyer)
         r = RequestFactory().get("/"); r.user = lawyer; dr = Request(r); dr.user = lawyer
         assert DynamicDocumentSerializer(d, context={"request": dr}).data["can_edit"] is True
 
     def test_completed_total_signatures(self, lawyer, cli):
+        """Verify completed total signatures."""
         d = DynamicDocument.objects.create(title="Sig", content="<p>x</p>", state="PendingSignatures", created_by=lawyer, requires_signature=True)
         DocumentSignature.objects.create(document=d, signer=cli, signed=True)
         DocumentSignature.objects.create(document=d, signer=lawyer)
@@ -997,6 +1087,7 @@ class TestSummaryEdge:
         assert s.data["total_signatures"] == 2
 
     def test_no_signature_counts_zero(self, lawyer):
+        """Verify no signature counts zero."""
         d = DynamicDocument.objects.create(title="NoSig", content="<p>x</p>", state="Draft", created_by=lawyer, requires_signature=False)
         r = RequestFactory().get("/"); r.user = lawyer; dr = Request(r); dr.user = lawyer
         s = DynamicDocumentSerializer(d, context={"request": dr})
@@ -1004,11 +1095,13 @@ class TestSummaryEdge:
         assert s.data["total_signatures"] == 0
 
     def test_permission_level_no_request(self, lawyer):
+        """Verify permission level no request."""
         d = DynamicDocument.objects.create(title="NR", content="<p>x</p>", state="Draft", created_by=lawyer)
         s = DynamicDocumentSerializer(d, context={})
         assert s.data["user_permission_level"] is None
 
     def test_can_view_no_request(self, lawyer):
+        """Verify can view no request."""
         d = DynamicDocument.objects.create(title="NR2", content="<p>x</p>", state="Draft", created_by=lawyer)
         s = DynamicDocumentSerializer(d, context={})
         assert s.data["can_view"] is False
@@ -1019,29 +1112,42 @@ class TestSummaryEdge:
 # ======================================================================
 
 """Tests for uncovered branches in reports.py."""
-import pytest
-import io
 import datetime
+import io  # noqa: F811
 import unittest.mock as mock
-import pandas as pd
-from django.urls import reverse
+
+import pandas as pd  # noqa: F811
+import pytest
 from django.db import models
 from django.http import HttpResponse
+from django.urls import reverse  # noqa: F811
 from django.utils import timezone
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient  # noqa: F811
+
 from gym_app.models import (
-    Process, Case, Stage, User, ActivityFeed,
-    DynamicDocument, LegalRequest, LegalRequestType, LegalDiscipline,
+    ActivityFeed,  # noqa: F811
+    Case,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    Process,  # noqa: F811
+    Stage,  # noqa: F811
+    User,  # noqa: F811
 )
+
+
 @pytest.fixture
 def admin():
+    """Admin."""
     return User.objects.create_user(
         email='adm_rc@e.com', password='p', role='admin',
         first_name='A', last_name='R')
 
 
 @pytest.fixture
-def lawyer():
+def lawyer():  # noqa: F811
+    """Lawyer."""
     return User.objects.create_user(
         email='law_rc@e.com', password='p', role='lawyer',
         first_name='L', last_name='R', is_profile_completed=True)
@@ -1049,6 +1155,7 @@ def lawyer():
 
 @pytest.fixture
 def lawyer2():
+    """Lawyer2."""
     return User.objects.create_user(
         email='law2_rc@e.com', password='p', role='lawyer',
         first_name='L2', last_name='R', is_profile_completed=True)
@@ -1056,6 +1163,7 @@ def lawyer2():
 
 @pytest.fixture
 def client_u():
+    """Client u."""
     return User.objects.create_user(
         email='cli_rc@e.com', password='p', role='client',
         first_name='C', last_name='R', document_type='ID',
@@ -1064,11 +1172,13 @@ def client_u():
 
 @pytest.fixture
 def ctype():
+    """Ctype."""
     return Case.objects.create(type='CivRC')
 
 
 @pytest.fixture
 def dr():
+    """Dr."""
     e = FIXED_TODAY
     s = e - datetime.timedelta(days=60)
     return s.strftime('%Y-%m-%d'), e.strftime('%Y-%m-%d')
@@ -1271,7 +1381,7 @@ class TestReportsRegressionScenarios:
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_client_no_procs_skipped(self, api_client, admin, lawyer, client_u, ctype, dr):
         """Line 353: client with no processes in range is skipped."""
-        extra_client = User.objects.create_user(
+        _extra_client = User.objects.create_user(
             email='nocli@e.com', password='p', role='client',
             first_name='No', last_name='Procs')
         p = Process.objects.create(
@@ -1306,9 +1416,11 @@ class TestReportsRegressionScenarios:
         assert r.status_code == 404
 
     def test_type_discipline_matrix_zeros_hits_heatmap_bug(self, api_client, admin, dr):
-        """Lines 1696+1717: matrix with 2+ types/disciplines covers zero-skip
+        """Lines 1696+1717: matrix with 2+ types/disciplines covers zero-skip.
+        
         formatting (line 1696) then hits pre-existing bug: xlsxwriter does not
-        support 'heatmap' chart type (line 1717), causing 500."""
+        support 'heatmap' chart type (line 1717), causing 500.
+        """
         rt1 = LegalRequestType.objects.create(name="TypeA")
         rt2 = LegalRequestType.objects.create(name="TypeB")
         d1 = LegalDiscipline.objects.create(name="DiscA")
@@ -1332,8 +1444,10 @@ class TestReportsRegressionScenarios:
 
     # --- Lines 1282-1283: null user in received legal requests report ---
     def test_received_legal_requests_null_user(self, api_client, admin, dr):
-        """Lines 1282-1283: LegalRequest iteration with user=None falls back
-        to empty requester_name and email."""
+        """Lines 1282-1283: LegalRequest iteration with user=None falls back.
+        
+        to empty requester_name and email.
+        """
         from gym_app.views.reports import generate_received_legal_requests_report
 
         mock_req = mock.MagicMock()
@@ -1371,21 +1485,19 @@ class TestReportsRegressionScenarios:
 
     # --- Lines 1741-1742: null user in type-discipline detailed list ---
     def test_type_discipline_null_user_detail(self, api_client, admin, dr):
-        """Lines 1741-1742: LegalRequest with user=None in detailed list of
-        requests_by_type_discipline report."""
+        """Lines 1741-1742: LegalRequest with user=None in detailed list of.
+        
+        requests_by_type_discipline report.
+        """
         from gym_app.views.reports import generate_requests_by_type_discipline_report
 
-        mock_req = mock.MagicMock()
-        mock_req.user = None
-        mock_req.request_type = mock.MagicMock()
+        mock_req = mock.MagicMock(user=None)
+        mock_req.request_type = mock.MagicMock(pk=1)
         mock_req.request_type.name = "TypeNull"
-        mock_req.request_type.pk = 1
-        mock_req.discipline = mock.MagicMock()
+        mock_req.discipline = mock.MagicMock(pk=1)
         mock_req.discipline.name = "DiscNull"
-        mock_req.discipline.pk = 1
         mock_req.files.count.return_value = 0
         mock_req.created_at.date.return_value = datetime.date.today()
-
         rt_mock = mock.MagicMock()
         rt_mock.name = "TypeNull"
         disc_mock = mock.MagicMock()
@@ -1435,23 +1547,35 @@ Targets:
 - user_activity action type formatting (lines 806-811)
 - generate_excel_report no-date path (lines 68-70)
 """
-import pytest
-import io
 import datetime
+import io  # noqa: F811
 import unittest.mock as mock
-from django.urls import reverse
+
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: F811
 from django.db import models
-from rest_framework import status
-from rest_framework.test import APIClient
+from django.urls import reverse  # noqa: F811
 from django.utils import timezone
-from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework import status  # noqa: F811
+from rest_framework.test import APIClient  # noqa: F811
 
 from gym_app.models import (
-    Process, Case, Stage, User, ActivityFeed, DynamicDocument,
-    LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles
+    ActivityFeed,  # noqa: F811
+    Case,  # noqa: F811
+    DynamicDocument,  # noqa: F811
+    LegalDiscipline,  # noqa: F811
+    LegalRequest,  # noqa: F811
+    LegalRequestFiles,  # noqa: F811
+    LegalRequestType,  # noqa: F811
+    Process,  # noqa: F811
+    Stage,  # noqa: F811
+    User,  # noqa: F811
 )
+
+
 @pytest.fixture
 def admin_user(db):
+    """Admin user."""
     return User.objects.create_user(
         email="rep-admin@example.com",
         password="testpassword",
@@ -1482,7 +1606,8 @@ def two_lawyers(db):
 
 
 @pytest.fixture
-def client_user(db):
+def client_user(db):  # noqa: F811
+    """Client user."""
     return User.objects.create_user(
         email="rep-client@example.com",
         password="testpassword",
@@ -1547,6 +1672,8 @@ def legal_request_data(db):  # pragma: no cover – unused fixture
 
 @pytest.mark.django_db
 class TestReportsEdges:
+    """Tests for Reports Edges."""
+
     @mock.patch("gym_app.views.reports.user_id", None)
     def test_lawyers_workload_multi_lawyer_chart(
         self, api_client, admin_user, processes_two_lawyers

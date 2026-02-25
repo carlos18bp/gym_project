@@ -1,22 +1,24 @@
+"""Tests for corporate_request module."""
 import os
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from gym_app.models.user import User
-from gym_app.models.organization import Organization, OrganizationMembership
 from gym_app.models.corporate_request import (
-    CorporateRequestType,
-    CorporateRequestFiles,
     CorporateRequest,
+    CorporateRequestFiles,
     CorporateRequestResponse,
+    CorporateRequestType,
 )
+from gym_app.models.organization import Organization, OrganizationMembership
+from gym_app.models.user import User
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_client():
+    """Corporate client."""
     return User.objects.create_user(
         email="corp@example.com",
         password="testpassword",
@@ -29,6 +31,7 @@ def corporate_client():
 @pytest.fixture
 @pytest.mark.django_db
 def normal_client():
+    """Create a normal client."""
     return User.objects.create_user(
         email="client@example.com",
         password="testpassword",
@@ -41,6 +44,7 @@ def normal_client():
 @pytest.fixture
 @pytest.mark.django_db
 def organization(corporate_client):
+    """Organization."""
     return Organization.objects.create(
         title="Org",
         description="Org desc",
@@ -51,12 +55,14 @@ def organization(corporate_client):
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_request_type():
+    """Corporate request type."""
     return CorporateRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def corporate_request_file():
+    """Corporate request file."""
     test_file = SimpleUploadedFile(
         "corp_request.pdf",
         b"PDF content",
@@ -67,10 +73,14 @@ def corporate_request_file():
 
 @pytest.mark.django_db
 class TestCorporateRequestTypeAndFiles:
+    """Tests for Corporate Request Type And Files."""
+
     def test_corporate_request_type_str(self, corporate_request_type):
+        """Verify corporate request type str."""
         assert str(corporate_request_type) == "Consulta"
 
     def test_delete_corporate_request_file_removes_physical_file(self, corporate_request_file):
+        """Verify delete corporate request file removes physical file."""
         file_path = corporate_request_file.file.path
         assert os.path.exists(file_path)
 
@@ -81,6 +91,8 @@ class TestCorporateRequestTypeAndFiles:
 
 @pytest.mark.django_db
 class TestCorporateRequest:
+    """Tests for Corporate Request."""
+
     def test_corporate_request_auto_sets_corporate_client_and_generates_number(
         self,
         normal_client,
@@ -120,6 +132,7 @@ class TestCorporateRequest:
         organization,
         corporate_request_type,
     ):
+        """Verify corporate request request number increments sequence."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=normal_client,
@@ -204,7 +217,10 @@ class TestCorporateRequest:
 
 @pytest.mark.django_db
 class TestCorporateRequestResponse:
+    """Tests for Corporate Request Response."""
+
     def test_corporate_request_response_str(self, normal_client, corporate_client, organization, corporate_request_type):
+        """Verify corporate request response str."""
         OrganizationMembership.objects.create(
             organization=organization,
             user=normal_client,
@@ -241,12 +257,16 @@ class TestCorporateRequestResponse:
 
 @pytest.mark.django_db
 class TestCorporateRequestFilesEdges:
+    """Tests for Corporate Request Files Edges."""
+
     def test_files_str(self):
+        """Verify files str."""
         f = SimpleUploadedFile("corp.pdf", b"x", content_type="application/pdf")
         crf = CorporateRequestFiles.objects.create(file=f)
         assert "corp" in str(crf)
 
     def test_delete_signal_removes_file(self):
+        """Verify delete signal removes file."""
         f = SimpleUploadedFile("rmcorp.pdf", b"x", content_type="application/pdf")
         crf = CorporateRequestFiles.objects.create(file=f)
         path = crf.file.path
@@ -262,7 +282,10 @@ class TestCorporateRequestFilesEdges:
 
 @pytest.mark.django_db
 class TestCorporateRequestStr:
+    """Tests for Corporate Request Str."""
+
     def test_str(self, client_user, corporate_user, organization):
+        """Verify str."""
         OrganizationMembership.objects.create(
             organization=organization, user=client_user, role="MEMBER",
         )

@@ -18,6 +18,13 @@ const lawyerAuth = (userId) => ({
   userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
 });
 
+async function closeSuccessDialog(page, expectedText) {
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText(expectedText);
+  await successDialog.getByRole("button").click();
+}
+
 async function installDownloadMocks(page, { userId, documents }) {
   const user = {
     id: userId, first_name: "E2E", last_name: "Lawyer", email: "e2e@example.com",
@@ -79,7 +86,7 @@ async function installDownloadMocks(page, { userId, documents }) {
   });
 }
 
-test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF store action", async ({ page }) => {
+test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF store action", { tag: ['@flow:docs-download', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9840;
   const doc = buildMockDocument({ id: 901, title: "Doc Descargar PDF", state: "Published", createdBy: userId });
 
@@ -90,7 +97,7 @@ test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
   // Open actions modal
-  await page.locator("table tbody tr").first().click();
+  await page.locator("table tbody tr").filter({ hasText: "Doc Descargar PDF" }).click();
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
 
   // Intercept download to prevent actual file download dialog
@@ -110,12 +117,10 @@ test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF
   ]);
 
   // Success notification (from store's downloadPDF action)
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await closeSuccessDialog(page, "exitosamente");
 });
 
-test("lawyer clicks Descargar Word on Published document — triggers downloadWord store action", async ({ page }) => {
+test("lawyer clicks Descargar Word on Published document — triggers downloadWord store action", { tag: ['@flow:docs-download', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9841;
   const doc = buildMockDocument({ id: 902, title: "Doc Descargar Word", state: "Published", createdBy: userId });
 
@@ -125,29 +130,27 @@ test("lawyer clicks Descargar Word on Published document — triggers downloadWo
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.locator("table tbody tr").first().click();
+  await page.locator("table tbody tr").filter({ hasText: "Doc Descargar Word" }).click();
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
 
   // Click "Descargar Word" — triggers useDocumentActions.downloadWordDocument → store.downloadWord
   await page.getByRole("button", { name: "Descargar Word" }).click();
 
   // Success notification
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("exitosamente");
-  await page.locator(".swal2-confirm").click();
+  await closeSuccessDialog(page, "exitosamente");
 });
 
-test("lawyer opens Global Letterhead modal and sees both PDF and Word template sections", async ({ page }) => {
+test("lawyer opens Global Letterhead modal and sees both PDF and Word template sections", { tag: ['@flow:docs-download', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9842;
 
   await installDownloadMocks(page, { userId, documents: [] });
   await setAuthLocalStorage(page, lawyerAuth(userId));
 
   await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Membrete Global" })).toBeVisible({ timeout: 15_000 });
 
   // Click Membrete Global button
-  await page.getByRole("button", { name: "Membrete Global" }).first().click();
+  await page.getByRole("button", { name: "Membrete Global" }).click();
 
   // Verify the Global Letterhead modal opens with both sections
   await expect(page.getByRole("heading", { name: "Gestión de Membrete Global para PDF" })).toBeVisible({ timeout: 10_000 });

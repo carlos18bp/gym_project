@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
@@ -11,7 +13,7 @@ import {
  * Also covers BaseDocumentCard summary fields rendering.
  */
 
-test("Completed document with summary fields renders in client list and opens actions modal", async ({ page }) => {
+test("Completed document with summary fields renders in client list and opens actions modal", { tag: ['@flow:docs-summary', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9820;
 
   const docWithSummary = buildMockDocument({
@@ -50,7 +52,7 @@ test("Completed document with summary fields renders in client list and opens ac
   await expect(page.getByText("Contrato con Resumen")).toBeVisible({ timeout: 10_000 });
 
   // Click the row to open the DocumentActionsModal
-  await page.locator("table tbody tr").first().click();
+  await page.locator("table tbody tr").first().click(); // quality: allow-fragile-selector (positional selector for first matching element)
 
   // Actions modal should open with document title
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
@@ -65,7 +67,7 @@ test("Completed document with summary fields renders in client list and opens ac
   await expect(page.getByText("Contenido completo")).toBeVisible({ timeout: 10_000 });
 });
 
-test("folders grid shows empty state when no folders exist", async ({ page }) => {
+test("folders grid shows empty state when no folders exist", { tag: ['@flow:docs-summary', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9821;
 
   await installDynamicDocumentApiMocks(page, {
@@ -93,7 +95,7 @@ test("folders grid shows empty state when no folders exist", async ({ page }) =>
   await expect(createBtn).toBeVisible();
 });
 
-test("document dashboard shows search results filtered by title on Minutas tab", async ({ page }) => {
+test("document dashboard shows search results filtered by title on Minutas tab", { tag: ['@flow:docs-summary', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 9822;
 
   const docs = [

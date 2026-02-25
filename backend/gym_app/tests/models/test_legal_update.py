@@ -1,9 +1,11 @@
-import pytest
+"""Tests for LegalUpdate model behavior and ordering."""
+
 from datetime import datetime, timedelta
+
+import pytest
 from django.utils import timezone
 
 from gym_app.models.legal_update import LegalUpdate
-
 
 FIXED_NOW = timezone.make_aware(datetime(2026, 1, 15, 10, 0, 0))
 

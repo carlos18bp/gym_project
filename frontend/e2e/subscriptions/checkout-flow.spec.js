@@ -66,7 +66,7 @@ async function installCheckoutMocks(page, { userId, planType = "basico" }) {
   });
 }
 
-test("checkout page renders plan details for free plan (basico)", async ({ page }) => {
+test("checkout page renders plan details for free plan (basico)", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9100;
   const userEmail = buildCheckoutEmail(userId);
 
@@ -98,7 +98,7 @@ test("checkout page renders plan details for free plan (basico)", async ({ page 
   await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toBeVisible();
 });
 
-test("checkout page for corporativo plan shows correct plan info", async ({ page }) => {
+test("checkout page for corporativo plan shows correct plan info", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9101;
   const userEmail = buildCheckoutEmail(userId);
 
@@ -125,7 +125,7 @@ test("checkout page for corporativo plan shows correct plan info", async ({ page
   await expect(page.getByText("30 días de garantía de reembolso")).toBeVisible();
 });
 
-test("free plan checkout activates subscription successfully", async ({ page }) => {
+test("free plan checkout activates subscription successfully", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9102;
   const userEmail = buildCheckoutEmail(userId);
 

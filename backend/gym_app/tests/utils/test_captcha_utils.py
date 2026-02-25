@@ -3,13 +3,16 @@
 Moved from test_user_auth_views.py (T16) — these test the utility directly,
 not a view endpoint.
 """
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 from rest_framework import status
 
 
 @pytest.mark.django_db
 class TestVerifyCaptchaUtility:
+    """Tests for Verify Captcha Utility."""
+
     def test_missing_token(self):
         """verify_captcha returns error when token is None."""
         from gym_app.utils.captcha import verify_captcha
@@ -27,8 +30,9 @@ class TestVerifyCaptchaUtility:
 
     def test_success(self, monkeypatch):
         """verify_captcha returns (True, None) on success."""
-        from gym_app.utils.captcha import verify_captcha
         from types import SimpleNamespace
+
+        from gym_app.utils.captcha import verify_captcha
         mock_resp = SimpleNamespace(
             json=lambda: {"success": True},
             raise_for_status=lambda: None
@@ -42,8 +46,9 @@ class TestVerifyCaptchaUtility:
 
     def test_google_rejects(self, monkeypatch):
         """verify_captcha returns error when Google rejects token."""
-        from gym_app.utils.captcha import verify_captcha
         from types import SimpleNamespace
+
+        from gym_app.utils.captcha import verify_captcha
         mock_resp = SimpleNamespace(
             json=lambda: {"success": False},
             raise_for_status=lambda: None

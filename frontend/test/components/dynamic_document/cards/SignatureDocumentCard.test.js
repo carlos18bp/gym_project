@@ -145,6 +145,7 @@ describe("SignatureDocumentCard.vue", () => {
     const base = wrapper.findComponent(BaseDocumentCardStub);
 
     expect(base.props("menuOptions")).toEqual(menuOptions);
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.statusIcon).toBeNull();
   });
 
@@ -188,6 +189,7 @@ describe("SignatureDocumentCard.vue", () => {
       },
     });
 
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     const { menuOptions, getTotalSignatures, getCompletedSignatures } = wrapper.vm.$.setupState;
 
     expect(menuOptions).toBeUndefined();

@@ -13,7 +13,7 @@ import {
  * - "Regresar" button navigates back
  */
 
-test("lawyer editor shows Continue and Return buttons", async ({ page }) => {
+test("lawyer editor shows Continue and Return buttons", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9300;
   const documentId = 301;
 
@@ -37,7 +37,7 @@ test("lawyer editor shows Continue and Return buttons", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Regresar" })).toBeVisible();
 });
 
-test("lawyer clicks Regresar and navigates back to dashboard", async ({ page }) => {
+test("lawyer clicks Regresar and navigates back to dashboard", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9301;
   const documentId = 302;
 
@@ -61,7 +61,7 @@ test("lawyer clicks Regresar and navigates back to dashboard", async ({ page }) 
   await expect(page).toHaveURL(/\/dynamic_document_dashboard/, { timeout: 10_000 });
 });
 
-test("lawyer clicks Continuar and navigates to variables config", async ({ page }) => {
+test("lawyer clicks Continuar and navigates to variables config", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9302;
   const documentId = 303;
 
@@ -86,7 +86,7 @@ test("lawyer clicks Continuar and navigates to variables config", async ({ page 
   await expect(page).toHaveURL(/\/variables-config/, { timeout: 10_000 });
 });
 
-test("client editor shows Guardar button instead of Continuar", async ({ page }) => {
+test("client editor shows Guardar button instead of Continuar", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9303;
   const documentId = 304;
 
@@ -130,7 +130,7 @@ test("client editor shows Guardar button instead of Continuar", async ({ page })
   await expect(page.getByRole("button", { name: "Guardar como borrador" })).toHaveCount(0);
 });
 
-test("lawyer saving empty document shows warning notification", async ({ page }) => {
+test("lawyer saving empty document shows warning notification", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9304;
   const documentId = 305;
 
@@ -174,6 +174,6 @@ test("lawyer saving empty document shows warning notification", async ({ page })
   await page.getByRole("button", { name: "Guardar como borrador" }).click();
 
   // Should show warning about empty document
-  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(".swal2-popup")).toContainText("vacío");
+  await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page.locator(".swal2-popup")).toContainText("vacío"); // quality: allow-fragile-selector (class selector targets stable UI structure)
 });
