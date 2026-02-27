@@ -157,6 +157,11 @@ describe("DocumentListTable.vue", () => {
       forceRefresh: true,
       lawyerId: 7,
       states: ["Draft", "Published"],
+      search: "",
+      tagId: null,
+      dateFrom: "",
+      dateTo: "",
+      sortBy: "recent",
     });
     expect(wrapper.exists()).toBe(true);
   });
