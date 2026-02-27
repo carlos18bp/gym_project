@@ -13,7 +13,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: 1, // Reduced to 1 for environments with limited resources
+  workers: 3, // Reduced to 1 for environments with limited resources
   reporter: [
     ["list"],
     ["html", { open: "never" }],

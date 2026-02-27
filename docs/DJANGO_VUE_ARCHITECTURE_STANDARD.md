@@ -52,6 +52,12 @@ This document defines the architecture standard for fullstack projects combining
      - 3.9.9 [Step 4 — Custom Reporter and Artifacts](#399-step-4--custom-reporter-and-artifacts)
      - 3.9.10 [Coverage Goals and Maintenance](#3910-coverage-goals-and-maintenance)
      - 3.9.11 [Execution and Quality](#3911-execution-and-quality)
+   - 3.10 [Production Requirements](#310-production-requirements)
+     - 3.10.1 [Settings Structure](#3101-settings-structure)
+     - 3.10.2 [Environment Variables](#3102-environment-variables)
+     - 3.10.3 [Automated Backups (django-dbbackup)](#3103-automated-backups-django-dbbackup)
+     - 3.10.4 [Query Monitoring (django-silk)](#3104-query-monitoring-django-silk)
+     - 3.10.5 [Task Queue (Huey)](#3105-task-queue-huey)
 4. [CI/CD and Pre-commit](#4-cicd-and-pre-commit)
 5. [Standard Dependencies](#5-standard-dependencies)
 6. [Execution Commands](#6-execution-commands)
@@ -3143,6 +3149,104 @@ Inline exceptions when strictly necessary:
 // quality: disable RULE_ID (reason)
 // quality: allow-serial (reason)
 ```
+
+---
+
+## 3.10 Production Requirements
+
+All Django projects in production MUST include the following configurations.
+
+### 3.10.1 Settings Structure
+
+Settings must be split into separate files:
+
+```
+backend/[project_name]/
+├── settings.py          # Base/shared settings (auto-imports env-specific)
+├── settings_dev.py      # Development overrides (DEBUG=True)
+└── settings_prod.py     # Production overrides (DEBUG=False enforced)
+```
+
+**Required in `settings_prod.py`:**
+- `DEBUG = False` (hardcoded, never from environment)
+- `SECRET_KEY` must be set (raise error if missing)
+- `ALLOWED_HOSTS` must be set (raise error if missing)
+- Security headers enabled (HSTS, secure cookies, SSL redirect)
+
+### 3.10.2 Environment Variables
+
+All secrets must be loaded from environment variables via `python-decouple`:
+
+| Variable | Purpose |
+|----------|---------|
+| `DJANGO_SECRET_KEY` | Django secret key |
+| `DB_USER`, `DB_PASSWORD` | Database credentials |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | SMTP credentials |
+| `WOMPI_*` | Payment gateway keys (project-specific) |
+| `RECAPTCHA_*` | reCAPTCHA keys (project-specific) |
+| `GOOGLE_CLIENT_ID` | OAuth client ID (project-specific) |
+
+A `.env.example` file must be provided with placeholders. Never commit real `.env` files.
+
+### 3.10.3 Automated Backups (django-dbbackup)
+
+```python
+INSTALLED_APPS = [
+    # ...
+    'dbbackup',
+]
+
+DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
+DBBACKUP_STORAGE_OPTIONS = {
+    'location': config('BACKUP_STORAGE_PATH', default='/var/backups/[project_name]')
+}
+DBBACKUP_COMPRESS = True
+DBBACKUP_CLEANUP_KEEP = 5  # ~90 days at 20-day intervals
+```
+
+**Automation:** Use Huey periodic task (every 20 days).
+
+**Storage:** `/var/backups/[project_name]/` (outside project directory).
+
+**Retention:** 90 days.
+
+### 3.10.4 Query Monitoring (django-silk)
+
+Silk is enabled conditionally via `ENABLE_SILK=true` environment variable. It should only be active during development or debugging sessions.
+
+```python
+ENABLE_SILK = config('ENABLE_SILK', default=False, cast=bool)
+if ENABLE_SILK:
+    INSTALLED_APPS.append('silk')
+```
+
+**Access control:** Staff users only (`SILKY_AUTHENTICATION = True`, `SILKY_AUTHORISATION = True`).
+
+**Garbage collection:** Daily cleanup of data older than 7 days via management command (`silk_garbage_collect`).
+
+**Alerts:** Weekly slow query report generated via Huey task.
+
+### 3.10.5 Task Queue (Huey)
+
+```python
+from huey import RedisHuey
+
+HUEY = RedisHuey(
+    name='[project_name]',
+    url=config('REDIS_URL', default='redis://localhost:6379/1'),
+    immediate=not IS_PRODUCTION,
+)
+```
+
+**Scheduled Tasks:**
+
+| Task | Schedule | Description |
+|------|----------|-------------|
+| `scheduled_backup` | Days 1 & 21, 3:00 AM | DB and media backup |
+| `silk_garbage_collection` | Daily, 4:00 AM | Clean old profiling data |
+| `weekly_slow_queries_report` | Mondays, 8:00 AM | Performance report |
+
+**Service:** Huey must run as a systemd service in production. Templates are in `scripts/systemd/`.
 
 ---
 

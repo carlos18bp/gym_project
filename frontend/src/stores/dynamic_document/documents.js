@@ -44,6 +44,11 @@ export const documentActions = {
    * @param {Array<string>} options.states - Optional list of states to filter by (comma-separated in query)
    * @param {number} options.clientId - Filter by client ID
    * @param {number} options.lawyerId - Filter by lawyer ID
+   * @param {string} options.search - Full-text search query
+   * @param {number} options.tagId - Filter by tag ID
+   * @param {string} options.dateFrom - Filter from date (YYYY-MM-DD)
+   * @param {string} options.dateTo - Filter to date (YYYY-MM-DD)
+   * @param {string} options.sortBy - Sort order (recent, oldest, name-asc, name-desc)
    * @param {boolean} options.forceRefresh - Whether to bypass cache
    * @param {boolean} options.append - Whether to append results instead of replacing
    * @returns {Promise<Object>} - Pagination data
@@ -56,6 +61,11 @@ export const documentActions = {
       states = null,
       clientId = null,
       lawyerId = null,
+      search = '',
+      tagId = null,
+      dateFrom = '',
+      dateTo = '',
+      sortBy = '',
       forceRefresh = false,
       append = false
     } = options;
@@ -81,6 +91,11 @@ export const documentActions = {
       }
       if (clientId) params.append('client_id', clientId);
       if (lawyerId) params.append('lawyer_id', lawyerId);
+      if (search) params.append('search', search);
+      if (tagId) params.append('tag_id', tagId);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+      if (sortBy) params.append('sort_by', sortBy);
       
       const endpoint = `dynamic-documents/?${params.toString()}`;
 
@@ -143,6 +158,11 @@ export const documentActions = {
    * @param {boolean} options.userRelated - Filter by creator/signer relationship
    * @param {boolean} options.signerSigned - Require signed=True on signer (used with userRelated)
    * @param {boolean} options.unassigned - Only docs without assigned_to
+   * @param {string} options.search - Full-text search query
+   * @param {number} options.tagId - Filter by tag ID
+   * @param {string} options.dateFrom - Filter from date (YYYY-MM-DD)
+   * @param {string} options.dateTo - Filter to date (YYYY-MM-DD)
+   * @param {string} options.sortBy - Sort order (recent, oldest, name-asc, name-desc)
    * @returns {Promise<Object>} { items, totalItems, totalPages, currentPage }
    */
   async fetchDocumentsForTab(options = {}) {
@@ -150,7 +170,8 @@ export const documentActions = {
       page = 1, limit = 10, state = '', states = null,
       clientId = null, lawyerId = null,
       userRelated = false, signerSigned = false,
-      unassigned = false
+      unassigned = false,
+      search = '', tagId = null, dateFrom = '', dateTo = '', sortBy = ''
     } = options;
 
     const params = new URLSearchParams();
@@ -165,6 +186,11 @@ export const documentActions = {
     if (userRelated) params.append('user_related', 'true');
     if (signerSigned) params.append('signer_signed', 'true');
     if (unassigned) params.append('unassigned', 'true');
+    if (search) params.append('search', search);
+    if (tagId) params.append('tag_id', tagId);
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    if (sortBy) params.append('sort_by', sortBy);
 
     const response = await get_request(`dynamic-documents/?${params.toString()}`);
     let data = response.data;

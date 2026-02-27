@@ -20,6 +20,10 @@
   - [E2E coverage](#e2e-coverage)
   - [Test Quality Gate](#test-quality-gate-backend--frontend)
   - [Run all test suites](#run-all-test-suites)
+- [Environment Configuration](#environment-configuration)
+- [Backups](#backups)
+- [Performance Monitoring](#performance-monitoring)
+- [Task Queue](#task-queue)
 - [Documentation](#documentation)
 - [Project change guidelines](#project-change-guidelines)
 
@@ -34,7 +38,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 - **Electronic signatures** (draw or image upload)
 - **Organization management** with invitations, memberships, and posts
 - **Legal and corporate request workflows** with file attachments and responses
-- **Subscription billing** via Wompi payment gateway with automated Celery tasks
+- **Subscription billing** via Wompi payment gateway with automated Huey tasks
 - **Google OAuth** and **reCAPTCHA** integration
 - **Offline-ready PWA** with service worker and installable app support
 
@@ -76,7 +80,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 
 ### 8. **Subscriptions & Payments**
    - Subscription plans with recurring billing via **Wompi** payment gateway.
-   - Automated monthly payment processing through **Celery** scheduled tasks.
+   - Automated monthly payment processing through **Huey** scheduled tasks.
    - Payment history tracking and automatic role downgrade on payment failure.
 
 ### 9. **Dashboard & Activity Feed**
@@ -102,7 +106,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 |----------|-----------|
 | Framework | Django 5.0.6, Django REST Framework 3.15.2 |
 | Authentication | SimpleJWT, Google OAuth (google-auth) |
-| Task queue | Celery 5.3.6 + Redis |
+| Task queue | Huey 2.5.2 + Redis |
 | Database | SQLite (development) |
 | PDF generation | xhtml2pdf, PyMuPDF, reportlab |
 | Document processing | python-docx, PyPDF2, pypdf, openpyxl, XlsxWriter, pandas |
@@ -166,7 +170,7 @@ The backend is organized around the following model domains (defined in `backend
 ```
 gym_project/
 ├── backend/                    # Django project
-│   ├── gym_project/            #   Django settings, urls, celery, wsgi/asgi
+│   ├── gym_project/            #   Django settings, urls, tasks, wsgi/asgi
 │   ├── gym_app/                #   Main application
 │   │   ├── models/             #     Domain models (user, process, dynamic_document, organization, ...)
 │   │   ├── views/              #     API views + dynamic_documents/ and layouts/ sub-modules
@@ -175,7 +179,7 @@ gym_project/
 │   │   ├── management/commands/#     Fake data creation/deletion commands
 │   │   ├── templates/          #     Email and PDF templates
 │   │   ├── tests/              #     pytest tests (models, serializers, tasks, utils, views, commands)
-│   │   ├── tasks.py            #     Celery tasks (subscription billing)
+│   │   ├── tasks.py            #     Huey tasks (subscription billing)
 │   │   ├── urls.py             #     API URL routing
 │   │   └── admin.py            #     Django admin configuration
 │   ├── scripts/                #   run-tests-blocks.py (block-based test runner)
@@ -626,7 +630,7 @@ Quality gate CI workflow:
 
 ### Run all test suites
 
-Run all test suites in parallel (backend pytest + frontend unit + frontend E2E):
+Run all test suites in parallel (backend block runner + frontend unit + frontend E2E):
 
 ```bash
 python scripts/run-tests-all-suites.py
@@ -635,14 +639,36 @@ python scripts/run-tests-all-suites.py
 This runs all three suites concurrently, displays a live progress spinner, generates log
 files in `test-reports/`, and prints a final summary when all suites complete.
 
+The backend suite delegates to `backend/scripts/run-tests-blocks.py` to run pytest in
+memory-safe blocks instead of a single large process. Coverage is appended across all
+blocks, so the final report reflects cumulative data.
+
+#### Backend block runner defaults
+
+The following parameters are used by default. Override them with the flags documented
+in the next section.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--chunk-size` | `3` | Test files per block |
+| `--sleep` | `3` | Seconds between blocks |
+| `--block-timeout` | `1200` | Max seconds per block (20 min) |
+| `--timeout-grace` | `15` | Grace seconds before kill |
+| `--run-id` | `backend-YYYYMMDD` | Report folder name |
+
+Pytest args passed to each block: `--cov=gym_app --cov-branch --cov-append --cov-report=term --cov-report=html`
+
+Before the backend suite starts, the script automatically:
+1. Runs `coverage erase` to reset accumulated data.
+2. Removes the previous run report directory (`backend/test-reports/backend-blocks/<run-id>`).
+
 #### Coverage report
 
-Coverage is captured automatically but **not shown by default**. Pass `--coverage` to
-display a per-suite summary at the end of the run:
+Coverage is **always shown** in the final report for all three suites:
 
-```bash
-python scripts/run-tests-all-suites.py --coverage
-```
+- **Backend**: Statements, Branches, Lines, and a combined Total (branch-aware).
+- **Frontend unit**: Statements, Branches, Functions, and Lines (from Jest JSON summary).
+- **Frontend E2E**: Flow coverage percentage (from `e2e-results/flow-coverage.json`).
 
 Coverage percentages are color-coded in the terminal output:
 
@@ -663,11 +689,25 @@ python scripts/run-tests-all-suites.py --skip-e2e
 # Run sequentially instead of in parallel
 python scripts/run-tests-all-suites.py --sequential
 
-# Show per-suite coverage summary
-python scripts/run-tests-all-suites.py --coverage
+# Show full output and force sequential execution
+python scripts/run-tests-all-suites.py --verbose
 
-# Filter backend tests by pytest marker
+# Filter backend blocks by block marker (edge, contract, integration, rest)
+python scripts/run-tests-all-suites.py --backend-block-markers "edge,contract"
+
+# Filter backend tests by pytest marker expression (-m)
 python scripts/run-tests-all-suites.py --backend-markers "edge or contract"
+
+# Pass extra args to run-tests-blocks.py (before --)
+python scripts/run-tests-all-suites.py --backend-block-args "--no-markers"
+
+# Override backend block runner parameters
+python scripts/run-tests-all-suites.py --chunk-size 10
+python scripts/run-tests-all-suites.py --sleep 5
+python scripts/run-tests-all-suites.py --block-timeout 900
+python scripts/run-tests-all-suites.py --timeout-grace 30
+python scripts/run-tests-all-suites.py --run-id my-run-20260101
+python scripts/run-tests-all-suites.py --resume
 
 # Forward extra args to each runner
 python scripts/run-tests-all-suites.py --backend-args "-x -q"
@@ -681,6 +721,172 @@ python scripts/run-tests-all-suites.py --e2e-workers 2
 # Custom log output directory (default: test-reports/)
 python scripts/run-tests-all-suites.py --report-dir ci-reports
 ```
+
+## Environment Configuration
+
+This project uses environment variables for configuration via `python-decouple`. Copy the example file and configure your environment:
+
+```bash
+cp backend/.env.example backend/.env
+# Edit .env with your values
+```
+
+See `backend/.env.example` for all available options. In development, most settings have safe defaults (SQLite, console email, etc.).
+
+## Backups
+
+Automated backups run every 20 days via Huey task queue. Backups are stored in the path configured by `BACKUP_STORAGE_PATH` (default: `/var/backups/gym_project/`) with 90-day retention (~5 backups).
+
+Manual backup:
+
+```bash
+source backend/venv/bin/activate
+python backend/manage.py dbbackup --compress
+python backend/manage.py mediabackup --compress
+```
+
+## Performance Monitoring
+
+Query profiling is powered by **django-silk** and is disabled by default. It is only intended for development and debugging — never enable it in production under sustained load.
+
+### Enabling Silk
+
+Set `ENABLE_SILK=true` in `backend/.env`, then run migrations to create Silk's tables:
+
+```bash
+source backend/venv/bin/activate
+python backend/manage.py migrate
+python backend/manage.py runserver
+```
+
+Access the dashboard at **`/silk/`** (staff users only).
+
+### What you can explore in the Silk dashboard
+
+| Section | What it shows |
+|---------|--------------|
+| **Requests** | Every HTTP request with URL, method, status code, total time, and number of SQL queries |
+| **SQL queries** | All queries executed per request, with raw SQL, execution time, and stack trace |
+| **Summary** | Aggregate statistics: slowest requests, most-queried endpoints, average response times |
+
+Active settings when Silk is enabled:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `SILKY_ANALYZE_QUERIES` | `True` | Parse and annotate SQL queries |
+| `SILKY_MAX_RECORDED_REQUESTS` | `10000` | Cap on stored request records |
+| `SILKY_IGNORE_PATHS` | `/admin/`, `/static/`, `/media/`, `/silk/` | Paths excluded from profiling |
+| `SILKY_MAX_REQUEST_BODY_SIZE` | `1024` | Max bytes of request body stored per record |
+| `SILKY_MAX_RESPONSE_BODY_SIZE` | `1024` | Max bytes of response body stored per record |
+| `SLOW_QUERY_THRESHOLD_MS` | `500` | Threshold for the weekly slow-query report |
+| `N_PLUS_ONE_THRESHOLD` | `10` | Min queries/request to flag as N+1 suspect |
+
+### `silk_garbage_collect` management command
+
+Deletes Silk `Request` records (and their cascaded SQL query / profiling data) older than a configurable number of days.
+
+```bash
+# Delete records older than 7 days (default)
+python backend/manage.py silk_garbage_collect
+
+# Delete records older than 14 days
+python backend/manage.py silk_garbage_collect --days=14
+
+# Preview what would be deleted without deleting anything
+python backend/manage.py silk_garbage_collect --dry-run
+
+# Combine: preview with a custom retention window
+python backend/manage.py silk_garbage_collect --days=3 --dry-run
+```
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--days N` | `7` | Retention period in days; records older than this are deleted |
+| `--dry-run` | `False` | Print the count of matching records without deleting |
+
+**Example output (normal run):**
+
+```
+Silk records older than 2026-02-19 04:00:00+00:00:
+  - Requests to delete: 312
+Deleted 1247 records
+```
+
+> The deleted count is higher than "requests to delete" because each `Request` cascades to its associated `SQLQuery` and profiling records.
+
+**Example output (dry-run):**
+
+```
+Silk records older than 2026-02-19 04:00:00+00:00:
+  - Requests to delete: 312
+DRY RUN: Nothing was deleted
+```
+
+### Automated cron jobs (Huey)
+
+Both tasks run automatically via the Huey task queue when `ENABLE_SILK=true`. They are no-ops when Silk is disabled.
+
+#### 1. Daily garbage collection
+
+| Property | Value |
+|----------|-------|
+| Task | `silk_garbage_collection` in `gym_project/tasks.py` |
+| Schedule | Every day at **04:00 UTC** |
+| Action | Calls `silk_garbage_collect --days=7` |
+| Configurable | Change `--days` value directly in the task source |
+
+#### 2. Weekly slow-query report
+
+| Property | Value |
+|----------|-------|
+| Task | `weekly_slow_queries_report` in `gym_project/tasks.py` |
+| Schedule | Every **Monday at 08:00 UTC** |
+| Output file | `backend/logs/silk-weekly-report.log` (appended each week) |
+| Slow-query threshold | `SLOW_QUERY_THRESHOLD_MS` (default: `500` ms) |
+| N+1 threshold | `N_PLUS_ONE_THRESHOLD` (default: `10` queries per request) |
+
+The report covers the **last 7 days** of recorded requests and contains two sections:
+
+- **Slow queries** — top 50 SQL queries exceeding the threshold, sorted by execution time descending.
+- **N+1 suspects** — top 20 endpoints with more DB queries per request than the threshold, sorted by query count descending.
+
+**Example report (`backend/logs/silk-weekly-report.log`):**
+
+```
+============================================================
+WEEKLY QUERY REPORT - 2026-02-24
+============================================================
+
+## SLOW QUERIES (>500ms)
+----------------------------------------
+[1243ms] /api/processes/ - SELECT "gym_app_process"."id", "gym_app_process"."title"...
+[872ms] /api/documents/ - SELECT "gym_app_dynamicdocument"."id", "gym_app_dynamicdocument"."title"...
+[603ms] /api/organizations/ - SELECT "gym_app_organization"."id", "gym_app_organization"."title"...
+
+## POTENTIAL N+1 (>10 queries/request)
+----------------------------------------
+[34 queries] /api/processes/123/
+[18 queries] /api/documents/456/
+[12 queries] /api/organizations/7/
+
+============================================================
+```
+
+If no issues are found, each section reads `No slow queries found this week` or `No N+1 patterns detected this week`.
+
+## Task Queue
+
+This project uses Huey with Redis for background tasks (backups, monitoring, subscription billing).
+
+In development, Huey runs in immediate mode (synchronous). In production, ensure the Huey service is running:
+
+```bash
+sudo systemctl status gym-project-huey
+```
+
+See `scripts/systemd/README.md` for installation instructions.
 
 ## Documentation
 

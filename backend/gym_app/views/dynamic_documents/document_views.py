@@ -121,6 +121,60 @@ def list_dynamic_documents(request):
     if unassigned:
         queryset = queryset.filter(assigned_to__isnull=True)
 
+    # Full-text search across title, variable values, and assigned user name
+    search = request.query_params.get('search', '').strip()
+    if search:
+        queryset = queryset.filter(
+            Q(title__icontains=search)
+            | Q(variables__value__icontains=search)
+            | Q(assigned_to__first_name__icontains=search)
+            | Q(assigned_to__last_name__icontains=search)
+        ).distinct()
+
+    # Filter by tag
+    tag_id = request.query_params.get('tag_id')
+    if tag_id:
+        try:
+            queryset = queryset.filter(tags__id=int(tag_id))
+        except (TypeError, ValueError):
+            pass  # Ignore invalid tag_id values
+
+    # Date range filter (subscription date variable, falling back to created_at)
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
+    if date_from or date_to:
+        # IDs of documents that have a subscription_date variable within range
+        date_q = Q(variables__summary_field='subscription_date')
+        if date_from:
+            date_q &= Q(variables__value__gte=date_from)
+        if date_to:
+            date_q &= Q(variables__value__lte=date_to)
+
+        docs_with_date_var = queryset.filter(date_q).values_list('pk', flat=True)
+
+        # Fallback: documents without a subscription_date variable use created_at
+        no_date_var_q = ~Q(variables__summary_field='subscription_date')
+        fallback_q = no_date_var_q
+        if date_from:
+            fallback_q &= Q(created_at__date__gte=date_from)
+        if date_to:
+            fallback_q &= Q(created_at__date__lte=date_to)
+
+        docs_fallback = queryset.filter(fallback_q).values_list('pk', flat=True)
+
+        queryset = queryset.filter(pk__in=set(docs_with_date_var) | set(docs_fallback))
+
+    # Sort parameter
+    sort_by = request.query_params.get('sort_by', 'recent')
+    sort_map = {
+        'recent': '-updated_at',
+        'oldest': 'updated_at',
+        'name-asc': 'title',
+        'name-desc': '-title',
+    }
+    order_field = sort_map.get(sort_by, '-updated_at')
+    queryset = queryset.order_by(order_field)
+
     # Pagination parameters (fallback to sensible defaults)
     try:
         page = int(request.query_params.get('page', 1))
@@ -150,7 +204,7 @@ def list_dynamic_documents(request):
     serializer = DynamicDocumentSerializer(page_obj.object_list, many=True, context={'request': request})
 
     logger.debug(
-        "list_dynamic_documents: user=%s role=%s page=%s limit=%s state=%s client_id=%s lawyer_id=%s total_items=%s items_on_page=%s total_pages=%s",
+        "list_dynamic_documents: user=%s role=%s page=%s limit=%s state=%s client_id=%s lawyer_id=%s search=%s total_items=%s items_on_page=%s total_pages=%s",
         getattr(request.user, "id", None),
         getattr(request.user, "role", None),
         page,
@@ -158,6 +212,7 @@ def list_dynamic_documents(request):
         state,
         client_id,
         lawyer_id,
+        search,
         paginator.count,
         len(page_obj.object_list),
         paginator.num_pages,

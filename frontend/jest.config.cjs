@@ -3,6 +3,7 @@ module.exports = {
     testMatch: ['<rootDir>/test/**/*.test.js'],
     testPathIgnorePatterns: ['<rootDir>/e2e/'],
     coverageProvider: 'babel',
+    coverageReporters: ['text', 'json-summary'],
     transform: {
       '^.+\\.vue$': '<rootDir>/test/utils/vue-jest-transformer.cjs',
       '^.+\\.js$': 'babel-jest',

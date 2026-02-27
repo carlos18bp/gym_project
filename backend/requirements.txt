@@ -4,7 +4,6 @@ asn1crypto==1.5.1
 beautifulsoup4==4.13.3
 Brotli==1.1.0
 cachetools==5.3.3
-celery==5.3.6
 certifi==2024.6.2
 cffi==1.17.1
 chardet==5.2.0
@@ -80,3 +79,16 @@ zopfli==0.2.3.post1
 
 # Security and validation dependencies
 python-magic==0.4.27
+
+# Environment configuration
+python-decouple==3.8
+
+# Task queue (Huey + Redis)
+huey==2.5.2
+redis==5.2.1
+
+# Backups
+django-dbbackup==4.2.1
+
+# Query profiling (dev only)
+django-silk==5.3.2

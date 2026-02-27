@@ -1,4 +1,5 @@
 [run]
+branch = True
 omit =
     */gym_app/tests/*
     */gym_app/tests/*/*

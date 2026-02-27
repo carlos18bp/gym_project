@@ -3,17 +3,17 @@ import requests
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
-from celery import shared_task
+from huey.contrib.djhuey import task
 from django.conf import settings
 from gym_app.models import Subscription
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@task()
 def process_monthly_subscriptions():
     """
-    Celery task to process monthly subscription payments.
+    Huey task to process monthly subscription payments.
     
     This task runs daily and processes all active subscriptions that are due for billing.
     It charges the payment source saved in the subscription and updates the subscription status.
@@ -121,7 +121,7 @@ def process_subscription_payment(subscription):
         raise
 
 
-@shared_task
+@task()
 def cancel_subscription(subscription_id):
     """
     Cancel a subscription and update user role.

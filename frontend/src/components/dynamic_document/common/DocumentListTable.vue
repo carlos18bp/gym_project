@@ -716,6 +716,48 @@ const showTagsModal = ref(false);
 const tagsModalDocument = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+let searchDebounceTimer = null;
+// Flag to skip the currentPage watcher when a filter/search watcher already triggers the fetch
+let skipNextPageWatch = false;
+
+// Whether pagination/filtering is handled server-side (true) or client-side (promptDocuments)
+const isServerPaginated = computed(() => !props.promptDocuments);
+
+/**
+ * Build common fetch options based on context (lawyer minutas, client my-documents)
+ * and all active local filters, then call documentStore.fetchDocuments.
+ */
+const fetchWithFilters = async (page = 1) => {
+  if (!isServerPaginated.value) return;
+
+  const currentUser = userStore.currentUser;
+  const options = {
+    page,
+    limit: itemsPerPage.value,
+    forceRefresh: true,
+    search: localSearchQuery.value || '',
+    tagId: filterByTag.value || null,
+    dateFrom: dateFrom.value || '',
+    dateTo: dateTo.value || '',
+    sortBy: sortBy.value || 'recent',
+  };
+
+  if (isLawyerMinutasContext.value && currentUser?.id) {
+    options.lawyerId = currentUser.id;
+    options.states = ['Draft', 'Published'];
+  }
+
+  if (isClientMyDocumentsContext.value && currentUser?.id) {
+    options.clientId = currentUser.id;
+    options.states = ['Progress', 'Completed'];
+  }
+
+  try {
+    await documentStore.fetchDocuments(options);
+  } catch (error) {
+    console.error('Error fetching documents with filters:', error);
+  }
+};
 
 // Computed: Show selection (checkbox) column
 // Solo existía originalmente en la tabla de abogado (Documentos legales)
@@ -824,6 +866,32 @@ const selectedTagIdsFromParent = computed(() => {
 const filteredDocuments = computed(() => {
   let docs = documentsToDisplay.value;
 
+  // In server-paginated mode the backend already applies search, tag, date,
+  // and sort filters.  We only need to apply lightweight client-side filters
+  // that are NOT delegated (state dropdown, client dropdown, parent tags).
+  if (isServerPaginated.value) {
+    // Apply state filter (local dropdown, not sent to backend)
+    if (filterByState.value) {
+      docs = docs.filter(doc => doc.state === filterByState.value);
+    }
+
+    // Apply selected tags from parent (Dashboard-level filters)
+    if (selectedTagIdsFromParent.value.length > 0) {
+      docs = docs.filter(doc =>
+        doc.tags?.some(tag => selectedTagIdsFromParent.value.includes(tag.id))
+      );
+    }
+
+    // Apply client filter (lawyer only)
+    if (filterByClient.value && props.cardType === 'lawyer') {
+      docs = docs.filter(doc => doc.client?.id === filterByClient.value);
+    }
+
+    return docs;
+  }
+
+  // --- Client-side filtering for promptDocuments mode ---
+
   // Apply search filter
   const searchTerm = (localSearchQuery.value || '').toLowerCase();
   if (searchTerm) {
@@ -917,6 +985,11 @@ const isClientMyDocumentsContext = computed(() => {
 // Computed: Sorted documents
 const filteredAndSortedDocuments = computed(() => {
   const docs = [...filteredDocuments.value];
+
+  // In server-paginated mode the backend already sorts via sort_by param
+  if (isServerPaginated.value) {
+    return docs;
+  }
 
   switch (sortBy.value) {
     case 'recent':
@@ -1348,33 +1421,13 @@ watch(currentPage, async (newPage, oldPage) => {
     return;
   }
 
-  try {
-    const currentUser = userStore.currentUser;
-
-    const options = {
-      page: newPage,
-      limit: itemsPerPage.value,
-      forceRefresh: true,
-    };
-
-    // For lawyer Minutas, restrict results to documents created by this lawyer
-    // and already filtered by Draft/Published at the backend level
-    if (isLawyerMinutasContext.value && currentUser?.id) {
-      options.lawyerId = currentUser.id;
-      options.states = ['Draft', 'Published'];
-    }
-
-    // For client-style "my-documents" views, restrict to documents assigned to this user
-    // and filter by Progress and Completed states
-    if (isClientMyDocumentsContext.value && currentUser?.id) {
-      options.clientId = currentUser.id;
-      options.states = ['Progress', 'Completed'];
-    }
-
-    await documentStore.fetchDocuments(options);
-  } catch (error) {
-    console.error('Error fetching documents for page change:', error);
+  // Skip if a filter/search watcher already triggered the fetch for this page reset
+  if (skipNextPageWatch) {
+    skipNextPageWatch = false;
+    return;
   }
+
+  await fetchWithFilters(newPage);
 });
 
 // Keep current page within bounds when the filtered result set shrinks
@@ -1385,8 +1438,20 @@ watch(() => filteredAndSortedDocuments.value.length, () => {
 });
 
 // Sync local search back to parent (two-way binding for searchQuery)
+// and trigger a debounced server-side search
 watch(localSearchQuery, (newValue) => {
   emit('update:searchQuery', newValue ?? '');
+
+  if (!isServerPaginated.value) return;
+
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    if (currentPage.value !== 1) {
+      skipNextPageWatch = true;
+      currentPage.value = 1;
+    }
+    fetchWithFilters(1);
+  }, 300);
 });
 
 // Watch for external searchQuery changes (e.g., from parent component)
@@ -1396,6 +1461,16 @@ watch(() => props.searchQuery, (newValue) => {
   }
 }, { immediate: true });
 
+// Watch filter changes: reset to page 1 and re-fetch from backend
+watch([filterByTag, dateFrom, dateTo, sortBy], () => {
+  if (!isServerPaginated.value) return;
+  if (currentPage.value !== 1) {
+    skipNextPageWatch = true;
+    currentPage.value = 1;
+  }
+  fetchWithFilters(1);
+});
+
 // Initialize
 onMounted(async () => {
   await userStore.init();
@@ -1404,32 +1479,6 @@ onMounted(async () => {
     return;
   }
 
-  try {
-    const currentUser = userStore.currentUser;
-
-    const options = {
-      page: 1,
-      limit: itemsPerPage.value,
-      forceRefresh: true,
-    };
-
-    // For lawyer Minutas, request only documents created by this lawyer
-    // and already filtered by Draft/Published at the backend level
-    if (isLawyerMinutasContext.value && currentUser?.id) {
-      options.lawyerId = currentUser.id;
-      options.states = ['Draft', 'Published'];
-    }
-
-    // For client-style "my-documents" views, request only documents assigned to this user
-    // and filter by Progress and Completed states
-    if (isClientMyDocumentsContext.value && currentUser?.id) {
-      options.clientId = currentUser.id;
-      options.states = ['Progress', 'Completed'];
-    }
-
-    await documentStore.fetchDocuments(options);
-  } catch (error) {
-    console.error('Error initializing documents for table:', error);
-  }
+  await fetchWithFilters(1);
 });
 </script>

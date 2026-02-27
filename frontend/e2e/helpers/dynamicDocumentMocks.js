@@ -186,6 +186,35 @@ export async function installDynamicDocumentApiMocks(
         filtered = filtered.filter((d) => !d.assigned_to);
       }
 
+      // Server-side search: filter by title (mirrors backend icontains on title)
+      const searchParam = (params.get("search") || "").trim().toLowerCase();
+      if (searchParam) {
+        filtered = filtered.filter((d) =>
+          (d.title || "").toLowerCase().includes(searchParam)
+        );
+      }
+
+      // Server-side tag filter
+      const tagIdParam = params.get("tag_id");
+      if (tagIdParam) {
+        const tid = Number(tagIdParam);
+        filtered = filtered.filter((d) =>
+          Array.isArray(d.tags) && d.tags.some((t) => t.id === tid)
+        );
+      }
+
+      // Server-side sort
+      const sortByParam = params.get("sort_by") || "recent";
+      if (sortByParam === "name-asc") {
+        filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+      } else if (sortByParam === "name-desc") {
+        filtered.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+      } else if (sortByParam === "oldest") {
+        filtered.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+      } else {
+        filtered.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+      }
+
       const page = parseInt(params.get("page") || "1", 10);
       const limit = parseInt(params.get("limit") || "10", 10);
       const start = (page - 1) * limit;

@@ -22,7 +22,48 @@ async function installFilterTagMocks(page, { userId, documents, tags = [] }) {
     if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: true }) };
     if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
 
-    if (apiPath === "dynamic-documents/") return { status: 200, contentType: "application/json", body: JSON.stringify(documents) };
+    if (apiPath === "dynamic-documents/") {
+      const url = new URL(route.request().url());
+      const params = url.searchParams;
+      let filtered = [...documents];
+
+      const statesParam = params.get("states");
+      if (statesParam) {
+        const statesList = statesParam.split(",").map((s) => s.trim());
+        filtered = filtered.filter((d) => statesList.includes(d.state));
+      }
+
+      const searchParam = (params.get("search") || "").trim().toLowerCase();
+      if (searchParam) {
+        filtered = filtered.filter((d) =>
+          (d.title || "").toLowerCase().includes(searchParam)
+        );
+      }
+
+      const tagIdParam = params.get("tag_id");
+      if (tagIdParam) {
+        const tid = Number(tagIdParam);
+        filtered = filtered.filter((d) =>
+          Array.isArray(d.tags) && d.tags.some((t) => t.id === tid)
+        );
+      }
+
+      const pg = parseInt(params.get("page") || "1", 10);
+      const lim = parseInt(params.get("limit") || "10", 10);
+      const start = (pg - 1) * lim;
+      const paged = filtered.slice(start, start + lim);
+
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: paged,
+          totalItems: filtered.length,
+          totalPages: Math.max(1, Math.ceil(filtered.length / lim)),
+          currentPage: pg,
+        }),
+      };
+    }
     if (apiPath.match(/^dynamic-documents\/\d+\/$/)) {
       const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/$/)[1]);
       const doc = documents.find((d) => d.id === docId);

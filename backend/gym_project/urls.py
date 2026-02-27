@@ -15,6 +15,10 @@ else:
     # In production, serve media files through Django
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+# Silk profiling (only when ENABLE_SILK=true)
+if getattr(settings, 'ENABLE_SILK', False):
+    urlpatterns.append(path('silk/', include('silk.urls', namespace='silk')))
+
 # Catch-all pattern for Vue.js SPA routing
 # This must be the last pattern to avoid catching API routes
 urlpatterns += [

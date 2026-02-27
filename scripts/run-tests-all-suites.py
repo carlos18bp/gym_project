@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import datetime
 import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -18,6 +21,9 @@ from pathlib import Path
 from typing import Sequence
 
 TAIL_LINES = 40
+_BACKEND_COV_BRANCH_RE = re.compile(r"^TOTAL\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%")
+_BACKEND_COV_SIMPLE_RE = re.compile(r"^TOTAL\s+(\d+)\s+(\d+)\s+(\d+)%")
+_JEST_TABLE_SEP_RE = re.compile(r"^-{5,}.*\|")
 
 # ── ANSI helpers ─────────────────────────────────────────────────────────────
 _COLOR = os.environ.get("NO_COLOR") is None and sys.stdout.isatty()
@@ -132,6 +138,9 @@ class StepResult:
     output_tail: list[str] = field(default_factory=list)
     coverage: list[str] = field(default_factory=list)
     log_path: Path | None = None
+    backend_cov_total: str = ""
+    coverage_table: list[str] = field(default_factory=list)
+    skipped_from_resume: bool = False
 
 
 def split_args(value: str | None) -> list[str]:
@@ -189,28 +198,159 @@ def read_flow_coverage_summary(frontend_root: Path) -> list[str]:
     if not isinstance(summary, dict):
         return []
 
-    totals = summary.get("totals")
-    if not isinstance(totals, dict):
+    total_flows = summary.get("total")
+    covered_flows = summary.get("covered")
+
+    if total_flows is None or covered_flows is None:
         return []
 
-    total_flows = totals.get("total")
-    covered_flows = totals.get("covered")
-    partial_flows = totals.get("partial")
-    failing_flows = totals.get("failing")
-    missing_flows = totals.get("missing")
-    coverage_percent = summary.get("coveredPercent")
+    pct = covered_flows / total_flows * 100 if total_flows > 0 else 0.0
+    return [f"Flows: {pct:.2f}% ({covered_flows}/{total_flows})"]
 
-    lines: list[str] = []
-    if total_flows is not None and covered_flows is not None:
-        pct_value = _format_pct(coverage_percent) if coverage_percent is not None else "0"
-        lines.append(f"Flows covered: {covered_flows}/{total_flows} ({pct_value}%)")
-    if partial_flows is not None and partial_flows > 0:
-        lines.append(f"Partial: {partial_flows}")
-    if failing_flows is not None and failing_flows > 0:
-        lines.append(f"Failing: {failing_flows}")
-    if missing_flows is not None and missing_flows > 0:
-        lines.append(f"Missing: {missing_flows}")
-    return lines
+
+def compute_function_coverage(backend_root: Path) -> tuple[int, int]:
+    """Compute function coverage via 'coverage json' + AST.
+
+    Returns (covered_functions, total_functions).  Returns (0, 0) on any error
+    so callers can safely treat missing data as unknown rather than 0%.
+    """
+    venv_python = backend_root / "venv" / "bin" / "python"
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
+    json_out = backend_root / ".coverage-functions.json"
+    try:
+        subprocess.run(
+            [python_exe, "-m", "coverage", "json", "-o", str(json_out)],
+            cwd=backend_root,
+            check=False,
+            capture_output=True,
+        )
+        if not json_out.exists():
+            return (0, 0)
+        data = json.loads(json_out.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return (0, 0)
+    finally:
+        try:
+            json_out.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    files_data = data.get("files", {})
+    total_funcs = 0
+    covered_funcs = 0
+    for filepath, file_data in files_data.items():
+        executed: set[int] = set(file_data.get("executed_lines", []))
+        source_path = Path(filepath)
+        if not source_path.is_absolute():
+            source_path = backend_root / filepath
+        try:
+            source = source_path.read_text(encoding="utf-8")
+            tree = ast.parse(source)
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                total_funcs += 1
+                end = getattr(node, "end_lineno", None) or node.lineno
+                body_lines = set(range(node.lineno + 1, end + 1))
+                if body_lines & executed:
+                    covered_funcs += 1
+    return (covered_funcs, total_funcs)
+
+
+def parse_backend_cov_lines(
+    total_raw: str,
+    func_covered: int = 0,
+    func_total: int = 0,
+) -> list[str]:
+    """Parse a pytest TOTAL coverage line into Statements/Branches/Functions/Lines/Total."""
+    raw = total_raw.strip()
+    m = _BACKEND_COV_BRANCH_RE.match(raw)
+    if m:
+        stmts = int(m.group(1))
+        miss = int(m.group(2))
+        branch = int(m.group(3))
+        brpart = int(m.group(4))
+        stmt_cov = stmts - miss
+        br_cov = branch - brpart if branch > 0 else 0
+        stmt_pct = stmt_cov / stmts * 100 if stmts > 0 else 0.0
+        br_pct = br_cov / branch * 100 if branch > 0 else 0.0
+        func_pct = func_covered / func_total * 100 if func_total > 0 else 0.0
+        total_num = stmt_cov + br_cov + func_covered
+        total_den = stmts + branch + func_total
+        total_pct = total_num / total_den * 100 if total_den > 0 else 0.0
+        out = [
+            f"Statements: {stmt_pct:.2f}% ({stmt_cov}/{stmts})",
+            f"Branches: {br_pct:.2f}% ({br_cov}/{branch})",
+        ]
+        if func_total > 0:
+            out.append(f"Functions: {func_pct:.2f}% ({func_covered}/{func_total})")
+        out += [
+            f"Lines: {stmt_pct:.2f}% ({stmt_cov}/{stmts})",
+            f"Total: {total_pct:.2f}% ({total_num}/{total_den})",
+        ]
+        return out
+    m = _BACKEND_COV_SIMPLE_RE.match(raw)
+    if m:
+        stmts = int(m.group(1))
+        miss = int(m.group(2))
+        stmt_cov = stmts - miss
+        stmt_pct = stmt_cov / stmts * 100 if stmts > 0 else 0.0
+        func_pct = func_covered / func_total * 100 if func_total > 0 else 0.0
+        total_num = stmt_cov + func_covered
+        total_den = stmts + func_total
+        total_pct = total_num / total_den * 100 if total_den > 0 else 0.0
+        out = [
+            f"Statements: {stmt_pct:.2f}% ({stmt_cov}/{stmts})",
+        ]
+        if func_total > 0:
+            out.append(f"Functions: {func_pct:.2f}% ({func_covered}/{func_total})")
+        out += [
+            f"Lines: {stmt_pct:.2f}% ({stmt_cov}/{stmts})",
+            f"Total: {total_pct:.2f}% ({total_num}/{total_den})",
+        ]
+        return out
+    return []
+
+
+def save_suite_state(state_file: Path, results: list[StepResult]) -> None:
+    """Persist suite pass/fail state so --resume can skip already-passed suites."""
+    state: dict[str, dict] = {}
+    for r in results:
+        state[r.name] = {
+            "status": r.status,
+            "duration": r.duration,
+            "coverage": r.coverage,
+            "log_path": str(r.log_path) if r.log_path else None,
+        }
+    try:
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def load_suite_state(state_file: Path) -> dict[str, dict]:
+    """Load previously saved suite state. Returns empty dict on any error."""
+    try:
+        return json.loads(state_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def cleanup_backend_coverage(backend_root: Path, run_id: str) -> None:
+    """Erase accumulated coverage data and remove the previous run report directory."""
+    venv_python = backend_root / "venv" / "bin" / "python"
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
+    subprocess.run(
+        [python_exe, "-m", "coverage", "erase"],
+        cwd=backend_root,
+        check=False,
+        capture_output=True,
+    )
+    run_report_dir = backend_root / "test-reports" / "backend-blocks" / run_id
+    if run_report_dir.exists():
+        shutil.rmtree(run_report_dir, ignore_errors=True)
 
 
 def run_command(
@@ -220,6 +360,8 @@ def run_command(
     log_path: Path | None,
     env: dict[str, str] | None = None,
     capture_coverage: bool = False,
+    capture_backend_total: bool = False,
+    capture_table: str | None = None,
     append_log: bool = False,
     quiet: bool = False,
 ) -> StepResult:
@@ -232,6 +374,11 @@ def run_command(
     output_tail: deque[str] = deque(maxlen=TAIL_LINES)
     coverage_lines: list[str] = []
     coverage_active = False
+    backend_total_line: str = ""
+    table_lines: list[str] = []
+    table_current: list[str] = []
+    table_active = False
+    jest_sep_count = 0
 
     log_file = None
     if log_path:
@@ -293,6 +440,46 @@ def run_command(
                 coverage_lines.append(stripped)
                 if stripped.startswith("=") and "Coverage summary" not in stripped:
                     coverage_active = False
+        if capture_backend_total:
+            s = stripped.strip()
+            if _BACKEND_COV_BRANCH_RE.match(s) or _BACKEND_COV_SIMPLE_RE.match(s):
+                backend_total_line = s
+        if capture_table:
+            _s = stripped.strip()
+            if capture_table == "backend":
+                if not table_active and stripped.startswith("---") and "coverage:" in stripped.lower():
+                    table_current = [stripped]
+                    table_active = True
+                elif table_active:
+                    table_current.append(stripped)
+                    if _BACKEND_COV_BRANCH_RE.match(_s) or _BACKEND_COV_SIMPLE_RE.match(_s):
+                        table_lines = list(table_current)
+                        table_current = []
+                        table_active = False
+            elif capture_table == "jest":
+                if not table_active and _JEST_TABLE_SEP_RE.match(stripped):
+                    table_current = [stripped]
+                    table_active = True
+                    jest_sep_count = 1
+                elif table_active:
+                    table_current.append(stripped)
+                    if _JEST_TABLE_SEP_RE.match(stripped):
+                        jest_sep_count += 1
+                        if jest_sep_count >= 3:
+                            table_lines = list(table_current)
+                            table_current = []
+                            table_active = False
+                            jest_sep_count = 0
+            elif capture_table == "e2e_flow":
+                if not table_active and "FLOW COVERAGE REPORT" in stripped:
+                    table_current = [stripped]
+                    table_active = True
+                elif table_active:
+                    table_current.append(stripped)
+                    if "JSON report:" in stripped:
+                        table_lines = list(table_current)
+                        table_current = []
+                        table_active = False
 
     returncode = process.wait()
     duration = time.monotonic() - start_time
@@ -311,6 +498,8 @@ def run_command(
         output_tail=list(output_tail),
         coverage=coverage_lines,
         log_path=log_path,
+        backend_cov_total=backend_total_line,
+        coverage_table=table_lines,
     )
 
 
@@ -319,26 +508,68 @@ def run_backend(
     report_dir: Path,
     markers: str,
     extra_args: Sequence[str],
+    block_markers: str,
+    chunk_size: int,
+    sleep: float,
+    block_timeout: float,
+    timeout_grace: float,
+    run_id: str,
+    resume: bool,
+    block_extra_args: Sequence[str],
     quiet: bool = False,
 ) -> StepResult:
-    backend_cmd: list[str] = [
-        sys.executable, "-m", "pytest",
-        f"--cov={backend_root / 'core_app'}",
-        "--cov-report=term-missing",
-        "-q",
+    cleanup_backend_coverage(backend_root, run_id)
+
+    venv_python = backend_root / "venv" / "bin" / "python"
+    python_exe = str(venv_python) if venv_python.exists() else sys.executable
+    blocks_script = backend_root / "scripts" / "run-tests-blocks.py"
+
+    block_cmd: list[str] = [
+        python_exe,
+        str(blocks_script),
+        "--run-id", run_id,
+        "--chunk-size", str(chunk_size),
+        "--sleep", str(sleep),
+        "--block-timeout", str(block_timeout),
+        "--timeout-grace", str(timeout_grace),
+    ]
+    if block_markers:
+        block_cmd.extend(["--markers", block_markers])
+    if resume:
+        block_cmd.append("--resume")
+    block_cmd.extend(block_extra_args)
+
+    pytest_passthrough: list[str] = [
+        "--",
+        "--cov=gym_app",
+        "--cov-branch",
+        "--cov-append",
+        "--cov-report=term",
+        "--cov-report=html",
     ]
     if markers:
-        backend_cmd.extend(["-m", markers])
-    backend_cmd.extend(extra_args)
+        pytest_passthrough.extend(["-m", markers])
+    pytest_passthrough.extend(extra_args)
 
-    return run_command(
+    block_cmd.extend(pytest_passthrough)
+
+    result = run_command(
         name="backend",
-        command=backend_cmd,
+        command=block_cmd,
         cwd=backend_root,
         log_path=report_dir / "backend.log",
-        capture_coverage=True,
+        capture_backend_total=True,
+        capture_table="backend",
         quiet=quiet,
     )
+
+    if result.backend_cov_total:
+        func_covered, func_total = compute_function_coverage(backend_root)
+        result.coverage = parse_backend_cov_lines(
+            result.backend_cov_total, func_covered, func_total
+        )
+
+    return result
 
 
 def run_frontend_unit(
@@ -359,11 +590,22 @@ def run_frontend_unit(
         cwd=frontend_root,
         log_path=report_dir / "frontend-unit.log",
         capture_coverage=True,
+        capture_table="jest",
         quiet=quiet,
     )
     if result.status == "ok":
         result.coverage = read_jest_coverage_summary(frontend_root)
     return result
+
+
+def cleanup_e2e(frontend_root: Path) -> None:
+    """Reset E2E flow coverage state before a fresh run."""
+    subprocess.run(
+        ["npm", "run", "e2e:clean"],
+        cwd=frontend_root,
+        check=False,
+        capture_output=True,
+    )
 
 
 def run_frontend_e2e(
@@ -373,6 +615,7 @@ def run_frontend_e2e(
     workers: str | None = None,
     quiet: bool = False,
 ) -> StepResult:
+    cleanup_e2e(frontend_root)
     env = dict(os.environ)
     playwright_cmd = ["npx", "playwright", "test"]
     if workers:
@@ -386,13 +629,34 @@ def run_frontend_e2e(
         log_path=report_dir / "frontend-e2e.log",
         env=env,
         capture_coverage=False,
+        capture_table="e2e_flow",
         quiet=quiet,
     )
     result.coverage = read_flow_coverage_summary(frontend_root)
     return result
 
 
-def print_final_report(results: list[StepResult], duration: float, show_coverage: bool = False) -> None:
+def print_coverage_tables(results: list[StepResult]) -> None:
+    """Print the full captured coverage table for each suite that has one."""
+    _LABELS: dict[str, str] = {
+        "backend": "backend \u2014 coverage (last block)",
+        "frontend-unit": "frontend-unit \u2014 coverage table",
+        "frontend-e2e": "frontend-e2e \u2014 flow coverage report",
+    }
+    sep = "\u2550" * 80
+    for result in results:
+        if not result.coverage_table:
+            continue
+        label = _LABELS.get(result.name, result.name)
+        print(f"\n{_bold(sep)}")
+        print(f" {_bold(label)}")
+        print(_bold(sep))
+        for line in result.coverage_table:
+            print(line)
+    print()
+
+
+def print_final_report(results: list[StepResult], duration: float, show_coverage: bool = True) -> None:  # noqa: ARG001
     sep = _bold("=" * 80)
     print(f"\n{sep}")
     print(_bold("Final suite report"))
@@ -407,12 +671,14 @@ def print_final_report(results: list[StepResult], duration: float, show_coverage
 
     print()
     for result in results:
-        if result.status == "ok":
+        if result.skipped_from_resume:
+            tag = _green("OK") + _dim(" (resumed)")
+        elif result.status == "ok":
             tag = _green("OK")
         else:
             tag = _red("FAILED")
         print(f"  {result.name:<18} {tag}  ({result.duration:.2f}s)")
-        if show_coverage and result.coverage:
+        if result.coverage:
             for line in result.coverage:
                 print(f"    {_colorize_coverage_line(line)}")
         if result.log_path:
@@ -429,7 +695,8 @@ def print_final_report(results: list[StepResult], duration: float, show_coverage
                 print(line)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser for the all-suites runner."""
     parser = argparse.ArgumentParser(
         description=(
             "Run backend pytest, frontend unit, and E2E tests in parallel with reporting."
@@ -454,17 +721,40 @@ def main() -> int:
                         help="Run suites one at a time instead of in parallel")
     parser.add_argument("--report-dir", default="test-reports")
     parser.add_argument("--coverage", action="store_true",
-                        help="Show per-suite coverage summary in the final report (default: off)")
+                        help="Show full coverage tables per suite after run (quiet+parallel mode regardless of --verbose)")
+    parser.add_argument("--verbose", action="store_true",
+                        help="Show full output from all runners; forces sequential execution")
+    parser.add_argument("--backend-block-markers", default="",
+                        help="Block marker filter for run-tests-blocks.py (edge,contract,integration,rest)")
+    parser.add_argument("--backend-block-args", default="",
+                        help="Extra args forwarded to run-tests-blocks.py (before --)")
+    parser.add_argument("--chunk-size", type=int, default=3,
+                        help="Chunk size for run-tests-blocks.py (default: 3)")
+    parser.add_argument("--sleep", type=float, default=3.0,
+                        help="Seconds between blocks for run-tests-blocks.py (default: 3)")
+    parser.add_argument("--block-timeout", type=float, default=1200.0,
+                        help="Max seconds per block before terminating (default: 1200)")
+    parser.add_argument("--timeout-grace", type=float, default=15.0,
+                        help="Grace seconds before killing a timed-out block (default: 15)")
+    parser.add_argument("--run-id", default="",
+                        help="Run ID for run-tests-blocks.py (default: backend-YYYYMMDD)")
+    parser.add_argument("--resume", action="store_true",
+                        help="Resume run-tests-blocks.py from last checkpoint")
+    return parser
 
-    args = parser.parse_args()
+
+def main() -> int:
+    args = build_parser().parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
     backend_root = repo_root / "backend"
     frontend_root = repo_root / "frontend"
     report_dir = repo_root / args.report_dir
 
-    parallel = not args.sequential
-    quiet = parallel
+    run_id = args.run_id or datetime.date.today().strftime("backend-%Y%m%d")
+    verbose = args.verbose and not args.coverage
+    parallel = False if verbose else not args.sequential
+    quiet = not verbose and parallel
 
     suite_runners: list[tuple[str, partial[StepResult]]] = []
 
@@ -477,6 +767,14 @@ def main() -> int:
                 report_dir=report_dir,
                 markers=args.backend_markers,
                 extra_args=split_args(args.backend_args),
+                block_markers=args.backend_block_markers,
+                chunk_size=args.chunk_size,
+                sleep=args.sleep,
+                block_timeout=args.block_timeout,
+                timeout_grace=args.timeout_grace,
+                run_id=run_id,
+                resume=args.resume,
+                block_extra_args=split_args(args.backend_block_args),
                 quiet=quiet,
             ),
         ))
@@ -510,6 +808,43 @@ def main() -> int:
     if not suite_runners:
         print("All suites skipped. Nothing to run.")
         return 0
+
+    state_file = report_dir / f"suite-state-{run_id}.json"
+
+    skipped_results: list[StepResult] = []
+    if args.resume and state_file.exists():
+        prev_state = load_suite_state(state_file)
+        remaining: list[tuple[str, partial[StepResult]]] = []
+        for name, runner in suite_runners:
+            entry = prev_state.get(name)
+            if entry and entry.get("status") == "ok":
+                log_raw = entry.get("log_path")
+                skipped_results.append(StepResult(
+                    name=name,
+                    command=[],
+                    returncode=0,
+                    duration=entry.get("duration", 0.0),
+                    status="ok",
+                    coverage=entry.get("coverage") or [],
+                    log_path=Path(log_raw) if log_raw else None,
+                    skipped_from_resume=True,
+                ))
+            else:
+                remaining.append((name, runner))
+        suite_runners = remaining
+        if not suite_runners:
+            print(_green("All suites already passed — nothing to resume."))
+            report_dir.mkdir(parents=True, exist_ok=True)
+            print_final_report(skipped_results, 0.0)
+            return 0
+        skipped_names = [r.name for r in skipped_results]
+        if skipped_names:
+            print(_dim(f"Resuming — skipping already-passed suites: {', '.join(skipped_names)}"))
+    elif not args.resume:
+        try:
+            state_file.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     results: list[StepResult] = []
     wall_start = time.monotonic()
@@ -551,11 +886,23 @@ def main() -> int:
 
     wall_duration = time.monotonic() - wall_start
 
-    order = {name: i for i, (name, _) in enumerate(suite_runners)}
-    results.sort(key=lambda r: order.get(r.name, 999))
+    all_results = skipped_results + results
 
-    print_final_report(results, wall_duration, show_coverage=args.coverage)
-    failed = any(r.status == "failed" for r in results)
+    all_suite_names = [name for name, _ in (
+        [("backend", None)] * (not args.skip_backend)
+        + [("frontend-unit", None)] * (not args.skip_unit)
+        + [("frontend-e2e", None)] * (not args.skip_e2e)
+    )]
+    original_order = {name: i for i, name in enumerate(all_suite_names)}
+    all_results.sort(key=lambda r: original_order.get(r.name, 999))
+
+    report_dir.mkdir(parents=True, exist_ok=True)
+    save_suite_state(state_file, all_results)
+
+    if args.coverage:
+        print_coverage_tables(all_results)
+    print_final_report(all_results, wall_duration)
+    failed = any(r.status == "failed" for r in all_results)
     return 1 if failed else 0
 
 
