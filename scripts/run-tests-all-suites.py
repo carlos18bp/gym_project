@@ -155,14 +155,29 @@ def _format_pct(value: object) -> str:
     return str(value)
 
 
-def read_jest_coverage_summary(frontend_root: Path) -> list[str]:
+def load_jest_coverage_summary(frontend_root: Path) -> dict | None:
     summary_path = frontend_root / "coverage" / "coverage-summary.json"
     if not summary_path.exists():
-        return []
+        return None
     try:
         data = json.loads(summary_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return []
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def write_jest_coverage_summary(frontend_root: Path, data: dict) -> None:
+    summary_path = frontend_root / "coverage" / "coverage-summary.json"
+    try:
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except OSError:
+        return
+
+
+def format_jest_coverage_summary(data: dict) -> list[str]:
     total = data.get("total")
     if not isinstance(total, dict):
         return []
@@ -186,13 +201,70 @@ def read_jest_coverage_summary(frontend_root: Path) -> list[str]:
     return lines
 
 
-def read_flow_coverage_summary(frontend_root: Path) -> list[str]:
-    summary_path = frontend_root / "e2e-results" / "flow-coverage.json"
-    if not summary_path.exists():
+def read_jest_coverage_summary(frontend_root: Path) -> list[str]:
+    data = load_jest_coverage_summary(frontend_root)
+    if not data:
         return []
-    try:
-        data = json.loads(summary_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    return format_jest_coverage_summary(data)
+
+
+def _merge_jest_metric(prev: dict | None, current: dict | None) -> dict | None:
+    if not isinstance(prev, dict):
+        return current if isinstance(current, dict) else None
+    if not isinstance(current, dict):
+        return prev
+
+    prev_total = prev.get("total") or 0
+    curr_total = current.get("total") or 0
+    prev_covered = prev.get("covered") or 0
+    curr_covered = current.get("covered") or 0
+    prev_skipped = prev.get("skipped") or 0
+    curr_skipped = current.get("skipped") or 0
+
+    total = max(prev_total, curr_total)
+    covered = max(prev_covered, curr_covered)
+    skipped = max(prev_skipped, curr_skipped)
+    pct = covered / total * 100 if total else 0.0
+
+    return {
+        "total": total,
+        "covered": covered,
+        "skipped": skipped,
+        "pct": pct,
+    }
+
+
+def _merge_jest_block(prev: dict | None, current: dict | None) -> dict | None:
+    if not isinstance(prev, dict):
+        return current if isinstance(current, dict) else None
+    if not isinstance(current, dict):
+        return prev
+
+    merged: dict = {}
+    metrics = {"lines", "statements", "functions", "branches"}
+    for key in set(prev.keys()) | set(current.keys()):
+        if key in metrics:
+            merged_metric = _merge_jest_metric(prev.get(key), current.get(key))
+            if merged_metric is not None:
+                merged[key] = merged_metric
+        else:
+            merged[key] = current.get(key, prev.get(key))
+    return merged
+
+
+def merge_jest_coverage_summary(prev: dict, current: dict) -> dict:
+    merged: dict = {}
+    keys = set(prev.keys()) | set(current.keys())
+    for key in keys:
+        merged_block = _merge_jest_block(prev.get(key), current.get(key))
+        if merged_block is not None:
+            merged[key] = merged_block
+    return merged
+
+
+def read_flow_coverage_summary(frontend_root: Path) -> list[str]:
+    data = load_flow_coverage(frontend_root)
+    if not data:
         return []
     summary = data.get("summary")
     if not isinstance(summary, dict):
@@ -206,6 +278,106 @@ def read_flow_coverage_summary(frontend_root: Path) -> list[str]:
 
     pct = covered_flows / total_flows * 100 if total_flows > 0 else 0.0
     return [f"Flows: {pct:.2f}% ({covered_flows}/{total_flows})"]
+
+
+def load_flow_coverage(frontend_root: Path) -> dict | None:
+    summary_path = frontend_root / "e2e-results" / "flow-coverage.json"
+    if not summary_path.exists():
+        return None
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def write_flow_coverage(frontend_root: Path, data: dict) -> None:
+    summary_path = frontend_root / "e2e-results" / "flow-coverage.json"
+    try:
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except OSError:
+        return
+
+
+def _flow_tests_total(flow: dict | None) -> int:
+    if not isinstance(flow, dict):
+        return 0
+    tests = flow.get("tests")
+    if not isinstance(tests, dict):
+        return 0
+    total = tests.get("total")
+    return total if isinstance(total, int) else 0
+
+
+def _merge_unmapped_tests(prev: dict | None, current: dict | None) -> dict | None:
+    if not isinstance(prev, dict):
+        return current if isinstance(current, dict) else None
+    if not isinstance(current, dict):
+        return prev
+    prev_files = prev.get("files") if isinstance(prev.get("files"), dict) else {}
+    curr_files = current.get("files") if isinstance(current.get("files"), dict) else {}
+    merged_files: dict[str, int] = {}
+    for key in set(prev_files.keys()) | set(curr_files.keys()):
+        prev_count = prev_files.get(key, 0)
+        curr_count = curr_files.get(key, 0)
+        merged_files[key] = max(prev_count, curr_count)
+    return {
+        "count": sum(merged_files.values()),
+        "files": merged_files,
+    }
+
+
+def merge_flow_coverage(prev: dict, current: dict) -> dict:
+    prev_flows = prev.get("flows") if isinstance(prev.get("flows"), dict) else {}
+    curr_flows = current.get("flows") if isinstance(current.get("flows"), dict) else {}
+
+    merged_flows: dict[str, dict] = {}
+    for flow_id in set(prev_flows.keys()) | set(curr_flows.keys()):
+        prev_flow = prev_flows.get(flow_id)
+        curr_flow = curr_flows.get(flow_id)
+        if _flow_tests_total(curr_flow) > 0 or not isinstance(prev_flow, dict):
+            if isinstance(curr_flow, dict):
+                merged_flows[flow_id] = curr_flow
+            elif isinstance(prev_flow, dict):
+                merged_flows[flow_id] = prev_flow
+            continue
+
+        merged_flow = dict(prev_flow)
+        if isinstance(curr_flow, dict):
+            curr_def = curr_flow.get("definition")
+            if curr_def is not None:
+                merged_flow["definition"] = curr_def
+        merged_flows[flow_id] = merged_flow
+
+    def _count_status(status: str) -> int:
+        return sum(
+            1
+            for flow in merged_flows.values()
+            if isinstance(flow, dict) and flow.get("status") == status
+        )
+
+    summary = {
+        "total": len(merged_flows),
+        "covered": _count_status("covered"),
+        "partial": _count_status("partial"),
+        "failing": _count_status("failing"),
+        "missing": _count_status("missing"),
+    }
+
+    merged = dict(current)
+    merged["flows"] = merged_flows
+    merged["summary"] = summary
+    merged_unmapped = _merge_unmapped_tests(prev.get("unmappedTests"), current.get("unmappedTests"))
+    if merged_unmapped is not None:
+        merged["unmappedTests"] = merged_unmapped
+    if "version" not in merged and "version" in prev:
+        merged["version"] = prev["version"]
+    if "timestamp" not in merged and "timestamp" in prev:
+        merged["timestamp"] = prev["timestamp"]
+    return merged
 
 
 def compute_function_coverage(backend_root: Path) -> tuple[int, int]:
@@ -321,6 +493,7 @@ def save_suite_state(state_file: Path, results: list[StepResult]) -> None:
             "status": r.status,
             "duration": r.duration,
             "coverage": r.coverage,
+            "coverage_table": r.coverage_table,
             "log_path": str(r.log_path) if r.log_path else None,
         }
     try:
@@ -447,7 +620,7 @@ def run_command(
         if capture_table:
             _s = stripped.strip()
             if capture_table == "backend":
-                if not table_active and stripped.startswith("---") and "coverage:" in stripped.lower():
+                if not table_active and ("coverage:" in stripped.lower()) and (stripped.startswith("---") or stripped.startswith("___")):
                     table_current = [stripped]
                     table_active = True
                 elif table_active:
@@ -518,7 +691,8 @@ def run_backend(
     block_extra_args: Sequence[str],
     quiet: bool = False,
 ) -> StepResult:
-    cleanup_backend_coverage(backend_root, run_id)
+    if not resume:
+        cleanup_backend_coverage(backend_root, run_id)
 
     venv_python = backend_root / "venv" / "bin" / "python"
     python_exe = str(venv_python) if venv_python.exists() else sys.executable
@@ -577,9 +751,14 @@ def run_frontend_unit(
     report_dir: Path,
     extra_args: Sequence[str],
     workers: str | None = None,
+    resume_failed: bool = False,
+    prev_summary: dict | None = None,
+    prev_coverage_table: Sequence[str] | None = None,
     quiet: bool = False,
 ) -> StepResult:
     unit_cmd = ["npm", "run", "test", "--", "--coverage"]
+    if resume_failed:
+        unit_cmd.append("--onlyFailures")
     if workers:
         unit_cmd.append(f"--maxWorkers={workers}")
     unit_cmd.extend(extra_args)
@@ -594,7 +773,18 @@ def run_frontend_unit(
         quiet=quiet,
     )
     if result.status == "ok":
-        result.coverage = read_jest_coverage_summary(frontend_root)
+        current_summary = load_jest_coverage_summary(frontend_root)
+        if resume_failed and prev_summary:
+            if current_summary:
+                merged_summary = merge_jest_coverage_summary(prev_summary, current_summary)
+            else:
+                merged_summary = prev_summary
+            write_jest_coverage_summary(frontend_root, merged_summary)
+            result.coverage = format_jest_coverage_summary(merged_summary)
+        else:
+            result.coverage = format_jest_coverage_summary(current_summary) if current_summary else []
+    if resume_failed and prev_coverage_table and len(prev_coverage_table) > len(result.coverage_table):
+        result.coverage_table = list(prev_coverage_table)
     return result
 
 
@@ -613,11 +803,18 @@ def run_frontend_e2e(
     report_dir: Path,
     extra_args: Sequence[str],
     workers: str | None = None,
+    resume: bool = False,
+    resume_failed: bool = False,
+    prev_flow_coverage: dict | None = None,
+    prev_coverage_table: Sequence[str] | None = None,
     quiet: bool = False,
 ) -> StepResult:
-    cleanup_e2e(frontend_root)
+    if not resume:
+        cleanup_e2e(frontend_root)
     env = dict(os.environ)
     playwright_cmd = ["npx", "playwright", "test"]
+    if resume_failed:
+        playwright_cmd.append("--last-failed")
     if workers:
         playwright_cmd.append(f"--workers={workers}")
     playwright_cmd.extend(extra_args)
@@ -632,7 +829,18 @@ def run_frontend_e2e(
         capture_table="e2e_flow",
         quiet=quiet,
     )
-    result.coverage = read_flow_coverage_summary(frontend_root)
+    current_flow = load_flow_coverage(frontend_root)
+    if resume_failed and prev_flow_coverage:
+        if current_flow:
+            merged_flow = merge_flow_coverage(prev_flow_coverage, current_flow)
+        else:
+            merged_flow = prev_flow_coverage
+        write_flow_coverage(frontend_root, merged_flow)
+        result.coverage = read_flow_coverage_summary(frontend_root)
+    else:
+        result.coverage = read_flow_coverage_summary(frontend_root)
+    if resume_failed and prev_coverage_table and len(prev_coverage_table) > len(result.coverage_table):
+        result.coverage_table = list(prev_coverage_table)
     return result
 
 
@@ -756,6 +964,28 @@ def main() -> int:
     parallel = False if verbose else not args.sequential
     quiet = not verbose and parallel
 
+    state_file = report_dir / f"suite-state-{run_id}.json"
+    prev_state: dict[str, dict] = {}
+    if args.resume and state_file.exists():
+        prev_state = load_suite_state(state_file)
+
+    unit_resume_failed = (
+        args.resume
+        and prev_state.get("frontend-unit", {}).get("status") == "failed"
+    )
+    e2e_resume_failed = (
+        args.resume
+        and prev_state.get("frontend-e2e", {}).get("status") == "failed"
+    )
+    unit_prev_summary = load_jest_coverage_summary(frontend_root) if unit_resume_failed else None
+    unit_prev_table = (
+        prev_state.get("frontend-unit", {}).get("coverage_table") if unit_resume_failed else None
+    )
+    e2e_prev_flow = load_flow_coverage(frontend_root) if e2e_resume_failed else None
+    e2e_prev_table = (
+        prev_state.get("frontend-e2e", {}).get("coverage_table") if e2e_resume_failed else None
+    )
+
     suite_runners: list[tuple[str, partial[StepResult]]] = []
 
     if not args.skip_backend:
@@ -788,6 +1018,9 @@ def main() -> int:
                 report_dir=report_dir,
                 extra_args=split_args(args.unit_args),
                 workers=args.unit_workers,
+                resume_failed=unit_resume_failed,
+                prev_summary=unit_prev_summary,
+                prev_coverage_table=unit_prev_table,
                 quiet=quiet,
             ),
         ))
@@ -801,6 +1034,10 @@ def main() -> int:
                 report_dir=report_dir,
                 extra_args=split_args(args.e2e_args),
                 workers=args.e2e_workers,
+                resume=args.resume,
+                resume_failed=e2e_resume_failed,
+                prev_flow_coverage=e2e_prev_flow,
+                prev_coverage_table=e2e_prev_table,
                 quiet=quiet,
             ),
         ))
@@ -809,11 +1046,8 @@ def main() -> int:
         print("All suites skipped. Nothing to run.")
         return 0
 
-    state_file = report_dir / f"suite-state-{run_id}.json"
-
     skipped_results: list[StepResult] = []
     if args.resume and state_file.exists():
-        prev_state = load_suite_state(state_file)
         remaining: list[tuple[str, partial[StepResult]]] = []
         for name, runner in suite_runners:
             entry = prev_state.get(name)
@@ -826,6 +1060,7 @@ def main() -> int:
                     duration=entry.get("duration", 0.0),
                     status="ok",
                     coverage=entry.get("coverage") or [],
+                    coverage_table=entry.get("coverage_table") or [],
                     log_path=Path(log_raw) if log_raw else None,
                     skipped_from_resume=True,
                 ))

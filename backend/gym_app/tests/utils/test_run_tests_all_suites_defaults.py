@@ -676,6 +676,381 @@ def test_run_backend_calls_cleanup_before_running(tmp_path: Path) -> None:
     assert call_order == ["cleanup", "run_command"]
 
 
+def test_run_backend_skips_cleanup_on_resume(tmp_path: Path) -> None:
+    """run_backend skips cleanup_backend_coverage when resume=True."""
+    module = _load_runner_module()
+    backend_root = REPO_ROOT / "backend"
+    captured: dict = {}
+    cleanup_spy = MagicMock()
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="backend", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_backend_coverage", cleanup_spy):
+        module.run_backend(
+            backend_root=backend_root,
+            report_dir=tmp_path,
+            markers="",
+            extra_args=[],
+            block_markers="",
+            chunk_size=3,
+            sleep=3.0,
+            block_timeout=1200.0,
+            timeout_grace=15.0,
+            run_id="backend-20260101",
+            resume=True,
+            block_extra_args=[],
+        )
+
+    assert cleanup_spy.called is False
+
+
+# ── frontend runner command assembly tests ───────────────────────────────────
+
+
+def test_run_frontend_unit_adds_only_failures_on_resume_failed(tmp_path: Path) -> None:
+    """run_frontend_unit adds --onlyFailures when resume_failed=True."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    captured: dict = {}
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="frontend-unit", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command):
+        module.run_frontend_unit(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume_failed=True,
+        )
+
+    assert "--onlyFailures" in captured["command"]
+
+
+def test_run_frontend_unit_omits_only_failures_without_resume_failed(tmp_path: Path) -> None:
+    """run_frontend_unit does not add --onlyFailures unless resume_failed=True."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    captured: dict = {}
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="frontend-unit", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command):
+        module.run_frontend_unit(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume_failed=False,
+        )
+
+    assert "--onlyFailures" not in captured["command"]
+
+
+def test_run_frontend_e2e_adds_last_failed_on_resume_failed(tmp_path: Path) -> None:
+    """run_frontend_e2e adds --last-failed when resume_failed=True."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    captured: dict = {}
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_e2e"):
+        module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume=True,
+            resume_failed=True,
+        )
+
+    assert "--last-failed" in captured["command"]
+
+
+def test_run_frontend_e2e_skips_cleanup_on_resume(tmp_path: Path) -> None:
+    """run_frontend_e2e skips cleanup_e2e when resume=True."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    cleanup_spy = MagicMock()
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_e2e", cleanup_spy):
+        module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume=True,
+            resume_failed=False,
+        )
+
+    assert cleanup_spy.called is False
+
+
+def test_run_frontend_e2e_calls_cleanup_when_not_resume(tmp_path: Path) -> None:
+    """run_frontend_e2e calls cleanup_e2e when resume=False."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    cleanup_spy = MagicMock()
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_e2e", cleanup_spy):
+        module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume=False,
+            resume_failed=False,
+        )
+
+    assert cleanup_spy.called is True
+
+
+def test_run_frontend_e2e_omits_last_failed_without_resume_failed(tmp_path: Path) -> None:
+    """run_frontend_e2e does not add --last-failed unless resume_failed=True."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    captured: dict = {}
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=0.0, status="ok"
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_e2e"), \
+         patch.object(module, "load_flow_coverage", return_value=None), \
+         patch.object(module, "read_flow_coverage_summary", return_value=[]):
+        module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            workers=None,
+            resume=False,
+            resume_failed=False,
+        )
+
+    assert "--last-failed" not in captured["command"]
+
+
+def test_merge_jest_coverage_summary_prefers_max_counts() -> None:
+    """merge_jest_coverage_summary keeps the max covered/total per metric."""
+    module = _load_runner_module()
+
+    prev = {
+        "total": {
+            "lines": {"total": 10, "covered": 7, "skipped": 0, "pct": 70.0},
+            "statements": {"total": 10, "covered": 7, "skipped": 0, "pct": 70.0},
+            "functions": {"total": 10, "covered": 6, "skipped": 0, "pct": 60.0},
+            "branches": {"total": 10, "covered": 5, "skipped": 0, "pct": 50.0},
+        }
+    }
+    current = {
+        "total": {
+            "lines": {"total": 12, "covered": 8, "skipped": 0, "pct": 66.7},
+            "statements": {"total": 10, "covered": 8, "skipped": 0, "pct": 80.0},
+            "functions": {"total": 8, "covered": 7, "skipped": 0, "pct": 87.5},
+            "branches": {"total": 9, "covered": 4, "skipped": 0, "pct": 44.4},
+        }
+    }
+
+    merged = module.merge_jest_coverage_summary(prev, current)
+    total = merged["total"]
+
+    assert total["lines"]["total"] == 12
+    assert total["lines"]["covered"] == 8
+    assert total["statements"]["covered"] == 8
+    assert total["functions"]["total"] == 10
+    assert total["functions"]["covered"] == 7
+    assert total["branches"]["total"] == 10
+    assert total["branches"]["covered"] == 5
+
+
+def test_merge_flow_coverage_prefers_current_when_tests_run() -> None:
+    """merge_flow_coverage uses current flow stats when tests ran in resume."""
+    module = _load_runner_module()
+
+    prev = {
+        "summary": {"total": 2, "covered": 1, "partial": 0, "failing": 0, "missing": 1},
+        "flows": {
+            "flow-a": {
+                "flowId": "flow-a",
+                "definition": {"name": "Flow A", "module": "core"},
+                "tests": {"total": 1, "passed": 1, "failed": 0, "skipped": 0},
+                "specs": ["a.spec"],
+                "status": "covered",
+            },
+            "flow-b": {
+                "flowId": "flow-b",
+                "definition": {"name": "Flow B", "module": "core"},
+                "tests": {"total": 1, "passed": 0, "failed": 1, "skipped": 0},
+                "specs": ["b.spec"],
+                "status": "failing",
+            },
+        },
+    }
+    current = {
+        "summary": {"total": 1, "covered": 0, "partial": 0, "failing": 1, "missing": 0},
+        "flows": {
+            "flow-b": {
+                "flowId": "flow-b",
+                "definition": {"name": "Flow B", "module": "core"},
+                "tests": {"total": 1, "passed": 0, "failed": 1, "skipped": 0},
+                "specs": ["b.spec"],
+                "status": "failing",
+            }
+        },
+    }
+
+    merged = module.merge_flow_coverage(prev, current)
+
+    assert merged["flows"]["flow-b"]["tests"]["total"] == 1
+    assert merged["flows"]["flow-a"]["status"] == "covered"
+    assert merged["summary"]["total"] == 2
+    assert merged["summary"]["covered"] == 1
+    assert merged["summary"]["failing"] == 1
+
+
+# ── coverage table fallback tests ─────────────────────────────────────────────
+
+
+def test_run_frontend_unit_coverage_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
+    """run_frontend_unit uses prev_coverage_table when it is longer than the new run's table."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    prev_table = ["line1", "line2", "line3", "line4"]
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-unit", command=[], returncode=0, duration=1.0, status="ok",
+            coverage_table=["short"],
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "load_jest_coverage_summary", return_value=None):
+        result = module.run_frontend_unit(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            resume_failed=True,
+            prev_coverage_table=prev_table,
+        )
+
+    assert result.coverage_table == prev_table
+
+
+def test_run_frontend_unit_coverage_table_keeps_new_when_longer(tmp_path: Path) -> None:
+    """run_frontend_unit keeps the new coverage_table when it is at least as long as prev."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    prev_table = ["old"]
+    new_table = ["new1", "new2", "new3"]
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-unit", command=[], returncode=0, duration=1.0, status="ok",
+            coverage_table=list(new_table),
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "load_jest_coverage_summary", return_value=None):
+        result = module.run_frontend_unit(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            resume_failed=True,
+            prev_coverage_table=prev_table,
+        )
+
+    assert result.coverage_table == new_table
+
+
+def test_run_frontend_e2e_coverage_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
+    """run_frontend_e2e uses prev_coverage_table when it is longer than the new run's table."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    prev_table = ["flow-line1", "flow-line2", "flow-line3"]
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=1.0, status="ok",
+            coverage_table=[],
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "load_flow_coverage", return_value=None), \
+         patch.object(module, "read_flow_coverage_summary", return_value=[]):
+        result = module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            resume=True,
+            resume_failed=True,
+            prev_coverage_table=prev_table,
+        )
+
+    assert result.coverage_table == prev_table
+
+
+def test_run_frontend_e2e_coverage_table_keeps_new_when_longer(tmp_path: Path) -> None:
+    """run_frontend_e2e keeps the new coverage_table when it is at least as long as prev."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    prev_table = ["old"]
+    new_table = ["new1", "new2"]
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        return module.StepResult(
+            name="frontend-e2e", command=[], returncode=0, duration=1.0, status="ok",
+            coverage_table=list(new_table),
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "load_flow_coverage", return_value=None), \
+         patch.object(module, "read_flow_coverage_summary", return_value=[]):
+        result = module.run_frontend_e2e(
+            frontend_root=frontend_root,
+            report_dir=tmp_path,
+            extra_args=[],
+            resume=True,
+            resume_failed=True,
+            prev_coverage_table=prev_table,
+        )
+
+    assert result.coverage_table == new_table
+
+
 # ── save/load suite state tests ───────────────────────────────────────────────
 
 
@@ -687,11 +1062,13 @@ def test_save_and_load_suite_state_round_trips(tmp_path: Path) -> None:
         module.StepResult(
             name="backend", command=[], returncode=0, duration=162.5,
             status="ok", coverage=["Statements: 100.00% (510/510)"],
+            coverage_table=["Backend coverage table"],
             log_path=tmp_path / "backend.log",
         ),
         module.StepResult(
             name="frontend-unit", command=[], returncode=1, duration=84.3,
             status="failed", coverage=[],
+            coverage_table=["Jest coverage table"],
             log_path=tmp_path / "frontend-unit.log",
         ),
     ]
@@ -703,7 +1080,9 @@ def test_save_and_load_suite_state_round_trips(tmp_path: Path) -> None:
     assert loaded["backend"]["status"] == "ok"
     assert loaded["backend"]["duration"] == 162.5
     assert loaded["backend"]["coverage"] == ["Statements: 100.00% (510/510)"]
+    assert loaded["backend"]["coverage_table"] == ["Backend coverage table"]
     assert loaded["frontend-unit"]["status"] == "failed"
+    assert loaded["frontend-unit"]["coverage_table"] == ["Jest coverage table"]
 
 
 def test_load_suite_state_returns_empty_dict_on_missing_file(tmp_path: Path) -> None:
@@ -815,20 +1194,30 @@ def test_load_suite_state_reconstructs_ok_entry_for_skipped_suite(tmp_path: Path
     assert loaded["frontend-unit"]["status"] == "failed"
 
 
-def test_resume_state_file_is_deleted_on_fresh_run(tmp_path: Path) -> None:
-    """Without --resume, the previous suite-state file is removed before a new run."""
+def test_fresh_run_overwrites_previous_state_file(tmp_path: Path) -> None:
+    """A fresh run (no --resume) overwrites old state via save_suite_state with new results only."""
     module = _load_runner_module()
 
     state_file = tmp_path / "suite-state-backend-20260101.json"
-    state_file.write_text(json.dumps({"backend": {"status": "ok"}}))
+    state_file.write_text(json.dumps({
+        "backend": {"status": "ok", "duration": 100.0, "coverage": [], "coverage_table": [], "log_path": None},
+        "frontend-unit": {"status": "failed", "duration": 50.0, "coverage": [], "coverage_table": [], "log_path": None},
+    }))
 
     assert state_file.exists()
 
-    module.save_suite_state.__module__  # confirm loaded
-
     state_file.unlink(missing_ok=True)
 
-    assert not state_file.exists()
+    new_results = [
+        module.StepResult(
+            name="backend", command=[], returncode=0, duration=200.0, status="ok",
+        ),
+    ]
+    module.save_suite_state(state_file, new_results)
+
+    loaded = module.load_suite_state(state_file)
+    assert "frontend-unit" not in loaded
+    assert loaded["backend"]["duration"] == 200.0
 
 
 def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
@@ -840,6 +1229,7 @@ def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
             "status": "ok",
             "duration": 84.3,
             "coverage": ["Statements: 100.00% (1975/1975)"],
+            "coverage_table": ["Jest coverage table"],
             "log_path": str(tmp_path / "frontend-unit.log"),
         }
     }
@@ -853,6 +1243,7 @@ def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
         duration=entry.get("duration", 0.0),
         status="ok",
         coverage=entry.get("coverage") or [],
+        coverage_table=entry.get("coverage_table") or [],
         log_path=Path(log_raw) if log_raw else None,
         skipped_from_resume=True,
     )
@@ -861,6 +1252,58 @@ def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
     assert result.status == "ok"
     assert result.duration == 84.3
     assert "Statements: 100.00% (1975/1975)" in result.coverage
+    assert result.coverage_table == ["Jest coverage table"]
+
+
+def test_backend_coverage_table_captured_with_underscore_header(tmp_path: Path) -> None:
+    """run_command captures backend coverage table when header uses underscores (pytest format)."""
+    module = _load_runner_module()
+    frontend_root = REPO_ROOT / "frontend"
+    captured: dict = {}
+
+    cov_output = (
+        "_______________ coverage: platform linux, python 3.12.3-final-0 ________________\n"
+        "\n"
+        "Name                          Stmts   Miss Branch BrPart  Cover\n"
+        "---------------------------------------------------------------\n"
+        "gym_app/__init__.py               0      0      0      0   100%\n"
+        "gym_app/models/user.py          120     10     30      5    90%\n"
+        "---------------------------------------------------------------\n"
+        "TOTAL                           120     10     30      5    90%\n"
+    )
+
+    def fake_run_command(**kwargs):  # type: ignore[no-untyped-def]
+        captured["command"] = kwargs["command"]
+        return module.StepResult(
+            name="backend",
+            command=[],
+            returncode=0,
+            duration=1.0,
+            status="ok",
+            coverage_table=cov_output.strip().splitlines(),
+            backend_cov_total="TOTAL                           120     10     30      5    90%",
+        )
+
+    with patch.object(module, "run_command", fake_run_command), \
+         patch.object(module, "cleanup_backend_coverage"), \
+         patch.object(module, "compute_function_coverage", return_value=(0, 0)):
+        result = module.run_backend(
+            backend_root=REPO_ROOT / "backend",
+            report_dir=tmp_path,
+            markers="",
+            extra_args=[],
+            block_markers="",
+            chunk_size=3,
+            sleep=3.0,
+            block_timeout=1200.0,
+            timeout_grace=15.0,
+            run_id="test-run",
+            resume=False,
+            block_extra_args=[],
+        )
+
+    assert len(result.coverage_table) > 0
+    assert any("TOTAL" in line for line in result.coverage_table)
 
 
 def test_resume_only_skips_suites_with_ok_status(tmp_path: Path) -> None:
