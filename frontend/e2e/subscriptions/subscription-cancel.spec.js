@@ -7,7 +7,7 @@ import {
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("user with active subscription sees subscription info on subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user with active subscription sees subscription info on subscriptions page", { tag: ['@flow:subscriptions-cancel', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9100;
   const sub = buildMockSubscription({ planType: "cliente", status: "active" });
 
@@ -29,7 +29,7 @@ test("user with active subscription sees subscription info on subscriptions page
   await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
 });
 
-test("user navigates to checkout from subscriptions page for plan upgrade", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user navigates to checkout from subscriptions page for plan upgrade", { tag: ['@flow:subscriptions-cancel', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9101;
 
   await installSubscriptionsApiMocks(page, {

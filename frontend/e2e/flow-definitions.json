@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "lastUpdated": "2026-02-23",
+  "version": "1.1.0",
+  "lastUpdated": "2026-02-27",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -204,9 +204,24 @@
       "module": "subscriptions",
       "roles": ["shared"],
       "priority": "P2",
-      "description": "Cancelar, reactivar, ver historial de pagos",
-      "expectedSpecs": 1,
-      "knownGaps": ["Test verifica opción visible, no ejecución de cancelación"]
+      "description": "Reactivar suscripción, ver historial de pagos",
+      "expectedSpecs": 1
+    },
+    "subscriptions-cancel": {
+      "name": "Cancelar suscripción",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Cancelar suscripción activa, plan vigente hasta fin de período, transición a plan gratuito",
+      "expectedSpecs": 1
+    },
+    "subscriptions-update-payment": {
+      "name": "Actualizar método de pago",
+      "module": "subscriptions",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Cambiar tarjeta de pago en suscripción activa vía tokenización Wompi",
+      "expectedSpecs": 1
     },
     "process-list-view": {
       "name": "Ver lista de procesos",
@@ -263,6 +278,14 @@
       "roles": ["lawyer"],
       "priority": "P3",
       "description": "Filtrar procesos por nombre de demandante",
+      "expectedSpecs": 1
+    },
+    "process-request-info": {
+      "name": "Request process information (client)",
+      "module": "processes",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Client requests information about a process from detail view, pre-filled form sent to responsible lawyer",
       "expectedSpecs": 1
     },
     "process-case-file-upload": {

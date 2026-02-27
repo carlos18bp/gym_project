@@ -8,7 +8,7 @@ import {
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client sees their processes in process list", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees their processes in process list", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const clientId = 9000;
   const lawyerId = 9001;
 
@@ -45,7 +45,7 @@ test("client sees their processes in process list", { tag: ['@flow:process-detai
   await expect(page.getByText("RAD-INFO-001").or(page.getByText("Cliente E2E"))).toBeVisible({ timeout: 10_000 });
 });
 
-test("client process list shows Nueva Solicitud button for requesting information", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client process list shows Nueva Solicitud button for requesting information", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const clientId = 9002;
   const lawyerId = 9003;
 

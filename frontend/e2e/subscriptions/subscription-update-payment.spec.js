@@ -7,7 +7,7 @@ import {
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("user with active subscription can access subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user with active subscription can access subscriptions page", { tag: ['@flow:subscriptions-update-payment', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9200;
   const sub = buildMockSubscription({ planType: "profesional", status: "active" });
 

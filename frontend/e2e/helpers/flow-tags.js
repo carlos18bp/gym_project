@@ -38,6 +38,8 @@ export const SUBSCRIPTIONS_VIEW_PLANS = ['@flow:subscriptions-view-plans', '@mod
 export const SUBSCRIPTIONS_CHECKOUT_FREE = ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1'];
 export const SUBSCRIPTIONS_CHECKOUT_PAID = ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1'];
 export const SUBSCRIPTIONS_MANAGEMENT = ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2'];
+export const SUBSCRIPTIONS_CANCEL = ['@flow:subscriptions-cancel', '@module:subscriptions', '@priority:P2'];
+export const SUBSCRIPTIONS_UPDATE_PAYMENT = ['@flow:subscriptions-update-payment', '@module:subscriptions', '@priority:P2'];
 
 // ── Processes ───────────────────────────────────────────────────────────────
 export const PROCESS_LIST_VIEW = ['@flow:process-list-view', '@module:processes', '@priority:P1'];
@@ -47,6 +49,7 @@ export const PROCESS_DETAIL = ['@flow:process-detail', '@module:processes', '@pr
 export const PROCESS_HISTORY = ['@flow:process-history', '@module:processes', '@priority:P2'];
 export const PROCESS_FORM_VALIDATION = ['@flow:process-form-validation', '@module:processes', '@priority:P2'];
 export const PROCESS_SEARCH = ['@flow:process-search', '@module:processes', '@priority:P3'];
+export const PROCESS_REQUEST_INFO = ['@flow:process-request-info', '@module:processes', '@priority:P2'];
 export const PROCESS_CASE_FILE_UPLOAD = ['@flow:process-case-file-upload', '@module:processes', '@priority:P2'];
 
 // ── Documents ───────────────────────────────────────────────────────────────
