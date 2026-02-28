@@ -8,6 +8,8 @@ import os
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.shortcuts import render
+from django.template import TemplateDoesNotExist
 from django.views import View
 
 class SPAView(View):
@@ -19,7 +21,13 @@ class SPAView(View):
     the user experience when accessing protected routes without authentication.
     """
     
-    def _render_spa(self):
+    def _render_spa(self, request):
+        if not settings.DEBUG:
+            try:
+                return render(request, 'index.html')
+            except TemplateDoesNotExist:
+                pass
+
         base_dir = settings.BASE_DIR
         project_root = base_dir.parent
         static_root = getattr(settings, "STATIC_ROOT", None)
@@ -40,10 +48,10 @@ class SPAView(View):
         """
         Handle GET requests by serving the SPA index.html.
         """
-        return self._render_spa()
+        return self._render_spa(request)
     
     def post(self, request, *args, **kwargs):
         """
         Handle POST requests by serving the SPA index.html.
         """
-        return self._render_spa()
+        return self._render_spa(request)

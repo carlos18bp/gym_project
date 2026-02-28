@@ -4,10 +4,11 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=[user]
-Group=[group]
-WorkingDirectory=/path/to/project/backend
-ExecStart=/path/to/venv/bin/python manage.py run_huey
+User=ryzepeck
+Group=www-data
+WorkingDirectory=/home/ryzepeck/webapps/gym_project/backend
+EnvironmentFile=/home/ryzepeck/webapps/gym_project/backend/.env
+ExecStart=/home/ryzepeck/webapps/gym_project/backend/venv/bin/python manage.py run_huey
 Restart=always
 RestartSec=5
 Environment="DJANGO_ENV=production"

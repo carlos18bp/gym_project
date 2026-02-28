@@ -3,6 +3,7 @@
 # ===========================================================================
 .env
 *.env
+.env.*
 !*.env.example
 
 # ===========================================================================
@@ -54,6 +55,8 @@ env/
 # Backend – static & media
 # ===========================================================================
 backend/staticfiles/
+backend/static/frontend/
+backend/static/admin/
 backend/media/
 !backend/media/example_files/
 

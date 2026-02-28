@@ -1,0 +1,11 @@
+[Unit]
+Description=Gunicorn socket for gym_project
+
+[Socket]
+ListenStream=/run/gym_intranet.sock
+SocketUser=ryzepeck
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

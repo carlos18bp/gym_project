@@ -7,6 +7,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 
 const isE2ECoverage = process.env.E2E_COVERAGE === '1'
+const isProduction = process.env.NODE_ENV === 'production'
 
 let coverageDepsPromise
 async function loadCoverageDeps() {
@@ -158,6 +159,7 @@ if (isE2ECoverage) {
 }
 
 export default defineConfig({
+  base: isProduction ? '/static/frontend/' : '/',
   server: {
     proxy: {
       '/api': {
@@ -167,6 +169,27 @@ export default defineConfig({
       },
     },
   },
+  build: isProduction
+    ? {
+        outDir: '../backend/static/frontend',
+        emptyOutDir: true,
+        rollupOptions: {
+          output: {
+            assetFileNames: (assetInfo) => {
+              if (/\.(png|jpg|jpeg|gif|svg)$/.test(assetInfo.name)) {
+                return 'img/[name][extname]'
+              }
+              if (/\.css$/.test(assetInfo.name)) {
+                return 'css/[name]-[hash][extname]'
+              }
+              return 'assets/[name]-[hash][extname]'
+            },
+            entryFileNames: 'js/[name]-[hash].js',
+            chunkFileNames: 'js/[name]-[hash].js',
+          },
+        },
+      }
+    : {},
   plugins,
   resolve: {
     alias: {

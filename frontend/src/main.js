@@ -45,14 +45,11 @@ if (authStore.token) {
 }
 
 // Get the current domain for Google Login redirect
-const isDevelopment = process.env.NODE_ENV === 'development';
-const domain = isDevelopment 
-  ? 'http://localhost:3000' 
-  : 'https://www.gmconsultoresjuridicos.com';
+const domain = import.meta.env.VITE_APP_DOMAIN || 'http://localhost:5173';
 
 // Register Google Login with explicit redirect configuration
 app.use(vue3GoogleLogin, {
-  clientId: '931303546385-777cpce87b2ro3lsgvdua25rfqjfgktg.apps.googleusercontent.com',
+  clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
   prompt: 'select_account',
   redirect_uri: `${domain}/auth/google/callback`
 });

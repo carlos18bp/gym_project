@@ -92,3 +92,7 @@ django-dbbackup==4.2.1
 
 # Query profiling (dev only)
 django-silk==5.3.2
+
+# Production server
+gunicorn==23.0.0
+mysqlclient==2.2.7
