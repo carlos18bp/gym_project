@@ -133,6 +133,7 @@ const plugins = [
     manifest: {
       name: 'G&M',
       short_name: 'G&M',
+      scope: '/',
       start_url: '/',
       display: 'standalone',
       background_color: '#ffffff',
