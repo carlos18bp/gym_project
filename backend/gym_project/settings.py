@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'huey.contrib.djhuey',
     'dbbackup',
     'gym_app',
+    'gym_project.apps.GymProjectConfig',
 ]
 
 # Conditionally add Silk (dev/profiling only)
