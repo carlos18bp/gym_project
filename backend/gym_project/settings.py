@@ -223,7 +223,7 @@ HUEY = RedisHuey(
 # ---------------------------------------------------------------------------
 DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
 DBBACKUP_STORAGE_OPTIONS = {
-    'location': config('BACKUP_STORAGE_PATH', default=str(BASE_DIR / 'backups')),
+    'location': config('BACKUP_STORAGE_PATH', default='/var/backups/gym_project'),
 }
 DBBACKUP_FILENAME_TEMPLATE = '{datetime}.sql'
 DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.tar'

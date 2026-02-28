@@ -25,6 +25,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from django.conf import settings
+
+        if not getattr(settings, 'ENABLE_SILK', False):
+            self.stdout.write(
+                self.style.WARNING("Silk is not enabled. Nothing to clean.")
+            )
+            return
+
         from silk.models import Request
 
         days = options['days']

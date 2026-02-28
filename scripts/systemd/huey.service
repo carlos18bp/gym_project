@@ -12,6 +12,7 @@ ExecStart=/home/ryzepeck/webapps/gym_project/backend/venv/bin/python manage.py r
 Restart=always
 RestartSec=5
 Environment="DJANGO_ENV=production"
+Environment="DJANGO_SETTINGS_MODULE=gym_project.settings"
 
 [Install]
 WantedBy=multi-user.target

@@ -15,7 +15,7 @@ from pathlib import Path
 from django.conf import settings
 from django.utils import timezone
 from huey import crontab
-from huey.contrib.djhuey import periodic_task
+from huey.contrib.djhuey import periodic_task, task
 
 logger = logging.getLogger('backups')
 
@@ -52,6 +52,12 @@ def scheduled_backup():
     except Exception as e:
         logger.error(f"Backup failed: {str(e)}")
         raise
+
+
+@task()
+def manual_backup():
+    """Trigger a manual backup on demand."""
+    return scheduled_backup()
 
 
 @periodic_task(crontab(hour='4', minute='0'))

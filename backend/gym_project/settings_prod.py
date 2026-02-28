@@ -1,7 +1,7 @@
 # Production settings
 # Loaded automatically when DJANGO_ENV == 'production'
 
-from decouple import config, Csv, UndefinedValueError
+from decouple import config, Csv
 
 # ---------------------------------------------------------------------------
 # DEBUG is always False in production — never from environment
@@ -9,16 +9,16 @@ from decouple import config, Csv, UndefinedValueError
 DEBUG = False
 
 # ---------------------------------------------------------------------------
-# Required variables — fail fast if missing
+# Required variables — fail fast if missing or empty
 # ---------------------------------------------------------------------------
-try:
-    config('DJANGO_SECRET_KEY')
-except UndefinedValueError:
-    raise ValueError("DJANGO_SECRET_KEY is required in production")
+SECRET_KEY = config('DJANGO_SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY.startswith('django-insecure'):
+    raise ValueError(
+        "DJANGO_SECRET_KEY is required in production and must not be the insecure default"
+    )
 
-try:
-    config('DJANGO_ALLOWED_HOSTS')
-except UndefinedValueError:
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', cast=Csv())
+if not ALLOWED_HOSTS:
     raise ValueError("DJANGO_ALLOWED_HOSTS is required in production")
 
 # ---------------------------------------------------------------------------
@@ -30,6 +30,7 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 

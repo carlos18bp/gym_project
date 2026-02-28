@@ -74,6 +74,7 @@ backend/debug.log
 # Backend – operational logs & backups
 # ===========================================================================
 backend/logs/
+!backend/logs/.gitkeep
 backend/backups/
 backups/
 
