@@ -2,11 +2,13 @@ from django.conf import settings
 from django.urls import path, include, re_path
 from gym_app.admin import admin_site
 from gym_app.views.spa import SPAView
+from gym_app.views.health import health_check
 from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin_site.urls),    
     path('api/', include('gym_app.urls')),
+    path('api/health/', health_check, name='health-check'),
 ]
 
 if settings.DEBUG:
