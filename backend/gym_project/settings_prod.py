@@ -1,7 +1,7 @@
 # Production settings
 # Loaded automatically when DJANGO_ENV == 'production'
 
-import os
+from decouple import config, Csv, UndefinedValueError
 
 # ---------------------------------------------------------------------------
 # DEBUG is always False in production — never from environment
@@ -11,10 +11,14 @@ DEBUG = False
 # ---------------------------------------------------------------------------
 # Required variables — fail fast if missing
 # ---------------------------------------------------------------------------
-if not os.getenv('DJANGO_SECRET_KEY'):
+try:
+    config('DJANGO_SECRET_KEY')
+except UndefinedValueError:
     raise ValueError("DJANGO_SECRET_KEY is required in production")
 
-if not os.getenv('DJANGO_ALLOWED_HOSTS'):
+try:
+    config('DJANGO_ALLOWED_HOSTS')
+except UndefinedValueError:
     raise ValueError("DJANGO_ALLOWED_HOSTS is required in production")
 
 # ---------------------------------------------------------------------------
@@ -32,8 +36,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # ---------------------------------------------------------------------------
 # CORS / CSRF — set from environment in production
 # ---------------------------------------------------------------------------
-from decouple import config, Csv  # noqa: E402
-
 CORS_ALLOWED_ORIGINS = [
     o for o in config('CORS_ALLOWED_ORIGINS', default='', cast=Csv()) if o
 ]
