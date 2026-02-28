@@ -138,12 +138,14 @@ def weekly_slow_queries_report():
     report_lines.extend(["", "=" * 60])
     report = "\n".join(report_lines)
 
-    # Save to log file
-    log_path = Path(settings.BASE_DIR) / 'logs' / 'silk-weekly-report.log'
-    log_path.parent.mkdir(exist_ok=True)
+    # Save to individual dated report file
+    reports_dir = Path(settings.BASE_DIR) / 'logs' / 'silk-reports'
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report_date = timezone.now().strftime('%Y-%m-%d')
+    log_path = reports_dir / f'silk-report-{report_date}.log'
 
-    with open(log_path, 'a') as f:
-        f.write(report + "\n\n")
+    with open(log_path, 'w') as f:
+        f.write(report + "\n")
 
     logger.info(
         f"Weekly report generated. Slow queries: {slow_queries.count()}, "
@@ -151,3 +153,28 @@ def weekly_slow_queries_report():
     )
 
     return report
+
+
+@periodic_task(crontab(day='1', hour='5', minute='0'))
+def silk_reports_cleanup():
+    """
+    Monthly cleanup of Silk report files older than 6 months.
+    Only runs when Silk is enabled.
+    """
+    if not getattr(settings, 'ENABLE_SILK', False):
+        return
+
+    reports_dir = Path(settings.BASE_DIR) / 'logs' / 'silk-reports'
+    if not reports_dir.exists():
+        return
+
+    cutoff = timezone.now() - timedelta(days=180)
+    deleted = 0
+
+    for report_file in reports_dir.glob('silk-report-*.log'):
+        if report_file.stat().st_mtime < cutoff.timestamp():
+            report_file.unlink()
+            deleted += 1
+
+    if deleted:
+        logger.info(f"Silk reports cleanup: deleted {deleted} reports older than 6 months")
