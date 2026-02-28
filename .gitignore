@@ -57,6 +57,7 @@ env/
 backend/staticfiles/
 backend/static/frontend/
 backend/static/admin/
+backend/gym_app/templates/index.html
 backend/media/
 !backend/media/example_files/
 
