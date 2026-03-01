@@ -68,7 +68,7 @@ backend/.coverage
 backend/htmlcov/
 backend/.pytest_cache/
 backend/test-reports/
-backend/debug.log
+backend/debug.log*
 
 # ===========================================================================
 # Backend – operational logs & backups

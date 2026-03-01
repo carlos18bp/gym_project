@@ -28,11 +28,13 @@ def health_check(request):
 
     # Redis check
     try:
-        redis_url = getattr(settings, "HUEY", None)
-        if redis_url:
-            r = Redis.from_url(settings.HUEY.storage.url if hasattr(settings.HUEY, "storage") else "redis://localhost:6379/1")
+        huey_conf = getattr(settings, "HUEY", None)
+        if huey_conf and hasattr(huey_conf, "storage") and hasattr(huey_conf.storage, "url"):
+            redis_conn_url = huey_conf.storage.url
         else:
-            r = Redis.from_url("redis://localhost:6379/1")
+            from decouple import config as env_config
+            redis_conn_url = env_config('REDIS_URL', default='redis://localhost:6379/1')
+        r = Redis.from_url(redis_conn_url)
         start = time.monotonic()
         r.ping()
         status["redis"] = "ok"
