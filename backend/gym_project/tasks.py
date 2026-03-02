@@ -20,12 +20,13 @@ from huey.contrib.djhuey import periodic_task, task
 logger = logging.getLogger('backups')
 
 
-@periodic_task(crontab(day='1,21', hour='3', minute='0'))
+@periodic_task(crontab(hour='3', minute='0'))
 def scheduled_backup():
     """
-    Automated backup of database and media files every 20 days.
+    Daily automated backup of database and media files at 3 AM.
     Storage: configured via BACKUP_STORAGE_PATH env var.
-    Retention: ~90 days (5 backups at 20-day intervals).
+    Retention: 20 DB + 20 media backups (~20 days), synchronized cleanup.
+    Compression enabled for both DB (.sql.gz) and media (.tar.gz).
     """
     from django.core.management import call_command
 

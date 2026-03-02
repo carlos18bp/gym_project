@@ -229,8 +229,8 @@ DBBACKUP_STORAGE_OPTIONS = {
 DBBACKUP_FILENAME_TEMPLATE = '{datetime}.sql'
 DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.tar'
 DBBACKUP_COMPRESS = True
-DBBACKUP_CLEANUP_KEEP = 5
-DBBACKUP_CLEANUP_KEEP_MEDIA = 5
+DBBACKUP_CLEANUP_KEEP = 20
+DBBACKUP_CLEANUP_KEEP_MEDIA = 20
 
 # ---------------------------------------------------------------------------
 # Silk profiling configuration (only active when ENABLE_SILK=true)
@@ -258,6 +258,8 @@ if ENABLE_SILK:
 
     SILKY_MAX_REQUEST_BODY_SIZE = 1024
     SILKY_MAX_RESPONSE_BODY_SIZE = 1024
+
+    SILKY_INTERCEPT_PERCENT = 50
 
 # Alert thresholds (used by weekly report task)
 SLOW_QUERY_THRESHOLD_MS = 500
