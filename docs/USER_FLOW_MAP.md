@@ -1225,31 +1225,56 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### Form-Level Test Coverage (Unit + E2E)
+
+The following forms and modals have dedicated unit and/or E2E tests covering field rendering, validation, submission, file uploads, and edge cases.
+
+#### Intranet Module
+
+| Component | Unit Tests | E2E Tests | Scenarios Covered |
+|-----------|-----------|-----------|-------------------|
+| `FacturationForm.vue` | 14 | 4 | Field rendering, save button validation, submit success/error/exception, file upload (input + drag-and-drop), unsupported file type, file size limit, file removal, close modal |
+
+#### Dynamic Documents Module
+
+| Component | Unit Tests | E2E Tests | Scenarios Covered |
+|-----------|-----------|-----------|-------------------|
+| `DocumentForm.vue` | 13 | 4 | 6 field types (input, textarea, number, date, email, select), currency prefix, tooltip, validation errors, generate button state, save progress, cancel navigation, loading state, editor mode |
+| `DocumentVariablesConfig.vue` | 16 | 2 | Variable sections, name_es input, field type selector, summary classification, currency selector (conditional), select options input, draft/publish buttons, validation (empty name, missing options), draft skips validation, auto-adjust field type, duplicate classification reset |
+| `EditDocumentModal.vue` | 14 | — | Name input, save button validation, close/overlay dismiss, edit vs create mode, update name (success/error), submit navigation (lawyer/client), showEditorButton toggle |
+| `SendDocumentModal.vue` | 13 | — | Email input, send button validation (empty/invalid/valid), close/overlay dismiss, file upload (input + drag-and-drop), unsupported file type, file size limit, submit with sendEmail, file removal |
+| `UseDocumentByClient.vue` | 13 | — | Name input, continue button validation, close dismiss, creator/editor route navigation, update name (success/error), edit mode UI, error when no document |
+| `SendDocument.vue` (layout) | 9 | — | Email input, send button states, close emits closeEmailModal, file upload, unsupported type, submit with sendEmail, drag-and-drop |
+| `CreateEditFolderModal.vue` | 15 | 2 | Folder name input, color selection, create/edit mode titles, submit button state, cancel/overlay close, create/update store calls, pre-fill in edit mode, form reset on visibility change |
+| `SearchBarAndFilterBy.vue` | 8 | — | Search input rendering, icon, emit on input, empty initial state, default/auxiliary slots, multiple inputs, clear emits empty |
+
+---
+
 ## Resumen de Cobertura E2E
 
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
-|--------|---------------|------------|-----------|-----------------|
+|--------|---------------|------------|-----------|------------------|
 | Auth | 11 | 11 | 0 | 0 |
 | Subscriptions | 4 | 4 | 0 | 0 |
 | Profile | 2 | 2 | 0 | 0 |
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 8 | 8 | 0 | 0 |
-| Documents | 28 | 28 | 0 | 0 |
+| Documents | 31 | 31 | 0 | 0 |
 | Signatures | 11 | 11 | 0 | 0 |
 | Legal Requests | 10 | 10 | 0 | 0 |
 | Organizations | 14 | 14 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
-| Intranet | 2 | 2 | 0 | 0 |
+| Intranet | 3 | 3 | 0 | 0 |
 | Basic | 1 | 0 | 1 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **106** | **105** | **1** | **0** |
+| **Total** | **110** | **109** | **1** | **0** |
 
 > **Nota:** El flujo `basic-restrictions` tiene cobertura parcial — las pruebas E2E aún no cubren escenarios con rol basic.
 
 ---
 
 **Documento generado:** Feb 23, 2026  
-**Versión:** 1.0.0  
+**Versión:** 1.1.0  
 **Estado:** ✅ Completo

@@ -318,8 +318,8 @@
       "module": "documents",
       "roles": ["lawyer"],
       "priority": "P1",
-      "description": "Definir campos dinámicos, tipos, clasificación, permisos",
-      "expectedSpecs": 1
+      "description": "Definir campos dinámicos, tipos, clasificación, permisos. Includes field type selector, summary classification, dashboard integration tests.",
+      "expectedSpecs": 3
     },
     "docs-use-template": {
       "name": "Usar documento (completar minuta)",
@@ -839,6 +839,30 @@
       "description": "Toast de restricción, funciones limitadas",
       "expectedSpecs": 1,
       "knownGaps": ["Sin cobertura — ningún test usa rol basic"]
+    },
+    "intranet-facturation-form": {
+      "name": "Facturation form field interactions",
+      "module": "intranet",
+      "roles": ["lawyer-gym"],
+      "priority": "P2",
+      "description": "Save button validation, file upload, successful submission, close modal",
+      "expectedSpecs": 4
+    },
+    "docs-form-field-types": {
+      "name": "Document form field types",
+      "module": "documents",
+      "roles": ["client"],
+      "priority": "P2",
+      "description": "Rendering 6 field types, currency prefix, generate button state, cancel navigation, select options",
+      "expectedSpecs": 4
+    },
+    "docs-folder-crud": {
+      "name": "Document folder CRUD",
+      "module": "documents",
+      "roles": ["lawyer"],
+      "priority": "P2",
+      "description": "Folder list rendering, empty folders state",
+      "expectedSpecs": 2
     }
   }
 }
