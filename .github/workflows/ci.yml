@@ -57,6 +57,7 @@ jobs:
           --cov-branch
           --cov-report=term
           --cov-report=xml:test-results/coverage.xml
+          --cov-report=json:coverage-backend.json
 
       - name: Backend test report
         if: always()
@@ -76,6 +77,14 @@ jobs:
             backend/test-results/results.xml
             backend/test-results/coverage.xml
           retention-days: 7
+
+      - name: Upload backend coverage JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: backend/coverage-backend.json
+          retention-days: 5
 
       - name: Parse coverage metrics
         id: coverage-parse
@@ -183,9 +192,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-unit-coverage
+          name: coverage-frontend-unit
           path: frontend/coverage/coverage-summary.json
-          retention-days: 7
+          retention-days: 5
 
       - name: Write frontend unit summary
         if: always()
@@ -390,9 +399,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-e2e-coverage
+          name: coverage-frontend-e2e
           path: frontend/e2e-results/flow-coverage.json
-          retention-days: 7
+          retention-days: 5
 
       - name: Write E2E flow coverage summary
         if: always()
@@ -418,59 +427,64 @@ jobs:
           fi
 
   # ───────────────────────────────────────────
-  # Unified — Coverage summary across all suites
+  # Coverage Summary — aggregates all reports
   # ───────────────────────────────────────────
   coverage-summary:
     if: always()
     needs: [backend-tests, frontend-unit-tests, e2e-merge-reports]
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
-      - name: Write unified coverage report
-        env:
-          BE_LINES: ${{ needs.backend-tests.outputs.line-coverage }}
-          BE_BRANCHES: ${{ needs.backend-tests.outputs.branch-coverage }}
-          FE_STMTS: ${{ needs.frontend-unit-tests.outputs.statements }}
-          FE_BRANCHES: ${{ needs.frontend-unit-tests.outputs.branches }}
-          FE_FUNCS: ${{ needs.frontend-unit-tests.outputs.functions }}
-          FE_LINES: ${{ needs.frontend-unit-tests.outputs.lines }}
-          E2E_TOTAL: ${{ needs.e2e-merge-reports.outputs.total-flows }}
-          E2E_COVERED: ${{ needs.e2e-merge-reports.outputs.covered-flows }}
-          E2E_PARTIAL: ${{ needs.e2e-merge-reports.outputs.partial-flows }}
-          E2E_FAILING: ${{ needs.e2e-merge-reports.outputs.failing-flows }}
-          E2E_MISSING: ${{ needs.e2e-merge-reports.outputs.missing-flows }}
-          E2E_PCT: ${{ needs.e2e-merge-reports.outputs.coverage-pct }}
-        run: |
-          echo "## 📊 Unified Coverage Report" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Suite | Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-------|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+      - name: Checkout
+        uses: actions/checkout@v4
 
-          # Backend
-          if [ -n "$BE_LINES" ] && [ "$BE_LINES" != "N/A" ]; then
-            echo "| Backend (pytest) | Lines | ${BE_LINES}% |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Backend (pytest) | Branches | ${BE_BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "| Backend (pytest) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
-          fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-          # Frontend Unit
-          if [ -n "$FE_STMTS" ] && [ "$FE_STMTS" != "N/A" ]; then
-            echo "| Frontend Unit (Jest) | Statements | ${FE_STMTS}% |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend Unit (Jest) | Branches | ${FE_BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend Unit (Jest) | Functions | ${FE_FUNCS}% |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend Unit (Jest) | Lines | ${FE_LINES}% |" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "| Frontend Unit (Jest) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
-          fi
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage-artifacts/backend
+        continue-on-error: true
 
-          # Frontend E2E
-          if [ -n "$E2E_TOTAL" ] && [ "$E2E_TOTAL" != "0" ]; then
-            echo "| Frontend E2E (Playwright) | Flows Covered | ${E2E_COVERED}/${E2E_TOTAL} (${E2E_PCT}%) |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend E2E (Playwright) | Flows Partial | ${E2E_PARTIAL} |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend E2E (Playwright) | Flows Failing | ${E2E_FAILING} |" >> "$GITHUB_STEP_SUMMARY"
-            echo "| Frontend E2E (Playwright) | Flows Missing | ${E2E_MISSING} |" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "| Frontend E2E (Playwright) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
-          fi
+      - name: Download frontend-unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend-unit
+          path: coverage-artifacts/frontend-unit
+        continue-on-error: true
+
+      - name: Download frontend-e2e coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend-e2e
+          path: coverage-artifacts/frontend-e2e
+        continue-on-error: true
+
+      - name: Generate coverage summary
+        id: summary
+        run: node scripts/coverage-summary-ci.cjs
+
+      - name: Write Job Summary
+        run: cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: coverage-report.md
+
+      - name: Upload coverage report (markdown)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-md
+          path: coverage-report.md
+          retention-days: 5
