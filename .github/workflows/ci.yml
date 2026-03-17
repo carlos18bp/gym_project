@@ -272,6 +272,9 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
+      - name: Increase inotify watchers for Vite dev server
+        run: sudo sysctl -w fs.inotify.max_user_watches=524288
+
       - name: Run Playwright E2E tests (shard ${{ matrix.shard }})
         run: >
           npx playwright test
