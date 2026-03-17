@@ -123,7 +123,8 @@ describe("Router Guards (auth)", () => {
 
     const root = routes.find((r) => r.path === "/");
     expect(root).toBeTruthy();
-    expect(root.redirect({})).toEqual({ name: "sign_in" });
+    expect(root.name).toBe("root");
+    expect(root.meta.requiresAuth).toBe(false);
 
     const catchAll = routes.find((r) => r.path === "/:pathMatch(.*)*");
     expect(catchAll).toBeTruthy();

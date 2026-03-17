@@ -20,6 +20,9 @@ jobs:
     permissions:
       contents: read
       checks: write
+    outputs:
+      line-coverage: ${{ steps.coverage-parse.outputs.line-pct }}
+      branch-coverage: ${{ steps.coverage-parse.outputs.branch-pct }}
     defaults:
       run:
         working-directory: backend
@@ -74,8 +77,27 @@ jobs:
             backend/test-results/coverage.xml
           retention-days: 7
 
+      - name: Parse coverage metrics
+        id: coverage-parse
+        if: always()
+        run: |
+          if [ -f test-results/coverage.xml ]; then
+            LINE_RATE=$(grep -oP 'line-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            BRANCH_RATE=$(grep -oP 'branch-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            LINE_PCT=$(echo "$LINE_RATE" | awk '{printf "%.1f", $1 * 100}')
+            BRANCH_PCT=$(echo "$BRANCH_RATE" | awk '{printf "%.1f", $1 * 100}')
+            echo "line-pct=$LINE_PCT" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=$BRANCH_PCT" >> "$GITHUB_OUTPUT"
+          else
+            echo "line-pct=N/A" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write backend summary
         if: always()
+        env:
+          LINE_PCT: ${{ steps.coverage-parse.outputs.line-pct }}
+          BRANCH_PCT: ${{ steps.coverage-parse.outputs.branch-pct }}
         run: |
           echo "## Backend Test Results" >> "$GITHUB_STEP_SUMMARY"
           if [ -f test-results/results.xml ]; then
@@ -92,6 +114,16 @@ jobs:
           else
             echo "⚠️ No test results file found." >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 📊 Backend Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/coverage.xml ]; then
+            echo "| Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Lines | ${LINE_PCT}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Branches | ${BRANCH_PCT}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ───────────────────────────────────────────
   # Frontend — Jest unit & component tests
@@ -99,6 +131,11 @@ jobs:
   frontend-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      statements: ${{ steps.coverage-parse.outputs.statements }}
+      branches: ${{ steps.coverage-parse.outputs.branches }}
+      functions: ${{ steps.coverage-parse.outputs.functions }}
+      lines: ${{ steps.coverage-parse.outputs.lines }}
     defaults:
       run:
         working-directory: frontend
@@ -119,8 +156,56 @@ jobs:
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
-      - name: Run Jest tests
-        run: npm test -- --ci --forceExit
+      - name: Run Jest tests with coverage
+        run: npm run test:coverage -- --ci --forceExit
+
+      - name: Parse coverage metrics
+        id: coverage-parse
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            STMTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
+            BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+            FUNCS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
+            LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+            echo "statements=$STMTS" >> "$GITHUB_OUTPUT"
+            echo "branches=$BRANCHES" >> "$GITHUB_OUTPUT"
+            echo "functions=$FUNCS" >> "$GITHUB_OUTPUT"
+            echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+          else
+            echo "statements=N/A" >> "$GITHUB_OUTPUT"
+            echo "branches=N/A" >> "$GITHUB_OUTPUT"
+            echo "functions=N/A" >> "$GITHUB_OUTPUT"
+            echo "lines=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload frontend unit coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-unit-coverage
+          path: frontend/coverage/coverage-summary.json
+          retention-days: 7
+
+      - name: Write frontend unit summary
+        if: always()
+        env:
+          STMTS: ${{ steps.coverage-parse.outputs.statements }}
+          BRANCHES: ${{ steps.coverage-parse.outputs.branches }}
+          FUNCS: ${{ steps.coverage-parse.outputs.functions }}
+          LINES: ${{ steps.coverage-parse.outputs.lines }}
+        run: |
+          echo "## Frontend Unit Test Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "| Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Statements | ${STMTS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Branches | ${BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Functions | ${FUNCS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Lines | ${LINES}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   # ───────────────────────────────────────────
   # Frontend — Playwright E2E tests (sharded)
@@ -184,7 +269,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: E2E Results (shard ${{ matrix.shard }})
+          name: CI — E2E Results (shard ${{ matrix.shard }})
           path: frontend/test-results/e2e-results.xml
           reporter: java-junit
           fail-on-error: false
@@ -221,4 +306,171 @@ jobs:
             echo "| Duration | ${TIME}s |" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "⚠️ No JUnit results found for this shard." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # E2E — Merge shard reports + flow coverage
+  # ───────────────────────────────────────────
+  e2e-merge-reports:
+    if: always()
+    needs: frontend-e2e-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      total-flows: ${{ steps.e2e-coverage-parse.outputs.total }}
+      covered-flows: ${{ steps.e2e-coverage-parse.outputs.covered }}
+      partial-flows: ${{ steps.e2e-coverage-parse.outputs.partial }}
+      failing-flows: ${{ steps.e2e-coverage-parse.outputs.failing }}
+      missing-flows: ${{ steps.e2e-coverage-parse.outputs.missing }}
+      coverage-pct: ${{ steps.e2e-coverage-parse.outputs.pct }}
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-blob-reports
+          pattern: playwright-blob-*
+          merge-multiple: true
+
+      - name: Merge reports with flow coverage reporter
+        run: >
+          npx playwright merge-reports
+          --reporter='./e2e/reporters/flow-coverage-reporter.mjs'
+          ./all-blob-reports
+
+      - name: Parse E2E flow coverage
+        id: e2e-coverage-parse
+        if: always()
+        run: |
+          if [ -f e2e-results/flow-coverage.json ]; then
+            TOTAL=$(jq '.summary.total' e2e-results/flow-coverage.json)
+            COVERED=$(jq '.summary.covered' e2e-results/flow-coverage.json)
+            PARTIAL=$(jq '.summary.partial' e2e-results/flow-coverage.json)
+            FAILING=$(jq '.summary.failing' e2e-results/flow-coverage.json)
+            MISSING=$(jq '.summary.missing' e2e-results/flow-coverage.json)
+            if [ "$TOTAL" -gt 0 ]; then
+              PCT=$(echo "scale=1; $COVERED * 100 / $TOTAL" | bc)
+            else
+              PCT="0.0"
+            fi
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "covered=$COVERED" >> "$GITHUB_OUTPUT"
+            echo "partial=$PARTIAL" >> "$GITHUB_OUTPUT"
+            echo "failing=$FAILING" >> "$GITHUB_OUTPUT"
+            echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+            echo "pct=$PCT" >> "$GITHUB_OUTPUT"
+          else
+            echo "total=0" >> "$GITHUB_OUTPUT"
+            echo "covered=0" >> "$GITHUB_OUTPUT"
+            echo "partial=0" >> "$GITHUB_OUTPUT"
+            echo "failing=0" >> "$GITHUB_OUTPUT"
+            echo "missing=0" >> "$GITHUB_OUTPUT"
+            echo "pct=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload flow coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e-coverage
+          path: frontend/e2e-results/flow-coverage.json
+          retention-days: 7
+
+      - name: Write E2E flow coverage summary
+        if: always()
+        env:
+          TOTAL: ${{ steps.e2e-coverage-parse.outputs.total }}
+          COVERED: ${{ steps.e2e-coverage-parse.outputs.covered }}
+          PARTIAL: ${{ steps.e2e-coverage-parse.outputs.partial }}
+          FAILING: ${{ steps.e2e-coverage-parse.outputs.failing }}
+          MISSING: ${{ steps.e2e-coverage-parse.outputs.missing }}
+          PCT: ${{ steps.e2e-coverage-parse.outputs.pct }}
+        run: |
+          echo "## E2E Flow Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TOTAL" != "0" ]; then
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Total Flows | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ✅ Covered | $COVERED (${PCT}%) |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ⚠️ Partial | $PARTIAL |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ❌ Failing | $FAILING |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ⬜ Missing | $MISSING |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No flow coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # Unified — Coverage summary across all suites
+  # ───────────────────────────────────────────
+  coverage-summary:
+    if: always()
+    needs: [backend-tests, frontend-unit-tests, e2e-merge-reports]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Write unified coverage report
+        env:
+          BE_LINES: ${{ needs.backend-tests.outputs.line-coverage }}
+          BE_BRANCHES: ${{ needs.backend-tests.outputs.branch-coverage }}
+          FE_STMTS: ${{ needs.frontend-unit-tests.outputs.statements }}
+          FE_BRANCHES: ${{ needs.frontend-unit-tests.outputs.branches }}
+          FE_FUNCS: ${{ needs.frontend-unit-tests.outputs.functions }}
+          FE_LINES: ${{ needs.frontend-unit-tests.outputs.lines }}
+          E2E_TOTAL: ${{ needs.e2e-merge-reports.outputs.total-flows }}
+          E2E_COVERED: ${{ needs.e2e-merge-reports.outputs.covered-flows }}
+          E2E_PARTIAL: ${{ needs.e2e-merge-reports.outputs.partial-flows }}
+          E2E_FAILING: ${{ needs.e2e-merge-reports.outputs.failing-flows }}
+          E2E_MISSING: ${{ needs.e2e-merge-reports.outputs.missing-flows }}
+          E2E_PCT: ${{ needs.e2e-merge-reports.outputs.coverage-pct }}
+        run: |
+          echo "## 📊 Unified Coverage Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Suite | Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+
+          # Backend
+          if [ -n "$BE_LINES" ] && [ "$BE_LINES" != "N/A" ]; then
+            echo "| Backend (pytest) | Lines | ${BE_LINES}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Backend (pytest) | Branches | ${BE_BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Backend (pytest) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Frontend Unit
+          if [ -n "$FE_STMTS" ] && [ "$FE_STMTS" != "N/A" ]; then
+            echo "| Frontend Unit (Jest) | Statements | ${FE_STMTS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend Unit (Jest) | Branches | ${FE_BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend Unit (Jest) | Functions | ${FE_FUNCS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend Unit (Jest) | Lines | ${FE_LINES}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Frontend Unit (Jest) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Frontend E2E
+          if [ -n "$E2E_TOTAL" ] && [ "$E2E_TOTAL" != "0" ]; then
+            echo "| Frontend E2E (Playwright) | Flows Covered | ${E2E_COVERED}/${E2E_TOTAL} (${E2E_PCT}%) |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend E2E (Playwright) | Flows Partial | ${E2E_PARTIAL} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend E2E (Playwright) | Flows Failing | ${E2E_FAILING} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Frontend E2E (Playwright) | Flows Missing | ${E2E_MISSING} |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Frontend E2E (Playwright) | — | ⚠️ No data |" >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -198,6 +198,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         sent_amount = mock_post.call_args.kwargs["json"]["amount_in_cents"]
         assert sent_amount == 5000000
 
@@ -221,6 +222,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         ref = mock_post.call_args.kwargs["json"]["reference"]
         assert f"SUB-{sub.id}-" in ref
 
@@ -244,6 +246,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         payload = mock_post.call_args.kwargs["json"]
         assert payload["payment_source_id"] == "src_1"
         assert payload["currency"] == "COP"
@@ -268,6 +271,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         payload = mock_post.call_args.kwargs["json"]
         assert "signature" in payload
         assert len(payload["signature"]) == 64
@@ -292,6 +296,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         headers = mock_post.call_args.kwargs["headers"]
         assert "Authorization" in headers
         assert headers["Content-Type"] == "application/json"
@@ -316,6 +321,7 @@ class TestProcessSubscriptionPayment:
 
         process_subscription_payment(sub)
 
+        mock_post.assert_called_once()
         payload = mock_post.call_args.kwargs["json"]
         assert payload["recurrent"] is True
 

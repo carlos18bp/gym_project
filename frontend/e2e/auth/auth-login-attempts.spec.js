@@ -42,6 +42,25 @@ async function resetSignInState(page) {
 }
 
 async function bypassCaptcha(page) {
+  // Wait for Vue component tree to be ready with captchaToken before attempting bypass
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector("#email") || document.querySelector("form");
+      let comp = el && el.__vueParentComponent;
+      while (comp) {
+        if (
+          (comp.setupState && "captchaToken" in comp.setupState) ||
+          (comp.ctx && "captchaToken" in comp.ctx) ||
+          (comp.proxy && "captchaToken" in comp.proxy)
+        ) return true;
+        comp = comp.parent;
+      }
+      return false;
+    },
+    null,
+    { timeout: 10_000 },
+  );
+
   await page.evaluate(() => {
     const el = document.querySelector("#email") || document.querySelector("form");
     let comp = el && el.__vueParentComponent;

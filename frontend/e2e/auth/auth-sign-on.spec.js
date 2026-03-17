@@ -4,6 +4,25 @@ import { installAuthSignOnApiMocks } from "../helpers/authSignOnMocks.js";
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 async function bypassCaptcha(page) {
+  // Wait for Vue component tree to be ready with captchaToken before attempting bypass
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector("#email") || document.querySelector("form");
+      let comp = el && el.__vueParentComponent;
+      while (comp) {
+        if (
+          (comp.setupState && "captchaToken" in comp.setupState) ||
+          (comp.ctx && "captchaToken" in comp.ctx) ||
+          (comp.proxy && "captchaToken" in comp.proxy)
+        ) return true;
+        comp = comp.parent;
+      }
+      return false;
+    },
+    null,
+    { timeout: 10_000 },
+  );
+
   await page.evaluate(() => {
     const el = document.querySelector("#email") || document.querySelector("form");
     let comp = el && el.__vueParentComponent;
@@ -59,6 +78,7 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="email"]').fill("newuser@example.com");
   await page.locator('[id="password"]').fill("SecurePass1!");
@@ -123,6 +143,7 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="first_name"]').fill("Test");
   await page.locator('[id="last_name"]').fill("User");
@@ -155,6 +176,7 @@ test("registration with existing email shows error", { tag: ['@flow:auth-registe
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="email"]').fill("existing@example.com");
   await page.locator('[id="password"]').fill("SecurePass1!");
@@ -180,6 +202,7 @@ test("sign on page has link to sign in", { tag: ['@flow:auth-register', '@module
   await installAuthSignOnApiMocks(page, { userId, role: "client" });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   const signInLink = page.getByRole("link", { name: "Iniciar sesión" });
   await expect(signInLink).toBeVisible();
