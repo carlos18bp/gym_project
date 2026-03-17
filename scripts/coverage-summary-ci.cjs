@@ -94,7 +94,7 @@ function parseBackend(artifactDir) {
   return {
     stmtsCovered, stmtsTotal, stmtsPct: +stmtsPct.toFixed(1),
     brCovered, brTotal, brPct: +brPct.toFixed(1),
-    lowestFiles: lowestFiles.slice(0, MAX_TOP_FILES),
+    lowestFiles: lowestFiles.filter((f) => f.pct < 100).slice(0, MAX_TOP_FILES),
   };
 }
 
@@ -172,6 +172,7 @@ function parseFrontendUnit(artifactDir) {
     const fnPct  = +(metrics.functions?.pct ?? 100).toFixed(1);
     lowestFiles.push({ file: filePath, pct: +pct.toFixed(1), stmts, missed, brPct, fnPct });
   }
+  const ASSET_EXT = /\.(svg|png|jpe?g|gif|ico|woff2?|ttf|eot|mp4|webm|webp)$/i;
   lowestFiles.sort((a, b) => a.pct - b.pct);
 
   return {
@@ -179,7 +180,9 @@ function parseFrontendUnit(artifactDir) {
     branches: extract('branches'),
     functions: extract('functions'),
     lines: extract('lines'),
-    lowestFiles: lowestFiles.slice(0, MAX_TOP_FILES),
+    lowestFiles: lowestFiles
+      .filter((f) => f.pct < 100 && !ASSET_EXT.test(f.file))
+      .slice(0, MAX_TOP_FILES),
   };
 }
 
