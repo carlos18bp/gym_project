@@ -166,7 +166,7 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Run Jest tests with coverage
-        run: npm run test:coverage -- --ci --forceExit
+        run: npm run test:coverage -- --ci --forceExit --json --outputFile=jest-results.json
 
       - name: Parse coverage metrics
         id: coverage-parse
@@ -194,6 +194,14 @@ jobs:
         with:
           name: coverage-frontend-unit
           path: frontend/coverage/coverage-summary.json
+          retention-days: 5
+
+      - name: Upload frontend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-frontend-unit
+          path: frontend/jest-results.json
           retention-days: 5
 
       - name: Write frontend unit summary
@@ -466,6 +474,20 @@ jobs:
         with:
           name: coverage-frontend-e2e
           path: coverage-artifacts/frontend-e2e
+        continue-on-error: true
+
+      - name: Download backend test results (JUnit XML)
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-test-results
+          path: coverage-artifacts/backend-results
+        continue-on-error: true
+
+      - name: Download frontend test results (Jest JSON)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-frontend-unit
+          path: coverage-artifacts/frontend-unit-results
         continue-on-error: true
 
       - name: Generate coverage summary
