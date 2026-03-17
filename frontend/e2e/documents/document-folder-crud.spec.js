@@ -39,8 +39,12 @@ async function setupAndNavigate(page, folders = undefined) {
 test("folder list renders existing folders", { tag: ['@flow:docs-folder-crud', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   await setupAndNavigate(page);
 
-  // Wait for page to load
-  await expect(page.getByText("Contracts").or(page.getByText("Reports"))).toBeVisible({ timeout: 15_000 });
+  // Lawyer default tab is "legal-documents"; switch to "Carpetas" tab
+  await page.getByRole("button", { name: "Carpetas" }).click();
+
+  // Wait for folder names to render
+  await expect(page.getByText("Contracts")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Reports")).toBeVisible();
 });
 
 test("folder dashboard loads without errors with empty folders", { tag: ['@flow:docs-folder-crud', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {

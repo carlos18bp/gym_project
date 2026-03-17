@@ -26,9 +26,10 @@ class TestSilkGarbageCollectCommand:
 
     @mock.patch('silk.models.Request')
     def test_default_retention_filters_records_older_than_seven_days(
-        self, mock_request
+        self, mock_request, settings
     ):
         """Verify filter uses 7-day cutoff when --days is not specified."""
+        settings.ENABLE_SILK = True
         mock_request.objects.filter.return_value = _make_qs(count=0)
 
         out = StringIO()
@@ -44,9 +45,10 @@ class TestSilkGarbageCollectCommand:
 
     @mock.patch('silk.models.Request')
     def test_custom_days_filters_with_given_retention_period(
-        self, mock_request
+        self, mock_request, settings
     ):
         """Verify --days=14 uses a 14-day cutoff in the filter."""
+        settings.ENABLE_SILK = True
         mock_request.objects.filter.return_value = _make_qs(count=0)
 
         out = StringIO()
@@ -61,8 +63,9 @@ class TestSilkGarbageCollectCommand:
         assert "Requests to delete: 0" in out.getvalue()
 
     @mock.patch('silk.models.Request')
-    def test_records_are_deleted_without_dry_run(self, mock_request):
+    def test_records_are_deleted_without_dry_run(self, mock_request, settings):
         """Verify delete() is called when --dry-run is not specified."""
+        settings.ENABLE_SILK = True
         mock_qs = _make_qs(count=3, deleted=3)
         mock_request.objects.filter.return_value = mock_qs
 
@@ -73,8 +76,9 @@ class TestSilkGarbageCollectCommand:
         assert "Deleted 3 records" in out.getvalue()
 
     @mock.patch('silk.models.Request')
-    def test_dry_run_skips_deletion(self, mock_request):
+    def test_dry_run_skips_deletion(self, mock_request, settings):
         """Verify delete() is not called when --dry-run is specified."""
+        settings.ENABLE_SILK = True
         mock_qs = _make_qs(count=3)
         mock_request.objects.filter.return_value = mock_qs
 
@@ -85,8 +89,9 @@ class TestSilkGarbageCollectCommand:
         assert "Requests to delete: 3" in out.getvalue()
 
     @mock.patch('silk.models.Request')
-    def test_dry_run_prints_warning_message(self, mock_request):
+    def test_dry_run_prints_warning_message(self, mock_request, settings):
         """Verify dry-run outputs a DRY RUN warning."""
+        settings.ENABLE_SILK = True
         mock_request.objects.filter.return_value = _make_qs(count=2)
 
         out = StringIO()
@@ -95,8 +100,9 @@ class TestSilkGarbageCollectCommand:
         assert "DRY RUN" in out.getvalue()
 
     @mock.patch('silk.models.Request')
-    def test_deletion_prints_deleted_count(self, mock_request):
+    def test_deletion_prints_deleted_count(self, mock_request, settings):
         """Verify stdout reports the number of deleted records after deletion."""
+        settings.ENABLE_SILK = True
         mock_request.objects.filter.return_value = _make_qs(count=5, deleted=5)
 
         out = StringIO()
@@ -105,8 +111,9 @@ class TestSilkGarbageCollectCommand:
         assert "Deleted 5 records" in out.getvalue()
 
     @mock.patch('silk.models.Request')
-    def test_zero_records_reports_zero_in_output(self, mock_request):
+    def test_zero_records_reports_zero_in_output(self, mock_request, settings):
         """Verify output shows zero when no records match the cutoff."""
+        settings.ENABLE_SILK = True
         mock_request.objects.filter.return_value = _make_qs(count=0, deleted=0)
 
         out = StringIO()

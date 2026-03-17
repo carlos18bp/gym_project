@@ -257,6 +257,9 @@ test("subscription sign-up sends verification code and completes registration", 
   await page.locator("#passcode").fill("123456");
   await page.getByRole("button", { name: "Verificar y crear cuenta" }).click();
 
+  // Dismiss success notification so it doesn't block navigation
+  await dismissAlertIfVisible(page, 5_000);
+
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });
 

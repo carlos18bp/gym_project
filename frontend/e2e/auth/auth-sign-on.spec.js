@@ -97,6 +97,13 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   // Click verify button
   await page.getByRole("button", { name: "Verificar" }).click();
 
+  // Proactively dismiss any Swal notification to avoid blocking navigation
+  await page.evaluate(() => {
+    if (window.Swal) window.Swal.close();
+    document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+  });
+
   // Should redirect to dashboard after successful sign on
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
