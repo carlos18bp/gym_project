@@ -86,7 +86,7 @@ function parseBackend(artifactDir) {
       const s = info.summary ?? info;
       const pct = s.percent_covered ?? 0;
       const missing = s.missing_lines ?? s.num_statements - s.covered_lines ?? 0;
-      lowestFiles.push({ file: filePath, pct: +pct.toFixed(1), missing });
+      lowestFiles.push({ file: filePath, pct: +pct.toFixed(1), missing, stmts: s.num_statements ?? 0 });
     }
     lowestFiles.sort((a, b) => a.pct - b.pct);
   }
@@ -117,6 +117,35 @@ function parseBackendFailures(resultsDir) {
   return failures;
 }
 
+function parseBackendTestCounts(resultsDir) {
+  const xmlPath = path.join(resultsDir, 'test-results', 'results.xml');
+  const xml = readText(xmlPath);
+  if (!xml) return null;
+
+  let tests = 0, failures = 0, errors = 0, skipped = 0;
+  const re = /<testsuite\b[^>]*>/g;
+  let m;
+  while ((m = re.exec(xml)) !== null) {
+    const tag = m[0];
+    tests    += parseInt(tag.match(/\btests="(\d+)"/)?.[1]    ?? '0', 10);
+    failures += parseInt(tag.match(/\bfailures="(\d+)"/)?.[1] ?? '0', 10);
+    errors   += parseInt(tag.match(/\berrors="(\d+)"/)?.[1]   ?? '0', 10);
+    skipped  += parseInt(tag.match(/\bskipped="(\d+)"/)?.[1]  ?? '0', 10);
+  }
+  const passed = tests - failures - errors - skipped;
+  return { total: tests, passed, failed: failures + errors, skipped };
+}
+
+function parseFrontendUnitTestCounts(resultsDir) {
+  const data = readJson(path.join(resultsDir, 'jest-results.json'));
+  if (!data) return null;
+  const total   = data.numTotalTests   ?? 0;
+  const passed  = data.numPassedTests  ?? 0;
+  const failed  = data.numFailedTests  ?? 0;
+  const skipped = data.numPendingTests ?? 0;
+  return { total, passed, failed, skipped };
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // FRONTEND UNIT PARSERS
 // ══════════════════════════════════════════════════════════════════════
@@ -137,7 +166,11 @@ function parseFrontendUnit(artifactDir) {
   for (const [filePath, metrics] of Object.entries(data)) {
     if (filePath === 'total') continue;
     const pct = metrics.statements?.pct ?? 100;
-    lowestFiles.push({ file: filePath, pct: +pct.toFixed(1) });
+    const stmts  = metrics.statements?.total   ?? 0;
+    const missed = (metrics.statements?.total ?? 0) - (metrics.statements?.covered ?? 0);
+    const brPct  = +(metrics.branches?.pct  ?? 100).toFixed(1);
+    const fnPct  = +(metrics.functions?.pct ?? 100).toFixed(1);
+    lowestFiles.push({ file: filePath, pct: +pct.toFixed(1), stmts, missed, brPct, fnPct });
   }
   lowestFiles.sort((a, b) => a.pct - b.pct);
 
@@ -231,9 +264,20 @@ function parseFrontendE2E(artifactDir) {
   // Sort missing by priority (P1 first)
   missingFlows.sort((a, b) => a.priority.localeCompare(b.priority));
 
+  let testTotal = 0, testPassed = 0, testFailed = 0;
+  if (data.flows) {
+    for (const flow of Object.values(data.flows)) {
+      testTotal  += flow.tests?.total  ?? 0;
+      testPassed += flow.tests?.passed ?? 0;
+      testFailed += flow.tests?.failed ?? 0;
+    }
+  }
+  const testSkipped = Math.max(0, testTotal - testPassed - testFailed);
+
   return {
     total, covered, partial, failing, missing, pct,
     failingFlows, missingFlows, partialFlows,
+    testTotal, testPassed, testFailed, testSkipped,
   };
 }
 
@@ -241,7 +285,7 @@ function parseFrontendE2E(artifactDir) {
 // BUILD MARKDOWN
 // ══════════════════════════════════════════════════════════════════════
 
-function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) {
+function buildMarkdown(backend, backendFailures, backendCounts, feUnit, feUnitFailures, feUnitCounts, feE2E) {
   const L = [];
 
   L.push('## 📊 Coverage Report');
@@ -253,33 +297,62 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
 
   if (backend) {
     const p = backend.stmtsPct;
-    L.push(`| Backend (pytest) | ${dot(p)} ${p}% | ${bar(p)} | ${backend.stmtsCovered}/${backend.stmtsTotal} stmts, ${backend.brPct}% branches |`);
+    L.push(`| **Backend** (pytest) | ${dot(p)} ${p}% | \`${bar(p)}\` | ${backend.stmtsCovered}/${backend.stmtsTotal} stmts, ${backend.brPct}% branches |`);
   } else {
-    L.push('| Backend (pytest) | ⚠️ N/A | | No data |');
+    L.push('| **Backend** (pytest) | ⚠️ N/A | | No data |');
   }
 
   if (feUnit) {
     const p = feUnit.statements.pct;
-    L.push(`| Frontend Unit (Jest) | ${dot(p)} ${p}% | ${bar(p)} | ${feUnit.statements.covered}/${feUnit.statements.total} stmts, ${feUnit.branches.pct}% branches, ${feUnit.functions.pct}% funcs |`);
+    L.push(`| **Frontend Unit** (Jest) | ${dot(p)} ${p}% | \`${bar(p)}\` | ${feUnit.statements.covered}/${feUnit.statements.total} stmts, ${feUnit.branches.pct}% branches, ${feUnit.functions.pct}% funcs |`);
   } else {
-    L.push('| Frontend Unit (Jest) | ⚠️ N/A | | No data |');
+    L.push('| **Frontend Unit** (Jest) | ⚠️ N/A | | No data |');
   }
 
   if (feE2E) {
     const p = feE2E.pct;
-    L.push(`| Frontend E2E (Playwright) | ${dot(p)} ${p}% | ${bar(p)} | ${feE2E.covered}/${feE2E.total} flows covered, ${feE2E.failing} failing, ${feE2E.missing} missing |`);
+    L.push(`| **Frontend E2E** (Playwright) | ${dot(p)} ${p}% | \`${bar(p)}\` | ${feE2E.covered}/${feE2E.total} flows covered, ${feE2E.failing} failing, ${feE2E.missing} missing |`);
   } else {
-    L.push('| Frontend E2E (Playwright) | ⚠️ N/A | | No data |');
+    L.push('| **Frontend E2E** (Playwright) | ⚠️ N/A | | No data |');
   }
 
   L.push('');
+
+  // ── Test Results section ──
+  {
+    const e2eCounts = feE2E
+      ? { total: feE2E.testTotal, passed: feE2E.testPassed, failed: feE2E.testFailed, skipped: feE2E.testSkipped }
+      : null;
+    const allCounts = [
+      { label: 'Backend (pytest)',           c: backendCounts },
+      { label: 'Frontend Unit (Jest)',       c: feUnitCounts  },
+      { label: 'Frontend E2E (Playwright)', c: e2eCounts     },
+    ];
+    const grandTotal  = allCounts.reduce((s, r) => s + (r.c?.total  ?? 0), 0);
+    const grandPassed = allCounts.reduce((s, r) => s + (r.c?.passed ?? 0), 0);
+    const grandFailed = allCounts.reduce((s, r) => s + (r.c?.failed ?? 0), 0);
+    const allOk = grandFailed === 0;
+    L.push(`### ${allOk ? '✅' : '❌'} Test Results — ${grandPassed}/${grandTotal} passed`);
+    L.push('');
+    L.push('| Suite | Passed | Failed | Skipped | Total |');
+    L.push('|-------|--------|--------|---------|-------|');
+    for (const { label, c } of allCounts) {
+      if (c) {
+        const failedCell = c.failed > 0 ? `**${c.failed}**` : `${c.failed}`;
+        L.push(`| ${label} | ${c.passed} | ${failedCell} | ${c.skipped} | ${c.total} |`);
+      } else {
+        L.push(`| ${label} | — | — | — | — |`);
+      }
+    }
+    L.push('');
+  }
 
   // ────────────────────────────────────────────────────────────────────
   // Backend Details
   // ────────────────────────────────────────────────────────────────────
   if (backend) {
     L.push('<details>');
-    L.push('<summary>Backend Details</summary>');
+    L.push('<summary><strong>🐍 Backend Details</strong></summary>');
     L.push('');
     L.push('| Metric | Covered | Total | % |');
     L.push('|--------|---------|-------|---|');
@@ -292,11 +365,11 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
     if (backend.lowestFiles.length > 0) {
       L.push('#### 🔻 Top 10 — Lowest Coverage Files');
       L.push('');
-      L.push('| File | Coverage | Missing lines |');
-      L.push('|------|----------|---------------|');
-      for (const f of backend.lowestFiles) {
-        L.push(`| \`${shortPath(f.file)}\` | ${dot(f.pct)} ${f.pct}% | ${f.missing} |`);
-      }
+      L.push('| # | File | Stmts | Missed | Coverage |');
+      L.push('|---|------|-------|--------|----------|');
+      backend.lowestFiles.forEach((f, i) => {
+        L.push(`| ${i + 1} | \`${shortPath(f.file)}\` | ${f.stmts} | ${f.missing} | ${dot(f.pct)} ${f.pct}% |`);
+      });
       L.push('');
     }
 
@@ -320,7 +393,7 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
   // ────────────────────────────────────────────────────────────────────
   if (feUnit) {
     L.push('<details>');
-    L.push('<summary>Frontend Unit Details</summary>');
+    L.push('<summary><strong>🧪 Frontend Unit Details</strong></summary>');
     L.push('');
     L.push('| Metric | Covered | Total | % |');
     L.push('|--------|---------|-------|---|');
@@ -333,11 +406,11 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
     if (feUnit.lowestFiles.length > 0) {
       L.push('#### 🔻 Top 10 — Lowest Coverage Files');
       L.push('');
-      L.push('| File | Statements % |');
-      L.push('|------|--------------|');
-      for (const f of feUnit.lowestFiles) {
-        L.push(`| \`${shortPath(f.file)}\` | ${dot(f.pct)} ${f.pct}% |`);
-      }
+      L.push('| # | File | Stmts | Missed | Stmts% | Branch% | Funcs% |');
+      L.push('|---|------|-------|--------|--------|---------|--------|');
+      feUnit.lowestFiles.forEach((f, i) => {
+        L.push(`| ${i + 1} | \`${shortPath(f.file)}\` | ${f.stmts} | ${f.missed} | ${dot(f.pct)} ${f.pct}% | ${f.brPct}% | ${f.fnPct}% |`);
+      });
       L.push('');
     }
 
@@ -361,7 +434,7 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
   // ────────────────────────────────────────────────────────────────────
   if (feE2E) {
     L.push('<details>');
-    L.push('<summary>Frontend E2E Flow Details</summary>');
+    L.push('<summary><strong>🎭 Frontend E2E Flow Details</strong></summary>');
     L.push('');
     L.push('| Status | Count |');
     L.push('|--------|-------|');
@@ -430,16 +503,19 @@ function main() {
   const feUnitFailures  = parseFrontendUnitFailures(path.join(base, 'frontend-unit-results'));
   const feE2E           = parseFrontendE2E(path.join(base, 'frontend-e2e'));
 
-  const md = buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E);
+  const backendCounts  = parseBackendTestCounts(path.join(base, 'backend-results'));
+  const feUnitCounts   = parseFrontendUnitTestCounts(path.join(base, 'frontend-unit-results'));
+
+  const md = buildMarkdown(backend, backendFailures, backendCounts, feUnit, feUnitFailures, feUnitCounts, feE2E);
 
   fs.writeFileSync('coverage-report.md', md);
   console.log('✅ coverage-report.md generated');
 
   if (backend) console.log(`   Backend:       ${backend.stmtsPct}% stmts, ${backend.brPct}% branches`);
-  if (backendFailures.length) console.log(`   Backend:       ${backendFailures.length} test failure(s)`);
+  if (backendCounts) console.log(`   Backend:       ${backendCounts.passed}/${backendCounts.total} tests passed`);
   if (feUnit) console.log(`   Frontend Unit: ${feUnit.statements.pct}% stmts`);
-  if (feUnitFailures.length) console.log(`   Frontend Unit: ${feUnitFailures.length} test failure(s)`);
-  if (feE2E) console.log(`   Frontend E2E:  ${feE2E.covered}/${feE2E.total} flows`);
+  if (feUnitCounts) console.log(`   Frontend Unit: ${feUnitCounts.passed}/${feUnitCounts.total} tests passed`);
+  if (feE2E) console.log(`   Frontend E2E:  ${feE2E.covered}/${feE2E.total} flows, ${feE2E.testPassed}/${feE2E.testTotal} tests`);
 }
 
 main();
