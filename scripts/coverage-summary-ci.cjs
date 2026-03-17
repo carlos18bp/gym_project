@@ -173,6 +173,7 @@ function parseFrontendUnit(artifactDir) {
     lowestFiles.push({ file: filePath, pct: +pct.toFixed(1), stmts, missed, brPct, fnPct });
   }
   const ASSET_EXT = /\.(svg|png|jpe?g|gif|ico|woff2?|ttf|eot|mp4|webm|webp)$/i;
+  const TEST_PATH = /\/test\/|__tests__|\.test\.|\.spec\./i;
   lowestFiles.sort((a, b) => a.pct - b.pct);
 
   return {
@@ -181,7 +182,7 @@ function parseFrontendUnit(artifactDir) {
     functions: extract('functions'),
     lines: extract('lines'),
     lowestFiles: lowestFiles
-      .filter((f) => f.pct < 100 && !ASSET_EXT.test(f.file))
+      .filter((f) => f.pct < 100 && !ASSET_EXT.test(f.file) && !TEST_PATH.test(f.file))
       .slice(0, MAX_TOP_FILES),
   };
 }
