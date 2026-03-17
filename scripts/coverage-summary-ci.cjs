@@ -285,6 +285,8 @@ function buildMarkdown(backend, backendFailures, feUnit, feUnitFailures, feE2E) 
     L.push('|--------|---------|-------|---|');
     L.push(`| Statements | ${backend.stmtsCovered} | ${backend.stmtsTotal} | ${backend.stmtsPct}% |`);
     L.push(`| Branches | ${backend.brCovered} | ${backend.brTotal} | ${backend.brPct}% |`);
+    L.push('| Functions | — | — | *not tracked by pytest-cov* |');
+    L.push(`| Lines | ${backend.stmtsCovered} | ${backend.stmtsTotal} | ${backend.stmtsPct}% |`);
     L.push('');
 
     if (backend.lowestFiles.length > 0) {
