@@ -21,6 +21,7 @@ async function loadTestHelper() {
 function buildPage() {
   return {
     on: jest.fn(),
+    route: jest.fn().mockResolvedValue(undefined),
     waitForLoadState: jest.fn().mockResolvedValue(),
     waitForTimeout: jest.fn().mockResolvedValue(),
     evaluate: jest.fn(),

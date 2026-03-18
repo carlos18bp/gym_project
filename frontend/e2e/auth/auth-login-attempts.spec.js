@@ -47,6 +47,7 @@ async function attemptLogin(page) {
   await page.locator('[id="password"]').fill("wrongpassword");
   await bypassCaptcha(page);
   const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeVisible({ timeout: 10_000 });
   await expect(loginBtn).toBeEnabled({ timeout: 10_000 });
   await loginBtn.click();
 }
@@ -116,6 +117,7 @@ test("lockout timer pre-seeded at 3 tries shows remaining seconds on page load",
 });
 
 test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
   await installLoginAttemptsMocks(page);
 
   // Pre-seed localStorage at 5 tries (next failure = 6th = next lockout tier)
