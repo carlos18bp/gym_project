@@ -62,6 +62,10 @@ This file captures important patterns, preferences, and project intelligence tha
 - **E2E coverage**: Istanbul instrumentation via Vite plugin (`babel-plugin-istanbul`). Run with `npm run e2e:coverage`.
 - **E2E helpers**: Custom scripts in `frontend/scripts/` for modules listing, coverage per module, AST parsing.
 - **E2E captcha bypass**: Never use Vue internals (`__vueParentComponent`, `setupState`, `__v_raw`) — they change across Vue versions and are dev-mode-only. Use `window`-level flags set by the `grecaptcha` stub instead (see `e2e/helpers/test.js` and `e2e/helpers/captcha.js`).
+- **E2E captcha auto-verification**: The `grecaptcha` stub in `e2e/helpers/test.js` auto-fires `onCaptchaVerified("e2e-captcha-token")` for ALL tests. "No captcha" scenarios are untestable via E2E — test at unit level instead.
+- **SweetAlert2 selectors**: Use `[class~="swal2-popup"]` to detect SweetAlert2 notifications. Do NOT use `[role="dialog"]` — unreliable in E2E context.
+- **E2E flaky tests from parallel runs**: With 3 workers running 158+ specs, some flows appear "failing" due to worker contention/timing. Always re-run failing flows individually to confirm before fixing.
+- **Sequential `.isVisible()` waits**: Avoid chaining multiple `.isVisible({ timeout })` calls — they accumulate and can exceed the test timeout. Use `.or()` combined locators or `Promise.race` instead.
 - **E2E viewports**: Desktop Chrome (default), Mobile Chrome (Pixel 5), Tablet (iPad Mini) — configurable in `playwright.config.mjs`.
 - **Test data samples**: `frontend/test/data_sample/` contains mock data for unit tests.
 - **Coverage reporting**: Backend uses pytest-cov with branch coverage. Frontend uses Jest coverage with JSON summary. E2E uses flow-coverage.json.

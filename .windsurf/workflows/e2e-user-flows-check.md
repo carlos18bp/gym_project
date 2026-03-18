@@ -10,6 +10,7 @@ CONSTRAINTS
 - Do not invent flows. If unclear, ask clarifying questions.
 - Provide traceability (paths + line refs if possible).
 - Separate critical flows (P1/P2) from nice-to-have (P3/P4).
+- **Every flow must correspond to a real user interaction** — actions a human performs through the UI (clicking buttons, filling forms, navigating pages, uploading files, etc.). Backend-only processes, cron jobs, or internal system events are NOT user flows.
 
 PHASE 0 — Scope
 1) Identify user roles/personas and modules.
@@ -29,6 +30,8 @@ For each source, extract flows as:
 - Roles involved
 - Feature/module
 
+**Validation**: Each candidate flow MUST be traceable to a real user action in the browser (e.g., clicking, navigating, submitting a form, selecting options). Discard any candidate that cannot be triggered by a user through the UI.
+
 PHASE 3 — Normalize
 - Merge duplicates
 - Split overly broad flows
@@ -44,6 +47,7 @@ Report:
 - Missing flows (not documented or tested)
 - Missing tests for defined flows
 - Partial coverage and known gaps
+- **Synthetic tests risk**: tests that exist but do NOT reflect genuine user interactions (e.g., direct API calls instead of UI actions, bypassed navigation steps, mocked UI components that skip the real flow)
 
 PHASE 6 — Register Missing Flows
 **CRITICAL**: Every missing flow discovered in Phase 5 MUST be registered in **both** of the following files before proceeding:

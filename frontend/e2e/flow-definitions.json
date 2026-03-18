@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "lastUpdated": "2026-03-18",
+  "lastUpdated": "2026-03-19",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",

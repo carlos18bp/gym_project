@@ -523,6 +523,19 @@ Mismas ramificaciones que process-create, con datos precargados.
 
 ---
 
+### process-request-info: Request process information (client)
+- **Módulo:** processes | **Prioridad:** P2 | **Ruta:** `/process_detail/:process_id` | **E2E:** ✅
+- **Descripción:** Client requests information about a process from detail view, pre-filled form sent to responsible lawyer
+
+**Pasos:**
+1. Client navigates to process detail view
+2. Clicks "Solicitar Información" button
+3. Form is pre-filled with process context
+4. Client adds specific question/request
+5. Submit sends request to responsible lawyer
+
+---
+
 ### process-search: Buscar procesos
 - **Módulo:** processes | **Prioridad:** P3 | **Ruta:** `/process_list` | **E2E:** ✅
 - **Descripción:** Búsqueda por texto en la lista de procesos
@@ -1307,7 +1320,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Profile | 2 | 2 | 0 | 0 |
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
-| Processes | 8 | 8 | 0 | 0 |
+| Processes | 9 | 9 | 0 | 0 |
 | Documents | 33 | 33 | 0 | 0 |
 | Signatures | 11 | 11 | 0 | 0 |
 | Legal Requests | 10 | 10 | 0 | 0 |
@@ -1317,7 +1330,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Basic | 1 | 0 | 1 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **116** | **115** | **1** | **0** |
+| **Total** | **117** | **116** | **1** | **0** |
 
 > **Nota:** El flujo `basic-restrictions` tiene cobertura parcial — las pruebas E2E aún no cubren escenarios con rol basic.
 

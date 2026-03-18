@@ -86,7 +86,7 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (158 spec files)
+### Frontend E2E Tests (158 spec files) — **107/107 flow coverage**
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|
@@ -109,6 +109,8 @@
 | `e2e/router-guards/` | 1 | Auth and role guard testing |
 | `e2e/schedule/` | 1 | Appointment scheduling |
 | `e2e/user-guide/` | 1 | User guide navigation |
+
+> **E2E Flow Coverage (2026-03-19):** `flow-definitions.json` has 107 flows, `USER_FLOW_MAP.md` has 117 entries (including sub-flows). All 107 defined flows are covered (0 failing, 0 missing). Quality Gate: 100/100.
 
 ---
 

@@ -217,14 +217,9 @@ test("client with signature clicks pending document and sees sign action", { tag
     // Click on the pending document row to open actions modal
     await page.getByText("Contrato de Arrendamiento").click();
 
-    // Should see document actions including sign option
-    const actionsHeading = page.getByRole("heading", { name: /Acciones/i });
-    const signButton = page.getByRole("button", { name: /Firmar documento/i });
-    const actionsVisible = await actionsHeading.isVisible({ timeout: 5_000 }).catch(() => false);
-    const signVisible = await signButton.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // At least one of these should be true — confirms sign action is accessible
-    expect(actionsVisible || signVisible).toBe(true);
+    // Should see document actions including sign option — use combined locator to avoid sequential waits
+    const actionsOrSign = page.getByRole("heading", { name: /Acciones/i }).or(page.getByRole("button", { name: /Firmar documento/i }));
+    await expect(actionsOrSign.first()).toBeVisible({ timeout: 10_000 });
   } else {
     // Fallback: verify dashboard loaded with pending document data
     // quality: allow-fragile-selector (stable application ID)

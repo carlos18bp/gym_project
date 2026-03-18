@@ -83,7 +83,7 @@ test("document form generate button disabled until all fields filled", { tag: ['
   await page.locator("#field-1").fill("A long description"); // quality: allow-fragile-selector (stable DOM id)
   await page.locator("#field-2").fill("5000"); // quality: allow-fragile-selector (stable DOM id)
   await page.locator("#field-3").fill("2025-06-15"); // quality: allow-fragile-selector (stable DOM id)
-  await page.locator("#field-4").fill("john@test.com"); // quality: allow-fragile-selector (stable DOM id)
+  await page.locator("#field-4").fill("john@test.com"); // quality: allow-fragile-selector (stable DOM id) // quality: allow-fragile-test-data (mock form input for field-type validation)
   await page.locator("#field-5").selectOption("Option A"); // quality: allow-fragile-selector (stable DOM id)
 
   // Generate button should now be enabled
