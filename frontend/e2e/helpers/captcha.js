@@ -13,11 +13,12 @@ export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
     try {
       await page.waitForFunction(
         () => window.__e2eCaptchaVerified === true,
-        { timeout: 5_000 },
+        { timeout: 2_000 },
       );
     } catch {
       // Fallback: auto-verification failed (render() was never called, or the
       // callback threw). Manually fire any stored callbacks and force-set the flag.
+      if (page.isClosed()) return;
       await page.evaluate(() => {
         const cbs = window.__e2eCaptchaCallbacks || [];
         for (const cb of cbs) {
@@ -30,6 +31,7 @@ export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
 
   // DOM-level: force privacy-policy checkbox state + fire change event so
   // Vue's v-model directive picks it up (sign-on pages only; no-op on sign-in).
+  if (page.isClosed()) return;
   await page.evaluate(() => {
     const cb = document.querySelector("#privacy-policy");
     if (cb && !cb.checked) {
