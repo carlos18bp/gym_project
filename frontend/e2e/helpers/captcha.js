@@ -61,18 +61,25 @@ export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
       throw new Error("Unable to bypass captcha: captchaToken is not writable");
     }
 
-    // Also set privacyAccepted to true via Vue reactivity to avoid race
+    // Set privacyAccepted to true via Vue reactivity to avoid race
     // conditions between Playwright DOM interactions and Vue change-event
     // processing (the reCAPTCHA widget async load can interfere).
-    const privacyRef =
-      (comp.setupState && comp.setupState.privacyAccepted) ||
-      (comp.ctx && comp.ctx.privacyAccepted) ||
-      (comp.proxy && comp.proxy.privacyAccepted);
-
-    if (privacyRef && typeof privacyRef === "object" && "value" in privacyRef) {
-      privacyRef.value = true;
+    // NOTE: Use 'in' operator for existence check, NOT the value itself,
+    // because Vue 3.5's setupState proxy auto-unwraps refs (false → falsy)
+    // which breaks the old value-based || chain.
+    if (comp.setupState && "privacyAccepted" in comp.setupState) {
+      comp.setupState.privacyAccepted = true;
     } else if (comp.proxy && "privacyAccepted" in comp.proxy) {
       comp.proxy.privacyAccepted = true;
+    }
+
+    // DOM-level fallback: force checkbox state + fire change event so
+    // Vue's v-model picks it up even if the internal setter above was
+    // silently ineffective in this Vue version.
+    const cb = document.querySelector("#privacy-policy");
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }, rootSelector);
 }
