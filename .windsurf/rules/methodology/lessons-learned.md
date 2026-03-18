@@ -61,6 +61,7 @@ This file captures important patterns, preferences, and project intelligence tha
 - **E2E flow definitions**: `frontend/e2e/flow-definitions.json` maps all user flows. E2E specs must tag `@flow:<flow-id>`.
 - **E2E coverage**: Istanbul instrumentation via Vite plugin (`babel-plugin-istanbul`). Run with `npm run e2e:coverage`.
 - **E2E helpers**: Custom scripts in `frontend/scripts/` for modules listing, coverage per module, AST parsing.
+- **E2E captcha bypass**: Never use Vue internals (`__vueParentComponent`, `setupState`, `__v_raw`) — they change across Vue versions and are dev-mode-only. Use `window`-level flags set by the `grecaptcha` stub instead (see `e2e/helpers/test.js` and `e2e/helpers/captcha.js`).
 - **E2E viewports**: Desktop Chrome (default), Mobile Chrome (Pixel 5), Tablet (iPad Mini) — configurable in `playwright.config.mjs`.
 - **Test data samples**: `frontend/test/data_sample/` contains mock data for unit tests.
 - **Coverage reporting**: Backend uses pytest-cov with branch coverage. Frontend uses Jest coverage with JSON summary. E2E uses flow-coverage.json.

@@ -45,9 +45,22 @@ Report:
 - Missing tests for defined flows
 - Partial coverage and known gaps
 
-PHASE 6 — Output
+PHASE 6 — Register Missing Flows
+**CRITICAL**: Every missing flow discovered in Phase 5 MUST be registered in **both** of the following files before proceeding:
+
+1) `docs/USER_FLOW_MAP.md` — Add the flow entry with its ID, name, description, roles, priority, and module.
+2) `frontend/e2e/flow-definitions.json` — Add the flow definition with its ID, steps, and expected outcomes.
+
+Rules:
+- Check if the flow already exists in both files before adding to avoid duplication.
+- Use the naming/ID convention already established in `flow-definitions.json` (e.g., `FLOW-<MODULE>-<ACTION>`).
+- Assign priority (P1–P4) consistent with Phase 3.
+- If a flow exists in one file but not the other, add it to the missing file to keep both in sync.
+
+PHASE 7 — Output
 Deliver:
 1) Master flow inventory table
 2) Missing flow list (with suggested IDs + priority)
 3) Proposed updates to flow definitions
-4) Open questions / unknowns
+4) Summary of flows added to `docs/USER_FLOW_MAP.md` and `frontend/e2e/flow-definitions.json`
+5) Open questions / unknowns

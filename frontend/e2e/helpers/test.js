@@ -16,11 +16,19 @@ export const test = base.extend({
     // and calls renderRecaptcha() directly (no script tag, no Promise rejection).
     // The render() stub auto-fires the @verify callback after a microtask,
     // which sets captchaToken through Vue's normal event system.
+    // Window-level flags let bypassCaptcha() detect completion without
+    // walking Vue internals (which broke across Vue 3.5 reactivity rewrites).
     await page.addInitScript(() => {
+      window.__e2eCaptchaVerified = false;
+      window.__e2eCaptchaCallbacks = [];
       window.grecaptcha = {
         render(_el, options) {
           if (options && typeof options.callback === "function") {
-            Promise.resolve().then(() => options.callback("e2e-captcha-token"));
+            window.__e2eCaptchaCallbacks.push(options.callback);
+            Promise.resolve().then(() => {
+              options.callback("e2e-captcha-token");
+              window.__e2eCaptchaVerified = true;
+            });
           }
           return 0;
         },
