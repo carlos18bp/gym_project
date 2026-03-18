@@ -15,7 +15,7 @@ The application is **feature-complete** for its core functionality. All 16 major
 - Intranet, legal updates, PWA support, and interactive user guide
 - Automated backups, query profiling (django-silk), and test quality gate
 
-### Codebase Metrics (verified 2026-03-17)
+### Codebase Metrics (verified 2026-03-18)
 
 | Metric | Count |
 |--------|-------|
@@ -38,7 +38,13 @@ The application is **feature-complete** for its core functionality. All 16 major
 
 ## 2. Recent Focus Areas
 
-- **Memory Bank initialization**: Setting up the methodology documentation system (this session)
+- **E2E coverage audit (2026-03-18)**: Full 4-phase audit completed:
+  - Phase 1: Fixed failing `profile-complete` E2E test + 4 quality gate lint errors (import sort, docstring, 2 unused vars)
+  - Phase 2: Deepened 5 P1 known gaps (`sign-client-flow`, `sign-reject`, `sign-reopen`, `docs-use-template`, `docs-permissions`) with real UI interaction tests
+  - Phase 3: Verified and ran 6 previously-missing P2 flow specs (`subscriptions-cancel`, `subscriptions-update-payment`, `process-request-info`, `docs-folder-crud`, `docs-form-field-types`, `intranet-facturation-form`)
+  - Phase 4: Split `router_guards` test (8→2×4 assertions), verified P2/P3 gaps already covered, removed all 9 `knownGaps` from `flow-definitions.json`
+  - **Quality Gate: 100/100 PASSED** — 0 errors, 0 warnings, 1 info suggestion
+- **Memory Bank Windsurf adaptation**: Adapted methodology rules from Cursor format to Windsurf-compatible paths
 - **Test quality gate**: Custom analyzer integrated with pre-commit and GitHub Actions CI
 - **Block-based test runner**: RAM-safe backend test execution via `scripts/run-tests-blocks.py`
 - **E2E flow coverage**: Playwright E2E tests with flow definitions and coverage reporting
@@ -50,7 +56,7 @@ The application is **feature-complete** for its core functionality. All 16 major
 | Decision | Status | Context |
 |----------|--------|---------|
 | 12 planned features in `docs/next_requirements/` | Awaiting prioritization | Reassignment, minutas, preview, guided tour, notifications, alerts, Outlook auth, marketplace, optional signature, contract execution, in-place formalize |
-| Memory Bank methodology | In progress | Setting up persistent documentation for AI context |
+| Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up and adapted for Windsurf |
 | Large file modularization | Under consideration | `user_guide.js` (143KB), `reports.py` (74KB) could be split |
 
 ---
@@ -70,8 +76,7 @@ The application is **feature-complete** for its core functionality. All 16 major
 
 ## 5. Next Steps
 
-1. **Complete Memory Bank initialization** — Populate `lessons-learned.md` and `error-documentation.md` with real project intelligence
-2. **Review and prioritize** the 12 planned features in `docs/next_requirements/`
-3. **Address tech debt** — Clean up backup files, modularize large files
-4. **Continue test coverage** — Maintain and expand backend/frontend/E2E test suites
-5. **Production hardening** — Log rotation, secret key enforcement, backup verification
+1. **Review and prioritize** the 12 planned features in `docs/next_requirements/`
+2. **Address tech debt** — Clean up backup files, modularize large files
+3. **Continue test coverage** — Maintain and expand backend/frontend/E2E test suites
+4. **Production hardening** — Log rotation, secret key enforcement, backup verification

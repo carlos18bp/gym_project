@@ -14,12 +14,17 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : 3,
-  reporter: [
-    ["list"],
-    ["html", { open: "never" }],
-    ["json", { outputFile: "e2e-results/results.json" }],
-    ["./e2e/reporters/flow-coverage-reporter.mjs", { outputDir: "e2e-results" }],
-  ],
+  reporter: process.env.CI
+    ? [
+        ["blob"],
+        ["junit", { outputFile: "test-results/e2e-results.xml" }],
+      ]
+    : [
+        ["list"],
+        ["html", { open: "never" }],
+        ["json", { outputFile: "e2e-results/results.json" }],
+        ["./e2e/reporters/flow-coverage-reporter.mjs", { outputDir: "e2e-results" }],
+      ],
   use: {
     baseURL,
     navigationTimeout: 30_000,

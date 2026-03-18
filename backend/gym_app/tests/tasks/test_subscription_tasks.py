@@ -4,8 +4,8 @@ from decimal import Decimal
 from unittest import mock
 
 import pytest
-from freezegun import freeze_time
 from django.contrib.auth import get_user_model
+from freezegun import freeze_time
 from gym_app.models import Subscription
 from gym_app.tasks import (
     cancel_subscription,

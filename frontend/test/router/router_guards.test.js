@@ -116,7 +116,7 @@ describe("Router Guards (auth)", () => {
     expect(mockRouterInstance.afterEach).toHaveBeenCalledTimes(1);
   });
 
-  test("router options expose routes, redirects and scrollBehavior", async () => {
+  test("routes include root and catch-all with correct metadata", async () => {
     const { routes } = await loadRouterModuleFresh();
 
     expect(Array.isArray(routes)).toBe(true);
@@ -129,6 +129,10 @@ describe("Router Guards (auth)", () => {
     const catchAll = routes.find((r) => r.path === "/:pathMatch(.*)*");
     expect(catchAll).toBeTruthy();
     expect(catchAll.redirect({})).toEqual({ name: "sign_in" });
+  });
+
+  test("router options expose scrollBehavior that scrolls to top", async () => {
+    await loadRouterModuleFresh();
 
     expect(mockRouterOptions).toBeTruthy();
     expect(mockRouterOptions.scrollBehavior()).toEqual({ top: 0 });

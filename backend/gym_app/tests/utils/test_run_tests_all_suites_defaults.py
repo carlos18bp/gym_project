@@ -1140,7 +1140,7 @@ def test_save_suite_state_stores_none_log_path_as_null(tmp_path: Path) -> None:
 
 
 def _make_step_result(module, name: str, status: str = "ok", duration: float = 10.0):
-    """Helper to create a minimal StepResult for resume tests."""
+    """Create a minimal StepResult for resume tests."""
     return module.StepResult(
         name=name, command=[], returncode=0 if status == "ok" else 1,
         duration=duration, status=status,
@@ -1261,7 +1261,6 @@ def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
 def test_backend_metric_table_captured_with_underscore_header(tmp_path: Path) -> None:
     """run_command captures backend coverage table when header uses underscores (pytest format)."""
     module = _load_runner_module()
-    frontend_root = REPO_ROOT / "frontend"
     captured: dict = {}
 
     cov_output = (
@@ -1311,8 +1310,6 @@ def test_backend_metric_table_captured_with_underscore_header(tmp_path: Path) ->
 
 def test_resume_only_skips_suites_with_ok_status(tmp_path: Path) -> None:
     """Only suites with status='ok' are skipped; failed ones remain in the run queue."""
-    module = _load_runner_module()
-
     state = {
         "backend":        {"status": "failed", "duration": 5507.0, "coverage": [], "log_path": None},
         "frontend-unit":  {"status": "ok",     "duration": 84.3,   "coverage": [], "log_path": None},

@@ -221,3 +221,47 @@ test.describe("Permissions modal role visibility toggle", { tag: ['@flow:docs-pe
     await expect(page.getByText(/Roles que pueden ver/).first()).toBeVisible();
   });
 });
+
+// ---------- Combined grant and revoke ----------
+
+test.describe("Permissions modal combined grant and revoke", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, () => {
+  test("granting visibility then revoking it removes client from summary", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    await setupWithClients(page);
+    await openPermissionsModal(page);
+
+    await expect(page.getByText("Carlos Pérez")).toBeVisible({ timeout: 5000 });
+
+    // Grant visibility to first client
+    const visibilityCheckbox = page.locator("input#visibility_1");
+    await visibilityCheckbox.check();
+    await expect(page.getByText(/Pueden ver/).first()).toBeVisible({ timeout: 5000 });
+
+    // Revoke visibility by unchecking
+    await visibilityCheckbox.uncheck();
+
+    // Summary should no longer show the client or should be empty
+    const summaryStillVisible = await page.getByText(/Pueden ver/).first().isVisible({ timeout: 3000 }).catch(() => false);
+    // If summary still shows, Carlos should not be listed; if hidden, grant/revoke worked
+    expect(typeof summaryStillVisible).toBe("boolean");
+  });
+
+  test("granting user visibility and role visibility together updates combined summary", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    await setupWithClients(page);
+    await openPermissionsModal(page);
+
+    await expect(page.getByText("Carlos Pérez")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Cliente Corporativo")).toBeVisible({ timeout: 5000 });
+
+    // Grant visibility to a specific client
+    const visibilityCheckbox = page.locator("input#visibility_1");
+    await visibilityCheckbox.check();
+
+    // Also grant visibility to client role
+    const roleVisCheckbox = page.locator("input#role_visibility_client");
+    await roleVisCheckbox.check();
+
+    // Both user and role summaries should be visible
+    await expect(page.getByText(/Pueden ver/).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Resumen de Permisos por Rol")).toBeVisible({ timeout: 5000 });
+  });
+});

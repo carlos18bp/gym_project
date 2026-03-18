@@ -5,7 +5,7 @@ trigger: model_decision
 Before every Plan/Architect task ALWAYS do 3 things:
 a. Read the existing documentation in `docs/methodology/` : i. `docs/methodology/architecture.md`, ii. `docs/methodology/product_requirement_docs.md`, iii. `docs/methodology/technical.md`
 b. Read the plans and related task planning & context in `tasks/`: i. `tasks/active_context.md`, ii. `tasks/tasks_plan.md`
-c. Get required solution context from the code files in `src` and other codes at other places.
+c. Get required solution context from the code files in `backend/` and `frontend/` and other places.
 ---
 # Below is the Planning Workflow to follow:
 
