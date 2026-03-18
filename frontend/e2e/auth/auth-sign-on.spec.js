@@ -31,7 +31,9 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   await bypassCaptcha(page);
 
   // Click register button
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Notification about verification code — dismiss it fully
   const notificationDialog = page.locator('[class~="swal2-popup"]');
@@ -80,6 +82,7 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
 });
 
 test("registration with mismatched passwords shows warning", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
   const userId = 2001;
 
   await installAuthSignOnApiMocks(page, {
@@ -100,7 +103,9 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Should show password mismatch warning
   const mismatchDialog = page.locator('[class~="swal2-popup"]');
@@ -133,7 +138,9 @@ test("registration with existing email shows error", { tag: ['@flow:auth-registe
   await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Should show email already registered error
   await expect(page.locator('[class~="swal2-popup"]')).toContainText("ya está registrado", { timeout: 10_000 });

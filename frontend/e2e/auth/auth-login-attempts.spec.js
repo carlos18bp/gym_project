@@ -46,7 +46,9 @@ async function attemptLogin(page) {
   await page.locator('[id="email"]').fill("wrong@example.com");
   await page.locator('[id="password"]').fill("wrongpassword");
   await bypassCaptcha(page);
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeEnabled({ timeout: 10_000 });
+  await loginBtn.click();
 }
 
 async function dismissAlertIfVisible(page) {

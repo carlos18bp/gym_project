@@ -202,7 +202,9 @@ test("subscription sign-up sends verification code and completes registration", 
 
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
   await dismissAlertIfVisible(page);
@@ -244,7 +246,9 @@ test("subscription sign-up with existing email shows error", { tag: ['@flow:auth
 
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   await expect(alertDialog(page)).toContainText("ya está registrado", { timeout: 10_000 });
 });

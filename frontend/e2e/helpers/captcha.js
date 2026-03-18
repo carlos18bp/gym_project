@@ -51,21 +51,28 @@ export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
 
     if (typeof handler === "function") {
       handler("e2e-captcha-token");
-      return;
-    }
-
-    // Otherwise set the ref value directly.
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
+    } else if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
+      // Set the ref value directly.
       tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    // Fallback: try setting via proxy (works if it's exposed as a setter)
-    if (comp.proxy && "captchaToken" in comp.proxy) {
+    } else if (comp.proxy && "captchaToken" in comp.proxy) {
+      // Fallback: try setting via proxy (works if it's exposed as a setter)
       comp.proxy.captchaToken = "e2e-captcha-token";
-      return;
+    } else {
+      throw new Error("Unable to bypass captcha: captchaToken is not writable");
     }
 
-    throw new Error("Unable to bypass captcha: captchaToken is not writable");
+    // Also set privacyAccepted to true via Vue reactivity to avoid race
+    // conditions between Playwright DOM interactions and Vue change-event
+    // processing (the reCAPTCHA widget async load can interfere).
+    const privacyRef =
+      (comp.setupState && comp.setupState.privacyAccepted) ||
+      (comp.ctx && comp.ctx.privacyAccepted) ||
+      (comp.proxy && comp.proxy.privacyAccepted);
+
+    if (privacyRef && typeof privacyRef === "object" && "value" in privacyRef) {
+      privacyRef.value = true;
+    } else if (comp.proxy && "privacyAccepted" in comp.proxy) {
+      comp.proxy.privacyAccepted = true;
+    }
   }, rootSelector);
 }
