@@ -77,7 +77,7 @@ export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
     // Vue's v-model picks it up even if the internal setter above was
     // silently ineffective in this Vue version.
     const cb = document.querySelector("#privacy-policy");
-    if (cb && !cb.checked) {
+    if (cb) {
       cb.checked = true;
       cb.dispatchEvent(new Event("change", { bubbles: true }));
     }
