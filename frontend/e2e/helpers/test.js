@@ -8,7 +8,7 @@ export const test = base.extend({
     // The real script causes DOM mutations (iframes, error callbacks) that
     // interfere with Vue's event processing in CI environments.
     await page.route(
-      /google\.com\/recaptcha|gstatic\.com\/recaptcha/,
+      /google\.com\/recaptcha|gstatic\.com\/recaptcha|accounts\.google\.com\/gsi/,
       (route) => route.abort(),
     );
 
@@ -21,13 +21,17 @@ export const test = base.extend({
     await page.addInitScript(() => {
       window.__e2eCaptchaVerified = false;
       window.__e2eCaptchaCallbacks = [];
-      window.grecaptcha = {
+
+      const stub = {
         render(_el, options) {
           if (options && typeof options.callback === "function") {
             window.__e2eCaptchaCallbacks.push(options.callback);
             Promise.resolve().then(() => {
-              options.callback("e2e-captcha-token");
-              window.__e2eCaptchaVerified = true;
+              try {
+                options.callback("e2e-captcha-token");
+              } finally {
+                window.__e2eCaptchaVerified = true;
+              }
             });
           }
           return 0;
@@ -35,7 +39,15 @@ export const test = base.extend({
         reset() {},
         execute() {},
         ready(cb) { if (typeof cb === "function") cb(); },
+        getResponse() { return "e2e-captcha-token"; },
       };
+
+      // Freeze the stub so no external script can overwrite it
+      Object.defineProperty(window, "grecaptcha", {
+        value: stub,
+        writable: false,
+        configurable: false,
+      });
     });
 
     if (shouldLogErrors) {
