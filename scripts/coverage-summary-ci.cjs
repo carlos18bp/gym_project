@@ -278,9 +278,54 @@ function parseFrontendE2E(artifactDir) {
   }
   const testSkipped = Math.max(0, testTotal - testPassed - testFailed);
 
+  // Per-module coverage aggregation
+  /** @type {Map<string, { covered: number, total: number }>} */
+  const byModule = new Map();
+  if (data.flows) {
+    for (const flow of Object.values(data.flows)) {
+      const mod = flow.definition?.module ?? 'unknown';
+      if (!byModule.has(mod)) byModule.set(mod, { covered: 0, total: 0 });
+      const m = byModule.get(mod);
+      m.total++;
+      if (flow.status === 'covered') m.covered++;
+    }
+  }
+  const moduleStats = Array.from(byModule.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([mod, s]) => ({
+      module: mod,
+      covered: s.covered,
+      total: s.total,
+      pct: s.total > 0 ? +((s.covered / s.total) * 100).toFixed(1) : 0,
+    }));
+
+  // Unified "flows needing attention" (failing → missing → partial)
+  const statusOrder = { failing: 0, missing: 1, partial: 2 };
+  const attentionFlows = [];
+  if (data.flows) {
+    for (const [flowId, flow] of Object.entries(data.flows)) {
+      if (flow.status === 'covered') continue;
+      const def = flow.definition ?? {};
+      const tests = flow.tests ?? {};
+      attentionFlows.push({
+        status: flow.status,
+        priority: def.priority ?? 'P4',
+        flowName: def.name ?? flowId,
+        module: def.module ?? 'unknown',
+        tests: flow.status === 'missing' ? '—' : `${tests.passed ?? 0}/${tests.total ?? 0}`,
+      });
+    }
+  }
+  attentionFlows.sort((a, b) => {
+    const s = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+    if (s !== 0) return s;
+    return a.priority.localeCompare(b.priority);
+  });
+
   return {
     total, covered, partial, failing, missing, pct,
     failingFlows, missingFlows, partialFlows,
+    moduleStats, attentionFlows,
     testTotal, testPassed, testFailed, testSkipped,
   };
 }
@@ -449,36 +494,27 @@ function buildMarkdown(backend, backendFailures, backendCounts, feUnit, feUnitFa
     L.push(`| **Total** | **${feE2E.total}** |`);
     L.push('');
 
-    if (feE2E.failingFlows.length > 0) {
-      L.push('#### ❌ Failing Flows');
+    // Coverage by module
+    if (feE2E.moduleStats && feE2E.moduleStats.length > 0) {
+      L.push('#### 📦 Coverage by module');
       L.push('');
-      L.push('| Flow | Name | Failed / Total |');
-      L.push('|------|------|----------------|');
-      for (const f of feE2E.failingFlows) {
-        L.push(`| \`${f.flowId}\` | ${f.name} | ${f.failed}/${f.total} |`);
+      L.push('| Module | Covered | Total | % |');
+      L.push('|--------|---------|-------|---|');
+      for (const m of feE2E.moduleStats) {
+        L.push(`| ${m.module} | ${m.covered} | ${m.total} | ${m.pct}% |`);
       }
       L.push('');
     }
 
-    if (feE2E.missingFlows.length > 0) {
-      L.push('#### ⬜ Missing Flows by Priority');
+    // Flows needing attention (unified: failing → missing → partial)
+    if (feE2E.attentionFlows && feE2E.attentionFlows.length > 0) {
+      L.push('#### Flows needing attention');
       L.push('');
-      L.push('| Priority | Flow | Name |');
-      L.push('|----------|------|------|');
-      for (const f of feE2E.missingFlows) {
-        const icon = f.priority === 'P1' ? '🔴' : f.priority === 'P2' ? '🟠' : f.priority === 'P3' ? '🟡' : '⚪';
-        L.push(`| ${icon} ${f.priority} | \`${f.flowId}\` | ${f.name} |`);
-      }
-      L.push('');
-    }
-
-    if (feE2E.partialFlows.length > 0) {
-      L.push('#### ⚠️ Partial Flows');
-      L.push('');
-      L.push('| Flow | Name | Passed / Total |');
-      L.push('|------|------|----------------|');
-      for (const f of feE2E.partialFlows) {
-        L.push(`| \`${f.flowId}\` | ${f.name} | ${f.passed}/${f.total} |`);
+      L.push('| Status | Priority | Flow | Module | Tests |');
+      L.push('|--------|----------|------|--------|-------|');
+      const statusIcon = { failing: '❌ failing', missing: '⬜ missing', partial: '⚠️ partial' };
+      for (const f of feE2E.attentionFlows) {
+        L.push(`| ${statusIcon[f.status] ?? f.status} | ${f.priority} | ${f.flowName} | ${f.module} | ${f.tests} |`);
       }
       L.push('');
     }

@@ -950,6 +950,134 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     expect(forbidden.every((segment) => !url.includes(segment))).toBe(true);
   });
 
+  test("fetchDocuments returns early when isLoading is true", async () => {
+    const store = useDynamicDocumentStore();
+    store.$patch({ isLoading: true });
+
+    const result = await store.fetchDocuments();
+
+    expect(result).toBeUndefined();
+    expect(mock.history.get).toHaveLength(0);
+  });
+
+  test("fetchDocuments returns early when data was loaded recently", async () => {
+    const store = useDynamicDocumentStore();
+    store.$patch({
+      lastFetchTime: Date.now(),
+      dataLoaded: true,
+    });
+
+    const result = await store.fetchDocuments();
+
+    expect(result).toBeUndefined();
+    expect(mock.history.get).toHaveLength(0);
+  });
+
+  // quality: disable too_many_assertions (verifying all query params from single API call)
+  test("fetchDocuments passes all query parameters to API", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, {
+      items: [],
+      totalItems: 0,
+      totalPages: 1,
+      currentPage: 1,
+    });
+
+    await store.fetchDocuments({
+      page: 2,
+      limit: 5,
+      state: "Published",
+      states: ["Draft", "Published"],
+      clientId: 10,
+      lawyerId: 20,
+      search: "contract",
+      tagId: 3,
+      dateFrom: "2026-01-01",
+      dateTo: "2026-12-31",
+      sortBy: "title",
+      forceRefresh: true,
+    });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("page=2");
+    expect(url).toContain("limit=5");
+    expect(url).toContain("state=Published");
+    expect(url).toContain("states=Draft%2CPublished");
+    expect(url).toContain("client_id=10");
+    expect(url).toContain("lawyer_id=20");
+    expect(url).toContain("search=contract");
+    expect(url).toContain("tag_id=3");
+    expect(url).toContain("date_from=2026-01-01");
+    expect(url).toContain("date_to=2026-12-31");
+    expect(url).toContain("sort_by=title");
+  });
+
+  test("fetchDocuments wraps plain array response into paginated format", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, [
+      { id: 1, title: "A" },
+      { id: 2, title: "B" },
+    ]);
+
+    const pagination = await store.fetchDocuments({ forceRefresh: true });
+
+    expect(store.documents).toHaveLength(2);
+    expect(pagination.totalItems).toBe(2);
+    expect(pagination.totalPages).toBe(1);
+  });
+
+  test("fetchDocuments appends documents when append is true and page > 1", async () => {
+    const store = useDynamicDocumentStore();
+    store.$patch({ documents: [{ id: 1, title: "Existing" }] });
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, {
+      items: [{ id: 2, title: "New" }],
+      totalItems: 2,
+      totalPages: 2,
+      currentPage: 2,
+    });
+
+    await store.fetchDocuments({ page: 2, append: true, forceRefresh: true });
+
+    expect(store.documents).toEqual([
+      { id: 1, title: "Existing" },
+      { id: 2, title: "New" },
+    ]);
+  });
+
+  test("fetchDocuments clears documents on error when page is 1", async () => {
+    const store = useDynamicDocumentStore();
+    store.$patch({ documents: [{ id: 1 }] });
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    mock.onGet(/dynamic-documents\/\?/).reply(500);
+
+    await expect(store.fetchDocuments({ forceRefresh: true })).rejects.toBeTruthy();
+
+    expect(store.documents).toEqual([]);
+    expect(store.isLoading).toBe(false);
+
+    consoleSpy.mockRestore();
+  });
+
+  test("fetchDocuments does not clear documents on error when page > 1", async () => {
+    const store = useDynamicDocumentStore();
+    store.$patch({ documents: [{ id: 1 }] });
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    mock.onGet(/dynamic-documents\/\?/).reply(500);
+
+    await expect(store.fetchDocuments({ page: 2, forceRefresh: true })).rejects.toBeTruthy();
+
+    expect(store.documents).toEqual([{ id: 1 }]);
+
+    consoleSpy.mockRestore();
+  });
+
   test("fetchDocumentsForTab does not mutate store documents", async () => {
     const store = useDynamicDocumentStore();
 

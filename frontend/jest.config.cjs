@@ -30,6 +30,9 @@ module.exports = {
       'scripts/e2e-coverage-module\\.cjs$',
       'scripts/e2e-module\\.cjs$',
       'scripts/e2e-modules\\.cjs$',
+      'src/main\\.js$',
+      'useDocumentPermissions_backup\\.js$',
+      'src/stores/user_guide_updates\\.js$',
     ],
     setupFilesAfterEnv: ['./jest.setup.js']
   };

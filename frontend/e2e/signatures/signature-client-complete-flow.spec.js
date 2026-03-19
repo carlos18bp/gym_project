@@ -219,7 +219,7 @@ test("client with signature clicks pending document and sees sign action", { tag
 
     // Should see document actions including sign option — use combined locator to avoid sequential waits
     const actionsOrSign = page.getByRole("heading", { name: /Acciones/i }).or(page.getByRole("button", { name: /Firmar documento/i }));
-    await expect(actionsOrSign.first()).toBeVisible({ timeout: 10_000 });
+    await expect(actionsOrSign).toBeVisible({ timeout: 10_000 });
   } else {
     // Fallback: verify dashboard loaded with pending document data
     // quality: allow-fragile-selector (stable application ID)
