@@ -1,0 +1,501 @@
+name: CI — Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────────────────────────
+  # Backend — pytest (Django + SQLite)
+  # ───────────────────────────────────────────
+  backend-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      line-coverage: ${{ steps.coverage-parse.outputs.line-pct }}
+      branch-coverage: ${{ steps.coverage-parse.outputs.branch-pct }}
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pkg-config default-libmysqlclient-dev
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        run: python manage.py migrate --no-input
+
+      - name: Run pytest
+        run: >
+          pytest -v --tb=short
+          --junitxml=test-results/results.xml
+          --cov=gym_app
+          --cov-branch
+          --cov-report=term
+          --cov-report=xml:test-results/coverage.xml
+          --cov-report=json:coverage-backend.json
+
+      - name: Upload backend test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            backend/test-results/results.xml
+            backend/test-results/coverage.xml
+          retention-days: 7
+
+      - name: Upload backend coverage JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: backend/coverage-backend.json
+          retention-days: 5
+
+      - name: Parse coverage metrics
+        id: coverage-parse
+        if: always()
+        run: |
+          if [ -f test-results/coverage.xml ]; then
+            LINE_RATE=$(grep -oP 'line-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            BRANCH_RATE=$(grep -oP 'branch-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            LINE_PCT=$(echo "$LINE_RATE" | awk '{printf "%.1f", $1 * 100}')
+            BRANCH_PCT=$(echo "$BRANCH_RATE" | awk '{printf "%.1f", $1 * 100}')
+            echo "line-pct=$LINE_PCT" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=$BRANCH_PCT" >> "$GITHUB_OUTPUT"
+          else
+            echo "line-pct=N/A" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write backend summary
+        if: always()
+        env:
+          LINE_PCT: ${{ steps.coverage-parse.outputs.line-pct }}
+          BRANCH_PCT: ${{ steps.coverage-parse.outputs.branch-pct }}
+        run: |
+          echo "## Backend Test Results" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/results.xml ]; then
+            TESTS=$(grep -oP 'tests="\K[0-9]+' test-results/results.xml | head -1 || echo "?")
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' test-results/results.xml | head -1 || echo "?")
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' test-results/results.xml | head -1 || echo "?")
+            TIME=$(grep -oP 'time="\K[0-9.]+' test-results/results.xml | head -1 || echo "?")
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Tests | $TESTS |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Failures | $FAILURES |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Errors | $ERRORS |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Duration | ${TIME}s |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No test results file found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 📊 Backend Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/coverage.xml ]; then
+            echo "| Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Lines | ${LINE_PCT}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Branches | ${BRANCH_PCT}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # Frontend — Jest unit & component tests
+  # ───────────────────────────────────────────
+  frontend-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      statements: ${{ steps.coverage-parse.outputs.statements }}
+      branches: ${{ steps.coverage-parse.outputs.branches }}
+      functions: ${{ steps.coverage-parse.outputs.functions }}
+      lines: ${{ steps.coverage-parse.outputs.lines }}
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Run Jest tests with coverage
+        run: npm run test:coverage -- --ci --forceExit --json --outputFile=jest-results.json
+
+      - name: Parse coverage metrics
+        id: coverage-parse
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            STMTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
+            BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+            FUNCS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
+            LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+            echo "statements=$STMTS" >> "$GITHUB_OUTPUT"
+            echo "branches=$BRANCHES" >> "$GITHUB_OUTPUT"
+            echo "functions=$FUNCS" >> "$GITHUB_OUTPUT"
+            echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+          else
+            echo "statements=N/A" >> "$GITHUB_OUTPUT"
+            echo "branches=N/A" >> "$GITHUB_OUTPUT"
+            echo "functions=N/A" >> "$GITHUB_OUTPUT"
+            echo "lines=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload frontend unit coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend-unit
+          path: frontend/coverage/coverage-summary.json
+          retention-days: 5
+
+      - name: Upload frontend test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-frontend-unit
+          path: frontend/jest-results.json
+          retention-days: 5
+
+      - name: Write frontend unit summary
+        if: always()
+        env:
+          STMTS: ${{ steps.coverage-parse.outputs.statements }}
+          BRANCHES: ${{ steps.coverage-parse.outputs.branches }}
+          FUNCS: ${{ steps.coverage-parse.outputs.functions }}
+          LINES: ${{ steps.coverage-parse.outputs.lines }}
+        run: |
+          echo "## Frontend Unit Test Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "| Metric | Coverage |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|----------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Statements | ${STMTS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Branches | ${BRANCHES}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Functions | ${FUNCS}% |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Lines | ${LINES}% |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # Frontend — Playwright E2E tests (sharded)
+  # ───────────────────────────────────────────
+  frontend-e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/5", "2/5", "3/5", "4/5", "5/5"]
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install Playwright browsers with system deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Increase inotify watchers for Vite dev server
+        run: sudo sysctl -w fs.inotify.max_user_watches=524288
+
+      - name: Build frontend for E2E
+        run: npm run build:e2e
+        env:
+          VITE_GOOGLE_CLIENT_ID: e2e-google-client-id
+
+      - name: Ensure test output directory
+        run: mkdir -p test-results
+
+      - name: Run Playwright E2E tests (shard ${{ matrix.shard }})
+        run: >
+          npx playwright test
+          --shard=${{ matrix.shard }}
+          --workers=1
+        env:
+          CI: 'true'
+
+      - name: Upload blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-blob-${{ strategy.job-index }}
+          path: frontend/blob-report/
+          retention-days: 1
+
+      - name: Upload test traces (failures only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ strategy.job-index }}
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Write E2E shard summary
+        if: always()
+        working-directory: frontend
+        run: |
+          echo "## E2E Shard ${{ matrix.shard }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f test-results/e2e-results.xml ]; then
+            TESTS=$(grep -oP 'tests="\K[0-9]+' test-results/e2e-results.xml | head -1 || echo "?")
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' test-results/e2e-results.xml | head -1 || echo "?")
+            TIME=$(grep -oP 'time="\K[0-9.]+' test-results/e2e-results.xml | head -1 || echo "?")
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Tests | $TESTS |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Failures | $FAILURES |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Duration | ${TIME}s |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No JUnit results found for this shard." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # E2E — Merge shard reports + flow coverage
+  # ───────────────────────────────────────────
+  e2e-merge-reports:
+    if: always()
+    needs: frontend-e2e-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      total-flows: ${{ steps.e2e-coverage-parse.outputs.total }}
+      covered-flows: ${{ steps.e2e-coverage-parse.outputs.covered }}
+      partial-flows: ${{ steps.e2e-coverage-parse.outputs.partial }}
+      failing-flows: ${{ steps.e2e-coverage-parse.outputs.failing }}
+      missing-flows: ${{ steps.e2e-coverage-parse.outputs.missing }}
+      coverage-pct: ${{ steps.e2e-coverage-parse.outputs.pct }}
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-blob-reports
+          pattern: playwright-blob-*
+          merge-multiple: true
+
+      - name: Merge reports with flow coverage reporter
+        run: >
+          npx playwright merge-reports
+          --reporter='./e2e/reporters/flow-coverage-reporter.mjs'
+          ./all-blob-reports
+
+      - name: Parse E2E flow coverage
+        id: e2e-coverage-parse
+        if: always()
+        run: |
+          if [ -f e2e-results/flow-coverage.json ]; then
+            TOTAL=$(jq '.summary.total' e2e-results/flow-coverage.json)
+            COVERED=$(jq '.summary.covered' e2e-results/flow-coverage.json)
+            PARTIAL=$(jq '.summary.partial' e2e-results/flow-coverage.json)
+            FAILING=$(jq '.summary.failing' e2e-results/flow-coverage.json)
+            MISSING=$(jq '.summary.missing' e2e-results/flow-coverage.json)
+            if [ "$TOTAL" -gt 0 ]; then
+              PCT=$(echo "scale=1; $COVERED * 100 / $TOTAL" | bc)
+            else
+              PCT="0.0"
+            fi
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "covered=$COVERED" >> "$GITHUB_OUTPUT"
+            echo "partial=$PARTIAL" >> "$GITHUB_OUTPUT"
+            echo "failing=$FAILING" >> "$GITHUB_OUTPUT"
+            echo "missing=$MISSING" >> "$GITHUB_OUTPUT"
+            echo "pct=$PCT" >> "$GITHUB_OUTPUT"
+          else
+            echo "total=0" >> "$GITHUB_OUTPUT"
+            echo "covered=0" >> "$GITHUB_OUTPUT"
+            echo "partial=0" >> "$GITHUB_OUTPUT"
+            echo "failing=0" >> "$GITHUB_OUTPUT"
+            echo "missing=0" >> "$GITHUB_OUTPUT"
+            echo "pct=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload flow coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend-e2e
+          path: frontend/e2e-results/flow-coverage.json
+          retention-days: 5
+
+      - name: Write E2E flow coverage summary
+        if: always()
+        env:
+          TOTAL: ${{ steps.e2e-coverage-parse.outputs.total }}
+          COVERED: ${{ steps.e2e-coverage-parse.outputs.covered }}
+          PARTIAL: ${{ steps.e2e-coverage-parse.outputs.partial }}
+          FAILING: ${{ steps.e2e-coverage-parse.outputs.failing }}
+          MISSING: ${{ steps.e2e-coverage-parse.outputs.missing }}
+          PCT: ${{ steps.e2e-coverage-parse.outputs.pct }}
+        run: |
+          echo "## E2E Flow Coverage" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TOTAL" != "0" ]; then
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Total Flows | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ✅ Covered | $COVERED (${PCT}%) |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ⚠️ Partial | $PARTIAL |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ❌ Failing | $FAILING |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ⬜ Missing | $MISSING |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ No flow coverage report found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ───────────────────────────────────────────
+  # Coverage Summary — aggregates all reports
+  # ───────────────────────────────────────────
+  coverage-summary:
+    if: always()
+    needs: [backend-tests, frontend-unit-tests, e2e-merge-reports]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage-artifacts/backend
+        continue-on-error: true
+
+      - name: Download frontend-unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend-unit
+          path: coverage-artifacts/frontend-unit
+        continue-on-error: true
+
+      - name: Download frontend-e2e coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend-e2e
+          path: coverage-artifacts/frontend-e2e
+        continue-on-error: true
+
+      - name: Download backend test results (JUnit XML)
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-test-results
+          path: coverage-artifacts/backend-results
+        continue-on-error: true
+
+      - name: Download frontend test results (Jest JSON)
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-frontend-unit
+          path: coverage-artifacts/frontend-unit-results
+        continue-on-error: true
+
+      - name: Generate coverage summary
+        id: summary
+        run: node scripts/coverage-summary-ci.cjs
+
+      - name: Write Job Summary
+        run: cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: coverage-report.md
+
+      - name: Upload coverage report (markdown)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-md
+          path: coverage-report.md
+          retention-days: 5

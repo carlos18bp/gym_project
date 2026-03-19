@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** Febrero 23, 2026  
-**Versión:** 1.0.0  
+**Fecha:** March 18, 2026  
+**Versión:** 1.1.0  
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -254,6 +254,30 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 ---
 
+### subscriptions-cancel: Cancelar suscripción
+- **Módulo:** subscriptions | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
+- **Descripción:** Cancelar suscripción activa, plan vigente hasta fin de período, transición a plan gratuito
+
+**Pasos:**
+1. En gestión de suscripción, click "Cancelar suscripción"
+2. Modal de confirmación
+3. Plan permanece activo hasta fin del período de facturación
+4. Al expirar → transición automática a plan gratuito
+
+---
+
+### subscriptions-update-payment: Actualizar método de pago
+- **Módulo:** subscriptions | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
+- **Descripción:** Cambiar tarjeta de pago en suscripción activa vía tokenización Wompi
+
+**Pasos:**
+1. En gestión de suscripción, click "Cambiar método de pago"
+2. Formulario de tarjeta (nombre, número, expiración, CVC)
+3. Tokenización vía Wompi
+4. Confirmación de actualización
+
+---
+
 ### profile-view-edit: Ver y editar perfil
 - **Módulo:** profile | **Prioridad:** P2 | **Ruta:** N/A (modal desde sidebar) | **E2E:** ✅
 - **Descripción:** Actualizar información personal
@@ -499,6 +523,19 @@ Mismas ramificaciones que process-create, con datos precargados.
 
 ---
 
+### process-request-info: Request process information (client)
+- **Módulo:** processes | **Prioridad:** P2 | **Ruta:** `/process_detail/:process_id` | **E2E:** ✅
+- **Descripción:** Client requests information about a process from detail view, pre-filled form sent to responsible lawyer
+
+**Pasos:**
+1. Client navigates to process detail view
+2. Clicks "Solicitar Información" button
+3. Form is pre-filled with process context
+4. Client adds specific question/request
+5. Submit sends request to responsible lawyer
+
+---
+
 ### process-search: Buscar procesos
 - **Módulo:** processes | **Prioridad:** P3 | **Ruta:** `/process_list` | **E2E:** ✅
 - **Descripción:** Búsqueda por texto en la lista de procesos
@@ -730,6 +767,12 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### docs-folder-crud: Document folder CRUD
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Carpetas) | **E2E:** ✅
+- **Descripción:** Folder list rendering, empty folders state, create/edit folder modal
+
+---
+
 ### docs-letterhead: Membrete global
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A (modal) | **E2E:** ✅
 - **Descripción:** Configurar encabezado y pie de página global
@@ -796,6 +839,12 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### docs-form-interactions: Interacciones en formularios de documentos
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
 - **Descripción:** Campos, botones, validación y tipos de campo en formularios de documentos
+
+---
+
+### docs-form-field-types: Document form field types
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
+- **Descripción:** Rendering 6 field types (input, textarea, number, date, email, select), currency prefix, generate button state, cancel navigation, select options
 
 ---
 
@@ -1160,6 +1209,12 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### org-store-actions: Organization store actions
+- **Módulo:** organizations | **Prioridad:** P3 | **Ruta:** `/organizations_dashboard` | **E2E:** ✅
+- **Descripción:** Corporate client loads organizations dashboard and triggers store actions (load, invite)
+
+---
+
 ## Flujos — Basic
 
 > Hereda flujos compartidos con **restricciones específicas**.
@@ -1192,6 +1247,12 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - Botón "Radicar Informe"
 - Procedimientos G&M (búsqueda)
 - Organigrama (modal con imagen)
+
+---
+
+### intranet-facturation-form: Facturation form field interactions
+- **Módulo:** intranet | **Prioridad:** P2 | **Ruta:** `/intranet_g_y_m` (modal) | **E2E:** ✅
+- **Descripción:** Save button validation, file upload (input + drag-and-drop), successful submission, close modal
 
 ---
 
@@ -1255,26 +1316,26 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
 |--------|---------------|------------|-----------|------------------|
 | Auth | 11 | 11 | 0 | 0 |
-| Subscriptions | 4 | 4 | 0 | 0 |
+| Subscriptions | 6 | 6 | 0 | 0 |
 | Profile | 2 | 2 | 0 | 0 |
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
-| Processes | 8 | 8 | 0 | 0 |
-| Documents | 31 | 31 | 0 | 0 |
+| Processes | 9 | 9 | 0 | 0 |
+| Documents | 33 | 33 | 0 | 0 |
 | Signatures | 11 | 11 | 0 | 0 |
 | Legal Requests | 10 | 10 | 0 | 0 |
-| Organizations | 14 | 14 | 0 | 0 |
+| Organizations | 15 | 15 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
-| Intranet | 3 | 3 | 0 | 0 |
+| Intranet | 4 | 4 | 0 | 0 |
 | Basic | 1 | 0 | 1 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **110** | **109** | **1** | **0** |
+| **Total** | **117** | **116** | **1** | **0** |
 
 > **Nota:** El flujo `basic-restrictions` tiene cobertura parcial — las pruebas E2E aún no cubren escenarios con rol basic.
 
 ---
 
-**Documento generado:** Feb 23, 2026  
-**Versión:** 1.1.0  
+**Documento generado:** March 18, 2026  
+**Versión:** 1.2.0  
 **Estado:** ✅ Completo

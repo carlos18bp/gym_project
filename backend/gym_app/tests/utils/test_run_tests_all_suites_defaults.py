@@ -6,7 +6,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -174,10 +174,10 @@ def test_backend_markers_is_separate_from_backend_block_markers() -> None:
     assert args.backend_block_markers == "edge,contract"
 
 
-# ── parse_backend_cov_lines tests ─────────────────────────────────────────────
+# ── parse_backend_metric_lines tests ──────────────────────────────────────────
 
 
-def test_parse_backend_cov_lines_branch_format_statements() -> None:
+def test_parse_backend_metric_lines_branch_format_statements() -> None:
     """Branch-format TOTAL line produces a Statements line with correct covered/total."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%")
@@ -185,7 +185,7 @@ def test_parse_backend_cov_lines_branch_format_statements() -> None:
     assert any("Statements: 100.00% (510/510)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_branch_format_branches() -> None:
+def test_parse_backend_metric_lines_branch_format_branches() -> None:
     """Branch-format TOTAL line produces a Branches line with correct covered/total."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%")
@@ -193,7 +193,7 @@ def test_parse_backend_cov_lines_branch_format_branches() -> None:
     assert any("Branches: 100.00% (255/255)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_branch_format_lines() -> None:
+def test_parse_backend_metric_lines_branch_format_lines() -> None:
     """Branch-format TOTAL line produces a Lines line equal to Statements in Python."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%")
@@ -201,7 +201,7 @@ def test_parse_backend_cov_lines_branch_format_lines() -> None:
     assert any("Lines: 100.00% (510/510)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_branch_format_total() -> None:
+def test_parse_backend_metric_lines_branch_format_total() -> None:
     """Branch-format TOTAL line produces a combined Total line covering stmts+branches."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%")
@@ -209,7 +209,7 @@ def test_parse_backend_cov_lines_branch_format_total() -> None:
     assert any("Total: 100.00% (765/765)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_partial_coverage() -> None:
+def test_parse_backend_metric_lines_partial_metrics() -> None:
     """Branch-format with misses and partial branches computes correct percentages."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  100  10  50  5  87%")
@@ -221,7 +221,7 @@ def test_parse_backend_cov_lines_partial_coverage() -> None:
     assert "135/150" in total_line
 
 
-def test_parse_backend_cov_lines_simple_format_statements() -> None:
+def test_parse_backend_metric_lines_simple_format_statements() -> None:
     """Simple-format (no branch columns) TOTAL line still produces Statements line."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  1013  0  100%")
@@ -229,7 +229,7 @@ def test_parse_backend_cov_lines_simple_format_statements() -> None:
     assert any("Statements: 100.00% (1013/1013)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_simple_format_lines() -> None:
+def test_parse_backend_metric_lines_simple_format_lines() -> None:
     """Simple-format TOTAL line produces a Lines line equal to Statements."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  1013  0  100%")
@@ -237,7 +237,7 @@ def test_parse_backend_cov_lines_simple_format_lines() -> None:
     assert any("Lines: 100.00% (1013/1013)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_empty_string_returns_empty() -> None:
+def test_parse_backend_metric_lines_empty_string_returns_empty() -> None:
     """Empty input returns an empty list without raising."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("")
@@ -245,7 +245,7 @@ def test_parse_backend_cov_lines_empty_string_returns_empty() -> None:
     assert lines == []
 
 
-def test_parse_backend_cov_lines_unrecognized_format_returns_empty() -> None:
+def test_parse_backend_metric_lines_unrecognized_format_returns_empty() -> None:
     """Unrecognized format returns an empty list without raising."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("some random output")
@@ -253,7 +253,7 @@ def test_parse_backend_cov_lines_unrecognized_format_returns_empty() -> None:
     assert lines == []
 
 
-def test_parse_backend_cov_lines_with_functions_branch_format() -> None:
+def test_parse_backend_metric_lines_with_functions_branch_format() -> None:
     """Branch-format TOTAL with func params shows Functions line and updated Total."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%", func_covered=144, func_total=144)
@@ -261,7 +261,7 @@ def test_parse_backend_cov_lines_with_functions_branch_format() -> None:
     assert any("Functions: 100.00% (144/144)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_with_functions_total_includes_functions() -> None:
+def test_parse_backend_metric_lines_with_functions_total_includes_functions() -> None:
     """Total includes Functions in numerator and denominator when func_total > 0."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%", func_covered=144, func_total=144)
@@ -271,7 +271,7 @@ def test_parse_backend_cov_lines_with_functions_total_includes_functions() -> No
     assert "909/909" in total_line
 
 
-def test_parse_backend_cov_lines_without_func_total_omits_functions_line() -> None:
+def test_parse_backend_metric_lines_without_func_total_omits_functions_line() -> None:
     """When func_total=0 (default), the Functions line is absent from output."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  510  0  255  0  100%")
@@ -279,7 +279,7 @@ def test_parse_backend_cov_lines_without_func_total_omits_functions_line() -> No
     assert not any("Functions:" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_simple_format_with_functions() -> None:
+def test_parse_backend_metric_lines_simple_format_with_functions() -> None:
     """Simple-format TOTAL with func params shows Functions line."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  1013  0  100%", func_covered=89, func_total=89)
@@ -287,7 +287,7 @@ def test_parse_backend_cov_lines_simple_format_with_functions() -> None:
     assert any("Functions: 100.00% (89/89)" in line for line in lines)
 
 
-def test_parse_backend_cov_lines_partial_functions_coverage() -> None:
+def test_parse_backend_metric_lines_partial_functions_metrics() -> None:
     """Partial function coverage computes correct percentage."""
     module = _load_runner_module()
     lines = module.parse_backend_cov_lines("TOTAL  100  0  50  0  100%", func_covered=9, func_total=10)
@@ -295,15 +295,15 @@ def test_parse_backend_cov_lines_partial_functions_coverage() -> None:
     assert any("Functions: 90.00% (9/10)" in line for line in lines)
 
 
-# ── compute_function_coverage tests ──────────────────────────────────────────
+# ── compute_function_metrics tests ───────────────────────────────────────────
 
 
-def test_compute_function_coverage_returns_zero_when_no_json(tmp_path: Path) -> None:
+def test_compute_fn_metrics_returns_zero_when_no_json(tmp_path: Path) -> None:
     """Returns (0, 0) when coverage json command produces no output file."""
     module = _load_runner_module()
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=1)
+        return SimpleNamespace(returncode=1)
 
     with patch("subprocess.run", fake_run):
         covered, total = module.compute_function_coverage(tmp_path)
@@ -312,7 +312,7 @@ def test_compute_function_coverage_returns_zero_when_no_json(tmp_path: Path) -> 
     assert total == 0
 
 
-def test_compute_function_coverage_counts_covered_and_uncovered_functions(tmp_path: Path) -> None:
+def test_compute_fn_metrics_counts_covered_and_uncovered_functions(tmp_path: Path) -> None:
     """Counts covered functions (body lines in executed_lines) vs uncovered."""
     module = _load_runner_module()
 
@@ -337,7 +337,7 @@ def test_compute_function_coverage_counts_covered_and_uncovered_functions(tmp_pa
     }))
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=0)
+        return SimpleNamespace(returncode=0)
 
     with patch("subprocess.run", fake_run):
         covered, total = module.compute_function_coverage(tmp_path)
@@ -346,7 +346,7 @@ def test_compute_function_coverage_counts_covered_and_uncovered_functions(tmp_pa
     assert covered == 1
 
 
-def test_compute_function_coverage_all_functions_covered(tmp_path: Path) -> None:
+def test_compute_fn_metrics_all_functions_covered(tmp_path: Path) -> None:
     """Returns total == covered when every function body has covered lines."""
     module = _load_runner_module()
 
@@ -369,7 +369,7 @@ def test_compute_function_coverage_all_functions_covered(tmp_path: Path) -> None
     }))
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=0)
+        return SimpleNamespace(returncode=0)
 
     with patch("subprocess.run", fake_run):
         covered, total = module.compute_function_coverage(tmp_path)
@@ -378,7 +378,7 @@ def test_compute_function_coverage_all_functions_covered(tmp_path: Path) -> None
     assert covered == 2
 
 
-def test_compute_function_coverage_handles_malformed_json(tmp_path: Path) -> None:
+def test_compute_fn_metrics_handles_malformed_json(tmp_path: Path) -> None:
     """Returns (0, 0) gracefully when the coverage JSON is malformed."""
     module = _load_runner_module()
 
@@ -386,7 +386,7 @@ def test_compute_function_coverage_handles_malformed_json(tmp_path: Path) -> Non
     json_out.write_text("not valid json {{")
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=0)
+        return SimpleNamespace(returncode=0)
 
     with patch("subprocess.run", fake_run):
         covered, total = module.compute_function_coverage(tmp_path)
@@ -395,7 +395,7 @@ def test_compute_function_coverage_handles_malformed_json(tmp_path: Path) -> Non
     assert total == 0
 
 
-def test_compute_function_coverage_skips_unreadable_source_files(tmp_path: Path) -> None:
+def test_compute_fn_metrics_skips_unreadable_source_files(tmp_path: Path) -> None:
     """Skips files that can't be read and counts only the ones that can."""
     module = _load_runner_module()
 
@@ -411,7 +411,7 @@ def test_compute_function_coverage_skips_unreadable_source_files(tmp_path: Path)
     }))
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=0)
+        return SimpleNamespace(returncode=0)
 
     with patch("subprocess.run", fake_run):
         covered, total = module.compute_function_coverage(tmp_path)
@@ -420,7 +420,7 @@ def test_compute_function_coverage_skips_unreadable_source_files(tmp_path: Path)
     assert covered == 1
 
 
-def test_compute_function_coverage_cleans_up_json_file(tmp_path: Path) -> None:
+def test_compute_fn_metrics_cleans_up_json_file(tmp_path: Path) -> None:
     """Temporary coverage JSON is always deleted after compute_function_coverage."""
     module = _load_runner_module()
 
@@ -428,7 +428,7 @@ def test_compute_function_coverage_cleans_up_json_file(tmp_path: Path) -> None:
     json_out.write_text(json.dumps({"files": {}}))
 
     def fake_run(cmd, **kwargs):
-        return MagicMock(returncode=0)
+        return SimpleNamespace(returncode=0)
 
     with patch("subprocess.run", fake_run):
         module.compute_function_coverage(tmp_path)
@@ -540,7 +540,7 @@ def test_run_backend_passes_run_id(tmp_path: Path) -> None:
     assert "backend-20260101" in cmd
 
 
-def test_run_backend_includes_cov_branch_in_pytest_args(tmp_path: Path) -> None:
+def test_run_backend_includes_branch_flag_in_pytest_args(tmp_path: Path) -> None:
     """run_backend always includes --cov-branch in the pytest passthrough args."""
     module = _load_runner_module()
     backend_root = REPO_ROOT / "backend"
@@ -706,7 +706,8 @@ def test_run_backend_skips_cleanup_on_resume(tmp_path: Path) -> None:
             block_extra_args=[],
         )
 
-    assert cleanup_spy.called is False
+    cleanup_spy.assert_not_called()
+    assert cleanup_spy.call_count == 0
 
 
 # ── frontend runner command assembly tests ───────────────────────────────────
@@ -808,7 +809,8 @@ def test_run_frontend_e2e_skips_cleanup_on_resume(tmp_path: Path) -> None:
             resume_failed=False,
         )
 
-    assert cleanup_spy.called is False
+    cleanup_spy.assert_not_called()
+    assert cleanup_spy.call_count == 0
 
 
 def test_run_frontend_e2e_calls_cleanup_when_not_resume(tmp_path: Path) -> None:
@@ -833,7 +835,8 @@ def test_run_frontend_e2e_calls_cleanup_when_not_resume(tmp_path: Path) -> None:
             resume_failed=False,
         )
 
-    assert cleanup_spy.called is True
+    cleanup_spy.assert_called()
+    assert cleanup_spy.call_count == 1
 
 
 def test_run_frontend_e2e_omits_last_failed_without_resume_failed(tmp_path: Path) -> None:
@@ -864,7 +867,7 @@ def test_run_frontend_e2e_omits_last_failed_without_resume_failed(tmp_path: Path
     assert "--last-failed" not in captured["command"]
 
 
-def test_merge_jest_coverage_summary_prefers_max_counts() -> None:
+def test_merge_jest_metric_summary_prefers_max_counts() -> None:
     """merge_jest_coverage_summary keeps the max covered/total per metric."""
     module = _load_runner_module()
 
@@ -897,7 +900,7 @@ def test_merge_jest_coverage_summary_prefers_max_counts() -> None:
     assert total["branches"]["covered"] == 5
 
 
-def test_merge_flow_coverage_prefers_current_when_tests_run() -> None:
+def test_merge_flow_metrics_prefers_current_when_tests_run() -> None:
     """merge_flow_coverage uses current flow stats when tests ran in resume."""
     module = _load_runner_module()
 
@@ -942,10 +945,10 @@ def test_merge_flow_coverage_prefers_current_when_tests_run() -> None:
     assert merged["summary"]["failing"] == 1
 
 
-# ── coverage table fallback tests ─────────────────────────────────────────────
+# ── metric table fallback tests ──────────────────────────────────────────────
 
 
-def test_run_frontend_unit_coverage_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
+def test_run_frontend_unit_metric_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
     """run_frontend_unit uses prev_coverage_table when it is longer than the new run's table."""
     module = _load_runner_module()
     frontend_root = REPO_ROOT / "frontend"
@@ -970,7 +973,7 @@ def test_run_frontend_unit_coverage_table_fallback_uses_prev_when_longer(tmp_pat
     assert result.coverage_table == prev_table
 
 
-def test_run_frontend_unit_coverage_table_keeps_new_when_longer(tmp_path: Path) -> None:
+def test_run_frontend_unit_metric_table_keeps_new_when_longer(tmp_path: Path) -> None:
     """run_frontend_unit keeps the new coverage_table when it is at least as long as prev."""
     module = _load_runner_module()
     frontend_root = REPO_ROOT / "frontend"
@@ -996,7 +999,7 @@ def test_run_frontend_unit_coverage_table_keeps_new_when_longer(tmp_path: Path) 
     assert result.coverage_table == new_table
 
 
-def test_run_frontend_e2e_coverage_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
+def test_run_frontend_e2e_metric_table_fallback_uses_prev_when_longer(tmp_path: Path) -> None:
     """run_frontend_e2e uses prev_coverage_table when it is longer than the new run's table."""
     module = _load_runner_module()
     frontend_root = REPO_ROOT / "frontend"
@@ -1023,7 +1026,7 @@ def test_run_frontend_e2e_coverage_table_fallback_uses_prev_when_longer(tmp_path
     assert result.coverage_table == prev_table
 
 
-def test_run_frontend_e2e_coverage_table_keeps_new_when_longer(tmp_path: Path) -> None:
+def test_run_frontend_e2e_metric_table_keeps_new_when_longer(tmp_path: Path) -> None:
     """run_frontend_e2e keeps the new coverage_table when it is at least as long as prev."""
     module = _load_runner_module()
     frontend_root = REPO_ROOT / "frontend"
@@ -1137,7 +1140,7 @@ def test_save_suite_state_stores_none_log_path_as_null(tmp_path: Path) -> None:
 
 
 def _make_step_result(module, name: str, status: str = "ok", duration: float = 10.0):
-    """Helper to create a minimal StepResult for resume tests."""
+    """Create a minimal StepResult for resume tests."""
     return module.StepResult(
         name=name, command=[], returncode=0 if status == "ok" else 1,
         duration=duration, status=status,
@@ -1255,10 +1258,9 @@ def test_resume_builds_skipped_result_from_state_entry(tmp_path: Path) -> None:
     assert result.coverage_table == ["Jest coverage table"]
 
 
-def test_backend_coverage_table_captured_with_underscore_header(tmp_path: Path) -> None:
+def test_backend_metric_table_captured_with_underscore_header(tmp_path: Path) -> None:
     """run_command captures backend coverage table when header uses underscores (pytest format)."""
     module = _load_runner_module()
-    frontend_root = REPO_ROOT / "frontend"
     captured: dict = {}
 
     cov_output = (
@@ -1308,8 +1310,6 @@ def test_backend_coverage_table_captured_with_underscore_header(tmp_path: Path) 
 
 def test_resume_only_skips_suites_with_ok_status(tmp_path: Path) -> None:
     """Only suites with status='ok' are skipped; failed ones remain in the run queue."""
-    module = _load_runner_module()
-
     state = {
         "backend":        {"status": "failed", "duration": 5507.0, "coverage": [], "log_path": None},
         "frontend-unit":  {"status": "ok",     "duration": 84.3,   "coverage": [], "log_path": None},

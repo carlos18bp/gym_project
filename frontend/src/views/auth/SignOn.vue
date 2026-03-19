@@ -234,10 +234,7 @@ const emailUsedToSentPasscode = ref("");
 onMounted(async () => {
   siteKey.value = await captchaStore.fetchSiteKey();
   if (await authStore.isAuthenticated()) {
-    router.push({
-      name: "dashboard",
-      params: { user_id: userId, display: "" },
-    });
+    router.push({ name: "dashboard" });
   }
 });
 
@@ -323,13 +320,7 @@ const signOnUser = async () => {
     authStore.login(response.data);
 
     showNotification("¡Registro exitoso!", "success");
-    router.push({
-      name: "dashboard",
-      params: {
-        user_id: "",
-        display: "",
-      },
-    });
+    router.push({ name: "dashboard" });
   } catch (error) {
     console.error("Error during sign on process:", error);
     if (error.response && error.response.data && error.response.data.error) {

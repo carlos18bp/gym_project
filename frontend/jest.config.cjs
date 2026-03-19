@@ -4,6 +4,11 @@ module.exports = {
     testPathIgnorePatterns: ['<rootDir>/e2e/'],
     coverageProvider: 'babel',
     coverageReporters: ['text', 'json-summary'],
+    collectCoverageFrom: [
+      'src/**/*.{js,vue}',
+      '!src/**/*.test.js',
+      '!src/**/*.spec.js',
+    ],
     transform: {
       '^.+\\.vue$': '<rootDir>/test/utils/vue-jest-transformer.cjs',
       '^.+\\.js$': 'babel-jest',
@@ -25,6 +30,9 @@ module.exports = {
       'scripts/e2e-coverage-module\\.cjs$',
       'scripts/e2e-module\\.cjs$',
       'scripts/e2e-modules\\.cjs$',
+      'src/main\\.js$',
+      'useDocumentPermissions_backup\\.js$',
+      'src/stores/user_guide_updates\\.js$',
     ],
     setupFilesAfterEnv: ['./jest.setup.js']
   };

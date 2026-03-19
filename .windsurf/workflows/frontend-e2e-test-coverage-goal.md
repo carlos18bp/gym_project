@@ -6,7 +6,23 @@ auto_execution_mode: 2
 
 ## Goal
 
-Review E2E coverage and identify all untested user flows. Reach **100% E2E flow coverage** for all main features and integration points, focusing on the **contract between Frontend and Backend** to ensure data integrity across the stack.
+Review E2E coverage and identify all untested user flows. Reach **100% E2E flow coverage** for all main features and integration points, focusing on the **contract between Frontend and Backend** to ensure data integrity across the stack. Every test must simulate **real user interactions** through the browser UI.
+
+---
+
+## Core Principle: Real User Interactions
+
+E2E tests exist to verify that the application works **as a real user would experience it**. Every test must exercise the full UI flow — from the user's perspective — without shortcuts.
+
+| ✅ Real user interaction | ❌ NOT a real user interaction |
+|--------------------------|-------------------------------|
+| Clicking buttons, links, menus | Calling backend API endpoints directly |
+| Filling and submitting forms | Setting store/state values programmatically |
+| Navigating between pages via UI | Using `page.goto()` to skip intermediate steps |
+| Uploading files through file inputs | Injecting data into the database directly |
+| Waiting for visible UI feedback | Asserting internal component state |
+
+> **Rule**: If a real user cannot perform the action through the browser, it does NOT belong in an E2E test. Use unit or integration tests instead.
 
 ## Quality Standards Reference
 
@@ -85,6 +101,7 @@ For each flow you test, cover:
 - ✅ **Error states** — API failures, validation errors, network issues
 - ✅ **Edge cases** — empty data, boundary conditions, timeouts
 - ✅ **Contract validation** — data integrity between frontend and backend
+- ✅ **Real user interaction** — every test must exercise the full UI flow as a real user would (no direct API calls, no bypassed navigation, no programmatic state manipulation)
 
 ### Test File Naming & Directory Convention
 
@@ -116,6 +133,7 @@ Examples:
 □ Test data has cleanup/reset or runs in isolation
 □ Serial tests (describe.serial) have documented justification
 □ Assertions verify user-observable outcomes
+□ Test simulates a real user interaction through the UI (no shortcut API calls, no bypassed steps, no programmatic state injection)
 ```
 
 ### @flow: Tag Convention

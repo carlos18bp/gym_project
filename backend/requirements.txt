@@ -22,6 +22,7 @@ docx2pdf==0.1.8
 et_xmlfile==2.0.0
 Faker==25.9.1
 fire==0.7.0
+freezegun==1.5.5
 fonttools==4.56.0
 google-auth==2.48.0
 html5lib==1.1

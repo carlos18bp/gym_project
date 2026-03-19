@@ -169,31 +169,11 @@ async function installGoogleAuthMocks(page, { scenario = "existing_user_success"
 }
 
 async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
-  await page.evaluate((googleCredential) => {
-    const element = document.querySelector("#email") || document.querySelector("form");
-    let component = element && element.__vueParentComponent;
-
-    while (
-      component &&
-      !(
-        (component.setupState && typeof component.setupState.handleLoginWithGoogle === "function") ||
-        (component.ctx && typeof component.ctx.handleLoginWithGoogle === "function") ||
-        (component.proxy && typeof component.proxy.handleLoginWithGoogle === "function")
-      )
-    ) {
-      component = component.parent;
-    }
-
-    if (!component) {
-      throw new Error("Unable to find Google login handler");
-    }
-
-    const handler =
-      (component.setupState && component.setupState.handleLoginWithGoogle) ||
-      (component.ctx && component.ctx.handleLoginWithGoogle) ||
-      (component.proxy && component.proxy.handleLoginWithGoogle);
-
-    handler({ credential: googleCredential });
+  // Wait for vue3-google-login to call google.accounts.id.initialize(),
+  // which stores the callback via our GSI stub in test.js.
+  await page.waitForFunction(() => typeof window.__e2eGoogleLoginCallback === 'function', { timeout: 10_000 });
+  await page.evaluate((cred) => {
+    window.__e2eGoogleLoginCallback({ credential: cred });
   }, credential);
 }
 

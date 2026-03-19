@@ -1,5 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -135,50 +136,6 @@ async function installSubscriptionSignUpMocks(page, { userId, signUpResponse = "
   });
 }
 
-async function bypassCaptcha(page) {
-  await page.evaluate(() => {
-    const el = document.querySelector("#email") || document.querySelector("form");
-    let comp = el && el.__vueParentComponent;
-
-    while (
-      comp &&
-      !(
-        (comp.setupState && "captchaToken" in comp.setupState) ||
-        (comp.ctx && "captchaToken" in comp.ctx) ||
-        (comp.proxy && "captchaToken" in comp.proxy)
-      )
-    ) {
-      comp = comp.parent;
-    }
-
-    if (!comp) {
-      throw new Error("Unable to bypass captcha: captchaToken not found");
-    }
-
-    const handler =
-      (comp.setupState && comp.setupState.onCaptchaVerified) ||
-      (comp.ctx && comp.ctx.onCaptchaVerified) ||
-      (comp.proxy && comp.proxy.onCaptchaVerified);
-
-    if (typeof handler === "function") {
-      handler("e2e-captcha-token");
-      return;
-    }
-
-    const tokenCandidate =
-      (comp.setupState && comp.setupState.captchaToken) ||
-      (comp.ctx && comp.ctx.captchaToken) ||
-      (comp.proxy && comp.proxy.captchaToken);
-
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
-      tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    throw new Error("Unable to bypass captcha: captchaToken is not writable");
-  });
-}
-
 const alertDialog = (page) => page.getByRole("dialog");
 
 async function dismissAlertIfVisible(page, timeout = 10_000) {
@@ -245,7 +202,9 @@ test("subscription sign-up sends verification code and completes registration", 
 
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
   await dismissAlertIfVisible(page);
@@ -256,6 +215,9 @@ test("subscription sign-up sends verification code and completes registration", 
   // quality: allow-fragile-selector (stable application ID)
   await page.locator("#passcode").fill("123456");
   await page.getByRole("button", { name: "Verificar y crear cuenta" }).click();
+
+  // Dismiss success notification so it doesn't block navigation
+  await dismissAlertIfVisible(page, 5_000);
 
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });
@@ -284,7 +246,9 @@ test("subscription sign-up with existing email shows error", { tag: ['@flow:auth
 
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   await expect(alertDialog(page)).toContainText("ya está registrado", { timeout: 10_000 });
 });

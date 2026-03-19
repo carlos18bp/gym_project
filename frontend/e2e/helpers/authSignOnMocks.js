@@ -47,6 +47,7 @@ export async function installAuthSignOnApiMocks(
     email: role === "lawyer" ? "client2@example.com" : "lawyer2@example.com",
   });
   const nowIso = new Date().toISOString();
+  let isLoggedIn = false;
 
   await mockApi(page, async ({ route, apiPath }) => {
     if (apiPath === "google-captcha/site-key/") {
@@ -54,6 +55,14 @@ export async function installAuthSignOnApiMocks(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ site_key: "e2e-site-key" }),
+      };
+    }
+
+    if (apiPath === "google-captcha/verify/") {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
       };
     }
 
@@ -85,6 +94,7 @@ export async function installAuthSignOnApiMocks(
           };
         }
 
+        isLoggedIn = true;
         return {
           status: 200,
           contentType: "application/json",
@@ -97,7 +107,10 @@ export async function installAuthSignOnApiMocks(
     }
 
     if (apiPath === "validate_token/") {
-      return { status: 200, contentType: "application/json", body: "{}" };
+      if (isLoggedIn) {
+        return { status: 200, contentType: "application/json", body: "{}" };
+      }
+      return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
     }
 
     if (apiPath === "users/") {

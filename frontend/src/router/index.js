@@ -15,13 +15,12 @@ const getRecentViews = async () => {
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    // Root path that redirects to login or dashboard based on authentication
+    // Root path — guard redirects to dashboard (auth) or sign_in (no auth)
     {
       path: "/",
-      redirect: to => {
-        // This redirection will be handled in the global guard
-        return { name: "sign_in" };
-      }
+      name: "root",
+      component: { render: () => null },
+      meta: { requiresAuth: false },
     },
     {
       path: "/sign_in",
@@ -364,7 +363,7 @@ export function installRouterGuards(authStore) {
       const isAuthenticated = await authStore.isAuthenticated();
       
       // Check if it's the root path '/' or a not found route
-      if (to.name === null || to.path === '/') {
+      if (to.name === null || to.name === 'root' || to.path === '/') {
         if (isAuthenticated) {
           return next({ name: 'dashboard' });
         } else {

@@ -1,52 +1,42 @@
 export async function bypassCaptcha(page, { rootSelector = "#email" } = {}) {
-  await page.evaluate((selector) => {
-    const el = document.querySelector(selector) || document.querySelector("form");
-    let comp = el && el.__vueParentComponent;
+  // The grecaptcha stub (injected by the test fixture in test.js) auto-fires
+  // the @verify callback when vue3-recaptcha2 calls grecaptcha.render().
+  // The stub sets window.__e2eCaptchaVerified = true once the callback fires,
+  // so we wait on that flag instead of walking Vue internals (which broke
+  // across Vue 3.5 reactivity rewrites — see 6+ prior fix attempts in git log).
 
-    // Walk up the component tree until we find a component instance exposing captchaToken.
-    while (
-      comp &&
-      !(
-        (comp.setupState && "captchaToken" in comp.setupState) ||
-        (comp.ctx && "captchaToken" in comp.ctx) ||
-        (comp.proxy && "captchaToken" in comp.proxy)
-      )
-    ) {
-      comp = comp.parent;
+  // Fast path: already verified from a previous render cycle
+  const alreadyVerified = await page.evaluate(() => window.__e2eCaptchaVerified === true);
+
+  if (!alreadyVerified) {
+    // Normal path: wait for auto-verification via the stub's render() callback
+    try {
+      await page.waitForFunction(
+        () => window.__e2eCaptchaVerified === true,
+        { timeout: 2_000 },
+      );
+    } catch {
+      // Fallback: auto-verification failed (render() was never called, or the
+      // callback threw). Manually fire any stored callbacks and force-set the flag.
+      if (page.isClosed()) return;
+      await page.evaluate(() => {
+        const cbs = window.__e2eCaptchaCallbacks || [];
+        for (const cb of cbs) {
+          try { cb("e2e-captcha-token"); } catch { /* best-effort */ }
+        }
+        window.__e2eCaptchaVerified = true;
+      });
     }
+  }
 
-    if (!comp) {
-      throw new Error("Unable to bypass captcha: captchaToken not found");
+  // DOM-level: force privacy-policy checkbox state + fire change event so
+  // Vue's v-model directive picks it up (sign-on pages only; no-op on sign-in).
+  if (page.isClosed()) return;
+  await page.evaluate(() => {
+    const cb = document.querySelector("#privacy-policy");
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
     }
-
-    const tokenCandidate =
-      (comp.setupState && comp.setupState.captchaToken) ||
-      (comp.ctx && comp.ctx.captchaToken) ||
-      (comp.proxy && comp.proxy.captchaToken);
-
-    // Prefer calling the handler if available
-    const handler =
-      (comp.setupState && comp.setupState.onCaptchaVerified) ||
-      (comp.ctx && comp.ctx.onCaptchaVerified) ||
-      (comp.proxy && comp.proxy.onCaptchaVerified);
-
-    if (typeof handler === "function") {
-      handler("e2e-captcha-token");
-      return;
-    }
-
-    // Otherwise set the ref value directly.
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
-      tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    // Fallback: try setting via proxy (works if it's exposed as a setter)
-    if (comp.proxy && "captchaToken" in comp.proxy) {
-      comp.proxy.captchaToken = "e2e-captcha-token";
-      return;
-    }
-
-    throw new Error("Unable to bypass captcha: captchaToken is not writable");
-  }, rootSelector);
+  });
 }

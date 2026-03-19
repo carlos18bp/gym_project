@@ -39,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.0'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -49,7 +49,7 @@ jobs:
 
       - name: Run test quality gate
         run: |
-          python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json --verbose
+          python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json --external-lint run --semantic-rules strict --verbose
 
       - name: Upload gate report
         if: always()

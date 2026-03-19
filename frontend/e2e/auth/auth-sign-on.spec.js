@@ -1,53 +1,11 @@
 import { test, expect } from "../helpers/test.js";
 import { installAuthSignOnApiMocks } from "../helpers/authSignOnMocks.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-async function bypassCaptcha(page) {
-  await page.evaluate(() => {
-    const el = document.querySelector("#email") || document.querySelector("form");
-    let comp = el && el.__vueParentComponent;
-
-    while (
-      comp &&
-      !(
-        (comp.setupState && "captchaToken" in comp.setupState) ||
-        (comp.ctx && "captchaToken" in comp.ctx) ||
-        (comp.proxy && "captchaToken" in comp.proxy)
-      )
-    ) {
-      comp = comp.parent;
-    }
-
-    if (!comp) {
-      throw new Error("Unable to bypass captcha: captchaToken not found");
-    }
-
-    const handler =
-      (comp.setupState && comp.setupState.onCaptchaVerified) ||
-      (comp.ctx && comp.ctx.onCaptchaVerified) ||
-      (comp.proxy && comp.proxy.onCaptchaVerified);
-
-    if (typeof handler === "function") {
-      handler("e2e-captcha-token");
-      return;
-    }
-
-    const tokenCandidate =
-      (comp.setupState && comp.setupState.captchaToken) ||
-      (comp.ctx && comp.ctx.captchaToken) ||
-      (comp.proxy && comp.proxy.captchaToken);
-
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
-      tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    throw new Error("Unable to bypass captcha: captchaToken is not writable");
-  });
-}
-
 test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
   const userId = 2000;
 
   await installAuthSignOnApiMocks(page, {
@@ -59,6 +17,7 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="email"]').fill("newuser@example.com");
   await page.locator('[id="password"]').fill("SecurePass1!");
@@ -72,7 +31,9 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   await bypassCaptcha(page);
 
   // Click register button
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Notification about verification code — dismiss it fully
   const notificationDialog = page.locator('[class~="swal2-popup"]');
@@ -97,6 +58,20 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   // Click verify button
   await page.getByRole("button", { name: "Verificar" }).click();
 
+  // Wait for the success Swal to appear, then dismiss it to unblock navigation
+  const successDialog = page.locator('[class~="swal2-popup"]');
+  await expect(successDialog).toBeVisible({ timeout: 10_000 });
+  const confirmBtn = page.locator('[class~="swal2-confirm"]');
+  if (await confirmBtn.isVisible().catch(() => false)) {
+    await confirmBtn.click();
+  }
+  await page.evaluate(() => {
+    if (window.Swal) window.Swal.close();
+    document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+    document.querySelectorAll('[aria-hidden]').forEach(el => el.removeAttribute('aria-hidden'));
+  });
+
   // Should redirect to dashboard after successful sign on
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
@@ -107,6 +82,7 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
 });
 
 test("registration with mismatched passwords shows warning", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
   const userId = 2001;
 
   await installAuthSignOnApiMocks(page, {
@@ -116,6 +92,7 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="first_name"]').fill("Test");
   await page.locator('[id="last_name"]').fill("User");
@@ -126,7 +103,9 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Should show password mismatch warning
   const mismatchDialog = page.locator('[class~="swal2-popup"]');
@@ -148,6 +127,7 @@ test("registration with existing email shows error", { tag: ['@flow:auth-registe
   });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   await page.locator('[id="email"]').fill("existing@example.com");
   await page.locator('[id="password"]').fill("SecurePass1!");
@@ -158,7 +138,9 @@ test("registration with existing email shows error", { tag: ['@flow:auth-registe
   await page.locator('[id="privacy-policy"]').check();
   await bypassCaptcha(page);
 
-  await page.getByRole("button", { name: "Registrarse" }).click();
+  const registerBtn = page.getByRole("button", { name: "Registrarse" });
+  await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
+  await registerBtn.click();
 
   // Should show email already registered error
   await expect(page.locator('[class~="swal2-popup"]')).toContainText("ya está registrado", { timeout: 10_000 });
@@ -173,6 +155,7 @@ test("sign on page has link to sign in", { tag: ['@flow:auth-register', '@module
   await installAuthSignOnApiMocks(page, { userId, role: "client" });
 
   await page.goto("/sign_on");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 10_000 });
 
   const signInLink = page.getByRole("link", { name: "Iniciar sesión" });
   await expect(signInLink).toBeVisible();

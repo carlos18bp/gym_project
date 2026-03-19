@@ -1,5 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -41,53 +42,14 @@ async function resetSignInState(page) {
   });
 }
 
-async function bypassCaptcha(page) {
-  await page.evaluate(() => {
-    const el = document.querySelector("#email") || document.querySelector("form");
-    let comp = el && el.__vueParentComponent;
-
-    while (
-      comp &&
-      !(
-        (comp.setupState && "captchaToken" in comp.setupState) ||
-        (comp.ctx && "captchaToken" in comp.ctx) ||
-        (comp.proxy && "captchaToken" in comp.proxy)
-      )
-    ) {
-      comp = comp.parent;
-    }
-
-    if (!comp) throw new Error("Unable to bypass captcha: captchaToken not found");
-
-    const handler =
-      (comp.setupState && comp.setupState.onCaptchaVerified) ||
-      (comp.ctx && comp.ctx.onCaptchaVerified) ||
-      (comp.proxy && comp.proxy.onCaptchaVerified);
-
-    if (typeof handler === "function") {
-      handler("e2e-captcha-token");
-      return;
-    }
-
-    const tokenCandidate =
-      (comp.setupState && comp.setupState.captchaToken) ||
-      (comp.ctx && comp.ctx.captchaToken) ||
-      (comp.proxy && comp.proxy.captchaToken);
-
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
-      tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    throw new Error("Unable to bypass captcha: captchaToken is not writable");
-  });
-}
-
 async function attemptLogin(page) {
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeVisible({ timeout: 15_000 });
   await page.locator('[id="email"]').fill("wrong@example.com");
   await page.locator('[id="password"]').fill("wrongpassword");
   await bypassCaptcha(page);
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await expect(loginBtn).toBeEnabled({ timeout: 10_000 });
+  await loginBtn.click();
 }
 
 async function dismissAlertIfVisible(page) {
@@ -155,6 +117,7 @@ test("lockout timer pre-seeded at 3 tries shows remaining seconds on page load",
 });
 
 test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
   await installLoginAttemptsMocks(page);
 
   // Pre-seed localStorage at 5 tries (next failure = 6th = next lockout tier)

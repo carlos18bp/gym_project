@@ -99,7 +99,6 @@ test("facturation form: close button dismisses modal", { tag: ['@flow:intranet-f
   await expect(page.getByRole("heading", { name: "Presentar Informe" })).toBeVisible();
 
   // Click the X close button
-  // quality: allow-fragile-selector (class selector for close icon without data-testid)
-  await page.locator(".cursor-pointer").first().click();
+  await page.locator('[data-testid="close-facturation-modal"]').click();
   await expect(page.getByRole("heading", { name: "Presentar Informe" })).toHaveCount(0);
 });

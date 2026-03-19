@@ -176,10 +176,7 @@ describe("SignOn.vue", () => {
     });
     expect(authStore.login).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith("¡Registro exitoso!", "success");
-    expect(mockRouterPush).toHaveBeenCalledWith({
-      name: "dashboard",
-      params: { user_id: "", display: "" },
-    });
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: "dashboard" });
     expect(wrapper.get("#email").element.value).toBe("user@test.com");
   });
 

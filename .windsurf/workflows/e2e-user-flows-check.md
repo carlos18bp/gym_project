@@ -10,6 +10,7 @@ CONSTRAINTS
 - Do not invent flows. If unclear, ask clarifying questions.
 - Provide traceability (paths + line refs if possible).
 - Separate critical flows (P1/P2) from nice-to-have (P3/P4).
+- **Every flow must correspond to a real user interaction** — actions a human performs through the UI (clicking buttons, filling forms, navigating pages, uploading files, etc.). Backend-only processes, cron jobs, or internal system events are NOT user flows.
 
 PHASE 0 — Scope
 1) Identify user roles/personas and modules.
@@ -29,6 +30,8 @@ For each source, extract flows as:
 - Roles involved
 - Feature/module
 
+**Validation**: Each candidate flow MUST be traceable to a real user action in the browser (e.g., clicking, navigating, submitting a form, selecting options). Discard any candidate that cannot be triggered by a user through the UI.
+
 PHASE 3 — Normalize
 - Merge duplicates
 - Split overly broad flows
@@ -44,10 +47,24 @@ Report:
 - Missing flows (not documented or tested)
 - Missing tests for defined flows
 - Partial coverage and known gaps
+- **Synthetic tests risk**: tests that exist but do NOT reflect genuine user interactions (e.g., direct API calls instead of UI actions, bypassed navigation steps, mocked UI components that skip the real flow)
 
-PHASE 6 — Output
+PHASE 6 — Register Missing Flows
+**CRITICAL**: Every missing flow discovered in Phase 5 MUST be registered in **both** of the following files before proceeding:
+
+1) `docs/USER_FLOW_MAP.md` — Add the flow entry with its ID, name, description, roles, priority, and module.
+2) `frontend/e2e/flow-definitions.json` — Add the flow definition with its ID, steps, and expected outcomes.
+
+Rules:
+- Check if the flow already exists in both files before adding to avoid duplication.
+- Use the naming/ID convention already established in `flow-definitions.json` (e.g., `FLOW-<MODULE>-<ACTION>`).
+- Assign priority (P1–P4) consistent with Phase 3.
+- If a flow exists in one file but not the other, add it to the missing file to keep both in sync.
+
+PHASE 7 — Output
 Deliver:
 1) Master flow inventory table
 2) Missing flow list (with suggested IDs + priority)
 3) Proposed updates to flow definitions
-4) Open questions / unknowns
+4) Summary of flows added to `docs/USER_FLOW_MAP.md` and `frontend/e2e/flow-definitions.json`
+5) Open questions / unknowns

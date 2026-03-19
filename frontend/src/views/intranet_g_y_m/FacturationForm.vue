@@ -8,7 +8,7 @@
       <!-- Title -->
       <div class="flex items-center justify-between">
         <h1 class="text-primary text-xl font-semibold">Presentar Informe</h1>
-        <XMarkIcon class="size-6 text-primary cursor-pointer" @click="closeModal"></XMarkIcon>
+        <span data-testid="close-facturation-modal" class="cursor-pointer" @click="closeModal"><XMarkIcon class="size-6 text-primary" /></span>
       </div>
       <!-- Form -->
       <form @submit.prevent="submitHandler()">
