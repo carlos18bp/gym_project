@@ -139,7 +139,7 @@ test("lawyer opens a legal request detail from the list", { tag: ['@flow:legal-m
 
   // Should navigate to detail page and show request info
   await expect(page.getByText("Consulta sobre contrato")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "Elena Ruiz" })).toBeVisible();
+  await expect(page.getByText("Solicitud de Elena Ruiz")).toBeVisible();
 });
 
 test("client views their legal request detail with description", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

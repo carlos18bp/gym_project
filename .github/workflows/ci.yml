@@ -277,6 +277,8 @@ jobs:
 
       - name: Build frontend for E2E
         run: npm run build:e2e
+        env:
+          VITE_GOOGLE_CLIENT_ID: e2e-google-client-id
 
       - name: Ensure test output directory
         run: mkdir -p test-results
