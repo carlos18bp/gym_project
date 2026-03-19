@@ -36,8 +36,13 @@ export const test = base.extend({
       // vue3-google-login calls google.accounts.id.initialize() and
       // renderButton() after the GSI script loads.  Provide no-op
       // implementations so the GoogleLogin component renders harmlessly.
+      window.__e2eGoogleLoginCallback = null;
       const gsiStub = {
-        initialize() {},
+        initialize(config) {
+          if (config && typeof config.callback === 'function') {
+            window.__e2eGoogleLoginCallback = config.callback;
+          }
+        },
         renderButton() {},
         prompt() {},
         disableAutoSelect() {},

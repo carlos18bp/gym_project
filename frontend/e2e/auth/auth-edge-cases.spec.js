@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -84,66 +85,6 @@ async function installAuthEdgeCaseMocks(page, { scenario = "default", userId = 9
   });
 }
 
-async function bypassCaptcha(page) {
-  // Wait for Vue component tree to be ready with captchaToken before attempting bypass
-  await page.waitForFunction(
-    () => {
-      const el = document.querySelector('input[type="email"]') || document.querySelector("form");
-      let comp = el && el.__vueParentComponent;
-      while (comp) {
-        if (
-          (comp.setupState && "captchaToken" in comp.setupState) ||
-          (comp.ctx && "captchaToken" in comp.ctx) ||
-          (comp.proxy && "captchaToken" in comp.proxy)
-        ) return true;
-        comp = comp.parent;
-      }
-      return false;
-    },
-    null,
-    { timeout: 10_000 },
-  );
-
-  await page.evaluate(() => {
-    const el = document.querySelector('input[type="email"]') || document.querySelector("form");
-    let comp = el && el.__vueParentComponent;
-
-    while (
-      comp &&
-      !(
-        (comp.setupState && "captchaToken" in comp.setupState) ||
-        (comp.ctx && "captchaToken" in comp.ctx) ||
-        (comp.proxy && "captchaToken" in comp.proxy)
-      )
-    ) {
-      comp = comp.parent;
-    }
-
-    if (!comp) throw new Error("Unable to bypass captcha: captchaToken not found");
-
-    const handler =
-      (comp.setupState && comp.setupState.onCaptchaVerified) ||
-      (comp.ctx && comp.ctx.onCaptchaVerified) ||
-      (comp.proxy && comp.proxy.onCaptchaVerified);
-
-    if (typeof handler === "function") {
-      handler("e2e-captcha-token");
-      return;
-    }
-
-    const tokenCandidate =
-      (comp.setupState && comp.setupState.captchaToken) ||
-      (comp.ctx && comp.ctx.captchaToken) ||
-      (comp.proxy && comp.proxy.captchaToken);
-
-    if (tokenCandidate && typeof tokenCandidate === "object" && "value" in tokenCandidate) {
-      tokenCandidate.value = "e2e-captcha-token";
-      return;
-    }
-
-    throw new Error("Unable to bypass captcha");
-  });
-}
 
 test("expired token redirects protected route to sign_in", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "expired_token" });
