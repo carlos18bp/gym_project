@@ -43,11 +43,11 @@ async function resetSignInState(page) {
 }
 
 async function attemptLogin(page) {
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeVisible({ timeout: 15_000 });
   await page.locator('[id="email"]').fill("wrong@example.com");
   await page.locator('[id="password"]').fill("wrongpassword");
   await bypassCaptcha(page);
-  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
-  await expect(loginBtn).toBeVisible({ timeout: 10_000 });
   await expect(loginBtn).toBeEnabled({ timeout: 10_000 });
   await loginBtn.click();
 }

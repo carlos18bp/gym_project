@@ -31,6 +31,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "off",
     video: "off",
+    serviceWorkers: "block",
   },
   webServer: {
     command: process.env.CI
