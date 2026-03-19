@@ -34,11 +34,11 @@ export default defineConfig({
   },
   webServer: {
     command: process.env.CI
-      ? `npm run build:e2e && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
+      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
       : `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: baseURL,
     reuseExistingServer,
-    timeout: process.env.CI ? 300_000 : 120_000,
+    timeout: process.env.CI ? 60_000 : 120_000,
   },
   projects: [
     {

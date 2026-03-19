@@ -275,6 +275,9 @@ jobs:
       - name: Increase inotify watchers for Vite dev server
         run: sudo sysctl -w fs.inotify.max_user_watches=524288
 
+      - name: Build frontend for E2E
+        run: npm run build:e2e
+
       - name: Ensure test output directory
         run: mkdir -p test-results
 
