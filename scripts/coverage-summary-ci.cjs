@@ -100,7 +100,7 @@ function parseBackend(artifactDir) {
 
 function parseBackendFailures(resultsDir) {
   // JUnit XML: <testcase classname="..." name="..."><failure message="...">...</failure></testcase>
-  const xmlPath = path.join(resultsDir, 'test-results', 'results.xml');
+  const xmlPath = path.join(resultsDir, 'results.xml');
   const xml = readText(xmlPath);
   if (!xml) return [];
 
@@ -118,7 +118,7 @@ function parseBackendFailures(resultsDir) {
 }
 
 function parseBackendTestCounts(resultsDir) {
-  const xmlPath = path.join(resultsDir, 'test-results', 'results.xml');
+  const xmlPath = path.join(resultsDir, 'results.xml');
   const xml = readText(xmlPath);
   if (!xml) return null;
 

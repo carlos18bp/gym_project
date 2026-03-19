@@ -19,7 +19,6 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      checks: write
     outputs:
       line-coverage: ${{ steps.coverage-parse.outputs.line-pct }}
       branch-coverage: ${{ steps.coverage-parse.outputs.branch-pct }}
@@ -58,15 +57,6 @@ jobs:
           --cov-report=term
           --cov-report=xml:test-results/coverage.xml
           --cov-report=json:coverage-backend.json
-
-      - name: Backend test report
-        if: always()
-        uses: dorny/test-reporter@v1
-        with:
-          name: Backend Test Results
-          path: backend/test-results/results.xml
-          reporter: java-junit
-          fail-on-error: false
 
       - name: Upload backend test artifacts
         if: always()
