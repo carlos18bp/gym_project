@@ -34,7 +34,7 @@ export default defineConfig({
   },
   webServer: {
     command: process.env.CI
-      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
+      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort --base / --outDir dist`
       : `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: baseURL,
     reuseExistingServer,
