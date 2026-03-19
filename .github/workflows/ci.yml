@@ -232,7 +232,6 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
-      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -290,16 +289,6 @@ jobs:
           --workers=1
         env:
           CI: 'true'
-
-      - name: E2E test report (shard ${{ matrix.shard }})
-        if: always()
-        uses: dorny/test-reporter@v1
-        with:
-          name: CI — E2E Results (shard ${{ matrix.shard }})
-          path: frontend/test-results/e2e-results.xml
-          reporter: java-junit
-          fail-on-error: false
-          fail-on-empty: false
 
       - name: Upload blob report
         if: always()
