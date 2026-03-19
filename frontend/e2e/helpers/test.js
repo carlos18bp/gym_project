@@ -4,12 +4,25 @@ const shouldLogErrors = process.env.E2E_LOG_ERRORS === "1";
 
 export const test = base.extend({
   page: async ({ page }, use) => {
-    // Block Google reCAPTCHA external script from loading during E2E tests.
-    // The real script causes DOM mutations (iframes, error callbacks) that
-    // interfere with Vue's event processing in CI environments.
+    // Block Google reCAPTCHA external scripts (iframes, error callbacks
+    // interfere with Vue's event processing in CI environments).
     await page.route(
-      /google\.com\/recaptcha|gstatic\.com\/recaptcha|accounts\.google\.com\/gsi/,
+      /google\.com\/recaptcha|gstatic\.com\/recaptcha/,
       (route) => route.abort(),
+    );
+
+    // Fulfill (not abort) the Google Identity Services script so
+    // vue3-google-login fires its "load" event, sets apiLoaded = true,
+    // and uses our window.google stub below.  Aborting this request
+    // caused an unhandled Promise rejection that crashed the page in CI.
+    await page.route(
+      /accounts\.google\.com\/gsi/,
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/javascript",
+          body: "/* gsi stub */",
+        }),
     );
 
     // Provide a minimal grecaptcha stub so vue3-recaptcha2 finds it on mount
@@ -19,6 +32,28 @@ export const test = base.extend({
     // Window-level flags let bypassCaptcha() detect completion without
     // walking Vue internals (which broke across Vue 3.5 reactivity rewrites).
     await page.addInitScript(() => {
+      // ── Google Identity Services (GSI) stub ──
+      // vue3-google-login calls google.accounts.id.initialize() and
+      // renderButton() after the GSI script loads.  Provide no-op
+      // implementations so the GoogleLogin component renders harmlessly.
+      const gsiStub = {
+        initialize() {},
+        renderButton() {},
+        prompt() {},
+        disableAutoSelect() {},
+        storeCredential() {},
+        cancel() {},
+        revoke(_hint, done) {
+          if (typeof done === "function") done({ successful: true });
+        },
+      };
+      Object.defineProperty(window, "google", {
+        value: Object.freeze({ accounts: Object.freeze({ id: Object.freeze(gsiStub) }) }),
+        writable: false,
+        configurable: false,
+      });
+
+      // ── reCAPTCHA stub ──
       window.__e2eCaptchaVerified = false;
       window.__e2eCaptchaCallbacks = [];
 
