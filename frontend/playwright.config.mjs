@@ -33,10 +33,12 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+    command: process.env.CI
+      ? `npm run build:e2e && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
+      : `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: baseURL,
     reuseExistingServer,
-    timeout: 120_000,
+    timeout: process.env.CI ? 300_000 : 120_000,
   },
   projects: [
     {
