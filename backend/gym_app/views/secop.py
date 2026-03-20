@@ -498,7 +498,10 @@ def secop_sync_status(request):
     return Response({
         'last_success': SyncLogSerializer(last_success).data if last_success else None,
         'recent': serializer.data,
-        'total_processes': SECOPProcess.objects.count(),
+        'total_processes': SECOPProcess.objects.filter(
+            Q(status=SECOPProcess.APIStatus.OPEN),
+            Q(closing_date__gte=timezone.now()) | Q(closing_date__isnull=True),
+        ).count(),
     })
 
 
