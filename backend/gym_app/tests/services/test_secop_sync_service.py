@@ -1,7 +1,9 @@
 """Tests for SECOP sync service."""
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+
+from django.utils import timezone
 
 import pytest
 from freezegun import freeze_time
@@ -392,3 +394,87 @@ class TestSynchronize:
         assert len(result['new_ids']) == 2
         for pid in result['new_ids']:
             assert SECOPProcess.objects.filter(pk=pid).exists()
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_includes_stale_closed_count(self, MockClient):
+        """Verify stats include stale_closed count after sync."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.STALE1',
+            entity_name='Stale Entity',
+            status='Abierto',
+            closing_date=timezone.now() - timedelta(days=30),
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        result = service.synchronize(incremental=False)
+
+        assert result['stale_closed'] == 1
+        stale = SECOPProcess.objects.get(process_id='CO1.REQ.STALE1')
+        assert stale.status == 'Cerrado'
+
+
+@pytest.mark.django_db
+@freeze_time('2026-03-20T12:00:00+00:00')
+class TestCloseStaleProcesses:
+    """Tests for SECOPSyncService.close_stale_processes."""
+
+    def test_closes_open_processes_with_past_closing_date(self):
+        """Verify open processes with expired closing_date are marked Cerrado."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.EXPIRED1',
+            entity_name='Expired Entity',
+            status='Abierto',
+            closing_date=timezone.now() - timedelta(days=10),
+        )
+
+        count = SECOPSyncService.close_stale_processes()
+
+        assert count == 1
+        p = SECOPProcess.objects.get(process_id='CO1.REQ.EXPIRED1')
+        assert p.status == 'Cerrado'
+
+    def test_does_not_close_open_processes_with_future_closing_date(self):
+        """Verify open processes with future closing_date remain Abierto."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.FUTURE1',
+            entity_name='Future Entity',
+            status='Abierto',
+            closing_date=timezone.now() + timedelta(days=10),
+        )
+
+        count = SECOPSyncService.close_stale_processes()
+
+        assert count == 0
+        p = SECOPProcess.objects.get(process_id='CO1.REQ.FUTURE1')
+        assert p.status == 'Abierto'
+
+    def test_does_not_close_already_closed_processes(self):
+        """Verify already Cerrado processes are not affected."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.CLOSED1',
+            entity_name='Closed Entity',
+            status='Cerrado',
+            closing_date=timezone.now() - timedelta(days=10),
+        )
+
+        count = SECOPSyncService.close_stale_processes()
+
+        assert count == 0
+
+    def test_does_not_close_open_processes_without_closing_date(self):
+        """Verify open processes with null closing_date are not closed."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.NODATE1',
+            entity_name='No Date Entity',
+            status='Abierto',
+            closing_date=None,
+        )
+
+        count = SECOPSyncService.close_stale_processes()
+
+        assert count == 0
+        p = SECOPProcess.objects.get(process_id='CO1.REQ.NODATE1')
+        assert p.status == 'Abierto'

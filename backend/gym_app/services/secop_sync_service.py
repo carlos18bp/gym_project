@@ -98,7 +98,29 @@ class SECOPSyncService:
                 logger.error(f"Error processing SECOP record: {e}")
                 continue
 
+        stats['stale_closed'] = self.close_stale_processes()
+
         return stats
+
+    @staticmethod
+    def close_stale_processes():
+        """
+        Mark processes as 'Cerrado' when their closing_date has passed
+        but SECOP API still reports them as 'Abierto'.
+
+        Returns:
+            int: Number of processes updated.
+        """
+        stale_qs = SECOPProcess.objects.filter(
+            status=SECOPProcess.APIStatus.OPEN,
+            closing_date__lt=timezone.now(),
+        )
+        count = stale_qs.update(status=SECOPProcess.APIStatus.CLOSED)
+        if count:
+            logger.info(
+                f"Closed {count} stale SECOP processes with expired closing_date"
+            )
+        return count
 
     def _upsert_process(self, record):
         """

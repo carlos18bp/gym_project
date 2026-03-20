@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from freezegun import freeze_time
 
 from gym_app.services.secop_client import SECOPClient
 
@@ -68,20 +69,31 @@ class TestSECOPClientEndpoint:
 class TestSECOPClientQuery:
     """Tests for query building."""
 
+    @freeze_time('2026-03-20T12:00:00+00:00')
     def test_build_query_without_date_from(self, client):
-        """Verify query includes status filter and pagination."""
+        """Verify query includes status filter, publication floor, and pagination."""
         query = client._build_query(offset=0)
 
         assert "estado_del_procedimiento='Abierto'" in query
+        assert "fecha_de_publicacion_del>='2024-03-20'" in query
         assert '$limit=10' in query
         assert '$offset=0' in query
 
+    @freeze_time('2026-03-20T12:00:00+00:00')
     def test_build_query_with_date_from(self, client):
         """Verify query adds date filter when date_from is provided."""
         query = client._build_query(offset=20, date_from='2026-03-01')
 
         assert "fecha_de_ultima_publicaci>='2026-03-01'" in query
+        assert "fecha_de_publicacion_del>='2024-03-20'" in query
         assert '$offset=20' in query
+
+    @freeze_time('2026-06-15T00:00:00+00:00')
+    def test_build_query_publication_floor_shifts_with_current_date(self, client):
+        """Verify publication floor recalculates based on current date."""
+        query = client._build_query(offset=0)
+
+        assert "fecha_de_publicacion_del>='2024-06-15'" in query
 
 
 class TestSECOPClientRequest:

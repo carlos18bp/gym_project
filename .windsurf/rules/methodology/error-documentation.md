@@ -81,6 +81,14 @@ This file tracks known errors, their context, and resolutions. When a reusable f
 - **Resolution**: Added `URL.revokeObjectURL(objectUrl)` after the download link is clicked and removed
 - **Files Affected**: `frontend/src/stores/secop/index.js`
 
+### [ISSUE-009] SECOP API returns stale "Abierto" records from 2023
+- **Date**: 2026-03-20
+- **Context**: All 26 records in the staging DB had `status='Abierto'` with `publication_date` from Jan 2023 and `closing_date` from Jan–Feb 2023 — all long expired. These came from the real SECOP API (datos.gov.co dataset `bt96-ncis`), not fake data.
+- **Root Cause**: Two gaps: (1) `SECOPClient._build_query` only filtered by `estado_del_procedimiento='Abierto'` with no publication date floor, so the API returned any record SECOP marked as open regardless of age. (2) `SECOPSyncService.synchronize` had no post-sync validation to close processes with expired `closing_date`.
+- **Resolution**: (1) Added `DEFAULT_PUBLICATION_LOOKBACK_DAYS = 730` to `SECOPClient` — `_build_query` now always appends `fecha_de_publicacion_del >= '<2y ago>'`. (2) Added `close_stale_processes()` static method to `SECOPSyncService` that marks "Abierto" processes with past `closing_date` as "Cerrado", called at the end of every `synchronize()`. (3) Ran cleanup on staging DB: 24 stale → Cerrado.
+- **Key Lesson**: External APIs can have stale/inconsistent data. Always apply defensive date filters at the query level AND validate data quality post-sync.
+- **Files Affected**: `backend/gym_app/services/secop_client.py`, `backend/gym_app/services/secop_sync_service.py`
+
 ---
 
 ## Resolved Issues

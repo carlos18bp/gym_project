@@ -777,6 +777,7 @@ function _buildFilterParams(page = 1) {
     publication_date_to: filters.value.publication_date_to || undefined,
     closing_date_from: filters.value.closing_date_from || undefined,
     closing_date_to: filters.value.closing_date_to || undefined,
+    is_open: filters.value.status ? undefined : 'true',
     ordering: ordering.value,
     page,
     page_size: pageSize.value,

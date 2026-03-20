@@ -1,8 +1,10 @@
-import requests
 import logging
 import time
+from datetime import timedelta
 
+import requests
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +17,16 @@ class SECOPClient:
     fetching data from the SECOP II dataset.
     """
 
+    # Default: only fetch processes published within this many days
+    DEFAULT_PUBLICATION_LOOKBACK_DAYS = 730  # ~2 years
+
     # API field names (Spanish - as defined by SECOP/Socrata API)
     class APIFields:
         PROCESS_ID = 'id_del_proceso'
         STATUS = 'estado_del_procedimiento'
         LAST_UPDATE = 'fecha_de_ultima_publicaci'
         PUBLICATION_DATE = 'fecha_de_publicacion_del'
+        CLOSING_DATE = 'fecha_de_recepcion_de'
 
     # API status values (Spanish - as returned by SECOP API)
     class APIValues:
@@ -71,6 +77,14 @@ class SECOPClient:
             where_clauses.append(
                 f"{self.APIFields.LAST_UPDATE}>='{date_from}'"
             )
+
+        # Always enforce a publication date floor to exclude stale records
+        pub_floor = (
+            timezone.now() - timedelta(days=self.DEFAULT_PUBLICATION_LOOKBACK_DAYS)
+        ).strftime('%Y-%m-%d')
+        where_clauses.append(
+            f"{self.APIFields.PUBLICATION_DATE}>='{pub_floor}'"
+        )
 
         where = " AND ".join(where_clauses)
 
