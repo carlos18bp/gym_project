@@ -44,9 +44,15 @@ cd /home/ryzepeck/webapps/gym_project && git pull origin master
 cd /home/ryzepeck/webapps/gym_project/backend && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate
 ```
 
-5. Build the frontend (requires nvm for Node 22.13.0):
+5. Build the frontend (requires nvm for Node 22.13.0) and remove node_modules afterwards:
 ```bash
-bash -c 'export NVM_DIR="$HOME/.nvm"; source "$NVM_DIR/nvm.sh"; nvm use; cd /home/ryzepeck/webapps/gym_project/frontend && npm ci && npm run build'
+bash -c 'export NVM_DIR="$HOME/.nvm"; source "$NVM_DIR/nvm.sh"; nvm use; cd /home/ryzepeck/webapps/gym_project/frontend && npm ci && npm run build && rm -rf node_modules'
+```
+> `rm -rf node_modules` runs only if the build succeeds. Frees ~200–500 MB of disk space.
+
+5b. (Optional) Verify node_modules were removed:
+```bash
+ls /home/ryzepeck/webapps/gym_project/frontend/node_modules 2>/dev/null && echo "WARNING: node_modules still present" || echo "OK: node_modules removed"
 ```
 
 6. Collect static files:
