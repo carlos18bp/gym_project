@@ -154,7 +154,7 @@ class Config:
     
     # File discovery
     backend_app_name: str = "gym_app"
-    py_allowed_folders: frozenset[str] = frozenset({"models", "serializers", "views", "utils", "tasks"})
+    py_allowed_folders: frozenset[str] = frozenset({"models", "serializers", "views", "utils", "tasks", "services"})
     py_test_file_glob: str = "test_*.py"
     js_unit_suffixes: tuple[str, ...] = (".test.js", ".spec.js", ".test.ts", ".spec.ts")
     js_e2e_suffixes: tuple[str, ...] = (".spec.js", ".spec.ts")

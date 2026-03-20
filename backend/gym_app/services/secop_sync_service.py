@@ -157,6 +157,10 @@ class SECOPSyncService:
                 value = self._parse_date(value)
             elif model_field == 'closing_date':
                 value = self._parse_datetime(value)
+            elif model_field == 'process_url':
+                # Socrata returns urlproceso as {'url': '...'} dict
+                if isinstance(value, dict):
+                    value = value.get('url', '')
 
             data[model_field] = value
 

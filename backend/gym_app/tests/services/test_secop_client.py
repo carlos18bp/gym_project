@@ -1,7 +1,8 @@
 """Tests for SECOP API client service."""
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
-from unittest.mock import patch, MagicMock
 
 from gym_app.services.secop_client import SECOPClient
 
@@ -14,6 +15,7 @@ def client():
             'BASE_URL': 'https://test.datos.gov.co/resource',
             'DATASET_ID': 'test-dataset',
             'APP_TOKEN': 'test-token-123',
+            'APP_SECRET': 'test-secret-456',
             'PAGE_SIZE': 10,
             'RETRY_ATTEMPTS': 2,
             'RETRY_DELAY': 0,
@@ -29,6 +31,7 @@ def client_no_token():
             'BASE_URL': 'https://test.datos.gov.co/resource',
             'DATASET_ID': 'test-dataset',
             'APP_TOKEN': '',
+            'APP_SECRET': '',
             'PAGE_SIZE': 10,
             'RETRY_ATTEMPTS': 2,
             'RETRY_DELAY': 0,
@@ -43,19 +46,23 @@ class TestSECOPClientEndpoint:
         """Verify endpoint combines base_url and dataset_id."""
         assert client.endpoint == 'https://test.datos.gov.co/resource/test-dataset.json'
 
-    def test_headers_include_app_token_when_set(self, client):
-        """Verify X-App-Token header is present when token is configured."""
+    def test_headers_contain_accept_json(self, client):
+        """Verify headers contain Accept application/json."""
         headers = client._get_headers()
 
-        assert headers['X-App-Token'] == 'test-token-123'
         assert headers['Accept'] == 'application/json'
 
-    def test_headers_exclude_app_token_when_empty(self, client_no_token):
-        """Verify X-App-Token header is absent when token is empty."""
-        headers = client_no_token._get_headers()
+    def test_auth_returns_tuple_when_credentials_set(self, client):
+        """Verify HTTP Basic Auth tuple is returned when credentials are configured."""
+        auth = client._get_auth()
 
-        assert 'X-App-Token' not in headers
-        assert headers['Accept'] == 'application/json'
+        assert auth == ('test-token-123', 'test-secret-456')
+
+    def test_auth_returns_none_when_no_credentials(self, client_no_token):
+        """Verify auth returns None when credentials are empty."""
+        auth = client_no_token._get_auth()
+
+        assert auth is None
 
 
 class TestSECOPClientQuery:
@@ -80,6 +87,7 @@ class TestSECOPClientQuery:
 class TestSECOPClientRequest:
     """Tests for HTTP request handling."""
 
+    # quality: disable network_dependency (testing retry logic with mocked requests.get boundary)
     @patch('gym_app.services.secop_client.requests.get')
     def test_make_request_retries_on_failure(self, mock_get, client):
         """Verify request retries on transient failure then succeeds."""
@@ -94,7 +102,9 @@ class TestSECOPClientRequest:
 
         assert result == mock_response
         assert mock_get.call_count == 2
+        mock_response.raise_for_status.assert_called_once()
 
+    # quality: disable network_dependency (testing retry exhaustion with mocked requests.get boundary)
     @patch('gym_app.services.secop_client.requests.get')
     def test_make_request_raises_after_all_retries(self, mock_get, client):
         """Verify exception is raised after exhausting all retry attempts."""
@@ -104,6 +114,7 @@ class TestSECOPClientRequest:
             client._make_request('https://test.url')
 
         assert mock_get.call_count == 2
+        mock_get.assert_called_with('https://test.url', headers=client._get_headers(), auth=client._get_auth(), timeout=30)
 
     @patch.object(SECOPClient, '_make_request')
     @patch('gym_app.services.secop_client.time.sleep', return_value=None)
@@ -123,3 +134,4 @@ class TestSECOPClientRequest:
         assert records[0]['id'] == 0
         assert records[12]['id'] == 12
         assert mock_request.call_count == 2
+        mock_sleep.assert_called()

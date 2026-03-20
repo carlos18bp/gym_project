@@ -22,7 +22,7 @@ class SECOPProcessListSerializer(serializers.ModelSerializer):
             'department', 'city', 'procedure_name', 'description',
             'status', 'procurement_method', 'contract_type',
             'base_price', 'publication_date', 'closing_date',
-            'process_url', 'is_open', 'days_remaining',
+            'process_url', 'unspsc_code', 'is_open', 'days_remaining',
             'my_classification',
         ]
 

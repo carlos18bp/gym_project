@@ -1,13 +1,15 @@
 """Tests for SECOP alert evaluation service."""
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch, MagicMock
-
 from django.utils import timezone
 
 from gym_app.models import (
-    SECOPProcess, SECOPAlert, AlertNotification, User,
+    AlertNotification,
+    SECOPAlert,
+    SECOPProcess,
+    User,
 )
 from gym_app.services.secop_alert_service import AlertEvaluationService
 

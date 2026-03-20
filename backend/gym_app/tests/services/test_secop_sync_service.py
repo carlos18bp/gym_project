@@ -3,9 +3,8 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from unittest.mock import patch, MagicMock
 
-from gym_app.models import SECOPProcess, SyncLog
+from gym_app.models import SECOPProcess
 from gym_app.services.secop_sync_service import SECOPSyncService
 
 
@@ -190,6 +189,7 @@ class TestUpsertProcess:
         assert created is False
         assert process.entity_name == 'Updated Entity'
 
+    @pytest.mark.django_db
     def test_upsert_process_raises_on_missing_id(self):
         """Verify ValueError when record lacks process ID field."""
         service = SECOPSyncService.__new__(SECOPSyncService)
@@ -197,3 +197,5 @@ class TestUpsertProcess:
 
         with pytest.raises(ValueError, match='missing'):
             service._upsert_process(record)
+
+        assert SECOPProcess.objects.count() == 0

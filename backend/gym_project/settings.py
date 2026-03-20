@@ -226,6 +226,7 @@ SECOP_CONFIG = {
     'DATASET_ID': config('SECOP_DATASET_ID', default='bt96-ncis'),
     'BASE_URL': 'https://www.datos.gov.co/resource',
     'APP_TOKEN': config('SECOP_APP_TOKEN', default=''),
+    'APP_SECRET': config('SECOP_APP_SECRET', default=''),
     'PAGE_SIZE': 1000,
     'RETRY_ATTEMPTS': 3,
     'RETRY_DELAY': 60,

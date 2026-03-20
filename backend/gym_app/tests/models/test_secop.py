@@ -8,8 +8,13 @@ from django.utils import timezone
 from freezegun import freeze_time
 
 from gym_app.models import (
-    SECOPProcess, ProcessClassification, SECOPAlert,
-    AlertNotification, SyncLog, SavedView, User,
+    AlertNotification,
+    ProcessClassification,
+    SavedView,
+    SECOPAlert,
+    SECOPProcess,
+    SyncLog,
+    User,
 )
 
 FROZEN_NOW = '2026-03-19T20:00:00+00:00'
@@ -68,7 +73,7 @@ def secop_process():
 @pytest.fixture
 @pytest.mark.django_db
 def closed_process():
-    """Closed SECOP process with past closing date."""
+    """Create closed SECOP process with past closing date."""
     return SECOPProcess.objects.create(
         process_id='CO1.REQ.9900002',
         reference='SA-200-2026-0002',
@@ -437,11 +442,14 @@ class TestSavedView:
         )
 
         with pytest.raises(IntegrityError):
-            SavedView.objects.create(
-                user=lawyer,
-                name='My View',
-                filters={'department': 'Bogotá D.C.'},
-            )
+            with transaction.atomic():
+                SavedView.objects.create(
+                    user=lawyer,
+                    name='My View',
+                    filters={'department': 'Bogotá D.C.'},
+                )
+
+        assert SavedView.objects.filter(user=lawyer, name='My View').count() == 1
 
     def test_saved_view_filters_json_roundtrip(self, lawyer):
         """Verify JSONField stores and retrieves filter dict correctly."""

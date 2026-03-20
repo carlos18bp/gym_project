@@ -12,7 +12,7 @@
           <h1 class="text-2xl sm:text-3xl font-bold text-white" data-testid="secop-title">Contratación Pública</h1>
           <p class="mt-1 text-sm text-white/80">Oportunidades de contratación SECOP II</p>
         </div>
-        <SyncStatus :sync-status="secopStore.syncStatus" />
+        <SyncStatus :sync-status="secopStore.syncStatus" @trigger-sync="secopStore.triggerSync()" />
       </div>
     </div>
 
@@ -74,6 +74,22 @@
 
       <!-- ALL PROCESSES TAB -->
       <template v-if="activeTab === 'all' || activeTab === 'classified'">
+        <!-- Classification status filter (only on classified tab) -->
+        <div v-if="activeTab === 'classified'" class="flex items-center gap-3 mb-4" data-testid="classification-status-filter">
+          <span class="text-sm font-medium text-gray-600">Filtrar por estado:</span>
+          <select
+            v-model="classificationFilter"
+            data-testid="filter-classification-status"
+            class="rounded-lg border-gray-300 bg-white py-2 pl-3 pr-8 text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+          >
+            <option value="">Todos los estados</option>
+            <option value="INTERESTING">Interesante</option>
+            <option value="UNDER_REVIEW">En Revisión</option>
+            <option value="APPLIED">Aplicado</option>
+            <option value="DISCARDED">Descartado</option>
+          </select>
+        </div>
+
         <!-- Filters and Search Bar -->
         <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6" data-testid="secop-filters">
           <!-- Search Bar -->
@@ -94,7 +110,7 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <!-- Department filter -->
             <Menu as="div" class="relative">
               <MenuButton data-testid="filter-department" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.department ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
@@ -158,17 +174,132 @@
               </MenuItems>
             </Menu>
 
-            <!-- Clear filters -->
-            <div class="flex items-center">
-              <button
-                v-if="hasActiveFilters"
-                @click="clearFilters"
-                data-testid="clear-filters"
-                class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-              >
-                <XMarkIcon class="h-4 w-4 flex-shrink-0" />
-                <span>Limpiar filtros</span>
-              </button>
+            <!-- Entity filter -->
+            <Menu as="div" class="relative">
+              <MenuButton data-testid="filter-entity" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.entity_name ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
+                <div class="flex items-center gap-2 min-w-0">
+                  <FunnelIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
+                  <span class="truncate">{{ filters.entity_name || 'Entidad' }}</span>
+                </div>
+                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-72 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="filters.entity_name = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todas</a>
+                  </MenuItem>
+                  <MenuItem v-for="entity in secopStore.availableFilters.entity_names" :key="entity" v-slot="{ active }">
+                    <a @click="filters.entity_name = entity" :class="[active ? 'bg-terciary' : '', filters.entity_name === entity ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer truncate']">{{ entity }}</a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+          </div>
+
+          <!-- Advanced filters toggle + clear -->
+          <div class="flex items-center justify-between mb-3">
+            <button
+              @click="showAdvancedFilters = !showAdvancedFilters"
+              data-testid="toggle-advanced-filters"
+              class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-secondary transition-colors"
+            >
+              <AdjustmentsHorizontalIcon class="h-4 w-4" />
+              <span>Filtros avanzados</span>
+              <span v-if="activeFilterCount > 0" class="ml-1 inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">{{ activeFilterCount }}</span>
+              <ChevronDownIcon :class="['h-3.5 w-3.5 transition-transform', showAdvancedFilters ? 'rotate-180' : '']" />
+            </button>
+            <button
+              v-if="hasActiveFilters"
+              @click="clearFilters"
+              data-testid="clear-filters"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <XMarkIcon class="h-3.5 w-3.5" />
+              Limpiar filtros
+            </button>
+          </div>
+
+          <!-- Advanced Filters Panel -->
+          <div v-if="showAdvancedFilters" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4 p-4 rounded-lg bg-terciary/50 border border-gray-100" data-testid="advanced-filters">
+            <!-- Budget range -->
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Presupuesto mínimo (COP)</label>
+              <input
+                v-model="filters.min_budget"
+                type="number"
+                data-testid="filter-min-budget"
+                placeholder="0"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-gray-400"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Presupuesto máximo (COP)</label>
+              <input
+                v-model="filters.max_budget"
+                type="number"
+                data-testid="filter-max-budget"
+                placeholder="Sin límite"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-gray-400"
+              />
+            </div>
+
+            <!-- UNSPSC Code filter -->
+            <Menu as="div" class="relative">
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Código UNSPSC</label>
+              <MenuButton data-testid="filter-unspsc" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.unspsc_code ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
+                <span class="truncate">{{ filters.unspsc_code || 'Seleccionar código' }}</span>
+                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
+              </MenuButton>
+              <MenuItems class="absolute left-0 z-10 mt-2 w-48 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
+                <div class="py-1">
+                  <MenuItem v-slot="{ active }">
+                    <a @click="filters.unspsc_code = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todos</a>
+                  </MenuItem>
+                  <MenuItem v-for="code in secopStore.availableFilters.unspsc_codes" :key="code" v-slot="{ active }">
+                    <a @click="filters.unspsc_code = code" :class="[active ? 'bg-terciary' : '', filters.unspsc_code === code ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer font-mono']">{{ code }}</a>
+                  </MenuItem>
+                </div>
+              </MenuItems>
+            </Menu>
+
+            <!-- Publication date range -->
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Publicación desde</label>
+              <input
+                v-model="filters.publication_date_from"
+                type="date"
+                data-testid="filter-pub-from"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Publicación hasta</label>
+              <input
+                v-model="filters.publication_date_to"
+                type="date"
+                data-testid="filter-pub-to"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+              />
+            </div>
+
+            <!-- Closing date range -->
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Cierre desde</label>
+              <input
+                v-model="filters.closing_date_from"
+                type="date"
+                data-testid="filter-close-from"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Cierre hasta</label>
+              <input
+                v-model="filters.closing_date_to"
+                type="date"
+                data-testid="filter-close-to"
+                class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+              />
             </div>
           </div>
 
@@ -188,6 +319,22 @@
                 <ArrowDownTrayIcon class="h-4 w-4" />
                 <span class="hidden sm:inline">Exportar Excel</span>
               </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+            <!-- Page size selector -->
+            <div class="inline-flex items-center gap-2">
+              <label class="text-xs text-gray-500 hidden sm:inline">Mostrar</label>
+              <select
+                v-model="pageSize"
+                data-testid="page-size-selector"
+                class="rounded-lg border-gray-300 bg-white py-1.5 pl-2 pr-7 text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary"
+              >
+                <option :value="20">20</option>
+                <option :value="25">25</option>
+                <option :value="50">50</option>
+                <option :value="100">100</option>
+              </select>
             </div>
 
             <!-- Sort -->
@@ -214,6 +361,7 @@
                 </div>
               </MenuItems>
             </Menu>
+            </div>
           </div>
         </div>
 
@@ -245,6 +393,8 @@
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Modalidad</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Presupuesto</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Departamento</th>
+                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">Ciudad</th>
+                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">Publicación</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Cierre</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
                   <th scope="col" class="w-14 px-4 py-3.5"></th>
@@ -275,6 +425,12 @@
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">
                     {{ process.department || '-' }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 hidden xl:table-cell">
+                    {{ process.city || '-' }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 hidden xl:table-cell">
+                    {{ formatDate(process.publication_date) }}
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap hidden md:table-cell">
                     <div class="text-sm text-gray-700">{{ formatDate(process.closing_date) }}</div>
@@ -447,6 +603,7 @@ import {
   ArrowDownTrayIcon,
   XMarkIcon,
   ArrowsUpDownIcon,
+  AdjustmentsHorizontalIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   BuildingLibraryIcon,
@@ -480,10 +637,21 @@ const activeTab = ref('all');
 // Search & filters
 const searchQuery = ref('');
 const ordering = ref('-publication_date');
+const pageSize = ref(20);
+const showAdvancedFilters = ref(false);
+const classificationFilter = ref('');
 const filters = ref({
   department: '',
   procurement_method: '',
   status: '',
+  entity_name: '',
+  unspsc_code: '',
+  min_budget: '',
+  max_budget: '',
+  publication_date_from: '',
+  publication_date_to: '',
+  closing_date_from: '',
+  closing_date_to: '',
 });
 
 // Classification modal
@@ -505,10 +673,36 @@ const currentFiltersSnapshot = computed(() => ({
   department: filters.value.department || '',
   procurement_method: filters.value.procurement_method || '',
   status: filters.value.status || '',
+  entity_name: filters.value.entity_name || '',
+  unspsc_code: filters.value.unspsc_code || '',
+  min_budget: filters.value.min_budget || '',
+  max_budget: filters.value.max_budget || '',
+  publication_date_from: filters.value.publication_date_from || '',
+  publication_date_to: filters.value.publication_date_to || '',
+  closing_date_from: filters.value.closing_date_from || '',
+  closing_date_to: filters.value.closing_date_to || '',
 }));
 
 const hasActiveFilters = computed(() => {
-  return filters.value.department || filters.value.procurement_method || filters.value.status || searchQuery.value;
+  return filters.value.department || filters.value.procurement_method || filters.value.status || searchQuery.value
+    || filters.value.entity_name || filters.value.unspsc_code
+    || filters.value.min_budget || filters.value.max_budget
+    || filters.value.publication_date_from || filters.value.publication_date_to
+    || filters.value.closing_date_from || filters.value.closing_date_to;
+});
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (filters.value.department) count++;
+  if (filters.value.procurement_method) count++;
+  if (filters.value.status) count++;
+  if (filters.value.entity_name) count++;
+  if (filters.value.unspsc_code) count++;
+  if (filters.value.min_budget || filters.value.max_budget) count++;
+  if (filters.value.publication_date_from || filters.value.publication_date_to) count++;
+  if (filters.value.closing_date_from || filters.value.closing_date_to) count++;
+  if (searchQuery.value) count++;
+  return count;
 });
 
 const sortLabel = computed(() => {
@@ -551,9 +745,9 @@ onMounted(async () => {
   ]);
 });
 
-// Watch filters/ordering for auto-reload with debounce to prevent double-fetch
+// Watch filters/ordering/pageSize for auto-reload with debounce to prevent double-fetch
 let debounceTimer = null;
-watch([filters, ordering, searchQuery], () => {
+watch([filters, ordering, searchQuery, pageSize], () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => loadProcesses(), 300);
 }, { deep: true });
@@ -564,40 +758,53 @@ watch(activeTab, (newTab) => {
   else if (newTab === 'savedViews') secopStore.fetchSavedViews();
 });
 
+watch(classificationFilter, () => {
+  loadClassified();
+});
+
 // Methods
-async function loadProcesses() {
-  const params = {
+function _buildFilterParams(page = 1) {
+  return {
     search: searchQuery.value || undefined,
     department: filters.value.department || undefined,
     procurement_method: filters.value.procurement_method || undefined,
     status: filters.value.status || undefined,
+    entity_name: filters.value.entity_name || undefined,
+    unspsc_code: filters.value.unspsc_code || undefined,
+    min_budget: filters.value.min_budget || undefined,
+    max_budget: filters.value.max_budget || undefined,
+    publication_date_from: filters.value.publication_date_from || undefined,
+    publication_date_to: filters.value.publication_date_to || undefined,
+    closing_date_from: filters.value.closing_date_from || undefined,
+    closing_date_to: filters.value.closing_date_to || undefined,
     ordering: ordering.value,
-    page: 1,
+    page,
+    page_size: pageSize.value,
   };
-  await secopStore.fetchProcesses(params);
+}
+
+async function loadProcesses() {
+  await secopStore.fetchProcesses(_buildFilterParams(1));
 }
 
 async function loadClassified() {
-  await secopStore.fetchMyClassified();
+  await secopStore.fetchMyClassified(classificationFilter.value || null);
 }
 
 function goToPage(page) {
   if (page < 1 || page > secopStore.pagination.totalPages) return;
-
-  const params = {
-    search: searchQuery.value || undefined,
-    department: filters.value.department || undefined,
-    procurement_method: filters.value.procurement_method || undefined,
-    status: filters.value.status || undefined,
-    ordering: ordering.value,
-    page,
-  };
-  secopStore.fetchProcesses(params);
+  secopStore.fetchProcesses(_buildFilterParams(page));
 }
 
 function clearFilters() {
   searchQuery.value = '';
-  filters.value = { department: '', procurement_method: '', status: '' };
+  filters.value = {
+    department: '', procurement_method: '', status: '',
+    entity_name: '', unspsc_code: '',
+    min_budget: '', max_budget: '',
+    publication_date_from: '', publication_date_to: '',
+    closing_date_from: '', closing_date_to: '',
+  };
 }
 
 function goToDetail(id) {
@@ -615,13 +822,7 @@ function formatDate(value) {
 }
 
 function handleExport() {
-  secopStore.exportExcel({
-    search: searchQuery.value || undefined,
-    department: filters.value.department || undefined,
-    procurement_method: filters.value.procurement_method || undefined,
-    status: filters.value.status || undefined,
-    ordering: ordering.value,
-  });
+  secopStore.exportExcel(_buildFilterParams());
 }
 
 // Classification handlers
@@ -679,6 +880,14 @@ function handleApplyView(view) {
     department: view.filters.department || '',
     procurement_method: view.filters.procurement_method || '',
     status: view.filters.status || '',
+    entity_name: view.filters.entity_name || '',
+    unspsc_code: view.filters.unspsc_code || '',
+    min_budget: view.filters.min_budget || '',
+    max_budget: view.filters.max_budget || '',
+    publication_date_from: view.filters.publication_date_from || '',
+    publication_date_to: view.filters.publication_date_to || '',
+    closing_date_from: view.filters.closing_date_from || '',
+    closing_date_to: view.filters.closing_date_to || '',
   };
   activeTab.value = 'all';
 }

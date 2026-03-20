@@ -51,7 +51,7 @@ def _apply_secop_filters(queryset, query_params):
     """
     entity_name = query_params.get('entity_name')
     if entity_name:
-        queryset = queryset.filter(entity_name__icontains=entity_name)
+        queryset = queryset.filter(entity_name__iexact=entity_name)
 
     department = query_params.get('department')
     if department:
@@ -93,11 +93,11 @@ def _apply_secop_filters(queryset, query_params):
 
     close_from = query_params.get('closing_date_from')
     if close_from:
-        queryset = queryset.filter(closing_date__gte=close_from)
+        queryset = queryset.filter(closing_date__date__gte=close_from)
 
     close_to = query_params.get('closing_date_to')
     if close_to:
-        queryset = queryset.filter(closing_date__lte=close_to)
+        queryset = queryset.filter(closing_date__date__lte=close_to)
 
     is_open = query_params.get('is_open')
     if is_open == 'true':
@@ -105,6 +105,10 @@ def _apply_secop_filters(queryset, query_params):
             Q(status=SECOPProcess.APIStatus.OPEN),
             Q(closing_date__gte=timezone.now()) | Q(closing_date__isnull=True),
         )
+
+    unspsc_code = query_params.get('unspsc_code')
+    if unspsc_code:
+        queryset = queryset.filter(unspsc_code__icontains=unspsc_code)
 
     search = query_params.get('search')
     if search:
@@ -456,11 +460,25 @@ def secop_available_filters(request):
         'contract_type', flat=True
     ).distinct().order_by('contract_type')
 
+    entity_names = SECOPProcess.objects.exclude(
+        entity_name=''
+    ).values_list(
+        'entity_name', flat=True
+    ).distinct().order_by('entity_name')[:200]
+
+    unspsc_codes = SECOPProcess.objects.exclude(
+        unspsc_code=''
+    ).values_list(
+        'unspsc_code', flat=True
+    ).distinct().order_by('unspsc_code')[:200]
+
     return Response({
         'departments': list(departments),
         'procurement_methods': list(procurement_methods),
         'statuses': list(statuses),
         'contract_types': list(contract_types),
+        'entity_names': list(entity_names),
+        'unspsc_codes': list(unspsc_codes),
     })
 
 

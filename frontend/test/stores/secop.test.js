@@ -17,18 +17,25 @@ describe("SECOP Store", () => {
   // State & Getters
   // ---------------------------------------------------------------
 
-  test("initializes with correct default state", () => {
+  test("initializes collections as empty arrays", () => {
     const store = useSecopStore();
 
     expect(store.processes).toEqual([]);
-    expect(store.currentProcess).toBeNull();
     expect(store.classifications).toEqual([]);
     expect(store.alerts).toEqual([]);
     expect(store.savedViews).toEqual([]);
+  });
+
+  test("initializes loading, error, pagination, and filters with defaults", () => {
+    const store = useSecopStore();
+
+    expect(store.currentProcess).toBeNull();
     expect(store.loading).toBe(false);
     expect(store.error).toBeNull();
     expect(store.pagination.count).toBe(0);
     expect(store.pagination.currentPage).toBe(1);
+    expect(store.availableFilters.entity_names).toEqual([]);
+    expect(store.availableFilters.unspsc_codes).toEqual([]);
   });
 
   test("processById returns matching process", () => {
@@ -400,5 +407,85 @@ describe("SECOP Store", () => {
     const result = await store.triggerSync();
 
     expect(result.detail).toBe("Sync triggered.");
+  });
+
+  test("fetchProcesses sends entity_name and unspsc_code params", async () => {
+    const store = useSecopStore();
+    const responseData = {
+      results: [],
+      count: 0,
+      total_pages: 0,
+      current_page: 1,
+      page_size: 25,
+    };
+
+    mock.onGet(/secop\/processes\//).reply(200, responseData);
+
+    await store.fetchProcesses({
+      entity_name: "Ministerio de Transporte",
+      unspsc_code: "72101500",
+      page_size: 25,
+    });
+
+    const requestUrl = mock.history.get[0].url;
+    expect(requestUrl).toContain("entity_name=Ministerio");
+    expect(requestUrl).toContain("unspsc_code=72101500");
+    expect(requestUrl).toContain("page_size=25");
+  });
+
+  test("fetchProcesses sends date range and budget params", async () => {
+    const store = useSecopStore();
+    const responseData = {
+      results: [],
+      count: 0,
+      total_pages: 0,
+      current_page: 1,
+      page_size: 20,
+    };
+
+    mock.onGet(/secop\/processes\//).reply(200, responseData);
+
+    await store.fetchProcesses({
+      min_budget: "100000000",
+      max_budget: "500000000",
+      publication_date_from: "2026-01-01",
+      closing_date_to: "2026-12-31",
+    });
+
+    const requestUrl = mock.history.get[0].url;
+    expect(requestUrl).toContain("min_budget=100000000");
+    expect(requestUrl).toContain("max_budget=500000000");
+    expect(requestUrl).toContain("publication_date_from=2026-01-01");
+    expect(requestUrl).toContain("closing_date_to=2026-12-31");
+  });
+
+  test("exportExcel sends new filter params", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/export\//).reply(200, new ArrayBuffer(10), {
+      "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    // Stub DOM APIs for download
+    const createObjectURL = jest.fn(() => "blob:test");
+    const revokeObjectURL = jest.fn();
+    global.URL.createObjectURL = createObjectURL;
+    global.URL.revokeObjectURL = revokeObjectURL;
+    const appendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => {});
+    const removeChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => {});
+
+    await store.exportExcel({
+      entity_name: "INVIAS",
+      unspsc_code: "81101500",
+      min_budget: "50000000",
+    });
+
+    const requestUrl = mock.history.get[0].url;
+    expect(requestUrl).toContain("entity_name=INVIAS");
+    expect(requestUrl).toContain("unspsc_code=81101500");
+    expect(requestUrl).toContain("min_budget=50000000");
+
+    appendChild.mockRestore();
+    removeChild.mockRestore();
   });
 });

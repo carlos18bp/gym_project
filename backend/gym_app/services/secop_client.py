@@ -32,6 +32,7 @@ class SECOPClient:
         self.base_url = config.get('BASE_URL', 'https://www.datos.gov.co/resource')
         self.dataset_id = config.get('DATASET_ID', 'bt96-ncis')
         self.app_token = config.get('APP_TOKEN', '')
+        self.app_secret = config.get('APP_SECRET', '')
         self.page_size = config.get('PAGE_SIZE', 1000)
         self.retry_attempts = config.get('RETRY_ATTEMPTS', 3)
         self.retry_delay = config.get('RETRY_DELAY', 60)
@@ -42,11 +43,14 @@ class SECOPClient:
         return f"{self.base_url}/{self.dataset_id}.json"
 
     def _get_headers(self):
-        """Build request headers with optional app token."""
-        headers = {'Accept': 'application/json'}
-        if self.app_token:
-            headers['X-App-Token'] = self.app_token
-        return headers
+        """Build request headers."""
+        return {'Accept': 'application/json'}
+
+    def _get_auth(self):
+        """Build HTTP Basic Auth tuple if credentials are configured."""
+        if self.app_token and self.app_secret:
+            return (self.app_token, self.app_secret)
+        return None
 
     def _build_query(self, offset=0, date_from=None):
         """
@@ -97,6 +101,7 @@ class SECOPClient:
                 response = requests.get(
                     url,
                     headers=self._get_headers(),
+                    auth=self._get_auth(),
                     timeout=30
                 )
                 response.raise_for_status()

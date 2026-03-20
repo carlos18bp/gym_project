@@ -1101,7 +1101,7 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "Browse, search, filter, and sort SECOP public procurement opportunities",
+      "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
       "expectedSpecs": 1
     },
     "secop-process-detail": {
@@ -1211,7 +1211,17 @@
         "lawyer"
       ],
       "priority": "P4",
-      "description": "Lawyer triggers a manual synchronization with SECOP API",
+      "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
+      "expectedSpecs": 1
+    },
+    "secop-filter-classifications": {
+      "name": "Filter classified processes by status",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)",
       "expectedSpecs": 1
     }
   }

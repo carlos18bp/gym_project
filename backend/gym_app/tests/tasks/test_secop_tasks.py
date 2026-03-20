@@ -1,15 +1,11 @@
 """Tests for SECOP Huey tasks module."""
 from datetime import timedelta
-from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch, MagicMock
-
 from django.utils import timezone
 from freezegun import freeze_time
-
-from gym_app.models import SECOPProcess, ProcessClassification, SyncLog, User
-
+from gym_app.models import ProcessClassification, SECOPProcess, SyncLog, User
 
 FROZEN_NOW = '2026-03-19T20:00:00+00:00'
 

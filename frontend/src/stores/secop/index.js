@@ -22,6 +22,8 @@ export const useSecopStore = defineStore("secop", {
       procurement_methods: [],
       statuses: [],
       contract_types: [],
+      entity_names: [],
+      unspsc_codes: [],
     },
     syncStatus: null,
     loading: false,
@@ -100,6 +102,8 @@ export const useSecopStore = defineStore("secop", {
         if (params.publication_date_to) queryParams.append("publication_date_to", params.publication_date_to);
         if (params.closing_date_from) queryParams.append("closing_date_from", params.closing_date_from);
         if (params.closing_date_to) queryParams.append("closing_date_to", params.closing_date_to);
+        if (params.entity_name) queryParams.append("entity_name", params.entity_name);
+        if (params.unspsc_code) queryParams.append("unspsc_code", params.unspsc_code);
         if (params.is_open) queryParams.append("is_open", params.is_open);
         if (params.ordering) queryParams.append("ordering", params.ordering);
         if (params.page) queryParams.append("page", params.page);
@@ -463,6 +467,14 @@ export const useSecopStore = defineStore("secop", {
         if (params.department) queryParams.append("department", params.department);
         if (params.procurement_method) queryParams.append("procurement_method", params.procurement_method);
         if (params.status) queryParams.append("status", params.status);
+        if (params.entity_name) queryParams.append("entity_name", params.entity_name);
+        if (params.unspsc_code) queryParams.append("unspsc_code", params.unspsc_code);
+        if (params.min_budget) queryParams.append("min_budget", params.min_budget);
+        if (params.max_budget) queryParams.append("max_budget", params.max_budget);
+        if (params.publication_date_from) queryParams.append("publication_date_from", params.publication_date_from);
+        if (params.publication_date_to) queryParams.append("publication_date_to", params.publication_date_to);
+        if (params.closing_date_from) queryParams.append("closing_date_from", params.closing_date_from);
+        if (params.closing_date_to) queryParams.append("closing_date_to", params.closing_date_to);
         if (params.ordering) queryParams.append("ordering", params.ordering);
 
         const qs = queryParams.toString();

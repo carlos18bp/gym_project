@@ -1082,12 +1082,25 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### secop-trigger-sync: Admin triggers manual sync
 - **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Lawyer triggers a manual synchronization with SECOP API
+- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button in the header
 
 **Pasos:**
 1. Navigate to `/secop`
-2. Trigger manual sync (admin action)
-3. Sync runs asynchronously in background
+2. Click "Sincronizar" button in the sync status bar
+3. Button disables and shows spinner while syncing
+4. Sync runs asynchronously in background
+
+---
+
+### secop-filter-classifications: Filter classified processes by status
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Filter the Mis Clasificaciones tab by classification status
+
+**Pasos:**
+1. Navigate to `/secop`
+2. Click "Mis Clasificaciones" tab
+3. Select a status from the classification filter dropdown (Interesante, En Revisión, Aplicado, Descartado)
+4. List updates to show only processes with that classification status
 
 ---
 

@@ -41,12 +41,16 @@
     "heroicons": "^2.1.5",
     "pinia": "^2.1.7",
     "sweetalert2": "^11.14.0",
-    "swiper": "^11.2.6",
+    "swiper": "^12.1.2",
     "tinymce": "^7.7.0",
     "vue": "^3.4.21",
     "vue-router": "^4.3.2",
     "vue3-google-login": "^2.0.33",
     "vue3-recaptcha2": "^1.8.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.4",
+    "@tootallnate/once": "^3.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

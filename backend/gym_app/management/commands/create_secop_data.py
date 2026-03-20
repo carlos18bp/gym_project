@@ -64,6 +64,13 @@ CONTRACT_TYPES = [
     'Suministro', 'Interventoría', 'Compraventa',
 ]
 
+UNSPSC_CODES = [
+    '72101500', '72141000', '72151500', '80101500', '80111600',
+    '81101500', '81112200', '85101600', '86101700', '43211500',
+    '43232100', '46171600', '42181500', '42182000', '93141500',
+    '93151600', '95121600', '78111800', '25101500', '30111600',
+]
+
 PROCEDURE_NAMES = [
     'Construcción de vía terciaria tramo {ref}',
     'Consultoría para diseño de acueducto municipal',
@@ -197,7 +204,7 @@ class Command(BaseCommand):
                     'last_update_date': pub_date,
                     'closing_date': closing_date,
                     'process_url': f'https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID={process_id}',
-                    'unspsc_code': str(random.randint(10000000, 99999999)),
+                    'unspsc_code': random.choice(UNSPSC_CODES),
                     'raw_data': {'source': 'fake_data'},
                 },
             )

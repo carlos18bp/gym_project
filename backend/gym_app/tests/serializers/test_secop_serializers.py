@@ -7,13 +7,21 @@ from django.utils import timezone
 from freezegun import freeze_time
 
 from gym_app.models import (
-    SECOPProcess, ProcessClassification, SECOPAlert,
-    AlertNotification, SyncLog, SavedView, User,
+    AlertNotification,
+    ProcessClassification,
+    SavedView,
+    SECOPAlert,
+    SECOPProcess,
+    SyncLog,
+    User,
 )
 from gym_app.serializers.secop import (
-    SECOPProcessListSerializer, SECOPProcessDetailSerializer,
-    ProcessClassificationSerializer, SECOPAlertSerializer,
-    SyncLogSerializer, SavedViewSerializer,
+    ProcessClassificationSerializer,
+    SavedViewSerializer,
+    SECOPAlertSerializer,
+    SECOPProcessDetailSerializer,
+    SECOPProcessListSerializer,
+    SyncLogSerializer,
 )
 
 FROZEN_NOW = '2026-03-19T20:00:00+00:00'

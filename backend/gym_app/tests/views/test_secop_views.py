@@ -1,17 +1,21 @@
 """Tests for SECOP views module."""
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
 from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
-from unittest.mock import patch
 
 from gym_app.models import (
-    SECOPProcess, ProcessClassification, SECOPAlert,
-    SyncLog, SavedView, User,
+    ProcessClassification,
+    SavedView,
+    SECOPAlert,
+    SECOPProcess,
+    SyncLog,
+    User,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -20,7 +24,7 @@ from gym_app.models import (
 @pytest.fixture
 @pytest.mark.django_db
 def lawyer(api_client):
-    """Authenticated lawyer user."""
+    """Create authenticated lawyer user."""
     user = User.objects.create_user(
         email='secop_view_lawyer@test.com',
         password='testpassword',
@@ -68,6 +72,7 @@ def process_open():
         reference='SA-VIEW-001',
         entity_name='Ministerio de Transporte',
         department='Bogotá D.C.',
+        city='Bogotá D.C.',
         status='Abierto',
         procurement_method='Licitación pública',
         contract_type='Obra',
@@ -76,18 +81,20 @@ def process_open():
         procedure_name='Obra vial Bogotá',
         publication_date='2026-03-01',
         closing_date=timezone.now() + timezone.timedelta(days=30),
+        unspsc_code='72101500',
     )
 
 
 @pytest.fixture
 @pytest.mark.django_db
 def process_closed():
-    """Closed SECOP process."""
+    """Create closed SECOP process."""
     return SECOPProcess.objects.create(
         process_id='CO1.REQ.VIEW002',
         reference='SA-VIEW-002',
         entity_name='INVIAS',
         department='Antioquia',
+        city='Medellín',
         status='Cerrado',
         procurement_method='Concurso de méritos',
         contract_type='Consultoría',
@@ -96,6 +103,7 @@ def process_closed():
         procedure_name='Consultoría ambiental',
         publication_date='2026-02-01',
         closing_date=timezone.now() - timezone.timedelta(days=10),
+        unspsc_code='81101500',
     )
 
 
@@ -156,6 +164,55 @@ class TestSecopProcessViews:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
         assert 'ambiental' in response.data['results'][0]['description'].lower()
+
+    def test_process_list_filters_by_entity_name(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify entity_name filter returns matching processes only."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'entity_name': 'Ministerio de Transporte'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['entity_name'] == 'Ministerio de Transporte'
+
+    def test_process_list_filters_by_unspsc_code(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify unspsc_code filter returns matching processes only."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'unspsc_code': '72101500'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['unspsc_code'] == '72101500'
+
+    def test_process_list_filters_by_unspsc_code_partial_match(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify unspsc_code filter supports partial (icontains) match."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'unspsc_code': '7210'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert '7210' in response.data['results'][0]['unspsc_code']
+
+    def test_process_list_respects_page_size(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify page_size parameter controls number of results per page."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'page_size': 1})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['results']) == 1
+        assert response.data['count'] == 2
+        assert response.data['total_pages'] == 2
 
     def test_process_list_ordering_by_base_price(
         self, api_client, lawyer, process_open, process_closed
@@ -475,10 +532,10 @@ class TestSecopSavedViewViews:
 class TestSecopFiltersAndSyncViews:
     """Tests for SECOP filters, sync status, and export views."""
 
-    def test_available_filters_returns_distinct_values(
+    def test_available_filters_returns_expected_keys(
         self, api_client, lawyer, process_open, process_closed
     ):
-        """Verify filters endpoint returns distinct department, method, etc."""
+        """Verify filters endpoint returns all expected filter keys."""
         url = reverse('secop-available-filters')
 
         response = api_client.get(url)
@@ -486,9 +543,26 @@ class TestSecopFiltersAndSyncViews:
         assert response.status_code == status.HTTP_200_OK
         assert 'departments' in response.data
         assert 'procurement_methods' in response.data
+        assert 'entity_names' in response.data
+        assert 'unspsc_codes' in response.data
+
+    def test_available_filters_contains_distinct_values(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify filters endpoint returns correct distinct values from fixtures."""
+        url = reverse('secop-available-filters')
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
         assert 'Bogotá D.C.' in response.data['departments']
         assert 'Antioquia' in response.data['departments']
+        assert 'Ministerio de Transporte' in response.data['entity_names']
+        assert 'INVIAS' in response.data['entity_names']
+        assert '72101500' in response.data['unspsc_codes']
+        assert '81101500' in response.data['unspsc_codes']
 
+    @freeze_time('2026-03-15 12:00:00')
     def test_sync_status_returns_recent_logs(self, api_client, lawyer):
         """Verify sync status returns last_success and recent logs."""
         SyncLog.objects.create(
@@ -551,3 +625,23 @@ class TestSecopFiltersAndSyncViews:
 
         assert response.status_code == status.HTTP_200_OK
         assert 'spreadsheet' in response['Content-Type']
+
+    def test_my_classified_filters_by_classification_status(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify my-classified endpoint filters by classification_status param."""
+        ProcessClassification.objects.create(
+            process=process_open, user=lawyer,
+            status=ProcessClassification.Status.INTERESTING,
+        )
+        ProcessClassification.objects.create(
+            process=process_closed, user=lawyer,
+            status=ProcessClassification.Status.DISCARDED,
+        )
+        url = reverse('secop-my-classified')
+
+        response = api_client.get(url, {'classification_status': 'INTERESTING'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['process_id'] == 'CO1.REQ.VIEW001'

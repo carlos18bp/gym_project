@@ -13,11 +13,27 @@
     </span>
     <span v-if="relativeTime" class="text-gray-400">·</span>
     <span v-if="relativeTime" class="text-gray-400">{{ relativeTime }}</span>
+    <button
+      @click.stop="handleTriggerSync"
+      :disabled="syncing"
+      data-testid="sync-trigger-btn"
+      :title="syncing ? 'Sincronizando...' : 'Sincronizar ahora'"
+      :class="[
+        'ml-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors',
+        syncing
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'bg-secondary/10 text-secondary hover:bg-secondary/20'
+      ]"
+    >
+      <ArrowPathIcon :class="['h-3 w-3', syncing ? 'animate-spin' : '']" />
+      <span class="hidden sm:inline">{{ syncing ? 'Sincronizando' : 'Sincronizar' }}</span>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { ArrowPathIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps({
   syncStatus: {
@@ -25,6 +41,18 @@ const props = defineProps({
     default: null,
   },
 });
+
+const emit = defineEmits(["trigger-sync"]);
+
+const syncing = ref(false);
+
+async function handleTriggerSync() {
+  if (syncing.value) return;
+  syncing.value = true;
+  emit("trigger-sync");
+  // Auto-reset after 30s (sync runs in background)
+  setTimeout(() => { syncing.value = false; }, 30000);
+}
 
 const hoursSinceSync = computed(() => {
   if (!props.syncStatus?.last_success?.finished_at) return Infinity;

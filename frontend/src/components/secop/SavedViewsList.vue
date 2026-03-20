@@ -96,8 +96,20 @@
               <span v-if="view.filters.search" class="rounded-md bg-terciary px-2 py-1">
                 Búsqueda: "{{ view.filters.search }}"
               </span>
+              <span v-if="view.filters.entity_name" class="rounded-md bg-terciary px-2 py-1">
+                Entidad: {{ view.filters.entity_name }}
+              </span>
+              <span v-if="view.filters.unspsc_code" class="rounded-md bg-terciary px-2 py-1">
+                UNSPSC: {{ view.filters.unspsc_code }}
+              </span>
               <span v-if="view.filters.min_budget || view.filters.max_budget" class="rounded-md bg-terciary px-2 py-1">
                 Presupuesto: {{ budgetLabel(view.filters) }}
+              </span>
+              <span v-if="view.filters.publication_date_from || view.filters.publication_date_to" class="rounded-md bg-terciary px-2 py-1">
+                Publicación: {{ view.filters.publication_date_from || '...' }} — {{ view.filters.publication_date_to || '...' }}
+              </span>
+              <span v-if="view.filters.closing_date_from || view.filters.closing_date_to" class="rounded-md bg-terciary px-2 py-1">
+                Cierre: {{ view.filters.closing_date_from || '...' }} — {{ view.filters.closing_date_to || '...' }}
               </span>
             </div>
 
