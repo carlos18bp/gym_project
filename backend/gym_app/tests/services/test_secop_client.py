@@ -135,3 +135,53 @@ class TestSECOPClientRequest:
         assert records[12]['id'] == 12
         assert mock_request.call_count == 2
         mock_sleep.assert_called()
+
+    @patch.object(SECOPClient, '_make_request')
+    def test_fetch_processes_empty_first_page_returns_no_records(self, mock_request, client):
+        """Verify fetch_processes returns nothing when first page is empty."""
+        empty_response = MagicMock()
+        empty_response.json.return_value = []
+        mock_request.return_value = empty_response
+
+        records = list(client.fetch_processes())
+
+        assert len(records) == 0
+        assert mock_request.call_count == 1  # verified
+
+    # quality: disable network_dependency (testing first-attempt success with mocked requests.get boundary)
+    @patch('gym_app.services.secop_client.requests.get')
+    def test_make_request_succeeds_on_first_attempt(self, mock_get, client):
+        """Verify request returns response on first successful attempt."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        result = client._make_request('https://test.url')
+
+        assert result == mock_response
+        assert mock_get.call_count == 1  # verified
+
+    @patch.object(SECOPClient, '_make_request')
+    def test_fetch_process_by_id_returns_record_when_found(self, mock_request, client):
+        """Verify fetch_process_by_id returns first record when API has results."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = [{'id_del_proceso': 'CO1.REQ.123', 'entidad': 'Test'}]
+        mock_request.return_value = mock_response
+
+        result = client.fetch_process_by_id('CO1.REQ.123')
+
+        assert mock_request.call_count == 1
+        assert result is not None
+        assert result['id_del_proceso'] == 'CO1.REQ.123'
+
+    @patch.object(SECOPClient, '_make_request')
+    def test_fetch_process_by_id_returns_none_when_not_found(self, mock_request, client):
+        """Verify fetch_process_by_id returns None when API returns empty list."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = []
+        mock_request.return_value = mock_response
+
+        result = client.fetch_process_by_id('CO1.REQ.NONEXISTENT')
+
+        assert mock_request.call_count == 1
+        assert result is None

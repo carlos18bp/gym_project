@@ -101,6 +101,63 @@ class TestSyncSecopData:
 
 
 @pytest.mark.django_db
+class TestEvaluateSecopAlerts:
+    """Tests for evaluate_secop_alerts task."""
+
+    @patch('gym_app.services.secop_alert_service.AlertEvaluationService.evaluate_processes')
+    def test_evaluate_secop_alerts_calls_service_with_ids(self, mock_eval):
+        """Verify task calls AlertEvaluationService.evaluate_processes with given IDs."""
+        mock_eval.return_value = 2
+
+        from gym_app.secop_tasks import evaluate_secop_alerts
+        evaluate_secop_alerts.call_local([10, 11, 12])
+
+        assert mock_eval.call_count == 1
+        assert mock_eval.call_args[0][0] == [10, 11, 12]
+
+
+@pytest.mark.django_db
+class TestSendSecopDailySummaries:
+    """Tests for send_secop_daily_summaries task."""
+
+    @patch('gym_app.services.secop_alert_service.AlertEvaluationService.send_summaries')
+    def test_send_daily_summaries_calls_service_with_daily(self, mock_send):
+        """Verify daily summary task calls service with frequency DAILY."""
+        from gym_app.secop_tasks import send_secop_daily_summaries
+        send_secop_daily_summaries.call_local()
+
+        assert mock_send.call_count == 1
+        assert mock_send.call_args[0][0] == 'DAILY'
+
+
+@pytest.mark.django_db
+class TestSendSecopWeeklySummaries:
+    """Tests for send_secop_weekly_summaries task."""
+
+    @patch('gym_app.services.secop_alert_service.AlertEvaluationService.send_summaries')
+    def test_send_weekly_summaries_calls_service_with_weekly(self, mock_send):
+        """Verify weekly summary task calls service with frequency WEEKLY."""
+        from gym_app.secop_tasks import send_secop_weekly_summaries
+        send_secop_weekly_summaries.call_local()
+
+        assert mock_send.call_count == 1
+        assert mock_send.call_args[0][0] == 'WEEKLY'
+
+
+@pytest.mark.django_db
+class TestSyncSecopDaily:
+    """Tests for sync_secop_daily periodic task."""
+
+    @patch('gym_app.secop_tasks.sync_secop_data')
+    def test_sync_secop_daily_calls_sync_secop_data(self, mock_sync):
+        """Verify daily periodic task delegates to sync_secop_data."""
+        from gym_app.secop_tasks import sync_secop_daily
+        sync_secop_daily.call_local()
+
+        assert mock_sync.call_count == 1
+
+
+@pytest.mark.django_db
 class TestPurgeOldProcesses:
     """Tests for purge_old_secop_processes task."""
 

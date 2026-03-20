@@ -645,3 +645,289 @@ class TestSecopFiltersAndSyncViews:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
         assert response.data['results'][0]['process_id'] == 'CO1.REQ.VIEW001'
+
+
+# ---------------------------------------------------------------------------
+# Additional filter/edge-case tests for coverage
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestSecopFilterBranches:
+    """Tests for SECOP views filter branches not yet covered."""
+
+    def test_process_list_filters_by_procurement_method(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify procurement_method filter returns matching processes."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'procurement_method': 'Licitación pública'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['procurement_method'] == 'Licitación pública'
+
+    def test_process_list_filters_by_status(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify status filter returns matching processes."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'status': 'Cerrado'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['status'] == 'Cerrado'
+
+    def test_process_list_filters_by_contract_type(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify contract_type filter returns matching processes."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'contract_type': 'Obra'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+
+    def test_process_list_filters_by_min_budget(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify min_budget filter excludes processes below threshold."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'min_budget': '200000000'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['base_price'] == '500000000.00'
+
+    def test_process_list_filters_by_max_budget(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify max_budget filter excludes processes above threshold."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'max_budget': '200000000'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['base_price'] == '100000000.00'
+
+    def test_process_list_invalid_min_budget_ignored(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify non-numeric min_budget is silently ignored."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'min_budget': 'abc'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 2
+
+    def test_process_list_invalid_max_budget_ignored(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify non-numeric max_budget is silently ignored."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'max_budget': 'xyz'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 2
+
+    def test_process_list_filters_by_publication_date_from(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify publication_date_from filter."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'publication_date_from': '2026-02-15'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+
+    def test_process_list_filters_by_publication_date_to(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify publication_date_to filter."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'publication_date_to': '2026-02-15'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+
+    @freeze_time('2026-03-15 12:00:00')
+    def test_process_list_filters_by_closing_date_from(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify closing_date_from filter excludes processes with earlier closing."""
+        url = reverse('secop-process-list')
+        tomorrow = (timezone.now() + timezone.timedelta(days=1)).strftime('%Y-%m-%d')
+
+        response = api_client.get(url, {'closing_date_from': tomorrow})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+
+    @freeze_time('2026-03-15 12:00:00')
+    def test_process_list_filters_by_closing_date_to(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify closing_date_to filter excludes processes with later closing."""
+        url = reverse('secop-process-list')
+        yesterday = (timezone.now() - timezone.timedelta(days=1)).strftime('%Y-%m-%d')
+
+        response = api_client.get(url, {'closing_date_to': yesterday})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+
+    @freeze_time('2026-03-15 12:00:00')
+    def test_process_list_filters_is_open_true(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify is_open=true returns only open processes with future closing."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'is_open': 'true'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['status'] == 'Abierto'
+
+    def test_process_list_invalid_ordering_uses_default(
+        self, api_client, lawyer, process_open, process_closed
+    ):
+        """Verify invalid ordering falls back to -publication_date."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'ordering': 'INVALID_FIELD'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 2
+
+    def test_process_list_invalid_page_number_falls_back(
+        self, api_client, lawyer, process_open
+    ):
+        """Verify invalid page number falls back to page 1."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'page': '999'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['current_page'] == 1
+
+    def test_process_list_page_size_capped_at_max(
+        self, api_client, lawyer, process_open
+    ):
+        """Verify page_size over MAX_PAGE_SIZE is capped."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'page_size': '9999'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['page_size'] <= 100
+
+    def test_process_list_invalid_page_size_uses_default(
+        self, api_client, lawyer, process_open
+    ):
+        """Verify non-numeric page_size falls back to default."""
+        url = reverse('secop-process-list')
+
+        response = api_client.get(url, {'page_size': 'abc'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['page_size'] == 20
+
+    def test_my_classified_invalid_page_falls_back(
+        self, api_client, lawyer, process_open
+    ):
+        """Verify my-classified with invalid page falls back to page 1."""
+        ProcessClassification.objects.create(
+            process=process_open, user=lawyer,
+        )
+        url = reverse('secop-my-classified')
+
+        response = api_client.get(url, {'page': '999'})
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['current_page'] == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestSecopAlertEdgeCases:
+    """Additional alert endpoint edge cases."""
+
+    def test_update_alert_invalid_data_returns_400(self, api_client, lawyer):
+        """Verify 400 when alert update payload is invalid."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer, name='Valid Alert',
+        )
+        url = reverse('secop-alert-update-delete', kwargs={'pk': alert.pk})
+
+        response = api_client.put(url, {'name': ''}, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_toggle_alert_false_to_true(self, api_client, lawyer):
+        """Verify toggle flips is_active from False to True."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer, name='Inactive Alert', is_active=False,
+        )
+        url = reverse('secop-alert-toggle', kwargs={'pk': alert.pk})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_active'] is True
+
+    def test_toggle_alert_not_found_returns_404(self, api_client, lawyer):
+        """Verify 404 for toggle on non-existent alert."""
+        url = reverse('secop-alert-toggle', kwargs={'pk': 99999})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestSecopSavedViewEdgeCases:
+    """Additional saved view edge cases."""
+
+    def test_create_saved_view_invalid_data_returns_400(self, api_client, lawyer):
+        """Verify 400 when saved view payload is invalid (missing name)."""
+        url = reverse('secop-saved-views')
+
+        response = api_client.post(url, {'filters': {}}, format='json')
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestSecopExportEdgeCases:
+    """Additional export edge cases."""
+
+    @freeze_time('2026-03-15 12:00:00')
+    def test_export_excel_handles_null_fields(self, api_client, lawyer):
+        """Verify export works when process has null base_price and dates."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.NULL1',
+            entity_name='Null Fields Entity',
+            reference='NULL-001',
+            procedure_name='Test procedure',
+            base_price=None,
+            publication_date=None,
+            closing_date=None,
+        )
+        url = reverse('secop-export-excel')
+
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'spreadsheet' in response['Content-Type']

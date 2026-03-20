@@ -64,6 +64,25 @@ const MOCK_PROCESSES = [
     my_classification: { id: 1, status: "INTERESTING", notes: "Revisar" },
     process_url: "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.REQ.E2E003",
   },
+  {
+    id: 9004,
+    process_id: "CO1.REQ.E2E004",
+    reference: "SA-E2E-004",
+    entity_name: "Gobernación del Valle",
+    department: "Valle del Cauca",
+    status: "Abierto",
+    procurement_method: "Licitación pública",
+    contract_type: "Obra",
+    base_price: "300000000.00",
+    description: "Mejoramiento vial E2E Valle",
+    procedure_name: "Obra vial E2E Valle",
+    publication_date: "2026-03-12",
+    closing_date: "2026-06-01T17:00:00Z",
+    is_open: true,
+    days_remaining: 74,
+    my_classification: { id: 2, status: "APPLIED", notes: "Propuesta enviada" },
+    process_url: "https://community.secop.gov.co/Public/Tendering/OpportunityDetail/Index?noticeUID=CO1.REQ.E2E004",
+  },
 ];
 
 const MOCK_PROCESS_DETAIL = {
@@ -211,12 +230,20 @@ export async function installSecopApiMocks(page, overrides = {}) {
 
     // ── SECOP Process routes ──
     if (apiPath === "secop/processes/my-classified/") {
+      const reqUrl = new URL(route.request().url());
+      const statusFilter = reqUrl.searchParams.get("classification_status");
+      let filteredClassified = classified;
+      if (statusFilter) {
+        filteredClassified = classified.filter(
+          (p) => p.my_classification && p.my_classification.status === statusFilter,
+        );
+      }
       return {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          results: classified,
-          count: classified.length,
+          results: filteredClassified,
+          count: filteredClassified.length,
           total_pages: 1,
           current_page: 1,
           page_size: 20,

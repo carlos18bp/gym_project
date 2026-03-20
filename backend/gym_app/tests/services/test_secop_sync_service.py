@@ -1,10 +1,12 @@
 """Tests for SECOP sync service."""
 from datetime import date
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 import pytest
+from freezegun import freeze_time
 
-from gym_app.models import SECOPProcess
+from gym_app.models import SECOPProcess, SyncLog
 from gym_app.services.secop_sync_service import SECOPSyncService
 
 
@@ -34,6 +36,12 @@ class TestParseDecimal:
         result = SECOPSyncService._parse_decimal(None)
 
         assert result is None
+
+    def test_parse_decimal_numeric_input(self):
+        """Verify numeric (non-string) value is converted to Decimal."""
+        result = SECOPSyncService._parse_decimal(1500000.50)
+
+        assert result == Decimal('1500000.5')
 
 
 class TestParseInt:
@@ -199,3 +207,188 @@ class TestUpsertProcess:
             service._upsert_process(record)
 
         assert SECOPProcess.objects.count() == 0
+
+
+class TestTransformRecordUrlBranch:
+    """Tests for _transform_record process_url dict extraction."""
+
+    def test_transform_record_extracts_url_from_dict(self):
+        """Verify process_url is extracted from Socrata dict format."""
+        service = SECOPSyncService.__new__(SECOPSyncService)
+        record = {
+            'id_del_proceso': 'CO1.REQ.URL1',
+            'urlproceso': {'url': 'https://community.secop.gov.co/123'},
+        }
+
+        data = service._transform_record(record)
+
+        assert data['process_url'] == 'https://community.secop.gov.co/123'
+
+    def test_transform_record_handles_string_url(self):
+        """Verify plain string URL passes through unchanged."""
+        service = SECOPSyncService.__new__(SECOPSyncService)
+        record = {
+            'id_del_proceso': 'CO1.REQ.URL2',
+            'urlproceso': 'https://community.secop.gov.co/456',
+        }
+
+        data = service._transform_record(record)
+
+        assert data['process_url'] == 'https://community.secop.gov.co/456'
+
+    def test_transform_record_url_dict_missing_url_key(self):
+        """Verify empty string when dict has no 'url' key."""
+        service = SECOPSyncService.__new__(SECOPSyncService)
+        record = {
+            'id_del_proceso': 'CO1.REQ.URL3',
+            'urlproceso': {'other': 'value'},
+        }
+
+        data = service._transform_record(record)
+
+        assert data['process_url'] == ''
+
+
+class TestParseDatetimeFallback:
+    """Tests for _parse_datetime fallback branches."""
+
+    def test_parse_datetime_date_only_with_T_falls_back(self):
+        """Verify fallback parsing for date-only string without ms precision."""
+        result = SECOPSyncService._parse_datetime('2026-03-15')
+
+        assert result is not None
+        assert result.year == 2026
+        assert result.month == 3
+        assert result.day == 15
+
+    def test_parse_datetime_invalid_string_returns_none(self):
+        """Verify completely invalid string returns None."""
+        result = SECOPSyncService._parse_datetime('not-a-date')
+
+        assert result is None
+
+    def test_parse_datetime_triggers_except_block(self):
+        """Verify value that causes exception in parsing returns None."""
+        result = SECOPSyncService._parse_datetime(object())
+
+        assert result is None
+
+
+@pytest.mark.django_db
+@freeze_time('2026-03-19T20:00:00+00:00')
+class TestSynchronize:
+    """Tests for SECOPSyncService.synchronize integration."""
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_incremental_with_prior_sync_uses_date_from(
+        self, MockClient
+    ):
+        """Verify incremental sync calculates date_from from last successful sync."""
+        SyncLog.objects.create(
+            status=SyncLog.Status.SUCCESS,
+            records_processed=10,
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        service.synchronize(incremental=True)
+
+        assert mock_client.fetch_processes.call_count == 1
+        call_kwargs = mock_client.fetch_processes.call_args
+        assert call_kwargs[1]['date_from'] is not None
+        assert '2026-03-17' in call_kwargs[1]['date_from']
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_incremental_without_prior_sync_no_date_filter(
+        self, MockClient
+    ):
+        """Verify incremental sync with no prior SyncLog sends date_from=None."""
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        service.synchronize(incremental=True)
+
+        assert mock_client.fetch_processes.call_count == 1
+        call_kwargs = mock_client.fetch_processes.call_args
+        assert call_kwargs[1]['date_from'] is None
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_full_ignores_last_sync(self, MockClient):
+        """Verify full sync always sends date_from=None."""
+        SyncLog.objects.create(
+            status=SyncLog.Status.SUCCESS,
+            records_processed=5,
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        service.synchronize(incremental=False)
+
+        assert mock_client.fetch_processes.call_count == 1
+        call_kwargs = mock_client.fetch_processes.call_args
+        assert call_kwargs[1]['date_from'] is None
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_counts_created_and_updated(self, MockClient):
+        """Verify stats dict reflects created/updated counts accurately."""
+        SECOPProcess.objects.create(
+            process_id='CO1.REQ.EXIST1',
+            entity_name='Existing Entity',
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([
+            {'id_del_proceso': 'CO1.REQ.EXIST1', 'entidad': 'Updated'},
+            {'id_del_proceso': 'CO1.REQ.NEW1', 'entidad': 'New Entity'},
+        ])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        result = service.synchronize(incremental=False)
+
+        assert mock_client.fetch_processes.call_count == 1
+        assert result['processed'] == 2
+        assert result['created'] == 1
+        assert result['updated'] == 1
+        assert len(result['new_ids']) == 1
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_continues_on_individual_record_error(self, MockClient):
+        """Verify one bad record does not stop sync of remaining records."""
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([
+            {'entidad': 'Missing ID'},
+            {'id_del_proceso': 'CO1.REQ.OK1', 'entidad': 'Good Record'},
+        ])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        result = service.synchronize(incremental=False)
+
+        assert mock_client.fetch_processes.call_count == 1
+        assert result['processed'] == 1
+        assert result['created'] == 1
+        assert SECOPProcess.objects.filter(process_id='CO1.REQ.OK1').exists()
+
+    @patch('gym_app.services.secop_sync_service.SECOPClient')
+    def test_synchronize_returns_new_ids(self, MockClient):
+        """Verify new_ids list contains PKs of newly created processes."""
+        mock_client = MagicMock()
+        mock_client.fetch_processes.return_value = iter([
+            {'id_del_proceso': 'CO1.REQ.IDS1', 'entidad': 'Entity A'},
+            {'id_del_proceso': 'CO1.REQ.IDS2', 'entidad': 'Entity B'},
+        ])
+        MockClient.return_value = mock_client
+
+        service = SECOPSyncService()
+        result = service.synchronize(incremental=False)
+
+        assert mock_client.fetch_processes.call_count == 1
+        assert len(result['new_ids']) == 2
+        for pid in result['new_ids']:
+            assert SECOPProcess.objects.filter(pk=pid).exists()

@@ -382,6 +382,91 @@ class TestSECOPAlert:
 
         assert alert.evaluate_process(secop_process) is True
 
+    def test_evaluate_process_entity_match_returns_true(self, lawyer, secop_process):
+        """Verify evaluate_process returns True when entity matches."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Entity Match Alert',
+            entities='Ministerio de Transporte, INVIAS',
+        )
+
+        assert alert.evaluate_process(secop_process) is True
+
+    def test_evaluate_process_entity_no_match_returns_false(self, lawyer, secop_process):
+        """Verify evaluate_process returns False when entity does not match."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Entity NoMatch Alert',
+            entities='Alcaldía de Cali',
+        )
+
+        assert alert.evaluate_process(secop_process) is False
+
+    def test_evaluate_process_department_no_match_returns_false(self, lawyer, secop_process):
+        """Verify evaluate_process returns False when department does not match."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Dept NoMatch Alert',
+            departments='Antioquia',
+        )
+
+        assert alert.evaluate_process(secop_process) is False
+
+    def test_evaluate_process_budget_with_null_price_returns_false(self, lawyer):
+        """Verify evaluate_process returns False when process has null base_price."""
+        process = SECOPProcess.objects.create(
+            process_id='CO1.REQ.NULLBUDGET1',
+            entity_name='Null Budget Entity',
+            base_price=None,
+        )
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Budget Null Alert',
+            min_budget=Decimal('100000000'),
+        )
+
+        assert alert.evaluate_process(process) is False
+
+    def test_evaluate_process_max_budget_above_returns_false(self, lawyer, secop_process):
+        """Verify evaluate_process returns False when price exceeds max_budget."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='MaxBudget Alert',
+            max_budget=Decimal('100000000'),
+        )
+
+        assert alert.evaluate_process(secop_process) is False
+
+    def test_evaluate_process_procurement_method_match(self, lawyer, secop_process):
+        """Verify evaluate_process returns True when procurement method matches."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Method Match Alert',
+            procurement_methods='Licitación pública, Concurso de méritos',
+        )
+
+        assert alert.evaluate_process(secop_process) is True
+
+    def test_evaluate_process_procurement_method_no_match(self, lawyer, secop_process):
+        """Verify evaluate_process returns False when procurement method does not match."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Method NoMatch Alert',
+            procurement_methods='Selección abreviada',
+        )
+
+        assert alert.evaluate_process(secop_process) is False
+
+    def test_str_representation(self, lawyer):
+        """Verify __str__ contains name and user."""
+        alert = SECOPAlert.objects.create(
+            user=lawyer,
+            name='Str Test Alert',
+        )
+
+        result = str(alert)
+        assert 'Str Test Alert' in result
+
 
 # ---------------------------------------------------------------------------
 # AlertNotification, SyncLog, SavedView tests
@@ -467,3 +552,14 @@ class TestSavedView:
         view.refresh_from_db()
         assert view.filters == filters
         assert view.filters['department'] == 'Antioquia'
+
+    def test_str_representation(self, lawyer):
+        """Verify __str__ contains name and user."""
+        view = SavedView.objects.create(
+            user=lawyer,
+            name='Str Test View',
+            filters={'department': 'Bogotá D.C.'},
+        )
+
+        result = str(view)
+        assert 'Str Test View' in result

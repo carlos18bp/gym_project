@@ -459,6 +459,248 @@ describe("SECOP Store", () => {
     expect(requestUrl).toContain("closing_date_to=2026-12-31");
   });
 
+  // ---------------------------------------------------------------
+  // Error / edge-case branches for full coverage
+  // ---------------------------------------------------------------
+
+  test("fetchProcesses non-200 response throws", async () => {
+    const store = useSecopStore();
+    const responseData = { detail: "forbidden" };
+
+    mock.onGet(/secop\/processes\//).reply(403, responseData);
+
+    await expect(store.fetchProcesses()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+    expect(store.loading).toBe(false);
+  });
+
+  test("fetchProcessDetail sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/processes\/99\//).reply(500);
+
+    await expect(store.fetchProcessDetail(99)).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+    expect(store.loading).toBe(false);
+  });
+
+  test("fetchProcessDetail non-200 response throws", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/processes\/5\//).reply(403, { detail: "forbidden" });
+
+    await expect(store.fetchProcessDetail(5)).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("fetchMyClassified sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/processes\/my-classified\//).reply(500);
+
+    await expect(store.fetchMyClassified()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+    expect(store.loading).toBe(false);
+  });
+
+  test("fetchMyClassified without status sends no classification_status param", async () => {
+    const store = useSecopStore();
+    const responseData = {
+      results: [{ id: 1 }],
+      count: 1,
+      total_pages: 1,
+      current_page: 1,
+    };
+
+    mock.onGet(/secop\/processes\/my-classified\//).reply(200, responseData);
+
+    await store.fetchMyClassified();
+
+    const requestUrl = mock.history.get[0].url;
+    expect(requestUrl).not.toContain("classification_status");
+  });
+
+  test("createClassification non-201 response throws", async () => {
+    const store = useSecopStore();
+
+    mock.onPost(/secop\/classifications\//).reply(403, { detail: "forbidden" });
+
+    await expect(
+      store.createClassification({ process: 10, status: "APPLIED" }),
+    ).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("deleteClassification when process not in array does not crash", async () => {
+    const store = useSecopStore();
+    store.$patch({ processes: [] });
+
+    mock.onDelete(/secop\/classifications\/1\//).reply(204);
+
+    await store.deleteClassification(1, 999);
+
+    expect(store.processes).toEqual([]);
+  });
+
+  test("deleteClassification refreshes detail when currentProcess matches", async () => {
+    const store = useSecopStore();
+    store.$patch({
+      processes: [],
+      currentProcess: { id: 10, classifications: [] },
+    });
+
+    const detailData = {
+      id: 10,
+      classifications: [],
+    };
+
+    mock.onDelete(/secop\/classifications\/1\//).reply(204);
+    mock.onGet(/secop\/processes\/10\//).reply(200, detailData);
+
+    await store.deleteClassification(1, 10);
+
+    expect(store.currentProcess).toEqual(detailData);
+  });
+
+  test("fetchAlerts sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/alerts\//).reply(500);
+
+    await expect(store.fetchAlerts()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("updateAlert when alert not in array does not crash", async () => {
+    const store = useSecopStore();
+    store.$patch({ alerts: [] });
+
+    const updatedAlert = { id: 999, name: "Ghost Alert" };
+    mock.onPut(/secop\/alerts\/999\//).reply(200, updatedAlert);
+
+    const result = await store.updateAlert(999, { name: "Ghost Alert" });
+
+    expect(result).toEqual(updatedAlert);
+    expect(store.alerts).toHaveLength(0);
+  });
+
+  test("toggleAlert sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onPost(/secop\/alerts\/1\/toggle\//).reply(500);
+
+    await expect(store.toggleAlert(1)).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("toggleAlert when alert not in array does not crash", async () => {
+    const store = useSecopStore();
+    store.$patch({ alerts: [] });
+
+    mock.onPost(/secop\/alerts\/999\/toggle\//).reply(200, {
+      id: 999,
+      is_active: true,
+    });
+
+    const result = await store.toggleAlert(999);
+
+    expect(result).toEqual({ id: 999, is_active: true });
+    expect(store.alerts).toHaveLength(0);
+  });
+
+  test("fetchSavedViews sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/saved-views\//).reply(500);
+
+    await expect(store.fetchSavedViews()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("createSavedView sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onPost(/secop\/saved-views\//).reply(500);
+
+    await expect(
+      store.createSavedView({ name: "Fail", filters: {} }),
+    ).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("deleteSavedView sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onDelete(/secop\/saved-views\/1\//).reply(500);
+
+    await expect(store.deleteSavedView(1)).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("fetchAvailableFilters sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/filters\//).reply(500);
+
+    await expect(store.fetchAvailableFilters()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("fetchSyncStatus sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/sync\//).reply(500);
+
+    await expect(store.fetchSyncStatus()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("triggerSync sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onPost(/secop\/sync\/trigger\//).reply(500);
+
+    await expect(store.triggerSync()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("exportExcel sets error on failure", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/export\//).reply(500);
+
+    await expect(store.exportExcel()).rejects.toThrow();
+    expect(store.error).toBeTruthy();
+  });
+
+  test("exportExcel with empty params sends no query string", async () => {
+    const store = useSecopStore();
+
+    mock.onGet(/secop\/export\//).reply(200, new ArrayBuffer(10), {
+      "content-type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    const createObjectURL = jest.fn(() => "blob:test");
+    const revokeObjectURL = jest.fn();
+    global.URL.createObjectURL = createObjectURL;
+    global.URL.revokeObjectURL = revokeObjectURL;
+    const appendChild = jest
+      .spyOn(document.body, "appendChild")
+      .mockImplementation(() => {});
+    const removeChild = jest
+      .spyOn(document.body, "removeChild")
+      .mockImplementation(() => {});
+
+    await store.exportExcel();
+
+    const requestUrl = mock.history.get[0].url;
+    expect(requestUrl).not.toContain("?");
+
+    appendChild.mockRestore();
+    removeChild.mockRestore();
+  });
+
   test("exportExcel sends new filter params", async () => {
     const store = useSecopStore();
 
@@ -489,3 +731,4 @@ describe("SECOP Store", () => {
     removeChild.mockRestore();
   });
 });
+
