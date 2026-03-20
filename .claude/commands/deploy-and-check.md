@@ -15,14 +15,12 @@ Run these steps on the production server at `/home/ryzepeck/webapps/gym_project`
 
 ## Phase 1 — Pre-deploy checks
 
-// turbo
 1. Verify server health before deploying:
 ```bash
 bash ~/scripts/quick-status.sh
 ```
 If any service is down or disk >85%, **stop and fix before deploying**.
 
-// turbo
 2. Check current git status (ensure working directory is clean):
 ```bash
 cd /home/ryzepeck/webapps/gym_project && git status
@@ -33,7 +31,6 @@ Expected: `nothing to commit, working tree clean`. If there are uncommitted chan
 
 ## Phase 2 — Pull & build
 
-// turbo
 3. Pull the latest code from master:
 ```bash
 cd /home/ryzepeck/webapps/gym_project && git pull origin master
@@ -73,21 +70,18 @@ sudo systemctl restart gym_intranet && sudo systemctl restart gym-project-huey
 
 ## Phase 4 — Post-deploy verification
 
-// turbo
 8. Verify services are active:
 ```bash
 sudo systemctl is-active gym_intranet && sudo systemctl is-active gym-project-huey
 ```
 Expected: `active`, `active`.
 
-// turbo
 9. Run the post-deploy check script (services, health endpoint, SSL, migrations, static files, recent errors):
 ```bash
 bash ~/scripts/post-deploy-check.sh
 ```
 Expected: `DEPLOY VERIFICATION PASSED — All checks OK`. If it fails, go to Phase 5.
 
-// turbo
 10. Verify the health endpoint directly:
 ```bash
 curl -s https://www.gmconsultoresjuridicos.com/api/health/ | python3 -m json.tool
