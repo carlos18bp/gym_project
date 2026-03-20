@@ -360,6 +360,7 @@ import {
   RectangleStackIcon,
   EnvelopeIcon,
   BuildingOfficeIcon,
+  BuildingLibraryIcon,
   BookOpenIcon
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
@@ -396,7 +397,8 @@ onMounted(async () => {
       (navItem) =>
         navItem.name !== "Radicar Proceso" &&
         navItem.name !== "Directorio" &&
-        navItem.name !== "Intranet G&M"
+        navItem.name !== "Intranet G&M" &&
+        navItem.name !== "Contratación Pública"
     );
   } else if (currentUser.value.role == 'lawyer' && !currentUser.value.is_gym_lawyer) {
     // Remove "Intranet G&M" for lawyers who are not GYM lawyers
@@ -554,6 +556,16 @@ const navigation = ref([
     icon: ScaleIcon,
     current: false,
     routes: ['/intranet_g_y_m']
+  },
+  {
+    name: "Contratación Pública",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "secop_list" });
+    },
+    icon: BuildingLibraryIcon,
+    current: false,
+    routes: ['/secop']
   },
   {
     name: "Manual de Usuario",

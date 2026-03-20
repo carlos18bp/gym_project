@@ -11,8 +11,9 @@ This module defines all the URL patterns for the gym application, organized into
 - Legal updates (notifications and updates)
 - Recent processes (tracking and updates)
 - Reports (Excel report generation)
+- SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -271,6 +272,33 @@ subscription_urls = [
     path('subscriptions/<int:subscription_id>/cancel/', subscription.cancel_subscription_view, name='subscription-cancel-by-id'),
 ]
 
+# SECOP public procurement URLs
+secop_urls = [
+    # Process listing, detail, and classified
+    path('secop/processes/', secop.secop_process_list, name='secop-process-list'),
+    path('secop/processes/my-classified/', secop.secop_my_classified, name='secop-my-classified'),
+    path('secop/processes/<int:pk>/', secop.secop_process_detail, name='secop-process-detail'),
+
+    # Classifications
+    path('secop/classifications/', secop.secop_create_classification, name='secop-create-classification'),
+    path('secop/classifications/<int:pk>/', secop.secop_delete_classification, name='secop-delete-classification'),
+
+    # Alerts
+    path('secop/alerts/', secop.secop_alerts_list_create, name='secop-alerts-list-create'),
+    path('secop/alerts/<int:pk>/', secop.secop_alert_update_delete, name='secop-alert-update-delete'),
+    path('secop/alerts/<int:pk>/toggle/', secop.secop_alert_toggle, name='secop-alert-toggle'),
+
+    # Saved views
+    path('secop/saved-views/', secop.secop_saved_views, name='secop-saved-views'),
+    path('secop/saved-views/<int:pk>/', secop.secop_delete_saved_view, name='secop-delete-saved-view'),
+
+    # Filters, sync, and export
+    path('secop/filters/', secop.secop_available_filters, name='secop-available-filters'),
+    path('secop/sync/', secop.secop_sync_status, name='secop-sync-status'),
+    path('secop/sync/trigger/', secop.secop_trigger_sync, name='secop-trigger-sync'),
+    path('secop/export/', secop.secop_export_excel, name='secop-export-excel'),
+]
+
 # Combine all URL patterns
 urlpatterns = (
     sign_in_sign_on_urls +
@@ -286,5 +314,6 @@ urlpatterns = (
     legal_update_urls +
     recent_process_urls +
     reports_urls +
-    subscription_urls
+    subscription_urls +
+    secop_urls
 )

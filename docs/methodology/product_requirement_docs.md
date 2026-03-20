@@ -148,6 +148,9 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 6. **Process stages**: Timestamped and ordered; each process tracks its current stage and history.
 7. **Electronic signatures**: Once signed, documents maintain audit trail; signatures can be reopened by document owner.
 8. **Idle logout**: Automatic session termination after inactivity period for security.
+9. **SECOP classifications**: Each user can have one classification per process (unique_together). Classifications are per-user but visible to the team.
+10. **SECOP alerts**: Evaluated against new processes after each sync. Frequency determines email delivery: immediate, daily summary, or weekly summary.
+11. **SECOP sync**: Daily incremental sync from Socrata API (datos.gov.co). Old closed processes without classifications are purged after 30 days.
 
 ---
 
@@ -161,3 +164,4 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 | **Gmail SMTP** | Email notifications (verification codes, request updates, document emails) |
 | **Redis** | Task queue backend for Huey |
 | **TinyMCE** | Rich text editor for dynamic documents |
+| **Socrata API (datos.gov.co)** | SECOP II public procurement data — daily sync of open processes |

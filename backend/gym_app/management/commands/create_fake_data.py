@@ -25,6 +25,7 @@ class Command(BaseCommand):
         call_command('create_processes', '--number_of_processes', number_of_records)
         call_command('create_dynamic_documents', '--num_documents', num_documents)
         call_command('create_activity_logs', '--activities_per_user', activities_per_user)
+        call_command('create_secop_data')
         
         self.stdout.write(self.style.SUCCESS(
             f'Successfully created fake data with {number_of_records} processes, '

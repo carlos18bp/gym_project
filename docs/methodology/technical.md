@@ -130,6 +130,8 @@ All configuration via `python-decouple` reading from `backend/.env`. See `backen
 | `REDIS_URL` | `redis://localhost:6379/1` | Redis URL for Huey |
 | `BACKUP_STORAGE_PATH` | `/var/backups/gym_project` | Backup storage path |
 | `ENABLE_SILK` | `false` | Enable django-silk profiling |
+| `SECOP_DATASET_ID` | `bt96-ncis` | Socrata dataset ID for SECOP II |
+| `SECOP_APP_TOKEN` | (empty) | Optional Socrata app token for higher rate limits |
 
 Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for client-side access.
 
@@ -149,6 +151,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **TailwindCSS + Flowbite** | Utility-first styling with pre-built component library |
 | **PWA via vite-plugin-pwa** | Offline-ready with minimal configuration; service worker auto-generation |
 | **Pre-commit + CI quality gate** | Automated test quality enforcement on every commit and PR |
+| **Socrata API (datos.gov.co)** | SECOP II public procurement data via `requests`; daily incremental sync; no SDK needed |
 
 ---
 
@@ -163,7 +166,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **Composables** | Vue composables for cross-cutting concerns (idle logout, PWA install, search, recent views, email) |
 | **Route Guards** | Auth check + role-based access control in Vue Router `beforeEach` |
 | **Lazy Route Loading** | All routes use dynamic `import()` with webpack chunk names |
-| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM) |
+| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM), SECOP sync (daily 6AM), alert summaries (daily 7AM / weekly Monday 7AM), purge closed processes (daily 3:30AM) |
 | **Serializer Validation** | DRF serializers handle all input validation |
 | **Email Templates** | MJML/HTML templates for transactional emails |
 
@@ -218,15 +221,17 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 12 files → 37 model classes (+ 1 UserManager)
-│   │   ├── views/            # 22 files (incl. dynamic_documents/ and layouts/ sub-packages)
-│   │   ├── serializers/      # 9 files
+│   │   ├── models/           # 13 files → 43 model classes (+ 1 UserManager) — incl. 6 SECOP models
+│   │   ├── views/            # 23 files (incl. dynamic_documents/, layouts/, secop)
+│   │   ├── serializers/      # 10 files — incl. secop.py
+│   │   ├── services/         # 3 files (secop_client, secop_sync_service, secop_alert_service)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
-│   │   ├── management/commands/ # 9 commands (fake data CRUD, silk GC)
-│   │   ├── templates/        # 17 email/PDF templates
+│   │   ├── management/commands/ # 10 commands (fake data CRUD, silk GC, sync_secop)
+│   │   ├── templates/        # 19 email/PDF templates — incl. 2 SECOP alert templates
 │   │   ├── tests/            # 63 test files (models, serializers, tasks, utils, views, commands)
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
-│   │   ├── urls.py           # 147 URL patterns
+│   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
+│   │   ├── urls.py           # 162 URL patterns (15 SECOP endpoints)
 │   │   └── admin.py          # Django admin configuration
 │   ├── scripts/              # run-tests-blocks.py (block-based test runner)
 │   ├── requirements.txt      # 99 lines, production dependencies
@@ -234,9 +239,9 @@ gym_project/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # 103 Vue components (11 subdirectories)
-│   │   ├── views/            # 34 page-level components (13 subdirectories)
-│   │   ├── stores/           # 34 store files (9 domain directories + 3 root files)
+│   │   ├── components/       # 109 Vue components (12 subdirectories) — incl. secop/
+│   │   ├── views/            # 36 page-level components (14 subdirectories) — incl. secop/
+│   │   ├── stores/           # 35 store files (10 domain directories + 3 root files) — incl. secop/
 │   │   ├── composables/      # 10 composable files (incl. document-variables/)
 │   │   ├── router/           # 1 file, 48 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)

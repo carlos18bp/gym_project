@@ -45,6 +45,42 @@ This file tracks known errors, their context, and resolutions. When a reusable f
 - **Resolution**: Switch to `RotatingFileHandler` with `maxBytes` and `backupCount`, or configure system-level logrotate
 - **Files Affected**: `backend/gym_project/settings.py` (LOGGING config)
 
+### [ISSUE-004] SECOP serializer N+1 query — `.filter()` on prefetched manager
+- **Date**: 2026-03-19
+- **Context**: `SECOPProcessListSerializer.get_my_classification` used `obj.classifications.filter(user=request.user).first()` which creates a new DB query per process even though the view prefetches classifications
+- **Root Cause**: Django's `.filter()` on a prefetched related manager creates a fresh queryset, bypassing the prefetch cache
+- **Resolution**: Iterate `obj.classifications.all()` in Python and match `c.user_id == user_id`. The `.all()` call uses the prefetch cache.
+- **Key Lesson**: When using `prefetch_related`, always access prefetched data via `.all()` and filter in Python, or use `Prefetch` with `to_attr`
+- **Files Affected**: `backend/gym_app/serializers/secop.py`
+
+### [ISSUE-005] SECOP alert `evaluate_process` false positives for budget-less processes
+- **Date**: 2026-03-19
+- **Context**: `SECOPAlert.evaluate_process` skipped the budget range check entirely when `process.base_price` was `None`, allowing processes without budget info to match alerts with budget criteria
+- **Root Cause**: The guard `if process.base_price:` is falsy for `None`, so the entire budget block was skipped
+- **Resolution**: Changed to check `if self.min_budget or self.max_budget:` first, then return `False` if `process.base_price is None`
+- **Files Affected**: `backend/gym_app/models/secop.py`
+
+### [ISSUE-006] SECOP `_parse_date` returned string instead of `datetime.date` object
+- **Date**: 2026-03-19
+- **Context**: `SECOPSyncService._parse_date` returned a raw string like `"2023-01-21"` instead of a proper `datetime.date` object
+- **Root Cause**: Method just split the string on `T` and returned it, unlike `_parse_datetime` which properly uses `parse_datetime`
+- **Resolution**: Added `django.utils.dateparse.parse_date` call to return a proper `date` object
+- **Files Affected**: `backend/gym_app/services/secop_sync_service.py`
+
+### [ISSUE-007] SECOP `secop_my_classified` missing `prefetch_related` and `page_size`
+- **Date**: 2026-03-19
+- **Context**: The `secop_my_classified` view didn't prefetch classifications (causing N+1) and omitted `page_size` from the paginated response (inconsistent with `secop_process_list`)
+- **Root Cause**: Omission during initial implementation
+- **Resolution**: Added `.prefetch_related('classifications')` to queryset and `page_size` to response dict. Updated frontend store to read `page_size` from response instead of hardcoding `20`.
+- **Files Affected**: `backend/gym_app/views/secop.py`, `frontend/src/stores/secop/index.js`
+
+### [ISSUE-008] Frontend `exportExcel` memory leak — missing `URL.revokeObjectURL`
+- **Date**: 2026-03-19
+- **Context**: The `exportExcel` store action created a blob URL for download but never revoked it
+- **Root Cause**: `URL.revokeObjectURL()` call was missing after `link.click()`
+- **Resolution**: Added `URL.revokeObjectURL(objectUrl)` after the download link is clicked and removed
+- **Files Affected**: `frontend/src/stores/secop/index.js`
+
 ---
 
 ## Resolved Issues
