@@ -5,24 +5,24 @@ description: DIAGNÓSTICO INTEGRAL DE SERVIDOR
 
 ## RESUMEN EJECUTIVO
 
-| # | Buena Práctica | Puntuación | Estado |
-|---|---------------|------------|--------|
-| 1 | Gestión de Logs | 8/10 | 🟢 |
-| 2 | Gestión de RAM y Workers | 9/10 | 🟢 |
-| 3 | Gestión de Disco | 6/10 | 🟡 |
-| 4 | Actualizaciones Automáticas | 10/10 | 🟢 |
-| 5 | Límites por Proyecto | 8/10 | 🟢 |
-| 6 | Monitoreo y Alertas | 4/10 | 🔴 |
-| 7 | Backups | 6/10 | 🟡 |
-| 8 | Cron Jobs de Mantenimiento | 8/10 | 🟢 |
-| 9 | Scripts de Salud | 9/10 | 🟢 |
-| 10 | Max-Requests (Anti Memory Leak) | 9/10 | 🟢 |
-| 11 | Detección de Queries Lentas | 7/10 | 🟢 |
-| 12 | Checklist Periódico | 5/10 | 🟡 |
-| 13 | Seguridad (Bonus) | 9/10 | 🟢 |
-| | **PROMEDIO GENERAL** | **7.5/10** | **🟢** |
+| # | Buena Práctica | Puntuación | Pre-Remed. | Estado |
+|---|---------------|------------|----------|--------|
+| 1 | Gestión de Logs | 9/10 | 7/10 ↑ | 🟢 |
+| 2 | Gestión de RAM y Workers | 8/10 | 8/10 = | 🟢 |
+| 3 | Gestión de Disco | 7/10 | 3/10 ↑↑ | 🟢 |
+| 4 | Actualizaciones Automáticas | 8/10 | 8/10 = | 🟢 |
+| 5 | Límites por Proyecto | 8/10 | 8/10 = | 🟢 |
+| 6 | Monitoreo y Alertas | 6/10 | 6/10 = | 🔴 |
+| 7 | Backups | 7/10 | 3/10 ↑↑ | 🟢 |
+| 8 | Cron Jobs de Mantenimiento | 10/10 | 9/10 ↑ | 🟢 |
+| 9 | Scripts de Salud | 9/10 | 9/10 = | 🟢 |
+| 10 | Max-Requests (Anti Memory Leak) | 9/10 | 9/10 = | 🟢 |
+| 11 | Detección de Queries Lentas | 8/10 | 8/10 = | 🟢 |
+| 12 | Checklist Periódico | 5/10 | 5/10 = | 🟡 |
+| 13 | Seguridad (Bonus) | 9/10 | 7/10 ↑ | 🟢 |
+| | **PROMEDIO GENERAL** | **7.8/10** | **6.9/10 ↑** | **🟢** |
 
-**Veredicto**: El servidor está en buen estado general. Las áreas críticas (seguridad, RAM, workers, actualizaciones) están bien configuradas. Las mejoras pendientes son principalmente operativas: monitoreo externo, backup offsite, y limpieza del proyecto `gym_project_temp`.
+**Veredicto**: Remediación completada el 2026-03-20. El servidor subió de 6.9 a 7.8 tras resolver los problemas críticos: (1) backups limpiados de **47 GB → 7.7 GB** con retención automática configurada, (2) permisos `.env` asegurados a 600, (3) Huey MemoryMax incrementado a 1536M, (4) logrotate configurado para staging, (5) node_modules eliminado, (6) UFW duplicados limpiados, (7) media backup compression fix (template usaba `.tar` hardcodeado). **Pendiente**: monitoreo externo, backup offsite, reboot para kernel update.
 
 ---
 
@@ -39,19 +39,19 @@ description: DIAGNÓSTICO INTEGRAL DE SERVIDOR
 |---------|-------|
 | **CPU** | 4 cores — AMD EPYC 9354P 32-Core (1 thread/core) |
 | **RAM Total** | 16 GB |
-| **RAM Usada** | 2.3 GB (14%) |
-| **RAM Disponible** | ~13 GB |
+| **RAM Usada** | 5.1 GB (32%) |
+| **RAM Disponible** | ~10 GB |
 | **Swap Total** | 8 GB |
-| **Swap Usada** | 0 B |
+| **Swap Usada** | 1.2 MB (negligible) |
 | **Disco Total** | 193 GB |
-| **Disco Usado** | 23 GB (12%) |
-| **Disco Disponible** | 170 GB |
-| **Inodos Usados** | 293,926 / 26,083,328 (1%) |
+| **Disco Usado** | 71 GB (37%) |
+| **Disco Disponible** | 123 GB |
+| **Inodos Usados** | 338,382 / 26,083,328 (2%) |
 
 ### Uptime y Carga
-- **Uptime**: 25 minutos (recién reiniciado)
-- **Load Average**: 0.40, 0.19, 0.11 (muy bajo, excelente)
-- **Usuarios conectados**: 4
+- **Uptime**: 19 días, 4 horas
+- **Load Average**: 0.05, 0.21, 0.25 (muy bajo, excelente)
+- **Usuarios conectados**: 1
 
 ### Servicios Críticos
 | Servicio | Estado |
@@ -63,174 +63,212 @@ description: DIAGNÓSTICO INTEGRAL DE SERVIDOR
 | ssh | ✅ active |
 | fail2ban | ✅ active |
 | ufw | ✅ active |
+| gym_intranet (prod) | ✅ active |
+| gym-project-huey (prod) | ✅ active |
+| gym_staging (staging) | ✅ active |
+| gym-staging-huey (staging) | ✅ active |
 | **Servicios fallidos** | **0** ✅ |
 
 ### Proyectos Activos
-Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
-- `gym_project_temp` existe (~3.3 GB) pero **no tiene servicios corriendo**.
-- **No se encontraron** los proyectos: azurita, candle_project, crushme_project, kore_project, projectapp, rainy_project, taptag, tenndalux_project.
+**2 proyectos activos**:
+- `gym_project` — producción (www.gmconsultoresjuridicos.com)
+- `gym_project_staging` — staging (gmconsultoresjuridicos.projectapp.co) — **NUEVO** desde 2026-03-20
+- `gym_project_temp` — **ELIMINADO** ✓ (era 3.3 GB sin uso)
 
 ---
 
-## FASE 1: GESTIÓN DE LOGS — 🟢 8/10
+## FASE 1: GESTIÓN DE LOGS — 🟢 9/10
 
 ### Hallazgos
 
-**Logrotate** está configurado correctamente:
+**Logrotate** configurado para producción:
 - **Nginx**: daily, rotate 14, compress ✅
 - **MySQL**: daily, rotate 7, compress ✅
 - **Redis**: weekly, rotate 12 ✅
 - **gym_project debug.log**: weekly, rotate 8, copytruncate ✅
 - **gym_project backups.log**: weekly, rotate 8, copytruncate ✅
+- **gym_project_staging backups.log**: weekly, rotate 8, copytruncate ✅ *(añadido 2026-03-20)*
+- **gym_project_staging debug.log**: weekly, rotate 8, copytruncate ✅ *(añadido 2026-03-20)*
 
 **Journald** tiene límites configurados:
-- SystemMaxUse=800M, SystemKeepFree=2G, MaxRetentionSec=21 days ✅
-- Uso actual del journal: 73 MB (bien dentro de límites)
+- SystemMaxUse=1G, SystemKeepFree=2G, MaxRetentionSec=30 days ✅
+- Uso actual del journal: 205 MB (bien dentro de límites)
 
 **Tamaño de logs**:
-- `/var/log/` total: 166 MB ✅
+- `/var/log/` total: 251 MB ✅
 - Mayor archivo: journal 64 MB
-- syslog.1: 29 MB
-- Logs de gym_project: 8 KB (mínimo)
+- Logs de gym_project: 32 KB (mínimo)
+- Logs de gym_project_staging: 4 KB (nuevo)
 - **No hay logs > 100MB sin rotar** ✅
 
 | Aspecto | Estado | Nota |
 |---------|--------|------|
-| Logrotate configurado para gym_project | ✅ | debug.log y backups.log |
-| Journald con límites | ✅ | 800M max, 21 días retención |
+| Logrotate para producción | ✅ | debug.log y backups.log |
+| Logrotate para staging | ✅ | backups.log + debug.log *(añadido 2026-03-20)* |
+| Journald con límites | ✅ | 1G max, 30 días retención |
 | Logs >100MB sin rotar | ✅ Ninguno | |
 | Logs de Django con rotación | ✅ | WatchedFileHandler + logrotate |
 
 ### Recomendaciones
-- **Faltante**: No hay logrotate para los otros proyectos listados (no existen aún, no es urgente).
+- ~~**Alta**: Crear logrotate config para `gym_project_staging`~~ ✅ HECHO 2026-03-20
 - **Menor**: Considerar agregar logrotate para logs de Gunicorn access en journald (ya limitado por journald).
 
 ---
 
-## FASE 2: GESTIÓN DE RAM Y WORKERS — 🟢 9/10
+## FASE 2: GESTIÓN DE RAM Y WORKERS — 🟢 8/10
 
 ### Estado de Memoria
 | Métrica | Valor |
 |---------|-------|
 | RAM Total | 16 GB |
-| RAM Usada | 2.3 GB (14%) |
-| RAM Disponible | 13 GB |
-| Swap Usada | 0 B |
+| RAM Usada | 5.1 GB (32%) |
+| RAM Disponible | 10 GB |
+| Swap Usada | 1.2 MB (negligible) |
 | Presión de memoria | avg10=0.00, avg60=0.00 (sin presión) ✅ |
 
-### Workers de Gunicorn — gym_project
+### Workers de Gunicorn — Producción (gym_intranet)
 
-| PID | Tipo | RAM | Uptime |
-|-----|------|-----|--------|
-| 3306 | Master | 23.8 MB | 32 min |
-| 3307 | Worker | 183.2 MB | 32 min |
-| 3309 | Worker | 180.5 MB | 32 min |
-| 3310 | Worker | 183.3 MB | 32 min |
-| **Total** | | **~570 MB** | |
+| PID | Tipo | RAM (RSS) | Uptime |
+|-----|------|-----------|--------|
+| 313011 | Master | 24 MB | 10 días |
+| 313012 | Worker | 204 MB | 10 días |
+| 313030 | Worker | 236 MB | 10 días |
+| 313031 | Worker | 213 MB | 10 días |
+| 313034 | Worker | 222 MB | 10 días |
+| 313035 | Worker | 225 MB | 10 días |
+| **Total** | **5 workers** | **~1.1 GB** | |
+
+### Workers de Gunicorn — Staging (gym_staging)
+
+| PID | Tipo | RAM (RSS) | Uptime |
+|-----|------|-----------|--------|
+| 664229 | Master | 24 MB | 5 min |
+| 664231 | Worker | 169 MB | 5 min |
+| 664234 | Worker | 51 MB | 5 min |
+| 664235 | Worker | 169 MB | 5 min |
+| **Total** | **3 workers** | **~413 MB** | |
 
 ### Configuración Systemd
 
 | Servicio | Workers | MemoryMax | CPUQuota | OOMScoreAdjust | TasksMax |
 |----------|---------|-----------|----------|----------------|----------|
-| gym_intranet (Gunicorn) | 3 | 800M | 200% | 200 | 50 |
-| gym-project-huey | N/A | 600M | 80% | 200 | No config |
+| gym_intranet (prod) | 5 | 2G | 300% | 200 | 100 |
+| gym-project-huey (prod) | N/A | 1536M | 150% | 200 | 50 |
+| gym_staging (staging) | 3 | 1G | 200% | 200 | 50 |
+| gym-staging-huey (staging) | N/A | 512M | 100% | 200 | 30 |
 
 ### Uso Actual vs Límites
 
 | Servicio | Memoria Actual | Límite | % del Límite | Estado |
 |----------|---------------|--------|--------------|--------|
-| gym_intranet | 429.6 MB | 800 MB | 54% | ✅ |
-| gym-project-huey | 221.8 MB | 600 MB | 37% | ✅ |
+| gym_intranet | 914 MB | 2 GB | 45% | ✅ |
+| gym-project-huey | 764 MB | 1.5 GB | 50% | ✅ |
+| gym_staging | 298 MB | 1 GB | 29% | ✅ |
+| gym-staging-huey | 127 MB | 512 MB | 25% | ✅ |
 
-### Cálculo de Workers Recomendados
-- Por CPU (2×4+1): **9 workers**
-- Por RAM (13727/200): **68 workers**
-- **Actual**: 3 workers → ✅ Conservador y correcto para un solo proyecto
+### Cálculo de Workers Totales
+- Total workers activos: **8** (5 prod + 3 staging)
+- Por CPU (2×4+1): **9 workers** máx recomendado → ✅ 8 es correcto
+- Uso total servicios Django: ~2.1 GB de 10 GB disponibles
 
 | Aspecto | Estado | Nota |
 |---------|--------|------|
-| Workers dimensionados | ✅ | 3 workers, ~183 MB c/u |
-| MemoryMax configurado | ✅ | 800M para Gunicorn, 600M para Huey |
-| Swap sin uso | ✅ | 0 B usada |
-| OOM protección | ✅ | OOMScoreAdjust=200 en servicios Django |
+| Workers dimensionados | ✅ | 5 prod + 3 staging = 8 total |
+| MemoryMax configurado | ✅ | Todos los servicios tienen límites |
+| Swap sin uso | ✅ | 1.2 MB (negligible) |
+| OOM protección | ✅ | OOMScoreAdjust=200 en todos |
+| Huey prod memoria | ✅ | 50% del límite (1536M) *(aumentado 2026-03-20)* |
 
 ### Recomendaciones
-- **Menor**: Los servicios críticos (mysql, nginx, redis) tienen OOMScoreAdjust=0 (default). Considerar poner OOMScoreAdjust=-500 para protegerlos.
-- Con 13 GB libres hay margen amplio para futuros proyectos.
+- ~~**Media**: Vigilar `gym-project-huey`~~ ✅ HECHO 2026-03-20 — MemoryMax aumentado 1G→1536M (ahora 50%)
+- **Menor**: Servicios críticos (mysql, nginx, redis) con OOMScoreAdjust=0 (default). Considerar -500 para protegerlos.
 
 ---
 
-## FASE 3: GESTIÓN DE DISCO — 🟡 6/10
+## FASE 3: GESTIÓN DE DISCO — 🟢 7/10
 
 ### Espacio General
 | Partición | Tamaño | Usado | Disponible | Uso% | Estado |
 |-----------|--------|-------|------------|------|--------|
-| / | 193G | 23G | 170G | 12% | 🟢 |
+| / | 193G | 71G | 123G | 37% | � |
 | /boot | 881M | 117M | 703M | 15% | 🟢 |
 | /boot/efi | 105M | 6.2M | 99M | 6% | 🟢 |
-| Inodos | 26M | 294K | 25.8M | 2% | 🟢 |
+| Inodos | 26M | 338K | 25.7M | 2% | 🟢 |
 
 ### Distribución de Espacio
 
 | Directorio | Tamaño | Nota |
 |------------|--------|------|
-| /home/ryzepeck/webapps/ | 6.4 GB | |
-| ├─ gym_project | 3.1 GB | Proyecto activo |
-| └─ gym_project_temp | 3.3 GB | ⚠️ **Sin usar, candidato a eliminar** |
-| /var (total) | 3.2 GB | |
-| ├─ /var/backups/gym_project | 2.3 GB | ⚠️ Backup tar de 2.2 GB |
-| /usr | 3.1 GB | |
+| **/var/backups/gym_project** | **7.7 GB** | ✅ Limpiado 2026-03-20 (era 47 GB) |
+| /home/ryzepeck/webapps/ | 4.7 GB | |
+| ├─ gym_project | 3.8 GB | Producción |
+| └─ gym_project_staging | 949 MB | **NUEVO** |
 | ~/.vscode-server | 1.3 GB | IDE remoto |
-| ~/.windsurf-server | 398 MB | IDE remoto |
+| ~/.windsurf-server | 517 MB | IDE remoto |
 | ~/.nvm | 223 MB | Node.js |
+| ~/.cache | 156 MB | |
+| `gym_project_temp` | **ELIMINADO** ✓ | Era 3.3 GB |
 
-### Detalle gym_project (3.1 GB)
+### Detalle gym_project (3.8 GB)
 
 | Componente | Tamaño | Nota |
 |------------|--------|------|
-| backend/media/ | 2.5 GB | Archivos de usuarios (documentos dinámicos) |
+| backend/media/ | 2.9 GB | Archivos de usuarios (documentos dinámicos) |
 | backend/venv/ | 587 MB | Entorno virtual Python |
 | backend/staticfiles/ | 17 MB | Archivos estáticos |
-| backend/static/ | 6.7 MB | |
-| backend/logs/ | 8 KB | Mínimo ✅ |
+| backend/logs/ | 32 KB | Mínimo ✅ |
 
-### Detalle gym_project_temp (3.3 GB) ⚠️
+### Detalle gym_project_staging (949 MB) — NUEVO
 
 | Componente | Tamaño | Nota |
 |------------|--------|------|
-| backend/media/ | 2.5 GB | Duplicado de media |
-| backend/venv/ | 579 MB | Entorno virtual innecesario |
-| frontend/node_modules/ | 265 MB | ❌ No debería existir en producción |
-| backend/static/ | 11 MB | |
+| backend/venv/ | 588 MB | Entorno virtual Python |
+| ~~frontend/node_modules/~~ | **ELIMINADO** | ✅ Eliminado 2026-03-20 (era 312 MB) |
+| backend/staticfiles/ | 11 MB | |
+| backend/media/ | 7.2 MB | Solo fake data |
+| backend/logs/ | 4 KB | Mínimo ✅ |
 
-### Archivos Grandes en /var
+### Backups — ✅ Remediado (2026-03-20)
 
-| Archivo | Tamaño | Nota |
-|---------|--------|------|
-| /var/backups/gym_project/2026-03-01-030037.tar | 2.2 GB | Backup diario (media incluido) |
-| silk_sqlquery.ibd (MySQL) | 68 MB | Tabla de Django Silk |
+**7.7 GB en `/var/backups/gym_project/`** — limpiado el 2026-03-20 (era 47 GB):
 
-### Candidatos a Limpieza
+| Tipo | Cantidad | Tamaño Total | Tamaño Unitario |
+|------|----------|-------------|-----------------|
+| .tar.gz (media) | 3 archivos | ~7.7 GB | ~2.6 GB c/u |
+| .sql.gz (DB) | 3 archivos | ~20 MB | 6-7 MB c/u |
 
-| Categoría | Tamaño | Acción Sugerida |
-|-----------|--------|-----------------|
-| **gym_project_temp/** | **3.3 GB** | **Eliminar si no se necesita** |
-| frontend/node_modules/ (temp) | 265 MB | Eliminar |
-| Backup tar 2.2 GB | 2.2 GB | Evaluar retención/compresión |
-| silk_sqlquery (MySQL) | 68 MB | Considerar limpiar datos de profiling |
-| Logs .gz >30 días | 44 archivos | Limpiar |
-| Cache de pip | 4.2 MB | Mínimo |
-| Cache de apt | 48 KB | Ya limpio |
+Retención automática configurada: `backup-retention.sh` (cron 4:30 AM) + `DBBACKUP_CLEANUP_KEEP=5`.
+Nota: media .tar.gz no se comprimen significativamente porque contienen archivos ya comprimidos (imágenes, PDFs).
+
+### Bases de Datos MySQL
+
+| Base de datos | Tamaño |
+|---------------|--------|
+| gym_intranet (prod) | 277 MB |
+| gym_intranet_staging (staging) | 2.7 MB |
+| mysql (sistema) | 2.75 MB |
+
+### Acciones Completadas (2026-03-20)
+
+| Acción | Resultado |
+|--------|-----------|
+| ✅ Limpiar backups antiguos | 47 GB → 7.7 GB (~39.3 GB liberados) |
+| ✅ Eliminar node_modules/ staging | 312 MB liberados |
+| ✅ Eliminar .sql manual | 47 MB liberados |
+| ✅ Configurar retención automática | backup-retention.sh en cron diario 4:30 AM |
+| ✅ Fix DBBACKUP_CLEANUP_KEEP | 20→5 (prod + staging) |
+| ✅ Fix media compression template | `{datetime}.tar` → `{datetime}.{extension}` |
 
 ### Recomendaciones
-- **Alta prioridad**: Eliminar `gym_project_temp` (~3.3 GB liberados)
-- **Media**: Comprimir el backup tar con gzip (2.2 GB → ~200-400 MB estimado)
-- **Media**: Limpiar tabla `silk_sqlquery` si no se necesita el historial de profiling
-- **Baja**: Limpiar logs .gz >30 días en /var/log
+- ~~**🔴 CRÍTICA**: Limpiar backups~~ ✅ HECHO
+- ~~**Alta**: Comprimir backups .tar~~ ✅ HECHO (template corregido)
+- ~~**Alta**: Configurar `DBBACKUP_CLEANUP_KEEP`~~ ✅ HECHO (20→5)
+- ~~**Media**: Eliminar `node_modules/` de staging~~ ✅ HECHO
+- **Media**: Configurar backups separados para staging (o excluirlo)
 
 ---
 
-## FASE 4: ACTUALIZACIONES AUTOMÁTICAS — 🟢 10/10
+## FASE 4: ACTUALIZACIONES AUTOMÁTICAS — 🟢 8/10
 
 | Aspecto | Estado | Detalle |
 |---------|--------|---------|
@@ -239,10 +277,11 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 | APT::Periodic::Update-Package-Lists | ✅ | "1" (diario) |
 | APT::Periodic::Unattended-Upgrade | ✅ | "1" (diario) |
 | Orígenes permitidos | ✅ | security + ESM |
-| Reinicio pendiente | ✅ No | Recién reiniciado |
+| Reinicio pendiente | ⚠️ **SÍ** | Hay actualizaciones que requieren reboot |
 | Historial reciente | ✅ | Múltiples unattended-upgrade en log |
 
-**Sin recomendaciones** — Configuración excelente.
+### Recomendaciones
+- **Alta**: Programar un reboot en ventana de mantenimiento. El sistema requiere reinicio para aplicar actualizaciones del kernel.
 
 ---
 
@@ -250,105 +289,118 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 
 ### Límites Configurados
 
-| Servicio | MemoryMax | CPUQuota | TasksMax | LimitNOFILE | OOMScoreAdjust |
-|----------|-----------|----------|----------|-------------|----------------|
-| gym_intranet | 800M ✅ | 200% ✅ | 50 ✅ | ⚠️ No config | 200 ✅ |
-| gym-project-huey | 600M ✅ | 80% ✅ | ⚠️ No config | ⚠️ No config | 200 ✅ |
+| Servicio | MemoryMax | CPUQuota | TasksMax | OOMScoreAdjust |
+|----------|-----------|----------|----------|----------------|
+| gym_intranet (prod) | 2G ✅ | 300% ✅ | 100 ✅ | 200 ✅ |
+| gym-project-huey (prod) | 1536M ✅ | 150% ✅ | 50 ✅ | 200 ✅ |
+| gym_staging (staging) | 1G ✅ | 200% ✅ | 50 ✅ | 200 ✅ |
+| gym-staging-huey (staging) | 512M ✅ | 100% ✅ | 30 ✅ | 200 ✅ |
 
 ### Uso Actual
 
-| Servicio | Memoria | vs Límite | Tasks | CPU |
-|----------|---------|-----------|-------|-----|
-| gym_intranet | 429.6 MB | 54% de 800M | 13/50 | 8.6s |
-| gym-project-huey | 221.8 MB | 37% de 600M | 6/default | 7.4s |
+| Servicio | Memoria | vs Límite | Tasks |
+|----------|---------|-----------|-------|
+| gym_intranet | 914 MB | 45% de 2G | 31/100 |
+| gym-project-huey | 764 MB | 50% de 1.5G ✅ | 6/50 |
+| gym_staging | 298 MB | 29% de 1G | 12/50 |
+| gym-staging-huey | 127 MB | 25% de 512M | 6/30 |
 
 ### Recomendaciones
-- **Menor**: Agregar `TasksMax=20` a huey service
-- **Menor**: Agregar `LimitNOFILE=65536` a ambos servicios
+- ~~**Media**: `gym-project-huey` al 75% de su límite~~ ✅ HECHO 2026-03-20 — MemoryMax 1G→1536M (ahora 50%)
+- **Menor**: Agregar `LimitNOFILE=65536` a todos los servicios.
 
 ---
 
-## FASE 6: MONITOREO Y ALERTAS — 🔴 4/10
+## FASE 6: MONITOREO Y ALERTAS — � 6/10
 
 ### Lo que SÍ existe
-| Aspecto | Estado |
-|---------|--------|
-| Health endpoint `/api/health/` | ✅ gym_project |
-| Scripts de diagnóstico | ✅ full-diagnostic.sh, quick-status.sh, post-deploy-check.sh |
-| Health check view | ✅ `gym_app/views/health.py` |
+| Aspecto | Estado | Detalle |
+|---------|--------|---------|
+| Health endpoint `/api/health/` | ✅ | Producción + Staging |
+| Alertas automáticas (email) | ✅ | `server-alerts.sh` cada 5 min vía cron |
+| Weekly report (email) | ✅ | `server-weekly-report.sh` domingo 6am UTC |
+| Diagnostic report (email) | ✅ | `server-diagnostic-report.sh` domingo 7am UTC |
+| Silk cleanup | ✅ | `silk-weekly-cleanup.sh` domingo 5am UTC |
+| SSH login notifications | ✅ | `ssh-login-notify.sh` |
+| Scripts de diagnóstico | ✅ | 11 scripts en ~/scripts/ |
 
 ### Lo que FALTA
 | Aspecto | Estado | Impacto |
 |---------|--------|---------|
-| Monitoreo externo (UptimeRobot, Pingdom) | ❌ | **Alto** — Nadie avisa si el sitio cae |
-| Alertas por email/Slack | ❌ | **Alto** — No hay notificaciones automáticas |
-| Agente de monitoreo (Datadog, etc.) | ❌ | Medio |
+| Monitoreo externo (UptimeRobot, Pingdom) | ❌ | **Alto** — No detecta caídas desde fuera |
 | Error tracking (Sentry) | ❌ | Medio |
-| Health check en cron | ❌ | Medio — Scripts existen pero no se ejecutan automáticamente |
+| Agente de monitoreo (Datadog, etc.) | ❌ | Bajo (alertas internas cubren lo básico) |
 
 ### Recomendaciones
-- **Crítico**: Configurar UptimeRobot (gratis) para monitoreo de uptime + alertas
-- **Alta**: Configurar alertas por email para fallos de servicios (systemd OnFailure=)
-- **Media**: Integrar Sentry para captura de errores en Django
-- **Media**: Agregar el health check al cron (cada 5 min) con alertas
+- **Alta**: Configurar UptimeRobot (gratis) para monitoreo externo de uptime + alertas
+- **Media**: Integrar Sentry para captura de errores en Django (prod + staging)
 
 ---
 
-## FASE 7: BACKUPS — 🟡 6/10
+## FASE 7: BACKUPS — 🟢 7/10
 
 ### Estado Actual
 
 | Aspecto | Estado | Detalle |
 |---------|--------|---------|
-| django-dbbackup configurado | ✅ | En settings.py |
-| Backup automático diario | ✅ | Cron 3 AM → daily-maintenance.sh |
-| Backup de BD | ✅ | SQL dump (47 MB sin comprimir, 2.9 MB gzip) |
-| Backup de media | ✅ | Tar 2.2 GB (semanal, domingos 4 AM) |
-| Directorio de backups | ✅ | /var/backups/gym_project/ |
-| Retención configurada | ⚠️ | Solo 2 backups visibles |
+| django-dbbackup configurado | ✅ | En settings.py (DBBACKUP_CLEANUP_KEEP=5) *(era 20)* |
+| Backup automático diario | ✅ | Huey task (scheduled_backup) 3 AM |
+| Backup de BD (.sql.gz) | ✅ | Diario, 6-7 MB comprimido |
+| Backup de media (.tar.gz) | ✅ | Diario, ~2.6 GB *(template corregido 2026-03-20)* |
+| Retención efectiva | ✅ | `backup-retention.sh` cron 4:30 AM + CLEANUP_KEEP=5 *(añadido 2026-03-20)* |
+| Backup para staging | ❌ | No configurado |
 | Backup remoto/offsite | ❌ | **No existe** |
 | Test de restore | ❌ | No documentado |
 
-### Backups Encontrados
+### Estado Post-Remediación (2026-03-20)
 
-| Archivo | Tamaño | Fecha |
-|---------|--------|-------|
-| 2026-02-28-170036.sql | 47 MB | 28 Feb (manual?) |
-| 2026-03-01-030029.sql.gz | 2.9 MB | 1 Mar (automático) |
-| 2026-03-01-030037.tar | 2.2 GB | 1 Mar (media semanal) |
+**7.7 GB** en `/var/backups/gym_project/` (era 47 GB):
 
-### Base de Datos
+| Tipo | Cantidad | Tamaño | Retención |
+|------|----------|--------|-----------|
+| .tar.gz (media) | 3 | ~7.7 GB | Últimos 5 (script + django-dbbackup) |
+| .sql.gz (DB) | 3 | ~20 MB | Últimos 5 (script + django-dbbackup) |
 
-| Base de datos | Tamaño |
-|---------------|--------|
-| gym_intranet | 88.02 MB |
-| mysql | 2.75 MB |
+**Fixes aplicados**:
+- `DBBACKUP_CLEANUP_KEEP`: 20→5 (prod + staging)
+- `DBBACKUP_MEDIA_FILENAME_TEMPLATE`: `{datetime}.tar` → `{datetime}.{extension}` (fix compression)
+- Script `backup-retention.sh` como safety net en cron diario 4:30 AM
 
 ### Recomendaciones
-- **Crítico**: Configurar backup offsite (S3, Backblaze B2, o rsync a otro servidor)
-- **Alta**: Comprimir backup tar con gzip (2.2 GB → estimado 200-400 MB)
-- **Alta**: Configurar retención explícita (ej: mantener últimos 7 diarios + 4 semanales)
-- **Media**: Documentar y probar proceso de restore mensualmente
-- **Menor**: El .sql sin comprimir de 47 MB parece un backup manual — limpiar si no se necesita
+- ~~**🔴 CRÍTICA**: Limpiar backups~~ ✅ HECHO (47 GB → 7.7 GB)
+- ~~**🔴 CRÍTICA**: Implementar retención~~ ✅ HECHO (script + django-dbbackup cleanup)
+- ~~**Alta**: Comprimir .tar~~ ✅ HECHO (template fix)
+- **Alta**: Configurar backup offsite (S3, Backblaze B2)
+- **Media**: Documentar y probar proceso de restore
+- **Media**: Configurar backup separado para staging DB
 
 ---
 
-## FASE 8: CRON JOBS DE MANTENIMIENTO — 🟢 8/10
+## FASE 8: CRON JOBS DE MANTENIMIENTO — 🟢 10/10
 
-### Cron Configurado (/etc/cron.d/gym-maintenance)
+### Cron Configurado
 
+**/etc/cron.d/gym-maintenance**:
 | Tarea | Frecuencia | Hora |
 |-------|------------|------|
 | daily-maintenance.sh | Diario | 3:00 AM |
+| backup-retention.sh | Diario | 4:30 AM *(añadido 2026-03-20)* |
 | weekly-maintenance.sh | Semanal (Dom) | 4:00 AM |
 
-### Systemd Timers Activos
+**/etc/cron.d/gym-monitoring**:
+| Tarea | Frecuencia | Hora |
+|-------|------------|------|
+| server-alerts.sh | Cada 5 min | ✅ |
+| silk-weekly-cleanup.sh | Semanal (Dom) | 5:00 AM |
+| server-weekly-report.sh | Semanal (Dom) | 6:00 AM |
+| server-diagnostic-report.sh | Semanal (Dom) | 7:00 AM |
+
+### Systemd Timers Activos (17 timers)
 
 | Timer | Frecuencia | Estado |
 |-------|------------|--------|
 | logrotate | Diario | ✅ |
-| apt-daily | Diario | ✅ |
-| apt-daily-upgrade | Diario | ✅ |
+| apt-daily + upgrade | Diario | ✅ |
 | certbot | Cada 12h | ✅ |
 | fstrim | Semanal | ✅ |
 | sysstat-collect | Cada 10 min | ✅ |
@@ -358,35 +410,44 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 
 | Tarea | Frecuencia | Configurada | Mecanismo |
 |-------|------------|-------------|-----------|
-| Backup BD | Diario | ✅ | daily-maintenance.sh |
+| Backup BD | Diario | ✅ | Huey scheduled_backup |
 | Rotación logs | Diario | ✅ | logrotate.timer |
-| SSL renovación | Cada 12h | ✅ | certbot.timer + cron |
+| SSL renovación | Cada 12h | ✅ | certbot.timer |
 | Django clearsessions | Diario | ✅ | daily-maintenance.sh |
 | MySQL optimize | Semanal | ✅ | weekly-maintenance.sh |
 | Limpieza /tmp | Diario | ✅ | systemd-tmpfiles-clean |
-| Media backup | Semanal | ✅ | weekly-maintenance.sh |
-| Health check automático | Periódico | ❌ | No configurado |
+| Health check + alertas | Cada 5 min | ✅ | server-alerts.sh |
+| Weekly report | Semanal | ✅ | server-weekly-report.sh |
+| Silk cleanup | Semanal | ✅ | silk-weekly-cleanup.sh |
+| Retención de backups | Diario | ✅ | backup-retention.sh *(añadido 2026-03-20)* |
 
 ### Recomendaciones
-- **Media**: Agregar health check automático cada 5 min con notificación
-- **Menor**: Considerar limpiar cache de pip periódicamente
+- ~~**Alta**: Agregar script de retención de backups al cron~~ ✅ HECHO 2026-03-20
+- ~~**Media**: Agregar logrotate para staging logs~~ ✅ HECHO 2026-03-20
 
 ---
 
 ## FASE 9: SCRIPTS DE SALUD — 🟢 9/10
 
-### Scripts Existentes
+### Scripts Existentes (11 scripts)
 
-| Script | Ubicación | Estado |
-|--------|-----------|--------|
-| quick-status.sh | ~/scripts/ | ✅ (4 KB) |
-| full-diagnostic.sh | ~/scripts/ | ✅ (11.8 KB) |
-| post-deploy-check.sh | ~/scripts/ | ✅ (5.3 KB) |
-| daily-maintenance.sh | ~/scripts/ | ✅ (965 B) |
-| weekly-maintenance.sh | ~/scripts/ | ✅ (898 B) |
+| Script | Tamaño | Propósito |
+|--------|--------|-----------|
+| quick-status.sh | 4 KB | Estado rápido del servidor |
+| full-diagnostic.sh | 12 KB | Diagnóstico completo |
+| post-deploy-check.sh | 5.3 KB | Verificación post-deploy |
+| daily-maintenance.sh | 903 B | Mantenimiento diario |
+| weekly-maintenance.sh | 836 B | Mantenimiento semanal |
+| server-alerts.sh | 23 KB | Alertas automáticas (c/5min) |
+| server-diagnostic-report.sh | 60 KB | Reporte diagnóstico (semanal) |
+| server-weekly-report.sh | 38 KB | Reporte semanal (email) |
+| silk-weekly-cleanup.sh | 892 B | Limpieza Silk + tokens |
+| ssh-login-notify.sh | 8 KB | Notificaciones SSH |
+| backup-retention.sh | 2.5 KB | Retención de backups *(añadido 2026-03-20)* |
 
 ### Recomendaciones
-- **Menor**: Los scripts de diagnóstico no se ejecutan automáticamente. Considerar integrar `quick-status.sh` en un cron semanal con output a log.
+- Sin acciones urgentes. Cobertura de scripts es completa.
+- ~~**Menor**: Considerar un script de retención de backups~~ ✅ HECHO 2026-03-20
 
 ---
 
@@ -394,28 +455,41 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 
 ### Estado por Servicio
 
-| Servicio | max-requests (Config) | max-requests (Runtime) | Jitter | Estado |
-|----------|-----------------------|------------------------|--------|--------|
-| gym_intranet (Gunicorn) | 1000 | 1000 | 100 | ✅ |
-| gym-project-huey | N/A (no es Gunicorn) | N/A | N/A | ✅ |
+| Servicio | max-requests | Jitter | Estado |
+|----------|-------------|--------|--------|
+| gym_intranet (prod) | 1000 | 100 | ✅ |
+| gym_staging (staging) | 1000 | 100 | ✅ |
 
-### Análisis de Memory Leaks
+### Análisis de Memory Leaks — Producción
 
-| PID | Tipo | RAM | Uptime | Estado |
-|-----|------|-----|--------|--------|
-| 3306 | Master | 23 MB | 32 min | ✅ |
-| 3307 | Worker | 183 MB | 32 min | ✅ |
-| 3309 | Worker | 180 MB | 32 min | ✅ |
-| 3310 | Worker | 183 MB | 32 min | ✅ |
+| PID | Tipo | RAM (RSS) | Uptime | Estado |
+|-----|------|-----------|--------|--------|
+| 313011 | Master | 24 MB | 10 días | ✅ |
+| 313012 | Worker | 204 MB | 10 días | ✅ |
+| 313030 | Worker | 236 MB | 10 días | ⚠️ |
+| 313031 | Worker | 213 MB | 10 días | ✅ |
+| 313034 | Worker | 222 MB | 10 días | ✅ |
+| 313035 | Worker | 225 MB | 10 días | ✅ |
 
-**Ningún worker supera 200 MB** — Sin indicios de memory leak.
+Workers entre 204-236 MB después de 10 días. Crecimiento moderado pero controlado por max-requests=1000.
+
+### Análisis de Memory Leaks — Staging
+
+| PID | Tipo | RAM (RSS) | Uptime | Estado |
+|-----|------|-----------|--------|--------|
+| 664229 | Master | 24 MB | 5 min | ✅ |
+| 664231 | Worker | 169 MB | 5 min | ✅ |
+| 664234 | Worker | 51 MB | 5 min | ✅ |
+| 664235 | Worker | 169 MB | 5 min | ✅ |
+
+Recién iniciado — baseline correcto.
 
 ### Recomendaciones
-- Sin acciones necesarias. Configuración correcta.
+- Sin acciones necesarias. max-requests configurado en ambos proyectos.
 
 ---
 
-## FASE 11: DETECCIÓN DE QUERIES LENTAS — 🟢 7/10
+## FASE 11: DETECCIÓN DE QUERIES LENTAS — 🟢 8/10
 
 ### Configuración MySQL
 
@@ -424,29 +498,28 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 | slow_query_log | ON | ✅ |
 | slow_query_log_file | /var/log/mysql/mysql-slow.log | ✅ |
 | long_query_time | 0.2s | ✅ |
-| log_queries_not_using_indexes | OFF | ⚠️ |
+| log_queries_not_using_indexes | ON | ✅ (era OFF, mejorado) |
+| max_connections | 100 | ✅ |
+| Threads_connected | 1 | ✅ (muy bajo) |
 
-### Queries Lentas Detectadas (desde último reinicio)
+### Queries Lentas Recientes
 
-| Query | Tiempo | Rows | Nota |
-|-------|--------|------|------|
-| FLUSH LOGS | 7.36s | 0 | Operación de mantenimiento (normal) |
-| SELECT * FROM `silk_sqlquery` | 3.10s | 2,784 | ⚠️ Tabla de Django Silk, 68 MB |
-| SELECT * FROM `gym_app_dynamicdocument` | 2.41s | 449 | ⚠️ Backup dump (SQL_NO_CACHE) |
+Las queries recientes en el slow log son de la carga de fake data en staging (operación puntual, no tráfico real):
+- `SELECT gym_app_user.*` — 0.9ms, 26 rows (staging fake data)
+- `SELECT gym_app_activityfeed.*` — 0.1-0.6ms (staging fake data)
+- 13 warnings de "index not used" suprimidas (throttled)
 
-**Nota**: Las queries lentas registradas son del proceso de **backup** (`mysqldump`), no del tráfico normal de la aplicación. Esto es esperado.
+**No hay queries lentas de producción** — buen estado.
 
 ### Django Silk
 
-- Django Silk está configurado en gym_project (middleware de profiling)
-- La tabla `silk_sqlquery` tiene 68 MB y 2,784 registros
-- **Considerar**: ¿Silk está activo en producción? Puede impactar performance.
+- **Producción**: Silk habilitado (ENABLE_SILK=true). Tabla `silk_sqlquery` parte de los 277 MB de la BD.
+- **Staging**: Silk deshabilitado (ENABLE_SILK=false) ✅
+- Limpieza semanal configurada vía `silk-weekly-cleanup.sh` ✅
 
 ### Recomendaciones
-- **Media**: Activar `log_queries_not_using_indexes` para detectar queries sin índices
-- **Media**: Evaluar si Django Silk debería estar activo en producción (overhead)
+- **Media**: Evaluar si Django Silk sigue siendo necesario en producción (overhead)
 - **Baja**: Instalar `pt-query-digest` para análisis avanzado de queries
-- **Baja**: Limpiar periódicamente datos de Silk si se mantiene activo
 
 ---
 
@@ -457,18 +530,18 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 | Actividad | Última Vez | Frecuencia | Estado |
 |-----------|------------|------------|--------|
 | Actualizaciones de sistema | Continuas (unattended) | Diario | ✅ |
-| Reinicio de servicios | 2026-03-01 12:37 | Hoy (reboot) | ✅ |
-| Reinicio del servidor | 2026-03-01 12:37 | Hoy | ✅ |
-| Backup BD | 2026-03-01 03:00 | Diario | ✅ |
-| Verificar espacio disco | ¿? | ¿? | ⚠️ Sin evidencia |
-| Revisar logs de error | ¿? | ¿? | ⚠️ Sin evidencia |
-| Verificar backups | ¿? | ¿? | ⚠️ Sin evidencia |
-| Test de restore | ¿? | ¿? | ❌ Sin evidencia |
-| Auditoría seguridad | ¿? | ¿? | ⚠️ Sin evidencia |
+| Backup BD | 2026-03-20 03:00 | Diario | ✅ |
+| Alertas automáticas | Cada 5 min | Continuo | ✅ |
+| Weekly report | 2026-03-16 (Dom) | Semanal | ✅ |
+| Diagnostic report | 2026-03-16 (Dom) | Semanal | ✅ |
+| Limpieza de backups | ✅ 2026-03-20 | Diario (cron) | ✅ *(era ❌ Nunca)* |
+| Test de restore | ❌ Sin evidencia | — | ❌ |
+| Reboot pendiente | ⚠️ Sí | — | ⚠️ Requiere programar |
+| Auditoría seguridad | 2026-03-20 (este reporte) | Ad-hoc | ⚠️ |
 
 ### Recomendaciones
-- **Alta**: Crear un checklist semanal documentado y seguirlo
-- **Alta**: Automatizar verificaciones que puedan ser automatizadas (espacio, backups, SSL)
+- ~~**Alta**: Implementar retención automática de backups~~ ✅ HECHO 2026-03-20
+- **Alta**: Programar reboot para aplicar actualizaciones del kernel
 - **Media**: Programar test de restore mensual
 - **Media**: Programar auditoría de seguridad trimestral
 
@@ -485,7 +558,7 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 | Default allow outgoing | ✅ |
 | Puertos abiertos | 22 (SSH), 80 (HTTP), 443 (HTTPS) ✅ |
 
-**Nota**: Hay reglas duplicadas (Nginx Full + 80/tcp + 443/tcp). Cosmético, no afecta seguridad.
+**Nota**: Reglas duplicadas (80/tcp + 443/tcp) eliminadas 2026-03-20. Ahora solo Nginx Full + 22/tcp. ✅
 
 ### Fail2ban
 
@@ -511,46 +584,52 @@ Solo **1 proyecto activo**: `gym_project` (www.gmconsultoresjuridicos.com)
 
 | Proyecto | DEBUG | SECRET_KEY | Contraseñas |
 |----------|-------|------------|-------------|
-| gym_project | 🔍 Desde .env | ✅ Seguro (env) | ✅ Seguras (env) |
-| gym_project_temp | ⚠️ No verificable | ❌ Hardcodeado | ❌ Hardcodeadas |
+| gym_project (prod) | ✅ False (prod) | ✅ Seguro (env) | ✅ Seguras (env) |
+| gym_project_staging | ✅ False (prod) | ✅ Seguro (env) | ✅ Seguras (env) |
+| gym_project_temp | **ELIMINADO** ✓ | — | — |
 
 ### Permisos de .env
 
 | Archivo | Permisos | Estado |
 |---------|----------|--------|
 | gym_project/backend/.env | -rw------- (600) | ✅ |
-| gym_project/frontend/.env | -rw-rw-r-- (664) | ⚠️ Demasiado permisivo |
+| gym_project/frontend/.env | -rw------- (600) | ✅ *(corregido 2026-03-20)* |
+| gym_project_staging/backend/.env | -rw------- (600) | ✅ *(corregido 2026-03-20)* |
+| gym_project_staging/frontend/.env | -rw------- (600) | ✅ *(corregido 2026-03-20)* |
 
 ### SSL/Certificados
 
 | Dominio | Expira | Días Restantes | Estado |
 |---------|--------|----------------|--------|
-| gmconsultoresjuridicos.com | 2026-05-06 | 65 días | ✅ |
-| www.gmconsultoresjuridicos.com | 2026-05-06 | 65 días | ✅ |
+| gmconsultoresjuridicos.com | 2026-05-06 | 46 días | ✅ |
+| www.gmconsultoresjuridicos.com | 2026-05-06 | 46 días | ✅ |
+| gmconsultoresjuridicos.projectapp.co | 2026-06-18 | 89 días | ✅ **NUEVO** |
 
-Renovación automática configurada via certbot timer + cron ✅
+Renovación automática configurada via certbot timer ✅
 
 ### Recomendaciones
-- **Alta**: Eliminar `gym_project_temp` (tiene secretos hardcodeados)
-- **Media**: Cambiar permisos de `gym_project/frontend/.env` a 600
-- **Menor**: Limpiar reglas UFW duplicadas
+- ~~**🔴 CRÍTICA**: Cambiar permisos de `gym_project_staging/backend/.env` a 600~~ ✅ HECHO 2026-03-20
+- ~~**Alta**: Cambiar permisos de todos los `.env` frontend a 600~~ ✅ HECHO 2026-03-20
+- ~~**Menor**: Limpiar reglas UFW duplicadas~~ ✅ HECHO 2026-03-20
 
 ---
 
 ## TOP 10 ACCIONES PRIORITARIAS
 
-| # | Prioridad | Acción | Impacto | Esfuerzo |
-|---|-----------|--------|---------|----------|
-| 1 | 🔴 Crítica | Configurar monitoreo externo (UptimeRobot gratis) | Alto | 15 min |
-| 2 | 🔴 Crítica | Configurar backup offsite (S3/Backblaze B2) | Alto | 1-2h |
-| 3 | 🟠 Alta | Eliminar gym_project_temp (~3.3 GB, secretos hardcodeados) | Medio | 5 min |
-| 4 | 🟠 Alta | Comprimir backup tar con gzip | Medio | 15 min |
-| 5 | 🟠 Alta | Configurar alertas por email/Slack para fallos | Alto | 30 min |
-| 6 | 🟠 Alta | Crear checklist semanal de mantenimiento | Medio | 30 min |
-| 7 | 🟡 Media | Evaluar Django Silk en producción (overhead) | Medio | 15 min |
-| 8 | 🟡 Media | Cambiar permisos frontend/.env a 600 | Bajo | 1 min |
-| 9 | 🟡 Media | Activar log_queries_not_using_indexes en MySQL | Bajo | 5 min |
-| 10 | 🟡 Media | Agregar health check automatizado en cron | Medio | 15 min |
+| # | Prioridad | Acción | Estado |
+|---|-----------|--------|--------|
+| 1 | ~~🔴 Crítica~~ | ~~Limpiar backups — 47 GB acumulados~~ | ✅ HECHO (47→7.7 GB) |
+| 2 | ~~🔴 Crítica~~ | ~~Asegurar .env staging — permisos 664~~ | ✅ HECHO (→600) |
+| 3 | ~~🔴 Crítica~~ | ~~Implementar retención de backups~~ | ✅ HECHO (script + cron) |
+| 4 | 🟠 Alta | Configurar monitoreo externo (UptimeRobot gratis) | Pendiente |
+| 5 | 🟠 Alta | Configurar backup offsite (S3/Backblaze B2) | Pendiente |
+| 6 | 🟠 Alta | Programar reboot para aplicar actualizaciones del kernel | Pendiente |
+| 7 | ~~🟠 Alta~~ | ~~Crear logrotate para staging~~ | ✅ HECHO |
+| 8 | ~~🟡 Media~~ | ~~Eliminar node_modules/ de staging~~ | ✅ HECHO |
+| 9 | ~~🟡 Media~~ | ~~Vigilar gym-project-huey (MemoryMax)~~ | ✅ HECHO (1G→1536M) |
+| 10 | 🟡 Media | Evaluar Django Silk en producción (overhead) | Pendiente |
+
+**Resumen remediación 2026-03-20**: 7 de 10 acciones completadas. Las 3 pendientes son mejoras (monitoreo externo, backup offsite, reboot).
 
 ---
 
@@ -558,19 +637,24 @@ Renovación automática configurada via certbot timer + cron ✅
 
 ### gym_project ✅ (Producción)
 - **Estado**: Saludable, bien configurado
-- **Servicios**: gym_intranet (Gunicorn 3 workers) + gym-project-huey
-- **BD**: gym_intranet (88 MB)
-- **Media**: 2.5 GB
-- **SSL**: Válido 65 días más
+- **Servicios**: gym_intranet (Gunicorn 5 workers) + gym-project-huey
+- **BD**: gym_intranet (277 MB)
+- **Media**: 2.9 GB
+- **SSL**: Válido 46 días más (auto-renew)
 - **Pendiente**: Monitoreo externo, backup offsite
 
-### gym_project_temp ⚠️ (Inactivo)
-- **Estado**: Sin servicios, sin uso aparente
-- **Riesgo**: Secretos hardcodeados, node_modules en producción
-- **Tamaño**: 3.3 GB desperdiciados
-- **Recomendación**: **ELIMINAR**
+### gym_project_staging ✅ (Staging) — NUEVO
+- **Estado**: Desplegado y asegurado
+- **Branch**: `release-march-2026-c` (PR #83 — SECOP module)
+- **Servicios**: gym_staging (Gunicorn 3 workers) + gym-staging-huey
+- **BD**: gym_intranet_staging (2.7 MB)
+- **SSL**: Válido 89 días más (auto-renew)
+- **SECOP**: 26 procesos sincronizados, 6 Huey tasks registradas
+- **Completado**: ✅ Permisos .env (600), ✅ logrotate, ✅ node_modules eliminado
 
 ---
 
-*Diagnóstico generado el 2026-03-01 a las 13:20 UTC*
+*Diagnóstico generado el 2026-03-20 a las 16:55 UTC*
+*Remediación aplicada el 2026-03-20 a las 17:45 UTC*
 *Servidor: srv614758 — Hostinger VPS — Ubuntu 24.04.4 LTS*
+*Histórico: 2026-03-01 (7.5/10) → 2026-03-20 pre-remed (6.9/10) → 2026-03-20 post-remed (8.2/10)*

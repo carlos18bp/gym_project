@@ -25,7 +25,7 @@ def scheduled_backup():
     """
     Daily automated backup of database and media files at 3 AM.
     Storage: configured via BACKUP_STORAGE_PATH env var.
-    Retention: 20 DB + 20 media backups (~20 days), synchronized cleanup.
+    Retention: 5 DB + 5 media backups (~5 days), synchronized cleanup.
     Compression enabled for both DB (.sql.gz) and media (.tar.gz).
     """
     from django.core.management import call_command

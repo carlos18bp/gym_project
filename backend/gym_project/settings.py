@@ -227,10 +227,10 @@ DBBACKUP_STORAGE_OPTIONS = {
     'location': config('BACKUP_STORAGE_PATH', default='/var/backups/gym_project'),
 }
 DBBACKUP_FILENAME_TEMPLATE = '{datetime}.sql'
-DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.tar'
+DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.{extension}'
 DBBACKUP_COMPRESS = True
-DBBACKUP_CLEANUP_KEEP = 20
-DBBACKUP_CLEANUP_KEEP_MEDIA = 20
+DBBACKUP_CLEANUP_KEEP = 5
+DBBACKUP_CLEANUP_KEEP_MEDIA = 5
 
 # ---------------------------------------------------------------------------
 # Silk profiling configuration (only active when ENABLE_SILK=true)
