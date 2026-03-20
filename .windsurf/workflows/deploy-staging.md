@@ -7,7 +7,7 @@ description: Deploy a release branch to the staging server for client UAT
 
 Run these steps on the staging server at `/home/ryzepeck/webapps/gym_project_staging` to deploy a release branch for client testing/UAT.
 
-- **Domain**: https://gmconsultoresjuridicos.projectapp.com
+- **Domain**: https://gmconsultoresjuridicos.projectapp.co
 - **Stack**: Django + Gunicorn + Nginx + MySQL 8 + Redis + Huey
 - **Services**: `gym_staging` (Gunicorn), `gym-staging-huey` (task queue)
 
@@ -89,7 +89,7 @@ Expected: `active`, `active`.
 // turbo
 10. Verify the staging health endpoint:
 ```bash
-curl -s https://gmconsultoresjuridicos.projectapp.com/api/health/ | python3 -m json.tool
+curl -s https://gmconsultoresjuridicos.projectapp.co/api/health/ | python3 -m json.tool
 ```
 Expected: `{"app": "ok", "database": "ok", "redis": "ok"}` with HTTP 200.
 
@@ -135,7 +135,7 @@ sudo systemctl status gym-staging-huey --no-pager -l
 ## Phase 6 — Notify client (optional)
 
 17. Once verification passes, notify the client that the staging environment is ready for UAT at:
-    - **URL**: https://gmconsultoresjuridicos.projectapp.com
+    - **URL**: https://gmconsultoresjuridicos.projectapp.co
     - **Branch deployed**: `$BRANCH`
     - **Date**: (current date)
 
