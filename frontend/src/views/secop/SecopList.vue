@@ -109,6 +109,24 @@
             </div>
           </div>
 
+          <!-- Keywords search -->
+          <div class="mb-4">
+            <div class="relative w-full">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <TagIcon class="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                v-model="filters.keywords"
+                type="search"
+                data-testid="secop-keywords"
+                placeholder="Palabras clave (ej: prestación servicios enfermería)"
+                class="block w-full rounded-xl border-0 bg-terciary py-3 pl-10 pr-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                :disabled="filtersDisabled"
+                @keyup.enter="loadProcesses"
+              />
+            </div>
+          </div>
+
           <!-- Filters Section -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <!-- Department filter -->
@@ -601,6 +619,7 @@ const filters = ref({
   status: [],
   entity_name: [],
   unspsc_code: '',
+  keywords: '',
   min_budget: '',
   max_budget: '',
   publication_date_from: '',
@@ -630,6 +649,7 @@ const currentFiltersSnapshot = computed(() => ({
   status: filters.value.status.length ? filters.value.status.join(',') : '',
   entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : '',
   unspsc_code: filters.value.unspsc_code || '',
+  keywords: filters.value.keywords || '',
   min_budget: filters.value.min_budget || '',
   max_budget: filters.value.max_budget || '',
   publication_date_from: filters.value.publication_date_from || '',
@@ -640,7 +660,7 @@ const currentFiltersSnapshot = computed(() => ({
 
 const hasActiveFilters = computed(() => {
   return filters.value.department.length || filters.value.procurement_method.length || filters.value.status.length || searchQuery.value
-    || filters.value.entity_name.length || filters.value.unspsc_code
+    || filters.value.entity_name.length || filters.value.unspsc_code || filters.value.keywords
     || filters.value.min_budget || filters.value.max_budget
     || filters.value.publication_date_from || filters.value.publication_date_to
     || filters.value.closing_date_from || filters.value.closing_date_to;
@@ -653,6 +673,7 @@ const activeFilterCount = computed(() => {
   if (filters.value.status.length) count++;
   if (filters.value.entity_name.length) count++;
   if (filters.value.unspsc_code) count++;
+  if (filters.value.keywords) count++;
   if (filters.value.min_budget || filters.value.max_budget) count++;
   if (filters.value.publication_date_from || filters.value.publication_date_to) count++;
   if (filters.value.closing_date_from || filters.value.closing_date_to) count++;
@@ -726,6 +747,7 @@ function _buildFilterParams(page = 1) {
     status: filters.value.status.length ? filters.value.status.join(',') : undefined,
     entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : undefined,
     unspsc_code: filters.value.unspsc_code || undefined,
+    keywords: filters.value.keywords || undefined,
     min_budget: filters.value.min_budget || undefined,
     max_budget: filters.value.max_budget || undefined,
     publication_date_from: filters.value.publication_date_from || undefined,
@@ -756,7 +778,7 @@ function clearFilters() {
   searchQuery.value = '';
   filters.value = {
     department: [], procurement_method: [], status: [],
-    entity_name: [], unspsc_code: '',
+    entity_name: [], unspsc_code: '', keywords: '',
     min_budget: '', max_budget: '',
     publication_date_from: '', publication_date_to: '',
     closing_date_from: '', closing_date_to: '',
@@ -838,6 +860,7 @@ function handleApplyView(view) {
     status: view.filters.status ? view.filters.status.split(',') : [],
     entity_name: view.filters.entity_name ? view.filters.entity_name.split(',') : [],
     unspsc_code: view.filters.unspsc_code || '',
+    keywords: view.filters.keywords || '',
     min_budget: view.filters.min_budget || '',
     max_budget: view.filters.max_budget || '',
     publication_date_from: view.filters.publication_date_from || '',

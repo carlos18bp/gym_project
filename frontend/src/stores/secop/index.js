@@ -104,6 +104,7 @@ export const useSecopStore = defineStore("secop", {
         if (params.closing_date_to) queryParams.append("closing_date_to", params.closing_date_to);
         if (params.entity_name) queryParams.append("entity_name", params.entity_name);
         if (params.unspsc_code) queryParams.append("unspsc_code", params.unspsc_code);
+        if (params.keywords) queryParams.append("keywords", params.keywords);
         if (params.is_open) queryParams.append("is_open", params.is_open);
         if (params.ordering) queryParams.append("ordering", params.ordering);
         if (params.page) queryParams.append("page", params.page);

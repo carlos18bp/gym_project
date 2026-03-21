@@ -37,7 +37,7 @@ class SECOPClient:
         """Initialize client with configuration from settings."""
         config = getattr(settings, 'SECOP_CONFIG', {})
         self.base_url = config.get('BASE_URL', 'https://www.datos.gov.co/resource')
-        self.dataset_id = config.get('DATASET_ID', 'bt96-ncis')
+        self.dataset_id = config.get('DATASET_ID', 'p6dx-8zbt')
         self.app_token = config.get('APP_TOKEN', '')
         self.app_secret = config.get('APP_SECRET', '')
         self.page_size = config.get('PAGE_SIZE', 1000)
@@ -71,7 +71,7 @@ class SECOPClient:
             str: SoQL query string
         """
         where_clauses = [
-            f"{self.APIFields.STATUS}='{self.APIValues.STATUS_PUBLISHED}'",
+            f"({self.APIFields.STATUS}='{self.APIValues.STATUS_OPEN}' OR {self.APIFields.STATUS}='{self.APIValues.STATUS_PUBLISHED}')",
         ]
 
         if date_from:

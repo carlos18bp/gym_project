@@ -46,7 +46,7 @@ class SECOPSyncService:
         'fecha_de_ultima_publicaci':        'last_update_date',
         'fecha_de_recepcion_de':            'closing_date',
         'urlproceso':                       'process_url',
-        'c_digo_unspsc':                    'unspsc_code',
+        'codigo_principal_de_categoria':     'unspsc_code',
     }
 
     def __init__(self):
