@@ -51,23 +51,43 @@ def _apply_secop_filters(queryset, query_params):
     """
     entity_name = query_params.get('entity_name')
     if entity_name:
-        queryset = queryset.filter(entity_name__iexact=entity_name)
+        values = [v.strip() for v in entity_name.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(entity_name__iexact=values[0])
+        elif values:
+            queryset = queryset.filter(entity_name__in=values)
 
     department = query_params.get('department')
     if department:
-        queryset = queryset.filter(department__iexact=department)
+        values = [v.strip() for v in department.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(department__iexact=values[0])
+        elif values:
+            queryset = queryset.filter(department__in=values)
 
     procurement_method = query_params.get('procurement_method')
     if procurement_method:
-        queryset = queryset.filter(procurement_method__iexact=procurement_method)
+        values = [v.strip() for v in procurement_method.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(procurement_method__iexact=values[0])
+        elif values:
+            queryset = queryset.filter(procurement_method__in=values)
 
     proc_status = query_params.get('status')
     if proc_status:
-        queryset = queryset.filter(status__iexact=proc_status)
+        values = [v.strip() for v in proc_status.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(status__iexact=values[0])
+        elif values:
+            queryset = queryset.filter(status__in=values)
 
     contract_type = query_params.get('contract_type')
     if contract_type:
-        queryset = queryset.filter(contract_type__iexact=contract_type)
+        values = [v.strip() for v in contract_type.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(contract_type__iexact=values[0])
+        elif values:
+            queryset = queryset.filter(contract_type__in=values)
 
     min_budget = query_params.get('min_budget')
     if min_budget:
@@ -102,13 +122,17 @@ def _apply_secop_filters(queryset, query_params):
     is_open = query_params.get('is_open')
     if is_open == 'true':
         queryset = queryset.filter(
-            Q(status=SECOPProcess.APIStatus.OPEN),
+            Q(status__in=SECOPProcess.APIStatus.ACTIVE_STATUSES),
             Q(closing_date__gte=timezone.now()) | Q(closing_date__isnull=True),
         )
 
     unspsc_code = query_params.get('unspsc_code')
     if unspsc_code:
-        queryset = queryset.filter(unspsc_code__icontains=unspsc_code)
+        values = [v.strip() for v in unspsc_code.split(',') if v.strip()]
+        if len(values) == 1:
+            queryset = queryset.filter(unspsc_code__icontains=values[0])
+        elif values:
+            queryset = queryset.filter(unspsc_code__in=values)
 
     search = query_params.get('search')
     if search:
@@ -499,7 +523,7 @@ def secop_sync_status(request):
         'last_success': SyncLogSerializer(last_success).data if last_success else None,
         'recent': serializer.data,
         'total_processes': SECOPProcess.objects.filter(
-            Q(status=SECOPProcess.APIStatus.OPEN),
+            Q(status__in=SECOPProcess.APIStatus.ACTIVE_STATUSES),
             Q(closing_date__gte=timezone.now()) | Q(closing_date__isnull=True),
         ).count(),
     })

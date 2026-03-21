@@ -1,7 +1,10 @@
 <template>
+  <ModuleHeader title="Agendar Cita">
+    <template #menu-button><slot></slot></template>
+  </ModuleHeader>
+
   <!-- Using the SearchBarAndFilterBy component -->
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>
   </SearchBarAndFilterBy>
   <!-- Calendly inline widget begin -->
   <div
@@ -14,6 +17,7 @@
 
 <script setup>
 import { onMounted } from "vue";
+import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 
 onMounted(() => {

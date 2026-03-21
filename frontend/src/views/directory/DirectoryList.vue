@@ -1,7 +1,10 @@
 <template>
+  <ModuleHeader title="Directorio">
+    <template #menu-button><slot></slot></template>
+  </ModuleHeader>
+
   <!-- Replacing the old search bar with the new component -->
   <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-    <slot></slot>
   </SearchBarAndFilterBy>
 
   <div class="flex-1">
@@ -71,6 +74,7 @@
 </template>
 
 <script setup>
+import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import SearchBarAndFilterBy from "@/components/layouts/SearchBarAndFilterBy.vue";
 import { computed, onMounted, ref } from "vue";
 import { useUserStore } from "@/stores/auth/user";

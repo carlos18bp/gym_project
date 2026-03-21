@@ -3,6 +3,7 @@
     <!-- Mobile menu button -->
     <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 lg:hidden">
       <slot></slot>
+      <span class="text-sm font-semibold text-gray-700">Detalle SECOP</span>
     </div>
 
     <!-- Loading skeleton -->

@@ -14,8 +14,10 @@ class SECOPProcess(models.Model):
 
     class APIStatus:
         OPEN = 'Abierto'
+        PUBLISHED = 'Publicado'
         AWARDED = 'Adjudicado'
         CLOSED = 'Cerrado'
+        ACTIVE_STATUSES = (OPEN, PUBLISHED)
 
     class Meta:
         db_table = 'secop_process'
@@ -114,7 +116,7 @@ class SECOPProcess(models.Model):
     @property
     def is_open(self):
         """Check if the process is still open for proposals."""
-        if self.status and self.status != self.APIStatus.OPEN:
+        if self.status and self.status not in self.APIStatus.ACTIVE_STATUSES:
             return False
         if self.closing_date and self.closing_date < timezone.now():
             return False

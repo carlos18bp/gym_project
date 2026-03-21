@@ -31,6 +31,7 @@ class SECOPClient:
     # API status values (Spanish - as returned by SECOP API)
     class APIValues:
         STATUS_OPEN = 'Abierto'
+        STATUS_PUBLISHED = 'Publicado'
 
     def __init__(self):
         """Initialize client with configuration from settings."""
@@ -70,7 +71,7 @@ class SECOPClient:
             str: SoQL query string
         """
         where_clauses = [
-            f"{self.APIFields.STATUS}='{self.APIValues.STATUS_OPEN}'",
+            f"{self.APIFields.STATUS}='{self.APIValues.STATUS_PUBLISHED}'",
         ]
 
         if date_from:

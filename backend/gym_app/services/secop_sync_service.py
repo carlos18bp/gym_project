@@ -106,13 +106,13 @@ class SECOPSyncService:
     def close_stale_processes():
         """
         Mark processes as 'Cerrado' when their closing_date has passed
-        but SECOP API still reports them as 'Abierto'.
+        but SECOP API still reports them with an active status.
 
         Returns:
             int: Number of processes updated.
         """
         stale_qs = SECOPProcess.objects.filter(
-            status=SECOPProcess.APIStatus.OPEN,
+            status__in=SECOPProcess.APIStatus.ACTIVE_STATUSES,
             closing_date__lt=timezone.now(),
         )
         count = stale_qs.update(status=SECOPProcess.APIStatus.CLOSED)

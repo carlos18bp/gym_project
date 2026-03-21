@@ -330,7 +330,6 @@ const router = createRouter({
           component: () => import(/* webpackChunkName: "secop" */ "@/views/secop/SecopList.vue"),
           meta: { 
             requiresAuth: true, 
-            requiresLawyer: true,
             title: "Contratación Pública"
           },
         },
@@ -340,7 +339,6 @@ const router = createRouter({
           component: () => import(/* webpackChunkName: "secop-detail" */ "@/views/secop/SecopDetail.vue"),
           meta: { 
             requiresAuth: true, 
-            requiresLawyer: true,
             title: "Detalle SECOP"
           },
         },

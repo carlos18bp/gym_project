@@ -1,20 +1,11 @@
 <template>
   <div class="min-h-screen bg-gray-50" data-testid="secop-list-page">
-    <!-- Mobile menu button -->
-    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 lg:hidden">
-      <slot></slot>
-    </div>
-
-    <!-- Hero header -->
-    <div class="bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-white" data-testid="secop-title">Contratación Pública</h1>
-          <p class="mt-1 text-sm text-white/80">Oportunidades de contratación SECOP II</p>
-        </div>
+    <ModuleHeader title="Contratación Pública" subtitle="Oportunidades de contratación SECOP II">
+      <template #menu-button><slot></slot></template>
+      <template #actions>
         <SyncStatus :sync-status="secopStore.syncStatus" @trigger-sync="secopStore.triggerSync()" />
-      </div>
-    </div>
+      </template>
+    </ModuleHeader>
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
@@ -91,7 +82,15 @@
         </div>
 
         <!-- Filters and Search Bar -->
-        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6" data-testid="secop-filters">
+        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6 relative" data-testid="secop-filters">
+          <!-- Disabled overlay for basic role -->
+          <div v-if="filtersDisabled" class="absolute inset-0 z-10 flex items-start justify-center rounded-xl bg-white/70 backdrop-blur-[1px]" data-testid="filters-disabled-overlay">
+            <div class="mt-6 flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-600 shadow-sm ring-1 ring-gray-200">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+              Los filtros no están disponibles en el plan básico
+            </div>
+          </div>
+
           <!-- Search Bar -->
           <div class="mb-4">
             <div class="relative w-full">
@@ -104,6 +103,7 @@
                 data-testid="secop-search"
                 placeholder="Buscar por entidad, objeto, referencia..."
                 class="block w-full rounded-xl border-0 bg-terciary py-3 pl-10 pr-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                :disabled="filtersDisabled"
                 @keyup.enter="loadProcesses"
               />
             </div>
@@ -112,88 +112,36 @@
           <!-- Filters Section -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <!-- Department filter -->
-            <Menu as="div" class="relative">
-              <MenuButton data-testid="filter-department" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.department ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
-                <div class="flex items-center gap-2 min-w-0">
-                  <FunnelIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <span class="truncate">{{ filters.department || 'Departamento' }}</span>
-                </div>
-                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filters.department = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todos</a>
-                  </MenuItem>
-                  <MenuItem v-for="dept in secopStore.availableFilters.departments" :key="dept" v-slot="{ active }">
-                    <a @click="filters.department = dept" :class="[active ? 'bg-terciary' : '', filters.department === dept ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer']">{{ dept }}</a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+            <MultiSelectDropdown
+              v-model="filters.department"
+              :options="secopStore.availableFilters.departments"
+              placeholder="Departamento"
+              data-testid="filter-department"
+            />
 
             <!-- Procurement method filter -->
-            <Menu as="div" class="relative">
-              <MenuButton data-testid="filter-procurement" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.procurement_method ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
-                <div class="flex items-center gap-2 min-w-0">
-                  <FunnelIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <span class="truncate">{{ filters.procurement_method || 'Modalidad' }}</span>
-                </div>
-                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filters.procurement_method = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todos</a>
-                  </MenuItem>
-                  <MenuItem v-for="method in secopStore.availableFilters.procurement_methods" :key="method" v-slot="{ active }">
-                    <a @click="filters.procurement_method = method" :class="[active ? 'bg-terciary' : '', filters.procurement_method === method ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer']">{{ method }}</a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+            <MultiSelectDropdown
+              v-model="filters.procurement_method"
+              :options="secopStore.availableFilters.procurement_methods"
+              placeholder="Modalidad"
+              data-testid="filter-procurement"
+            />
 
             <!-- Status filter -->
-            <Menu as="div" class="relative">
-              <MenuButton data-testid="filter-status" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.status ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
-                <div class="flex items-center gap-2 min-w-0">
-                  <FunnelIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <span class="truncate">{{ filters.status || 'Estado' }}</span>
-                </div>
-                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filters.status = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todos</a>
-                  </MenuItem>
-                  <MenuItem v-for="s in secopStore.availableFilters.statuses" :key="s" v-slot="{ active }">
-                    <a @click="filters.status = s" :class="[active ? 'bg-terciary' : '', filters.status === s ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer']">{{ s }}</a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+            <MultiSelectDropdown
+              v-model="filters.status"
+              :options="secopStore.availableFilters.statuses"
+              placeholder="Estado"
+              data-testid="filter-status"
+            />
 
             <!-- Entity filter -->
-            <Menu as="div" class="relative">
-              <MenuButton data-testid="filter-entity" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.entity_name ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
-                <div class="flex items-center gap-2 min-w-0">
-                  <FunnelIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <span class="truncate">{{ filters.entity_name || 'Entidad' }}</span>
-                </div>
-                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-72 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filters.entity_name = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todas</a>
-                  </MenuItem>
-                  <MenuItem v-for="entity in secopStore.availableFilters.entity_names" :key="entity" v-slot="{ active }">
-                    <a @click="filters.entity_name = entity" :class="[active ? 'bg-terciary' : '', filters.entity_name === entity ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer truncate']">{{ entity }}</a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+            <MultiSelectDropdown
+              v-model="filters.entity_name"
+              :options="secopStore.availableFilters.entity_names"
+              placeholder="Entidad"
+              data-testid="filter-entity"
+            />
           </div>
 
           <!-- Advanced filters toggle + clear -->
@@ -613,6 +561,9 @@ import {
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useSecopStore } from "@/stores/secop/index";
+import { useUserStore } from "@/stores/auth/user";
+import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
+import MultiSelectDropdown from "@/components/secop/MultiSelectDropdown.vue";
 import SyncStatus from "@/components/secop/SyncStatus.vue";
 import ClassificationBadge from "@/components/secop/ClassificationBadge.vue";
 import ClassificationModal from "@/components/secop/ClassificationModal.vue";
@@ -622,6 +573,10 @@ import SavedViewsList from "@/components/secop/SavedViewsList.vue";
 
 const router = useRouter();
 const secopStore = useSecopStore();
+const userStore = useUserStore();
+
+// Role-based filter access
+const filtersDisabled = computed(() => userStore.currentUser?.role === 'basic');
 
 // Tab definitions
 const tabs = [
@@ -641,10 +596,10 @@ const pageSize = ref(20);
 const showAdvancedFilters = ref(false);
 const classificationFilter = ref('');
 const filters = ref({
-  department: '',
-  procurement_method: '',
-  status: '',
-  entity_name: '',
+  department: [],
+  procurement_method: [],
+  status: [],
+  entity_name: [],
   unspsc_code: '',
   min_budget: '',
   max_budget: '',
@@ -670,10 +625,10 @@ const activeTabLabel = computed(() => {
 
 const currentFiltersSnapshot = computed(() => ({
   search: searchQuery.value || '',
-  department: filters.value.department || '',
-  procurement_method: filters.value.procurement_method || '',
-  status: filters.value.status || '',
-  entity_name: filters.value.entity_name || '',
+  department: filters.value.department.length ? filters.value.department.join(',') : '',
+  procurement_method: filters.value.procurement_method.length ? filters.value.procurement_method.join(',') : '',
+  status: filters.value.status.length ? filters.value.status.join(',') : '',
+  entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : '',
   unspsc_code: filters.value.unspsc_code || '',
   min_budget: filters.value.min_budget || '',
   max_budget: filters.value.max_budget || '',
@@ -684,8 +639,8 @@ const currentFiltersSnapshot = computed(() => ({
 }));
 
 const hasActiveFilters = computed(() => {
-  return filters.value.department || filters.value.procurement_method || filters.value.status || searchQuery.value
-    || filters.value.entity_name || filters.value.unspsc_code
+  return filters.value.department.length || filters.value.procurement_method.length || filters.value.status.length || searchQuery.value
+    || filters.value.entity_name.length || filters.value.unspsc_code
     || filters.value.min_budget || filters.value.max_budget
     || filters.value.publication_date_from || filters.value.publication_date_to
     || filters.value.closing_date_from || filters.value.closing_date_to;
@@ -693,10 +648,10 @@ const hasActiveFilters = computed(() => {
 
 const activeFilterCount = computed(() => {
   let count = 0;
-  if (filters.value.department) count++;
-  if (filters.value.procurement_method) count++;
-  if (filters.value.status) count++;
-  if (filters.value.entity_name) count++;
+  if (filters.value.department.length) count++;
+  if (filters.value.procurement_method.length) count++;
+  if (filters.value.status.length) count++;
+  if (filters.value.entity_name.length) count++;
   if (filters.value.unspsc_code) count++;
   if (filters.value.min_budget || filters.value.max_budget) count++;
   if (filters.value.publication_date_from || filters.value.publication_date_to) count++;
@@ -766,10 +721,10 @@ watch(classificationFilter, () => {
 function _buildFilterParams(page = 1) {
   return {
     search: searchQuery.value || undefined,
-    department: filters.value.department || undefined,
-    procurement_method: filters.value.procurement_method || undefined,
-    status: filters.value.status || undefined,
-    entity_name: filters.value.entity_name || undefined,
+    department: filters.value.department.length ? filters.value.department.join(',') : undefined,
+    procurement_method: filters.value.procurement_method.length ? filters.value.procurement_method.join(',') : undefined,
+    status: filters.value.status.length ? filters.value.status.join(',') : undefined,
+    entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : undefined,
     unspsc_code: filters.value.unspsc_code || undefined,
     min_budget: filters.value.min_budget || undefined,
     max_budget: filters.value.max_budget || undefined,
@@ -777,7 +732,7 @@ function _buildFilterParams(page = 1) {
     publication_date_to: filters.value.publication_date_to || undefined,
     closing_date_from: filters.value.closing_date_from || undefined,
     closing_date_to: filters.value.closing_date_to || undefined,
-    is_open: filters.value.status ? undefined : 'true',
+    is_open: filters.value.status.length ? undefined : 'true',
     ordering: ordering.value,
     page,
     page_size: pageSize.value,
@@ -800,8 +755,8 @@ function goToPage(page) {
 function clearFilters() {
   searchQuery.value = '';
   filters.value = {
-    department: '', procurement_method: '', status: '',
-    entity_name: '', unspsc_code: '',
+    department: [], procurement_method: [], status: [],
+    entity_name: [], unspsc_code: '',
     min_budget: '', max_budget: '',
     publication_date_from: '', publication_date_to: '',
     closing_date_from: '', closing_date_to: '',
@@ -878,10 +833,10 @@ async function handleSaveView(data) {
 function handleApplyView(view) {
   searchQuery.value = view.filters.search || '';
   filters.value = {
-    department: view.filters.department || '',
-    procurement_method: view.filters.procurement_method || '',
-    status: view.filters.status || '',
-    entity_name: view.filters.entity_name || '',
+    department: view.filters.department ? view.filters.department.split(',') : [],
+    procurement_method: view.filters.procurement_method ? view.filters.procurement_method.split(',') : [],
+    status: view.filters.status ? view.filters.status.split(',') : [],
+    entity_name: view.filters.entity_name ? view.filters.entity_name.split(',') : [],
     unspsc_code: view.filters.unspsc_code || '',
     min_budget: view.filters.min_budget || '',
     max_budget: view.filters.max_budget || '',

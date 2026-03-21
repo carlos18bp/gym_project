@@ -5,14 +5,9 @@
 
     <!-- Main Organizations Dashboard -->
     <div v-else>
-      <!-- Header with hamburger menu -->
-      <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-        <!-- Hamburger menu button (mobile) -->
-        <slot></slot>
-        
-        <!-- Title -->
-        <h1 class="text-lg font-semibold leading-6 text-gray-900">Organizaciones</h1>
-      </div>
+      <ModuleHeader title="Organizaciones">
+        <template #menu-button><slot></slot></template>
+      </ModuleHeader>
 
       <!-- Corporate Client Dashboard -->
       <CorporateClientDashboard v-if="userRole === 'corporate_client'" />
@@ -40,6 +35,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import ModuleHeader from '@/components/layouts/ModuleHeader.vue';
 import { useUserStore } from '@/stores/auth/user';
 
 // Components

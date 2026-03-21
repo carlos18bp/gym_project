@@ -74,7 +74,7 @@ class TestSECOPClientQuery:
         """Verify query includes status filter, publication floor, and pagination."""
         query = client._build_query(offset=0)
 
-        assert "estado_del_procedimiento='Abierto'" in query
+        assert "estado_del_procedimiento='Publicado'" in query
         assert "fecha_de_publicacion_del>='2024-03-20'" in query
         assert '$limit=10' in query
         assert '$offset=0' in query

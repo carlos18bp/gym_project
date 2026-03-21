@@ -397,8 +397,7 @@ onMounted(async () => {
       (navItem) =>
         navItem.name !== "Radicar Proceso" &&
         navItem.name !== "Directorio" &&
-        navItem.name !== "Intranet G&M" &&
-        navItem.name !== "Contratación Pública"
+        navItem.name !== "Intranet G&M"
     );
   } else if (currentUser.value.role == 'lawyer' && !currentUser.value.is_gym_lawyer) {
     // Remove "Intranet G&M" for lawyers who are not GYM lawyers

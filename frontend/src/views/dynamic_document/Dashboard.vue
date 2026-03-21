@@ -1,9 +1,8 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Mobile menu button -->
-    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <slot></slot>
-    </div>
+    <ModuleHeader title="Documentos Dinámicos">
+      <template #menu-button><slot></slot></template>
+    </ModuleHeader>
 
     <!-- Main content -->
     <div class="p-4 sm:p-6 lg:p-8">
@@ -531,6 +530,7 @@
 
 <script setup>
 import { onMounted, computed, ref, watch, onUnmounted } from "vue";
+import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
