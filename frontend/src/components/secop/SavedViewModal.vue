@@ -11,10 +11,13 @@
       <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
         <div class="px-6 pb-5 pt-6">
           <h3 class="text-lg font-semibold text-primary mb-1" data-testid="saved-view-modal-title">
-            Guardar Vista
+            {{ isEditing ? 'Editar Vista' : 'Guardar Vista' }}
           </h3>
           <p class="text-sm text-gray-500 mb-5">
-            Selecciona los filtros que deseas incluir en esta vista guardada.
+            {{ isEditing
+              ? 'Revisa los filtros de esta vista. Puedes actualizar el nombre o reemplazar los filtros con los activos actualmente.'
+              : 'Selecciona los filtros que deseas incluir en esta vista guardada.'
+            }}
           </p>
 
           <!-- View name -->
@@ -30,8 +33,45 @@
             />
           </div>
 
-          <!-- Filter selection -->
-          <div class="mb-2">
+          <!-- Current saved filters (edit mode) -->
+          <div v-if="isEditing" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-3">Filtros guardados</label>
+            <div v-if="!displayFilterEntries.length" class="text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-3">
+              Esta vista no tiene filtros guardados.
+            </div>
+            <div v-else class="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div
+                v-for="entry in displayFilterEntries"
+                :key="entry.key"
+                :data-testid="`saved-view-filter-${entry.key}`"
+                class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 bg-gray-50/50"
+              >
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium text-gray-900">{{ entry.label }}</span>
+                  <p class="text-xs text-gray-500 mt-0.5 break-words">{{ entry.displayValue }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Update with current filters button -->
+            <button
+              v-if="hasCurrentFilters"
+              @click="replaceWithCurrentFilters"
+              data-testid="saved-view-modal-update-filters"
+              :class="[
+                'mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
+                filtersReplaced
+                  ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+                  : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
+              ]"
+            >
+              <ArrowPathIcon class="h-4 w-4" />
+              {{ filtersReplaced ? 'Filtros actuales cargados' : 'Reemplazar con filtros actuales' }}
+            </button>
+          </div>
+
+          <!-- Filter selection (create mode) -->
+          <div v-else class="mb-2">
             <label class="block text-sm font-medium text-gray-700 mb-3">Filtros a incluir</label>
 
             <div v-if="!availableFilterEntries.length" class="text-sm text-amber-600 bg-amber-50 rounded-lg px-4 py-3">
@@ -76,7 +116,7 @@
             data-testid="saved-view-modal-save"
             class="inline-flex justify-center rounded-lg bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Guardar
+            {{ isEditing ? 'Actualizar' : 'Guardar' }}
           </button>
         </div>
       </div>
@@ -86,15 +126,21 @@
 
 <script setup>
 import { ref, computed } from "vue";
+import { ArrowPathIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps({
   currentFilters: { type: Object, default: () => ({}) },
+  existingView: { type: Object, default: null },
 });
 
-const emit = defineEmits(["save", "close"]);
+const emit = defineEmits(["save", "update", "close"]);
 
-const viewName = ref("");
+const isEditing = computed(() => !!props.existingView);
+
+const viewName = ref(props.existingView?.name || "");
 const selectedKeys = ref(new Set());
+const filtersReplaced = ref(false);
+const editFilters = ref(props.existingView ? { ...props.existingView.filters } : {});
 
 const filterLabels = {
   search: "Búsqueda",
@@ -112,9 +158,9 @@ const filterLabels = {
   closing_date_to: "Cierre hasta",
 };
 
-const availableFilterEntries = computed(() => {
+function buildEntries(filtersObj) {
   const entries = [];
-  for (const [key, value] of Object.entries(props.currentFilters)) {
+  for (const [key, value] of Object.entries(filtersObj)) {
     if (!value) continue;
     entries.push({
       key,
@@ -124,14 +170,22 @@ const availableFilterEntries = computed(() => {
     });
   }
   return entries;
+}
+
+const availableFilterEntries = computed(() => buildEntries(props.currentFilters));
+
+const displayFilterEntries = computed(() => buildEntries(editFilters.value));
+
+const hasCurrentFilters = computed(() => {
+  return Object.values(props.currentFilters).some((v) => !!v);
 });
 
-// Pre-select all active filters on mount
-(() => {
+// Pre-select all active filters on mount (create mode only)
+if (!props.existingView) {
   for (const [key, value] of Object.entries(props.currentFilters)) {
     if (value) selectedKeys.value.add(key);
   }
-})();
+}
 
 function toggleFilter(key) {
   if (selectedKeys.value.has(key)) {
@@ -139,23 +193,43 @@ function toggleFilter(key) {
   } else {
     selectedKeys.value.add(key);
   }
-  // Force reactivity on the Set
   selectedKeys.value = new Set(selectedKeys.value);
 }
 
+function replaceWithCurrentFilters() {
+  const newFilters = {};
+  for (const [key, value] of Object.entries(props.currentFilters)) {
+    if (value) newFilters[key] = value;
+  }
+  editFilters.value = newFilters;
+  filtersReplaced.value = true;
+}
+
 const canSave = computed(() => {
+  if (isEditing.value) {
+    return viewName.value.trim().length > 0;
+  }
   return viewName.value.trim() && selectedKeys.value.size > 0;
 });
 
 function handleSave() {
   if (!canSave.value) return;
-  const selectedFilters = {};
-  for (const key of selectedKeys.value) {
-    selectedFilters[key] = props.currentFilters[key];
+
+  if (isEditing.value) {
+    emit("update", {
+      id: props.existingView.id,
+      name: viewName.value.trim(),
+      filters: editFilters.value,
+    });
+  } else {
+    const selectedFilters = {};
+    for (const key of selectedKeys.value) {
+      selectedFilters[key] = props.currentFilters[key];
+    }
+    emit("save", {
+      name: viewName.value.trim(),
+      filters: selectedFilters,
+    });
   }
-  emit("save", {
-    name: viewName.value.trim(),
-    filters: selectedFilters,
-  });
 }
 </script>

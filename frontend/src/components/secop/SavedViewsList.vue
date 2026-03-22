@@ -16,12 +16,14 @@
       </button>
     </div>
 
-    <!-- Save modal -->
+    <!-- Create / Edit modal -->
     <SavedViewModal
       v-if="showModal"
       :current-filters="currentFilters"
+      :existing-view="editingView"
       @save="handleSave"
-      @close="showModal = false"
+      @update="handleUpdate"
+      @close="closeModal"
     />
 
     <!-- Empty state -->
@@ -43,7 +45,8 @@
         v-for="view in savedViews"
         :key="view.id"
         :data-testid="`saved-view-card-${view.id}`"
-        class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 hover:shadow-md transition-shadow"
+        class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+        @click="openEditModal(view)"
       >
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
@@ -88,7 +91,7 @@
           <!-- Actions -->
           <div class="flex items-center gap-1 ml-4">
             <button
-              @click="$emit('apply', view)"
+              @click.stop="$emit('apply', view)"
               :data-testid="`saved-view-apply-${view.id}`"
               title="Aplicar filtros"
               class="inline-flex items-center gap-1 rounded-lg bg-secondary/10 px-3 py-1.5 text-xs font-medium text-secondary hover:bg-secondary/20 transition-colors"
@@ -97,7 +100,7 @@
               Aplicar
             </button>
             <button
-              @click="$emit('delete', view.id)"
+              @click.stop="$emit('delete', view.id)"
               :data-testid="`saved-view-delete-${view.id}`"
               title="Eliminar"
               class="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
@@ -127,13 +130,29 @@ const props = defineProps({
   hasActiveFilters: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["save", "apply", "delete"]);
+const emit = defineEmits(["save", "update", "apply", "delete"]);
 
 const showModal = ref(false);
+const editingView = ref(null);
+
+function openEditModal(view) {
+  editingView.value = view;
+  showModal.value = true;
+}
+
+function closeModal() {
+  showModal.value = false;
+  editingView.value = null;
+}
 
 function handleSave(data) {
   emit("save", data);
-  showModal.value = false;
+  closeModal();
+}
+
+function handleUpdate(data) {
+  emit("update", data);
+  closeModal();
 }
 
 function budgetLabel(filters) {

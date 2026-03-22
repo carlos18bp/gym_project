@@ -542,6 +542,7 @@
           :current-filters="currentFiltersSnapshot"
           :has-active-filters="hasActiveFilters"
           @save="handleSaveView"
+          @update="handleUpdateView"
           @apply="handleApplyView"
           @delete="handleDeleteView"
         />
@@ -869,6 +870,10 @@ function handleApplyView(view) {
     closing_date_to: view.filters.closing_date_to || '',
   };
   activeTab.value = 'all';
+}
+
+async function handleUpdateView(data) {
+  await secopStore.updateSavedView(data.id, { name: data.name, filters: data.filters });
 }
 
 async function handleDeleteView(viewId) {

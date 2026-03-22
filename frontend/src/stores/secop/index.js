@@ -393,6 +393,27 @@ export const useSecopStore = defineStore("secop", {
     },
 
     /**
+     * Update an existing saved view.
+     * @param {number} id - Saved view ID.
+     * @param {object} data - { name, filters }
+     * @returns {object} - Updated saved view.
+     */
+    async updateSavedView(id, data) {
+      try {
+        const response = await update_request(`secop/saved-views/${id}/`, data);
+        if (response.status === 200) {
+          const idx = this.savedViews.findIndex((v) => v.id === id);
+          if (idx !== -1) this.savedViews[idx] = response.data;
+          return response.data;
+        }
+        throw new Error("Failed to update saved view");
+      } catch (error) {
+        this.error = error.message;
+        throw error;
+      }
+    },
+
+    /**
      * Delete a saved view.
      * @param {number} id - Saved view ID.
      */

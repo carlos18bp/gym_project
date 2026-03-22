@@ -442,11 +442,12 @@ def secop_saved_views(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['DELETE'])
+@api_view(['PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def secop_delete_saved_view(request, pk):
     """
-    Delete a saved view. Users can only delete their own.
+    PUT: Update a saved view (name and/or filters).
+    DELETE: Delete a saved view. Users can only delete their own.
     """
     try:
         saved_view = SavedView.objects.get(pk=pk, user=request.user)
@@ -456,8 +457,21 @@ def secop_delete_saved_view(request, pk):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    saved_view.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    if request.method == 'DELETE':
+        saved_view.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # PUT
+    serializer = SavedViewSerializer(
+        saved_view,
+        data=request.data,
+        context={'request': request},
+        partial=True,
+    )
+    if serializer.is_valid():
+        serializer.save()
+        return Response(SavedViewSerializer(saved_view).data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ---------------------------------------------------------------------------
