@@ -4,13 +4,10 @@ Each test covers a specific branch path that was previously uncovered
 (false-branch of conditionals in signals, clean(), save() overrides).
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-
 from freezegun import freeze_time
 
 from gym_app.models.user import ActivityFeed, User
@@ -21,6 +18,7 @@ from gym_app.models.user import ActivityFeed, User
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestActivityFeedSaveBranch:
+    """Test ActivityFeed.save branch when activity count is at or over limit."""
 
     def test_save_does_not_fail_when_under_limit(self):
         """No deletion when user has fewer than 20 activity entries."""
@@ -64,6 +62,7 @@ class TestActivityFeedSaveBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCaseFileDeleteSignalBranch:
+    """Test delete_file signal when CaseFile has no file attached."""
 
     def test_delete_signal_skips_when_file_is_empty(self):
         """Signal does nothing when CaseFile has no file attached."""
@@ -82,6 +81,7 @@ class TestCaseFileDeleteSignalBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCorporateRequestFileDeleteSignalBranch:
+    """Test delete signal when CorporateRequestFiles has no file."""
 
     def test_delete_signal_skips_when_file_is_empty(self):
         """Signal does nothing when CorporateRequestFiles has no file."""
@@ -99,10 +99,14 @@ class TestCorporateRequestFileDeleteSignalBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestCorporateRequestCleanBranches:
+    """Test CorporateRequest.clean validation branches."""
 
     def test_clean_passes_when_client_and_org_both_set_and_valid(self):
         """Pass when client is a valid member of the organization."""
-        from gym_app.models.corporate_request import CorporateRequest, CorporateRequestType
+        from gym_app.models.corporate_request import (
+            CorporateRequest,
+            CorporateRequestType,
+        )
         from gym_app.models.organization import Organization, OrganizationMembership
 
         corp_user = User.objects.create_user(
@@ -133,7 +137,10 @@ class TestCorporateRequestCleanBranches:
 
     def test_clean_raises_when_corporate_client_not_leader(self):
         """Raise when corporate_client is not the org leader."""
-        from gym_app.models.corporate_request import CorporateRequest, CorporateRequestType
+        from gym_app.models.corporate_request import (
+            CorporateRequest,
+            CorporateRequestType,
+        )
         from gym_app.models.organization import Organization
 
         corp_user = User.objects.create_user(
@@ -164,6 +171,7 @@ class TestCorporateRequestCleanBranches:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestLegalRequestFileDeleteSignalBranch:
+    """Test delete signal when LegalRequestFiles has no file."""
 
     def test_delete_signal_skips_when_file_is_empty(self):
         """Signal does nothing when LegalRequestFiles has no file."""
@@ -181,10 +189,15 @@ class TestLegalRequestFileDeleteSignalBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestLegalRequestSaveBranch:
+    """Test LegalRequest.save branch when request_number is pre-set."""
 
     def test_save_skips_number_generation_when_already_set(self):
         """Skip _generate_request_number when request_number is provided."""
-        from gym_app.models.legal_request import LegalDiscipline, LegalRequest, LegalRequestType
+        from gym_app.models.legal_request import (
+            LegalDiscipline,
+            LegalRequest,
+            LegalRequestType,
+        )
 
         user = User.objects.create_user(
             email="lr_save@example.com", password="pw", role="client"
@@ -209,6 +222,7 @@ class TestLegalRequestSaveBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestOrganizationDeleteImagesBranch:
+    """Test delete_organization_images signal with missing images."""
 
     def test_delete_signal_skips_when_no_images(self):
         """Signal does nothing when organization has no images."""
@@ -250,6 +264,7 @@ class TestOrganizationDeleteImagesBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestOrganizationInvitationCleanBranch:
+    """Test OrganizationInvitation.clean leader check branch."""
 
     def test_clean_skips_leader_check_when_invited_by_is_leader(self):
         """Pass validation when invited_by is the actual org leader."""
@@ -283,6 +298,7 @@ class TestOrganizationInvitationCleanBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestOrganizationMembershipCleanBranch:
+    """Test OrganizationMembership.clean when role is not LEADER."""
 
     def test_clean_skips_leader_check_for_member_role(self):
         """No leader uniqueness check when role is MEMBER."""
@@ -312,6 +328,7 @@ class TestOrganizationMembershipCleanBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestOrganizationPostCleanBranch:
+    """Test OrganizationPost.clean validation branches."""
 
     def test_clean_skips_leader_check_when_author_is_leader(self):
         """Pass leader check when author is the org leader."""
@@ -387,6 +404,7 @@ class TestOrganizationPostCleanBranch:
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestDynamicDocumentDeleteBranch:
+    """Test DynamicDocument.delete when document has no folders."""
 
     def test_delete_with_no_folders(self):
         """Delete succeeds when document has no folders (folder_count == 0)."""

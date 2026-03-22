@@ -945,6 +945,165 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### secop-list-browse: Browse SECOP processes
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Browse, search, filter, and sort SECOP public procurement opportunities
+
+**Pasos:**
+1. Navigate to `/secop` via sidebar "Contratación Pública"
+2. View paginated table of SECOP processes
+3. Use filters (department, procurement method, status)
+4. Use search bar for keyword search
+5. Change sort order (date, budget, entity)
+6. Paginate through results
+
+---
+
+### secop-process-detail: View SECOP process detail
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** View full detail of a SECOP procurement process
+
+**Pasos:**
+1. Click on a process row in the list
+2. View entity info, process details, dates, budget
+3. View team classifications
+4. Click "Ver en SECOP" to open external portal link
+
+---
+
+### secop-classify-process: Classify a SECOP process
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` or `/secop/:id` | **E2E:** ✅
+- **Descripción:** Mark a process with a classification status and add internal notes
+
+**Pasos:**
+1. Click tag icon on a process row OR click "Clasificar" in detail view
+2. Select status (Interesting / Under Review / Applied / Discarded)
+3. Optionally add internal notes
+4. Save classification
+
+**Ramificaciones:**
+- ├── **Edit:** Change status or notes of existing classification
+- └── **Delete:** Remove classification entirely
+
+---
+
+### secop-create-alert: Create SECOP alert
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` (Alerts tab) | **E2E:** ✅
+- **Descripción:** Configure an alert to receive notifications for matching processes
+
+**Pasos:**
+1. Navigate to Alerts tab
+2. Click "Nueva Alerta"
+3. Fill in criteria: name, keywords, departments, entities, budget range, procurement methods
+4. Select notification frequency (Immediate / Daily / Weekly)
+5. Save alert
+
+---
+
+### secop-manage-alerts: Manage SECOP alerts
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Alerts tab) | **E2E:** ✅
+- **Descripción:** Edit, toggle, or delete existing alerts
+
+**Ramificaciones:**
+- ├── **Toggle:** Pause/resume an alert
+- ├── **Edit:** Modify criteria or frequency
+- └── **Delete:** Remove alert permanently
+
+---
+
+### secop-export-excel: Export SECOP processes to Excel
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Export filtered process list to .xlsx file
+
+**Pasos:**
+1. Apply desired filters
+2. Click "Exportar" button
+3. Download .xlsx file with current filter results
+
+---
+
+### secop-add-notes: Add internal notes to a SECOP process
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` or `/secop/:id` | **E2E:** ✅
+- **Descripción:** Add internal notes to a classified process for team collaboration
+
+**Pasos:**
+1. Open classification modal (tag icon or "Clasificar" button)
+2. Select classification status
+3. Write notes in the text area
+4. Save classification with notes
+
+---
+
+### secop-save-view: Save filter combination as named view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ✅
+- **Descripción:** Save current filter combination as a named view for quick future access
+
+**Pasos:**
+1. Apply desired filters (department, procurement method, status, search)
+2. Navigate to "Vistas Guardadas" tab
+3. Click "Guardar Vista Actual"
+4. Enter a descriptive name
+5. Click "Guardar"
+
+---
+
+### secop-apply-saved-view: Apply a saved filter view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ✅
+- **Descripción:** Apply a previously saved filter combination to the process list
+
+**Pasos:**
+1. Navigate to "Vistas Guardadas" tab
+2. Click "Aplicar" on a saved view
+3. Redirected to "Todas las Oportunidades" tab with filters applied
+
+---
+
+### secop-view-in-portal: Open deep-link to SECOP portal
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** Open the official SECOP portal page for a process in a new tab
+
+**Pasos:**
+1. Navigate to process detail page
+2. Click "Ver en SECOP" button
+3. New tab opens with the official SECOP process page
+
+---
+
+### secop-sync-status: View sync status and history
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** View the last synchronization time and status indicator
+
+**Pasos:**
+1. Navigate to `/secop`
+2. View sync status indicator in the header bar
+3. Indicator shows last successful sync time
+
+---
+
+### secop-trigger-sync: Admin triggers manual sync
+- **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button in the header
+
+**Pasos:**
+1. Navigate to `/secop`
+2. Click "Sincronizar" button in the sync status bar
+3. Button disables and shows spinner while syncing
+4. Sync runs asynchronously in background
+
+---
+
+### secop-filter-classifications: Filter classified processes by status
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Filter the Mis Clasificaciones tab by classification status
+
+**Pasos:**
+1. Navigate to `/secop`
+2. Click "Mis Clasificaciones" tab
+3. Select a status from the classification filter dropdown (Interesante, En Revisión, Aplicado, Descartado)
+4. List updates to show only processes with that classification status
+
+---
+
 ## Flujos — Client
 
 > El Client hereda los flujos compartidos y tiene acceso a los siguientes flujos específicos.

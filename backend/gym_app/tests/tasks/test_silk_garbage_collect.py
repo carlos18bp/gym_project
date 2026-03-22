@@ -120,3 +120,12 @@ class TestSilkGarbageCollectCommand:
         call_command(SilkGCCommand(), stdout=out)
 
         assert "Requests to delete: 0" in out.getvalue()
+
+    def test_command_exits_early_when_silk_not_enabled(self, settings):
+        """Verify command exits with warning when ENABLE_SILK is False."""
+        settings.ENABLE_SILK = False
+
+        out = StringIO()
+        call_command(SilkGCCommand(), stdout=out)
+
+        assert "not enabled" in out.getvalue().lower()

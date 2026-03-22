@@ -3,7 +3,8 @@ from gym_app.models import (
     Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, 
     LegalDiscipline, LegalRequestFiles, DynamicDocument, 
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
-    RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost
+    RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
+    SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
 )
 
 class Command(BaseCommand):
@@ -117,5 +118,24 @@ class Command(BaseCommand):
         for legal_request_files in LegalRequestFiles.objects.all():
             legal_request_files.delete()
             self.stdout.write(self.style.SUCCESS(f'LegalRequestFiles "{legal_request_files}" deleted'))
+
+        # Delete SECOP data (order matters: notifications → classifications → alerts → saved views → sync logs → processes)
+        deleted = AlertNotification.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} AlertNotification(s)'))
+
+        deleted = ProcessClassification.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} ProcessClassification(s)'))
+
+        deleted = SECOPAlert.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} SECOPAlert(s)'))
+
+        deleted = SavedView.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} SavedView(s)'))
+
+        deleted = SyncLog.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} SyncLog(s)'))
+
+        deleted = SECOPProcess.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} SECOPProcess(es)'))
 
         self.stdout.write(self.style.SUCCESS('All fake data deleted successfully'))

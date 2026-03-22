@@ -1093,6 +1093,136 @@
       "priority": "P3",
       "description": "Corporate client loads organizations dashboard and triggers store actions (load, invite)",
       "expectedSpecs": 1
+    },
+    "secop-list-browse": {
+      "name": "Browse SECOP processes",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
+      "expectedSpecs": 1
+    },
+    "secop-process-detail": {
+      "name": "View SECOP process detail",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "View full detail of a SECOP procurement process with entity info, dates, budget",
+      "expectedSpecs": 1
+    },
+    "secop-classify-process": {
+      "name": "Classify a SECOP process",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Mark a process with classification status and add internal notes for team collaboration",
+      "expectedSpecs": 1
+    },
+    "secop-create-alert": {
+      "name": "Create SECOP alert",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Configure alert criteria to receive notifications for matching SECOP processes",
+      "expectedSpecs": 1
+    },
+    "secop-manage-alerts": {
+      "name": "Manage SECOP alerts",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Edit, toggle, or delete existing SECOP alerts",
+      "expectedSpecs": 1
+    },
+    "secop-export-excel": {
+      "name": "Export SECOP processes to Excel",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Export filtered SECOP process list to .xlsx file",
+      "expectedSpecs": 1
+    },
+    "secop-add-notes": {
+      "name": "Add internal notes to a SECOP process",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Add internal notes to a classified process for team collaboration",
+      "expectedSpecs": 1
+    },
+    "secop-save-view": {
+      "name": "Save filter combination as named view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Save current filter combination as a named view for quick future access",
+      "expectedSpecs": 1
+    },
+    "secop-apply-saved-view": {
+      "name": "Apply a saved filter view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Apply a previously saved filter combination to the process list",
+      "expectedSpecs": 1
+    },
+    "secop-view-in-portal": {
+      "name": "Open deep-link to SECOP portal",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Open the official SECOP portal page for a process in a new tab",
+      "expectedSpecs": 1
+    },
+    "secop-sync-status": {
+      "name": "View sync status and history",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "View the last synchronization time and status indicator in the header",
+      "expectedSpecs": 1
+    },
+    "secop-trigger-sync": {
+      "name": "Admin triggers manual sync",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
+      "expectedSpecs": 1
+    },
+    "secop-filter-classifications": {
+      "name": "Filter classified processes by status",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)",
+      "expectedSpecs": 1
     }
   }
 }

@@ -5,19 +5,19 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n48 routes"]
-        Views["34 View Pages"]
-        Components["103 Components"]
-        Stores["34 Pinia Stores"]
+        Router["Vue Router\n50 routes"]
+        Views["36 View Pages"]
+        Components["109 Components"]
+        Stores["35 Pinia Stores"]
         Composables["10 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.0.6)"]
-        DRF["Django REST Framework\n147 API endpoints"]
-        Models["37 Models\n(12 model files)"]
-        Serializers["9 Serializer files"]
-        Views_BE["22 View files"]
+        DRF["Django REST Framework\n162 API endpoints"]
+        Models["43 Models\n(13 model files)"]
+        Serializers["10 Serializer files"]
+        Views_BE["23 View files"]
         Utils["3 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
@@ -28,6 +28,7 @@ flowchart TB
         Google["Google OAuth\n+ reCAPTCHA"]
         SMTP["Gmail SMTP"]
         Redis["Redis\n(Task Queue)"]
+        Socrata["Socrata API\n(datos.gov.co SECOP)"]
     end
 
     subgraph Storage["Data Storage"]
@@ -49,6 +50,7 @@ flowchart TB
     DRF --> SMTP
     DRF --> Google
     DRF --> Wompi
+    Tasks --> Socrata
 ```
 
 ---
@@ -260,7 +262,18 @@ erDiagram
 | `LegalDocument` | name, file | — |
 | `IntranetProfile` | cover_image, profile_image | Singleton (no FK to User) |
 
-### 5.9 Other Models (3 models)
+### 5.9 SECOP Public Procurement Domain (6 models)
+
+| Model | Key Fields | Relationships |
+|-------|-----------|---------------|
+| `SECOPProcess` | process_id (unique), reference, entity_name, entity_nit, department, city, entity_level, procedure_name, description, phase, status, procurement_method, contract_type, base_price, closing_date, publication_date, process_url, raw_data (JSON) | — |
+| `ProcessClassification` | status (INTERESTING/UNDER_REVIEW/DISCARDED/APPLIED), notes, created_at, updated_at | FK → SECOPProcess, FK → User (unique_together) |
+| `SECOPAlert` | name, keywords, entities, departments, min_budget, max_budget, procurement_methods, frequency (IMMEDIATE/DAILY/WEEKLY), is_active | FK → User |
+| `AlertNotification` | is_sent, sent_at, created_at | FK → SECOPAlert, FK → SECOPProcess (unique_together) |
+| `SyncLog` | started_at, finished_at, status (IN_PROGRESS/SUCCESS/FAILED), records_processed/created/updated, error_message | — |
+| `SavedView` | name, filters (JSON), created_at | FK → User (unique_together with name) |
+
+### 5.10 Other Models (3 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
@@ -287,10 +300,24 @@ flowchart TD
         T7["manual_backup\n(on-demand)"]
     end
 
+    subgraph SECOP["gym_app/secop_tasks.py"]
+        S1["sync_secop_daily\n(daily @ 6AM, locked)"]
+        S2["sync_secop_data\n(on-demand, retries=3)"]
+        S3["evaluate_secop_alerts\n(after sync, delayed 5s)"]
+        S4["send_secop_daily_summaries\n(daily @ 7AM)"]
+        S5["send_secop_weekly_summaries\n(Monday @ 7AM)"]
+        S6["purge_old_secop_processes\n(daily @ 3:30AM)"]
+    end
+
     T1 -->|"charges via"| Wompi["Wompi API"]
     T1 -->|"on failure"| Downgrade["User role → basic"]
     T3 -->|"django-dbbackup"| Storage["Backup Storage"]
     T5 -->|"reads"| Silk["Silk DB records"]
+    S1 -->|"calls"| S2
+    S2 -->|"fetches from"| Socrata["Socrata API\n(datos.gov.co)"]
+    S2 -->|"on new records"| S3
+    S3 -->|"sends email"| SMTP2["Gmail SMTP"]
+    S4 -->|"sends email"| SMTP2
 ```
 
 ---
@@ -330,6 +357,8 @@ flowchart TD
         OrgDash["/organizations_dashboard"]
         DocDash["/dynamic_document_dashboard"]
         Checkout["/checkout/:plan"]
+        SecopList["/secop 🔒"]
+        SecopDetail["/secop/:id 🔒"]
         UserGuide["/user_guide"]
     end
 
@@ -381,6 +410,10 @@ flowchart TD
         OI["organizations/index.js"]
         OCR["organizations/corporate_requests.js"]
         OP["organization_posts/index.js"]
+    end
+
+    subgraph SecopStores["SECOP Public Procurement"]
+        SC["secop/index.js — processes, classifications, alerts, saved views, sync"]
     end
 
     subgraph Other["Other Stores"]

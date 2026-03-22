@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory
-from gym_app.models.user import UserSignature
+from gym_app.models.user import UserSignature, ActivityFeed
+from gym_app.models.password_code import PasswordCode
+from gym_app.models.email_verification_code import EmailVerificationCode
+from gym_app.models.secop import SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView
 
 class UserAdmin(BaseUserAdmin):
     """
@@ -585,6 +588,152 @@ class DocumentRelationshipAdmin(admin.ModelAdmin):
         }),
     )
 
+class ActivityFeedAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the ActivityFeed model.
+    Manages user activity tracking entries.
+    """
+    list_display = ('user', 'action_type', 'description', 'created_at')
+    search_fields = ('user__email', 'user__first_name', 'user__last_name', 'description')
+    list_filter = ('action_type', 'created_at')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('user',)
+
+class PasswordCodeAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the PasswordCode model.
+    Manages password reset codes.
+    """
+    list_display = ('user', 'code', 'created_at', 'used')
+    search_fields = ('user__email', 'code')
+    list_filter = ('used', 'created_at')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('user',)
+
+class EmailVerificationCodeAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the EmailVerificationCode model.
+    Manages email verification codes for registration.
+    """
+    list_display = ('email', 'code', 'created_at', 'used')
+    search_fields = ('email', 'code')
+    list_filter = ('used', 'created_at')
+    readonly_fields = ('created_at',)
+
+class SECOPProcessAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the SECOPProcess model.
+    Manages SECOP procurement processes.
+    """
+    list_display = (
+        'process_id', 'entity_name', 'status', 'procurement_method',
+        'base_price', 'closing_date', 'department', 'synced_at'
+    )
+    search_fields = (
+        'process_id', 'reference', 'entity_name', 'description',
+        'procedure_name', 'department', 'city'
+    )
+    list_filter = ('status', 'department', 'procurement_method', 'publication_date', 'closing_date')
+    readonly_fields = ('synced_at',)
+    fieldsets = (
+        ('SECOP Identifiers', {
+            'fields': ('process_id', 'reference')
+        }),
+        ('Entity Information', {
+            'fields': ('entity_name', 'entity_nit', 'department', 'city', 'entity_level')
+        }),
+        ('Process Details', {
+            'fields': ('procedure_name', 'description', 'phase', 'status',
+                       'procurement_method', 'procurement_justification', 'contract_type')
+        }),
+        ('Financial', {
+            'fields': ('base_price',)
+        }),
+        ('Duration', {
+            'fields': ('duration_value', 'duration_unit')
+        }),
+        ('Dates', {
+            'fields': ('publication_date', 'last_update_date', 'closing_date')
+        }),
+        ('URLs & Codes', {
+            'fields': ('process_url', 'unspsc_code'),
+            'classes': ('collapse',)
+        }),
+        ('Sync Metadata', {
+            'fields': ('synced_at', 'raw_data'),
+            'classes': ('collapse',)
+        }),
+    )
+
+class ProcessClassificationAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the ProcessClassification model.
+    Manages user classifications of SECOP processes.
+    """
+    list_display = ('process', 'user', 'status', 'created_at', 'updated_at')
+    search_fields = ('process__process_id', 'process__reference', 'user__email', 'notes')
+    list_filter = ('status', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('process', 'user')
+
+class SECOPAlertAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the SECOPAlert model.
+    Manages user-configured SECOP alerts.
+    """
+    list_display = ('name', 'user', 'frequency', 'is_active', 'created_at')
+    search_fields = ('name', 'user__email', 'keywords', 'entities', 'departments')
+    list_filter = ('is_active', 'frequency', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('user',)
+    fieldsets = (
+        ('Alert Info', {
+            'fields': ('name', 'user', 'frequency', 'is_active')
+        }),
+        ('Filter Criteria', {
+            'fields': ('keywords', 'entities', 'departments',
+                       'min_budget', 'max_budget', 'procurement_methods')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+class AlertNotificationAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the AlertNotification model.
+    Manages alert notification records.
+    """
+    list_display = ('alert', 'process', 'is_sent', 'sent_at', 'created_at')
+    search_fields = ('alert__name', 'process__process_id', 'process__reference')
+    list_filter = ('is_sent', 'created_at')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('alert', 'process')
+
+class SyncLogAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the SyncLog model.
+    Manages SECOP sync execution logs.
+    """
+    list_display = (
+        'started_at', 'finished_at', 'status',
+        'records_processed', 'records_created', 'records_updated'
+    )
+    list_filter = ('status', 'started_at')
+    readonly_fields = ('started_at',)
+
+class SavedViewAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the SavedView model.
+    Manages saved filter combinations for SECOP.
+    """
+    list_display = ('name', 'user', 'created_at')
+    search_fields = ('name', 'user__email')
+    list_filter = ('created_at',)
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('user',)
+
 class GyMAdminSite(admin.AdminSite):
     """
     Custom AdminSite to organize models by functional sections.
@@ -611,7 +760,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'user_management',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['User', 'UserSignature']
+                    if model['object_name'] in ['User', 'UserSignature', 'ActivityFeed']
                 ]
             },
             {
@@ -666,6 +815,25 @@ class GyMAdminSite(admin.AdminSite):
                     ]
                 ]
             },
+            {
+                'name': _('SECOP Management'),
+                'app_label': 'secop_management',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in [
+                        'SECOPProcess', 'ProcessClassification', 'SECOPAlert',
+                        'AlertNotification', 'SyncLog', 'SavedView'
+                    ]
+                ]
+            },
+            {
+                'name': _('Authentication Codes'),
+                'app_label': 'authentication_codes',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['PasswordCode', 'EmailVerificationCode']
+                ]
+            },
         ]
         return custom_app_list
 
@@ -706,3 +874,12 @@ admin_site.register(RecentDocument, RecentDocumentAdmin)
 admin_site.register(RecentProcess, RecentProcessAdmin)
 admin_site.register(Subscription)
 admin_site.register(PaymentHistory)
+admin_site.register(ActivityFeed, ActivityFeedAdmin)
+admin_site.register(PasswordCode, PasswordCodeAdmin)
+admin_site.register(EmailVerificationCode, EmailVerificationCodeAdmin)
+admin_site.register(SECOPProcess, SECOPProcessAdmin)
+admin_site.register(ProcessClassification, ProcessClassificationAdmin)
+admin_site.register(SECOPAlert, SECOPAlertAdmin)
+admin_site.register(AlertNotification, AlertNotificationAdmin)
+admin_site.register(SyncLog, SyncLogAdmin)
+admin_site.register(SavedView, SavedViewAdmin)

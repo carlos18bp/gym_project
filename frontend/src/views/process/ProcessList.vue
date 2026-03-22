@@ -1,9 +1,8 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Mobile menu button -->
-    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <slot></slot>
-    </div>
+    <ModuleHeader title="Gestión de Procesos">
+      <template #menu-button><slot></slot></template>
+    </ModuleHeader>
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
@@ -558,6 +557,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/auth/user";
 import { useProcessStore } from "@/stores/process";
+import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import ProcessUsersModal from "@/components/process/ProcessUsersModal.vue";
 
 const route = useRoute();

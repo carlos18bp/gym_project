@@ -321,6 +321,30 @@ const router = createRouter({
       ],
     },
     {
+      path: "/secop",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "secop_list",
+          component: () => import(/* webpackChunkName: "secop" */ "@/views/secop/SecopList.vue"),
+          meta: { 
+            requiresAuth: true, 
+            title: "Contratación Pública"
+          },
+        },
+        {
+          path: ":id",
+          name: "secop_detail",
+          component: () => import(/* webpackChunkName: "secop-detail" */ "@/views/secop/SecopDetail.vue"),
+          meta: { 
+            requiresAuth: true, 
+            title: "Detalle SECOP"
+          },
+        },
+      ],
+    },
+    {
       path: "/user_guide",
       component: SlideBar,
       children: [
