@@ -355,8 +355,8 @@
               <thead>
                 <tr class="bg-gray-50/80">
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entidad</th>
-                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Objeto</th>
-                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Modalidad</th>
+                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell min-w-[300px]">Objeto</th>
+                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell min-w-[200px]">Modalidad</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Presupuesto</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Departamento</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">Ciudad</th>
@@ -375,14 +375,14 @@
                   @click="goToDetail(process.id)"
                 >
                   <td class="px-4 py-4">
-                    <div class="text-sm font-medium text-primary max-w-[200px] truncate group-hover:text-secondary transition-colors">{{ process.entity_name }}</div>
+                    <div class="text-sm font-medium text-primary break-words group-hover:text-secondary transition-colors">{{ process.entity_name }}</div>
                     <div class="text-xs text-gray-400 mt-0.5">{{ process.reference }}</div>
                   </td>
-                  <td class="px-4 py-4 hidden lg:table-cell">
+                  <td class="px-4 py-4 hidden lg:table-cell min-w-[300px]">
                     <div class="text-sm text-gray-700 break-words">{{ process.procedure_name || process.description }}</div>
                   </td>
                   <td class="px-4 py-4 hidden md:table-cell">
-                    <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 truncate max-w-[150px]">
+                    <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 whitespace-normal">
                       {{ process.procurement_method || '-' }}
                     </span>
                   </td>
