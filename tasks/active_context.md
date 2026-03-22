@@ -54,6 +54,7 @@ The application is **feature-complete** with all 17 major features implemented, 
   - **Frontend unit tests**: 53/53 passing (27 store + 26 components) — fixed 13 failures from UI text/class changes
   - **E2E improvements**: Eliminated all `waitForLoadState("networkidle")` from 8 spec files, replaced with `data-testid` waits
   - **Fake data**: Validated idempotency (`update_or_create`, `random.seed(42)`) and business rule compliance
+  - **SECOP Saved Views**: Added ability to edit existing saved views (rename and update filters) — requested by user (2026-03-22)
 - **E2E coverage audit — 100% flow coverage achieved (2026-03-19)**:
   - **Flow coverage: 107/107 covered**, 0 failing, 0 missing, 0 unmapped
   - **Quality Gate: 100/100** — 0 errors, 0 warnings, 0 infos
