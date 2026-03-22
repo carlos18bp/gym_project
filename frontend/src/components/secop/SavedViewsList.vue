@@ -21,6 +21,7 @@
       v-if="showModal"
       :current-filters="currentFilters"
       :existing-view="editingView"
+      :available-filters="availableFilters"
       @save="handleSave"
       @update="handleUpdate"
       @close="closeModal"
@@ -128,6 +129,7 @@ const props = defineProps({
   savedViews: { type: Array, default: () => [] },
   currentFilters: { type: Object, default: () => ({}) },
   hasActiveFilters: { type: Boolean, default: false },
+  availableFilters: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["save", "update", "apply", "delete"]);

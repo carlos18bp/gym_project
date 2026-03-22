@@ -541,6 +541,7 @@
           :saved-views="secopStore.savedViews"
           :current-filters="currentFiltersSnapshot"
           :has-active-filters="hasActiveFilters"
+          :available-filters="secopStore.availableFilters"
           @save="handleSaveView"
           @update="handleUpdateView"
           @apply="handleApplyView"
