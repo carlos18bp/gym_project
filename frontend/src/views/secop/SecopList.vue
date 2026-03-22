@@ -355,7 +355,7 @@
               <thead>
                 <tr class="bg-gray-50/80">
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entidad</th>
-                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell min-w-[300px]">Objeto</th>
+                  <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell min-w-[400px]">Objeto</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell min-w-[200px]">Modalidad</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Presupuesto</th>
                   <th scope="col" class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Departamento</th>
@@ -378,7 +378,7 @@
                     <div class="text-sm font-medium text-primary break-words group-hover:text-secondary transition-colors">{{ process.entity_name }}</div>
                     <div class="text-xs text-gray-400 mt-0.5">{{ process.reference }}</div>
                   </td>
-                  <td class="px-4 py-4 hidden lg:table-cell min-w-[300px]">
+                  <td class="px-4 py-4 hidden lg:table-cell min-w-[400px]">
                     <div class="text-sm text-gray-700 break-words">{{ process.procedure_name || process.description }}</div>
                   </td>
                   <td class="px-4 py-4 hidden md:table-cell">
