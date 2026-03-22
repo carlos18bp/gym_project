@@ -379,7 +379,7 @@
                     <div class="text-xs text-gray-400 mt-0.5">{{ process.reference }}</div>
                   </td>
                   <td class="px-4 py-4 hidden lg:table-cell">
-                    <div class="text-sm text-gray-700 max-w-[250px] truncate">{{ process.procedure_name || process.description }}</div>
+                    <div class="text-sm text-gray-700 break-words">{{ process.procedure_name || process.description }}</div>
                   </td>
                   <td class="px-4 py-4 hidden md:table-cell">
                     <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 truncate max-w-[150px]">

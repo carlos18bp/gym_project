@@ -7,7 +7,7 @@
         <p class="text-sm text-gray-500">Guarda combinaciones de filtros para acceso rápido.</p>
       </div>
       <button
-        @click="showSaveForm = true"
+        @click="showModal = true"
         data-testid="saved-views-create-btn"
         class="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
       >
@@ -16,46 +16,13 @@
       </button>
     </div>
 
-    <!-- Save form -->
-    <div v-if="showSaveForm" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-5 mb-6" data-testid="saved-views-form">
-      <h3 class="text-sm font-semibold text-gray-900 mb-3">Nueva Vista Guardada</h3>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <input
-          v-model="newViewName"
-          type="text"
-          placeholder="Nombre de la vista (ej: Contratos Bogotá)"
-          data-testid="saved-views-name-input"
-          class="flex-1 rounded-lg border-gray-300 text-sm shadow-sm focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-gray-400"
-          @keyup.enter="handleSave"
-        />
-        <div class="flex gap-2">
-          <button
-            @click="handleSave"
-            :disabled="!newViewName.trim()"
-            :class="[
-              'px-4 py-2 rounded-lg text-sm font-medium',
-              newViewName.trim()
-                ? 'bg-secondary text-white hover:bg-blue-700 transition-colors'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            ]"
-          >
-            Guardar
-          </button>
-          <button
-            @click="showSaveForm = false; newViewName = ''"
-            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-      <p v-if="hasActiveFilters" class="text-xs text-gray-500 mt-2">
-        Se guardarán los filtros actuales aplicados.
-      </p>
-      <p v-else class="text-xs text-amber-600 mt-2">
-        No hay filtros aplicados. Aplica filtros antes de guardar una vista.
-      </p>
-    </div>
+    <!-- Save modal -->
+    <SavedViewModal
+      v-if="showModal"
+      :current-filters="currentFilters"
+      @save="handleSave"
+      @close="showModal = false"
+    />
 
     <!-- Empty state -->
     <div
@@ -152,6 +119,7 @@ import {
   TrashIcon,
 } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
+import SavedViewModal from "@/components/secop/SavedViewModal.vue";
 
 const props = defineProps({
   savedViews: { type: Array, default: () => [] },
@@ -161,17 +129,11 @@ const props = defineProps({
 
 const emit = defineEmits(["save", "apply", "delete"]);
 
-const showSaveForm = ref(false);
-const newViewName = ref("");
+const showModal = ref(false);
 
-function handleSave() {
-  if (!newViewName.value.trim()) return;
-  emit("save", {
-    name: newViewName.value.trim(),
-    filters: { ...props.currentFilters },
-  });
-  newViewName.value = "";
-  showSaveForm.value = false;
+function handleSave(data) {
+  emit("save", data);
+  showModal.value = false;
 }
 
 function budgetLabel(filters) {
