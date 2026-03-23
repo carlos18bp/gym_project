@@ -291,6 +291,7 @@ secop_urls = [
     # Saved views
     path('secop/saved-views/', secop.secop_saved_views, name='secop-saved-views'),
     path('secop/saved-views/<int:pk>/', secop.secop_delete_saved_view, name='secop-delete-saved-view'),
+    path('secop/saved-views/<int:pk>/set-favorite/', secop.secop_saved_view_set_favorite, name='secop-saved-view-set-favorite'),
 
     # Filters, sync, and export
     path('secop/filters/', secop.secop_available_filters, name='secop-available-filters'),

@@ -553,6 +553,17 @@ class TestSavedView:
         assert view.filters == filters
         assert view.filters['department'] == 'Antioquia'
 
+    def test_is_favorite_defaults_to_false(self, lawyer):
+        """Verify is_favorite defaults to False on creation."""
+        view = SavedView.objects.create(
+            user=lawyer,
+            name='Default Fav Test',
+            filters={'department': 'Antioquia'},
+        )
+
+        view.refresh_from_db()
+        assert view.is_favorite is False
+
     def test_str_representation(self, lawyer):
         """Verify __str__ contains name and user."""
         view = SavedView.objects.create(

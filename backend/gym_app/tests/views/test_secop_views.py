@@ -522,6 +522,74 @@ class TestSecopSavedViewViews:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_set_favorite_marks_view_as_favorite(self, api_client, lawyer):
+        """Verify set-favorite endpoint marks a view as favorite."""
+        view = SavedView.objects.create(
+            user=lawyer, name='Fav View',
+            filters={'department': 'Bogotá D.C.'},
+        )
+        url = reverse('secop-saved-view-set-favorite', kwargs={'pk': view.pk})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_favorite'] is True
+        view.refresh_from_db()
+        assert view.is_favorite is True
+
+    def test_set_favorite_toggles_off_when_already_favorite(self, api_client, lawyer):
+        """Verify set-favorite toggles off if view is already favorite."""
+        view = SavedView.objects.create(
+            user=lawyer, name='Fav View',
+            filters={'department': 'Bogotá D.C.'},
+            is_favorite=True,
+        )
+        url = reverse('secop-saved-view-set-favorite', kwargs={'pk': view.pk})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_favorite'] is False
+        view.refresh_from_db()
+        assert view.is_favorite is False
+
+    def test_set_favorite_unsets_previous_favorite(self, api_client, lawyer):
+        """Verify only one view per user can be favorite at a time."""
+        view_a = SavedView.objects.create(
+            user=lawyer, name='View A',
+            filters={'department': 'Bogotá D.C.'},
+            is_favorite=True,
+        )
+        view_b = SavedView.objects.create(
+            user=lawyer, name='View B',
+            filters={'department': 'Antioquia'},
+        )
+        url = reverse('secop-saved-view-set-favorite', kwargs={'pk': view_b.pk})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_favorite'] is True
+        view_a.refresh_from_db()
+        view_b.refresh_from_db()
+        assert view_a.is_favorite is False
+        assert view_b.is_favorite is True
+
+    @pytest.mark.edge
+    def test_set_favorite_other_user_view_returns_404(
+        self, api_client, lawyer, other_lawyer
+    ):
+        """Verify user cannot set favorite on another user's view."""
+        view = SavedView.objects.create(
+            user=other_lawyer, name='Other View',
+            filters={'department': 'Antioquia'},
+        )
+        url = reverse('secop-saved-view-set-favorite', kwargs={'pk': view.pk})
+
+        response = api_client.post(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 # ---------------------------------------------------------------------------
 # Filters, Sync, Export endpoints

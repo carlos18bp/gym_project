@@ -172,8 +172,8 @@ class SavedViewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SavedView
-        fields = ['id', 'name', 'filters', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'name', 'filters', 'is_favorite', 'created_at']
+        read_only_fields = ['id', 'is_favorite', 'created_at']
 
     def create(self, validated_data):
         """Create or update saved view for the current user."""

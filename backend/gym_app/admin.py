@@ -728,9 +728,9 @@ class SavedViewAdmin(admin.ModelAdmin):
     Custom admin configuration for the SavedView model.
     Manages saved filter combinations for SECOP.
     """
-    list_display = ('name', 'user', 'created_at')
+    list_display = ('name', 'user', 'is_favorite', 'created_at')
     search_fields = ('name', 'user__email')
-    list_filter = ('created_at',)
+    list_filter = ('is_favorite', 'created_at')
     readonly_fields = ('created_at',)
     raw_id_fields = ('user',)
 

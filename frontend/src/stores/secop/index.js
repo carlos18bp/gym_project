@@ -72,6 +72,15 @@ export const useSecopStore = defineStore("secop", {
     activeAlertsCount: (state) => {
       return state.alerts.filter((a) => a.is_active).length;
     },
+
+    /**
+     * Get the user's favorite saved view (if any).
+     * @param {object} state - State.
+     * @returns {object|null} - Favorite saved view or null.
+     */
+    favoriteView: (state) => {
+      return state.savedViews.find((v) => v.is_favorite) || null;
+    },
   },
 
   actions: {
@@ -421,6 +430,29 @@ export const useSecopStore = defineStore("secop", {
       try {
         await delete_request(`secop/saved-views/${id}/`);
         this.savedViews = this.savedViews.filter((v) => v.id !== id);
+      } catch (error) {
+        this.error = error.message;
+        throw error;
+      }
+    },
+
+    /**
+     * Toggle favorite status on a saved view.
+     * @param {number} id - Saved view ID.
+     * @returns {object} - Updated saved view.
+     */
+    async toggleFavoriteView(id) {
+      try {
+        const response = await create_request(`secop/saved-views/${id}/set-favorite/`, {});
+        if (response.status === 200) {
+          const toggled = response.data;
+          this.savedViews = this.savedViews.map((v) => ({
+            ...v,
+            is_favorite: v.id === toggled.id ? toggled.is_favorite : false,
+          }));
+          return toggled;
+        }
+        throw new Error("Failed to toggle favorite");
       } catch (error) {
         this.error = error.message;
         throw error;

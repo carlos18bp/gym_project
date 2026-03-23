@@ -474,6 +474,34 @@ def secop_delete_saved_view(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def secop_saved_view_set_favorite(request, pk):
+    """
+    Toggle favorite status on a saved view.
+    Only one view per user can be favorite at a time.
+    """
+    try:
+        saved_view = SavedView.objects.get(pk=pk, user=request.user)
+    except SavedView.DoesNotExist:
+        return Response(
+            {'detail': 'Saved view not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if saved_view.is_favorite:
+        saved_view.is_favorite = False
+        saved_view.save(update_fields=['is_favorite'])
+    else:
+        SavedView.objects.filter(
+            user=request.user, is_favorite=True
+        ).update(is_favorite=False)
+        saved_view.is_favorite = True
+        saved_view.save(update_fields=['is_favorite'])
+
+    return Response(SavedViewSerializer(saved_view).data)
+
+
 # ---------------------------------------------------------------------------
 # Filter values & sync endpoints
 # ---------------------------------------------------------------------------

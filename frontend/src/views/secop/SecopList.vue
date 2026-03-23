@@ -174,15 +174,26 @@
               <span v-if="activeFilterCount > 0" class="ml-1 inline-flex items-center rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">{{ activeFilterCount }}</span>
               <ChevronDownIcon :class="['h-3.5 w-3.5 transition-transform', showAdvancedFilters ? 'rotate-180' : '']" />
             </button>
-            <button
-              v-if="hasActiveFilters"
-              @click="clearFilters"
-              data-testid="clear-filters"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-            >
-              <XMarkIcon class="h-3.5 w-3.5" />
-              Limpiar filtros
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="hasActiveFilters && !filtersDisabled"
+                @click="showSaveFilterModal = true"
+                data-testid="save-filter-btn"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-secondary/10 px-3 py-1.5 text-xs font-medium text-secondary hover:bg-secondary/20 transition-colors"
+              >
+                <BookmarkIcon class="h-3.5 w-3.5" />
+                Guardar Filtro
+              </button>
+              <button
+                v-if="hasActiveFilters"
+                @click="clearFilters"
+                data-testid="clear-filters"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+              >
+                <XMarkIcon class="h-3.5 w-3.5" />
+                Limpiar filtros
+              </button>
+            </div>
           </div>
 
           <!-- Advanced Filters Panel -->
@@ -427,6 +438,16 @@
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-right" @click.stop>
                     <button
+                      v-if="activeTab === 'classified' && process.my_classification"
+                      @click="handleQuickDeleteClassification(process)"
+                      :data-testid="`delete-classification-btn-${process.id}`"
+                      class="rounded-lg p-1.5 text-gray-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition-all"
+                      title="Eliminar clasificación"
+                    >
+                      <TrashIcon class="h-5 w-5" />
+                    </button>
+                    <button
+                      v-else
                       @click="openClassifyModal(process)"
                       :data-testid="`classify-btn-${process.id}`"
                       class="rounded-lg p-1.5 text-gray-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-blue-50 hover:text-secondary transition-all"
@@ -546,8 +567,18 @@
           @update="handleUpdateView"
           @apply="handleApplyView"
           @delete="handleDeleteView"
+          @toggle-favorite="handleToggleFavorite"
         />
       </template>
+
+      <!-- Save Filter Modal (from filters area) -->
+      <SavedViewModal
+        v-if="showSaveFilterModal"
+        :current-filters="currentFiltersSnapshot"
+        :available-filters="secopStore.availableFilters"
+        @save="handleSaveFilterFromModal"
+        @close="showSaveFilterModal = false"
+      />
 
       <!-- Classification Modal -->
       <ClassificationModal
@@ -577,6 +608,8 @@ import {
   BuildingLibraryIcon,
   TagIcon,
   ExclamationTriangleIcon,
+  BookmarkIcon,
+  TrashIcon,
 } from "@heroicons/vue/24/outline";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -590,6 +623,7 @@ import ClassificationModal from "@/components/secop/ClassificationModal.vue";
 import AlertsList from "@/components/secop/AlertsList.vue";
 import AlertForm from "@/components/secop/AlertForm.vue";
 import SavedViewsList from "@/components/secop/SavedViewsList.vue";
+import SavedViewModal from "@/components/secop/SavedViewModal.vue";
 
 const router = useRouter();
 const secopStore = useSecopStore();
@@ -637,6 +671,9 @@ const classifyingProcess = ref(null);
 // Alert form
 const showAlertForm = ref(false);
 const editingAlert = ref(null);
+
+// Save filter modal
+const showSaveFilterModal = ref(false);
 
 // Computed
 const activeTabLabel = computed(() => {
@@ -719,8 +756,15 @@ onMounted(async () => {
     secopStore.fetchAvailableFilters(),
     secopStore.fetchSyncStatus(),
     secopStore.fetchAlerts(),
+    secopStore.fetchSavedViews(),
     loadProcesses(),
   ]);
+
+  // Auto-apply favorite view filters if one exists
+  const fav = secopStore.favoriteView;
+  if (fav) {
+    handleApplyView(fav);
+  }
 });
 
 // Watch filters/ordering/pageSize for auto-reload with debounce to prevent double-fetch
@@ -879,5 +923,21 @@ async function handleUpdateView(data) {
 
 async function handleDeleteView(viewId) {
   await secopStore.deleteSavedView(viewId);
+}
+
+async function handleToggleFavorite(viewId) {
+  await secopStore.toggleFavoriteView(viewId);
+}
+
+async function handleSaveFilterFromModal(data) {
+  await secopStore.createSavedView(data);
+  showSaveFilterModal.value = false;
+}
+
+async function handleQuickDeleteClassification(process) {
+  if (process.my_classification) {
+    await secopStore.deleteClassification(process.my_classification.id, process.id);
+    await loadClassified();
+  }
 }
 </script>

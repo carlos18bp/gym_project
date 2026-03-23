@@ -51,7 +51,10 @@
       >
         <div class="flex items-start justify-between">
           <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-semibold text-gray-900 mb-1">{{ view.name }}</h3>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-sm font-semibold text-gray-900">{{ view.name }}</h3>
+              <span v-if="view.is_favorite" class="text-sm" title="Filtro por defecto">⭐</span>
+            </div>
 
             <!-- Filters summary -->
             <div class="flex flex-wrap gap-2 text-xs text-gray-600">
@@ -92,6 +95,19 @@
           <!-- Actions -->
           <div class="flex items-center gap-1 ml-4">
             <button
+              @click.stop="$emit('toggle-favorite', view.id)"
+              :data-testid="`saved-view-favorite-${view.id}`"
+              :title="view.is_favorite ? 'Quitar como filtro por defecto' : 'Usar como filtro por defecto'"
+              :class="[
+                'rounded-lg p-2 transition-colors',
+                view.is_favorite
+                  ? 'text-amber-500 hover:bg-amber-50'
+                  : 'text-gray-300 hover:bg-amber-50 hover:text-amber-400'
+              ]"
+            >
+              <StarIcon class="h-4 w-4" :class="view.is_favorite ? 'fill-current' : ''" />
+            </button>
+            <button
               @click.stop="$emit('apply', view)"
               :data-testid="`saved-view-apply-${view.id}`"
               title="Aplicar filtros"
@@ -121,6 +137,7 @@ import {
   BookmarkIcon,
   FunnelIcon,
   TrashIcon,
+  StarIcon,
 } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 import SavedViewModal from "@/components/secop/SavedViewModal.vue";
@@ -132,7 +149,7 @@ const props = defineProps({
   availableFilters: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["save", "update", "apply", "delete"]);
+const emit = defineEmits(["save", "update", "apply", "delete", "toggle-favorite"]);
 
 const showModal = ref(false);
 const editingView = ref(null);

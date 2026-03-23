@@ -61,8 +61,8 @@
               :href="process.process_url"
               target="_blank"
               rel="noopener noreferrer"
-              data-testid="detail-secop-link"
-              class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-secondary shadow-sm hover:bg-gray-50 transition-colors shrink-0"
+              data-testid="detail-secop-link-mobile"
+              class="lg:hidden inline-flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-secondary shadow-sm hover:bg-white transition-colors shrink-0"
             >
               <ArrowTopRightOnSquareIcon class="h-4 w-4" />
               Ver en SECOP
@@ -168,9 +168,22 @@
 
           <!-- Sidebar -->
           <div class="space-y-6">
+            <!-- Ver en SECOP Panel (desktop only) -->
+            <a
+              v-if="process.process_url"
+              :href="process.process_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="detail-secop-link"
+              class="hidden lg:flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] p-5 text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group"
+            >
+              <ArrowTopRightOnSquareIcon class="h-6 w-6 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <span class="text-base font-bold">Ver en SECOP</span>
+            </a>
+
             <!-- Classification Panel -->
-            <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-6" data-testid="detail-classification">
-              <h2 class="text-base font-semibold text-primary mb-4">Mi Clasificación</h2>
+            <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-5" data-testid="detail-classification">
+              <h2 class="text-sm font-semibold text-gray-700 mb-3">Mi Clasificación</h2>
               <div v-if="myClassification">
                 <ClassificationBadge :status="myClassification.status" class="mb-3" />
                 <p v-if="myClassification.notes" class="text-sm text-gray-600 mb-4 bg-terciary rounded-lg p-3">{{ myClassification.notes }}</p>
@@ -178,14 +191,14 @@
                   <button
                     @click="openClassifyModal"
                     data-testid="detail-edit-classification"
-                    class="flex-1 rounded-lg px-3 py-2 text-sm font-medium text-secondary ring-1 ring-inset ring-secondary/30 hover:bg-blue-50 transition-colors"
+                    class="flex-1 rounded-lg px-3 py-1.5 text-xs font-medium text-secondary ring-1 ring-inset ring-secondary/30 hover:bg-blue-50 transition-colors"
                   >
                     Editar
                   </button>
                   <button
                     @click="handleDeleteClassification"
                     data-testid="detail-delete-classification"
-                    class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50 transition-colors"
+                    class="rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-200 hover:bg-red-50 transition-colors"
                   >
                     Quitar
                   </button>
@@ -196,7 +209,7 @@
                 <button
                   @click="openClassifyModal"
                   data-testid="detail-classify-btn"
-                  class="w-full rounded-lg bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+                  class="w-full rounded-lg ring-1 ring-inset ring-secondary/30 px-4 py-2 text-sm font-medium text-secondary hover:bg-blue-50 transition-colors"
                 >
                   Clasificar
                 </button>

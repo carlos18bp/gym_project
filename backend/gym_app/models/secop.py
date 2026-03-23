@@ -380,6 +380,10 @@ class SavedView(models.Model):
     filters = models.JSONField(
         help_text="Stored filter parameters as JSON"
     )
+    is_favorite = models.BooleanField(
+        default=False,
+        help_text="If true, this view's filters are applied by default when entering the module"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
