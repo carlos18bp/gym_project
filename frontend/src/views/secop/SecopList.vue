@@ -736,7 +736,7 @@ const activeTabLabel = computed(() => {
 const combinedKeywords = computed(() => {
   const all = [...keywordTags.value];
   if (keywordInput.value.trim()) all.push(keywordInput.value.trim());
-  return all.join(' ');
+  return all.join('|');
 });
 
 const currentFiltersSnapshot = computed(() => ({
@@ -961,7 +961,7 @@ async function handleSaveView(data) {
 function handleApplyView(view) {
   searchQuery.value = view.filters.search || '';
   // Restore keyword tags from saved keywords string
-  keywordTags.value = view.filters.keywords ? view.filters.keywords.split(/\s+/).filter(Boolean) : [];
+  keywordTags.value = view.filters.keywords ? view.filters.keywords.split('|').map(s => s.trim()).filter(Boolean) : [];
   keywordInput.value = '';
   filters.value = {
     department: view.filters.department ? view.filters.department.split(',') : [],

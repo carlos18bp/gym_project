@@ -145,13 +145,17 @@ def _apply_secop_filters(queryset, query_params):
 
     keywords = query_params.get('keywords')
     if keywords:
-        kw_query = Q()
-        for word in keywords.split():
-            kw_query &= (
-                Q(procedure_name__icontains=word) |
-                Q(description__icontains=word)
-            )
-        queryset = queryset.filter(kw_query)
+        phrases = [p.strip() for p in keywords.split('|') if p.strip()]
+        phrase_queries = Q()
+        for phrase in phrases:
+            word_query = Q()
+            for word in phrase.split():
+                word_query &= (
+                    Q(procedure_name__icontains=word) |
+                    Q(description__icontains=word)
+                )
+            phrase_queries |= word_query
+        queryset = queryset.filter(phrase_queries)
 
     return queryset
 

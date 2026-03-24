@@ -274,7 +274,7 @@ const modalKeywordTags = ref([]);
 // Initialize tags from existing keywords
 function initKeywordTags(keywords) {
   if (!keywords) return [];
-  return String(keywords).split(/\s+/).filter(Boolean);
+  return String(keywords).split('|').map(s => s.trim()).filter(Boolean);
 }
 
 function addModalKeywordTag() {
@@ -335,7 +335,7 @@ function buildOutputFilters() {
   // Combine keyword tags + any text in the input
   const allKeywords = [...modalKeywordTags.value];
   if (modalKeywordInput.value.trim()) allKeywords.push(modalKeywordInput.value.trim());
-  if (allKeywords.length) out.keywords = allKeywords.join(' ');
+  if (allKeywords.length) out.keywords = allKeywords.join('|');
 
   for (const key of CSV_KEYS) {
     const csv = arrayToCsv(localFilters[key]);
