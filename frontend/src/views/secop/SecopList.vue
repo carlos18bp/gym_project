@@ -84,11 +84,14 @@
         <!-- Filters and Search Bar -->
         <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6 relative" data-testid="secop-filters">
           <!-- Disabled overlay for basic role -->
-          <div v-if="filtersDisabled" class="absolute inset-0 z-10 flex items-start justify-center rounded-xl bg-white/70 backdrop-blur-[1px]" data-testid="filters-disabled-overlay">
-            <div class="mt-6 flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-600 shadow-sm ring-1 ring-gray-200">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-              Los filtros no están disponibles en el plan básico
-            </div>
+          <div v-if="filtersDisabled" class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-gradient-to-b from-white/80 via-white/70 to-white/90 backdrop-blur-[2px]" data-testid="filters-disabled-overlay">
+            <a
+              href="#"
+              class="flex items-center gap-2.5 rounded-xl bg-secondary px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 transition-all hover:scale-[1.02] ring-2 ring-secondary/30"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+              Activa todas las funcionalidades en contratación. ¡Click Aquí!
+            </a>
           </div>
 
           <!-- Search Bar -->
@@ -109,21 +112,40 @@
             </div>
           </div>
 
-          <!-- Keywords search -->
+          <!-- Keywords search (tag system) -->
           <div class="mb-4">
             <div class="relative w-full">
               <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <TagIcon class="h-5 w-5 text-gray-400" />
               </div>
               <input
-                v-model="filters.keywords"
+                v-model="keywordInput"
                 type="search"
                 data-testid="secop-keywords"
-                placeholder="Palabras clave (ej: prestación servicios enfermería)"
+                placeholder="Palabras clave — presiona Enter para agregar como etiqueta"
                 class="block w-full rounded-xl border-0 bg-terciary py-3 pl-10 pr-4 text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
                 :disabled="filtersDisabled"
-                @keyup.enter="loadProcesses"
+                @keydown.enter.prevent="addKeywordTag"
               />
+            </div>
+            <!-- Keyword tags -->
+            <div v-if="keywordTags.length" class="flex flex-wrap gap-1.5 mt-2">
+              <span
+                v-for="(tag, idx) in keywordTags"
+                :key="idx"
+                class="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-xs font-medium text-secondary"
+              >
+                <TagIcon class="h-3 w-3" />
+                {{ tag }}
+                <button
+                  type="button"
+                  class="ml-0.5 rounded-full p-0.5 hover:bg-secondary/20 transition-colors"
+                  data-testid="keyword-tag-remove"
+                  @click="removeKeywordTag(idx)"
+                >
+                  <XMarkIcon class="h-3 w-3" />
+                </button>
+              </span>
             </div>
           </div>
 
@@ -182,7 +204,7 @@
                 class="inline-flex items-center gap-1.5 rounded-lg bg-secondary/10 px-3 py-1.5 text-xs font-medium text-secondary hover:bg-secondary/20 transition-colors"
               >
                 <BookmarkIcon class="h-3.5 w-3.5" />
-                Guardar Filtro
+                Guardar Filtros
               </button>
               <button
                 v-if="hasActiveFilters"
@@ -539,16 +561,28 @@
 
       <!-- ALERTS TAB -->
       <template v-if="activeTab === 'alerts'">
-        <AlertsList
-          :alerts="secopStore.alerts"
-          @create="showAlertForm = true"
-          @edit="editAlert"
-          @toggle="handleToggleAlert"
-          @delete="handleDeleteAlert"
-        />
+        <div class="relative">
+          <!-- Disabled overlay for basic role -->
+          <div v-if="filtersDisabled" class="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-gradient-to-b from-white/80 via-white/70 to-white/90 backdrop-blur-[2px]" data-testid="alerts-disabled-overlay">
+            <a
+              href="#"
+              class="flex items-center gap-2.5 rounded-xl bg-secondary px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-blue-700 transition-all hover:scale-[1.02] ring-2 ring-secondary/30"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+              Activa todas las funcionalidades en contratación. ¡Click Aquí!
+            </a>
+          </div>
+          <AlertsList
+            :alerts="secopStore.alerts"
+            @create="showAlertForm = true"
+            @edit="editAlert"
+            @toggle="handleToggleAlert"
+            @delete="handleDeleteAlert"
+          />
+        </div>
         <!-- Alert Form Modal -->
         <AlertForm
-          v-if="showAlertForm"
+          v-if="showAlertForm && !filtersDisabled"
           :alert="editingAlert"
           :available-filters="secopStore.availableFilters"
           @save="handleSaveAlert"
@@ -637,7 +671,7 @@ const tabs = [
   { key: 'all', label: 'Todas las Oportunidades' },
   { key: 'classified', label: 'Mis Clasificaciones' },
   { key: 'alerts', label: 'Alertas' },
-  { key: 'savedViews', label: 'Vistas Guardadas' },
+  { key: 'savedViews', label: 'Filtros Guardados' },
 ];
 
 // Tab state
@@ -655,7 +689,6 @@ const filters = ref({
   status: [],
   entity_name: [],
   unspsc_code: '',
-  keywords: '',
   min_budget: '',
   max_budget: '',
   publication_date_from: '',
@@ -663,6 +696,24 @@ const filters = ref({
   closing_date_from: '',
   closing_date_to: '',
 });
+
+// Keyword tags system
+const keywordInput = ref('');
+const keywordTags = ref([]);
+
+function addKeywordTag() {
+  const tag = keywordInput.value.trim();
+  if (tag && !keywordTags.value.includes(tag)) {
+    keywordTags.value.push(tag);
+  }
+  keywordInput.value = '';
+  loadProcesses();
+}
+
+function removeKeywordTag(idx) {
+  keywordTags.value.splice(idx, 1);
+  loadProcesses();
+}
 
 // Classification modal
 const showClassifyModal = ref(false);
@@ -677,8 +728,15 @@ const showSaveFilterModal = ref(false);
 
 // Computed
 const activeTabLabel = computed(() => {
-  const labels = { all: 'Todas las Oportunidades', classified: 'Mis Clasificaciones', alerts: 'Alertas', savedViews: 'Vistas Guardadas' };
+  const labels = { all: 'Todas las Oportunidades', classified: 'Mis Clasificaciones', alerts: 'Alertas', savedViews: 'Filtros Guardados' };
   return labels[activeTab.value] || 'Todas las Oportunidades';
+});
+
+// Combine keyword tags + typed input into a single keywords string
+const combinedKeywords = computed(() => {
+  const all = [...keywordTags.value];
+  if (keywordInput.value.trim()) all.push(keywordInput.value.trim());
+  return all.join(' ');
 });
 
 const currentFiltersSnapshot = computed(() => ({
@@ -688,7 +746,7 @@ const currentFiltersSnapshot = computed(() => ({
   status: filters.value.status.length ? filters.value.status.join(',') : '',
   entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : '',
   unspsc_code: filters.value.unspsc_code || '',
-  keywords: filters.value.keywords || '',
+  keywords: combinedKeywords.value || '',
   min_budget: filters.value.min_budget || '',
   max_budget: filters.value.max_budget || '',
   publication_date_from: filters.value.publication_date_from || '',
@@ -699,7 +757,7 @@ const currentFiltersSnapshot = computed(() => ({
 
 const hasActiveFilters = computed(() => {
   return filters.value.department.length || filters.value.procurement_method.length || filters.value.status.length || searchQuery.value
-    || filters.value.entity_name.length || filters.value.unspsc_code || filters.value.keywords
+    || filters.value.entity_name.length || filters.value.unspsc_code || keywordTags.value.length || keywordInput.value.trim()
     || filters.value.min_budget || filters.value.max_budget
     || filters.value.publication_date_from || filters.value.publication_date_to
     || filters.value.closing_date_from || filters.value.closing_date_to;
@@ -712,7 +770,7 @@ const activeFilterCount = computed(() => {
   if (filters.value.status.length) count++;
   if (filters.value.entity_name.length) count++;
   if (filters.value.unspsc_code) count++;
-  if (filters.value.keywords) count++;
+  if (keywordTags.value.length || keywordInput.value.trim()) count++;
   if (filters.value.min_budget || filters.value.max_budget) count++;
   if (filters.value.publication_date_from || filters.value.publication_date_to) count++;
   if (filters.value.closing_date_from || filters.value.closing_date_to) count++;
@@ -793,7 +851,7 @@ function _buildFilterParams(page = 1) {
     status: filters.value.status.length ? filters.value.status.join(',') : undefined,
     entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : undefined,
     unspsc_code: filters.value.unspsc_code || undefined,
-    keywords: filters.value.keywords || undefined,
+    keywords: combinedKeywords.value || undefined,
     min_budget: filters.value.min_budget || undefined,
     max_budget: filters.value.max_budget || undefined,
     publication_date_from: filters.value.publication_date_from || undefined,
@@ -822,9 +880,11 @@ function goToPage(page) {
 
 function clearFilters() {
   searchQuery.value = '';
+  keywordInput.value = '';
+  keywordTags.value = [];
   filters.value = {
     department: [], procurement_method: [], status: [],
-    entity_name: [], unspsc_code: '', keywords: '',
+    entity_name: [], unspsc_code: '',
     min_budget: '', max_budget: '',
     publication_date_from: '', publication_date_to: '',
     closing_date_from: '', closing_date_to: '',
@@ -900,13 +960,15 @@ async function handleSaveView(data) {
 
 function handleApplyView(view) {
   searchQuery.value = view.filters.search || '';
+  // Restore keyword tags from saved keywords string
+  keywordTags.value = view.filters.keywords ? view.filters.keywords.split(/\s+/).filter(Boolean) : [];
+  keywordInput.value = '';
   filters.value = {
     department: view.filters.department ? view.filters.department.split(',') : [],
     procurement_method: view.filters.procurement_method ? view.filters.procurement_method.split(',') : [],
     status: view.filters.status ? view.filters.status.split(',') : [],
     entity_name: view.filters.entity_name ? view.filters.entity_name.split(',') : [],
     unspsc_code: view.filters.unspsc_code || '',
-    keywords: view.filters.keywords || '',
     min_budget: view.filters.min_budget || '',
     max_budget: view.filters.max_budget || '',
     publication_date_from: view.filters.publication_date_from || '',
@@ -918,7 +980,7 @@ function handleApplyView(view) {
 }
 
 async function handleUpdateView(data) {
-  await secopStore.updateSavedView(data.id, { name: data.name, filters: data.filters });
+  await secopStore.updateSavedView(data.id, { name: data.name, filters: data.filters, is_favorite: data.is_favorite });
 }
 
 async function handleDeleteView(viewId) {
@@ -930,7 +992,7 @@ async function handleToggleFavorite(viewId) {
 }
 
 async function handleSaveFilterFromModal(data) {
-  await secopStore.createSavedView(data);
+  await secopStore.createSavedView({ name: data.name, filters: data.filters, is_favorite: data.is_favorite });
   showSaveFilterModal.value = false;
 }
 

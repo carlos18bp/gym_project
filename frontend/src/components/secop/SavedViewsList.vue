@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-base font-semibold text-primary">Vistas Guardadas</h2>
+        <h2 class="text-base font-semibold text-primary">Filtros Guardados</h2>
         <p class="text-sm text-gray-500">Guarda combinaciones de filtros para acceso rápido.</p>
       </div>
       <button
@@ -12,7 +12,7 @@
         class="inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
       >
         <PlusIcon class="h-4 w-4" />
-        Guardar Vista Actual
+        Guardar Filtros Actuales
       </button>
     </div>
 
@@ -36,8 +36,8 @@
       <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
         <BookmarkIcon class="h-7 w-7 text-secondary" />
       </div>
-      <h3 class="mt-4 text-base font-semibold text-gray-900">Sin vistas guardadas</h3>
-      <p class="mt-2 text-sm text-gray-500">Aplica filtros y guárdalos como una vista para acceder rápidamente.</p>
+      <h3 class="mt-4 text-base font-semibold text-gray-900">Sin filtros guardados</h3>
+      <p class="mt-2 text-sm text-gray-500">Aplica filtros y guárdalos para acceder rápidamente.</p>
     </div>
 
     <!-- Saved views list -->
@@ -69,6 +69,9 @@
               </span>
               <span v-if="view.filters.search" class="rounded-md bg-terciary px-2 py-1">
                 Búsqueda: "{{ view.filters.search }}"
+              </span>
+              <span v-if="view.filters.keywords" class="rounded-md bg-terciary px-2 py-1">
+                Palabras clave: {{ view.filters.keywords }}
               </span>
               <span v-if="view.filters.entity_name" class="rounded-md bg-terciary px-2 py-1">
                 Entidad: {{ view.filters.entity_name }}

@@ -62,7 +62,7 @@
               target="_blank"
               rel="noopener noreferrer"
               data-testid="detail-secop-link-mobile"
-              class="lg:hidden inline-flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-secondary shadow-sm hover:bg-white transition-colors shrink-0"
+              class="lg:hidden inline-flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors shrink-0"
             >
               <ArrowTopRightOnSquareIcon class="h-4 w-4" />
               Ver en SECOP
@@ -175,7 +175,7 @@
               target="_blank"
               rel="noopener noreferrer"
               data-testid="detail-secop-link"
-              class="hidden lg:flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] p-5 text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all group"
+              class="hidden lg:flex items-center justify-center gap-3 rounded-xl bg-secondary p-5 text-white shadow-md hover:bg-blue-700 hover:shadow-lg hover:scale-[1.02] transition-all group"
             >
               <ArrowTopRightOnSquareIcon class="h-6 w-6 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               <span class="text-base font-bold">Ver en SECOP</span>

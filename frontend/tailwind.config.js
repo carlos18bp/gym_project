@@ -29,6 +29,15 @@ export default {
         'selected-background': '#E0EDFF',
         'stroke': '#CCE0FF',
         'purple-brand': '#A69BFF'
+      },
+      animation: {
+        'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'pulse-subtle': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(51, 72, 255, 0.3)' },
+          '50%': { boxShadow: '0 0 0 4px rgba(51, 72, 255, 0.15)' },
+        },
       }
     },
   },
