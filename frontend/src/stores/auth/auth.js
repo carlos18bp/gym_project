@@ -12,9 +12,9 @@ export const useAuthStore = defineStore("auth", {
     userAuth: localStorage.getItem("userAuth") ? JSON.parse(localStorage.getItem("userAuth")) : {}, // Get the user authentication details from localStorage or set to an empty object
     signInTries: parseInt(localStorage.getItem("signInTries"), 10) || 0, // Get the Sign In attempts
     signInSecondsAcumulated:
-      localStorage.getItem("signInSecondsAcumulated") || 0,
-    signInSecondsRemaining: localStorage.getItem("signInSecondsRemaining") || 0, // Get remaining seconds only because user exceeds allowed attempts
-    signInIntervalId: localStorage.getItem("signInSecondsAcumulated") || null,
+      parseInt(localStorage.getItem("signInSecondsAcumulated"), 10) || 0,
+    signInSecondsRemaining: parseInt(localStorage.getItem("signInSecondsRemaining"), 10) || 0, // Get remaining seconds only because user exceeds allowed attempts
+    signInIntervalId: localStorage.getItem("signInIntervalId") || null,
   }),
   // Getter methods
   getters: {},
