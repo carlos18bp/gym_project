@@ -80,7 +80,7 @@ def process_open():
         description='Construcción de vía terciaria en Bogotá',
         procedure_name='Obra vial Bogotá',
         publication_date='2026-03-01',
-        closing_date=timezone.now() + timezone.timedelta(days=30),
+        closing_date='2026-04-14',
         unspsc_code='72101500',
     )
 
@@ -102,7 +102,7 @@ def process_closed():
         description='Consultoría ambiental en Antioquia',
         procedure_name='Consultoría ambiental',
         publication_date='2026-02-01',
-        closing_date=timezone.now() - timezone.timedelta(days=10),
+        closing_date='2026-03-05',
         unspsc_code='81101500',
     )
 

@@ -17,9 +17,8 @@ const SAVED_VIEWS_WITH_KEYWORDS = [
   {
     id: 701,
     name: "Antioquia Obras",
-    filters: { department: "Antioquia", contract_type: "Obra" },
+    filters: { department: "Antioquia", contract_type: "Obra", keywords: "construcción|vial|infraestructura" },
     is_favorite: false,
-    keywords: "construcción|vial|infraestructura",
     created_at: "2026-03-10T10:00:00Z",
   },
   {
@@ -27,7 +26,6 @@ const SAVED_VIEWS_WITH_KEYWORDS = [
     name: "Consultoría Nacional",
     filters: { department: "Bogotá D.C." },
     is_favorite: false,
-    keywords: "",
     created_at: "2026-03-12T10:00:00Z",
   },
 ];

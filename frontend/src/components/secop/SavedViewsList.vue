@@ -70,9 +70,15 @@
               <span v-if="view.filters.search" class="rounded-md bg-terciary px-2 py-1">
                 Búsqueda: "{{ view.filters.search }}"
               </span>
-              <span v-if="view.filters.keywords" class="rounded-md bg-terciary px-2 py-1">
-                Palabras clave: {{ view.filters.keywords }}
-              </span>
+              <template v-if="view.filters.keywords">
+                <span
+                  v-for="kw in view.filters.keywords.split('|').map(s => s.trim()).filter(Boolean)"
+                  :key="kw"
+                  class="rounded-md bg-terciary px-2 py-1"
+                >
+                  {{ kw }}
+                </span>
+              </template>
               <span v-if="view.filters.entity_name" class="rounded-md bg-terciary px-2 py-1">
                 Entidad: {{ view.filters.entity_name }}
               </span>
