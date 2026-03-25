@@ -8,7 +8,7 @@ describe("SavedViewsList.vue", () => {
       props: { savedViews: [], currentFilters: {} },
     });
 
-    expect(wrapper.text()).toContain("Sin vistas guardadas");
+    expect(wrapper.text()).toContain("Sin filtros guardados");
   });
 
   test("renders saved view cards with name", () => {

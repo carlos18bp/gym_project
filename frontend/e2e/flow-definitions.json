@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "lastUpdated": "2026-03-19",
+  "version": "1.2.0",
+  "lastUpdated": "2026-03-25",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -1222,6 +1222,26 @@
       ],
       "priority": "P3",
       "description": "Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)",
+      "expectedSpecs": 1
+    },
+    "secop-saved-view-favorites": {
+      "name": "Toggle saved view as favorite (default filter)",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Mark/unmark a saved view as favorite so it loads automatically. Favorite views show a star icon and appear first in the list.",
+      "expectedSpecs": 1
+    },
+    "secop-keyword-tags": {
+      "name": "Keyword tags in saved views and filters",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.",
       "expectedSpecs": 1
     }
   }

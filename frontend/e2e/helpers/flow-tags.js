@@ -138,3 +138,30 @@ export const MISC_ERROR_HANDLING = ['@flow:misc-error-handling', '@module:misc',
 
 // ── Basic User ──────────────────────────────────────────────────────────────
 export const BASIC_RESTRICTIONS = ['@flow:basic-restrictions', '@module:auth', '@priority:P3'];
+
+// ── Documents (additional) ──────────────────────────────────────────────────
+export const DOCS_FORM_FIELD_TYPES = ['@flow:docs-form-field-types', '@module:documents', '@priority:P2'];
+export const DOCS_FOLDER_CRUD = ['@flow:docs-folder-crud', '@module:documents', '@priority:P2'];
+
+// ── Organizations (additional) ──────────────────────────────────────────────
+export const ORG_STORE_ACTIONS = ['@flow:org-store-actions', '@module:organizations', '@priority:P3'];
+
+// ── Intranet (additional) ───────────────────────────────────────────────────
+export const INTRANET_FACTURATION_FORM = ['@flow:intranet-facturation-form', '@module:intranet', '@priority:P2'];
+
+// ── SECOP ───────────────────────────────────────────────────────────────────
+export const SECOP_LIST_BROWSE = ['@flow:secop-list-browse', '@module:secop', '@priority:P2'];
+export const SECOP_PROCESS_DETAIL = ['@flow:secop-process-detail', '@module:secop', '@priority:P2'];
+export const SECOP_CLASSIFY_PROCESS = ['@flow:secop-classify-process', '@module:secop', '@priority:P2'];
+export const SECOP_CREATE_ALERT = ['@flow:secop-create-alert', '@module:secop', '@priority:P2'];
+export const SECOP_MANAGE_ALERTS = ['@flow:secop-manage-alerts', '@module:secop', '@priority:P3'];
+export const SECOP_EXPORT_EXCEL = ['@flow:secop-export-excel', '@module:secop', '@priority:P3'];
+export const SECOP_ADD_NOTES = ['@flow:secop-add-notes', '@module:secop', '@priority:P3'];
+export const SECOP_SAVE_VIEW = ['@flow:secop-save-view', '@module:secop', '@priority:P3'];
+export const SECOP_APPLY_SAVED_VIEW = ['@flow:secop-apply-saved-view', '@module:secop', '@priority:P3'];
+export const SECOP_VIEW_IN_PORTAL = ['@flow:secop-view-in-portal', '@module:secop', '@priority:P3'];
+export const SECOP_SYNC_STATUS = ['@flow:secop-sync-status', '@module:secop', '@priority:P3'];
+export const SECOP_TRIGGER_SYNC = ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4'];
+export const SECOP_FILTER_CLASSIFICATIONS = ['@flow:secop-filter-classifications', '@module:secop', '@priority:P3'];
+export const SECOP_SAVED_VIEW_FAVORITES = ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3'];
+export const SECOP_KEYWORD_TAGS = ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3'];

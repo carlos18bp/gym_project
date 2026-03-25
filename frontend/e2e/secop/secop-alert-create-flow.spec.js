@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_CREATE_ALERT } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Create Alert Flow", () => {
   });
 
   test("lawyer can navigate to alerts tab and see existing alerts", {
-    tag: ["@flow:secop-create-alert", "@module:secop", "@priority:P2", "@role:lawyer"],
+    tag: [...SECOP_CREATE_ALERT, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -35,7 +36,7 @@ test.describe("SECOP Create Alert Flow", () => {
   });
 
   test("lawyer can open new alert form", {
-    tag: ["@flow:secop-create-alert", "@module:secop", "@priority:P2", "@role:lawyer"],
+    tag: [...SECOP_CREATE_ALERT, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -55,7 +56,7 @@ test.describe("SECOP Create Alert Flow", () => {
   });
 
   test("lawyer can create a new alert with keywords and frequency", {
-    tag: ["@flow:secop-create-alert", "@module:secop", "@priority:P2", "@role:lawyer"],
+    tag: [...SECOP_CREATE_ALERT, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_LIST_BROWSE, SECOP_PROCESS_DETAIL, SECOP_SYNC_STATUS } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Browse Flows", () => {
   });
 
   test("lawyer can view SECOP process list with pagination info", {
-    tag: ["@flow:secop-list-browse", "@module:secop", "@priority:P2", "@role:lawyer"],
+    tag: [...SECOP_LIST_BROWSE, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -34,7 +35,7 @@ test.describe("SECOP Browse Flows", () => {
   });
 
   test("lawyer can navigate to process detail page", {
-    tag: ["@flow:secop-process-detail", "@module:secop", "@priority:P2", "@role:lawyer"],
+    tag: [...SECOP_PROCESS_DETAIL, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -49,7 +50,7 @@ test.describe("SECOP Browse Flows", () => {
   });
 
   test("lawyer can view sync status indicator", {
-    tag: ["@flow:secop-sync-status", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_SYNC_STATUS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("sync-status")).toBeVisible();

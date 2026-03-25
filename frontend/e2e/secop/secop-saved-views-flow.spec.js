@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_SAVE_VIEW, SECOP_APPLY_SAVED_VIEW } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Saved Views Flow", () => {
   });
 
   test("lawyer can navigate to saved views tab", {
-    tag: ["@flow:secop-save-view", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_SAVE_VIEW, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -33,7 +34,7 @@ test.describe("SECOP Saved Views Flow", () => {
   });
 
   test("lawyer can apply a saved view to load filters", {
-    tag: ["@flow:secop-apply-saved-view", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_APPLY_SAVED_VIEW, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -51,7 +52,7 @@ test.describe("SECOP Saved Views Flow", () => {
   });
 
   test("lawyer can delete a saved view", {
-    tag: ["@flow:secop-save-view", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_SAVE_VIEW, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

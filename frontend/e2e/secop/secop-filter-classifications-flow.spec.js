@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_FILTER_CLASSIFICATIONS } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-filter-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Filter Classifications Flow", () => {
   });
 
   test("lawyer filters classified processes by INTERESTING status", {
-    tag: ["@flow:secop-filter-classifications", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_FILTER_CLASSIFICATIONS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -38,7 +39,7 @@ test.describe("SECOP Filter Classifications Flow", () => {
   });
 
   test("lawyer filters classified processes by APPLIED status", {
-    tag: ["@flow:secop-filter-classifications", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_FILTER_CLASSIFICATIONS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -57,7 +58,7 @@ test.describe("SECOP Filter Classifications Flow", () => {
   });
 
   test("lawyer clears filter to show all classifications", {
-    tag: ["@flow:secop-filter-classifications", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_FILTER_CLASSIFICATIONS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -78,7 +79,7 @@ test.describe("SECOP Filter Classifications Flow", () => {
   });
 
   test("lawyer sees empty state when no classifications match filter", {
-    tag: ["@flow:secop-filter-classifications", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_FILTER_CLASSIFICATIONS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();

@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_VIEW_IN_PORTAL, SECOP_SYNC_STATUS } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   });
 
   test("process detail shows Ver en SECOP link to external portal", {
-    tag: ["@flow:secop-view-in-portal", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_VIEW_IN_PORTAL, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -36,7 +37,7 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   });
 
   test("sync status shows last successful sync time and process count", {
-    tag: ["@flow:secop-sync-status", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_SYNC_STATUS, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("sync-status")).toBeVisible();

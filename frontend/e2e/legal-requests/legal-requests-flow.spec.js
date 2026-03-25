@@ -63,7 +63,7 @@ test("lawyer can view legal requests list and open a request detail", { tag: ['@
 
   await page.goto("/legal_requests");
 
-  await expect(page.getByRole("heading", { name: "Solicitudes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible();
   await expect(page.getByText("REQ-1001")).toBeVisible();
 
   const reqCard = page.locator("div.bg-white.rounded-lg.shadow").filter({ hasText: "REQ-1001" });

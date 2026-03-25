@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** March 18, 2026  
-**Versión:** 1.1.0  
+**Fecha:** March 25, 2026
+**Versión:** 1.3.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -18,7 +18,8 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 6. [Flujos — Corporate Client](#flujos--corporate-client)
 7. [Flujos — Basic](#flujos--basic)
 8. [Flujos — Lawyer G&M (is_gym_lawyer)](#flujos--lawyer-gm-is_gym_lawyer)
-9. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
+9. [Flujos — SECOP (Contratación Pública)](#flujos--secop-contratación-pública)
+10. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
 
 ---
 
@@ -1104,6 +1105,34 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### secop-saved-view-favorites: Toggle saved view as favorite
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ❌
+- **Descripción:** Mark/unmark a saved view as favorite (default filter). Favorites show a star icon and load automatically.
+
+**Pasos:**
+1. Navigate to "Vistas Guardadas" tab
+2. Click the star icon on a saved view card
+3. View toggles between favorite/non-favorite state
+4. Favorite views appear first in the list and load automatically
+
+**Ramificaciones:**
+- ├── **Set favorite:** Star icon fills, view becomes default filter
+- └── **Remove favorite:** Star icon empties, view no longer auto-loads
+
+---
+
+### secop-keyword-tags: Keyword tags in saved views and filters
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ❌
+- **Descripción:** Add pipe-delimited keyword tag phrases to saved views for granular SECOP search
+
+**Pasos:**
+1. Create or edit a saved view
+2. Add keyword tag phrases (pipe-delimited for multi-word phrases)
+3. Keywords display as filter badges on saved view cards
+4. When applied, keywords filter SECOP processes by matching terms
+
+---
+
 ## Flujos — Client
 
 > El Client hereda los flujos compartidos y tiene acceso a los siguientes flujos específicos.
@@ -1445,6 +1474,117 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+## Flujos — SECOP (Contratación Pública)
+
+> Módulo exclusivo para **Lawyer**. Permite navegar, filtrar, clasificar y monitorear procesos de contratación pública del portal SECOP.
+
+### secop-list-browse: Browse SECOP processes
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control
+
+**Pasos:**
+1. Navega a `/secop`
+2. Tabla con lista de procesos paginada
+3. Filtros por departamento, entidad, estado, rango presupuestal, fechas, UNSPSC
+4. Ordenamiento por columnas, control de tamaño de página
+
+---
+
+### secop-process-detail: View SECOP process detail
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** View full detail of a SECOP procurement process with entity info, dates, budget
+
+**Pasos:**
+1. Click en proceso desde lista
+2. Vista detallada con info de entidad, fechas, presupuesto
+3. Acciones: clasificar, agregar notas, abrir en portal
+
+---
+
+### secop-classify-process: Classify a SECOP process
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** Mark a process with classification status and add internal notes for team collaboration
+
+**Ramificaciones:**
+- ├── **Interesante:** Marcar como interesante para seguimiento
+- ├── **En Revisión:** Proceso bajo análisis
+- ├── **Aplicado:** Se presentó propuesta
+- └── **Descartado:** No viable
+
+---
+
+### secop-create-alert: Create SECOP alert
+- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` (modal) | **E2E:** ✅
+- **Descripción:** Configure alert criteria to receive notifications for matching SECOP processes
+
+---
+
+### secop-manage-alerts: Manage SECOP alerts
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab) | **E2E:** ✅
+- **Descripción:** Edit, toggle, or delete existing SECOP alerts
+
+---
+
+### secop-export-excel: Export SECOP processes to Excel
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Export filtered SECOP process list to .xlsx file
+
+---
+
+### secop-add-notes: Add internal notes to a SECOP process
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** Add internal notes to a classified process for team collaboration
+
+---
+
+### secop-save-view: Save filter combination as named view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (modal) | **E2E:** ✅
+- **Descripción:** Save current filter combination as a named view for quick future access
+
+---
+
+### secop-apply-saved-view: Apply a saved filter view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
+- **Descripción:** Apply a previously saved filter combination to the process list
+
+---
+
+### secop-view-in-portal: Open deep-link to SECOP portal
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop/:id` | **E2E:** ✅
+- **Descripción:** Open the official SECOP portal page for a process in a new tab
+
+---
+
+### secop-sync-status: View sync status and history
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (header) | **E2E:** ✅
+- **Descripción:** View the last synchronization time and status indicator in the header
+
+---
+
+### secop-trigger-sync: Admin triggers manual sync
+- **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` (header) | **E2E:** ✅
+- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button
+
+---
+
+### secop-filter-classifications: Filter classified processes by status
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Mis Clasificaciones) | **E2E:** ✅
+- **Descripción:** Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)
+
+---
+
+### secop-saved-view-favorites: Toggle saved view as favorite
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Filtros Guardados) | **E2E:** ✅
+- **Descripción:** Mark/unmark a saved view as favorite so it loads automatically. Favorite views show a star icon and appear first in the list.
+
+---
+
+### secop-keyword-tags: Keyword tags in saved views and filters
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Filtros Guardados) | **E2E:** ✅
+- **Descripción:** Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.
+
+---
+
 ### Form-Level Test Coverage (Unit + E2E)
 
 The following forms and modals have dedicated unit and/or E2E tests covering field rendering, validation, submission, file uploads, and edge cases.
@@ -1486,15 +1626,14 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Organizations | 15 | 15 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 4 | 4 | 0 | 0 |
-| Basic | 1 | 0 | 1 | 0 |
+| **SECOP** | **15** | **15** | **0** | **0** |
+| Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **117** | **116** | **1** | **0** |
-
-> **Nota:** El flujo `basic-restrictions` tiene cobertura parcial — las pruebas E2E aún no cubren escenarios con rol basic.
+| **Total** | **132** | **132** | **0** | **0** |
 
 ---
 
-**Documento generado:** March 18, 2026  
-**Versión:** 1.2.0  
+**Documento generado:** March 25, 2026
+**Versión:** 1.3.0
 **Estado:** ✅ Completo

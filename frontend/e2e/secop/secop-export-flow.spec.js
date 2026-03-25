@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
+import { SECOP_EXPORT_EXCEL } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -19,7 +20,7 @@ test.describe("SECOP Export Excel Flow", () => {
   });
 
   test("lawyer can see export button on process list", {
-    tag: ["@flow:secop-export-excel", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_EXPORT_EXCEL, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -30,7 +31,7 @@ test.describe("SECOP Export Excel Flow", () => {
   });
 
   test("lawyer can trigger Excel export", {
-    tag: ["@flow:secop-export-excel", "@module:secop", "@priority:P3", "@role:lawyer"],
+    tag: [...SECOP_EXPORT_EXCEL, "@role:lawyer"],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
