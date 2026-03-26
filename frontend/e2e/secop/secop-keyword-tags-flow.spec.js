@@ -1,7 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
-import { SECOP_KEYWORD_TAGS } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -37,7 +36,7 @@ test.describe("SECOP Keyword Tags Flow", () => {
   });
 
   test("saved view with keywords displays keyword tags", {
-    tag: [...SECOP_KEYWORD_TAGS, "@role:lawyer"],
+    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -55,7 +54,7 @@ test.describe("SECOP Keyword Tags Flow", () => {
   });
 
   test("saved view without keywords shows no keyword tags", {
-    tag: [...SECOP_KEYWORD_TAGS, "@role:lawyer"],
+    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -71,7 +70,7 @@ test.describe("SECOP Keyword Tags Flow", () => {
   });
 
   test("applying a saved view with keywords activates keyword filters", {
-    tag: [...SECOP_KEYWORD_TAGS, "@role:lawyer"],
+    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

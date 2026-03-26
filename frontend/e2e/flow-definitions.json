@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "lastUpdated": "2026-03-25",
+  "version": "1.3.0",
+  "lastUpdated": "2026-03-26",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -1242,6 +1242,16 @@
       ],
       "priority": "P3",
       "description": "Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.",
+      "expectedSpecs": 1
+    },
+    "secop-edit-saved-view": {
+      "name": "Edit an existing saved view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Open the edit modal on an existing saved view, update its name and/or filters (including multi-select UNSPSC), and save the changes via PATCH secop/saved-views/:id/.",
       "expectedSpecs": 1
     }
   }

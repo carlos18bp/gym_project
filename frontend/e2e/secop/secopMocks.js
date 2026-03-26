@@ -144,6 +144,8 @@ const MOCK_SAVED_VIEWS = [
     id: 701,
     name: "Antioquia Obras",
     filters: { department: "Antioquia", contract_type: "Obra" },
+    is_favorite: false,
+    keywords: "",
     created_at: "2026-03-10T10:00:00Z",
   },
 ];
@@ -153,6 +155,7 @@ const MOCK_FILTERS = {
   procurement_methods: ["Licitación pública", "Concurso de méritos", "Selección abreviada"],
   statuses: ["Abierto", "Cerrado", "Adjudicado"],
   contract_types: ["Obra", "Consultoría", "Suministro"],
+  unspsc_codes: ["72101500", "72141000", "81101500"],
 };
 
 const MOCK_SYNC_STATUS = {
@@ -339,7 +342,14 @@ export async function installSecopApiMocks(page, overrides = {}) {
         return {
           status: 201,
           contentType: "application/json",
-          body: JSON.stringify({ id: 799, name: "New E2E View", filters: { department: "Bogotá D.C." } }),
+          body: JSON.stringify({ id: 799, name: "New E2E View", filters: { department: "Bogotá D.C." }, is_favorite: false, keywords: "" }),
+        };
+      }
+      if (method === "PATCH") {
+        return {
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ id: 701, name: "Antioquia Obras Updated", filters: { department: "Antioquia", contract_type: "Obra" }, is_favorite: false, keywords: "" }),
         };
       }
       if (method === "DELETE") {

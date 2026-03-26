@@ -16,24 +16,23 @@ The application is **feature-complete** with all 17 major features implemented, 
 - Automated backups, query profiling (django-silk), and test quality gate
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
 
-### Codebase Metrics (verified 2026-03-18)
+### Codebase Metrics (verified 2026-03-26)
 
 | Metric | Count |
 |--------|-------|
-| Backend model classes | 43 (+ 1 UserManager) — 6 new SECOP models |
-| Backend view files | 23 — 1 new SECOP views file |
-| Backend serializer files | 10 — 1 new SECOP serializers file |
-| Backend URL patterns | 162 — 15 new SECOP endpoints |
-| Backend test files | 63 |
-| Backend migrations | 53 — 1 new SECOP migration |
-| Backend management commands | 10 — 1 new sync_secop command |
-| Frontend Vue components | 109 — 6 new SECOP components |
-| Frontend view pages | 36 — 2 new SECOP views |
-| Frontend Pinia store files | 35 — 1 new SECOP store |
+| Backend model classes | 43 (+ 1 UserManager) — 6 SECOP models |
+| Backend view files | 23 |
+| Backend serializer files | 10 |
+| Backend URL patterns | 162 |
+| Backend test files | 72 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 31 views) |
+| Backend migrations | 54 |
+| Backend management commands | 10 |
+| Frontend Vue components | 112 |
+| Frontend view pages | 36 |
+| Frontend Pinia store files | 34 |
 | Frontend composables | 10 |
-| Frontend route definitions | 48 |
-| Frontend unit test files | 150 |
-| Frontend E2E spec files | 158 |
+| Frontend unit test files | 158 |
+| Frontend E2E spec files | 171 |
 
 ---
 
@@ -55,6 +54,8 @@ The application is **feature-complete** with all 17 major features implemented, 
   - **E2E improvements**: Eliminated all `waitForLoadState("networkidle")` from 8 spec files, replaced with `data-testid` waits
   - **Fake data**: Validated idempotency (`update_or_create`, `random.seed(42)`) and business rule compliance
   - **SECOP Saved Views**: Added ability to edit existing saved views (rename and update filters) — requested by user (2026-03-22)
+- **SECOP UNSPSC filter (2026-03-26)**: Migrated UNSPSC filter from single-select to multi-select with union behavior combined with keyword search. Affected: `SavedViewsList.vue`, `SavedViewModal.vue`, `secop/index.js` store, `SecopList.vue`, `SecopDetail.vue`. +3 E2E specs added to SECOP suite.
+- **E2E/Flow coverage audit (2026-03-26)**: Added `secop-edit-saved-view` flow (P3) to flow-definitions, USER_FLOW_MAP, and flow-tags. Created `secop-edit-saved-view-flow.spec.js` (4 tests). Fixed all 12 SECOP spec files to use inline `@flow:` tags (coverage scanner requires literal strings, not JS constants). **Flow coverage: 123/123 (100%).** Quality gate: 99/100.
 - **E2E coverage audit — 100% flow coverage achieved (2026-03-19)**:
   - **Flow coverage: 107/107 covered**, 0 failing, 0 missing, 0 unmapped
   - **Quality Gate: 100/100** — 0 errors, 0 warnings, 0 infos

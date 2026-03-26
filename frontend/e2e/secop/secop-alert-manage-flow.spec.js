@@ -1,7 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
-import { SECOP_MANAGE_ALERTS } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -20,7 +19,7 @@ test.describe("SECOP Manage Alerts Flow", () => {
   });
 
   test("lawyer can see alert list with active/inactive status", {
-    tag: [...SECOP_MANAGE_ALERTS, "@role:lawyer"],
+    tag: ['@flow:secop-manage-alerts', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -34,7 +33,7 @@ test.describe("SECOP Manage Alerts Flow", () => {
   });
 
   test("lawyer can toggle an alert active/inactive", {
-    tag: [...SECOP_MANAGE_ALERTS, "@role:lawyer"],
+    tag: ['@flow:secop-manage-alerts', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -54,7 +53,7 @@ test.describe("SECOP Manage Alerts Flow", () => {
   });
 
   test("lawyer can delete an alert", {
-    tag: [...SECOP_MANAGE_ALERTS, "@role:lawyer"],
+    tag: ['@flow:secop-manage-alerts', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

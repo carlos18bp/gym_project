@@ -176,12 +176,12 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, commands) | pytest + pytest-django | 63 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 150 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 150) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 150) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 150) | `frontend/test/views/` |
-| E2E User Flows | Playwright | 158 spec files | `frontend/e2e/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 72 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 158 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 158) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 158) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 158) | `frontend/test/views/` |
+| E2E User Flows | Playwright | 170 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -228,7 +228,7 @@ gym_project/
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
 │   │   ├── management/commands/ # 10 commands (fake data CRUD, silk GC, sync_secop)
 │   │   ├── templates/        # 19 email/PDF templates — incl. 2 SECOP alert templates
-│   │   ├── tests/            # 63 test files (models, serializers, tasks, utils, views, commands)
+│   │   ├── tests/            # 72 test files (models, serializers, tasks, utils, views, services)
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
 │   │   ├── urls.py           # 162 URL patterns (15 SECOP endpoints)
@@ -239,15 +239,15 @@ gym_project/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # 109 Vue components (12 subdirectories) — incl. secop/
+│   │   ├── components/       # 112 Vue components (12 subdirectories) — incl. secop/
 │   │   ├── views/            # 36 page-level components (14 subdirectories) — incl. secop/
-│   │   ├── stores/           # 35 store files (10 domain directories + 3 root files) — incl. secop/
+│   │   ├── stores/           # 34 store files (domain directories + root files) — incl. secop/
 │   │   ├── composables/      # 10 composable files (incl. document-variables/)
 │   │   ├── router/           # 1 file, 48 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 150 unit test files (11 subdirectories)
-│   ├── e2e/                  # 158 E2E spec files
+│   ├── test/                 # 158 unit test files (11 subdirectories)
+│   ├── e2e/                  # 170 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

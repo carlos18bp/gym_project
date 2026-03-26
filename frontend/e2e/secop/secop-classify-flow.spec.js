@@ -1,7 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
-import { SECOP_CLASSIFY_PROCESS, SECOP_ADD_NOTES } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -20,7 +19,7 @@ test.describe("SECOP Classify Flows", () => {
   });
 
   test("lawyer can classify a SECOP process from detail view", {
-    tag: [...SECOP_CLASSIFY_PROCESS, "@role:lawyer"],
+    tag: ['@flow:secop-classify-process', '@module:secop', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -34,7 +33,7 @@ test.describe("SECOP Classify Flows", () => {
   });
 
   test("lawyer can view My Classifications tab with classified processes", {
-    tag: [...SECOP_CLASSIFY_PROCESS, "@role:lawyer"],
+    tag: ['@flow:secop-classify-process', '@module:secop', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -48,7 +47,7 @@ test.describe("SECOP Classify Flows", () => {
   });
 
   test("lawyer can add notes to a classification", {
-    tag: [...SECOP_ADD_NOTES, "@role:lawyer"],
+    tag: ['@flow:secop-add-notes', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();

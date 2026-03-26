@@ -60,18 +60,19 @@
 
 ## 4. Testing Status
 
-### Backend Tests (63 files)
+### Backend Tests (72 files)
 
 | Directory | File Count | Purpose |
 |-----------|------------|--------|
-| `tests/models/` | 16 | Model unit tests |
-| `tests/serializers/` | 9 | Serializer tests |
-| `tests/views/` | 29 | API view tests |
+| `tests/models/` | 18 | Model unit tests |
+| `tests/serializers/` | 10 | Serializer tests |
+| `tests/views/` | 31 | API view tests |
 | `tests/utils/` | 7 | Utility function tests |
-| `tests/tasks/` | 2 | Huey task tests |
+| `tests/tasks/` | 3 | Huey task tests |
+| `tests/services/` | 3 | Service layer tests |
 | `tests/commands/` | 0 | Directory exists, no tests yet |
 
-### Frontend Unit Tests (150 files)
+### Frontend Unit Tests (158 files)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -87,7 +88,7 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (158 spec files) — **107/107 flow coverage**
+### Frontend E2E Tests (171 spec files) — **123/123 flow coverage**
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|
@@ -97,10 +98,12 @@
 | `e2e/organizations/` | 50 | Organization CRUD, invitations, memberships, posts, corporate requests, cross-role flows |
 | `e2e/process/` | 11 | Process CRUD, case files, search, history |
 | `e2e/legal-requests/` | 10 | Legal request creation, management, responses |
+| `e2e/secop/` | 12 | SECOP browse, classify, alerts, saved views (create/edit/delete/favorites), export, sync, UNSPSC multi-select |
 | `e2e/signatures/` | 7 | Signature flows, pending/archived documents |
 | `e2e/subscriptions/` | 7 | Checkout, cancellation, payment updates |
 | `e2e/intranet/` | 3 | Intranet page interactions |
 | `e2e/profile/` | 2 | Profile completion, updates |
+| `e2e/basic-user/` | 1 | Basic user restrictions |
 | `e2e/checkout/` | 1 | Checkout flow |
 | `e2e/directory/` | 1 | Directory listing |
 | `e2e/electronic-signature/` | 1 | Electronic signature modal |
@@ -111,7 +114,7 @@
 | `e2e/schedule/` | 1 | Appointment scheduling |
 | `e2e/user-guide/` | 1 | User guide navigation |
 
-> **E2E Flow Coverage (2026-03-19):** `flow-definitions.json` has 107 flows, `USER_FLOW_MAP.md` has 117 entries (including sub-flows). All 107 defined flows are covered (0 failing, 0 missing). Quality Gate: 100/100.
+> **E2E Flow Coverage (2026-03-26):** `flow-definitions.json` has 123 flows (added `secop-edit-saved-view`), `USER_FLOW_MAP.md` has 133 unique flows. All 123 flows covered (0 missing). Quality Gate: 99/100.
 
 ---
 

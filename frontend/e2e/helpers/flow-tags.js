@@ -165,3 +165,4 @@ export const SECOP_TRIGGER_SYNC = ['@flow:secop-trigger-sync', '@module:secop', 
 export const SECOP_FILTER_CLASSIFICATIONS = ['@flow:secop-filter-classifications', '@module:secop', '@priority:P3'];
 export const SECOP_SAVED_VIEW_FAVORITES = ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3'];
 export const SECOP_KEYWORD_TAGS = ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3'];
+export const SECOP_EDIT_SAVED_VIEW = ['@flow:secop-edit-saved-view', '@module:secop', '@priority:P3'];

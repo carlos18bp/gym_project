@@ -1,7 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
-import { SECOP_TRIGGER_SYNC } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -20,7 +19,7 @@ test.describe("SECOP Admin Sync Flow", () => {
   });
 
   test("lawyer can see sync trigger button on list page", {
-    tag: [...SECOP_TRIGGER_SYNC, "@role:lawyer"],
+    tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("sync-status")).toBeVisible();
@@ -36,7 +35,7 @@ test.describe("SECOP Admin Sync Flow", () => {
   });
 
   test("lawyer can trigger manual sync and see confirmation", {
-    tag: [...SECOP_TRIGGER_SYNC, "@role:lawyer"],
+    tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("sync-status")).toBeVisible();

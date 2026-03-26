@@ -1,7 +1,6 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
-import { SECOP_SAVED_VIEW_FAVORITES } from "../helpers/flow-tags.js";
 
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
@@ -39,7 +38,7 @@ test.describe("SECOP Saved View Favorites Flow", () => {
   });
 
   test("favorite saved view shows star icon filled", {
-    tag: [...SECOP_SAVED_VIEW_FAVORITES, "@role:lawyer"],
+    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -58,7 +57,7 @@ test.describe("SECOP Saved View Favorites Flow", () => {
   });
 
   test("non-favorite saved view shows outline star", {
-    tag: [...SECOP_SAVED_VIEW_FAVORITES, "@role:lawyer"],
+    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -76,7 +75,7 @@ test.describe("SECOP Saved View Favorites Flow", () => {
   });
 
   test("lawyer can toggle favorite on a saved view", {
-    tag: [...SECOP_SAVED_VIEW_FAVORITES, "@role:lawyer"],
+    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

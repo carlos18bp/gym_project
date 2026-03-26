@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** March 25, 2026
-**Versión:** 1.3.0
+**Fecha:** March 26, 2026
+**Versión:** 1.4.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -1106,7 +1106,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### secop-saved-view-favorites: Toggle saved view as favorite
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ❌
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ✅
 - **Descripción:** Mark/unmark a saved view as favorite (default filter). Favorites show a star icon and load automatically.
 
 **Pasos:**
@@ -1122,7 +1122,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### secop-keyword-tags: Keyword tags in saved views and filters
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ❌
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ✅
 - **Descripción:** Add pipe-delimited keyword tag phrases to saved views for granular SECOP search
 
 **Pasos:**
@@ -1130,6 +1130,24 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 2. Add keyword tag phrases (pipe-delimited for multi-word phrases)
 3. Keywords display as filter badges on saved view cards
 4. When applied, keywords filter SECOP processes by matching terms
+
+---
+
+### secop-edit-saved-view: Edit an existing saved view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (Vistas Guardadas tab) | **E2E:** ✅
+- **Descripción:** Click the edit icon on a saved view card to open SavedViewModal in edit mode, update name and/or filters, save via PATCH
+
+**Pasos:**
+1. Navigate to "Vistas Guardadas" tab
+2. Click the edit (pencil) icon on a saved view card
+3. SavedViewModal opens pre-filled with existing name and filters
+4. Modify name and/or filter values (including multi-select UNSPSC)
+5. Click "Guardar" to update via `PATCH secop/saved-views/:id/`
+
+**Ramificaciones:**
+- ├── **Éxito:** View updates in list with new name/filters
+- ├── **Sin cambios:** Modal closes, view unchanged
+- └── **Error de red:** Toast de error, modal permanece abierto
 
 ---
 
@@ -1585,6 +1603,24 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### secop-edit-saved-view: Edit an existing saved view
+- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Vistas Guardadas) | **E2E:** ❌
+- **Descripción:** Click the edit icon on a saved view card to open SavedViewModal in edit mode, update name and/or filters, save via PATCH
+
+**Pasos:**
+1. Navigate to "Vistas Guardadas" tab
+2. Click the edit (pencil) icon on a saved view card
+3. SavedViewModal opens pre-filled with existing name and filters
+4. Modify name and/or filter values (including multi-select UNSPSC)
+5. Click "Guardar" to update via `PATCH secop/saved-views/:id/`
+
+**Ramificaciones:**
+- ├── **Éxito:** View updates in list with new name/filters
+- ├── **Sin cambios:** Modal closes, view unchanged
+- └── **Error de red:** Toast de error, modal permanece abierto
+
+---
+
 ### Form-Level Test Coverage (Unit + E2E)
 
 The following forms and modals have dedicated unit and/or E2E tests covering field rendering, validation, submission, file uploads, and edge cases.
@@ -1626,14 +1662,14 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Organizations | 15 | 15 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 4 | 4 | 0 | 0 |
-| **SECOP** | **15** | **15** | **0** | **0** |
+| **SECOP** | **16** | **16** | **0** | **0** |
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **132** | **132** | **0** | **0** |
+| **Total** | **133** | **133** | **0** | **0** |
 
 ---
 
-**Documento generado:** March 25, 2026
-**Versión:** 1.3.0
-**Estado:** ✅ Completo
+**Documento generado:** March 26, 2026
+**Versión:** 1.4.0
+**Estado:** ✅ Completo — 133/133 flujos cubiertos
