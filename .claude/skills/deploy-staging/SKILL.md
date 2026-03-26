@@ -1,6 +1,9 @@
 ---
-auto_execution_mode: 2
-description: Deploy a release branch to the staging server for client UAT
+name: deploy-staging
+description: "Deploy a release branch to the staging server for client UAT. Pass the branch name as argument."
+disable-model-invocation: true
+allowed-tools: Bash
+argument-hint: "[branch-name, e.g. release/march-2026]"
 ---
 
 # Deploy to Staging

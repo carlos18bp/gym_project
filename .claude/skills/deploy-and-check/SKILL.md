@@ -1,6 +1,8 @@
 ---
-auto_execution_mode: 2
-description: Deploy latest master to production server
+name: deploy-and-check
+description: "Deploy latest master/main to the production server with pre-deploy checks, build, restart, and post-deploy verification."
+disable-model-invocation: true
+allowed-tools: Bash
 ---
 
 # Deploy to Production
