@@ -126,14 +126,6 @@ def _apply_secop_filters(queryset, query_params):
             Q(closing_date__gte=timezone.now()) | Q(closing_date__isnull=True),
         )
 
-    unspsc_code = query_params.get('unspsc_code')
-    if unspsc_code:
-        values = [v.strip() for v in unspsc_code.split(',') if v.strip()]
-        if len(values) == 1:
-            queryset = queryset.filter(unspsc_code__icontains=values[0])
-        elif values:
-            queryset = queryset.filter(unspsc_code__in=values)
-
     search = query_params.get('search')
     if search:
         queryset = queryset.filter(
@@ -143,10 +135,20 @@ def _apply_secop_filters(queryset, query_params):
             Q(reference__icontains=search)
         )
 
+    # --- UNION: keywords OR UNSPSC codes (search broadening) ---
+    search_union = Q()
+
+    unspsc_code = query_params.get('unspsc_code')
+    if unspsc_code:
+        values = [v.strip() for v in unspsc_code.split(',') if v.strip()]
+        if len(values) == 1:
+            search_union |= Q(unspsc_code__icontains=values[0])
+        elif values:
+            search_union |= Q(unspsc_code__in=values)
+
     keywords = query_params.get('keywords')
     if keywords:
         phrases = [p.strip() for p in keywords.split('|') if p.strip()]
-        phrase_queries = Q()
         for phrase in phrases:
             word_query = Q()
             for word in phrase.split():
@@ -154,8 +156,10 @@ def _apply_secop_filters(queryset, query_params):
                     Q(procedure_name__icontains=word) |
                     Q(description__icontains=word)
                 )
-            phrase_queries |= word_query
-        queryset = queryset.filter(phrase_queries)
+            search_union |= word_query
+
+    if search_union:
+        queryset = queryset.filter(search_union)
 
     return queryset
 

@@ -31,7 +31,7 @@
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div class="max-w-5xl mx-auto">
-          <button @click="goBack" data-testid="detail-back" class="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white mb-4 transition-colors">
+          <button @click="goBack" data-testid="detail-back" class="inline-flex items-center gap-1.5 text-sm font-medium text-white underline hover:text-white/90 mb-4 transition-colors">
             <ArrowLeftIcon class="h-4 w-4" />
             Volver a la lista
           </button>

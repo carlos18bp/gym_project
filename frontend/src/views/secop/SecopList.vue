@@ -243,23 +243,15 @@
             </div>
 
             <!-- UNSPSC Code filter -->
-            <Menu as="div" class="relative">
+            <div>
               <label class="block text-xs font-medium text-gray-500 mb-1.5">Código UNSPSC</label>
-              <MenuButton data-testid="filter-unspsc" :class="['w-full inline-flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50 transition-colors', filters.unspsc_code ? 'border-2 border-secondary bg-blue-50/50 text-secondary' : 'border border-gray-300 bg-white text-gray-700']">
-                <span class="truncate">{{ filters.unspsc_code || 'Seleccionar código' }}</span>
-                <ChevronDownIcon class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              </MenuButton>
-              <MenuItems class="absolute left-0 z-10 mt-2 w-48 origin-top-left rounded-xl bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none max-h-60 overflow-y-auto">
-                <div class="py-1">
-                  <MenuItem v-slot="{ active }">
-                    <a @click="filters.unspsc_code = ''" :class="[active ? 'bg-terciary' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">Todos</a>
-                  </MenuItem>
-                  <MenuItem v-for="code in secopStore.availableFilters.unspsc_codes" :key="code" v-slot="{ active }">
-                    <a @click="filters.unspsc_code = code" :class="[active ? 'bg-terciary' : '', filters.unspsc_code === code ? 'font-semibold text-secondary' : 'text-gray-700', 'block px-4 py-2 text-sm cursor-pointer font-mono']">{{ code }}</a>
-                  </MenuItem>
-                </div>
-              </MenuItems>
-            </Menu>
+              <MultiSelectDropdown
+                v-model="filters.unspsc_code"
+                :options="secopStore.availableFilters.unspsc_codes"
+                placeholder="Código UNSPSC"
+                data-testid="filter-unspsc"
+              />
+            </div>
 
             <!-- Publication date range -->
             <div>
@@ -688,7 +680,7 @@ const filters = ref({
   procurement_method: [],
   status: [],
   entity_name: [],
-  unspsc_code: '',
+  unspsc_code: [],
   min_budget: '',
   max_budget: '',
   publication_date_from: '',
@@ -745,7 +737,7 @@ const currentFiltersSnapshot = computed(() => ({
   procurement_method: filters.value.procurement_method.length ? filters.value.procurement_method.join(',') : '',
   status: filters.value.status.length ? filters.value.status.join(',') : '',
   entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : '',
-  unspsc_code: filters.value.unspsc_code || '',
+  unspsc_code: filters.value.unspsc_code.length ? filters.value.unspsc_code.join(',') : '',
   keywords: combinedKeywords.value || '',
   min_budget: filters.value.min_budget || '',
   max_budget: filters.value.max_budget || '',
@@ -757,7 +749,7 @@ const currentFiltersSnapshot = computed(() => ({
 
 const hasActiveFilters = computed(() => {
   return filters.value.department.length || filters.value.procurement_method.length || filters.value.status.length || searchQuery.value
-    || filters.value.entity_name.length || filters.value.unspsc_code || keywordTags.value.length || keywordInput.value.trim()
+    || filters.value.entity_name.length || filters.value.unspsc_code.length || keywordTags.value.length || keywordInput.value.trim()
     || filters.value.min_budget || filters.value.max_budget
     || filters.value.publication_date_from || filters.value.publication_date_to
     || filters.value.closing_date_from || filters.value.closing_date_to;
@@ -769,7 +761,7 @@ const activeFilterCount = computed(() => {
   if (filters.value.procurement_method.length) count++;
   if (filters.value.status.length) count++;
   if (filters.value.entity_name.length) count++;
-  if (filters.value.unspsc_code) count++;
+  if (filters.value.unspsc_code.length) count++;
   if (keywordTags.value.length || keywordInput.value.trim()) count++;
   if (filters.value.min_budget || filters.value.max_budget) count++;
   if (filters.value.publication_date_from || filters.value.publication_date_to) count++;
@@ -850,7 +842,7 @@ function _buildFilterParams(page = 1) {
     procurement_method: filters.value.procurement_method.length ? filters.value.procurement_method.join(',') : undefined,
     status: filters.value.status.length ? filters.value.status.join(',') : undefined,
     entity_name: filters.value.entity_name.length ? filters.value.entity_name.join(',') : undefined,
-    unspsc_code: filters.value.unspsc_code || undefined,
+    unspsc_code: filters.value.unspsc_code.length ? filters.value.unspsc_code.join(',') : undefined,
     keywords: combinedKeywords.value || undefined,
     min_budget: filters.value.min_budget || undefined,
     max_budget: filters.value.max_budget || undefined,
@@ -884,7 +876,7 @@ function clearFilters() {
   keywordTags.value = [];
   filters.value = {
     department: [], procurement_method: [], status: [],
-    entity_name: [], unspsc_code: '',
+    entity_name: [], unspsc_code: [],
     min_budget: '', max_budget: '',
     publication_date_from: '', publication_date_to: '',
     closing_date_from: '', closing_date_to: '',
@@ -968,7 +960,7 @@ function handleApplyView(view) {
     procurement_method: view.filters.procurement_method ? view.filters.procurement_method.split(',') : [],
     status: view.filters.status ? view.filters.status.split(',') : [],
     entity_name: view.filters.entity_name ? view.filters.entity_name.split(',') : [],
-    unspsc_code: view.filters.unspsc_code || '',
+    unspsc_code: view.filters.unspsc_code ? view.filters.unspsc_code.split(',').map(s => s.trim()).filter(Boolean) : [],
     min_budget: view.filters.min_budget || '',
     max_budget: view.filters.max_budget || '',
     publication_date_from: view.filters.publication_date_from || '',

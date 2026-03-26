@@ -101,6 +101,7 @@
               :data-testid="`option-${option}`"
             />
             <span
+              :title="option"
               :class="[
                 'text-sm truncate',
                 modelValue.includes(option) ? 'font-semibold text-secondary' : 'text-gray-700',
