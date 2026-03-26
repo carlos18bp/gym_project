@@ -82,6 +82,9 @@
               <span v-if="alert.procurement_methods" class="rounded-md bg-terciary px-2 py-1 text-gray-600">
                 Modalidad: {{ alert.procurement_methods }}
               </span>
+              <span v-if="alert.unspsc_code" class="rounded-md bg-terciary px-2 py-1 text-gray-600">
+                UNSPSC: {{ truncate(alert.unspsc_code, 40) }}
+              </span>
             </div>
 
             <p class="text-xs text-gray-400 mt-2.5">

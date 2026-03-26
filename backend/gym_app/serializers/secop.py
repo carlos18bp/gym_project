@@ -129,7 +129,7 @@ class SECOPAlertSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'keywords', 'entities', 'departments',
             'min_budget', 'max_budget', 'procurement_methods',
-            'frequency', 'is_active',
+            'unspsc_code', 'frequency', 'is_active',
             'created_at', 'updated_at', 'notification_count',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

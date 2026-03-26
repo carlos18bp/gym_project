@@ -235,6 +235,10 @@ class SECOPAlert(models.Model):
         blank=True,
         help_text="Comma-separated procurement modalities"
     )
+    unspsc_code = models.TextField(
+        blank=True,
+        help_text="Comma-separated UNSPSC codes"
+    )
 
     # Configuration
     frequency = models.CharField(
@@ -292,6 +296,13 @@ class SECOPAlert(models.Model):
         if self.procurement_methods:
             method_list = [m.strip().lower() for m in self.procurement_methods.split(',') if m.strip()]
             if process.procurement_method.lower() not in method_list:
+                return False
+
+        # UNSPSC code check
+        if self.unspsc_code:
+            code_list = [c.strip() for c in self.unspsc_code.split(',') if c.strip()]
+            process_code = (process.unspsc_code or '').strip()
+            if not process_code or not any(process_code.startswith(c) for c in code_list):
                 return False
 
         return True

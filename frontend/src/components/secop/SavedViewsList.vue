@@ -117,6 +117,14 @@
               <StarIcon class="h-4 w-4" :class="view.is_favorite ? 'fill-current' : ''" />
             </button>
             <button
+              @click.stop="$emit('create-alert', view)"
+              :data-testid="`saved-view-create-alert-${view.id}`"
+              title="Crear alerta con estos filtros"
+              class="rounded-lg p-2 text-gray-400 hover:bg-blue-50 hover:text-secondary transition-colors"
+            >
+              <BellAlertIcon class="h-4 w-4" />
+            </button>
+            <button
               @click.stop="$emit('apply', view)"
               :data-testid="`saved-view-apply-${view.id}`"
               title="Aplicar filtros"
@@ -147,6 +155,7 @@ import {
   FunnelIcon,
   TrashIcon,
   StarIcon,
+  BellAlertIcon,
 } from "@heroicons/vue/24/outline";
 import { ref } from "vue";
 import SavedViewModal from "@/components/secop/SavedViewModal.vue";
@@ -158,7 +167,7 @@ const props = defineProps({
   availableFilters: { type: Object, default: () => ({}) },
 });
 
-const emit = defineEmits(["save", "update", "apply", "delete", "toggle-favorite"]);
+const emit = defineEmits(["save", "update", "apply", "delete", "toggle-favorite", "create-alert"]);
 
 const showModal = ref(false);
 const editingView = ref(null);

@@ -572,14 +572,6 @@
             @delete="handleDeleteAlert"
           />
         </div>
-        <!-- Alert Form Modal -->
-        <AlertForm
-          v-if="showAlertForm && !filtersDisabled"
-          :alert="editingAlert"
-          :available-filters="secopStore.availableFilters"
-          @save="handleSaveAlert"
-          @close="closeAlertForm"
-        />
       </template>
 
       <!-- SAVED VIEWS TAB -->
@@ -594,8 +586,19 @@
           @apply="handleApplyView"
           @delete="handleDeleteView"
           @toggle-favorite="handleToggleFavorite"
+          @create-alert="handleCreateAlertFromView"
         />
       </template>
+
+      <!-- Alert Form Modal (global — accessible from alerts tab and saved views tab) -->
+      <AlertForm
+        v-if="showAlertForm && !filtersDisabled"
+        :alert="editingAlert"
+        :available-filters="secopStore.availableFilters"
+        :prefill-filters="prefillAlertFilters"
+        @save="handleSaveAlert"
+        @close="closeAlertForm"
+      />
 
       <!-- Save Filter Modal (from filters area) -->
       <SavedViewModal
@@ -714,6 +717,7 @@ const classifyingProcess = ref(null);
 // Alert form
 const showAlertForm = ref(false);
 const editingAlert = ref(null);
+const prefillAlertFilters = ref(null);
 
 // Save filter modal
 const showSaveFilterModal = ref(false);
@@ -926,6 +930,7 @@ function editAlert(alert) {
 function closeAlertForm() {
   showAlertForm.value = false;
   editingAlert.value = null;
+  prefillAlertFilters.value = null;
 }
 
 async function handleSaveAlert(data) {
@@ -981,6 +986,12 @@ async function handleDeleteView(viewId) {
 
 async function handleToggleFavorite(viewId) {
   await secopStore.toggleFavoriteView(viewId);
+}
+
+function handleCreateAlertFromView(view) {
+  editingAlert.value = null;
+  prefillAlertFilters.value = { name: view.name, ...view.filters };
+  showAlertForm.value = true;
 }
 
 async function handleSaveFilterFromModal(data) {
