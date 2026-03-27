@@ -58,41 +58,41 @@
 
             <!-- Filters summary -->
             <div class="flex flex-wrap gap-2 text-xs text-gray-600">
-              <span v-if="view.filters.department" class="rounded-md bg-terciary px-2 py-1">
-                Dpto: {{ view.filters.department }}
+              <span v-if="view.filters?.department" class="rounded-md bg-terciary px-2 py-1">
+                Dpto: {{ view.filters?.department }}
               </span>
-              <span v-if="view.filters.procurement_method" class="rounded-md bg-terciary px-2 py-1">
-                Modalidad: {{ view.filters.procurement_method }}
+              <span v-if="view.filters?.procurement_method" class="rounded-md bg-terciary px-2 py-1">
+                Modalidad: {{ view.filters?.procurement_method }}
               </span>
-              <span v-if="view.filters.status" class="rounded-md bg-terciary px-2 py-1">
-                Estado: {{ view.filters.status }}
+              <span v-if="view.filters?.status" class="rounded-md bg-terciary px-2 py-1">
+                Estado: {{ view.filters?.status }}
               </span>
-              <span v-if="view.filters.search" class="rounded-md bg-terciary px-2 py-1">
-                Búsqueda: "{{ view.filters.search }}"
+              <span v-if="view.filters?.search" class="rounded-md bg-terciary px-2 py-1">
+                Búsqueda: "{{ view.filters?.search }}"
               </span>
-              <template v-if="view.filters.keywords">
+              <template v-if="view.filters?.keywords">
                 <span
-                  v-for="kw in view.filters.keywords.split('|').map(s => s.trim()).filter(Boolean)"
+                  v-for="kw in view.filters?.keywords.split('|').map(s => s.trim()).filter(Boolean)"
                   :key="kw"
                   class="rounded-md bg-terciary px-2 py-1"
                 >
                   {{ kw }}
                 </span>
               </template>
-              <span v-if="view.filters.entity_name" class="rounded-md bg-terciary px-2 py-1">
-                Entidad: {{ view.filters.entity_name }}
+              <span v-if="view.filters?.entity_name" class="rounded-md bg-terciary px-2 py-1">
+                Entidad: {{ view.filters?.entity_name }}
               </span>
-              <span v-if="view.filters.unspsc_code" class="rounded-md bg-terciary px-2 py-1">
-                UNSPSC: {{ view.filters.unspsc_code }}
+              <span v-if="view.filters?.unspsc_code" class="rounded-md bg-terciary px-2 py-1">
+                UNSPSC: {{ view.filters?.unspsc_code }}
               </span>
-              <span v-if="view.filters.min_budget || view.filters.max_budget" class="rounded-md bg-terciary px-2 py-1">
+              <span v-if="view.filters?.min_budget || view.filters?.max_budget" class="rounded-md bg-terciary px-2 py-1">
                 Presupuesto: {{ budgetLabel(view.filters) }}
               </span>
-              <span v-if="view.filters.publication_date_from || view.filters.publication_date_to" class="rounded-md bg-terciary px-2 py-1">
-                Publicación: {{ view.filters.publication_date_from || '...' }} — {{ view.filters.publication_date_to || '...' }}
+              <span v-if="view.filters?.publication_date_from || view.filters?.publication_date_to" class="rounded-md bg-terciary px-2 py-1">
+                Publicación: {{ view.filters?.publication_date_from || '...' }} — {{ view.filters?.publication_date_to || '...' }}
               </span>
-              <span v-if="view.filters.closing_date_from || view.filters.closing_date_to" class="rounded-md bg-terciary px-2 py-1">
-                Cierre: {{ view.filters.closing_date_from || '...' }} — {{ view.filters.closing_date_to || '...' }}
+              <span v-if="view.filters?.closing_date_from || view.filters?.closing_date_to" class="rounded-md bg-terciary px-2 py-1">
+                Cierre: {{ view.filters?.closing_date_from || '...' }} — {{ view.filters?.closing_date_to || '...' }}
               </span>
             </div>
 
@@ -157,8 +157,13 @@ import {
   StarIcon,
   BellAlertIcon,
 } from "@heroicons/vue/24/outline";
-import { ref } from "vue";
+import { ref, onErrorCaptured } from "vue";
 import SavedViewModal from "@/components/secop/SavedViewModal.vue";
+
+onErrorCaptured((err) => {
+  console.error('[SavedViewsList] Rendering error caught:', err);
+  return false; // prevent propagation to parent
+});
 
 const props = defineProps({
   savedViews: { type: Array, default: () => [] },

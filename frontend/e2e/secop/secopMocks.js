@@ -345,11 +345,16 @@ export async function installSecopApiMocks(page, overrides = {}) {
           body: JSON.stringify({ id: 799, name: "New E2E View", filters: { department: "Bogotá D.C." }, is_favorite: false, keywords: "" }),
         };
       }
-      if (method === "PATCH") {
+      if (method === "PUT" || method === "PATCH") {
+        const idStr = apiPath.replace("secop/saved-views/", "").replace(/\/$/, "");
+        const viewId = parseInt(idStr, 10) || 701;
+        const allViews = overrides.savedViews || MOCK_SAVED_VIEWS;
+        const existing = allViews.find((v) => v.id === viewId) || allViews[0] || MOCK_SAVED_VIEWS[0];
+        const body = route.request().postDataJSON?.() || {};
         return {
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ id: 701, name: "Antioquia Obras Updated", filters: { department: "Antioquia", contract_type: "Obra" }, is_favorite: false, keywords: "" }),
+          body: JSON.stringify({ ...existing, ...body, id: viewId }),
         };
       }
       if (method === "DELETE") {

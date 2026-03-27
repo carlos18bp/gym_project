@@ -450,11 +450,11 @@ def secop_saved_views(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['PUT', 'DELETE'])
+@api_view(['PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def secop_delete_saved_view(request, pk):
     """
-    PUT: Update a saved view (name and/or filters).
+    PUT/PATCH: Update a saved view (name and/or filters). Both methods use partial updates.
     DELETE: Delete a saved view. Users can only delete their own.
     """
     try:
@@ -469,7 +469,7 @@ def secop_delete_saved_view(request, pk):
         saved_view.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # PUT
+    # PUT / PATCH — both use partial=True for consistent partial-update semantics
     serializer = SavedViewSerializer(
         saved_view,
         data=request.data,

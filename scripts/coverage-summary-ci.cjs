@@ -377,11 +377,14 @@ function buildMarkdown(backend, backendFailures, backendCounts, feUnit, feUnitFa
       { label: 'Frontend Unit (Jest)',       c: feUnitCounts  },
       { label: 'Frontend E2E (Playwright)', c: e2eCounts     },
     ];
-    const grandTotal  = allCounts.reduce((s, r) => s + (r.c?.total  ?? 0), 0);
-    const grandPassed = allCounts.reduce((s, r) => s + (r.c?.passed ?? 0), 0);
-    const grandFailed = allCounts.reduce((s, r) => s + (r.c?.failed ?? 0), 0);
+    const grandTotal   = allCounts.reduce((s, r) => s + (r.c?.total   ?? 0), 0);
+    const grandPassed  = allCounts.reduce((s, r) => s + (r.c?.passed  ?? 0), 0);
+    const grandFailed  = allCounts.reduce((s, r) => s + (r.c?.failed  ?? 0), 0);
+    const grandSkipped = allCounts.reduce((s, r) => s + (r.c?.skipped ?? 0), 0);
+    const grandEffective = grandTotal - grandSkipped;
     const allOk = grandFailed === 0;
-    L.push(`### ${allOk ? '✅' : '❌'} Test Results — ${grandPassed}/${grandTotal} passed`);
+    const skipNote = grandSkipped > 0 ? ` (+${grandSkipped} skipped)` : '';
+    L.push(`### ${allOk ? '✅' : '❌'} Test Results — ${grandPassed}/${grandEffective} passed${skipNote}`);
     L.push('');
     L.push('| Suite | Passed | Failed | Skipped | Total |');
     L.push('|-------|--------|--------|---------|-------|');
