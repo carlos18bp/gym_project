@@ -276,6 +276,28 @@ class DynamicDocument(models.Model):
         
         return None
     
+    def get_user_permission_level_prefetched(self, user):
+        """
+        Like get_user_permission_level(), but evaluates using already-prefetched
+        usability_permissions and visibility_permissions instead of issuing
+        .filter().exists() queries. Use when those relations are prefetched.
+        """
+        if self.is_lawyer(user):
+            return 'lawyer'
+        if self.created_by_id == user.pk:
+            return 'owner'
+        if self.assigned_to_id == user.pk:
+            return 'usability'
+        if self.state == 'Published' and self.assigned_to_id is None:
+            return 'usability'
+        if any(p.user_id == user.pk for p in self.usability_permissions.all()):
+            return 'usability'
+        if any(p.user_id == user.pk for p in self.visibility_permissions.all()):
+            return 'view_only'
+        if self.is_public:
+            return 'public_access'
+        return None
+
     def get_related_documents(self, user=None):
         """
         Get all documents that have a bidirectional relationship with this document.

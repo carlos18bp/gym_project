@@ -19,7 +19,11 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from gym_app.models.dynamic_document import DynamicDocument, RecentDocument
+from django.db.models import Prefetch
+from gym_app.models.dynamic_document import (
+    DynamicDocument, RecentDocument, DocumentSignature,
+    DocumentVisibilityPermission, DocumentUsabilityPermission,
+)
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, RecentDocumentSerializer
 from django.utils import timezone
 from .permissions import (
@@ -78,9 +82,19 @@ def list_dynamic_documents(request):
     """
     Get a list of all dynamic documents.
     """
-    # Base queryset with related data needed for list views
-    # Order by most recently updated to keep pagination stable and meaningful
-    queryset = DynamicDocument.objects.prefetch_related('variables', 'tags').order_by('-updated_at')
+    # Base queryset with all related data needed by the serializer.
+    # Prefetch every relation accessed per-document to eliminate N+1 queries.
+    queryset = DynamicDocument.objects.select_related(
+        'created_by', 'assigned_to'
+    ).prefetch_related(
+        'variables',
+        'tags',
+        Prefetch('signatures', queryset=DocumentSignature.objects.select_related('signer')),
+        'visibility_permissions',
+        'usability_permissions',
+        'relationships_as_source',
+        'relationships_as_target',
+    ).order_by('-updated_at')
 
     # Optional filters used by the frontend store
     state = request.query_params.get('state')
@@ -862,12 +876,25 @@ def get_recent_documents(request):
     Get the 10 most recently visited documents for the authenticated user.
     Only returns documents the user has permission to view.
     """
-    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')
-    
-    # Filter by visibility permissions
+    recent_documents = RecentDocument.objects.filter(user=request.user).select_related(
+        'document__created_by', 'document__assigned_to'
+    ).prefetch_related(
+        Prefetch(
+            'document__signatures',
+            queryset=DocumentSignature.objects.select_related('signer'),
+        ),
+        'document__variables',
+        'document__tags',
+        'document__visibility_permissions',
+        'document__usability_permissions',
+        'document__relationships_as_source',
+        'document__relationships_as_target',
+    ).order_by('-last_visited')
+
+    # Filter by visibility permissions using prefetched data (no extra DB hits)
     filtered_recent = []
     for recent_doc in recent_documents:
-        if recent_doc.document.can_view(request.user):
+        if recent_doc.document.can_view_prefetched(request.user):
             filtered_recent.append(recent_doc)
         if len(filtered_recent) >= 10:  # Limit to 10 documents
             break

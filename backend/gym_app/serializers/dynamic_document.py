@@ -213,16 +213,17 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     def get_signer_ids(self, obj):
         """
         Return a list of IDs of the users who need to sign this document.
-        This is used when editing an existing document to pre-populate 
-        the signers selection.
+        This is used when editing an existing document to pre-populate
+        the signers selection. Uses prefetched cache — no extra DB query.
         """
-        return [signature.signer_id for signature in obj.signatures.all()]
+        return [sig.signer_id for sig in obj.signatures.all()]
     
     def get_signers(self, obj):
         request = self.context.get('request')
         current_user = request.user if request and hasattr(request, 'user') else None
         signers_data = []
-        for signature in obj.signatures.select_related('signer').all():
+        # Iterate over prefetched signatures — signer is select_related in the Prefetch
+        for signature in obj.signatures.all():
             signer = signature.signer
             if not signer:
                 continue
@@ -245,105 +246,86 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     def get_completed_signatures(self, obj):
         """
         Return the number of completed signatures for this document.
+        Uses prefetched cache — no extra DB query.
         """
         if not obj.requires_signature:
             return 0
-        return obj.signatures.filter(signed=True).count()
-        
+        return sum(1 for sig in obj.signatures.all() if sig.signed)
+
     def get_total_signatures(self, obj):
         """
         Return the total number of required signatures for this document.
+        Uses prefetched cache — no extra DB query.
         """
         if not obj.requires_signature:
             return 0
-        return obj.signatures.count()
+        return len(obj.signatures.all())
     
     def get_relationships_count(self, obj):
         """
-        Return the number of related documents (associations) that the current user can see.
-        This matches the filtering logic in get_related_documents() to avoid showing
-        incorrect counts when documents are filtered by permissions.
+        Return the number of relationship records for this document.
+        Uses prefetched source_relationships + target_relationships — no extra DB query.
         """
-        # Get the current user from the serializer context
-        request = self.context.get('request')
-        if not request or not request.user:
-            # If no user context, count all relationships
-            from django.db.models import Q
-            total = DocumentRelationship.objects.filter(
-                Q(source_document=obj) | Q(target_document=obj)
-            ).count()
-            return total
-        
-        # Use the model method to get related documents with user filtering
-        related_docs = obj.get_related_documents(user=request.user)
-        count = related_docs.count()
-        return count
+        return len(obj.relationships_as_source.all()) + len(obj.relationships_as_target.all())
     
 
     
-    def get_user_permission_level(self, obj):
+    def _get_permission_level(self, obj):
         """
-        Get the permission level for the current user on this document.
+        Return the current user's permission level using prefetched data.
+        Result is cached on the instance to avoid recomputing for can_edit/can_delete.
         """
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return None
-        return obj.get_user_permission_level(request.user)
-    
+        cache_attr = f'_perm_level_{request.user.pk}'
+        if not hasattr(obj, cache_attr):
+            setattr(obj, cache_attr, obj.get_user_permission_level_prefetched(request.user))
+        return getattr(obj, cache_attr)
+
+    def get_user_permission_level(self, obj):
+        """Get the permission level for the current user on this document."""
+        return self._get_permission_level(obj)
+
     def get_can_view(self, obj):
-        """
-        Check if the current user can view this document.
-        """
+        """Check if the current user can view this document."""
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return False
-        return obj.can_view(request.user)
-    
+        return obj.can_view_prefetched(request.user)
+
     def get_can_edit(self, obj):
-        """
-        Check if the current user can edit this document.
-        """
-        request = self.context.get('request')
-        if not request or not hasattr(request, 'user'):
-            return False
-        
-        user_permission = obj.get_user_permission_level(request.user)
+        """Check if the current user can edit this document."""
+        user_permission = self._get_permission_level(obj)
         if not user_permission:
             return False
-            
-        # Define permission hierarchy (public_access and usability grant edit permissions)
         permission_hierarchy = ['view_only', 'public_access', 'usability', 'owner', 'lawyer']
         try:
-            user_level = permission_hierarchy.index(user_permission)
-            edit_level = permission_hierarchy.index('public_access')  # public_access allows editing
-            return user_level >= edit_level
+            return permission_hierarchy.index(user_permission) >= permission_hierarchy.index('public_access')
         except ValueError:
             return False
-    
+
     def get_can_delete(self, obj):
-        """
-        Check if the current user can delete this document.
-        """
-        request = self.context.get('request')
-        if not request or not hasattr(request, 'user'):
-            return False
-        
-        user_permission = obj.get_user_permission_level(request.user)
+        """Check if the current user can delete this document."""
+        user_permission = self._get_permission_level(obj)
         if not user_permission:
             return False
-            
-        # Define permission hierarchy
         permission_hierarchy = ['view_only', 'public_access', 'usability', 'owner', 'lawyer']
         try:
-            user_level = permission_hierarchy.index(user_permission)
-            delete_level = permission_hierarchy.index('owner')  # Only owners and lawyers can delete
-            return user_level >= delete_level
+            return permission_hierarchy.index(user_permission) >= permission_hierarchy.index('owner')
         except ValueError:
             return False
 
     def _get_first_summary_variable(self, obj, summary_field):
-        """Helper to get the first variable classified with the given summary_field."""
-        return obj.variables.filter(summary_field=summary_field).first()
+        """
+        Get the first variable with the given summary_field using prefetched data.
+        Using .filter() on a prefetched relation bypasses the cache; iterating .all()
+        does not. No extra DB query.
+        """
+        for var in obj.variables.all():
+            if var.summary_field == summary_field:
+                return var
+        return None
 
     def get_summary_counterparty(self, obj):
         """Get counterparty/user name for table views using configured variable or fallbacks."""
@@ -358,8 +340,9 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             full_name = f"{first_name} {last_name}".strip()
             return full_name or getattr(obj.assigned_to, 'email', None)
 
-        # Fallback 2: first signer different from creator
-        signature = obj.signatures.exclude(signer=obj.created_by).first()
+        # Fallback 2: first signer different from creator (uses prefetched signatures)
+        creator_id = obj.created_by_id
+        signature = next((sig for sig in obj.signatures.all() if sig.signer_id != creator_id), None)
         if signature and signature.signer:
             first_name = signature.signer.first_name or ""
             last_name = signature.signer.last_name or ""
