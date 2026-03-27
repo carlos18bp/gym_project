@@ -18,7 +18,7 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 6. [Flujos — Corporate Client](#flujos--corporate-client)
 7. [Flujos — Basic](#flujos--basic)
 8. [Flujos — Lawyer G&M (is_gym_lawyer)](#flujos--lawyer-gm-is_gym_lawyer)
-9. [Flujos — SECOP (Contratación Pública)](#flujos--secop-contratación-pública)
+9. [Flujos — SECOP (Contratación Estatal)](#flujos--secop-contratación-pública)
 10. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
 
 ---
@@ -951,7 +951,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - **Descripción:** Browse, search, filter, and sort SECOP public procurement opportunities
 
 **Pasos:**
-1. Navigate to `/secop` via sidebar "Contratación Pública"
+1. Navigate to `/secop` via sidebar "Contratación Estatal"
 2. View paginated table of SECOP processes
 3. Use filters (department, procurement method, status)
 4. Use search bar for keyword search
@@ -1492,7 +1492,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
-## Flujos — SECOP (Contratación Pública)
+## Flujos — SECOP (Contratación Estatal)
 
 > Módulo exclusivo para **Lawyer**. Permite navegar, filtrar, clasificar y monitorear procesos de contratación pública del portal SECOP.
 

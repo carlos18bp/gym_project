@@ -330,7 +330,7 @@ const router = createRouter({
           component: () => import(/* webpackChunkName: "secop" */ "@/views/secop/SecopList.vue"),
           meta: { 
             requiresAuth: true, 
-            title: "Contratación Pública"
+            title: "Contratación Estatal"
           },
         },
         {

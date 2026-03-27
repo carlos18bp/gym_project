@@ -557,7 +557,7 @@ const navigation = ref([
     routes: ['/intranet_g_y_m']
   },
   {
-    name: "Contratación Pública",
+    name: "Contratación Estatal",
     action: (item) => {
       setCurrent(item);
       router.push({ name: "secop_list" });

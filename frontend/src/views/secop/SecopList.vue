@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50" data-testid="secop-list-page">
-    <ModuleHeader title="Contratación Pública" subtitle="Oportunidades de contratación SECOP II">
+    <ModuleHeader title="Contratación Estatal" subtitle="Oportunidades de contratación SECOP II">
       <template #menu-button><slot></slot></template>
       <template #actions>
         <SyncStatus :sync-status="secopStore.syncStatus" @trigger-sync="secopStore.triggerSync()" />
