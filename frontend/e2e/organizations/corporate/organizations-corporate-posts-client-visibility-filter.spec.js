@@ -7,6 +7,13 @@ import { installOrganizationsDashboardApiMocks } from "../../helpers/organizatio
 
 // quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
 
+async function assertSuccessDialog(page, expectedText) {
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText(expectedText);
+  await successDialog.getByRole("button").click();
+}
+
 test("corporate_client deactivates a post and client does not see it in public posts", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -46,9 +53,7 @@ test("corporate_client deactivates a post and client does not see it in public p
 
   await page.getByRole("button", { name: "Crear Post" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await expect(page.locator(".swal2-title")).toHaveText("Post creado exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await assertSuccessDialog(page, "Post creado exitosamente");
 
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
@@ -61,14 +66,12 @@ test("corporate_client deactivates a post and client does not see it in public p
 
   // Step 2: corporate deactivates the post
   await postCard.locator('button:has(svg.h-5.w-5)').click();
-  const actionsMenu = postCard.locator("div.absolute.right-0.mt-1.w-48").first(); // quality: allow-fragile-selector (positional selector for first matching element)
+  const actionsMenu = postCard.locator("div.absolute.right-0.mt-1.w-48");
   await expect(actionsMenu).toBeVisible();
   await expect(actionsMenu.locator('button:has-text("Desactivar")')).toBeVisible();
   await actionsMenu.locator('button:has-text("Desactivar")').click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await expect(page.locator(".swal2-title")).toHaveText("Post desactivado exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await assertSuccessDialog(page, "Post desactivado exitosamente");
 
   await expect(postCard.getByText("Inactivo")).toBeVisible();
 

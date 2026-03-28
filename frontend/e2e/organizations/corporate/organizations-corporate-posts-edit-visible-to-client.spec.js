@@ -13,7 +13,7 @@ async function closeSuccessDialog(page, expectedText) {
   const successDialog = page.getByRole("dialog");
   await expect(successDialog).toBeVisible({ timeout: 15_000 });
   await expect(successDialog).toContainText(expectedText);
-  await page.getByRole("button", { name: /^(OK|Aceptar)$/i }).click();
+  await successDialog.getByRole("button").click();
 }
 
 test("corporate_client edits a post and client sees updated title/content/link", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {

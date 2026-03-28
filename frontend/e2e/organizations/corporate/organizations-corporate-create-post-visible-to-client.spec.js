@@ -5,6 +5,13 @@ import { installOrganizationsDashboardApiMocks } from "../../helpers/organizatio
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
+async function assertSuccessDialog(page, expectedText) {
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText(expectedText);
+  await successDialog.getByRole("button").click();
+}
+
 test("corporate_client creates a pinned post with link and client can see it in public posts", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
@@ -53,17 +60,14 @@ test("corporate_client creates a pinned post with link and client can see it in 
 
   await page.getByRole("button", { name: "Crear Post" }).click();
 
-  await expect(page.locator(".swal2-confirm")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await expect(page.locator(".swal2-title")).toHaveText("Post creado exitosamente"); // quality: allow-fragile-selector (class selector targets stable UI structure)
-  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await assertSuccessDialog(page, "Post creado exitosamente");
 
   // Ensure the create modal is closed (avoids strict-mode collisions with preview)
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
   const createdPostCard = page
     .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post Visible Cliente" })
-    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
+    .filter({ hasText: "Post Visible Cliente" });
   await expect(createdPostCard).toBeVisible();
   await expect(createdPostCard.getByText("Fijado").first()).toBeVisible();
 
