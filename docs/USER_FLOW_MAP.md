@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** March 26, 2026
-**Versión:** 1.4.0
+**Fecha:** March 28, 2026
+**Versión:** 1.5.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -388,9 +388,30 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 **Pasos:**
 1. Click en botón de reportes en dashboard
-2. Selecciona rango de fechas (inicio, fin)
-3. Click "Generar"
-4. Descarga archivo Excel
+2. Selecciona tipo de reporte (Procesos Activos, Usuarios Registrados, etc.)
+3. Opcionalmente define rango de fechas (inicio, fin)
+4. Click "Generar y Descargar Reporte"
+5. Descarga archivo Excel
+
+---
+
+### dashboard-reports-advanced-filters: Filtros avanzados de reportes
+- **Módulo:** dashboard | **Prioridad:** P2 | **Ruta:** `/dashboard` (tab Reportes) | **E2E:** ✅
+- **Descripción:** Filtrar reporte de Usuarios Registrados por rol, estado de perfil y tipo de documento (commit `8e0e3fa`)
+
+**Condición:** Los filtros avanzados solo aparecen al seleccionar tipo "Usuarios Registrados".
+
+**Filtros disponibles:**
+- **Rol:** Todos / Cliente / Abogado / Cliente Corporativo / Básico
+- **Estado del Perfil:** Todos / Completo / Incompleto
+- **Tipo de Documento:** Todos / NIT / CC / NUIP / EIN
+
+**Ramificaciones:**
+- ├── **Filtrar por rol** → generar reporte con usuarios de ese rol
+- ├── **Filtrar por estado de perfil** → generar reporte filtrado
+- ├── **Filtrar por tipo de documento** → generar reporte filtrado
+- ├── **Cambiar tipo de reporte** → filtros avanzados desaparecen y se resetean
+- └── **Sin filtros** (todos en "Todos") → reporte sin filtro adicional
 
 ---
 
@@ -1426,16 +1447,16 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 > Hereda flujos compartidos con **restricciones específicas**.
 
 ### basic-restrictions: Restricciones de usuario básico
-- **Módulo:** auth | **Prioridad:** P3 | **Ruta:** N/A | **E2E:** ⚠️
-- **Descripción:** Funcionalidades limitadas con botones deshabilitados
+- **Módulo:** auth | **Prioridad:** P3 | **Ruta:** N/A | **E2E:** ✅
+- **Descripción:** Funcionalidades limitadas con botones deshabilitados y overlays de bloqueo
 
-**Restricciones:**
-- ❌ **Firma electrónica:** No disponible, botón deshabilitado con tooltip
-- ❌ **Membrete global:** No disponible
-- ❌ **Solicitar información de proceso:** No disponible
-- ✅ **Usar documentos:** Puede completar formularios (sin firma)
-- ✅ **Crear solicitudes:** Igual que Client
-- ✅ **Agendar cita:** Igual que Client
+**Restricciones (cubierto por E2E):**
+- ❌ **Rutas de abogado:** Redirect a `/dashboard` (directorio, editor, variables-config)
+- ❌ **Membrete global:** Botón deshabilitado en `/dynamic_document_dashboard`
+- ❌ **Filtros SECOP:** Overlay de bloqueo sobre el panel de filtros en `/secop`
+- ✅ **Crear solicitudes:** Acceso a `/legal_request_create`
+- ✅ **Agendar cita:** Acceso a `/schedule_appointment`
+- ✅ **Usar documentos:** Puede completar formularios (sin firma electrónica)
 - ✅ **Organizaciones:** Vista lectura igual que Client
 
 ---
@@ -1653,7 +1674,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Auth | 11 | 11 | 0 | 0 |
 | Subscriptions | 6 | 6 | 0 | 0 |
 | Profile | 2 | 2 | 0 | 0 |
-| Dashboard | 8 | 8 | 0 | 0 |
+| Dashboard | 9 | 9 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 9 | 9 | 0 | 0 |
 | Documents | 33 | 33 | 0 | 0 |
@@ -1666,10 +1687,10 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **133** | **133** | **0** | **0** |
+| **Total** | **134** | **134** | **0** | **0** |
 
 ---
 
-**Documento generado:** March 26, 2026
-**Versión:** 1.4.0
-**Estado:** ✅ Completo — 133/133 flujos cubiertos
+**Documento generado:** March 28, 2026
+**Versión:** 1.5.0
+**Estado:** ✅ Completo — 134/134 flujos cubiertos

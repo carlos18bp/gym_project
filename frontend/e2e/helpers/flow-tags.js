@@ -31,6 +31,7 @@ export const DASHBOARD_RECENT_DOCUMENTS = ['@flow:dashboard-recent-documents', '
 export const DASHBOARD_NAVIGATION = ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_LEGAL_UPDATES = ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3'];
 export const DASHBOARD_REPORTS = ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2'];
+export const DASHBOARD_REPORTS_ADVANCED_FILTERS = ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_FOLDER_COMPONENTS = ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3'];
 
 // ── Subscriptions ───────────────────────────────────────────────────────────

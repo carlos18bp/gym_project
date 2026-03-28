@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
-  "lastUpdated": "2026-03-26",
+  "version": "1.4.0",
+  "lastUpdated": "2026-03-28",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -210,6 +210,16 @@
       ],
       "priority": "P3",
       "description": "Pestañas de carpetas y contactos en dashboard",
+      "expectedSpecs": 1
+    },
+    "dashboard-reports-advanced-filters": {
+      "name": "Filtros avanzados de reportes",
+      "module": "dashboard",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Filtrar reporte de Usuarios Registrados por rol, estado de perfil y tipo de documento antes de generar Excel",
       "expectedSpecs": 1
     },
     "subscriptions-view-plans": {
@@ -1051,8 +1061,8 @@
         "basic"
       ],
       "priority": "P3",
-      "description": "Toast de restricción, funciones limitadas",
-      "expectedSpecs": 1
+      "description": "Toast de restricción, funciones limitadas. Route redirects and disabled UI controls (letterhead, SECOP filters overlay).",
+      "expectedSpecs": 2
     },
     "intranet-facturation-form": {
       "name": "Facturation form field interactions",
