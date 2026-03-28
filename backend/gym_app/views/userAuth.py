@@ -4,6 +4,7 @@ from rest_framework import status
 from gym_app.models import User, PasswordCode, EmailVerificationCode
 from rest_framework.response import Response
 from gym_app.utils import generate_auth_tokens, verify_captcha
+from gym_app.utils.email_notifications import notify_admin_new_user
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -91,7 +92,9 @@ def sign_on(request):
         # Mark verification code as used
         verification_code.used = True
         verification_code.save()
-        
+
+        notify_admin_new_user(user)
+
         # Generate JWT tokens for the new user
         tokens = generate_auth_tokens(user)
         

@@ -3,9 +3,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from django.utils import timezone
-
 import pytest
+from django.utils import timezone
 from freezegun import freeze_time
 
 from gym_app.models import SECOPProcess, SyncLog
@@ -297,7 +296,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         service.synchronize(incremental=True)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         call_kwargs = mock_client.fetch_processes.call_args
         assert call_kwargs[1]['date_from'] is not None
         assert '2026-03-17' in call_kwargs[1]['date_from']
@@ -314,7 +313,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         service.synchronize(incremental=True)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         call_kwargs = mock_client.fetch_processes.call_args
         assert call_kwargs[1]['date_from'] is None
 
@@ -332,7 +331,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         service.synchronize(incremental=False)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         call_kwargs = mock_client.fetch_processes.call_args
         assert call_kwargs[1]['date_from'] is None
 
@@ -353,7 +352,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         result = service.synchronize(incremental=False)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         assert result['processed'] == 2
         assert result['created'] == 1
         assert result['updated'] == 1
@@ -372,7 +371,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         result = service.synchronize(incremental=False)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         assert result['processed'] == 1
         assert result['created'] == 1
         assert SECOPProcess.objects.filter(process_id='CO1.REQ.OK1').exists()
@@ -390,11 +389,12 @@ class TestSynchronize:
         service = SECOPSyncService()
         result = service.synchronize(incremental=False)
 
-        assert mock_client.fetch_processes.call_count == 1
+        mock_client.fetch_processes.assert_called_once()
         assert len(result['new_ids']) == 2
         for pid in result['new_ids']:
             assert SECOPProcess.objects.filter(pk=pid).exists()
 
+    @freeze_time('2026-03-19T20:00:00+00:00')
     @patch('gym_app.services.secop_sync_service.SECOPClient')
     def test_synchronize_includes_stale_closed_count(self, MockClient):
         """Verify stats include stale_closed count after sync."""
@@ -411,6 +411,7 @@ class TestSynchronize:
         service = SECOPSyncService()
         result = service.synchronize(incremental=False)
 
+        mock_client.fetch_processes.assert_called_once()
         assert result['stale_closed'] == 1
         stale = SECOPProcess.objects.get(process_id='CO1.REQ.STALE1')
         assert stale.status == 'Cerrado'
@@ -421,6 +422,7 @@ class TestSynchronize:
 class TestCloseStaleProcesses:
     """Tests for SECOPSyncService.close_stale_processes."""
 
+    @freeze_time('2026-03-20T12:00:00+00:00')
     def test_closes_open_processes_with_past_closing_date(self):
         """Verify open processes with expired closing_date are marked Cerrado."""
         SECOPProcess.objects.create(
@@ -436,6 +438,7 @@ class TestCloseStaleProcesses:
         p = SECOPProcess.objects.get(process_id='CO1.REQ.EXPIRED1')
         assert p.status == 'Cerrado'
 
+    @freeze_time('2026-03-20T12:00:00+00:00')
     def test_does_not_close_open_processes_with_future_closing_date(self):
         """Verify open processes with future closing_date remain Abierto."""
         SECOPProcess.objects.create(
@@ -451,6 +454,7 @@ class TestCloseStaleProcesses:
         p = SECOPProcess.objects.get(process_id='CO1.REQ.FUTURE1')
         assert p.status == 'Abierto'
 
+    @freeze_time('2026-03-20T12:00:00+00:00')
     def test_does_not_close_already_closed_processes(self):
         """Verify already Cerrado processes are not affected."""
         SECOPProcess.objects.create(

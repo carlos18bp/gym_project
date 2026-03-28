@@ -2,6 +2,8 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installSecopApiMocks } from "./secopMocks.js";
 
+const UNSPSC_CONSULTING_SERVICES = '72101500';
+
 const LAWYER_AUTH = {
   token: "e2e-secop-token",
   userAuth: {
@@ -92,7 +94,7 @@ test.describe("SECOP Edit Saved View Flow", () => {
     await expect(unspscField).toBeVisible();
 
     // Enter a UNSPSC code
-    await unspscField.fill("72101500");
+    await unspscField.fill(UNSPSC_CONSULTING_SERVICES);
 
     // Save the updated view
     await page.getByTestId("saved-view-modal-save").click();

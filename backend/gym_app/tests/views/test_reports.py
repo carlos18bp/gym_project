@@ -476,16 +476,104 @@ class TestReportViews:
         # Assert the response status
         assert response.status_code == status.HTTP_200_OK
         
-        # Read Excel content to verify data
+        # Read Excel content to verify data (skip 5 metadata rows)
         excel_content = io.BytesIO(response.content)
-        df = pd.read_excel(excel_content)
-        
+        df = pd.read_excel(excel_content, skiprows=5)
+
         # Verify data is present
         assert len(df) >= 3  # At least our 3 sample users
         assert sample_users['client'].email in df['Email'].values
         assert sample_users['lawyer'].email in df['Email'].values
         assert sample_users['admin'].email in df['Email'].values
-    
+
+    def test_registered_users_report_new_columns(self, api_client, sample_users):
+        """Test that new columns Activo and Abogado GYM are present in the report."""
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {'reportType': 'registered_users'}, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df = pd.read_excel(io.BytesIO(response.content), skiprows=5)
+        assert 'Activo' in df.columns
+        assert 'Abogado GYM' in df.columns
+
+    def _read_data_rows(self, content):
+        """Read only the user data rows from a registered_users Excel report.
+
+        Skips the 5 metadata rows at the top, then filters out summary rows at
+        the bottom (which write into col 0 / 'Email' with non-email text).
+        """
+        df = pd.read_excel(io.BytesIO(content), skiprows=5)
+        return df[df['Email'].astype(str).str.contains('@', na=False)]
+
+    def test_registered_users_filter_role(self, api_client, sample_users):
+        """Test that filterRole returns only users with the specified role."""
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {
+            'reportType': 'registered_users',
+            'filterRole': 'client',
+        }, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df = self._read_data_rows(response.content)
+        assert all(df['Rol'] == 'Cliente')
+        assert sample_users['lawyer'].email not in df['Email'].values
+
+    def test_registered_users_filter_profile_complete(self, api_client, sample_users):
+        """Test that filterProfileStatus=complete returns only completed profiles."""
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {
+            'reportType': 'registered_users',
+            'filterProfileStatus': 'complete',
+        }, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df = self._read_data_rows(response.content)
+        assert all(df['Perfil Completo'] == 'Completo')
+
+    def test_registered_users_filter_document_type(self, api_client, sample_users):
+        """Test that filterDocumentType returns only users with the specified document type."""
+        User.objects.create_user(
+            email='nit_user@example.com',
+            password='password123',
+            role='client',
+            document_type='NIT',
+        )
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {
+            'reportType': 'registered_users',
+            'filterDocumentType': 'NIT',
+        }, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df = self._read_data_rows(response.content)
+        assert all(df['Tipo de Documento'] == 'NIT')
+        assert 'nit_user@example.com' in df['Email'].values
+
+    def test_registered_users_metadata_rows(self, api_client, sample_users):
+        """Test that metadata rows are written at the top of the Excel sheet."""
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {
+            'reportType': 'registered_users',
+            'filterRole': 'lawyer',
+        }, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df_raw = pd.read_excel(io.BytesIO(response.content), header=None)
+        assert 'Reporte de Usuarios Registrados' in str(df_raw.iloc[0].values)
+        assert 'Abogado' in str(df_raw.iloc[3].values)
+
+    def test_registered_users_role_display_all_roles(self, api_client, sample_users):
+        """Test that all role types are translated correctly in the Excel output."""
+        User.objects.create_user(email='corp@example.com', password='pw', role='corporate_client')
+        User.objects.create_user(email='basic@example.com', password='pw', role='basic')
+        api_client.force_authenticate(user=sample_users['admin'])
+        url = reverse('generate-excel-report')
+        response = api_client.post(url, {'reportType': 'registered_users'}, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        df = pd.read_excel(io.BytesIO(response.content), skiprows=5)
+        assert 'Cliente Corporativo' in df['Rol'].values
+        assert 'Básico' in df['Rol'].values
+
     def test_user_activity_report(self, api_client, sample_users, sample_activities):
         """Test generating user activity report."""
         # Authenticate

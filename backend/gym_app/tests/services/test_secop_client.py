@@ -159,7 +159,7 @@ class TestSECOPClientRequest:
         records = list(client.fetch_processes())
 
         assert len(records) == 0
-        assert mock_request.call_count == 1  # verified
+        mock_request.assert_called_once()
 
     # quality: disable network_dependency (testing first-attempt success with mocked requests.get boundary)
     @patch('gym_app.services.secop_client.requests.get')
@@ -172,7 +172,7 @@ class TestSECOPClientRequest:
         result = client._make_request('https://test.url')
 
         assert result == mock_response
-        assert mock_get.call_count == 1  # verified
+        mock_get.assert_called_once()
 
     @patch.object(SECOPClient, '_make_request')
     def test_fetch_process_by_id_returns_record_when_found(self, mock_request, client):
@@ -183,7 +183,7 @@ class TestSECOPClientRequest:
 
         result = client.fetch_process_by_id('CO1.REQ.123')
 
-        assert mock_request.call_count == 1
+        mock_request.assert_called_once()
         assert result is not None
         assert result['id_del_proceso'] == 'CO1.REQ.123'
 
@@ -196,5 +196,5 @@ class TestSECOPClientRequest:
 
         result = client.fetch_process_by_id('CO1.REQ.NONEXISTENT')
 
-        assert mock_request.call_count == 1
+        mock_request.assert_called_once()
         assert result is None

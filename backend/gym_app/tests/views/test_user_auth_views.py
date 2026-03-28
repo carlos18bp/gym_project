@@ -214,6 +214,46 @@ class TestSignOn:
         assert response.status_code == status.HTTP_201_CREATED
         assert User.objects.filter(email="spaces@example.com").exists()
 
+    def test_sign_on_sends_admin_notification(self, api_client, monkeypatch):
+        """Verify that a registration alert is sent to the admin inbox on success."""
+        _mock_captcha_success(monkeypatch)
+        EmailVerificationCode.objects.create(email="notify@example.com", code="777888")
+        url = reverse("sign_on")
+        data = {
+            "email": "notify@example.com",
+            "password": "SecurePass123!",
+            "first_name": "Notify",
+            "last_name": "Test",
+            "passcode": "777888",
+            "captcha_token": "tok",
+        }
+        with patch("gym_app.views.userAuth.notify_admin_new_user") as mock_notify:
+            response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_notify.assert_called_once()
+        notified_user = mock_notify.call_args.args[0]
+        assert notified_user.email == "notify@example.com"
+
+    def test_sign_on_admin_notification_failure_does_not_break_registration(self, api_client, monkeypatch):
+        """Verify registration succeeds even if the admin notification email fails."""
+        _mock_captcha_success(monkeypatch)
+        EmailVerificationCode.objects.create(email="resilient@example.com", code="444555")
+        url = reverse("sign_on")
+        data = {
+            "email": "resilient@example.com",
+            "password": "SecurePass123!",
+            "first_name": "Resilient",
+            "last_name": "User",
+            "passcode": "444555",
+            "captcha_token": "tok",
+        }
+        with patch("gym_app.utils.email_notifications.send_template_email", side_effect=Exception("SMTP error")):
+            response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert User.objects.filter(email="resilient@example.com").exists()
+
 
 # =========================================================================
 # send_verification_code
@@ -265,7 +305,7 @@ class TestSendVerificationCode:
         )
         assert response.status_code == status.HTTP_409_CONFLICT
 
-    @patch("gym_app.views.userAuth.send_template_email")
+    @patch("gym_app.views.userAuth.notify_admin_new_user")
     def test_success(self, mock_email, api_client, monkeypatch):
         """Verify success."""
         _mock_captcha_success(monkeypatch)
@@ -658,7 +698,7 @@ class TestSendPasscode:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @patch("gym_app.views.userAuth.send_template_email")
+    @patch("gym_app.views.userAuth.notify_admin_new_user")
     def test_success(self, mock_email, api_client, user, monkeypatch):
         """Verify success."""
         _mock_captcha_success(monkeypatch)
@@ -783,7 +823,7 @@ class TestSendVerificationCodeEmailFailure:
         _mock_captcha_success(monkeypatch)
         mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
-            "gym_app.views.userAuth.send_template_email",
+            "gym_app.views.userAuth.notify_admin_new_user",
             mock_send_email,
         )
         url = reverse("send_verification_code")
@@ -807,7 +847,7 @@ class TestSendPasscodeEmailFailure:
         _mock_captcha_success(monkeypatch)
         mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
-            "gym_app.views.userAuth.send_template_email",
+            "gym_app.views.userAuth.notify_admin_new_user",
             mock_send_email,
         )
         url = reverse("send_passcode")

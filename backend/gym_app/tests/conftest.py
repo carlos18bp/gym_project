@@ -17,6 +17,12 @@ from gym_app.models import (
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def disable_ssl_redirect(settings):
+    """Disable SECURE_SSL_REDIRECT for all tests (active in production .env)."""
+    settings.SECURE_SSL_REDIRECT = False
+
+
 @pytest.fixture
 def api_client():
     """Pre-configured DRF APIClient."""

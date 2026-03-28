@@ -1,3 +1,4 @@
+# CLAUDE.md
 # GM Consultores Juridicos — Claude Code Configuration
 
 ## Project Identity
