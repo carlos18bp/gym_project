@@ -305,7 +305,7 @@ class TestSendVerificationCode:
         )
         assert response.status_code == status.HTTP_409_CONFLICT
 
-    @patch("gym_app.views.userAuth.notify_admin_new_user")
+    @patch("gym_app.views.userAuth.send_template_email")
     def test_success(self, mock_email, api_client, monkeypatch):
         """Verify success."""
         _mock_captcha_success(monkeypatch)
@@ -698,7 +698,7 @@ class TestSendPasscode:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @patch("gym_app.views.userAuth.notify_admin_new_user")
+    @patch("gym_app.views.userAuth.send_template_email")
     def test_success(self, mock_email, api_client, user, monkeypatch):
         """Verify success."""
         _mock_captcha_success(monkeypatch)
@@ -823,7 +823,7 @@ class TestSendVerificationCodeEmailFailure:
         _mock_captcha_success(monkeypatch)
         mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
-            "gym_app.views.userAuth.notify_admin_new_user",
+            "gym_app.views.userAuth.send_template_email",
             mock_send_email,
         )
         url = reverse("send_verification_code")
@@ -847,7 +847,7 @@ class TestSendPasscodeEmailFailure:
         _mock_captcha_success(monkeypatch)
         mock_send_email = MagicMock(side_effect=Exception("SMTP error"))
         monkeypatch.setattr(
-            "gym_app.views.userAuth.notify_admin_new_user",
+            "gym_app.views.userAuth.send_template_email",
             mock_send_email,
         )
         url = reverse("send_passcode")

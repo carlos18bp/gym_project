@@ -295,10 +295,10 @@ class TestReportFunctions:
         # Verify response
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         
-        # Read Excel content to verify data
+        # Read Excel content to verify data (skip 5 metadata rows written by METADATA_ROWS)
         excel_content = io.BytesIO(response.content)
-        df = pd.read_excel(excel_content)
-        
+        df = pd.read_excel(excel_content, skiprows=5)
+
         # Verify data is present
         assert not df.empty
         assert sample_users['client'].email in df['Email'].values
