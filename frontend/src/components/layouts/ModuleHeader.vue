@@ -6,7 +6,7 @@
     </div>
 
     <!-- Hero header -->
-    <div class="bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <div class="bg-gradient-to-r from-[#4393ff] to-[#5dbde6] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1

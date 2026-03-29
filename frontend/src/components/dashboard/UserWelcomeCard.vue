@@ -1,6 +1,6 @@
 <!-- UserWelcomeCard.vue -->
 <template>
-  <div class="rounded-xl w-full bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] p-4 sm:p-6">
+  <div class="rounded-xl w-full bg-gradient-to-r from-[#4393ff] to-[#5dbde6] p-4 sm:p-6">
     <!-- Flex layout with responsive column arrangement -->
     <div class="flex flex-col gap-4 sm:gap-6">
       <!-- First row: welcome title -->
@@ -76,7 +76,7 @@
  * 
  * This component displays a welcome card for the logged-in user
  * with their avatar, name, membership date, and active processes count.
- * The background features a horizontal linear gradient from #639CFF to #BEB3FF.
+ * The background features a horizontal linear gradient from #4393ff to #5dbde6.
  * Uses Heroicons Outline: calendar-days for membership date and rectangle-stack for active processes.
  * 
  * Fully responsive:

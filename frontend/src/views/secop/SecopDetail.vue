@@ -8,7 +8,7 @@
 
     <!-- Loading skeleton -->
     <div v-if="secopStore.loading" class="animate-pulse" data-testid="detail-loading">
-      <div class="bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] px-4 py-8 sm:px-6 lg:px-8">
+      <div class="bg-gradient-to-r from-[#4393ff] to-[#5dbde6] px-4 py-8 sm:px-6 lg:px-8">
         <div class="max-w-5xl mx-auto space-y-3">
           <div class="h-6 w-16 rounded bg-white/30"></div>
           <div class="h-7 w-3/4 rounded bg-white/30"></div>
@@ -29,7 +29,7 @@
     <!-- Content -->
     <div v-else-if="process">
       <!-- Header -->
-      <div class="bg-gradient-to-r from-[#639CFF] to-[#BEB3FF] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div class="bg-gradient-to-r from-[#4393ff] to-[#5dbde6] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div class="max-w-5xl mx-auto">
           <button @click="goBack" data-testid="detail-back" class="inline-flex items-center gap-1.5 text-sm font-medium text-white underline hover:text-white/90 mb-4 transition-colors">
             <ArrowLeftIcon class="h-4 w-4" />
