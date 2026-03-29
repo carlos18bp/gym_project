@@ -659,8 +659,19 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         return instance
 
 
+class DynamicDocumentListSerializer(DynamicDocumentSerializer):
+    """Lightweight variant of DynamicDocumentSerializer for list endpoints.
+
+    Excludes the heavy ``content`` field (full HTML body) which is not needed
+    in table/list views, significantly reducing response payload size.
+    """
+
+    class Meta(DynamicDocumentSerializer.Meta):
+        fields = [f for f in DynamicDocumentSerializer.Meta.fields if f != 'content']
+
+
 class RecentDocumentSerializer(serializers.ModelSerializer):
-    document = DynamicDocumentSerializer(read_only=True)
+    document = DynamicDocumentListSerializer(read_only=True)
     
     class Meta:
         model = RecentDocument

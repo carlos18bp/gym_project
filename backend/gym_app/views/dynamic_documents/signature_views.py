@@ -9,16 +9,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
-from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer
+from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
-from ..dynamic_documents.document_views import download_dynamic_document_pdf
+from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
 from .permissions import (
+    apply_visibility_filter,
     require_document_visibility,
     require_document_visibility_by_id,
     require_document_usability,
     require_lawyer_or_owner,
     require_lawyer_or_owner_by_id,
-    filter_documents_by_visibility
 )
 from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
@@ -200,27 +200,20 @@ def get_pending_signatures(request):
     # First, expire any overdue documents
     expire_overdue_documents()
 
-    # Get all pending (non-rejected) signatures for the user on active documents
-    pending_signatures = DocumentSignature.objects.filter(
+    # Get document IDs with pending (non-rejected) signatures for the user
+    pending_doc_ids = DocumentSignature.objects.filter(
         signer=request.user,
         signed=False,
         rejected=False,
         document__state='PendingSignatures',
-    ).select_related('document')
-    
-    # Get unique documents that need signatures and filter by visibility
-    documents = DynamicDocument.objects.filter(
-        signatures__in=pending_signatures
-    ).distinct()
-    
-    # Filter by visibility permissions
-    visible_documents = []
-    for document in documents:
-        if document.can_view(request.user):
-            visible_documents.append(document)
-    
-    # Serialize the documents with their signature information
-    serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
+    ).values_list('document_id', flat=True)
+
+    # Build optimised queryset with all prefetches + visibility filtering
+    base_qs = DynamicDocument.objects.filter(pk__in=pending_doc_ids)
+    queryset = get_optimized_document_queryset(base_qs)
+    queryset = apply_visibility_filter(queryset, request.user)
+
+    serializer = DynamicDocumentListSerializer(queryset, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -615,21 +608,18 @@ def get_user_pending_documents_full(request, user_id):
         # First, expire overdue documents
         expire_overdue_documents()
 
-        pending_signatures = DocumentSignature.objects.filter(
+        pending_doc_ids = DocumentSignature.objects.filter(
             signer_id=user_id,
             signed=False,
             rejected=False,
             document__state='PendingSignatures',
-        ).select_related('document')
-        all_documents = [signature.document for signature in pending_signatures]
-        
-        # Filter documents by visibility permissions
-        visible_documents = []
-        for document in all_documents:
-            if document.can_view(request.user):
-                visible_documents.append(document)
-        
-        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
+        ).values_list('document_id', flat=True)
+
+        base_qs = DynamicDocument.objects.filter(pk__in=pending_doc_ids)
+        queryset = get_optimized_document_queryset(base_qs)
+        queryset = apply_visibility_filter(queryset, request.user)
+
+        serializer = DynamicDocumentListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -649,20 +639,16 @@ def get_user_archived_documents(request, user_id):
     try:
         user = User.objects.get(pk=user_id)
 
-        signatures = DocumentSignature.objects.filter(signer_id=user_id).select_related('document')
-        all_documents = [signature.document for signature in signatures]
+        archived_doc_ids = DocumentSignature.objects.filter(
+            signer_id=user_id,
+            document__state__in=['Rejected', 'Expired'],
+        ).values_list('document_id', flat=True)
 
-        archived_documents = [
-            doc for doc in all_documents
-            if doc.state in ['Rejected', 'Expired']
-        ]
+        base_qs = DynamicDocument.objects.filter(pk__in=archived_doc_ids)
+        queryset = get_optimized_document_queryset(base_qs)
+        queryset = apply_visibility_filter(queryset, request.user)
 
-        visible_documents = []
-        for document in archived_documents:
-            if document.can_view(request.user):
-                visible_documents.append(document)
-
-        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
+        serializer = DynamicDocumentListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     except User.DoesNotExist:
@@ -680,16 +666,16 @@ def get_user_signed_documents(request, user_id):
     """
     try:
         user = User.objects.get(pk=user_id)
-        signed_signatures = DocumentSignature.objects.filter(signer_id=user_id, signed=True).select_related('document')
-        all_documents = [signature.document for signature in signed_signatures]
-        
-        # Filter documents by visibility permissions
-        visible_documents = []
-        for document in all_documents:
-            if document.can_view(request.user):
-                visible_documents.append(document)
-                
-        serializer = DynamicDocumentSerializer(visible_documents, many=True, context={'request': request})
+
+        signed_doc_ids = DocumentSignature.objects.filter(
+            signer_id=user_id, signed=True,
+        ).values_list('document_id', flat=True)
+
+        base_qs = DynamicDocument.objects.filter(pk__in=signed_doc_ids)
+        queryset = get_optimized_document_queryset(base_qs)
+        queryset = apply_visibility_filter(queryset, request.user)
+
+        serializer = DynamicDocumentListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     except User.DoesNotExist:
         return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)

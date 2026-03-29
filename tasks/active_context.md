@@ -38,6 +38,15 @@ The application is **feature-complete** with all 17 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Dynamic Documents N+1 Query Fix (2026-03-29)**:
+  - **Root cause**: Silk profiling reported 170–255 DB queries per request on `GET /api/dynamic-documents/` and related signature endpoints.
+  - **Fix 1 — Shared helper**: Created `get_optimized_document_queryset()` in `document_views.py` — single source of truth for all `select_related`/`prefetch_related` calls needed by `DynamicDocumentSerializer`.
+  - **Fix 2 — Tags N+1**: Changed `prefetch_related('tags')` → `Prefetch('tags', queryset=Tag.objects.select_related('created_by'))` to eliminate per-tag lazy-load of `created_by` FK.
+  - **Fix 3 — Queryset-level visibility filter**: Replaced post-serialization `filter_documents_by_visibility` decorator with `apply_visibility_filter()` using Q objects — eliminates redundant DB round-trip for non-lawyers.
+  - **Fix 4 — Signature views**: Refactored `get_pending_signatures`, `get_user_pending_documents_full`, `get_user_archived_documents`, `get_user_signed_documents` to use the shared helper + `apply_visibility_filter` instead of per-document `can_view()` calls with zero prefetch.
+  - **Fix 5 — Detail view**: Added missing prefetches (`visibility_permissions`, `usability_permissions`, `relationships_as_*`) via shared helper.
+  - **Fix 6 — List serializer**: Created `DynamicDocumentListSerializer` excluding `content` field for list endpoints (reduces payload).
+  - **Expected result**: ~10 queries per request (down from 170–255). All 846 dynamic document tests pass (2 pre-existing sort failures unrelated).
 - **SECOP Module — Stale data fix (2026-03-20)**:
   - **Root cause**: SECOP API (datos.gov.co) returns 26 records marked "Abierto" with publication dates from Jan 2023 and closing dates from Jan–Feb 2023 — all expired. The SECOPClient `_build_query` had no publication date floor, and the sync service had no post-sync stale cleanup.
   - **Fix 1 — API filter**: Added `DEFAULT_PUBLICATION_LOOKBACK_DAYS = 730` (~2 years) to `SECOPClient`. `_build_query` now always appends `fecha_de_publicacion_del >= '<floor>'` to exclude old records at the API level.
