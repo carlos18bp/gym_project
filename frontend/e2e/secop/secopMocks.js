@@ -181,6 +181,15 @@ export async function installSecopApiMocks(page, overrides = {}) {
   const processes = overrides.processes || MOCK_PROCESSES;
   const classified = processes.filter((p) => p.my_classification !== null);
 
+  // Allow callers to override the user object (e.g. to test basic-user restrictions)
+  const defaultUser = {
+    id: userId, first_name: "E2E", last_name: "Lawyer", email: "e2e@example.com",
+    role: "lawyer", is_gym_lawyer: true, is_profile_completed: true, has_signature: false,
+    contact: "", birthday: "", identification: "", document_type: "", photo_profile: "",
+    created_at: new Date().toISOString(),
+  };
+  const mockUser = overrides.user ? { ...defaultUser, ...overrides.user, id: userId } : defaultUser;
+
   await mockApi(page, async ({ route, apiPath }) => {
     const method = route.request().method();
 
@@ -195,24 +204,14 @@ export async function installSecopApiMocks(page, overrides = {}) {
       return {
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([{
-          id: userId, first_name: "E2E", last_name: "Lawyer", email: "e2e@example.com",
-          role: "lawyer", is_gym_lawyer: true, is_profile_completed: true, has_signature: false,
-          contact: "", birthday: "", identification: "", document_type: "", photo_profile: "",
-          created_at: new Date().toISOString(),
-        }]),
+        body: JSON.stringify([mockUser]),
       };
     }
     if (apiPath === `users/${userId}/`) {
       return {
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          id: userId, first_name: "E2E", last_name: "Lawyer", email: "e2e@example.com",
-          role: "lawyer", is_gym_lawyer: true, is_profile_completed: true, has_signature: false,
-          contact: "", birthday: "", identification: "", document_type: "", photo_profile: "",
-          created_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify(mockUser),
       };
     }
     if (apiPath === `users/${userId}/signature/`) {

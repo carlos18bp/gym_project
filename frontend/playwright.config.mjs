@@ -48,7 +48,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
       },
     },
-    /** 
+    /**
     {
       name: "Mobile Chrome",
       use: {
