@@ -1,4 +1,5 @@
 import logging
+import time
 
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -51,6 +52,7 @@ class AlertEvaluationService:
                             self._send_immediate_notification(
                                 alert, process, notification
                             )
+                            time.sleep(0.2)
 
         logger.info(f"Created {notifications_created} SECOP alert notifications")
         return notifications_created

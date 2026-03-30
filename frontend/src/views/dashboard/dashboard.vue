@@ -1,7 +1,7 @@
 <template>
-    <ModuleHeader title="Panel Principal">
-      <template #menu-button><slot></slot></template>
-    </ModuleHeader>
+    <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 lg:hidden">
+      <slot></slot>
+    </div>
 
     <section class="pb-6 pt-4 px-4 sm:px-6 lg:px-8 lg:pt-10 lg:pb-10">
         <!-- Grid layout with improved responsive behavior -->
@@ -88,7 +88,6 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
-import ModuleHeader from '@/components/layouts/ModuleHeader.vue';
 import UserWelcomeCard from '@/components/dashboard/UserWelcomeCard.vue';
 import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';

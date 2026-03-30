@@ -696,6 +696,14 @@ def generate_registered_users_report(
             'Cliente Corporativo': corporate_format,
             'Básico': basic_format,
         }
+        _date_fmt = 'dd/mm/yyyy'
+        ROLE_DATE_FORMATS = {
+            'Abogado': workbook.add_format({'bg_color': '#E8F4FF', 'num_format': _date_fmt}),
+            'Cliente': workbook.add_format({'bg_color': '#F2F2F2', 'num_format': _date_fmt}),
+            'Cliente Corporativo': workbook.add_format({'bg_color': '#E8FFE8', 'num_format': _date_fmt}),
+            'Básico': workbook.add_format({'bg_color': '#FFF8E8', 'num_format': _date_fmt}),
+        }
+        default_date_format = workbook.add_format({'bg_color': '#F2F2F2', 'num_format': _date_fmt})
 
         # Write metadata rows
         num_cols = len(df.columns) if not df.empty else 11
@@ -716,11 +724,18 @@ def generate_registered_users_report(
         # Apply row formatting by role
         if not df.empty:
             role_col_idx = df.columns.get_loc('Rol')
+            date_col_idx = df.columns.get_loc('Fecha de Registro')
             for row_num, row in enumerate(df.values, start=METADATA_ROWS + 1):
                 role = row[role_col_idx]
                 row_format = ROLE_ROW_FORMATS.get(role, client_format)
                 for col_num, value in enumerate(row):
-                    worksheet.write(row_num, col_num, value, row_format)
+                    if col_num == date_col_idx:
+                        worksheet.write_datetime(
+                            row_num, col_num, value,
+                            ROLE_DATE_FORMATS.get(role, default_date_format)
+                        )
+                    else:
+                        worksheet.write(row_num, col_num, value, row_format)
 
         # Add summary statistics
         if not df.empty:

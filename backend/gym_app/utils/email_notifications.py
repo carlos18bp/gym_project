@@ -54,7 +54,7 @@ def notify_admin_new_user(user):
             },
         )
     except Exception:
-        logger.warning("Failed to send admin notification for new user %s", user.email, exc_info=True)
+        logger.error("Failed to send admin notification for new user %s", user.email, exc_info=True)
 
 
 def send_status_update_notification(legal_request, previous_status, new_status):
