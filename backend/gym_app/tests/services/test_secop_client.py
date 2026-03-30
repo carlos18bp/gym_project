@@ -84,7 +84,7 @@ class TestSECOPClientQuery:
 
         assert "estado_del_procedimiento='Abierto'" in query
         assert "estado_del_procedimiento='Publicado'" in query
-        assert "fecha_de_publicacion_del>='2024-03-20'" in query
+        assert "fecha_de_publicacion_del>='2025-12-20'" in query
         assert '$limit=10' in query
         assert '$offset=0' in query
 
@@ -94,7 +94,7 @@ class TestSECOPClientQuery:
         query = client._build_query(offset=20, date_from='2026-03-01')
 
         assert "fecha_de_ultima_publicaci>='2026-03-01'" in query
-        assert "fecha_de_publicacion_del>='2024-03-20'" in query
+        assert "fecha_de_publicacion_del>='2025-12-20'" in query
         assert '$offset=20' in query
 
     @freeze_time('2026-06-15T00:00:00+00:00')
@@ -102,7 +102,7 @@ class TestSECOPClientQuery:
         """Verify publication floor recalculates based on current date."""
         query = client._build_query(offset=0)
 
-        assert "fecha_de_publicacion_del>='2024-06-15'" in query
+        assert "fecha_de_publicacion_del>='2026-03-17'" in query
 
 
 class TestSECOPClientRequest:

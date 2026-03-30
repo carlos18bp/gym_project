@@ -18,7 +18,7 @@ class SECOPClient:
     """
 
     # Default: only fetch processes published within this many days
-    DEFAULT_PUBLICATION_LOOKBACK_DAYS = 730  # ~2 years
+    DEFAULT_PUBLICATION_LOOKBACK_DAYS = 90  # ~3 months
 
     # API field names (Spanish - as defined by SECOP/Socrata API)
     class APIFields:
