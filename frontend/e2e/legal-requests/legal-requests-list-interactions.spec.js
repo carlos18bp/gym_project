@@ -84,7 +84,7 @@ test.describe("LegalRequestsList lawyer view", { tag: ['@flow:legal-list-client'
     await page.waitForLoadState("networkidle");
 
     // Lawyer heading
-    await expect(page.getByRole("heading", { name: "Solicitudes" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible({ timeout: 10000 });
   });
 
   test("lawyer sees status filter dropdown with options", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {

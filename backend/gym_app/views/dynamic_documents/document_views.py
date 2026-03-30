@@ -19,17 +19,42 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from gym_app.models.dynamic_document import DynamicDocument, RecentDocument
-from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, RecentDocumentSerializer
+from django.db.models import Prefetch
+from gym_app.models.dynamic_document import (
+    DynamicDocument, RecentDocument, DocumentSignature,
+    DocumentVisibilityPermission, DocumentUsabilityPermission, Tag,
+)
+from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, DynamicDocumentListSerializer, RecentDocumentSerializer
 from django.utils import timezone
 from .permissions import (
+    apply_visibility_filter,
     require_document_visibility,
     require_document_visibility_by_id,
     require_document_usability,
-    filter_documents_by_visibility
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_optimized_document_queryset(base_qs=None):
+    """Return a DynamicDocument queryset with all relations needed by DynamicDocumentSerializer.
+
+    Every view that serialises documents with DynamicDocumentSerializer (or its
+    list variant) MUST use this helper so that N+1 queries are avoided.
+    """
+    qs = base_qs if base_qs is not None else DynamicDocument.objects.all()
+    return qs.select_related(
+        'created_by', 'assigned_to'
+    ).prefetch_related(
+        'variables',
+        Prefetch('tags', queryset=Tag.objects.select_related('created_by')),
+        Prefetch('signatures', queryset=DocumentSignature.objects.select_related('signer')),
+        'visibility_permissions',
+        'usability_permissions',
+        'relationships_as_source',
+        'relationships_as_target',
+    )
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -73,14 +98,19 @@ def create_dynamic_document(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@filter_documents_by_visibility
 def list_dynamic_documents(request):
     """
     Get a list of all dynamic documents.
     """
-    # Base queryset with related data needed for list views
-    # Order by most recently updated to keep pagination stable and meaningful
-    queryset = DynamicDocument.objects.prefetch_related('variables', 'tags').order_by('-updated_at')
+    # Base queryset with all related data needed by the serializer.
+    # Uses shared helper so that N+1 queries are avoided.
+    queryset = get_optimized_document_queryset().order_by('-updated_at')
+
+    # Queryset-level visibility filtering — lawyers see everything,
+    # non-lawyers see only documents they are permitted to view.
+    # This replaces the old post-serialization filter_documents_by_visibility
+    # decorator, eliminating a redundant DB round-trip.
+    queryset = apply_visibility_filter(queryset, request.user)
 
     # Optional filters used by the frontend store
     state = request.query_params.get('state')
@@ -201,7 +231,7 @@ def list_dynamic_documents(request):
         page_obj = paginator.page(paginator.num_pages)
         page = paginator.num_pages
 
-    serializer = DynamicDocumentSerializer(page_obj.object_list, many=True, context={'request': request})
+    serializer = DynamicDocumentListSerializer(page_obj.object_list, many=True, context={'request': request})
 
     logger.debug(
         "list_dynamic_documents: user=%s role=%s page=%s limit=%s state=%s client_id=%s lawyer_id=%s search=%s total_items=%s items_on_page=%s total_pages=%s",
@@ -235,11 +265,7 @@ def get_dynamic_document(request, pk):
     Get a specific dynamic document by ID.
     """
     try:
-        document = DynamicDocument.objects.prefetch_related(
-            'variables',
-            'signatures__signer',
-            'tags'
-        ).get(pk=pk)
+        document = get_optimized_document_queryset().get(pk=pk)
         
         # Ensure variables have select_options initialized
         for variable in document.variables.all():
@@ -862,12 +888,25 @@ def get_recent_documents(request):
     Get the 10 most recently visited documents for the authenticated user.
     Only returns documents the user has permission to view.
     """
-    recent_documents = RecentDocument.objects.filter(user=request.user).select_related('document').order_by('-last_visited')
-    
-    # Filter by visibility permissions
+    recent_documents = RecentDocument.objects.filter(user=request.user).select_related(
+        'document__created_by', 'document__assigned_to'
+    ).prefetch_related(
+        Prefetch(
+            'document__signatures',
+            queryset=DocumentSignature.objects.select_related('signer'),
+        ),
+        'document__variables',
+        Prefetch('document__tags', queryset=Tag.objects.select_related('created_by')),
+        'document__visibility_permissions',
+        'document__usability_permissions',
+        'document__relationships_as_source',
+        'document__relationships_as_target',
+    ).order_by('-last_visited')
+
+    # Filter by visibility permissions using prefetched data (no extra DB hits)
     filtered_recent = []
     for recent_doc in recent_documents:
-        if recent_doc.document.can_view(request.user):
+        if recent_doc.document.can_view_prefetched(request.user):
             filtered_recent.append(recent_doc)
         if len(filtered_recent) >= 10:  # Limit to 10 documents
             break

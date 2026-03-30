@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Oportunidad SECOP</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f4f7;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f7; padding: 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #1e3a5f; padding: 24px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 22px;">
+                                Nueva Oportunidad SECOP
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 32px 24px;">
+                            <p style="color: #333333; font-size: 16px; margin-top: 0;">
+                                Hola {{ user.first_name }},
+                            </p>
+                            <p style="color: #555555; font-size: 14px;">
+                                Se ha detectado una nueva oportunidad que coincide con tu alerta
+                                <strong>"{{ alert.name }}"</strong>.
+                            </p>
+
+                            <!-- Process card -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0; font-size: 16px;">
+                                            {{ process.procedure_name }}
+                                        </h3>
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #666; font-size: 13px; width: 120px;">Entidad:</td>
+                                                <td style="padding: 4px 0; color: #333; font-size: 13px;">{{ process.entity_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #666; font-size: 13px;">Departamento:</td>
+                                                <td style="padding: 4px 0; color: #333; font-size: 13px;">{{ process.department }}</td>
+                                            </tr>
+                                            {% if process.base_price %}
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #666; font-size: 13px;">Presupuesto:</td>
+                                                <td style="padding: 4px 0; color: #333; font-size: 13px; font-weight: bold;">${{ process.base_price|floatformat:0 }} COP</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% if process.closing_date %}
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #666; font-size: 13px;">Cierre:</td>
+                                                <td style="padding: 4px 0; color: #333; font-size: 13px;">{{ process.closing_date|date:"d/m/Y H:i" }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #666; font-size: 13px;">Modalidad:</td>
+                                                <td style="padding: 4px 0; color: #333; font-size: 13px;">{{ process.procurement_method }}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- CTA Button -->
+                            {% if process_url %}
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td align="center" style="padding: 16px 0;">
+                                        <a href="{{ process_url }}" target="_blank"
+                                           style="display: inline-block; background-color: #1e3a5f; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 6px; font-size: 14px; font-weight: bold;">
+                                            Ver en SECOP
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f9fa; padding: 16px 24px; border-top: 1px solid #e9ecef;">
+                            <p style="color: #999999; font-size: 12px; margin: 0; text-align: center;">
+                                Este correo fue generado automáticamente por el sistema de alertas SECOP de G&M Abogados.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

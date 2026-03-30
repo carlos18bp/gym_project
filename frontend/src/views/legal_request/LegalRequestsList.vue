@@ -1,9 +1,11 @@
 <template>
   <div class="legal-requests-page">
+    <ModuleHeader title="Solicitudes Legales">
+      <template #menu-button><slot></slot></template>
+    </ModuleHeader>
+
     <!-- Search bar integration -->
     <SearchBarAndFilterBy @update:searchQuery="searchQuery = $event">
-      <!-- Menu button slot - pass through the slot from SlideBar -->
-      <slot></slot>
 
       <!-- Auxiliary button slot for navigation -->
       <template #auxiliary_button>
@@ -36,6 +38,7 @@
 import { computed, ref, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { DocumentTextIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import ModuleHeader from '@/components/layouts/ModuleHeader.vue'
 import SearchBarAndFilterBy from '@/components/layouts/SearchBarAndFilterBy.vue'
 import LegalRequestsList from '@/components/legal-requests/LegalRequestsList.vue'
 import { useAuthStore } from '@/stores/auth/auth.js'

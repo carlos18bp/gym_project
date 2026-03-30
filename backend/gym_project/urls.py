@@ -4,6 +4,7 @@ from gym_app.admin import admin_site
 from gym_app.views.spa import SPAView
 from gym_app.views.health import health_check
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin_site.urls),    
@@ -20,6 +21,11 @@ else:
 # Silk profiling (only when ENABLE_SILK=true)
 if getattr(settings, 'ENABLE_SILK', False):
     urlpatterns.append(path('silk/', include('silk.urls', namespace='silk')))
+
+# Redirect /admin (no trailing slash) to /admin/ so the catch-all doesn't intercept it
+urlpatterns += [
+    path('admin', RedirectView.as_view(url='/admin/', permanent=True)),
+]
 
 # Catch-all pattern for Vue.js SPA routing
 # This must be the last pattern to avoid catching API routes

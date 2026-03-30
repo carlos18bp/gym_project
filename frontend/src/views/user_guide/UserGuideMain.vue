@@ -1,13 +1,7 @@
 <template>
-  <!-- Menu button -->
-  <div
-    class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8"
-  >
-    <slot></slot>
-    <div class="flex-1">
-      <h1 class="text-xl font-semibold text-gray-900">Manual de Usuario</h1>
-    </div>
-  </div>
+  <ModuleHeader title="Manual de Usuario">
+    <template #menu-button><slot></slot></template>
+  </ModuleHeader>
 
   <!-- Main content -->
   <div class="flex h-[calc(100vh-4rem)]">
@@ -96,6 +90,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { BookOpenIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import ModuleHeader from '@/components/layouts/ModuleHeader.vue';
 import { useUserStore } from '@/stores/auth/user';
 import { useAuthStore } from '@/stores/auth/auth';
 import { useUserGuideStore } from '@/stores/user_guide';

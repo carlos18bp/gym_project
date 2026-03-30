@@ -4,15 +4,57 @@ Email notification utilities for legal request management system.
 This module provides functions to send email notifications for:
 - Status updates on legal requests
 - New responses from lawyers or clients
+- Admin alerts for new user registrations
 """
 
 import logging
 from datetime import datetime
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 from gym_app.views.layouts.sendEmail import send_template_email
 
 logger = logging.getLogger(__name__)
+
+_ROLE_LABELS = {
+    'client': 'Cliente',
+    'lawyer': 'Abogado',
+    'corporate_client': 'Cliente Corporativo',
+    'basic': 'Básico',
+}
+
+_ADMIN_NOTIFICATION_EMAIL = 'avisos@gymconsultoresjuridicos.com'
+
+
+def notify_admin_new_user(user):
+    """Send a registration alert to the admin inbox."""
+    try:
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "No proporcionado"
+        registered_at = timezone.localtime(user.created_at).strftime('%d/%m/%Y %H:%M')
+        user_info = "\n".join([
+            f"Email: {user.email}",
+            f"Nombre: {full_name}",
+            f"Rol: {_ROLE_LABELS.get(user.role, user.role)}",
+            f"Tipo de documento: {user.document_type or 'No especificado'}",
+            f"Identificación: {user.identification or 'No proporcionada'}",
+            f"Contacto: {user.contact or 'No proporcionado'}",
+            f"Fecha de registro: {registered_at}",
+        ])
+        send_template_email(
+            template_name="notification",
+            subject="Nuevo usuario registrado en la plataforma",
+            to_emails=[_ADMIN_NOTIFICATION_EMAIL],
+            context={
+                "title": "Nuevo Usuario Registrado",
+                "badge_text": "Registro",
+                "icon": "👤",
+                "notification_title": "Se ha registrado un nuevo usuario",
+                "message": f"El usuario {user.email} acaba de completar su registro en la plataforma.",
+                "additional_info": user_info,
+            },
+        )
+    except Exception:
+        logger.error("Failed to send admin notification for new user %s", user.email, exc_info=True)
 
 
 def send_status_update_notification(legal_request, previous_status, new_status):

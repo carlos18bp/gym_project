@@ -23,6 +23,13 @@ from gym_app.models import Process, Case, Stage, User, ActivityFeed, DynamicDocu
 user_id = None
 from django.db import models
 
+ROLE_DISPLAY_MAP = {
+    'client': 'Cliente',
+    'lawyer': 'Abogado',
+    'corporate_client': 'Cliente Corporativo',
+    'basic': 'Básico',
+}
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_excel_report(request):
@@ -33,6 +40,9 @@ def generate_excel_report(request):
     report_type = request.data.get('reportType')
     start_date = request.data.get('startDate')
     end_date = request.data.get('endDate')
+    filter_role = request.data.get('filterRole') or None
+    filter_profile_status = request.data.get('filterProfileStatus') or None
+    filter_document_type = request.data.get('filterDocumentType') or None
     
     if not report_type:
         return Response(
@@ -85,7 +95,12 @@ def generate_excel_report(request):
     elif report_type == 'process_stages':
         return generate_process_stages_report(response, start_datetime, end_datetime)
     elif report_type == 'registered_users':
-        return generate_registered_users_report(response, start_datetime, end_datetime)
+        return generate_registered_users_report(
+            response, start_datetime, end_datetime,
+            filter_role=filter_role,
+            filter_profile_status=filter_profile_status,
+            filter_document_type=filter_document_type,
+        )
     elif report_type == 'user_activity':
         return generate_user_activity_report(response, start_datetime, end_datetime)
     elif report_type == 'lawyers_workload':
@@ -578,63 +593,92 @@ def generate_process_stages_report(response, start_date, end_datetime):
     return response
 
 
-def generate_registered_users_report(response, start_date, end_datetime):
+def generate_registered_users_report(
+    response, start_date, end_datetime,
+    filter_role=None, filter_profile_status=None, filter_document_type=None
+):
     """
     Generate report of registered users with detailed information.
-    
+
     Columns:
-    - Email (User.email)
-    - Nombre (User.first_name)
-    - Apellido (User.last_name)
-    - Rol (User.role)
-    - Tipo de Documento (User.document_type)
-    - Identificación (User.identification)
-    - Contacto (User.contact)
-    - Perfil Completo (User.is_profile_completed)
-    - Fecha de Registro (User.created_at)
+    - Email, Nombre, Apellido, Rol, Tipo de Documento, Identificación,
+      Contacto, Perfil Completo, Activo, Abogado GYM, Fecha de Registro
+
+    Optional filters:
+    - filter_role: 'client' | 'lawyer' | 'corporate_client' | 'basic'
+    - filter_profile_status: 'complete' | 'incomplete'
+    - filter_document_type: 'NIT' | 'CC' | 'NUIP' | 'EIN'
     """
     # Get users created in the date range
-    users = User.objects.filter(
-        created_at__range=[start_date, end_datetime]
+    users = User.objects.filter(created_at__range=[start_date, end_datetime]).only(
+        'email', 'first_name', 'last_name', 'role', 'document_type',
+        'identification', 'contact', 'is_profile_completed',
+        'is_active', 'is_gym_lawyer', 'created_at',
     )
-    
+
+    # Apply optional filters
+    if filter_role:
+        users = users.filter(role=filter_role)
+    if filter_profile_status == 'complete':
+        users = users.filter(is_profile_completed=True)
+    elif filter_profile_status == 'incomplete':
+        users = users.filter(is_profile_completed=False)
+    if filter_document_type:
+        users = users.filter(document_type=filter_document_type)
+
     # Prepare data for Excel
     data = []
-    
     for user in users:
-        # Map role display names
-        role_display = "Cliente" if user.role == 'client' else "Abogado" if user.role == 'lawyer' else user.role
-        
-        # Format profile completion status
-        profile_status = "Completo" if user.is_profile_completed else "Incompleto"
-        
-        # Add user data to the list
         data.append({
             'Email': user.email,
             'Nombre': user.first_name or "",
             'Apellido': user.last_name or "",
-            'Rol': role_display,
+            'Rol': ROLE_DISPLAY_MAP.get(user.role, user.role),
             'Tipo de Documento': user.document_type or "No especificado",
             'Identificación': user.identification or "No disponible",
             'Contacto': user.contact or "No disponible",
-            'Perfil Completo': profile_status,
+            'Perfil Completo': "Completo" if user.is_profile_completed else "Incompleto",
+            'Activo': "Sí" if user.is_active else "No",
+            'Abogado GYM': "Sí" if user.is_gym_lawyer else "No",
             'Fecha de Registro': user.created_at.date()
         })
-    
+
     # Create DataFrame and sort by registration date
     df = pd.DataFrame(data)
     if not df.empty:
         df = df.sort_values(by=['Fecha de Registro', 'Email'])
-    
+
+    # Build filter labels for metadata header
+    role_label = ROLE_DISPLAY_MAP.get(filter_role, 'Todos') if filter_role else 'Todos'
+    profile_label = {'complete': 'Completo', 'incomplete': 'Incompleto'}.get(filter_profile_status, 'Todos')
+    doc_label = filter_document_type or 'Todos'
+    period_start = start_date.strftime('%Y-%m-%d')
+    period_end = end_datetime.strftime('%Y-%m-%d')
+
+    METADATA_ROWS = 5
+
     # Create Excel file
     with pd.ExcelWriter(response, engine='xlsxwriter') as writer:
-        df.to_excel(writer, sheet_name='Usuarios Registrados', index=False)
-        
-        # Get workbook and worksheet objects
+        df.to_excel(writer, sheet_name='Usuarios Registrados', index=False, startrow=METADATA_ROWS)
+
         workbook = writer.book
         worksheet = writer.sheets['Usuarios Registrados']
-        
-        # Add formats
+
+        # Formats
+        title_format = workbook.add_format({
+            'bold': True,
+            'font_size': 14,
+            'fg_color': '#1E3A5F',
+            'font_color': '#FFFFFF',
+            'border': 1,
+            'valign': 'vcenter',
+        })
+        meta_format = workbook.add_format({
+            'italic': True,
+            'font_size': 10,
+            'fg_color': '#F0F4F8',
+            'border': 1,
+        })
         header_format = workbook.add_format({
             'bold': True,
             'text_wrap': True,
@@ -642,70 +686,98 @@ def generate_registered_users_report(response, start_date, end_datetime):
             'fg_color': '#D9D9D9',
             'border': 1
         })
-        
-        # Add conditional formats
-        lawyer_format = workbook.add_format({'bg_color': '#E8F4FF'})  # Light blue for lawyers
-        client_format = workbook.add_format({'bg_color': '#F2F2F2'})  # Light gray for clients
-        
-        # Write headers with format
+        lawyer_format = workbook.add_format({'bg_color': '#E8F4FF'})
+        client_format = workbook.add_format({'bg_color': '#F2F2F2'})
+        corporate_format = workbook.add_format({'bg_color': '#E8FFE8'})
+        basic_format = workbook.add_format({'bg_color': '#FFF8E8'})
+        ROLE_ROW_FORMATS = {
+            'Abogado': lawyer_format,
+            'Cliente': client_format,
+            'Cliente Corporativo': corporate_format,
+            'Básico': basic_format,
+        }
+        _date_fmt = 'dd/mm/yyyy'
+        ROLE_DATE_FORMATS = {
+            'Abogado': workbook.add_format({'bg_color': '#E8F4FF', 'num_format': _date_fmt}),
+            'Cliente': workbook.add_format({'bg_color': '#F2F2F2', 'num_format': _date_fmt}),
+            'Cliente Corporativo': workbook.add_format({'bg_color': '#E8FFE8', 'num_format': _date_fmt}),
+            'Básico': workbook.add_format({'bg_color': '#FFF8E8', 'num_format': _date_fmt}),
+        }
+        default_date_format = workbook.add_format({'bg_color': '#F2F2F2', 'num_format': _date_fmt})
+
+        # Write metadata rows
+        num_cols = len(df.columns) if not df.empty else 11
+        worksheet.merge_range(0, 0, 0, num_cols - 1, 'Reporte de Usuarios Registrados', title_format)
+        worksheet.write(1, 0, f'Generado el: {timezone.now().strftime("%Y-%m-%d %H:%M")}', meta_format)
+        worksheet.write(2, 0, f'Período: {period_start} – {period_end}', meta_format)
+        worksheet.write(3, 0, f'Filtro Rol: {role_label}', meta_format)
+        worksheet.write(4, 0, f'Filtro Perfil: {profile_label}  |  Filtro Tipo Doc.: {doc_label}', meta_format)
+        worksheet.set_row(0, 25)
+
+        # Write column headers and set widths
         for col_num, value in enumerate(df.columns.values):
-            worksheet.write(0, col_num, value, header_format)
-            # Set column width based on max length in column
+            worksheet.write(METADATA_ROWS, col_num, value, header_format)
             if not df.empty:
-                max_len = max(
-                    df[value].astype(str).map(len).max(),
-                    len(value)
-                ) + 2
+                max_len = max(df[value].astype(str).map(len).max(), len(value)) + 2
                 worksheet.set_column(col_num, col_num, max_len)
-        
-        # Apply conditional formatting based on user role
+
+        # Apply row formatting by role
         if not df.empty:
-            # Get the index of the 'Rol' column
             role_col_idx = df.columns.get_loc('Rol')
-            
-            for row_num, row in enumerate(df.values, start=1):
+            date_col_idx = df.columns.get_loc('Fecha de Registro')
+            for row_num, row in enumerate(df.values, start=METADATA_ROWS + 1):
                 role = row[role_col_idx]
-                row_format = lawyer_format if role == "Abogado" else client_format
-                
+                row_format = ROLE_ROW_FORMATS.get(role, client_format)
                 for col_num, value in enumerate(row):
-                    worksheet.write(row_num, col_num, value, row_format)
-        
+                    if col_num == date_col_idx:
+                        worksheet.write_datetime(
+                            row_num, col_num, value,
+                            ROLE_DATE_FORMATS.get(role, default_date_format)
+                        )
+                    else:
+                        worksheet.write(row_num, col_num, value, row_format)
+
         # Add summary statistics
         if not df.empty:
-            # Count users by role
             role_counts = df['Rol'].value_counts().reset_index()
             role_counts.columns = ['Rol', 'Cantidad']
-            
-            # Count complete vs incomplete profiles
+
             profile_counts = df['Perfil Completo'].value_counts().reset_index()
             profile_counts.columns = ['Estado', 'Cantidad']
-            
-            # Write user role summary
-            summary_row = len(df) + 3  # Leave 2 blank rows after main table
+
+            doc_counts = df['Tipo de Documento'].value_counts().reset_index()
+            doc_counts.columns = ['Tipo de Documento', 'Cantidad']
+
+            summary_row = METADATA_ROWS + len(df) + 3
             worksheet.write(summary_row, 0, 'Resumen por Rol de Usuario', header_format)
-            
             summary_row += 1
             worksheet.write(summary_row, 0, 'Rol', header_format)
             worksheet.write(summary_row, 1, 'Cantidad', header_format)
-            
-            for idx, row in role_counts.iterrows():
+            for _, row in role_counts.iterrows():
                 summary_row += 1
                 worksheet.write(summary_row, 0, row['Rol'])
                 worksheet.write(summary_row, 1, row['Cantidad'])
-            
-            # Write profile completion summary
-            summary_row += 3  # Add some space
+
+            summary_row += 3
             worksheet.write(summary_row, 0, 'Resumen por Estado de Perfil', header_format)
-            
             summary_row += 1
             worksheet.write(summary_row, 0, 'Estado', header_format)
             worksheet.write(summary_row, 1, 'Cantidad', header_format)
-            
-            for idx, row in profile_counts.iterrows():
+            for _, row in profile_counts.iterrows():
                 summary_row += 1
                 worksheet.write(summary_row, 0, row['Estado'])
                 worksheet.write(summary_row, 1, row['Cantidad'])
-    
+
+            summary_row += 3
+            worksheet.write(summary_row, 0, 'Resumen por Tipo de Documento', header_format)
+            summary_row += 1
+            worksheet.write(summary_row, 0, 'Tipo de Documento', header_format)
+            worksheet.write(summary_row, 1, 'Cantidad', header_format)
+            for _, row in doc_counts.iterrows():
+                summary_row += 1
+                worksheet.write(summary_row, 0, row['Tipo de Documento'])
+                worksheet.write(summary_row, 1, row['Cantidad'])
+
     return response
 
 

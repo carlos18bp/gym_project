@@ -85,7 +85,17 @@ This file captures important patterns, preferences, and project intelligence tha
 
 ---
 
-## 6. System-Specific Gotchas
+## 6. Performance & Query Optimization
+
+- **Shared queryset helper pattern**: When multiple views serialize the same model, create a single `get_optimized_<model>_queryset()` function that encapsulates all `select_related`/`prefetch_related` calls. This prevents drift where one view has correct prefetches and another doesn't. Example: `get_optimized_document_queryset()` in `document_views.py`.
+- **Prefetch nested FKs on M2M**: When prefetching a M2M relation (e.g., `tags`), remember to `select_related` any FK on the related model that the serializer accesses. Plain `prefetch_related('tags')` loads Tag objects but NOT `tag.created_by` — use `Prefetch('tags', queryset=Tag.objects.select_related('created_by'))`.
+- **Post-serialization filtering is expensive**: The old `filter_documents_by_visibility` decorator serialized ALL documents, THEN re-fetched them from DB to check permissions. Replaced with `apply_visibility_filter()` using Q objects at the queryset level — runs in SQL before serialization.
+- **DRF `PrimaryKeyRelatedField` triggers FK lazy-load**: During `to_representation`, DRF accesses the related object (e.g., `tag.created_by`) not just the `_id` column. Without `select_related`, this causes 1 query per related object.
+- **List serializer pattern**: Create a lightweight `ModelListSerializer` that excludes heavy fields (e.g., `content`) for list endpoints. Inherit from the full serializer and override `Meta.fields`.
+
+---
+
+## 7. System-Specific Gotchas
 
 - **Huey immediate mode**: In development, tasks run synchronously. No need for Redis or `run_huey`. But behavior may differ from production where tasks are async.
 - **User model**: Custom user model at `gym_app.User` extending `AbstractUser`. Must always reference via `AUTH_USER_MODEL` or `get_user_model()`.

@@ -42,7 +42,7 @@ test.describe("AddFilesModal - legal request detail view", { tag: ['@flow:legal-
       userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
     });
 
-    await page.goto("/legal-requests");
+    await page.goto("/legal_requests");
     await page.waitForLoadState("networkidle");
 
     // Legal requests page should render
@@ -78,7 +78,7 @@ test.describe("AddFilesModal - legal request detail view", { tag: ['@flow:legal-
       userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
     });
 
-    await page.goto("/legal-requests");
+    await page.goto("/legal_requests");
     await page.waitForLoadState("networkidle");
 
     await expect(page.locator("body")).toBeVisible();
@@ -113,7 +113,7 @@ test.describe("AddFilesModal - lawyer view of requests", { tag: ['@flow:legal-ad
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/legal-requests");
+    await page.goto("/legal_requests");
     await page.waitForLoadState("networkidle");
 
     await expect(page.locator("body")).toBeVisible();

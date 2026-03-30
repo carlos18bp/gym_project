@@ -53,10 +53,19 @@ async function attemptLogin(page) {
 }
 
 async function dismissAlertIfVisible(page) {
-  const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
-  if (await confirmButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await confirmButton.click();
+  // Wait for the SweetAlert to appear (API call may still be in flight), then dismiss it
+  try {
+    await page.locator('[class~="swal2-popup"]').waitFor({ state: "visible", timeout: 5_000 });
+    const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
+    if (await confirmButton.isVisible().catch(() => false)) {
+      await confirmButton.click();
+    }
+    // Wait for the modal to close before continuing
+    await page.locator('[class~="swal2-popup"]').waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
+  } catch {
+    // No alert appeared within timeout
   }
+  if (page.isClosed()) return;
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll(".swal2-container").forEach((el) => el.remove());

@@ -961,6 +961,9 @@ describe("Dynamic Document Store - documents module behaviors", () => {
   });
 
   test("fetchDocuments returns early when data was loaded recently", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
     const store = useDynamicDocumentStore();
     store.$patch({
       lastFetchTime: Date.now(),
@@ -971,6 +974,8 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     expect(result).toBeUndefined();
     expect(mock.history.get).toHaveLength(0);
+
+    jest.useRealTimers();
   });
 
   // quality: disable too_many_assertions (verifying all query params from single API call)

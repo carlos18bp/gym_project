@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "lastUpdated": "2026-03-19",
+  "version": "1.4.0",
+  "lastUpdated": "2026-03-28",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -210,6 +210,16 @@
       ],
       "priority": "P3",
       "description": "Pestañas de carpetas y contactos en dashboard",
+      "expectedSpecs": 1
+    },
+    "dashboard-reports-advanced-filters": {
+      "name": "Filtros avanzados de reportes",
+      "module": "dashboard",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Filtrar reporte de Usuarios Registrados por rol, estado de perfil y tipo de documento antes de generar Excel",
       "expectedSpecs": 1
     },
     "subscriptions-view-plans": {
@@ -1051,8 +1061,8 @@
         "basic"
       ],
       "priority": "P3",
-      "description": "Toast de restricción, funciones limitadas",
-      "expectedSpecs": 1
+      "description": "Toast de restricción, funciones limitadas. Route redirects and disabled UI controls (letterhead, SECOP filters overlay).",
+      "expectedSpecs": 2
     },
     "intranet-facturation-form": {
       "name": "Facturation form field interactions",
@@ -1092,6 +1102,166 @@
       ],
       "priority": "P3",
       "description": "Corporate client loads organizations dashboard and triggers store actions (load, invite)",
+      "expectedSpecs": 1
+    },
+    "secop-list-browse": {
+      "name": "Browse SECOP processes",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
+      "expectedSpecs": 1
+    },
+    "secop-process-detail": {
+      "name": "View SECOP process detail",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "View full detail of a SECOP procurement process with entity info, dates, budget",
+      "expectedSpecs": 1
+    },
+    "secop-classify-process": {
+      "name": "Classify a SECOP process",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Mark a process with classification status and add internal notes for team collaboration",
+      "expectedSpecs": 1
+    },
+    "secop-create-alert": {
+      "name": "Create SECOP alert",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Configure alert criteria to receive notifications for matching SECOP processes",
+      "expectedSpecs": 1
+    },
+    "secop-manage-alerts": {
+      "name": "Manage SECOP alerts",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Edit, toggle, or delete existing SECOP alerts",
+      "expectedSpecs": 1
+    },
+    "secop-export-excel": {
+      "name": "Export SECOP processes to Excel",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Export filtered SECOP process list to .xlsx file",
+      "expectedSpecs": 1
+    },
+    "secop-add-notes": {
+      "name": "Add internal notes to a SECOP process",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Add internal notes to a classified process for team collaboration",
+      "expectedSpecs": 1
+    },
+    "secop-save-view": {
+      "name": "Save filter combination as named view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Save current filter combination as a named view for quick future access",
+      "expectedSpecs": 1
+    },
+    "secop-apply-saved-view": {
+      "name": "Apply a saved filter view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Apply a previously saved filter combination to the process list",
+      "expectedSpecs": 1
+    },
+    "secop-view-in-portal": {
+      "name": "Open deep-link to SECOP portal",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Open the official SECOP portal page for a process in a new tab",
+      "expectedSpecs": 1
+    },
+    "secop-sync-status": {
+      "name": "View sync status and history",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "View the last synchronization time and status indicator in the header",
+      "expectedSpecs": 1
+    },
+    "secop-trigger-sync": {
+      "name": "Admin triggers manual sync",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
+      "expectedSpecs": 1
+    },
+    "secop-filter-classifications": {
+      "name": "Filter classified processes by status",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)",
+      "expectedSpecs": 1
+    },
+    "secop-saved-view-favorites": {
+      "name": "Toggle saved view as favorite (default filter)",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Mark/unmark a saved view as favorite so it loads automatically. Favorite views show a star icon and appear first in the list.",
+      "expectedSpecs": 1
+    },
+    "secop-keyword-tags": {
+      "name": "Keyword tags in saved views and filters",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.",
+      "expectedSpecs": 1
+    },
+    "secop-edit-saved-view": {
+      "name": "Edit an existing saved view",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Open the edit modal on an existing saved view, update its name and/or filters (including multi-select UNSPSC), and save the changes via PATCH secop/saved-views/:id/.",
       "expectedSpecs": 1
     }
   }

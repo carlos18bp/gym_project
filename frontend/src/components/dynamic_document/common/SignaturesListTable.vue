@@ -670,6 +670,9 @@ const tabDocuments = ref([]);
 const tabPagination = ref({ totalItems: 0, totalPages: 0, currentPage: 1 });
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+let searchDebounceTimer = null;
+// Flag to skip the currentPage watcher when a filter/search watcher already triggers the fetch
+let skipNextPageWatch = false;
 
 /**
  * Fetch data for this specific tab from the backend.
@@ -678,7 +681,16 @@ const itemsPerPage = ref(10);
 const fetchTabData = async (page = 1) => {
   isLoading.value = true;
   try {
-    const options = { page, limit: itemsPerPage.value, userRelated: true };
+    const options = {
+      page,
+      limit: itemsPerPage.value,
+      userRelated: true,
+      search: localSearchQuery.value || '',
+      tagId: filterByTag.value || null,
+      dateFrom: dateFrom.value || '',
+      dateTo: dateTo.value || '',
+      sortBy: sortBy.value || 'recent',
+    };
 
     if (props.state === 'PendingSignatures') {
       options.state = 'PendingSignatures';
@@ -806,9 +818,25 @@ const paginationInfo = computed(() => {
   return { start, end, total };
 });
 
-// Reset to first page when filters change
-watch([localSearchQuery, filterByTag, dateFrom, dateTo], () => {
-  currentPage.value = 1;
+// Debounced search: reset to page 1 and re-fetch from backend
+watch(localSearchQuery, () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    if (currentPage.value !== 1) {
+      skipNextPageWatch = true;
+      currentPage.value = 1;
+    }
+    fetchTabData(1);
+  }, 300);
+});
+
+// Filter/sort changes: reset to page 1 and re-fetch from backend
+watch([filterByTag, dateFrom, dateTo, sortBy], () => {
+  if (currentPage.value !== 1) {
+    skipNextPageWatch = true;
+    currentPage.value = 1;
+  }
+  fetchTabData(1);
 });
 
 // Available tags
@@ -1253,6 +1281,10 @@ watch(
 
 // Watch for page changes — fetch the new page from the server
 watch(currentPage, (newPage) => {
+  if (skipNextPageWatch) {
+    skipNextPageWatch = false;
+    return;
+  }
   fetchTabData(newPage);
 });
 </script>

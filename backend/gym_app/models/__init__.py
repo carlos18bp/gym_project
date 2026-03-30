@@ -9,6 +9,7 @@ from .intranet_gym import LegalDocument, IntranetProfile
 from .dynamic_document import DynamicDocument, DocumentVariable, DocumentSignature, RecentDocument, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship
 from .legal_update import LegalUpdate
 from .subscription import Subscription, PaymentHistory
+from .secop import SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView
 
 __all__ = [
     'User', 'Process', 'Stage', 'CaseFile', 'Case', 'ActivityFeed', 'UserSignature',
@@ -18,5 +19,6 @@ __all__ = [
     'LegalDocument', 'IntranetProfile', 'DynamicDocument', 'DocumentVariable', 'DocumentSignature', 'LegalUpdate', 'RecentDocument', 'RecentProcess',
     'Tag', 'DocumentVisibilityPermission', 'DocumentUsabilityPermission', 'DocumentFolder', 'DocumentRelationship',
     'Subscription', 'PaymentHistory',
-    'EmailVerificationCode'
+    'EmailVerificationCode',
+    'SECOPProcess', 'ProcessClassification', 'SECOPAlert', 'AlertNotification', 'SyncLog', 'SavedView'
 ]

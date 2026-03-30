@@ -7,9 +7,44 @@ visibility and usability permissions. Lawyers automatically have full access to 
 
 import math
 from functools import wraps
+from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument
+
+
+def apply_visibility_filter(queryset, user):
+    """Apply queryset-level visibility filtering for non-lawyer users.
+
+    Mirrors the logic of ``DynamicDocument.can_view()`` / ``can_view_prefetched()``
+    using ``Q`` objects so that filtering happens in SQL *before* serialization —
+    eliminating the need for the post-serialization ``filter_documents_by_visibility``
+    decorator and its extra DB round-trip.
+
+    Lawyers see all documents (queryset returned unchanged).
+    Non-lawyers see documents where at least one of:
+      - They are the document creator
+      - They are a signer on the document
+      - The document is public (``is_public=True``)
+      - They have an explicit visibility permission
+
+    Args:
+        queryset: A DynamicDocument queryset.
+        user: The requesting User instance.
+
+    Returns:
+        Filtered (and possibly ``.distinct()``) queryset.
+    """
+    if user.role == 'lawyer' or user.is_gym_lawyer:
+        return queryset
+
+    visibility_q = (
+        Q(created_by=user)
+        | Q(signatures__signer=user)
+        | Q(is_public=True)
+        | Q(visibility_permissions__user=user)
+    )
+    return queryset.filter(visibility_q).distinct()
 
 
 def require_document_visibility(view_func):
