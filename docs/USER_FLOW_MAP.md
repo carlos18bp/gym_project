@@ -1624,24 +1624,6 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
-### secop-edit-saved-view: Edit an existing saved view
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Vistas Guardadas) | **E2E:** ❌
-- **Descripción:** Click the edit icon on a saved view card to open SavedViewModal in edit mode, update name and/or filters, save via PATCH
-
-**Pasos:**
-1. Navigate to "Vistas Guardadas" tab
-2. Click the edit (pencil) icon on a saved view card
-3. SavedViewModal opens pre-filled with existing name and filters
-4. Modify name and/or filter values (including multi-select UNSPSC)
-5. Click "Guardar" to update via `PATCH secop/saved-views/:id/`
-
-**Ramificaciones:**
-- ├── **Éxito:** View updates in list with new name/filters
-- ├── **Sin cambios:** Modal closes, view unchanged
-- └── **Error de red:** Toast de error, modal permanece abierto
-
----
-
 ### Form-Level Test Coverage (Unit + E2E)
 
 The following forms and modals have dedicated unit and/or E2E tests covering field rendering, validation, submission, file uploads, and edge cases.

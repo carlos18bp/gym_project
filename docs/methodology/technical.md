@@ -181,7 +181,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | Frontend Components | Jest + Vue Test Utils | (included in 158) | `frontend/test/components/` |
 | Frontend Composables | Jest + Vue Test Utils | (included in 158) | `frontend/test/composables/` |
 | Frontend Views | Jest + Vue Test Utils | (included in 158) | `frontend/test/views/` |
-| E2E User Flows | Playwright | 170 spec files | `frontend/e2e/` |
+| Frontend E2E User Flows | Playwright | 172 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -221,13 +221,13 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 13 files → 43 model classes (+ 1 UserManager) — incl. 6 SECOP models
+│   │   ├── models/           # 12 files → 43 model classes (+ 1 UserManager) — incl. 6 SECOP models
 │   │   ├── views/            # 23 files (incl. dynamic_documents/, layouts/, secop)
 │   │   ├── serializers/      # 10 files — incl. secop.py
 │   │   ├── services/         # 3 files (secop_client, secop_sync_service, secop_alert_service)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
-│   │   ├── management/commands/ # 10 commands (fake data CRUD, silk GC, sync_secop)
-│   │   ├── templates/        # 19 email/PDF templates — incl. 2 SECOP alert templates
+│   │   ├── management/commands/ # 11 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
+│   │   ├── templates/        # 20 email/PDF templates — incl. 2 SECOP alert templates
 │   │   ├── tests/            # 72 test files (models, serializers, tasks, utils, views, services)
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
@@ -247,7 +247,7 @@ gym_project/
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
 │   ├── test/                 # 158 unit test files (11 subdirectories)
-│   ├── e2e/                  # 170 E2E spec files
+│   ├── e2e/                  # 172 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

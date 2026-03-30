@@ -15,7 +15,7 @@ flowchart TB
 
     subgraph Server["Backend (Django 5.0.6)"]
         DRF["Django REST Framework\n162 API endpoints"]
-        Models["43 Models\n(13 model files)"]
+        Models["43 Models\n(12 model files)"]
         Serializers["10 Serializer files"]
         Views_BE["23 View files"]
         Utils["3 Utility modules"]
@@ -69,7 +69,7 @@ flowchart LR
     subgraph Test["Testing"]
         Pytest["pytest\n72 test files"]
         Jest["Jest\n158 test files"]
-        PW["Playwright\n170 E2E specs"]
+        PW["Playwright\n172 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 

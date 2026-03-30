@@ -88,7 +88,7 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (171 spec files) — **123/123 flow coverage**
+### Frontend E2E Tests (172 spec files) — **123/123 flow coverage**
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|

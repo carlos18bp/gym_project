@@ -16,7 +16,7 @@ The application is **feature-complete** with all 17 major features implemented, 
 - Automated backups, query profiling (django-silk), and test quality gate
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
 
-### Codebase Metrics (verified 2026-03-26)
+### Codebase Metrics (verified 2026-03-30)
 
 | Metric | Count |
 |--------|-------|
@@ -26,13 +26,13 @@ The application is **feature-complete** with all 17 major features implemented, 
 | Backend URL patterns | 162 |
 | Backend test files | 72 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 31 views) |
 | Backend migrations | 54 |
-| Backend management commands | 10 |
+| Backend management commands | 11 |
 | Frontend Vue components | 112 |
 | Frontend view pages | 36 |
 | Frontend Pinia store files | 34 |
 | Frontend composables | 10 |
 | Frontend unit test files | 158 |
-| Frontend E2E spec files | 171 |
+| Frontend E2E spec files | 172 |
 
 ---
 
