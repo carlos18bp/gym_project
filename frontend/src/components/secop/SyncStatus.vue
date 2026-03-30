@@ -42,8 +42,6 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["trigger-sync"]);
-
 const syncing = ref(false);
 
 function handleTriggerSync() {
