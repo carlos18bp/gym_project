@@ -17,13 +17,13 @@ from huey.contrib.djhuey import periodic_task, task, lock_task
 logger = logging.getLogger(__name__)
 
 
-@periodic_task(crontab(hour='6', minute='0'))
+@periodic_task(crontab(hour='7', minute='0'))
 @lock_task('secop-sync-lock')
 def sync_secop_daily():
     """
     Daily scheduled synchronization with SECOP API.
 
-    Runs at 6 AM. Uses lock to prevent concurrent executions.
+    Runs at 2 AM Colombia time (07:00 UTC). Uses lock to prevent concurrent executions.
     """
     logger.info("Starting scheduled SECOP sync")
     sync_secop_data()

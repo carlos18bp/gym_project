@@ -53,17 +53,25 @@ class TestSECOPClientEndpoint:
 
         assert headers['Accept'] == 'application/json'
 
-    def test_auth_returns_tuple_when_credentials_set(self, client):
-        """Verify HTTP Basic Auth tuple is returned when credentials are configured."""
-        auth = client._get_auth()
-
-        assert auth == ('test-token-123', 'test-secret-456')
+    def test_auth_returns_none_always(self, client):
+        """Verify _get_auth always returns None — Basic Auth is not used for public datasets."""
+        assert client._get_auth() is None
 
     def test_auth_returns_none_when_no_credentials(self, client_no_token):
         """Verify auth returns None when credentials are empty."""
-        auth = client_no_token._get_auth()
+        assert client_no_token._get_auth() is None
 
-        assert auth is None
+    def test_headers_include_app_token_when_configured(self, client):
+        """Verify X-App-Token header is set when app token is configured."""
+        headers = client._get_headers()
+
+        assert headers['X-App-Token'] == 'test-token-123'
+
+    def test_headers_omit_app_token_when_not_configured(self, client_no_token):
+        """Verify X-App-Token header is absent when app token is not configured."""
+        headers = client_no_token._get_headers()
+
+        assert 'X-App-Token' not in headers
 
 
 class TestSECOPClientQuery:

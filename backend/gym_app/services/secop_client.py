@@ -51,12 +51,18 @@ class SECOPClient:
 
     def _get_headers(self):
         """Build request headers."""
-        return {'Accept': 'application/json'}
+        headers = {'Accept': 'application/json'}
+        if self.app_token:
+            headers['X-App-Token'] = self.app_token
+        return headers
 
     def _get_auth(self):
-        """Build HTTP Basic Auth tuple if credentials are configured."""
-        if self.app_token and self.app_secret:
-            return (self.app_token, self.app_secret)
+        """Return None — public Socrata datasets do not require Basic Auth.
+
+        Authentication is handled via the X-App-Token header in _get_headers().
+        Basic Auth with app token credentials was causing account lockouts on
+        datos.gov.co because the platform treats it as a user login attempt.
+        """
         return None
 
     def _build_query(self, offset=0, date_from=None):
@@ -127,6 +133,12 @@ class SECOPClient:
                     f"SECOP API request failed (attempt {attempt + 1}/"
                     f"{self.retry_attempts}): {e}"
                 )
+                if (
+                    hasattr(e, 'response')
+                    and e.response is not None
+                    and e.response.status_code in (401, 403)
+                ):
+                    raise
                 if attempt < self.retry_attempts - 1:
                     sleep_time = self.retry_delay * (attempt + 1)
                     time.sleep(sleep_time)

@@ -46,12 +46,10 @@ const emit = defineEmits(["trigger-sync"]);
 
 const syncing = ref(false);
 
-async function handleTriggerSync() {
+function handleTriggerSync() {
   if (syncing.value) return;
   syncing.value = true;
-  emit("trigger-sync");
-  // Auto-reset after 30s (sync runs in background)
-  setTimeout(() => { syncing.value = false; }, 30000);
+  setTimeout(() => { syncing.value = false; }, 180000);
 }
 
 const hoursSinceSync = computed(() => {
