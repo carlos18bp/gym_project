@@ -47,14 +47,8 @@
       "Bash(systemctl:*)"
     ],
     "deny": [
-      "Bash(rm -rf:*)",
-      "Bash(sudo rm:*)",
-      "Read(.env)",
-      "Read(.env.*)"
     ],
     "ask": [
-      "Bash(sudo visudo:*)",
-      "Bash(rm:*)"
     ]
   }
 }
