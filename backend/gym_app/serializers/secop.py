@@ -173,14 +173,22 @@ class SavedViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = SavedView
         fields = ['id', 'name', 'filters', 'is_favorite', 'created_at']
-        read_only_fields = ['id', 'is_favorite', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
     def create(self, validated_data):
         """Create or update saved view for the current user."""
         user = self.context['request'].user
+        is_favorite = validated_data.get('is_favorite', False)
+
+        if is_favorite:
+            SavedView.objects.filter(user=user, is_favorite=True).update(is_favorite=False)
+
         saved_view, _ = SavedView.objects.update_or_create(
             user=user,
             name=validated_data['name'],
-            defaults={'filters': validated_data.get('filters', {})},
+            defaults={
+                'filters': validated_data.get('filters', {}),
+                'is_favorite': is_favorite,
+            },
         )
         return saved_view
