@@ -56,6 +56,15 @@
                       Estado
                     </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contraparte
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Objeto
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fechas
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Etiquetas
                     </th>
                     <th scope="col" class="w-16 px-6 py-3"></th>
@@ -84,12 +93,42 @@
                       <span class="text-sm text-gray-600">{{ getDocumentType(document) }}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span 
+                      <span
                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
                         :class="getStatusClasses(document)"
                       >
                         {{ getStatusText(document) }}
                       </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="text-sm text-gray-900">
+                        {{ document.summary_counterparty || '-' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 max-w-xs">
+                      <span class="text-sm text-gray-900 line-clamp-2">
+                        {{ document.summary_object || '-' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-xs text-gray-900 space-y-0.5">
+                        <div v-if="document.summary_subscription_date">
+                          <span class="font-medium">Suscripción:</span>
+                          <span class="ml-1">{{ formatDate(document.summary_subscription_date) }}</span>
+                        </div>
+                        <div v-if="document.summary_start_date || document.summary_end_date">
+                          <span class="font-medium">Vigencia:</span>
+                          <span class="ml-1">
+                            <span v-if="document.summary_start_date">{{ formatDate(document.summary_start_date) }}</span>
+                            <span v-if="document.summary_start_date && document.summary_end_date"> → </span>
+                            <span v-if="document.summary_end_date">{{ formatDate(document.summary_end_date) }}</span>
+                          </span>
+                        </div>
+                        <span
+                          v-if="!document.summary_subscription_date && !document.summary_start_date && !document.summary_end_date"
+                          class="text-gray-400"
+                        >-</span>
+                      </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex flex-wrap gap-1">
@@ -283,6 +322,12 @@ const getTagClasses = (tag) => {
   ];
   const index = tag.id % colors.length;
   return colors[index];
+};
+
+// Format ISO date to YYYY-MM-DD
+const formatDate = (value) => {
+  if (!value) return '';
+  return typeof value === 'string' ? value.split('T')[0] : value;
 };
 
 // Methods

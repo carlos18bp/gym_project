@@ -16,6 +16,12 @@
         </button>
       </div>
       
+      <!-- Lock banner for signed documents -->
+      <div v-if="isLocked" class="px-6 py-3 bg-amber-50 border-b border-amber-200 flex items-center gap-2 text-sm text-amber-800">
+        <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+        El membrete es de solo lectura porque el documento está en proceso de firma o ya fue firmado.
+      </div>
+
       <!-- Modal body -->
       <div class="p-6 overflow-y-auto flex-grow">
         <!-- Loading state -->
@@ -45,6 +51,7 @@
                   Descargar
                 </button>
                 <button
+                  v-if="!isLocked"
                   @click="confirmDelete"
                   :disabled="deleting"
                   class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
@@ -65,8 +72,8 @@
             </p>
           </div>
           
-          <!-- Upload section (PNG for PDF) -->
-          <div class="space-y-4">
+          <!-- Upload section (PNG for PDF) — hidden for locked documents -->
+          <div v-if="!isLocked" class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900">
               {{ currentImageUrl ? 'Reemplazar Membrete' : 'Subir Membrete' }}
             </h3>
@@ -170,6 +177,7 @@
                   Descargar
                 </button>
                 <button
+                  v-if="!isLocked"
                   @click="confirmDeleteWordTemplate"
                   :disabled="deletingWordTemplate"
                   class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
@@ -183,8 +191,8 @@
               Este documento no tiene una plantilla Word configurada. Puedes subir un archivo .docx con tu membrete.
             </div>
 
-            <!-- Template upload area -->
-            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            <!-- Template upload area — hidden for locked documents -->
+            <div v-if="!isLocked" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
               <input
                 ref="wordTemplateInput"
                 type="file"
@@ -455,6 +463,10 @@ const wordTemplateInput = ref(null);
 
 // Computed
 const documentId = computed(() => props.document?.id);
+const isLocked = computed(() => {
+  const s = props.document?.state;
+  return s === 'FullySigned' || s === 'PendingSignatures';
+});
 
 // Methods
 const close = () => {

@@ -417,6 +417,7 @@
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
+          @navigate-to-document="handleNavigateToDocument"
         />
         <DocumentListTable
           v-else-if="activeTab === 'my-documents'"
@@ -779,17 +780,14 @@ const handleCreateDocument = () => {
  */
 const handleNavigateToDocument = (payload) => {
   const { tab, searchQuery: docTitle } = payload;
-  
-  // Switch to the appropriate tab
-  activeLawyerTab.value = tab;
-  
-  // Apply the search filter with the document title
+
+  if (userRole.value === 'lawyer') {
+    activeLawyerTab.value = tab;
+  } else {
+    activeTab.value = tab;
+  }
+
   searchQuery.value = docTitle;
-  
-  // Small delay to ensure the tab content is rendered before the filter is applied
-  setTimeout(() => {
-    // The searchQuery reactive variable will automatically filter the documents in the table
-  }, 100);
 };
 
 /**

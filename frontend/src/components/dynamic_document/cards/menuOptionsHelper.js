@@ -49,6 +49,23 @@ function canSignDocument(document, userStore) {
 const cardConfigs = {
   lawyer: {
     getMenuOptions: (document, context, userStore) => {
+      // Locked documents (in signature workflow) — read-only menu for lawyers too
+      if (document.state === 'FullySigned' || document.state === 'PendingSignatures') {
+        const lockedOptions = [
+          { label: "Previsualización", action: "preview" },
+          { label: "Descargar PDF", action: "downloadPDF" },
+          { label: "Descargar Word", action: "downloadWord" },
+          { label: "Ver Firmas", action: "viewSignatures" },
+        ];
+        if (document.state === 'FullySigned') {
+          lockedOptions.splice(3, 0, { label: "Descargar Documento firmado", action: "downloadSignedDocument" });
+        }
+        if (canSignDocument(document, userStore)) {
+          lockedOptions.push({ label: "Firmar documento", action: "sign" });
+        }
+        return lockedOptions;
+      }
+
       let baseOptions;
 
       // For Minutas (archivos jurídicos) in lawyer view, provide a submenu
@@ -79,6 +96,7 @@ const cardConfigs = {
           { label: "Previsualización", action: "preview" },
           { label: "Crear una Copia", action: "copy" },
           { label: "Gestionar Membrete", action: "letterhead" },
+          { label: "Agregar a Carpeta", action: "addToFolder" },
         ];
       } else {
         // Default behavior for other contexts/states
@@ -89,6 +107,7 @@ const cardConfigs = {
           { label: "Previsualización", action: "preview" },
           { label: "Crear una Copia", action: "copy" },
           { label: "Gestionar Membrete", action: "letterhead" },
+          { label: "Agregar a Carpeta", action: "addToFolder" },
         ];
       }
       
@@ -147,8 +166,14 @@ const cardConfigs = {
       // For signatures context (documentos por firmar/firmados/archivados)
       const options = [
         { label: "Previsualizar", action: "preview" },
-        { label: "Gestionar Membrete", action: "letterhead" }
       ];
+
+      if (document.state !== 'FullySigned' && document.state !== 'PendingSignatures') {
+        options.push({ label: "Gestionar Membrete", action: "letterhead" });
+      }
+
+      // Add to folder option
+      options.push({ label: "Agregar a Carpeta", action: "addToFolder" });
 
       // Document relationships management (read-only in signatures context)
       // Enabled only when the document already has associations
@@ -370,9 +395,12 @@ const cardConfigs = {
         });
       }
 
+      // Add to folder option
+      options.push({ label: "Agregar a Carpeta", action: "addToFolder" });
+
       // Add document relationships management option (restricted for basic users)
-      options.push({ 
-        label: "Administrar Asociaciones", 
+      options.push({
+        label: "Administrar Asociaciones",
         action: "relationships",
         // Disabled for basic users and when document is still in Progress
         disabled: isBasicUser || isProgress

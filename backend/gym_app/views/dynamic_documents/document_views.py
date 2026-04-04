@@ -35,6 +35,9 @@ from .permissions import (
 
 logger = logging.getLogger(__name__)
 
+# States in which a document is locked for any write operations (content, letterhead, etc.)
+LOCKED_STATES = frozenset(['PendingSignatures', 'FullySigned'])
+
 
 def get_optimized_document_queryset(base_qs=None):
     """Return a DynamicDocument queryset with all relations needed by DynamicDocumentSerializer.
@@ -313,6 +316,12 @@ def update_dynamic_document(request, pk):
         document = DynamicDocument.objects.prefetch_related('variables', 'tags').get(pk=pk)
     except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if document.state in LOCKED_STATES:
+        return Response(
+            {'detail': 'No se puede modificar un documento en estado de firma.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # Prevent modifying the `created_by` field
     if 'created_by' in request.data:
@@ -954,7 +963,13 @@ def upload_letterhead_image(request, pk):
     """
     try:
         document = DynamicDocument.objects.get(pk=pk)
-        
+
+        if document.state in LOCKED_STATES:
+            return Response(
+                {'detail': 'No se puede modificar el membrete de un documento en estado de firma.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Check if image file is provided
         if 'image' not in request.FILES:
             return Response(
@@ -1096,7 +1111,13 @@ def delete_letterhead_image(request, pk):
     """Delete the PNG letterhead image for a specific document."""
     try:
         document = DynamicDocument.objects.get(pk=pk)
-        
+
+        if document.state in LOCKED_STATES:
+            return Response(
+                {'detail': 'No se puede modificar el membrete de un documento en estado de firma.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Check if document has letterhead image
         if not document.letterhead_image:
             return Response(
@@ -1143,6 +1164,12 @@ def upload_document_letterhead_word_template(request, pk):
     """
     try:
         document = DynamicDocument.objects.get(pk=pk)
+
+        if document.state in LOCKED_STATES:
+            return Response(
+                {'detail': 'No se puede modificar el membrete de un documento en estado de firma.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         if 'template' not in request.FILES:
             return Response(
@@ -1248,6 +1275,12 @@ def delete_document_letterhead_word_template(request, pk):
     """Delete the Word letterhead template (.docx) for a specific document."""
     try:
         document = DynamicDocument.objects.get(pk=pk)
+
+        if document.state in LOCKED_STATES:
+            return Response(
+                {'detail': 'No se puede modificar el membrete de un documento en estado de firma.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         if not document.letterhead_word_template:
             return Response(

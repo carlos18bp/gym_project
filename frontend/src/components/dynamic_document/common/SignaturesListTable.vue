@@ -247,8 +247,8 @@
                   {{ getSummaryCounterparty(document) || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+              <td class="px-6 py-4 max-w-xs">
+                <span class="text-sm text-gray-900 line-clamp-2">
                   {{ document.summary_object || '-' }}
                 </span>
               </td>
@@ -483,6 +483,12 @@
         @action="handleModalAction"
       />
 
+      <SelectFolderModal
+        :is-open="showFolderPickerModal"
+        :document="folderPickerDocument"
+        @close="showFolderPickerModal = false"
+      />
+
       <DocumentRelationshipsModal
         v-if="activeModals.relationships.isOpen"
         :is-open="activeModals.relationships.isOpen"
@@ -615,6 +621,7 @@ import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/m
 import { useCardModals, useDocumentActions, SendDocumentModal, DocumentSignaturesModal } from "@/components/dynamic_document/cards";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import SelectFolderModal from "@/components/dynamic_document/common/SelectFolderModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
@@ -1086,6 +1093,8 @@ const exportDocuments = () => {
 // Handle document click
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
+const showFolderPickerModal = ref(false);
+const folderPickerDocument = ref(null);
 const showRejectModal = ref(false);
 const documentToReject = ref(null);
 const rejectComment = ref('');
@@ -1168,7 +1177,12 @@ const handleMenuAction = async (action, document) => {
         }
         break;
       }
-      
+
+      case "addToFolder":
+        folderPickerDocument.value = document;
+        showFolderPickerModal.value = true;
+        break;
+
       default:
         console.warn("Unknown action:", action);
     }

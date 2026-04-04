@@ -151,7 +151,8 @@ import {
   PhotoIcon,
   ShareIcon,
   XCircleIcon,
-  HandThumbDownIcon
+  HandThumbDownIcon,
+  FolderPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { getMenuOptionsForCardType } from '@/components/dynamic_document/cards/menuOptionsHelper.js';
 
@@ -307,6 +308,8 @@ const getIcon = (action) => {
     return LinkIcon;
   } else if (actionLower.includes('letterhead') || actionLower.includes('membrete')) {
     return PhotoIcon;
+  } else if (actionLower === 'addtofolder' || actionLower.includes('carpeta')) {
+    return FolderPlusIcon;
   } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
     return XCircleIcon;
   } else if (actionLower.includes('signature') || actionLower.includes('firma')) {
