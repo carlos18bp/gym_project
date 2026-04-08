@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page {
+      size: letter;
+      margin: 2cm;
+    }
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      font-size: 11pt;
+      color: #111827;
+      line-height: 1.4;
+    }
+    h1 {
+      font-size: 16pt;
+      margin-bottom: 0;
+    }
+    .subtitle {
+      color: #4b5563;
+      margin-top: 4px;
+      margin-bottom: 18px;
+    }
+    .meta {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    .meta td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+    .stage {
+      margin-top: 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 10px;
+    }
+    .stage-title {
+      font-size: 12pt;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+    .answer-item {
+      margin-bottom: 6px;
+    }
+    .label {
+      font-weight: bold;
+      color: #374151;
+    }
+    .value {
+      color: #111827;
+    }
+    .footer-note {
+      margin-top: 18px;
+      font-size: 10pt;
+      color: #4b5563;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Resumen de Solicitud de Servicio</h1>
+  <p class="subtitle">{{ service.name }}</p>
+
+  <table class="meta">
+    <tr>
+      <td><strong>Numero de radicado:</strong> {{ request_obj.tracking_number }}</td>
+      <td><strong>Fecha de solicitud:</strong> {{ request_obj.submitted_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+    <tr>
+      <td><strong>Solicitante:</strong> {{ requester.first_name }} {{ requester.last_name }}</td>
+      <td><strong>Correo:</strong> {{ requester.email }}</td>
+    </tr>
+  </table>
+
+  {% for stage in stages %}
+    <div class="stage">
+      <div class="stage-title">Fase {{ stage.order }} - {{ stage.title }}</div>
+      {% for item in stage.items %}
+        <div class="answer-item">
+          <span class="label">{{ item.label }}:</span>
+          <span class="value">{{ item.value|default:"-" }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="footer-note">
+    {{ legal_note }}
+  </div>
+</body>
+</html>

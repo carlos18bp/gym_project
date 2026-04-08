@@ -15,21 +15,22 @@ The application is **feature-complete** with all 17 major features implemented, 
 - Intranet, legal updates, PWA support, and interactive user guide
 - Automated backups, query profiling (django-silk), and test quality gate
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
+- **Servicios y Trámites** ✅: catálogo de servicios, formularios dinámicos por etapas, guardado en borrador, radicado `AÑO-CONSECUTIVO`, PDF automático, notificaciones por correo, bandeja de solicitudes para abogados/admin y seguimiento para clientes
 
 ### Codebase Metrics (verified 2026-03-30)
 
 | Metric | Count |
 |--------|-------|
-| Backend model classes | 43 (+ 1 UserManager) — 6 SECOP models |
-| Backend view files | 23 |
-| Backend serializer files | 10 |
-| Backend URL patterns | 162 |
-| Backend test files | 72 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 31 views) |
-| Backend migrations | 54 |
+| Backend model classes | 51 (+ 1 UserManager) |
+| Backend view files | 26 |
+| Backend serializer files | 12 |
+| Backend URL patterns | 179 |
+| Backend test files | 73 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views) |
+| Backend migrations | 58 |
 | Backend management commands | 11 |
-| Frontend Vue components | 112 |
-| Frontend view pages | 36 |
-| Frontend Pinia store files | 34 |
+| Frontend Vue components | 114 |
+| Frontend view pages | 42 |
+| Frontend Pinia store files | 36 |
 | Frontend composables | 10 |
 | Frontend unit test files | 158 |
 | Frontend E2E spec files | 172 |
@@ -37,6 +38,14 @@ The application is **feature-complete** with all 17 major features implemented, 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Servicios y Trámites module implemented (2026-04-08)**:
+  - **Backend models**: `Service`, `ServiceStage`, `ServiceField`, `ServiceRequest`, `ServiceRequestSequence`, `ServiceRequestAnswer`, file/response models; includes yearly sequential tracking number format `YYYY-00001`.
+  - **Backend APIs**: service catalog (featured + list + detail), admin service management, draft/save/submit flow, my requests, inbox requests, request detail, lawyer/admin status management, and secure file/PDF downloads.
+  - **Document + notifications**: PDF generation with submission summary and legal note; email notifications for submission and status updates to requester/managers.
+  - **Seed data**: migration seeds initial `Registro Marcario` service with 4 stages and required fields/files.
+  - **Frontend**: new `services_tramites` store, dashboard featured services grid, services list/detail, my requests, inbox, request detail, and admin builder view; router + sidebar role-based navigation integrated.
+  - **Testing**: backend tests added for create/list/submit/manage/permissions and oversized attachment validation; feature test suite passing.
 
 - **Dynamic Documents N+1 Query Fix (2026-03-29)**:
   - **Root cause**: Silk profiling reported 170–255 DB queries per request on `GET /api/dynamic-documents/` and related signature endpoints.

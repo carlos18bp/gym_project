@@ -21,6 +21,7 @@
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
 | 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store. Backend: 120 tests passing. Frontend: 53 unit tests passing. E2E: 8 spec files with data-testid selectors. UI/UX redesign applied. Fake data command idempotent. |
+| 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 6 frontend views, 1 store, 1 dashboard component, sidebar/router integration, backend tests passing |
 
 ---
 
@@ -60,13 +61,13 @@
 
 ## 4. Testing Status
 
-### Backend Tests (72 files)
+### Backend Tests (73 files)
 
 | Directory | File Count | Purpose |
 |-----------|------------|--------|
 | `tests/models/` | 18 | Model unit tests |
 | `tests/serializers/` | 10 | Serializer tests |
-| `tests/views/` | 31 | API view tests |
+| `tests/views/` | 32 | API view tests |
 | `tests/utils/` | 7 | Utility function tests |
 | `tests/tasks/` | 3 | Huey task tests |
 | `tests/services/` | 3 | Service layer tests |

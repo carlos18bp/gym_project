@@ -390,39 +390,51 @@ onMounted(async () => {
   await userStore.init();
   showProfile.value = !!!currentUser.value.is_profile_completed;
 
-  // Filter navigation based on user role
-  if (currentUser.value.role == 'client' || currentUser.value.role == 'corporate_client' || currentUser.value.role == 'basic') {
-    // For clients, basic users and corporate clients: Remove lawyer-specific options
+  // Hide legacy legal-request menu entries now replaced by Services module navigation.
+  navigation.value = navigation.value.filter(
+    (navItem) =>
+      navItem.name !== "Solicitudes" && navItem.name !== "Gestión de Solicitudes"
+  );
+
+  const role = currentUser.value.role;
+  const isAdmin = role === "admin" || currentUser.value.is_staff || currentUser.value.is_superuser;
+
+  if (role === "client" || role === "corporate_client" || role === "basic") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" &&
         navItem.name !== "Directorio" &&
-        navItem.name !== "Intranet G&M"
-    );
-  } else if (currentUser.value.role == 'lawyer' && !currentUser.value.is_gym_lawyer) {
-    // Remove "Intranet G&M" for lawyers who are not GYM lawyers
-    navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Intranet G&M"
-    );
-  } else if (currentUser.value.role == 'lawyer') {
-    // For lawyers: Remove "Organizaciones" since it's only for clients
-    navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Organizaciones"
+        navItem.name !== "Intranet G&M" &&
+        navItem.name !== "Bandeja de Solicitudes" &&
+        navItem.name !== "Administrar Servicios"
     );
   }
 
-  // Filter navigation for legal requests based on user role
-  if (currentUser.value.role === 'lawyer' || currentUser.value.is_gym_lawyer) {
-    // Lawyers: Remove "Solicitudes" (client creation) and "Agendar Cita", keep "Gestión de Solicitudes"
+  if (role === "lawyer") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
+        navItem.name !== "Organizaciones" &&
+        navItem.name !== "Mis Solicitudes" &&
+        navItem.name !== "Administrar Servicios"
     );
-  } else if (currentUser.value.role === 'client' || currentUser.value.role === 'corporate_client' || currentUser.value.role === 'basic') {
-      // Clients and Basic users: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
+
+    if (!currentUser.value.is_gym_lawyer) {
       navigation.value = navigation.value.filter(
-        (navItem) => navItem.name !== "Gestión de Solicitudes"
+        (navItem) => navItem.name !== "Intranet G&M"
       );
+    }
+  }
+
+  if (isAdmin) {
+    navigation.value = navigation.value.filter(
+      (navItem) =>
+        navItem.name !== "Mis Solicitudes" &&
+        navItem.name !== "Agendar Cita" &&
+        navItem.name !== "Organizaciones"
+    );
+  } else {
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Administrar Servicios"
+    );
   }
 
   updateActiveNavItem();
@@ -515,6 +527,46 @@ const navigation = ref([
     icon: DocumentTextIcon,
     current: false,
     routes: ['/dynamic_document_dashboard']
+  },
+  {
+    name: "Servicios",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "services_list" });
+    },
+    icon: DocumentTextIcon,
+    current: false,
+    routes: ['/services']
+  },
+  {
+    name: "Mis Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "service_requests_my" });
+    },
+    icon: InboxArrowDownIcon,
+    current: false,
+    routes: ['/service_requests/my']
+  },
+  {
+    name: "Bandeja de Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "service_requests_inbox" });
+    },
+    icon: EnvelopeIcon,
+    current: false,
+    routes: ['/service_requests/inbox']
+  },
+  {
+    name: "Administrar Servicios",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "services_admin" });
+    },
+    icon: BookOpenIcon,
+    current: false,
+    routes: ['/services_admin']
   },
   {
     name: "Solicitudes",

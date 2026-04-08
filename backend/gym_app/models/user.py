@@ -111,6 +111,7 @@ class User(AbstractUser):
 
     # Updated field: role
     ROLE_CHOICES = [
+        ('admin', 'Admin'),
         ('client', 'Client'),
         ('lawyer', 'Lawyer'),
         ('corporate_client', 'Corporate Client'),
@@ -234,4 +235,3 @@ class ActivityFeed(models.Model):
             oldest_activity = ActivityFeed.objects.filter(user=self.user).order_by('created_at').first()
             if oldest_activity:
                 oldest_activity.delete()
-

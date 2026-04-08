@@ -216,6 +216,78 @@ const router = createRouter({
       ],
     },
     {
+      path: "/services",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "services_list",
+          component: () => import(/* webpackChunkName: "services" */ "@/views/services/ServicesList.vue"),
+          meta: { requiresAuth: true, title: "Servicios" },
+        },
+      ],
+    },
+    {
+      path: "/services/:id",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "service_detail",
+          component: () => import(/* webpackChunkName: "service-detail" */ "@/views/services/ServiceDetail.vue"),
+          meta: { requiresAuth: true, title: "Detalle de Servicio" },
+        },
+      ],
+    },
+    {
+      path: "/service_requests/my",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "service_requests_my",
+          component: () => import(/* webpackChunkName: "service-requests-my" */ "@/views/services/MyServiceRequests.vue"),
+          meta: { requiresAuth: true, title: "Mis Solicitudes" },
+        },
+      ],
+    },
+    {
+      path: "/service_requests/inbox",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "service_requests_inbox",
+          component: () => import(/* webpackChunkName: "service-requests-inbox" */ "@/views/services/ServiceRequestsInbox.vue"),
+          meta: { requiresAuth: true, title: "Bandeja de Solicitudes", requiresLawyer: true },
+        },
+      ],
+    },
+    {
+      path: "/service_requests/:id",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "service_request_detail",
+          component: () => import(/* webpackChunkName: "service-request-detail" */ "@/views/services/ServiceRequestDetail.vue"),
+          meta: { requiresAuth: true, title: "Detalle de Solicitud" },
+        },
+      ],
+    },
+    {
+      path: "/services_admin",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "services_admin",
+          component: () => import(/* webpackChunkName: "services-admin" */ "@/views/services/ServicesAdmin.vue"),
+          meta: { requiresAuth: true, title: "Administrar Servicios", requiresAdmin: true },
+        },
+      ],
+    },
+    {
       path: "/intranet_g_y_m",
       component: SlideBar,
       children: [
@@ -412,6 +484,18 @@ export function installRouterGuards(authStore) {
             userStore.currentUser?.role === 'basic' || 
             userStore.currentUser?.role === 'corporate_client') {
           console.warn("Non-lawyer user attempting to access lawyer-only route. Redirecting to dashboard.");
+          return next({ name: 'dashboard' });
+        }
+      }
+
+      if (isAuthenticated && to.meta.requiresAdmin) {
+        const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
+        await userStore.init();
+
+        const currentUser = userStore.currentUser || {};
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.is_staff || currentUser?.is_superuser;
+        if (!isAdmin) {
+          console.warn("Non-admin user attempting to access admin-only route. Redirecting to dashboard.");
           return next({ name: 'dashboard' });
         }
       }

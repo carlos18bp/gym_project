@@ -10,6 +10,17 @@ from .dynamic_document import DynamicDocument, DocumentVariable, DocumentSignatu
 from .legal_update import LegalUpdate
 from .subscription import Subscription, PaymentHistory
 from .secop import SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView
+from .service_tramite import (
+    Service,
+    ServiceStage,
+    ServiceField,
+    ServiceRequest,
+    ServiceRequestSequence,
+    ServiceRequestAnswer,
+    ServiceRequestFieldFile,
+    ServiceRequestLawyerResponse,
+    ServiceRequestLawyerResponseFile,
+)
 
 __all__ = [
     'User', 'Process', 'Stage', 'CaseFile', 'Case', 'ActivityFeed', 'UserSignature',
@@ -20,5 +31,8 @@ __all__ = [
     'Tag', 'DocumentVisibilityPermission', 'DocumentUsabilityPermission', 'DocumentFolder', 'DocumentRelationship',
     'Subscription', 'PaymentHistory',
     'EmailVerificationCode',
-    'SECOPProcess', 'ProcessClassification', 'SECOPAlert', 'AlertNotification', 'SyncLog', 'SavedView'
+    'SECOPProcess', 'ProcessClassification', 'SECOPAlert', 'AlertNotification', 'SyncLog', 'SavedView',
+    'Service', 'ServiceStage', 'ServiceField', 'ServiceRequest', 'ServiceRequestSequence',
+    'ServiceRequestAnswer', 'ServiceRequestFieldFile', 'ServiceRequestLawyerResponse',
+    'ServiceRequestLawyerResponseFile'
 ]
