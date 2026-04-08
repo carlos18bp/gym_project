@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym E2E Flow Audit"
+  short_description: "Map product flows against Playwright E2E coverage"

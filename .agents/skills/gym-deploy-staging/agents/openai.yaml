@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym Deploy Staging"
+  short_description: "Deploy a release branch to the staging environment"

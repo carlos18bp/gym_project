@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym Frontend Unit Coverage"
+  short_description: "Increase Jest unit/component coverage on frontend"

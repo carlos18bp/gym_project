@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym Git Commit"
+  short_description: "Create commit message and run stage/commit/push workflow"

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym Backend Coverage"
+  short_description: "Raise backend pytest coverage with deterministic tests"

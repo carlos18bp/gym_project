@@ -1,0 +1,3 @@
+interface:
+  display_name: "Gym Implement"
+  short_description: "Implement features with dependency analysis and tests"
