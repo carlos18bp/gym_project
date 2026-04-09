@@ -81,11 +81,11 @@ done
 
 for skill in "${manual_only_skills[@]}"; do
   skill_file="$SKILLS_DIR/$skill/SKILL.md"
-  if ! rg -q '^disable-model-invocation:[[:space:]]*true' "$skill_file"; then
+  if ! grep -q '^disable-model-invocation:[[:space:]]*true' "$skill_file"; then
     echo "ERROR: manual-only skill missing disable-model-invocation: true ($skill)"
     errors=$((errors + 1))
   fi
-  if ! rg -q '^allowed-tools:' "$skill_file"; then
+  if ! grep -q '^allowed-tools:' "$skill_file"; then
     echo "ERROR: manual-only skill missing allowed-tools ($skill)"
     errors=$((errors + 1))
   fi
