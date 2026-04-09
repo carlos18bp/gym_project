@@ -1094,4 +1094,231 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     expect(store.documents).toEqual([{ id: 99, title: "Existing" }]);
   });
+
+  // ── formalizeDocument behavioral scenarios ──
+
+  test("formalizeDocument updates cache, list, lastUpdatedDocumentId, and registers activity", async () => {
+    const store = useDynamicDocumentStore();
+
+    store.$patch({
+      documents: [{ id: 10, title: "Contrato", state: "Completed" }],
+      documentCache: {},
+    });
+
+    const returnedDoc = { id: 10, title: "Contrato", state: "PendingSignatures" };
+
+    mock.onPost("/api/dynamic-documents/10/formalize/").reply(200, returnedDoc);
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    const result = await store.formalizeDocument(10, {
+      signers: [4, 7],
+      signature_due_date: "2026-05-01",
+      title: "Contrato",
+    });
+
+    expect(result).toEqual(returnedDoc);
+    expect(store.documentCache[10]).toEqual(returnedDoc);
+    expect(store.documents.find((d) => d.id === 10)).toEqual(returnedDoc);
+    expect(store.lastUpdatedDocumentId).toBe(10);
+    expect(localStorage.getItem("lastUpdatedDocumentId")).toBe("10");
+
+    expect(mock.history.post).toHaveLength(2);
+    expect(mock.history.post[0].url).toBe("/api/dynamic-documents/10/formalize/");
+    expect(mock.history.post[1].url).toBe("/api/create-activity/");
+  });
+
+  test("formalizeDocument sends signers and signature_due_date in request body", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/5/formalize/").reply(200, { id: 5 });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.formalizeDocument(5, {
+      signers: [1, 2, 3],
+      signature_due_date: "2026-06-15",
+      title: "Doc",
+    });
+
+    const payload = JSON.parse(mock.history.post[0].data);
+    expect(payload.signers).toEqual([1, 2, 3]);
+    expect(payload.signature_due_date).toBe("2026-06-15");
+  });
+
+  test("formalizeDocument does not update list when document is not in documents array", async () => {
+    const store = useDynamicDocumentStore();
+
+    store.$patch({
+      documents: [{ id: 1, title: "Other" }],
+      documentCache: {},
+    });
+
+    mock.onPost("/api/dynamic-documents/99/formalize/").reply(200, { id: 99, title: "New" });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.formalizeDocument(99, { signers: [1], title: "New" });
+
+    expect(store.documentCache[99]).toEqual({ id: 99, title: "New" });
+    expect(store.documents).toEqual([{ id: 1, title: "Other" }]);
+  });
+
+  test("formalizeDocument uses fallback empty title in activity when title is missing", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/8/formalize/").reply(200, { id: 8 });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.formalizeDocument(8, { signers: [1] });
+
+    const activityPayload = JSON.parse(mock.history.post[1].data);
+    expect(activityPayload.description).toContain('Formalizaste el documento ""');
+  });
+
+  test("formalizeDocument logs and throws on error", async () => {
+    const store = useDynamicDocumentStore();
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    mock.onPost("/api/dynamic-documents/10/formalize/").reply(400, { detail: "err" });
+
+    await expect(
+      store.formalizeDocument(10, { signers: [1], title: "Doc" })
+    ).rejects.toBeTruthy();
+
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  // ── correctDocument behavioral scenarios ──
+
+  test("correctDocument updates cache, list, lastUpdatedDocumentId, and registers activity", async () => {
+    const store = useDynamicDocumentStore();
+
+    store.$patch({
+      documents: [{ id: 20, title: "Poder", state: "Rejected" }],
+      documentCache: {},
+    });
+
+    const returnedDoc = { id: 20, title: "Poder", state: "PendingSignatures" };
+
+    mock.onPost("/api/dynamic-documents/20/correct/").reply(200, returnedDoc);
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    const result = await store.correctDocument(20, {
+      content: "<p>Updated</p>",
+      variables: [],
+      signature_due_date: null,
+      title: "Poder",
+    });
+
+    expect(result).toEqual(returnedDoc);
+    expect(store.documentCache[20]).toEqual(returnedDoc);
+    expect(store.documents.find((d) => d.id === 20)).toEqual(returnedDoc);
+    expect(store.lastUpdatedDocumentId).toBe(20);
+    expect(localStorage.getItem("lastUpdatedDocumentId")).toBe("20");
+
+    expect(mock.history.post).toHaveLength(2);
+    expect(mock.history.post[0].url).toBe("/api/dynamic-documents/20/correct/");
+    expect(mock.history.post[1].url).toBe("/api/create-activity/");
+  });
+
+  test("correctDocument sends content, variables, and signature_due_date in request body", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/15/correct/").reply(200, { id: 15 });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    const correctionData = {
+      content: "<p>Fixed content</p>",
+      variables: [{ name_en: "var1", value: "val1" }],
+      signature_due_date: "2026-07-01",
+      title: "Corrected",
+    };
+
+    await store.correctDocument(15, correctionData);
+
+    const payload = JSON.parse(mock.history.post[0].data);
+    expect(payload.content).toBe("<p>Fixed content</p>");
+    expect(payload.variables).toEqual([{ name_en: "var1", value: "val1" }]);
+    expect(payload.signature_due_date).toBe("2026-07-01");
+  });
+
+  test("correctDocument does not update list when document is not in documents array", async () => {
+    const store = useDynamicDocumentStore();
+
+    store.$patch({
+      documents: [{ id: 1, title: "Other" }],
+      documentCache: {},
+    });
+
+    mock.onPost("/api/dynamic-documents/88/correct/").reply(200, { id: 88, title: "Corrected" });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.correctDocument(88, { content: "x", title: "Corrected" });
+
+    expect(store.documentCache[88]).toEqual({ id: 88, title: "Corrected" });
+    expect(store.documents).toEqual([{ id: 1, title: "Other" }]);
+  });
+
+  test("correctDocument uses fallback empty title in activity when title is missing", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/6/correct/").reply(200, { id: 6 });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.correctDocument(6, { content: "x" });
+
+    const activityPayload = JSON.parse(mock.history.post[1].data);
+    expect(activityPayload.description).toContain("para firma");
+  });
+
+  test("correctDocument logs and throws on error", async () => {
+    const store = useDynamicDocumentStore();
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    mock.onPost("/api/dynamic-documents/20/correct/").reply(400, { detail: "err" });
+
+    await expect(
+      store.correctDocument(20, { content: "x", title: "Doc" })
+    ).rejects.toBeTruthy();
+
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  // ─── uploadDocumentLetterheadWordTemplate ──────────────────────────────
+
+  test("uploadDocumentLetterheadWordTemplate sends FormData with template field to correct URL", async () => {
+    const store = useDynamicDocumentStore();
+    const spy = jest.spyOn(requestHttp, "upload_file_request").mockResolvedValue({ status: 200 });
+    mock.onPost("/api/create-activity/").reply(200, {});
+
+    const templateFile = new File(["docx-content"], "template.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    await store.uploadDocumentLetterheadWordTemplate(7, templateFile);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, formData] = spy.mock.calls[0];
+    expect(url).toBe("dynamic-documents/7/letterhead/word-template/upload/");
+    expect(formData).toBeInstanceOf(FormData);
+    expect(formData.get("template")).toBe(templateFile);
+  });
+
+  // ─── deleteDocumentLetterheadWordTemplate ──────────────────────────────
+
+  test("deleteDocumentLetterheadWordTemplate calls delete_request with correct URL", async () => {
+    const store = useDynamicDocumentStore();
+    const spy = jest.spyOn(requestHttp, "delete_request").mockResolvedValue({ status: 204 });
+    mock.onPost("/api/create-activity/").reply(200, {});
+
+    await store.deleteDocumentLetterheadWordTemplate(7);
+
+    expect(spy).toHaveBeenCalledWith(
+      "dynamic-documents/7/letterhead/word-template/delete/"
+    );
+  });
 });

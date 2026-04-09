@@ -301,4 +301,49 @@ describe("DocumentForm.vue", () => {
     const textareaContainer = wrapper.find("#field-1").element.closest("[class*='col-span']");
     expect(textareaContainer.classList.contains("col-span-3")).toBe(true);
   });
+
+  test("formalize mode renders signer search section", async () => {
+    mockRoute.params = { mode: "formalize", id: "1", title: "Sign Doc" };
+    setupStores(pinia);
+    const wrapper = await mountComponent(pinia);
+
+    expect(wrapper.text()).toContain("Seleccionar usuarios que deben firmar");
+  });
+
+  test("formalize mode shows Formalizar y Agregar Firmas button text", async () => {
+    mockRoute.params = { mode: "formalize", id: "1", title: "Sign Doc" };
+    setupStores(pinia);
+    const wrapper = await mountComponent(pinia);
+
+    expect(wrapper.text()).toContain("Formalizar y Agregar Firmas");
+  });
+
+  test("formalize button remains disabled when no signers are selected and all fields filled", async () => {
+    mockRoute.params = { mode: "formalize", id: "1", title: "Sign Doc" };
+    setupStores(pinia);
+    const wrapper = await mountComponent(pinia);
+
+    // Fill all required fields
+    // quality: allow-fragile-selector (dynamic form field IDs are stable within this mock fixture)
+    await wrapper.find("#field-0").setValue("John Doe");
+    await wrapper.find("#field-1").setValue("A description");
+    await wrapper.find("#field-2").setValue("5000");
+    await wrapper.find("#field-3").setValue("2025-01-01");
+    await wrapper.find("#field-4").setValue("john@test.com");
+    await wrapper.find("#field-5").setValue("Option A");
+    await flushPromises();
+
+    const formalizeBtn = wrapper.findAll("button").find((b) =>
+      b.text().includes("Formalizar")
+    );
+    expect(formalizeBtn.attributes("disabled")).toBeDefined();
+  });
+
+  test("correction mode shows Guardar y reenviar para firma button text", async () => {
+    mockRoute.params = { mode: "correction", id: "1", title: "Correction Doc" };
+    setupStores(pinia);
+    const wrapper = await mountComponent(pinia);
+
+    expect(wrapper.text()).toContain("Guardar y reenviar para firma");
+  });
 });
