@@ -1,7 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
-import { DASHBOARD_REPORTS_ADVANCED_FILTERS } from "../helpers/flow-tags.js";
+// @flow: tags must be inline strings — imported constants are invisible to the coverage scanner
 
 function buildLawyerUser(id) {
   return {
@@ -84,7 +84,7 @@ async function openReportsTab(page) {
 
 test.describe("ReportsWidget Advanced Filters", () => {
   test("advanced filter dropdowns appear when Usuarios Registrados report type is selected", {
-    tag: [...DASHBOARD_REPORTS_ADVANCED_FILTERS, "@role:lawyer"],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     const userId = 5100;
     await installDashboardWithReportsMocks(page, { userId });
@@ -111,7 +111,7 @@ test.describe("ReportsWidget Advanced Filters", () => {
   });
 
   test("lawyer filters report by role and generates Excel", {
-    tag: [...DASHBOARD_REPORTS_ADVANCED_FILTERS, "@role:lawyer"],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     const userId = 5101;
     await installDashboardWithReportsMocks(page, { userId });
@@ -138,7 +138,7 @@ test.describe("ReportsWidget Advanced Filters", () => {
   });
 
   test("lawyer filters report by profile status and generates Excel", {
-    tag: [...DASHBOARD_REPORTS_ADVANCED_FILTERS, "@role:lawyer"],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     const userId = 5102;
     await installDashboardWithReportsMocks(page, { userId });
@@ -163,7 +163,7 @@ test.describe("ReportsWidget Advanced Filters", () => {
   });
 
   test("lawyer filters report by document type and generates Excel", {
-    tag: [...DASHBOARD_REPORTS_ADVANCED_FILTERS, "@role:lawyer"],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     const userId = 5103;
     await installDashboardWithReportsMocks(page, { userId });
@@ -188,7 +188,7 @@ test.describe("ReportsWidget Advanced Filters", () => {
   });
 
   test("advanced filters are reset when switching away from Usuarios Registrados", {
-    tag: [...DASHBOARD_REPORTS_ADVANCED_FILTERS, "@role:lawyer"],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
   }, async ({ page }) => {
     const userId = 5104;
     await installDashboardWithReportsMocks(page, { userId });

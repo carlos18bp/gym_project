@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "lastUpdated": "2026-03-28",
+  "version": "1.6.0",
+  "lastUpdated": "2026-04-08",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -661,6 +661,26 @@
       "description": "Usar minuta, completar, enviar a firma",
       "expectedSpecs": 1
     },
+    "formalize-in-place": {
+      "name": "Formalizar documento sin copia",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Transicionar documento Completado a PendingSignatures sin crear copia",
+      "expectedSpecs": 1
+    },
+    "correct-document": {
+      "name": "Corregir documento rechazado/expirado",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Corregir y reenviar documento rechazado o expirado en un solo endpoint",
+      "expectedSpecs": 1
+    },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
       "module": "signatures",
@@ -1262,6 +1282,132 @@
       ],
       "priority": "P3",
       "description": "Open the edit modal on an existing saved view, update its name and/or filters (including multi-select UNSPSC), and save the changes via PATCH secop/saved-views/:id/.",
+      "expectedSpecs": 1
+    },
+    "service-browse-catalog": {
+      "name": "Explorar catalogo de servicios",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario ve la grilla de servicios activos y navega al detalle",
+      "expectedSpecs": 1
+    },
+    "service-browse-featured": {
+      "name": "Ver servicios destacados en Dashboard",
+      "module": "services",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P1",
+      "description": "Dashboard muestra hasta 6 servicios destacados como tarjetas",
+      "expectedSpecs": 1
+    },
+    "service-fill-form": {
+      "name": "Diligenciar formulario multi-etapa",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario completa formulario del servicio paso a paso con validacion por etapa",
+      "expectedSpecs": 1
+    },
+    "service-save-draft": {
+      "name": "Guardar borrador del formulario",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario guarda progreso parcial sin enviar, se carga al volver",
+      "expectedSpecs": 1
+    },
+    "service-submit-request": {
+      "name": "Enviar solicitud de servicio",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario envia solicitud y recibe numero de radicado YYYY-NNNNN",
+      "expectedSpecs": 1
+    },
+    "service-view-my-requests": {
+      "name": "Ver mis solicitudes",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Cliente ve historial de solicitudes con filtros por estado, servicio, radicado",
+      "expectedSpecs": 1
+    },
+    "service-view-request-detail": {
+      "name": "Ver detalle de solicitud",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario ve detalle completo con respuestas por etapa, PDF y respuestas del abogado",
+      "expectedSpecs": 1
+    },
+    "service-inbox-view": {
+      "name": "Bandeja de solicitudes (Abogado)",
+      "module": "services",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Abogado ve solicitudes recibidas con filtros por estado, busqueda, fechas",
+      "expectedSpecs": 1
+    },
+    "service-manage-request": {
+      "name": "Gestionar solicitud (Abogado)",
+      "module": "services",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Abogado cambia estado, envia respuesta con mensaje y/o archivo adjunto",
+      "expectedSpecs": 1
+    },
+    "service-admin-create": {
+      "name": "Crear servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P1",
+      "description": "Admin crea servicio con etapas y campos dinamicos",
+      "expectedSpecs": 1
+    },
+    "service-admin-edit": {
+      "name": "Editar servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin edita servicio existente, modifica etapas y campos",
+      "expectedSpecs": 1
+    },
+    "service-admin-toggle": {
+      "name": "Activar/desactivar servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin activa/desactiva y marca/desmarca como destacado",
       "expectedSpecs": 1
     }
   }
