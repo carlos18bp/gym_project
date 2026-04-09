@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :data-testid="`corporate-organization-posts-section-${organizationId}`">
     <!-- Header -->
     <div class="mb-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -12,6 +12,7 @@
         <div class="flex sm:justify-end">
           <button
             @click="openCreateModal"
+            :data-testid="`corporate-new-post-${organizationId}`"
             class="inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <PlusIcon class="h-4 w-4 mr-2" />
@@ -23,13 +24,13 @@
 
 
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex justify-center items-center py-8">
+    <div v-if="isLoading" class="flex justify-center items-center py-8" :data-testid="`corporate-posts-loading-${organizationId}`">
       <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
       <span class="ml-2 text-gray-600">Cargando posts...</span>
     </div>
 
     <!-- Posts list -->
-    <div v-else-if="posts.length > 0" class="space-y-4">
+    <div v-else-if="posts.length > 0" class="space-y-4" :data-testid="`corporate-posts-list-${organizationId}`">
       <CorporatePostCard
         v-for="post in posts"
         :key="post.id"
@@ -43,7 +44,7 @@
     </div>
 
     <!-- Empty state -->
-    <div v-else class="text-center py-12">
+    <div v-else class="text-center py-12" :data-testid="`corporate-posts-empty-${organizationId}`">
       <DocumentIcon class="h-16 w-16 mx-auto mb-4 text-gray-300" />
       <h3 class="text-lg font-medium text-gray-900 mb-2">
         {{ getEmptyStateTitle }}

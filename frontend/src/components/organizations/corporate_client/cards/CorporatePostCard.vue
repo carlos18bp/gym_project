@@ -1,10 +1,13 @@
 <template>
-  <div class="bg-white shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+  <div
+    class="bg-white shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+    :data-testid="`corporate-post-card-${post.id}`"
+  >
     <!-- Header with actions -->
     <div class="flex items-start justify-between mb-4">
       <div class="flex-1 min-w-0">
         <div class="flex items-center space-x-2 mb-2">
-          <h3 class="text-lg font-semibold text-gray-900 truncate">
+          <h3 class="text-lg font-semibold text-gray-900 truncate" :data-testid="`corporate-post-title-${post.id}`">
             {{ post.title }}
           </h3>
           <span v-if="post.is_pinned" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -13,6 +16,7 @@
           </span>
           <span 
             :class="post.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+            :data-testid="`corporate-post-state-${post.id}`"
             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
           >
             {{ post.is_active ? 'Activo' : 'Inactivo' }}
@@ -27,16 +31,23 @@
       <div class="relative">
         <button
           @click="showActions = !showActions"
+          :data-testid="`corporate-post-actions-toggle-${post.id}`"
+          aria-label="Abrir acciones del post"
           class="inline-flex items-center p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
         >
           <EllipsisVerticalIcon class="h-5 w-5" />
         </button>
         
         <!-- Actions menu -->
-        <div v-if="showActions" class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+        <div
+          v-if="showActions"
+          :data-testid="`corporate-post-actions-menu-${post.id}`"
+          class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+        >
           <div class="py-1">
             <button
               @click="editPost"
+              :data-testid="`corporate-post-edit-${post.id}`"
               class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               <PencilIcon class="h-4 w-4 mr-3" />
@@ -44,6 +55,7 @@
             </button>
             <button
               @click="togglePin"
+              :data-testid="`corporate-post-toggle-pin-${post.id}`"
               class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               <BookmarkIcon class="h-4 w-4 mr-3" />
@@ -51,6 +63,7 @@
             </button>
             <button
               @click="toggleStatus"
+              :data-testid="`corporate-post-toggle-status-${post.id}`"
               class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               <component :is="post.is_active ? EyeSlashIcon : EyeIcon" class="h-4 w-4 mr-3" />
@@ -59,6 +72,7 @@
             <div class="border-t border-gray-100"></div>
             <button
               @click="deletePost"
+              :data-testid="`corporate-post-delete-${post.id}`"
               class="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
             >
               <TrashIcon class="h-4 w-4 mr-3" />
@@ -71,7 +85,7 @@
 
     <!-- Content -->
     <div class="mb-4">
-      <p class="text-gray-700 whitespace-pre-wrap">{{ post.content }}</p>
+      <p class="text-gray-700 whitespace-pre-wrap" :data-testid="`corporate-post-content-${post.id}`">{{ post.content }}</p>
     </div>
 
     <!-- Link if available -->
@@ -80,6 +94,7 @@
         :href="post.link_url"
         target="_blank"
         rel="noopener noreferrer"
+        :data-testid="`corporate-post-link-${post.id}`"
         class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
         <LinkIcon class="h-4 w-4 mr-2" />

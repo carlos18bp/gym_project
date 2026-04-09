@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :data-testid="`organization-posts-section-${organizationId}`">
     <!-- Header -->
     <div class="mb-6">
       <div class="flex items-center justify-between">
@@ -22,13 +22,13 @@
 
 
     <!-- Loading state -->
-    <div v-if="isLoading" class="flex justify-center items-center py-8">
+    <div v-if="isLoading" class="flex justify-center items-center py-8" :data-testid="`organization-posts-loading-${organizationId}`">
       <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
       <span class="ml-2 text-gray-600">Cargando anuncios...</span>
     </div>
 
     <!-- Posts list -->
-    <div v-else-if="posts.length > 0" class="space-y-4">
+    <div v-else-if="posts.length > 0" class="space-y-4" :data-testid="`organization-posts-list-${organizationId}`">
       <!-- Pinned posts first -->
       <template v-for="post in pinnedPosts" :key="`pinned-${post.id}`">
         <ClientPostCard :post="post" />
@@ -41,10 +41,10 @@
     </div>
 
     <!-- Empty state -->
-    <div v-else class="text-center py-12">
+    <div v-else class="text-center py-12" :data-testid="`organization-posts-empty-${organizationId}`">
       <LockClosedIcon v-if="hasAccessError" class="h-16 w-16 mx-auto mb-4 text-amber-400" />
       <SpeakerWaveIcon v-else class="h-16 w-16 mx-auto mb-4 text-gray-300" />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">
+      <h3 class="text-lg font-medium text-gray-900 mb-2" :data-testid="`organization-posts-empty-title-${organizationId}`">
         {{ getEmptyStateTitle }}
       </h3>
       <p class="text-gray-600 mb-6">

@@ -6,6 +6,10 @@ import {
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
+import {
+  openDocumentActionsModal,
+  openDocumentPreviewFromActions,
+} from "../helpers/documentActions.js";
 
 /**
  * Deep coverage for DocumentSummaryModal.vue (39.4%).
@@ -49,20 +53,10 @@ test("Completed document with summary fields renders in client list and opens ac
   await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Mis Documentos" }).click();
 
-  const row = page.getByRole("table").getByText("Contrato con Resumen");
-  await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.click();
-
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 15_000 });
-
-  // Verify Previsualizar action is available for Completed docs
-  await expect(page.getByRole("button", { name: "Previsualizar" })).toBeVisible();
-
-  // Click Previsualizar to open preview which triggers document_utils processing
-  await page.getByRole("button", { name: "Previsualizar" }).click();
-
-  // The preview modal should show the document content
-  await expect(page.getByText("Contenido completo")).toBeVisible({ timeout: 10_000 });
+  await openDocumentActionsModal(page, "Contrato con Resumen");
+  await expect(page.getByTestId("document-action-preview")).toBeVisible();
+  await openDocumentPreviewFromActions(page);
+  await expect(page.getByTestId("document-preview-content")).toContainText("Contenido completo", { timeout: 10_000 });
 });
 
 test("folders grid shows empty state when no folders exist", { tag: ['@flow:docs-summary', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
