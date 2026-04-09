@@ -6,7 +6,7 @@ This is the canonical methodology guide for Codex in this repository.
 
 When sources disagree, apply this order:
 
-1. `AGENT.md` (project-wide guardrails and operating policy)
+1. `AGENTS.md` (project-wide guardrails and operating policy)
 2. `docs/CODEX_METHODOLOGY_GUIDE.md` (this document)
 3. `docs/CODEX_SETUP.md` (runtime setup and installation)
 4. `.agents/skills/gym-*/SKILL.md` (workflow-specific behavior)
@@ -117,7 +117,8 @@ Validate compliance:
 scripts/check-codex-skills.sh
 ```
 
-After install or updates, restart Codex so skills are reloaded from `${CODEX_HOME:-~/.codex}/skills`.
+After install or updates, restart Codex so skills are reloaded from `~/.agents/skills`.
+If `~/.codex/skills/gym-*` exists, treat it as legacy duplicate state and clean it only after verifying `~/.agents/skills`.
 
 ## 7) Daily Operating Routine
 
@@ -130,7 +131,7 @@ After install or updates, restart Codex so skills are reloaded from `${CODEX_HOM
 
 ## 8) Codex Compliance Checklist
 
-- [ ] `AGENT.md` exists and reflects current project policy.
+- [ ] `AGENTS.md` exists and reflects current project policy.
 - [ ] All `gym-*` skills exist with valid `SKILL.md` + `agents/openai.yaml`.
 - [ ] Frontmatter `name` matches skill directory.
 - [ ] Manual-only skills include `disable-model-invocation: true` and constrained `allowed-tools`.
@@ -141,5 +142,6 @@ After install or updates, restart Codex so skills are reloaded from `${CODEX_HOM
 ## 9) Legacy Compatibility Policy
 
 - `.claude/` and `.windsurf/` remain in the repository as historical references.
-- New operational changes must be implemented in Codex assets first (`AGENT.md`, `.agents/skills`, Codex docs).
+- New operational changes must be implemented in Codex assets first (`AGENTS.md`, `.agents/skills`, Codex docs).
 - Legacy docs may be updated for context, but not treated as the active standard.
+- `~/.codex/skills` is not the canonical location for repository-managed skills in this project.

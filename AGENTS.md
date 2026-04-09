@@ -1,5 +1,39 @@
 # Repository Guidelines
 
+## Project Identity
+
+- **Name**: GM Consultores Juridicos
+- **Domain**: `gmconsultoresjuridicos.com` / `www.gmconsultoresjuridicos.com`
+- **Stack**: Django 5 + DRF (backend) / Vue 3 + Vite (frontend) / MySQL 8 / Redis / Huey
+- **Server path**: `/home/ryzepeck/webapps/gym_project`
+- **Staging path**: `/home/ryzepeck/webapps/gym_project_staging`
+- **Services**: `gym_intranet` (Gunicorn), `gym-project-huey` (task queue)
+- **Settings module**: `DJANGO_SETTINGS_MODULE=gym_project.settings_prod`
+
+## Codex Workflow
+- `AGENTS.md` is the canonical repository instruction file for Codex.
+- Repository-managed Codex skills live in `.agents/skills/gym-*/`.
+- Install/update repo-managed skills with `scripts/install-codex-skills.sh --force --remove-stale`; the default global install target is `~/.agents/skills`.
+- User-level Codex configuration lives in `~/.codex/config.toml`; user-level skills belong in `~/.agents/skills`.
+- Validate skill structure with `scripts/check-codex-skills.sh`.
+- Add project-level Codex configuration in `.codex/config.toml` when project defaults are needed.
+- Legacy `.claude/` assets are reference-only and must not be treated as the active Codex standard.
+
+## Mandatory Skill Usage
+- Use `gym-plan` before non-trivial architecture, workflow, or scope changes.
+- Use `gym-implement` for multi-file implementation work.
+- Use `gym-debugme` for diagnosis-first debugging tasks.
+- Use manual-only operational skills only on explicit user request: `gym-git-sync`, `gym-git-commit`, `gym-deploy-staging`, `gym-deploy-and-check`, `gym-server-diagnostic-report`.
+
+## General Rules
+
+Always apply these:
+1. Split into multiple responses if one response isn't enough.
+2. Suggest improvements after completing tasks:
+   - S1: Code stability or scalability
+   - S2: Performance or security
+   - S3: Readability or maintainability
+
 ## Project Structure & Module Organization
 - `backend/` contains the Django API and domain logic. Core app code lives in `backend/gym_app/` (`models/`, `serializers/`, `views/`, `services/`).
 - Backend tests are organized by domain under `backend/gym_app/tests/` (for example `views/`, `models/`, `serializers/`, `tasks/`, `utils/`).

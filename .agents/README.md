@@ -8,6 +8,8 @@ This directory contains repository-managed Codex assets.
 - Each skill includes:
   - `SKILL.md`
   - `agents/openai.yaml`
+- `.agents/skills/` is the repository source of truth; install the skills into the global Codex discovery path at `~/.agents/skills`.
+- If legacy duplicates exist in `~/.codex/skills/gym-*`, treat them as cleanup targets after verifying the links in `~/.agents/skills`.
 
 Install skills into Codex discovery path:
 

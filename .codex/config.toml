@@ -1,0 +1,8 @@
+# Project-scoped Codex defaults for this repository.
+
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
