@@ -333,8 +333,6 @@ import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";
-import { create_request } from "@/stores/services/request_http";
-import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
@@ -708,19 +706,32 @@ const saveDocument = async (state = 'Draft') => {
 
     let documentId = null;
     
-    // In formalize mode, always create a new document
+    // In formalize mode, transition the SAME document to PendingSignatures (no copy)
     if (route.params.mode === 'formalize') {
-      const response = await store.createDocument(documentData);
+      const signerIds = selectedSigners.value.map(user => user.id);
+      const currentUserId = userStore.currentUser?.id;
+      if (currentUserId && !signerIds.includes(currentUserId)) {
+        signerIds.push(currentUserId);
+      }
+      const formalizeData = {
+        signers: signerIds,
+        signature_due_date: signatureDueDate.value || null,
+        title: document.value.title,
+      };
+      const response = await store.formalizeDocument(document.value.id, formalizeData);
       if (response && response.id) {
         documentId = response.id;
-        
-        // Create pending relationships for the new document
+
+        // Refresh documents to reflect new PendingSignatures state
+        await store.init(true);
+
+        // Create pending relationships for the formalized document
         if (pendingRelationships.value.length > 0) {
           try {
             const { documentRelationshipsActions } = await import('@/stores/dynamic_document/relationships');
             let successCount = 0;
             let failCount = 0;
-            
+
             for (const targetDocId of pendingRelationships.value) {
               try {
                 await documentRelationshipsActions.createDocumentRelationship({
@@ -734,7 +745,7 @@ const saveDocument = async (state = 'Draft') => {
                 failCount++;
               }
             }
-            
+
             if (successCount > 0) {
               console.log(`Successfully created ${successCount} relationship(s)`);
             }
@@ -755,38 +766,47 @@ const saveDocument = async (state = 'Draft') => {
         }
       }
     }
+    // In correction mode, correct and reopen signatures in a single call
+    else if (route.params.mode === 'correction' && isEditMode.value && document.value.id) {
+      try {
+        const correctionData = {
+          content: document.value.content,
+          variables: document.value.variables.map((variable) => {
+            let cleanValue = variable.value;
+            if (variable.field_type === 'number' && variable.value) {
+              const numValue = getNumericValue(variable.value);
+              cleanValue = numValue !== null ? String(numValue) : variable.value;
+            }
+            return {
+              name_en: variable.name_en,
+              name_es: variable.name_es,
+              tooltip: variable.tooltip || "",
+              field_type: variable.field_type,
+              value: cleanValue,
+              select_options: variable.field_type === 'select' ? variable.select_options : null,
+              summary_field: variable.summary_field || 'none',
+              currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
+            };
+          }),
+          signature_due_date: signatureDueDate.value || document.value.signature_due_date || null,
+          title: document.value.title,
+        };
+        const response = await store.correctDocument(document.value.id, correctionData);
+        if (response && response.id) {
+          documentId = response.id;
+          // Refresh documents to reflect new PendingSignatures state
+          await store.init(true);
+        }
+      } catch (error) {
+        console.error('Error correcting document:', error);
+        await showNotification('Error al corregir el documento para firma.', 'error');
+        return;
+      }
+    }
     // For other modes, update or create as needed
     else if (isEditMode.value && document.value.id) {
       await store.updateDocument(document.value.id, documentData);
       documentId = document.value.id;
-
-      // In correction mode, after updating the rejected document, reopen signatures
-      if (route.params.mode === 'correction' && documentId) {
-        try {
-          const reopenUrl = `dynamic-documents/${documentId}/reopen-signatures/`;
-          const response = await create_request(reopenUrl, {});
-          if (!response || (response.status !== 200 && response.status !== 201)) {
-            await showNotification('Error al reabrir el documento para firma.', 'error');
-            return;
-          }
-          // Refresh documents to reflect new PendingSignatures state
-          await store.init(true);
-
-          // Register user activity for correction and resend to signatures
-          try {
-            await registerUserActivity(
-              ACTION_TYPES.UPDATE,
-              `Corregiste y reenviaste el documento "${document.value.title}" para firma`
-            );
-          } catch (activityError) {
-            console.warn('No se pudo registrar la actividad de corrección y reenvío:', activityError);
-          }
-        } catch (error) {
-          console.error('Error reopening document for signatures:', error);
-          await showNotification('Error al reabrir el documento para firma.', 'error');
-          return;
-        }
-      }
     } else {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
