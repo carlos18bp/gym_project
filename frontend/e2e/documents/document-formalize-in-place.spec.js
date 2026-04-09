@@ -21,7 +21,13 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
   test("lawyer sees completed document with Formalizar y Agregar Firmas action", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9200;
     const docs = [
-      buildMockDocument({ id: 601, title: "Contrato Venta", state: "Completed", createdBy: userId }),
+      buildMockDocument({
+        id: 601,
+        title: "Contrato Venta",
+        state: "Completed",
+        createdBy: userId,
+        assignedTo: userId,
+      }),
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
@@ -32,7 +38,9 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
 
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Mis Documentos" }).click();
+    await page.waitForLoadState("networkidle");
     await expect(page.getByText("Contrato Venta")).toBeVisible({ timeout: 15_000 });
   });
 
