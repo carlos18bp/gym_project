@@ -38,11 +38,13 @@ test("client can create a legal request and is redirected to list", { tag: ['@fl
   await page.getByRole("button", { name: "Guardar" }).click();
 
   // Success notification modal can aria-hide the page; close it before asserting the list UI.
-  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("button", { name: "OK" }).click();
+  const dialog = page.getByRole("dialog").first();
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByRole("button", { name: "OK" }).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
 
-  await expect(page).toHaveURL(/\/legal_requests/);
-  await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible();
+  await expect(page).toHaveURL(/\/legal_requests/, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({ timeout: 10_000 });
 });
 
 test("lawyer can view legal requests list and open a request detail", { tag: ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {

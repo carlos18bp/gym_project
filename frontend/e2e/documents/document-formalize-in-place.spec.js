@@ -31,11 +31,13 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     });
 
     await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
     // Go to Mis Documentos to find completed doc
     await page.getByRole("button", { name: "Mis Documentos" }).click();
-    await expect(page.getByText("Contrato Venta")).toBeVisible({ timeout: 10_000 });
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Contrato Venta")).toBeVisible({ timeout: 15_000 });
   });
 
   test("formalize navigates to DocumentForm in formalize mode", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -236,10 +238,12 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     });
 
     await page.goto("/dynamic_document_dashboard");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
     // Rejected documents should appear in archived tab
     await page.getByRole("button", { name: /Archivados/i }).click();
+    await page.waitForLoadState("networkidle");
     // quality: allow-fragile-selector (stable application ID)
     await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
   });

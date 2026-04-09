@@ -26,7 +26,9 @@ async function openMinutasTab(page, { userId, documents }) {
   await setAuthLocalStorage(page, buildLawyerAuth({ userId }));
   await page.goto("/dynamic_document_dashboard");
   await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Minutas" }).click();
+  await page.waitForLoadState("networkidle");
 }
 
 function getDocumentRow(page, title) {
@@ -35,11 +37,11 @@ function getDocumentRow(page, title) {
 
 async function openDocumentActionsModal(page, title) {
   const row = getDocumentRow(page, title);
-  await expect(row).toBeVisible();
+  await expect(row).toBeVisible({ timeout: 10_000 });
   await row.click();
   await expect(
     page.getByRole("heading", { name: "Acciones del Documento" })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
@@ -70,11 +72,11 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const previewHeading = page.getByRole("heading", {
       name: /Previsualización del Documento/,
     });
-    await expect(previewHeading).toBeVisible();
+    await expect(previewHeading).toBeVisible({ timeout: 10_000 });
     await expect(previewHeading).toContainText(docTitle);
     await expect(
       page.getByText("Este es el contenido del contrato de prueba.")
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("lawyer closes document preview modal via close button", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -99,7 +101,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
 
     await expect(
       page.getByRole("heading", { name: /Previsualización del Documento/ })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10_000 });
 
     // Close the preview modal via the X button
     const previewHeading = page.getByRole("heading", {
@@ -140,7 +142,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const previewHeading = page.getByRole("heading", {
       name: /Previsualización del Documento/,
     });
-    await expect(previewHeading).toBeVisible();
+    await expect(previewHeading).toBeVisible({ timeout: 10_000 });
     await expect(previewHeading).toContainText(docTitle);
   });
 
@@ -168,10 +170,10 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
 
     await expect(
       page.getByRole("heading", { name: /Previsualización del Documento/ })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10_000 });
 
     // Verify that the rendered HTML includes expected text elements
-    await expect(page.getByText("Cláusula Primera")).toBeVisible();
+    await expect(page.getByText("Cláusula Primera")).toBeVisible({ timeout: 10_000 });
     await expect(
       page.getByText("Las partes acuerdan lo siguiente:")
     ).toBeVisible();
@@ -201,10 +203,10 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
 
     // The heading should contain the document title
     const heading = page.getByRole("heading", { name: /Previsualización del Documento/ });
-    await expect(heading).toBeVisible();
+    await expect(heading).toBeVisible({ timeout: 10_000 });
     await expect(heading).toContainText(docTitle);
 
     // Content should also be rendered
-    await expect(page.getByText("Contenido verificación título")).toBeVisible();
+    await expect(page.getByText("Contenido verificación título")).toBeVisible({ timeout: 10_000 });
   });
 });

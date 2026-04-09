@@ -38,10 +38,14 @@ test(
     });
 
     await page.goto("/dashboard");
-    await expect(page.getByText("Servicios Destacados")).toBeVisible();
-    await expect(page.getByText("Registro")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Servicios Destacados")).toBeVisible({ timeout: 15_000 });
 
-    await page.getByText("Registro").click();
+    // Featured grid renders short_title ("Registro") in a <p> inside a <button>.
+    // Exact match avoids colliding with "Registro Marcario" elsewhere on the page.
+    const registroCard = page.getByText("Registro", { exact: true });
+    await expect(registroCard).toBeVisible({ timeout: 10_000 });
+    await registroCard.click();
     await expect(page).toHaveURL(/\/services\/\d+/);
   }
 );
@@ -79,21 +83,21 @@ test(
     });
 
     await page.goto(`/services/${service.id}`);
+    await page.waitForLoadState("networkidle");
 
     // Stage 1: Datos del Solicitante
-    await expect(page.getByText("Datos del Solicitante")).toBeVisible();
+    await expect(page.getByText("Datos del Solicitante")).toBeVisible({ timeout: 15_000 });
 
-    // quality: allow-fragile-selector (service form inputs lack accessible labels; positional is required)
-    const nombreInput = page.locator('input').first();
-    await nombreInput.fill("Juan Perez");
-
-    // quality: allow-fragile-selector (service form inputs lack accessible labels; positional is required)
-    const emailInput = page.locator('input[type="email"], input').nth(1);
-    await emailInput.fill("juan@test.com");
+    // Field labels render as siblings (not associated via for/id), so use
+    // adjacent-sibling selector to bind each label to its input.
+    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
+    await page.locator('label:has-text("Nombre completo") + input').fill("Juan Perez");
+    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
+    await page.locator('label:has-text("Correo electronico") + input').fill("juan@test.com");
 
     // Navigate to stage 2
     await page.getByRole("button", { name: /Siguiente/i }).click();
-    await expect(page.getByText("Informacion de la Marca")).toBeVisible();
+    await expect(page.getByText("Informacion de la Marca")).toBeVisible({ timeout: 10_000 });
   }
 );
 
@@ -151,17 +155,17 @@ test(
     });
 
     await page.goto(`/services/${service.id}`);
-    await expect(page.getByText("Datos del Solicitante")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Datos del Solicitante")).toBeVisible({ timeout: 15_000 });
 
     // Fill partial data and save draft
-    // quality: allow-fragile-selector (service form inputs lack accessible labels; positional is required)
-    const nombreInput = page.locator('input').first();
-    await nombreInput.fill("Draft Value");
+    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
+    await page.locator('label:has-text("Nombre completo") + input').fill("Draft Value");
 
-    const saveBtn = page.getByRole("button", { name: /Guardar/i });
-    if (await saveBtn.isVisible()) {
-      await saveBtn.click();
-    }
+    await page.getByRole("button", { name: "Guardar borrador" }).click();
+    // SweetAlert2 success notification (showNotification -> Swal.fire) renders
+    // with title "Borrador guardado correctamente".
+    await expect(page.getByText(/Borrador guardado/i)).toBeVisible({ timeout: 10_000 });
   }
 );
 
@@ -214,12 +218,19 @@ test(
     });
 
     await page.goto("/service_requests/my");
-    await expect(page.getByText("Mis Solicitudes")).toBeVisible();
-    await expect(page.getByText("2026-00001")).toBeVisible();
-    await expect(page.getByText("2026-00002")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({
+      timeout: 15_000,
+    });
+    // Tracking numbers render as <h2> inside a <button> per-request card.
+    await expect(page.getByRole("heading", { name: "2026-00001" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "2026-00002" })).toBeVisible();
 
-    // Click on first request to view detail
-    await page.getByText("2026-00001").click();
+    // Click the button wrapping the first request card.
+    await page
+      .getByRole("button")
+      .filter({ has: page.getByRole("heading", { name: "2026-00001" }) })
+      .click();
     await expect(page).toHaveURL(/\/service_requests\/\d+/);
   }
 );
@@ -253,10 +264,17 @@ test(
     });
 
     await page.goto("/services");
-    await expect(page.getByText("Registro")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    // ServicesList renders each service as <h2>{service.name}</h2> inside a <button>.
+    await expect(page.getByRole("heading", { name: "Registro Marcario" })).toBeVisible({
+      timeout: 15_000,
+    });
 
-    // Click on service to view detail
-    await page.getByText("Registro").click();
+    // Click the wrapping button for the service card.
+    await page
+      .getByRole("button")
+      .filter({ has: page.getByRole("heading", { name: "Registro Marcario" }) })
+      .click();
     await expect(page).toHaveURL(/\/services\/\d+/);
   }
 );

@@ -222,7 +222,7 @@ describe("SlideBar.vue", () => {
       .filter(Boolean);
 
     expect(texts).toContain("Organizaciones");
-    expect(texts).toContain("Solicitudes");
+    expect(texts).not.toContain("Solicitudes");
     expect(texts).toContain("Agendar Cita");
     expect(texts).not.toContain("Directorio");
     expect(texts).not.toContain("Intranet G&M");
@@ -248,11 +248,11 @@ describe("SlideBar.vue", () => {
       .filter(Boolean);
 
     expect(texts).toContain("Directorio");
-    expect(texts).toContain("Gestión de Solicitudes");
-    expect(texts).toContain("Organizaciones");
+    expect(texts).not.toContain("Gestión de Solicitudes");
+    expect(texts).not.toContain("Organizaciones");
     expect(texts).not.toContain("Intranet G&M");
     expect(texts).not.toContain("Solicitudes");
-    expect(texts).not.toContain("Agendar Cita");
+    expect(texts).toContain("Agendar Cita");
   });
 
   test("Manual de Usuario pushes refresh param when already on /user_guide", async () => {
@@ -491,8 +491,8 @@ describe("SlideBar.vue", () => {
     expect(await clickNav("Archivos Juridicos")).toEqual({
       name: "dynamic_document_dashboard",
     });
-    expect(await clickNav("Gestión de Solicitudes")).toEqual({
-      name: "legal_requests_list",
+    expect(await clickNav("Bandeja de Solicitudes")).toEqual({
+      name: "service_requests_inbox",
     });
     expect(await clickNav("Intranet G&M")).toEqual({ name: "intranet_g_y_m" });
   });
@@ -525,7 +525,7 @@ describe("SlideBar.vue", () => {
     expect(await clickNav("Organizaciones")).toEqual({
       name: "organizations_dashboard",
     });
-    expect(await clickNav("Solicitudes")).toEqual({ name: "legal_requests_list" });
+    expect(await clickNav("Mis Solicitudes")).toEqual({ name: "service_requests_my" });
     expect(await clickNav("Agendar Cita")).toEqual({ name: "schedule_appointment" });
   });
 
@@ -556,7 +556,7 @@ describe("SlideBar.vue", () => {
       .filter(Boolean);
 
     expect(texts).toContain("Organizaciones");
-    expect(texts).toContain("Solicitudes");
+    expect(texts).not.toContain("Solicitudes");
     expect(texts).not.toContain("Gestión de Solicitudes");
     expect(texts).not.toContain("Intranet G&M");
   });

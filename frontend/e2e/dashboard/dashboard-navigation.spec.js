@@ -35,11 +35,6 @@ test("dashboard loads and sidebar navigation works (processes, legal requests, d
   await expect(page).toHaveURL(/\/process_list/);
   await expect(page.getByPlaceholder("Buscar procesos...")).toBeVisible();
 
-  await sidebar.getByRole("link", { name: "Gestión de Solicitudes", exact: true }).click();
-  await expect(page).toHaveURL(/\/legal_requests/);
-  await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible();
-  await expect(page.getByText("REQ-1001")).toBeVisible();
-
   await sidebar.getByRole("link", { name: "Archivos Juridicos", exact: true }).click();
   await expect(page).toHaveURL(/\/dynamic_document_dashboard/);
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();

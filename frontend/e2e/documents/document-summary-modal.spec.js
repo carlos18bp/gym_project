@@ -44,10 +44,12 @@ test("Completed document with summary fields renders in client list and opens ac
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.waitForLoadState("networkidle");
 
   // Client: switch to Mis Documentos
   await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Mis Documentos" }).click();
+  await page.waitForLoadState("networkidle");
 
   await expect(page.getByText("Contrato con Resumen")).toBeVisible({ timeout: 10_000 });
 
@@ -83,9 +85,11 @@ test("folders grid shows empty state when no folders exist", { tag: ['@flow:docs
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Carpetas" }).click();
+  await page.waitForLoadState("networkidle");
 
   // FoldersGrid/FoldersTable empty state should show
   await expect(page.getByText("No tienes carpetas aún").first()).toBeVisible({ timeout: 10_000 });
@@ -117,9 +121,11 @@ test("document dashboard shows search results filtered by title on Minutas tab",
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Minutas" }).click();
+  await page.waitForLoadState("networkidle");
 
   // All 3 docs should be visible
   await expect(page.getByText("Contrato Laboral")).toBeVisible({ timeout: 10_000 });
@@ -128,11 +134,11 @@ test("document dashboard shows search results filtered by title on Minutas tab",
 
   // Search for "Contrato"
   const searchInput = page.getByPlaceholder("Buscar...");
-  await expect(searchInput).toBeVisible();
+  await expect(searchInput).toBeVisible({ timeout: 10_000 });
   await searchInput.fill("Contrato");
 
-  // Only "Contrato Laboral" should remain visible
+  // Only "Contrato Laboral" should remain visible (wait for debounce + server filter)
+  await expect(page.getByText("Poder General")).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByText("Acta de Reunión")).toBeHidden({ timeout: 10_000 });
   await expect(page.getByText("Contrato Laboral")).toBeVisible();
-  await expect(page.getByText("Poder General")).toBeHidden();
-  await expect(page.getByText("Acta de Reunión")).toBeHidden();
 });
