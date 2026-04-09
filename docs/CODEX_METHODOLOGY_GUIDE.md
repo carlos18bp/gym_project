@@ -100,17 +100,7 @@ For deploy and git operations, explicit user intent is mandatory (manual-only sk
 
 ## 6) Runtime Setup
 
-Install repository-managed skills:
-
-```bash
-scripts/install-codex-skills.sh --force --remove-stale
-```
-
-Optional dry-run:
-
-```bash
-scripts/install-codex-skills.sh --dry-run
-```
+Skills in `.agents/skills/` are auto-discovered by Codex from the repository root — no installation needed.
 
 Validate compliance:
 
@@ -118,7 +108,7 @@ Validate compliance:
 scripts/check-codex-skills.sh
 ```
 
-After install or updates, restart Codex so skills are reloaded from `~/.agents/skills`.
+Restart Codex after adding or modifying skills.
 
 ## 7) Daily Operating Routine
 
@@ -135,7 +125,6 @@ After install or updates, restart Codex so skills are reloaded from `~/.agents/s
 - [ ] All skills exist with valid `SKILL.md` + `agents/openai.yaml`.
 - [ ] Frontmatter `name` matches skill directory name.
 - [ ] Manual-only skills include `disable-model-invocation: true` and constrained `allowed-tools`.
-- [ ] `scripts/install-codex-skills.sh` runs idempotently.
 - [ ] `scripts/check-codex-skills.sh` passes.
 - [ ] `docs/CODEX_MIGRATION_MAP.md` is updated when skill taxonomy changes.
 

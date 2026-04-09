@@ -124,9 +124,9 @@
 | Document | Path | Status |
 |----------|------|--------|
 | README | `README.md` | ✅ Comprehensive (913 lines) |
-| Codex Setup | `docs/CODEX_SETUP.md` | ✅ Updated to canonical `~/.agents/skills` flow with explicit cleanup step for legacy `~/.codex/skills/gym-*` duplicates |
-| Codex Methodology Guide | `docs/CODEX_METHODOLOGY_GUIDE.md` | ✅ Updated to reflect canonical Codex runtime path and legacy duplicate cleanup policy |
-| Codex Migration Map | `docs/CODEX_MIGRATION_MAP.md` | ✅ Updated to keep legacy mapping informational while pointing runtime installation to `~/.agents/skills` |
+| Codex Setup | `docs/CODEX_SETUP.md` | ✅ Updated — skills auto-discovered from `.agents/skills/`, install script removed |
+| Codex Methodology Guide | `docs/CODEX_METHODOLOGY_GUIDE.md` | ✅ Updated — removed install step, reflects auto-discovery model |
+| Codex Migration Map | `docs/CODEX_MIGRATION_MAP.md` | ✅ Updated — removed install script references |
 | Architecture Standard | `docs/DJANGO_VUE_ARCHITECTURE_STANDARD.md` | ✅ Complete |
 | Testing Quality Standards | `docs/TESTING_QUALITY_STANDARDS.md` | ✅ Complete |
 | Test Quality Gate Reference | `docs/TEST_QUALITY_GATE_REFERENCE.md` | ✅ Complete |

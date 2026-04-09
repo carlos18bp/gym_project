@@ -920,10 +920,9 @@ This project uses three AI coding assistants that coexist without interfering:
 
 ### Codex skills quick reference
 
-Install skills after cloning or updating:
+Skills in `.agents/skills/` are auto-discovered by Codex. Validate structure after changes:
 
 ```bash
-scripts/install-codex-skills.sh --force --remove-stale
 scripts/check-codex-skills.sh
 ```
 

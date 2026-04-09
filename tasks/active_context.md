@@ -41,8 +41,7 @@ The application is **feature-complete** with all 17 major features implemented, 
 
 - **Codex configuration normalization (2026-04-09)**:
   - **Repo config simplified**: Reduced `.codex/config.toml` to project-scoped settings that materially change behavior (`model`, reasoning effort, approval policy, sandbox mode, web search).
-  - **Canonical skill path enforced**: Repository docs and runtime guidance now consistently use `~/.agents/skills` as the user-level install target for repo-managed Codex skills.
-  - **Installer cleanup guardrail**: `scripts/install-codex-skills.sh` now reports legacy duplicate `~/.codex/skills/gym-*` links when present so cleanup is explicit and safe.
+  - **Skills auto-discovery confirmed**: Codex reads `.agents/skills/` from the repository root automatically — no installer needed. `scripts/install-codex-skills.sh` was removed.
   - **User-level cleanup completed**: Removed duplicate repo-managed `gym-*` symlinks from `~/.codex/skills`; system skills under `~/.codex/skills/.system` remain untouched.
   - **Scope boundary preserved**: No Claude or Windsurf configuration was changed as part of this normalization.
 

@@ -1,8 +1,10 @@
 # Project-scoped Codex defaults for this repository.
 
-model = "gpt-5.4"
+model                  = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 
-approval_policy = "full-auto"
-sandbox_mode = "workspace-write"
-web_search = "live"
+approval_policy = "never"           # valid values: untrusted | on-request | never
+sandbox_mode    = "workspace-write"
+web_search      = "live"
+
+file_opener = "windsurf"            # opens file citations in Windsurf IDE

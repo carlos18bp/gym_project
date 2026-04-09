@@ -8,10 +8,11 @@ Skills are stored in `.agents/skills/<skill-name>/`. Each skill includes:
 - `SKILL.md` — skill instructions and frontmatter (`name`, `description`, optional controls)
 - `agents/openai.yaml` — UI metadata (`display_name`, `short_description`)
 
-Install skills into the Codex discovery path (`~/.agents/skills`):
+Codex auto-discovers skills from `.agents/skills/` when run from within the repository — no installation step required.
+
+Validate skill structure:
 
 ```bash
-scripts/install-codex-skills.sh --force --remove-stale
 scripts/check-codex-skills.sh
 ```
 

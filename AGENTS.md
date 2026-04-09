@@ -29,8 +29,8 @@ These should be respected ALWAYS:
 
 - `AGENTS.md` is the canonical repository instruction file for Codex.
 - Repository-managed Codex skills live in `.agents/skills/*/`.
-- Install/update repo-managed skills with `scripts/install-codex-skills.sh --force --remove-stale`; the default global install target is `~/.agents/skills`.
-- User-level Codex configuration lives in `~/.codex/config.toml`; user-level skills belong in `~/.agents/skills`.
+- Codex auto-discovers skills from `.agents/skills/` in the repository root — no installation step required.
+- User-level Codex configuration lives in `~/.codex/config.toml`.
 - Validate skill structure with `scripts/check-codex-skills.sh`.
 - Add project-level Codex configuration in `.codex/config.toml` when project defaults are needed.
 

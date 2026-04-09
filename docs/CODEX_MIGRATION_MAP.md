@@ -87,11 +87,5 @@ Cross-source provenance references are embedded in:
 
 ## 4) Installation and Runtime
 
-Repository skills are versioned in `.agents/skills/` and installed into Codex discovery path via:
-
-```bash
-scripts/install-codex-skills.sh --force --remove-stale
-```
-
-Default destination is `~/.agents/skills`.
-After installation, restart Codex to reload skills.
+Repository skills are versioned in `.agents/skills/`. Codex auto-discovers them from the
+repository root — no installation step required. Restart Codex after adding or modifying skills.
