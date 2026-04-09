@@ -74,18 +74,58 @@ describe("useDocumentActions", () => {
     create_request.mockResolvedValue({ status: 200, statusText: "OK" });
   });
 
-  test("handlePreviewDocument registers view and opens preview modal", async () => {
-    const documentStore = {};
+  test("handlePreviewDocument registers view and opens preview modal with original doc when it has content", async () => {
+    const documentStore = { fetchDocumentById: jest.fn() };
     const userStore = {};
     const emit = jest.fn();
 
     const { handlePreviewDocument } = useDocumentActions(documentStore, userStore, emit);
 
-    const doc = { id: 10, title: "Doc" };
+    const doc = { id: 10, title: "Doc", content: "<p>existing content</p>" };
 
     await handlePreviewDocument(doc);
 
     expect(mockRegisterView).toHaveBeenCalledWith("document", 10);
+    // Content already present — no fetch needed
+    expect(documentStore.fetchDocumentById).not.toHaveBeenCalled();
+    expect(mockOpenPreviewModal).toHaveBeenCalledWith(doc);
+  });
+
+  test("handlePreviewDocument fetches full document when content is missing", async () => {
+    const fetchedDoc = { id: 10, title: "Doc", content: "<p>full content</p>" };
+    const documentStore = {
+      fetchDocumentById: jest.fn().mockResolvedValue(fetchedDoc),
+    };
+    const userStore = {};
+    const emit = jest.fn();
+
+    const { handlePreviewDocument } = useDocumentActions(documentStore, userStore, emit);
+
+    const doc = { id: 10, title: "Doc" }; // no content
+
+    await handlePreviewDocument(doc);
+
+    expect(mockRegisterView).toHaveBeenCalledWith("document", 10);
+    expect(documentStore.fetchDocumentById).toHaveBeenCalledWith(10, true);
+    expect(mockOpenPreviewModal).toHaveBeenCalledWith(fetchedDoc);
+  });
+
+  test("handlePreviewDocument falls back to original doc when fetch fails", async () => {
+    const documentStore = {
+      fetchDocumentById: jest.fn().mockRejectedValue(new Error("network error")),
+    };
+    const userStore = {};
+    const emit = jest.fn();
+
+    const { handlePreviewDocument } = useDocumentActions(documentStore, userStore, emit);
+
+    const doc = { id: 10, title: "Doc" }; // no content
+
+    await handlePreviewDocument(doc);
+
+    expect(mockRegisterView).toHaveBeenCalledWith("document", 10);
+    expect(documentStore.fetchDocumentById).toHaveBeenCalledWith(10, true);
+    // Falls back to original doc despite fetch failure
     expect(mockOpenPreviewModal).toHaveBeenCalledWith(doc);
   });
 

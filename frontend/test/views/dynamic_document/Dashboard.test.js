@@ -174,6 +174,54 @@ describe("DynamicDocument Dashboard.vue", () => {
     expect(mockDocumentStore.selectedDocument).toBe(null);
   });
 
+  test("handleNavigateToDocument maps legal-documents to my-documents for non-lawyer users", async () => {
+    mockUserStore.currentUser = { id: 2, role: "client" };
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
+    wrapper.vm.$.setupState.handleNavigateToDocument({
+      tab: "legal-documents",
+      searchQuery: "Contrato A",
+    });
+
+    expect(wrapper.vm.$.setupState.activeTab).toBe("my-documents");
+    expect(wrapper.vm.$.setupState.searchQuery).toBe("Contrato A");
+  });
+
+  test("handleNavigateToDocument passes through valid non-lawyer tabs unchanged", async () => {
+    mockUserStore.currentUser = { id: 2, role: "client" };
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
+    wrapper.vm.$.setupState.handleNavigateToDocument({
+      tab: "pending-signatures",
+      searchQuery: "Doc B",
+    });
+
+    expect(wrapper.vm.$.setupState.activeTab).toBe("pending-signatures");
+    expect(wrapper.vm.$.setupState.searchQuery).toBe("Doc B");
+  });
+
+  test("handleNavigateToDocument sets lawyer tab directly without mapping", async () => {
+    mockUserStore.currentUser = { id: 3, role: "lawyer" };
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
+    wrapper.vm.$.setupState.handleNavigateToDocument({
+      tab: "legal-documents",
+      searchQuery: "Minuta X",
+    });
+
+    expect(wrapper.vm.$.setupState.activeLawyerTab).toBe("legal-documents");
+    expect(wrapper.vm.$.setupState.searchQuery).toBe("Minuta X");
+  });
+
   test("loads useDocument section for clients and resets active tab", async () => {
     mockUserStore.currentUser = { id: 2, role: "client" };
     mockRoute.query = { tab: "signed-documents" };

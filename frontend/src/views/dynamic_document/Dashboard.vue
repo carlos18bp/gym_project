@@ -784,7 +784,9 @@ const handleNavigateToDocument = (payload) => {
   if (userRole.value === 'lawyer') {
     activeLawyerTab.value = tab;
   } else {
-    activeTab.value = tab;
+    // 'legal-documents' is a lawyer-only tab; map it to the equivalent non-lawyer tab
+    const tabMapping = { 'legal-documents': 'my-documents' };
+    activeTab.value = tabMapping[tab] ?? tab;
   }
 
   searchQuery.value = docTitle;

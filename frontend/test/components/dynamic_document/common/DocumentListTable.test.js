@@ -179,6 +179,30 @@ describe("DocumentListTable.vue", () => {
     expect(emissions[emissions.length - 1]).toEqual(["Acuerdo"]);
   });
 
+  const SUMMARY_COLUMNS = [
+    "Contraparte", "Objeto", "Valor", "Plazo",
+    "Fecha Suscripción", "Fecha Inicio", "Fecha Terminación",
+  ];
+
+  const FAKE_DOC = { id: 999, title: "Test Minuta", state: "Published", tags: [] };
+
+  test("hides summary columns when cardType is 'lawyer' and context is 'legal-documents'", async () => {
+    // promptDocuments bypasses store logic and forces the table to render
+    const wrapper = mountView({ promptDocuments: [FAKE_DOC] });
+    await flushPromises();
+
+    const thTexts = wrapper.findAll("th").map((th) => th.text().trim());
+    SUMMARY_COLUMNS.forEach((col) => expect(thTexts).not.toContain(col));
+  });
+
+  test("shows summary columns when context is not 'legal-documents'", async () => {
+    const wrapper = mountView({ context: "my-documents", promptDocuments: [FAKE_DOC] });
+    await flushPromises();
+
+    const thTexts = wrapper.findAll("th").map((th) => th.text().trim());
+    SUMMARY_COLUMNS.forEach((col) => expect(thTexts).toContain(col));
+  });
+
   test("toggle all selection selects and clears document IDs", async () => {
     const wrapper = mountView({
       promptDocuments: [
