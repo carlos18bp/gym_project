@@ -1,3 +1,0 @@
-interface:
-  display_name: "Gym Deploy Production"
-  short_description: "Deploy to production and run post-deploy checks"

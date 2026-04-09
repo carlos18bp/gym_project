@@ -1,3 +1,0 @@
-interface:
-  display_name: "Gym Fix Broken Tests"
-  short_description: "Fix failing tests and validate focused regression"

@@ -1,3 +1,0 @@
-interface:
-  display_name: "Gym Frontend E2E Coverage"
-  short_description: "Increase Playwright flow coverage for user journeys"

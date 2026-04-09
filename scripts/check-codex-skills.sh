@@ -10,30 +10,30 @@ if [[ ! -d "$SKILLS_DIR" ]]; then
 fi
 
 required_skills=(
-  gym-plan
-  gym-implement
-  gym-debugme
-  gym-methodology-setup
-  gym-test-quality-gate
-  gym-backend-test-coverage
-  gym-frontend-unit-test-coverage
-  gym-frontend-e2e-test-coverage
-  gym-e2e-user-flows-check
-  gym-new-feature-checklist
-  gym-git-commit
-  gym-git-sync
-  gym-fix-broken-tests
-  gym-deploy-staging
-  gym-deploy-and-check
-  gym-server-diagnostic-report
+  plan
+  implement
+  debugme
+  methodology-setup
+  test-quality-gate
+  backend-test-coverage
+  frontend-unit-test-coverage
+  frontend-e2e-test-coverage
+  e2e-user-flows-check
+  new-feature-checklist
+  git-commit
+  git-sync
+  fix-broken-tests
+  deploy-staging
+  deploy-and-check
+  server-diagnostic-report
 )
 
 manual_only_skills=(
-  gym-git-commit
-  gym-git-sync
-  gym-deploy-staging
-  gym-deploy-and-check
-  gym-server-diagnostic-report
+  git-commit
+  git-sync
+  deploy-staging
+  deploy-and-check
+  server-diagnostic-report
 )
 
 errors=0

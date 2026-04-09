@@ -14,22 +14,22 @@ Canonical Codex standards are defined in:
 
 | Legacy skill | Codex skill |
 |---|---|
-| `plan` | `gym-plan` |
-| `implement` | `gym-implement` |
-| `debugme` | `gym-debugme` |
-| `test-quality-gate` | `gym-test-quality-gate` |
-| `backend-test-coverage` | `gym-backend-test-coverage` |
-| `frontend-unit-test-coverage` | `gym-frontend-unit-test-coverage` |
-| `frontend-e2e-test-coverage` | `gym-frontend-e2e-test-coverage` |
-| `e2e-user-flows-check` | `gym-e2e-user-flows-check` |
-| `new-feature-checklist` | `gym-new-feature-checklist` |
-| `methodology-setup` | `gym-methodology-setup` |
-| `git-commit` | `gym-git-commit` |
-| `git-sync` | `gym-git-sync` |
-| `deploy-staging` | `gym-deploy-staging` |
-| `deploy-and-check` | `gym-deploy-and-check` |
-| `server-diagnostic-report` | `gym-server-diagnostic-report` |
-| `fix-broken-tests` | `gym-fix-broken-tests` |
+| `plan` | `plan` |
+| `implement` | `implement` |
+| `debugme` | `debugme` |
+| `test-quality-gate` | `test-quality-gate` |
+| `backend-test-coverage` | `backend-test-coverage` |
+| `frontend-unit-test-coverage` | `frontend-unit-test-coverage` |
+| `frontend-e2e-test-coverage` | `frontend-e2e-test-coverage` |
+| `e2e-user-flows-check` | `e2e-user-flows-check` |
+| `new-feature-checklist` | `new-feature-checklist` |
+| `methodology-setup` | `methodology-setup` |
+| `git-commit` | `git-commit` |
+| `git-sync` | `git-sync` |
+| `deploy-staging` | `deploy-staging` |
+| `deploy-and-check` | `deploy-and-check` |
+| `server-diagnostic-report` | `server-diagnostic-report` |
+| `fix-broken-tests` | `fix-broken-tests` |
 
 Each Codex skill includes:
 
@@ -38,52 +38,52 @@ Each Codex skill includes:
 
 ## 2) Workflow Equivalence (`.windsurf/workflows`)
 
-| Windsurf workflow | Codex target |
+| Windsurf workflow | Codex skill |
 |---|---|
-| `backend-test-coverage-goal.md` | `gym-backend-test-coverage` |
-| `debug.md` | `gym-debugme` |
-| `deploy-and-check.md` | `gym-deploy-and-check` |
-| `deploy-staging.md` | `gym-deploy-staging` |
-| `e2e-user-flows-check.md` | `gym-e2e-user-flows-check` |
-| `fix-broken-tests.md` | `gym-fix-broken-tests` |
-| `frontend-e2e-test-coverage-goal.md` | `gym-frontend-e2e-test-coverage` |
-| `frontend-unit-test-coverage-goal.md` | `gym-frontend-unit-test-coverage` |
-| `git-commit.md` | `gym-git-commit` |
+| `backend-test-coverage-goal.md` | `backend-test-coverage` |
+| `debug.md` | `debugme` |
+| `deploy-and-check.md` | `deploy-and-check` |
+| `deploy-staging.md` | `deploy-staging` |
+| `e2e-user-flows-check.md` | `e2e-user-flows-check` |
+| `fix-broken-tests.md` | `fix-broken-tests` |
+| `frontend-e2e-test-coverage-goal.md` | `frontend-e2e-test-coverage` |
+| `frontend-unit-test-coverage-goal.md` | `frontend-unit-test-coverage` |
+| `git-commit.md` | `git-commit` |
 | `human.md` | `AGENTS.md` communication policy |
-| `methodology-setup.md` | `gym-methodology-setup` |
-| `not-forget-fake-data-and-test.md` | `gym-new-feature-checklist` |
-| `server-diagnostic-report.md` | `gym-server-diagnostic-report` |
-| `test-quality-gate.md` | `gym-test-quality-gate` |
+| `methodology-setup.md` | `methodology-setup` |
+| `not-forget-fake-data-and-test.md` | `new-feature-checklist` |
+| `server-diagnostic-report.md` | `server-diagnostic-report` |
+| `test-quality-gate.md` | `test-quality-gate` |
 
 ## 3) Rules/Patterns Equivalence (`.windsurf/rules`)
 
 | Windsurf rule | Codex target |
 |---|---|
 | `security-rules.md` | `AGENTS.md` security section |
-| `testing-quality-standards.md` | `gym-test-quality-gate` + `docs/TESTING_QUALITY_STANDARDS.md` |
-| `jest-testing-rules.md` | `gym-frontend-unit-test-coverage` + `gym-fix-broken-tests` |
-| `playwright-cursor-rules.md` | `gym-frontend-e2e-test-coverage` + `gym-e2e-user-flows-check` |
-| `coverage-report-standard.md` | `gym-backend-test-coverage` + `gym-frontend-unit-test-coverage` |
-| `e2e-flow-coverage-standard.md` | `gym-frontend-e2e-test-coverage` + `gym-e2e-user-flows-check` |
-| `django-python-cursor-rules.md` | `AGENTS.md` + `gym-implement` |
-| `django-rest-api-development-rules-adnan.md` | `AGENTS.md` + `gym-implement` |
+| `testing-quality-standards.md` | `test-quality-gate` + `docs/TESTING_QUALITY_STANDARDS.md` |
+| `jest-testing-rules.md` | `frontend-unit-test-coverage` + `fix-broken-tests` |
+| `playwright-cursor-rules.md` | `frontend-e2e-test-coverage` + `e2e-user-flows-check` |
+| `coverage-report-standard.md` | `backend-test-coverage` + `frontend-unit-test-coverage` |
+| `e2e-flow-coverage-standard.md` | `frontend-e2e-test-coverage` + `e2e-user-flows-check` |
+| `django-python-cursor-rules.md` | `AGENTS.md` + `implement` |
+| `django-rest-api-development-rules-adnan.md` | `AGENTS.md` + `implement` |
 | `tailwind-rules.md` | `AGENTS.md` + frontend implementation behavior |
 | `i18n-rules.md` | `AGENTS.md` + implementation behavior |
 | `seo-rules.md` | `AGENTS.md` + implementation behavior |
-| `nuxtjs-vue-typescript-development-rules.md` | `AGENTS.md` + `gym-implement` |
-| `methodology/plan.md` | `gym-plan` |
-| `methodology/implement.md` | `gym-implement` |
-| `methodology/debug.md` | `gym-debugme` |
-| `methodology/memory.md` | `gym-methodology-setup` |
-| `methodology/directory-structure.md` | `gym-methodology-setup` |
-| `methodology/error-documentation.md` | `gym-methodology-setup` + docs/methodology |
-| `methodology/lessons-learned.md` | `gym-methodology-setup` + docs/methodology |
+| `nuxtjs-vue-typescript-development-rules.md` | `AGENTS.md` + `implement` |
+| `methodology/plan.md` | `plan` |
+| `methodology/implement.md` | `implement` |
+| `methodology/debug.md` | `debugme` |
+| `methodology/memory.md` | `methodology-setup` |
+| `methodology/directory-structure.md` | `methodology-setup` |
+| `methodology/error-documentation.md` | `methodology-setup` + docs/methodology |
+| `methodology/lessons-learned.md` | `methodology-setup` + docs/methodology |
 
 Cross-source provenance references are embedded in:
 
-- `gym-methodology-setup/references/source-material.md`
-- `gym-test-quality-gate/references/source-material.md`
-- `gym-deploy-and-check/references/source-material.md`
+- `methodology-setup/references/source-material.md`
+- `test-quality-gate/references/source-material.md`
+- `deploy-and-check/references/source-material.md`
 
 ## 4) Installation and Runtime
 
@@ -95,4 +95,3 @@ scripts/install-codex-skills.sh --force --remove-stale
 
 Default destination is `~/.agents/skills`.
 After installation, restart Codex to reload skills.
-If `~/.codex/skills/gym-*` exists, treat it as legacy duplicate state and clean it after verifying `~/.agents/skills`.

@@ -1,3 +1,0 @@
-interface:
-  display_name: "Gym Git Sync"
-  short_description: "Sync current branch with remote using rebase"

@@ -1,3 +1,0 @@
-interface:
-  display_name: "Gym Debug"
-  short_description: "Run read-only diagnosis and propose a safe fix"

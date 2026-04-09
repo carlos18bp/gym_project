@@ -27,21 +27,10 @@ Restart the Codex client/session so new skills are loaded from `~/.agents/skills
 ## 4. Verify installed skills
 
 ```bash
-find "$HOME/.agents/skills" -maxdepth 1 -type l -name "gym-*" | sort
+find "$HOME/.agents/skills" -maxdepth 1 -mindepth 1 -type l | sort
 ```
 
-## 5. Clean legacy duplicates
-
-If old repo-managed skill links still exist in `~/.codex/skills`, remove only the `gym-*` duplicates after verifying the canonical links in `~/.agents/skills`:
-
-```bash
-find "$HOME/.codex/skills" -maxdepth 1 -type l -name "gym-*" | sort
-find "$HOME/.codex/skills" -maxdepth 1 -type l -name "gym-*" -delete
-```
-
-This cleanup does not apply to `.claude/` or `.windsurf/`.
-
-## 6. Source of truth
+## 5. Source of truth
 
 - Global project guardrails: `AGENTS.md`
 - Canon methodology and workflow standard: `docs/CODEX_METHODOLOGY_GUIDE.md`

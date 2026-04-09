@@ -1,0 +1,3 @@
+interface:
+  display_name: "Git Sync"
+  short_description: "Sync current branch with remote using rebase"

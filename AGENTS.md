@@ -12,7 +12,7 @@
 
 ## Codex Workflow
 - `AGENTS.md` is the canonical repository instruction file for Codex.
-- Repository-managed Codex skills live in `.agents/skills/gym-*/`.
+- Repository-managed Codex skills live in `.agents/skills/*/`.
 - Install/update repo-managed skills with `scripts/install-codex-skills.sh --force --remove-stale`; the default global install target is `~/.agents/skills`.
 - User-level Codex configuration lives in `~/.codex/config.toml`; user-level skills belong in `~/.agents/skills`.
 - Validate skill structure with `scripts/check-codex-skills.sh`.
@@ -20,10 +20,10 @@
 - Legacy `.claude/` assets are reference-only and must not be treated as the active Codex standard.
 
 ## Mandatory Skill Usage
-- Use `gym-plan` before non-trivial architecture, workflow, or scope changes.
-- Use `gym-implement` for multi-file implementation work.
-- Use `gym-debugme` for diagnosis-first debugging tasks.
-- Use manual-only operational skills only on explicit user request: `gym-git-sync`, `gym-git-commit`, `gym-deploy-staging`, `gym-deploy-and-check`, `gym-server-diagnostic-report`.
+- Use `plan` before non-trivial architecture, workflow, or scope changes.
+- Use `implement` for multi-file implementation work.
+- Use `debugme` for diagnosis-first debugging tasks.
+- Use manual-only operational skills only on explicit user request: `git-sync`, `git-commit`, `deploy-staging`, `deploy-and-check`, `server-diagnostic-report`.
 
 ## General Rules
 

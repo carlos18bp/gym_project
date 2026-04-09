@@ -11,7 +11,7 @@ Usage:
 Options:
   --dry-run       Show planned actions without modifying anything.
   --force         Replace existing destinations if needed.
-  --remove-stale  Remove stale gym-* symlinks from target skills directory.
+  --remove-stale  Remove stale symlinks from target skills directory.
   --target <dir>  Override destination skills directory (default: ~/.agents/skills).
   -h, --help      Show this help.
 USAGE
@@ -73,17 +73,21 @@ updated=0
 skipped=0
 removed=0
 errors=0
-legacy_duplicates=0
 
-for source_path in "$SOURCE_DIR"/gym-*; do
+# Install all skill directories found in source
+for source_path in "$SOURCE_DIR"/*/; do
   [[ -d "$source_path" ]] || continue
   skill_name="$(basename "$source_path")"
+  # Skip if no SKILL.md (not a valid skill directory)
+  [[ -f "$source_path/SKILL.md" ]] || continue
   target_path="$TARGET_DIR/$skill_name"
   replaced_this_item=0
 
   if [[ -L "$target_path" ]]; then
     link_target="$(readlink "$target_path")"
-    if [[ "$link_target" == "$source_path" ]]; then
+    # Normalize: strip trailing slash for comparison
+    source_path_norm="${source_path%/}"
+    if [[ "$link_target" == "$source_path_norm" ]]; then
       echo "OK    $skill_name already linked"
       skipped=$((skipped + 1))
       continue
@@ -118,8 +122,8 @@ for source_path in "$SOURCE_DIR"/gym-*; do
   fi
 
   if [[ $DRY_RUN -eq 0 ]]; then
-    if ln -s "$source_path" "$target_path"; then
-      echo "LINK  $skill_name -> $source_path"
+    if ln -s "${source_path%/}" "$target_path"; then
+      echo "LINK  $skill_name -> ${source_path%/}"
       if [[ $replaced_this_item -eq 0 ]]; then
         installed=$((installed + 1))
       fi
@@ -128,19 +132,21 @@ for source_path in "$SOURCE_DIR"/gym-*; do
       errors=$((errors + 1))
     fi
   else
-    echo "[dry-run] ln -s $source_path $target_path"
+    echo "[dry-run] ln -s ${source_path%/} $target_path"
     if [[ $replaced_this_item -eq 0 ]]; then
       installed=$((installed + 1))
     fi
   fi
 done
 
+# Remove stale symlinks: links in target that no longer have a matching source skill
+# Use * (not */) so broken symlinks are included in the glob
 if [[ $REMOVE_STALE -eq 1 ]]; then
-  for existing in "$TARGET_DIR"/gym-*; do
-    [[ -e "$existing" || -L "$existing" ]] || continue
+  for existing in "$TARGET_DIR"/*; do
     [[ -L "$existing" ]] || continue
     existing_name="$(basename "$existing")"
-    if [[ ! -d "$SOURCE_DIR/$existing_name" ]]; then
+    source_skill="$SOURCE_DIR/$existing_name"
+    if [[ ! -d "$source_skill" ]] || [[ ! -f "$source_skill/SKILL.md" ]]; then
       if [[ $DRY_RUN -eq 0 ]]; then
         rm -f "$existing"
       else
@@ -149,14 +155,6 @@ if [[ $REMOVE_STALE -eq 1 ]]; then
       echo "DROP  removed stale link $existing_name"
       removed=$((removed + 1))
     fi
-  done
-fi
-
-LEGACY_CODEX_SKILLS_DIR="$HOME/.codex/skills"
-if [[ "$TARGET_DIR" != "$LEGACY_CODEX_SKILLS_DIR" && -d "$LEGACY_CODEX_SKILLS_DIR" ]]; then
-  for legacy in "$LEGACY_CODEX_SKILLS_DIR"/gym-*; do
-    [[ -e "$legacy" || -L "$legacy" ]] || continue
-    legacy_duplicates=$((legacy_duplicates + 1))
   done
 fi
 
@@ -169,10 +167,6 @@ echo "  Updated/Replaced: $updated"
 echo "  Removed stale: $removed"
 echo "  Skipped: $skipped"
 echo "  Errors: $errors"
-if [[ $legacy_duplicates -gt 0 ]]; then
-  echo "  Legacy ~/.codex/skills duplicates: $legacy_duplicates"
-  echo "  Cleanup after verification: find \"$LEGACY_CODEX_SKILLS_DIR\" -maxdepth 1 -type l -name 'gym-*' -delete"
-fi
 
 if [[ $errors -gt 0 ]]; then
   exit 1
