@@ -36,6 +36,7 @@ test("Completed document with summary fields renders in client list and opens ac
     role: "client",
     hasSignature: false,
     documents: [docWithSummary],
+    folders: [],
   });
 
   await setAuthLocalStorage(page, {
@@ -44,17 +45,12 @@ test("Completed document with summary fields renders in client list and opens ac
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Client: switch to Mis Documentos
   await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Mis Documentos" }).click();
-  await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText("Contrato con Resumen")).toBeVisible({ timeout: 15_000 });
-
-  const row = page.locator("table tbody tr").filter({ hasText: "Contrato con Resumen" });
-  await expect(row).toBeVisible({ timeout: 10_000 });
+  const row = page.getByRole("table").getByText("Contrato con Resumen");
+  await expect(row).toBeVisible({ timeout: 15_000 });
   await row.click();
 
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 15_000 });
@@ -113,6 +109,7 @@ test("document dashboard shows search results filtered by title on Minutas tab",
     role: "lawyer",
     hasSignature: true,
     documents: docs,
+    folders: [],
   });
 
   await setAuthLocalStorage(page, {
@@ -121,16 +118,11 @@ test("document dashboard shows search results filtered by title on Minutas tab",
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button", { name: "Minutas" }).click();
-  await page.waitForLoadState("networkidle");
-
-  // All 3 docs should be visible
-  await expect(page.getByText("Contrato Laboral")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("Poder General")).toBeVisible();
-  await expect(page.getByText("Acta de Reunión")).toBeVisible();
+  const table = page.getByRole("table");
+  await expect(table.getByText("Contrato Laboral")).toBeVisible({ timeout: 15_000 });
+  await expect(table.getByText("Poder General")).toBeVisible();
+  await expect(table.getByText("Acta de Reunión")).toBeVisible();
 
   const searchInput = page.getByPlaceholder("Buscar...");
   await expect(searchInput).toBeVisible({ timeout: 10_000 });

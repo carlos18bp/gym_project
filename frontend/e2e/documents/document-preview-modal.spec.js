@@ -16,32 +16,22 @@ const buildLawyerAuth = ({ userId }) => ({
   },
 });
 
-async function openMinutasTab(page, { userId, documents }) {
+async function setupLawyerDashboard(page, { userId, documents }) {
   await installDynamicDocumentApiMocks(page, {
     userId,
     role: "lawyer",
+    hasSignature: false,
     documents,
+    folders: [],
   });
 
   await setAuthLocalStorage(page, buildLawyerAuth({ userId }));
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button", { name: "Minutas" }).click();
-  await page.waitForLoadState("networkidle");
-  if (documents && documents.length > 0) {
-    await expect(page.getByText(documents[0].title).first()).toBeVisible({ timeout: 15_000 });
-  }
-}
-
-function getDocumentRow(page, title) {
-  return page.locator("tbody tr").filter({ hasText: title });
 }
 
 async function openDocumentActionsModal(page, title) {
-  const row = getDocumentRow(page, title);
+  const row = page.getByRole("table").getByText(title);
   await expect(row).toBeVisible({ timeout: 15_000 });
-  await expect(row.getByText(title)).toBeVisible({ timeout: 10_000 });
   await row.click();
   await expect(
     page.getByRole("heading", { name: "Acciones del Documento" })
@@ -54,7 +44,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const docTitle = "Contrato de Prueba";
     const docContent = "<p>Este es el contenido del contrato de prueba.</p>";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -87,7 +77,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const userId = 3001;
     const docTitle = "Minuta para Cerrar";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -126,7 +116,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const userId = 3002;
     const docTitle = "Documento Sin Contenido";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -156,7 +146,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const htmlContent =
       "<h3>Cláusula Primera</h3><p>Las partes acuerdan lo siguiente:</p><ul><li>Punto uno</li><li>Punto dos</li></ul>";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -189,7 +179,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const userId = 3004;
     const docTitle = "Minuta Título Encabezado";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
