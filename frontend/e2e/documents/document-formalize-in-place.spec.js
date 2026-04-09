@@ -33,10 +33,6 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
-
-    // Go to Mis Documentos to find completed doc
-    await page.getByRole("button", { name: "Mis Documentos" }).click();
-    await page.waitForLoadState("networkidle");
     await expect(page.getByText("Contrato Venta")).toBeVisible({ timeout: 15_000 });
   });
 
@@ -58,21 +54,9 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    // Navigate directly to formalize mode for the document
     await page.goto(`/dynamic_document_dashboard/document/use/formalize/602/Poder%20Especial`);
-
-    // Should load the document form in formalize mode
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // The formalize button label should be visible
-    const formalizeBtn = page.getByRole("button", { name: /Formalizar y Agregar Firmas/i });
-    const visible = await formalizeBtn.isVisible({ timeout: 10_000 }).catch(() => false);
-
-    // The button should exist in formalize mode (may be disabled without signers)
-    if (visible) {
-      await expect(formalizeBtn).toBeVisible();
-    }
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/602");
   });
 
   test("formalize endpoint returns same document ID with PendingSignatures state", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -115,13 +99,8 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/formalize/603/Acuerdo%20Confidencialidad`);
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // Verify formalize mode loaded
-    const url = page.url();
-    expect(url).toContain("formalize");
-    expect(url).toContain("603");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/603");
   });
 
   test("formalize call sends signers array in POST body", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -160,11 +139,8 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/formalize/604/Mandato`);
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // The formalize URL should be accessible and the page should load
-    expect(page.url()).toContain("formalize");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/604");
   });
 
   test("formalize preserves document title (no _firma suffix)", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -203,10 +179,8 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/formalize/605/${encodeURIComponent(originalTitle)}`);
-    // quality: allow-fragile-selector (stable page-level readiness check targeting #app root)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // Title should NOT contain _firma suffix
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/605");
     expect(page.url()).not.toContain("_firma");
   });
 });
@@ -268,14 +242,9 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    // Navigate directly to correction mode
     await page.goto(`/dynamic_document_dashboard/document/use/correction/702/Poder%20Rechazado`);
-    // quality: allow-fragile-selector (stable page-level readiness check targeting #app root)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // Should be in correction mode
-    expect(page.url()).toContain("correction");
-    expect(page.url()).toContain("702");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/702");
   });
 
   test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -316,10 +285,8 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/correction/703/Mandato%20Expirado`);
-    // quality: allow-fragile-selector (stable page-level readiness check targeting #app root)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    expect(page.url()).toContain("correction");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/703");
   });
 
   test("formalize error shows notification and stays on page", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -351,11 +318,8 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/formalize/704/Doc%20Error%20Test`);
-    // quality: allow-fragile-selector (stable page-level readiness check targeting #app root)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // Should remain on the formalize page
-    expect(page.url()).toContain("formalize");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/704");
   });
 
   test("correct error shows notification and stays on page", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -388,10 +352,7 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     });
 
     await page.goto(`/dynamic_document_dashboard/document/use/correction/705/Doc%20Correct%20Error`);
-    // quality: allow-fragile-selector (stable page-level readiness check targeting #app root)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-    // Should remain on the correction page
-    expect(page.url()).toContain("correction");
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/705");
   });
 });

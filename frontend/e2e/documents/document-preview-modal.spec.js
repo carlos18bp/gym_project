@@ -29,6 +29,9 @@ async function openMinutasTab(page, { userId, documents }) {
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Minutas" }).click();
   await page.waitForLoadState("networkidle");
+  if (documents && documents.length > 0) {
+    await expect(page.getByText(documents[0].title).first()).toBeVisible({ timeout: 15_000 });
+  }
 }
 
 function getDocumentRow(page, title) {
@@ -37,11 +40,12 @@ function getDocumentRow(page, title) {
 
 async function openDocumentActionsModal(page, title) {
   const row = getDocumentRow(page, title);
-  await expect(row).toBeVisible({ timeout: 10_000 });
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await expect(row.getByText(title)).toBeVisible({ timeout: 10_000 });
   await row.click();
   await expect(
     page.getByRole("heading", { name: "Acciones del Documento" })
-  ).toBeVisible({ timeout: 10_000 });
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, () => {

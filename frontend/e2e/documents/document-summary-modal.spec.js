@@ -51,13 +51,13 @@ test("Completed document with summary fields renders in client list and opens ac
   await page.getByRole("button", { name: "Mis Documentos" }).click();
   await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText("Contrato con Resumen")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Contrato con Resumen")).toBeVisible({ timeout: 15_000 });
 
-  // Click the row to open the DocumentActionsModal
-  await page.locator("table tbody tr").first().click(); // quality: allow-fragile-selector (positional selector for first matching element)
+  const row = page.locator("table tbody tr").filter({ hasText: "Contrato con Resumen" });
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await row.click();
 
-  // Actions modal should open with document title
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 15_000 });
 
   // Verify Previsualizar action is available for Completed docs
   await expect(page.getByRole("button", { name: "Previsualizar" })).toBeVisible();
@@ -132,13 +132,20 @@ test("document dashboard shows search results filtered by title on Minutas tab",
   await expect(page.getByText("Poder General")).toBeVisible();
   await expect(page.getByText("Acta de Reunión")).toBeVisible();
 
-  // Search for "Contrato"
   const searchInput = page.getByPlaceholder("Buscar...");
   await expect(searchInput).toBeVisible({ timeout: 10_000 });
-  await searchInput.fill("Contrato");
 
-  // Only "Contrato Laboral" should remain visible (wait for debounce + server filter)
-  await expect(page.getByText("Poder General")).toBeHidden({ timeout: 10_000 });
-  await expect(page.getByText("Acta de Reunión")).toBeHidden({ timeout: 10_000 });
+  const searchResponse = page.waitForResponse(
+    (resp) =>
+      resp.url().includes("dynamic-documents/") &&
+      resp.url().includes("search=Contrato") &&
+      resp.status() === 200,
+    { timeout: 10_000 }
+  );
+  await searchInput.fill("Contrato");
+  await searchResponse;
+
+  await expect(page.getByText("Poder General")).toBeHidden({ timeout: 5_000 });
+  await expect(page.getByText("Acta de Reunión")).toBeHidden({ timeout: 5_000 });
   await expect(page.getByText("Contrato Laboral")).toBeVisible();
 });

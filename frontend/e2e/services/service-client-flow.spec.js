@@ -85,19 +85,18 @@ test(
     await page.goto(`/services/${service.id}`);
     await page.waitForLoadState("networkidle");
 
-    // Stage 1: Datos del Solicitante
-    await expect(page.getByText("Datos del Solicitante")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Datos del Solicitante" })).toBeVisible({ timeout: 15_000 });
 
-    // Field labels render as siblings (not associated via for/id), so use
-    // adjacent-sibling selector to bind each label to its input.
-    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
-    await page.locator('label:has-text("Nombre completo") + input').fill("Juan Perez");
-    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
-    await page.locator('label:has-text("Correo electronico") + input').fill("juan@test.com");
+    const nombreLabel = page.getByText("Nombre completo", { exact: false }).first();
+    await expect(nombreLabel).toBeVisible({ timeout: 10_000 });
 
-    // Navigate to stage 2
-    await page.getByRole("button", { name: /Siguiente/i }).click();
-    await expect(page.getByText("Informacion de la Marca")).toBeVisible({ timeout: 10_000 });
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Nombre completo")]/following-sibling::input[1]').fill("Juan Perez");
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Correo electronico")]/following-sibling::input[1]').fill("juan@test.com");
+
+    await page.getByRole("button", { name: /^Siguiente$/i }).click();
+    await expect(page.getByRole("heading", { name: "Informacion de la Marca" })).toBeVisible({ timeout: 10_000 });
   }
 );
 
@@ -156,16 +155,20 @@ test(
 
     await page.goto(`/services/${service.id}`);
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Datos del Solicitante")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Datos del Solicitante" })).toBeVisible({ timeout: 15_000 });
 
-    // Fill partial data and save draft
-    // quality: allow-fragile-selector (labels lack for/id — adjacent sibling is the stable target)
-    await page.locator('label:has-text("Nombre completo") + input').fill("Draft Value");
+    const nombreLabelDraft = page.getByText("Nombre completo", { exact: false }).first();
+    await expect(nombreLabelDraft).toBeVisible({ timeout: 10_000 });
+
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Nombre completo")]/following-sibling::input[1]').fill("Draft Value");
 
     await page.getByRole("button", { name: "Guardar borrador" }).click();
-    // SweetAlert2 success notification (showNotification -> Swal.fire) renders
-    // with title "Borrador guardado correctamente".
-    await expect(page.getByText(/Borrador guardado/i)).toBeVisible({ timeout: 10_000 });
+
+    // quality: allow-fragile-selector (SweetAlert2 portal class is a library-stable anchor)
+    await expect(
+      page.locator(".swal2-popup").getByText(/Borrador guardado/i)
+    ).toBeVisible({ timeout: 10_000 });
   }
 );
 
