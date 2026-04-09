@@ -48,6 +48,7 @@ Each Codex skill includes:
 | `fix-broken-tests.md` | `fix-broken-tests` |
 | `frontend-e2e-test-coverage-goal.md` | `frontend-e2e-test-coverage` |
 | `frontend-unit-test-coverage-goal.md` | `frontend-unit-test-coverage` |
+| `fix-broken-tests.md` | `fix-broken-tests` |
 | `git-commit.md` | `git-commit` |
 | `human.md` | `AGENTS.md` communication policy |
 | `methodology-setup.md` | `methodology-setup` |

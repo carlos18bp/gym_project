@@ -110,9 +110,24 @@ scripts/check-codex-skills.sh
 
 Restart Codex after adding or modifying skills.
 
+## 6b) Project Configuration
+
+Project-scoped Codex defaults are defined in `.codex/config.toml`:
+
+| Field | Value | Effect |
+|-------|-------|--------|
+| `model` | `gpt-5.4` | Model used for all sessions in this repo |
+| `model_reasoning_effort` | `xhigh` | Maximum reasoning depth |
+| `approval_policy` | `never` | No approval prompts — full auto execution |
+| `sandbox_mode` | `workspace-write` | Can read/write workspace files; network is restricted |
+| `web_search` | `live` | Fetches live pages (not cached) |
+| `file_opener` | `windsurf` | File citations open in Windsurf IDE |
+
+Global user config (`~/.codex/config.toml`) sets the same model/reasoning and marks both project paths as `trust_level = "trusted"`.
+
 ## 7) Daily Operating Routine
 
-1. Ensure skills are installed and current.
+1. Validate skills are compliant: `scripts/check-codex-skills.sh`.
 2. Start with `/plan` for non-trivial work.
 3. Implement with `/implement`.
 4. Use `/debugme` for diagnosis-first incidents.
