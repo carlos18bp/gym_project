@@ -9,7 +9,7 @@ allowed-tools: Bash
 
 ## Reference Material
 
-- Read `.agents/skills/gym-deploy-and-check/references/source-material.md` for provenance and parity context.
+- Read `.agents/skills/deploy-and-check/references/source-material.md` for provenance and parity context.
 - Validate with `docs/deployment-guide.md` if any runtime command differs from this playbook.
 
 Run these steps on the production server at `/home/ryzepeck/webapps/gym_project` to deploy the latest `master` branch.

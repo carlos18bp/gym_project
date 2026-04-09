@@ -12,5 +12,5 @@ Primary source inputs migrated into Codex workflows:
 
 Codex equivalents:
 
-- `gym-test-quality-gate` for phased quality-gate improvements.
-- `gym-backend-test-coverage`, `gym-frontend-unit-test-coverage`, `gym-frontend-e2e-test-coverage` for focused coverage work.
+- `test-quality-gate` for phased quality-gate improvements.
+- `backend-test-coverage`, `frontend-unit-test-coverage`, `frontend-e2e-test-coverage` for focused coverage work.

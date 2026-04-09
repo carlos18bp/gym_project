@@ -47,6 +47,15 @@ trust_level = "trusted"
 
 `trust_level = "trusted"` marks these directories as safe so Codex does not prompt on startup.
 
+### Local AGENTS overrides (optional, uncommitted)
+
+Codex reads `AGENTS.override.md` before `AGENTS.md` in every scope it scans. Use it for personal, local-only guidance that should not live in the repository:
+
+- `~/.codex/AGENTS.override.md` — global override across every project.
+- `<repo-subdir>/AGENTS.override.md` — override for a specific folder in this repo (git-ignore it; do **not** commit).
+
+Discovery order (highest precedence first): subdirectory override → subdirectory `AGENTS.md` → repo root override → repo root `AGENTS.md` → `~/.codex/AGENTS.override.md` → `~/.codex/AGENTS.md`.
+
 ---
 
 ## 4. Skills — auto-discovery
@@ -61,7 +70,11 @@ Each skill follows this structure:
 └── agents/openai.yaml   ← UI metadata (display_name, short_description)
 ```
 
-Invoke skills with `/skill-name` in the Codex chat.
+Three invocation modes are available (see `developers.openai.com/codex/skills`):
+
+1. **Implicit** — Codex auto-selects a skill whose `description` matches the user's prompt. Blocked when the skill sets `disable-model-invocation: true` (our manual-only skills).
+2. **Explicit via `/`** — Skills appear in the slash-command autocomplete next to built-in commands. Type `/plan`, `/implement`, `/debugme`, etc. The built-in `/skills` command opens a searchable picker of every discoverable skill.
+3. **Explicit via `$`** — Mention a skill inside a prompt with `$skill-name`.
 
 ---
 

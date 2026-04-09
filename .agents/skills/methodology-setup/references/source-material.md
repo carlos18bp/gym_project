@@ -14,6 +14,6 @@ This skill consolidates methodology content previously split across:
 
 The Codex equivalents are:
 
-- `gym-methodology-setup` (this skill) for setup/refresh workflows.
-- `gym-plan`, `gym-implement`, `gym-debugme` for execution workflows.
-- `AGENT.md` for always-on project rules and guardrails.
+- `methodology-setup` (this skill) for setup/refresh workflows.
+- `plan`, `implement`, `debugme` for execution workflows.
+- `AGENTS.md` for always-on project rules and guardrails.

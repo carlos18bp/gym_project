@@ -7,7 +7,7 @@ description: "Phased plan to raise the Test Quality Gate score by refactoring hi
 
 ## Reference Material
 
-- Read `.agents/skills/gym-test-quality-gate/references/source-material.md`.
+- Read `.agents/skills/test-quality-gate/references/source-material.md`.
 - Treat `docs/TESTING_QUALITY_STANDARDS.md` as the primary policy source for this repository.
 
 ## Goal

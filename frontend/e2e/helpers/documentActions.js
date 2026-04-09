@@ -16,5 +16,5 @@ export async function openDocumentPreviewFromActions(page) {
 
 export async function closeDocumentPreview(page) {
   await page.getByTestId("document-preview-close").click();
-  await expect(page.getByTestId("document-preview-modal")).toHaveCount(0);
+  await expect(page.getByTestId("document-preview-modal")).toBeHidden();
 }

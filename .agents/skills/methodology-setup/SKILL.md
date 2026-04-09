@@ -7,7 +7,7 @@ description: "Initialize or refresh the Memory Bank methodology system. Creates 
 
 ## Reference Material
 
-- Read `.agents/skills/gym-methodology-setup/references/source-material.md` before execution.
+- Read `.agents/skills/methodology-setup/references/source-material.md` before execution.
 - Use `docs/methodology/` and `tasks/` as the source of truth when repo docs differ from historical Windsurf content.
 
 ## When to Use

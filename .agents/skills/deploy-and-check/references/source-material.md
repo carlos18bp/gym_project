@@ -11,6 +11,6 @@ Deployment playbooks consolidated for Codex:
 
 Codex equivalents:
 
-- `gym-deploy-and-check` for production deploy flow.
-- `gym-deploy-staging` for release-to-staging.
-- `gym-server-diagnostic-report` for phased server audits.
+- `deploy-and-check` for production deploy flow.
+- `deploy-staging` for release-to-staging.
+- `server-diagnostic-report` for phased server audits.

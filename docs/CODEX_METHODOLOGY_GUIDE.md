@@ -62,7 +62,9 @@ Safety controls:
 
 ## 4) Skill Taxonomy
 
-Shared base skills (methodology and quality):
+Taxonomy criterion: **base = model-invokable** (implicit or explicit), **operational = manual-only** (require `disable-model-invocation: true` and explicit user intent).
+
+Shared base skills (methodology, quality, and fix work — model-invokable):
 
 - `plan`
 - `implement`
@@ -74,29 +76,32 @@ Shared base skills (methodology and quality):
 - `frontend-e2e-test-coverage`
 - `e2e-user-flows-check`
 - `new-feature-checklist`
+- `fix-broken-tests`
 
-Shared operational skills:
+Operational skills (manual-only — git and deploy/diagnostic flows):
 
 - `git-commit`
 - `git-sync`
-- `fix-broken-tests`
-
-Project-specific skills:
-
 - `deploy-staging`
 - `deploy-and-check`
 - `server-diagnostic-report`
 
 ## 5) Invocation Model in Codex
 
-Invoke skills with `/` in the Codex chat, for example:
+Codex supports three ways to invoke a skill (per `developers.openai.com/codex/skills`):
+
+1. **Implicit** — Codex auto-selects a skill when the user's prompt matches its `description`. Disabled per-skill when `disable-model-invocation: true` is set in frontmatter (all manual-only skills).
+2. **Explicit via slash menu** — Type `/` in the composer; skills appear in the autocomplete alongside built-in commands. Examples: `/plan`, `/implement`, `/debugme`. The built-in `/skills` command opens a searchable picker of all available skills.
+3. **Explicit via mention** — Type `$skill-name` to mention a skill directly inside a longer prompt.
+
+Typical usage in this repo:
 
 - `/plan` — plan a feature or approach before coding
 - `/implement` — systematic multi-file implementation
 - `/debugme` — read-only diagnosis of a bug or error
 - `/deploy-staging branch release/april-2026-c` — deploy a release branch
 
-For deploy and git operations, explicit user intent is mandatory (manual-only skills).
+For deploy and git operations, explicit user intent is mandatory — these skills are manual-only and never auto-invoked.
 
 ## 6) Runtime Setup
 

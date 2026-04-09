@@ -460,12 +460,6 @@
     </div>
 
     <!-- Modals -->
-    <DocumentPreviewModal
-      :isVisible="showPreviewModal"
-      :documentData="previewDocumentData"
-      @close="showPreviewModal = false"
-    />
-
     <EditDocumentModal
       v-if="activeModals.edit.isOpen"
       :is-open="activeModals.edit.isOpen"
@@ -618,8 +612,7 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
-import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
-import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
+import { openPreviewModal } from "@/shared/document_utils";
 import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/menuOptionsHelper";
 import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal, DocumentSignaturesModal, DocumentPermissionsModal } from "@/components/dynamic_document/cards";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
