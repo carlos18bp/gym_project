@@ -1,14 +1,16 @@
 import datetime
 import io
+import logging
 import os
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
+from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
@@ -43,6 +45,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -539,6 +542,205 @@ def reopen_document_signatures(request, document_id):
             {'detail': f'An unexpected error occurred: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
+@transaction.atomic
+def formalize_document(request, document_id):
+    """Formalize a completed document by transitioning it to PendingSignatures.
+
+    Instead of creating a copy, this endpoint updates the **same** document
+    instance from 'Completed' to 'PendingSignatures' and creates
+    DocumentSignature records for the requested signers.
+
+    Effects:
+    - Only works for documents in the 'Completed' state.
+    - Sets requires_signature=True and state='PendingSignatures'.
+    - Creates DocumentSignature records for each signer.
+    - Auto-adds the requesting lawyer as a signer if not already included.
+    - Optionally sets signature_due_date.
+    - Does NOT modify the document title.
+    """
+
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if document.state != 'Completed':
+        return Response(
+            {'detail': 'Solo los documentos en estado "Completado" pueden ser formalizados.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validate signers
+    signer_ids = request.data.get('signers', [])
+    if not signer_ids:
+        return Response(
+            {'detail': 'Debe incluir al menos un firmante.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    signers = User.objects.filter(pk__in=signer_ids)
+    if signers.count() != len(signer_ids):
+        return Response(
+            {'detail': 'Uno o más IDs de firmante no son válidos.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Auto-add the requesting lawyer as signer if not already included
+    if request.user.role == 'lawyer' and request.user.pk not in signer_ids:
+        signers = list(signers)
+        signers.append(request.user)
+
+    # Optimistic state transition: only update if document is still Completed
+    signature_due_date = request.data.get('signature_due_date', None)
+    rows_updated = DynamicDocument.objects.filter(
+        pk=document_id,
+        state='Completed',
+    ).update(
+        state='PendingSignatures',
+        requires_signature=True,
+        fully_signed=False,
+        signature_due_date=signature_due_date if signature_due_date else None,
+        updated_at=timezone.now(),
+    )
+
+    if rows_updated == 0:
+        logger.warning(
+            "409 Conflict: formalize_document doc_id=%d user_id=%d — state changed concurrently",
+            document_id, request.user.pk,
+        )
+        return Response(
+            {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    # Create DocumentSignature records for each signer (single INSERT)
+    DocumentSignature.objects.bulk_create(
+        [DocumentSignature(document=document, signer=signer) for signer in signers],
+        ignore_conflicts=True,
+    )
+
+    # Return the fully serialized document
+    document = get_optimized_document_queryset().get(pk=document_id)
+    serializer = DynamicDocumentSerializer(document, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
+@transaction.atomic
+def correct_document(request, document_id):
+    """Correct a rejected/expired document and reopen its signature workflow.
+
+    Combines document content update and signature reopening into a single
+    atomic operation, replacing the previous two-step flow (update + reopen).
+
+    Accepts:
+    - content: updated HTML content (optional)
+    - variables: array of variable objects to replace existing ones (optional)
+    - signature_due_date: new deadline for signatures (optional)
+
+    Effects:
+    - Only works for documents in 'Rejected' or 'Expired' state.
+    - Updates content and/or variables if provided.
+    - Resets all DocumentSignature records to pending status.
+    - Transitions document state to PendingSignatures.
+    """
+
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not document.requires_signature:
+        return Response(
+            {'detail': 'Este documento no requiere firmas.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if document.state not in ['Rejected', 'Expired']:
+        return Response(
+            {'detail': 'Solo documentos rechazados o expirados pueden ser corregidos.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Extract request data for validation before any mutations
+    content = request.data.get('content')
+    variables_data = request.data.get('variables')
+    signature_due_date = request.data.get('signature_due_date')
+
+    # Optimistic state transition FIRST — ensures no partial writes on conflict.
+    # All document-level field updates are done in a single .update() call
+    # to avoid stale in-memory object issues.
+    update_kwargs = {
+        'state': 'PendingSignatures',
+        'fully_signed': False,
+        'updated_at': timezone.now(),
+    }
+    if content is not None:
+        update_kwargs['content'] = content
+    if signature_due_date is not None:
+        update_kwargs['signature_due_date'] = signature_due_date if signature_due_date else None
+
+    rows_updated = DynamicDocument.objects.filter(
+        pk=document_id,
+        state__in=['Rejected', 'Expired'],
+    ).update(**update_kwargs)
+
+    if rows_updated == 0:
+        logger.warning(
+            "409 Conflict: correct_document doc_id=%d user_id=%d — state changed concurrently",
+            document_id, request.user.pk,
+        )
+        return Response(
+            {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    # All mutations below are safe — the optimistic lock succeeded.
+
+    # Replace variables if provided
+    if variables_data is not None:
+        document.variables.all().delete()
+        DocumentVariable.objects.bulk_create([
+            DocumentVariable(
+                document=document,
+                name_en=var_data.get('name_en', ''),
+                name_es=var_data.get('name_es', ''),
+                tooltip=var_data.get('tooltip', ''),
+                field_type=var_data.get('field_type', 'input'),
+                value=var_data.get('value', ''),
+                select_options=var_data.get('select_options'),
+                summary_field=var_data.get('summary_field', 'none'),
+                currency=var_data.get('currency'),
+            )
+            for var_data in variables_data
+        ])
+
+    # Reset all signature records to pending
+    DocumentSignature.objects.filter(document=document).update(
+        signed=False,
+        signed_at=None,
+        rejected=False,
+        rejected_at=None,
+        rejection_comment=None,
+    )
+
+    # Return the fully serialized document
+    document = get_optimized_document_queryset().get(pk=document_id)
+    serializer = DynamicDocumentSerializer(document, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['DELETE'])

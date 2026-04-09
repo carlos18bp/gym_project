@@ -173,6 +173,8 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
     path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
     path('dynamic-documents/<int:document_id>/reopen-signatures/', signature_views.reopen_document_signatures, name='reopen-document-signatures'),
+    path('dynamic-documents/<int:document_id>/formalize/', signature_views.formalize_document, name='formalize-document'),
+    path('dynamic-documents/<int:document_id>/correct/', signature_views.correct_document, name='correct-document'),
     path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
     
     # User signature management
