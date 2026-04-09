@@ -17,27 +17,36 @@ The application is **feature-complete** with all 17 major features implemented, 
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
 - **Servicios y Trámites** ✅: catálogo de servicios, formularios dinámicos por etapas, guardado en borrador, radicado `AÑO-CONSECUTIVO`, PDF automático, notificaciones por correo, bandeja de solicitudes para abogados/admin y seguimiento para clientes
 
-### Codebase Metrics (verified 2026-03-30)
+### Codebase Metrics (verified 2026-04-08)
 
 | Metric | Count |
 |--------|-------|
-| Backend model classes | 51 (+ 1 UserManager) |
-| Backend view files | 26 |
-| Backend serializer files | 12 |
-| Backend URL patterns | 179 |
+| Backend model files | 13 |
+| Backend model classes | 51 (+ User via AbstractUser + UserManager) |
+| Backend view files | 24 |
+| Backend serializer files | 11 |
+| Backend URL patterns | 181 |
 | Backend test files | 73 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views) |
-| Backend migrations | 58 |
-| Backend management commands | 11 |
 | Frontend Vue components | 114 |
 | Frontend view pages | 42 |
-| Frontend Pinia store files | 36 |
-| Frontend composables | 10 |
-| Frontend unit test files | 158 |
+| Frontend Pinia store files | 35 |
+| Frontend composables | 11 |
+| Frontend unit test files | 156 |
 | Frontend E2E spec files | 172 |
+| Frontend routes | 63 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **In-Place Document Formalization (2026-04-08)**:
+  - **Problem**: Formalization created a copy of the document instead of transitioning the same document, causing duplication, title modification (`_firma` suffix), and user confusion.
+  - **New `formalize_document` endpoint**: `POST /api/dynamic-documents/{id}/formalize/` — transitions Completed → PendingSignatures on the same document. No copy, no title change, creates DocumentSignature records for selected signers.
+  - **New `correct_document` endpoint**: `POST /api/dynamic-documents/{id}/correct/` — combines content update + signature reopening into a single atomic call for Rejected/Expired documents (previously required two separate HTTP calls).
+  - **Optimistic locking**: Both endpoints use `filter(state=...).update()` instead of `select_for_update()` — no row lock held during signer validation. Returns 409 on concurrent state conflicts.
+  - **Frontend**: New `formalizeDocument` and `correctDocument` store actions. `DocumentForm.vue` formalize and correction branches refactored to use single-endpoint calls.
+  - **Tests**: 30 new backend tests (16 formalize + 14 correct) covering happy path, validation, permissions, optimistic lock mechanism, title preservation, same-document-ID verification.
+  - Implements planned feature #12 (In-Place Formalize) from `docs/next_requirements/`.
 
 - **Servicios y Trámites module implemented (2026-04-08)**:
   - **Backend models**: `Service`, `ServiceStage`, `ServiceField`, `ServiceRequest`, `ServiceRequestSequence`, `ServiceRequestAnswer`, file/response models; includes yearly sequential tracking number format `YYYY-00001`.

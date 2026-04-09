@@ -40,7 +40,7 @@
 | 9 | Marketplace | `Plan_09_marketplace.md` / `Requirement_09_marketplace.md` | 📋 Planned |
 | 10 | Optional Signature | `Plan_10_firma_opcional.md` / `Requirement_10_firma_opcional.md` | 📋 Planned |
 | 11 | Contract Execution | `Plan_11_contract_execution.md` / `Requirement_11_contract_execution.md` | 📋 Planned |
-| 12 | In-Place Formalize | `Plan_12_in_place_formalize.md` / `Requirement_12_in_place_formalize.md` | 📋 Planned |
+| 12 | In-Place Formalize | `Plan_12_in_place_formalize.md` / `Requirement_12_in_place_formalize.md` | ✅ Complete |
 
 ---
 
@@ -67,13 +67,13 @@
 |-----------|------------|--------|
 | `tests/models/` | 18 | Model unit tests |
 | `tests/serializers/` | 10 | Serializer tests |
-| `tests/views/` | 32 | API view tests |
+| `tests/views/` | 32 | API view tests (incl. formalize + correct endpoint tests) |
 | `tests/utils/` | 7 | Utility function tests |
 | `tests/tasks/` | 3 | Huey task tests |
 | `tests/services/` | 3 | Service layer tests |
 | `tests/commands/` | 0 | Directory exists, no tests yet |
 
-### Frontend Unit Tests (158 files)
+### Frontend Unit Tests (156 files)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -89,13 +89,13 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (172 spec files) — **123/123 flow coverage**
+### Frontend E2E Tests (176 spec files) — **138/138 flow coverage**
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|
 | `e2e/auth/` | 11 | Login, registration, password reset, Google OAuth |
 | `e2e/dashboard/` | 11 | Dashboard interactions |
-| `e2e/documents/` | 37 | Document CRUD, editor, permissions, tags, folders, relationships, letterhead |
+| `e2e/documents/` | 38 | Document CRUD, editor, permissions, tags, folders, relationships, letterhead, formalize-in-place, correct |
 | `e2e/organizations/` | 50 | Organization CRUD, invitations, memberships, posts, corporate requests, cross-role flows |
 | `e2e/process/` | 11 | Process CRUD, case files, search, history |
 | `e2e/legal-requests/` | 10 | Legal request creation, management, responses |
@@ -115,7 +115,7 @@
 | `e2e/schedule/` | 1 | Appointment scheduling |
 | `e2e/user-guide/` | 1 | User guide navigation |
 
-> **E2E Flow Coverage (2026-03-26):** `flow-definitions.json` has 123 flows (added `secop-edit-saved-view`), `USER_FLOW_MAP.md` has 133 unique flows. All 123 flows covered (0 missing). Quality Gate: 99/100.
+> **E2E Flow Coverage (2026-04-08):** `flow-definitions.json` has 138 flows, `USER_FLOW_MAP.md` has 138 unique flows. All 138 flows covered (0 missing). Fixed: 2 specs using imported flow-tags (invisible to scanner), 1 naming mismatch (service-my-requests → service-view-my-requests), 4 missing service flow tags added.
 
 ---
 

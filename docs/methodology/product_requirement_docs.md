@@ -147,10 +147,11 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 5. **Legal request workflow**: Client creates → Lawyer reviews → status updates with email notifications → conversation thread.
 6. **Process stages**: Timestamped and ordered; each process tracks its current stage and history.
 7. **Electronic signatures**: Once signed, documents maintain audit trail; signatures can be reopened by document owner.
-8. **Idle logout**: Automatic session termination after inactivity period for security.
-9. **SECOP classifications**: Each user can have one classification per process (unique_together). Classifications are per-user but visible to the team.
-10. **SECOP alerts**: Evaluated against new processes after each sync. Frequency determines email delivery: immediate, daily summary, or weekly summary.
-11. **SECOP sync**: Daily incremental sync from Socrata API (datos.gov.co). Old closed processes without classifications are purged after 30 days.
+8. **Document formalization**: When a completed document is sent for signatures, the same document transitions state (no copy created). Title is preserved. Correction of rejected documents also operates on the same document instance.
+9. **Idle logout**: Automatic session termination after inactivity period for security.
+10. **SECOP classifications**: Each user can have one classification per process (unique_together). Classifications are per-user but visible to the team.
+11. **SECOP alerts**: Evaluated against new processes after each sync. Frequency determines email delivery: immediate, daily summary, or weekly summary.
+12. **SECOP sync**: Daily incremental sync from Socrata API (datos.gov.co). Old closed processes without classifications are purged after 30 days.
 
 ---
 

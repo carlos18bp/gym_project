@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** March 28, 2026
-**Versión:** 1.5.0
+**Fecha:** April 8, 2026
+**Versión:** 1.6.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -19,7 +19,8 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 7. [Flujos — Basic](#flujos--basic)
 8. [Flujos — Lawyer G&M (is_gym_lawyer)](#flujos--lawyer-gm-is_gym_lawyer)
 9. [Flujos — SECOP (Contratación Estatal)](#flujos--secop-contratación-pública)
-10. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
+10. [Flujos — Servicios y Tramites](#flujos--servicios-y-tramites)
+11. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
 
 ---
 
@@ -748,6 +749,46 @@ Mismas ramificaciones que process-create, con datos precargados.
 3. Corrige contenido
 4. Click "Guardar y reenviar para firma"
 5. Documento vuelve a PendingSignatures
+
+---
+
+### formalize-in-place: Formalizar documento sin copia
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/document/use/formalize/:id/:title` | **E2E:** ✅
+- **Descripción:** Transicionar documento Completado a PendingSignatures en el mismo registro (sin crear copia)
+
+**Pasos:**
+1. En Mis Documentos o tabla de documentos, click "Formalizar y Agregar Firmas" en documento Completed
+2. Se navega a DocumentForm en modo `formalize`
+3. Seleccionar firmantes + fecha límite de firma
+4. Click "Formalizar y Agregar Firmas"
+5. `POST /api/dynamic-documents/:id/formalize/` con `{ signers, signature_due_date }`
+6. Mismo documento transiciona a PendingSignatures (sin `_firma` suffix en título, sin duplicación)
+7. Redirección a pestaña "Dcs. Por Firmar"
+
+**Diferencia con flujo anterior:**
+- Antes: `POST /api/dynamic-documents/create/` creaba copia con sufijo `_firma`
+- Ahora: `POST /api/dynamic-documents/:id/formalize/` transiciona el mismo documento
+- Usa bloqueo optimista (`filter(state='Completed').update(...)`) → 409 si hay conflicto concurrente
+
+---
+
+### correct-document: Corregir documento rechazado/expirado
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/document/use/correction/:id/:title` | **E2E:** ✅
+- **Descripción:** Corregir y reenviar documento rechazado o expirado en un solo endpoint atómico
+
+**Pasos:**
+1. En Dcs. Archivados, click "Editar y reenviar para firma" en documento Rejected/Expired
+2. Se navega a DocumentForm en modo `correction`
+3. Editar contenido y/o variables
+4. Click "Guardar y reenviar para firma"
+5. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }`
+6. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
+7. Redirección a pestaña "Dcs. Por Firmar"
+
+**Diferencia con flujo anterior:**
+- Antes: dos llamadas HTTP (`PUT update` + `POST reopen-signatures`)
+- Ahora: una sola llamada atómica (`POST correct`)
+- Usa bloqueo optimista (`filter(state__in=['Rejected','Expired']).update(...)`) → 409 si hay conflicto
 
 ---
 
@@ -1649,6 +1690,171 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ---
 
+## Flujos — Servicios y Tramites
+
+### service-browse-catalog: Explorar catalogo de servicios
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services` | **E2E:** ✅
+- **Descripcion:** Usuario autenticado ve la lista completa de servicios activos
+
+**Pasos:**
+1. Navega al sidebar "Servicios"
+2. Ve la grilla de servicios con nombre, descripcion e icono
+3. Click en un servicio para ver su detalle
+
+**Ramificaciones:**
+- ├── **Con servicios:** Muestra grilla de servicios
+- └── **Sin servicios:** Muestra mensaje vacio
+
+---
+
+### service-browse-featured: Ver servicios destacados en Dashboard
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/dashboard` | **E2E:** ✅
+- **Descripcion:** El Dashboard muestra hasta 6 servicios destacados como tarjetas cuadradas
+
+**Pasos:**
+1. Navega a `/dashboard`
+2. Ve seccion "Servicios Destacados" con tarjetas
+3. Click en una tarjeta navega a `/services/:id`
+
+---
+
+### service-fill-form: Diligenciar formulario multi-etapa
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario completa el formulario del servicio paso a paso
+
+**Pasos:**
+1. Navega a `/services/:id`
+2. Completa campos de la etapa actual
+3. Click "Siguiente" para avanzar
+4. Repite hasta la ultima etapa
+
+**Ramificaciones:**
+- ├── **Validacion exitosa:** Avanza a la siguiente etapa
+- └── **Campo requerido vacio:** Muestra error de validacion
+
+---
+
+### service-save-draft: Guardar borrador del formulario
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario guarda progreso parcial sin enviar
+
+**Pasos:**
+1. Completa campos parcialmente
+2. Click "Guardar borrador"
+3. El sistema guarda sin validar campos obligatorios
+4. Al volver al servicio, se carga el borrador existente
+
+---
+
+### service-submit-request: Enviar solicitud de servicio
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario envia la solicitud y recibe numero de radicado
+
+**Pasos:**
+1. Completa todas las etapas del formulario
+2. Adjunta archivos requeridos
+3. Click "Enviar solicitud"
+4. Recibe numero de radicado (formato YYYY-NNNNN)
+5. Puede descargar PDF de confirmacion
+6. Recibe correo de confirmacion
+
+**Ramificaciones:**
+- ├── **Exito:** Estado cambia a OPEN, se genera PDF y radicado
+- ├── **Campos obligatorios faltantes:** Error 400, muestra campos faltantes
+- └── **Archivo con extension invalida:** Error de validacion
+
+---
+
+### service-view-my-requests: Ver mis solicitudes
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/my` | **E2E:** ✅
+- **Descripcion:** Cliente ve su historial de solicitudes con filtros
+
+**Pasos:**
+1. Navega a "Mis Solicitudes" en el sidebar
+2. Ve lista de solicitudes con estado, radicado, servicio
+3. Filtra por estado, servicio o radicado
+4. Click en solicitud para ver detalle
+
+---
+
+### service-view-request-detail: Ver detalle de solicitud
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/:id` | **E2E:** ✅
+- **Descripcion:** Usuario ve detalle completo de su solicitud
+
+**Pasos:**
+1. Navega al detalle de la solicitud
+2. Ve radicado, estado, respuestas del formulario por etapa
+3. Descarga PDF si esta disponible
+4. Ve respuestas del abogado si existen
+
+---
+
+### service-inbox-view: Bandeja de solicitudes (Abogado)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/inbox` | **E2E:** ✅
+- **Descripcion:** Abogado ve todas las solicitudes recibidas
+
+**Pasos:**
+1. Navega a "Bandeja de Solicitudes" en el sidebar
+2. Ve tabla con radicado, servicio, solicitante, estado
+3. Filtra por estado, servicio, busqueda, rango de fechas
+4. Click para ver detalle
+
+---
+
+### service-manage-request: Gestionar solicitud (Abogado)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/:id` | **E2E:** ✅
+- **Descripcion:** Abogado cambia estado, envia respuesta o adjunta archivo
+
+**Pasos:**
+1. Abre detalle de solicitud desde la bandeja
+2. Cambia estado (OPEN → IN_STUDY → IN_PROGRESS → ANSWERED → FINALIZED)
+3. Escribe mensaje y/o adjunta archivo
+4. Click "Guardar actualizacion"
+5. Se envia notificacion por correo al solicitante
+
+**Ramificaciones:**
+- ├── **Transicion valida:** Estado actualizado, respuesta creada
+- ├── **Transicion invalida:** Error 400 (ej: FINALIZED no permite cambios)
+- └── **Sin mensaje ni cambio:** Error 400
+
+---
+
+### service-admin-create: Crear servicio (Admin)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Administrador crea un nuevo servicio con etapas y campos
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Click "Crear servicio"
+3. Define nombre, descripcion, icono
+4. Agrega etapas con campos (texto, email, numero, fecha, select, archivo)
+5. Guarda el servicio
+
+---
+
+### service-admin-edit: Editar servicio (Admin)
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ⚠️
+- **Descripcion:** Administrador edita un servicio existente
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Click en servicio existente
+3. Modifica nombre, etapas o campos
+4. Guarda los cambios
+
+---
+
+### service-admin-toggle: Activar/desactivar servicio (Admin)
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Administrador activa o desactiva un servicio sin eliminarlo
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Toggle "Activo" para ocultar/mostrar servicio
+3. Toggle "Destacado" para incluir/excluir del Dashboard
+
+---
+
 ## Resumen de Cobertura E2E
 
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
@@ -1666,13 +1872,14 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 4 | 4 | 0 | 0 |
 | **SECOP** | **16** | **16** | **0** | **0** |
+| **Servicios y Tramites** | **12** | **11** | **1** | **0** |
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **134** | **134** | **0** | **0** |
+| **Total** | **146** | **145** | **1** | **0** |
 
 ---
 
-**Documento generado:** March 28, 2026
-**Versión:** 1.5.0
-**Estado:** ✅ Completo — 134/134 flujos cubiertos
+**Documento generado:** April 8, 2026
+**Versión:** 1.6.0
+**Estado:** 145/146 flujos cubiertos (1 parcial: service-admin-edit)
