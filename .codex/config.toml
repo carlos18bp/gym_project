@@ -4,7 +4,7 @@ model                  = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 
 approval_policy = "never"           # valid values: untrusted | on-request | never
-sandbox_mode    = "workspace-write"
+sandbox_mode    = "danger-full-access"
 web_search      = "live"
 
 file_opener = "windsurf"            # opens file citations in Windsurf IDE
