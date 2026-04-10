@@ -96,9 +96,15 @@ class Command(BaseCommand):
             'core.paginaswebscolombia@gmail.com',
             'carlos18bp@gmail.com',
             'info.montreal.studios@gmail.com',
+            'corporate1@gmail.com',
+            'client1@example.com',
+            'client2@example.com',
+            'client3@example.com',
         }
 
-        for user in User.objects.filter(role__in=['client', 'lawyer']).exclude(email__in=protected_emails):
+        for user in User.objects.filter(
+            role__in=['client', 'lawyer', 'basic', 'corporate_client']
+        ).exclude(email__in=protected_emails):
             user.delete()
             self.stdout.write(self.style.SUCCESS(f'User "{user}" deleted'))
 
