@@ -179,7 +179,7 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contraparte
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[400px]">
                 Objeto
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -247,10 +247,10 @@
                   {{ getSummaryCounterparty(document) || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 max-w-xs">
-                <span class="text-sm text-gray-900 line-clamp-2">
+              <td class="px-6 py-4 min-w-[400px]">
+                <div class="text-sm text-gray-700 break-words">
                   {{ document.summary_object || '-' }}
-                </span>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">
