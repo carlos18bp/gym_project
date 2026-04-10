@@ -1,7 +1,6 @@
 import { FolderIcon } from '@heroicons/vue/24/outline';
 
 export const processesContent = {
-processes: {
   name: 'Procesos',
   icon: FolderIcon,
   description: 'Gestión y consulta de procesos judiciales',
@@ -565,5 +564,4 @@ processes: {
       ]
     }
   ]
-},
 };

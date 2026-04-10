@@ -10,6 +10,11 @@ Re-exports all public symbols so existing imports continue to work:
 # time via _get_user_id() to honour the patch.
 user_id = None
 
+
+def _get_user_id():
+    """Return the current user_id value (supports test patching)."""
+    return user_id
+
 from .main import generate_excel_report  # noqa: F401
 
 from .process_reports import (  # noqa: F401

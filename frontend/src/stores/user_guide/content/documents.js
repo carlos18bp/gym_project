@@ -1,7 +1,6 @@
 import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 export const documentsContent = {
-documents: {
   name: 'Archivos Jurídicos',
   icon: DocumentTextIcon,
   description: 'Gestión de documentos dinámicos, minutas y contratos',
@@ -869,5 +868,4 @@ documents: {
       ]
     }
   ]
-},
 };

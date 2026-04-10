@@ -5,12 +5,7 @@ import datetime
 import pandas as pd
 
 from gym_app.models import Process, Case, Stage, User
-
-
-def _get_user_id():
-    """Read user_id from the package so tests can patch gym_app.views.reports.user_id."""
-    import gym_app.views.reports as pkg
-    return pkg.user_id
+from gym_app.views.reports import _get_user_id
 
 
 def generate_active_processes_report(response, start_date, end_datetime):

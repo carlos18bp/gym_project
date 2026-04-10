@@ -8,7 +8,6 @@ import {
 } from '@heroicons/vue/24/outline';
 
 export const requestsContent = {
-requests: {
   name: 'Solicitudes Legales',
   icon: InboxArrowDownIcon,
   description: 'Gestión de solicitudes y consultas legales',
@@ -141,11 +140,9 @@ requests: {
       ]
     }
   ]
-},
 };
 
 export const appointmentsContent = {
-appointments: {
   name: 'Agendar Cita',
   icon: CalendarDaysIcon,
   description: 'Sistema de agendamiento de citas con abogados',
@@ -203,11 +200,9 @@ appointments: {
       ]
     }
   ]
-},
 };
 
 export const organizationsContent = {
-organizations: {
   name: 'Organizaciones',
   icon: BuildingOfficeIcon,
   description: 'Gestión de organizaciones empresariales',
@@ -591,12 +586,9 @@ organizations: {
       ]
     }
   ]
-},
-
 };
 
 export const intranetContent = {
-intranet: {
   name: 'Intranet G&M',
   icon: ScaleIcon,
   description: 'Portal interno exclusivo para abogados de G&M',
@@ -775,12 +767,9 @@ intranet: {
       ]
     }
   ]
-},
-
 };
 
 export const authenticationContent = {
-authentication: {
   name: 'Autenticación y Cuenta',
   icon: UserCircleIcon,
   description: 'Gestiona tu acceso a la plataforma y configuración de cuenta',
@@ -992,12 +981,9 @@ authentication: {
       ]
     }
   ]
-},
-
 };
 
 export const subscriptionsContent = {
-subscriptions: {
   name: 'Suscripciones y Pagos',
   icon: CreditCardIcon,
   description: 'Gestiona tu plan de suscripción y métodos de pago',
@@ -1107,5 +1093,4 @@ subscriptions: {
       ]
     }
   ]
-}
 };

@@ -12,11 +12,11 @@
 | 6 | Legal Requests (create, files, responses, status tracking, emails) | ✅ Complete | 5 models, 1 view file, 1 serializer |
 | 7 | Corporate Requests (client/corporate sides, responses, dashboard stats) | ✅ Complete | 4 models, 1 view file, 1 serializer |
 | 8 | Subscriptions & Payments (Wompi, recurring billing, webhook) | ✅ Complete | 2 models, 1 view file, 1 serializer, 1 task file |
-| 9 | Dashboard & Activity Feed (recent items, reports, Excel export) | ✅ Complete | 4 dashboard stores |
+| 9 | Dashboard & Activity Feed (recent items, reports, Excel export) | ✅ Complete | 4 dashboard stores, 1 reports package (5 domain modules) |
 | 10 | Intranet (legal documents, profiles, facturation) | ✅ Complete | 2 models, 1 view file, 1 serializer |
 | 11 | Legal Updates | ✅ Complete | 1 model, 1 view file, 1 serializer |
 | 12 | PWA Support (service worker, install prompts, offline page) | ✅ Complete | vite-plugin-pwa, 3 PWA components |
-| 13 | User Guide (interactive, module-based, role-specific) | ✅ Complete | 8 view files, 2 store files |
+| 13 | User Guide (interactive, module-based, role-specific) | ✅ Complete | 8 view files, 1 store (sub-module pattern: index, modules, getters, 4 content files) |
 | 14 | Automated Backups (daily, retention, manual trigger) | ✅ Complete | Huey periodic task |
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
@@ -50,9 +50,7 @@
 |---|-------|----------|------|
 | 1 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
 | 2 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
-| 3 | `user_guide.js` store is 143KB — very large single file | Medium | Frontend maintainability |
-| 4 | `reports.py` view is 74KB — very large single file | Medium | Backend maintainability |
-| 5 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
+| 3 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
 
 ---
 
@@ -149,10 +147,8 @@
 
 | # | Improvement | Priority | Effort |
 |---|------------|----------|--------|
-| 1 | Modularize `user_guide.js` (143KB) into sub-modules like dynamic_document store | Medium | Medium |
-| 2 | Modularize `reports.py` (74KB) into domain-specific report generators | Medium | Medium |
-| 3 | Add S3/cloud storage option for media files and backups | Low | High |
-| 4 | Implement WebSocket for real-time notifications | Medium | High |
-| 5 | Add database connection pooling for production | Low | Low |
-| 6 | Add log rotation for `debug.log` | Low | Low |
-| 7 | Consider TypeScript migration for frontend | Low | Very High |
+| 1 | Add S3/cloud storage option for media files and backups | Low | High |
+| 2 | Implement WebSocket for real-time notifications | Medium | High |
+| 3 | Add database connection pooling for production | Low | Low |
+| 4 | Add log rotation for `debug.log` | Low | Low |
+| 5 | Consider TypeScript migration for frontend | Low | Very High |

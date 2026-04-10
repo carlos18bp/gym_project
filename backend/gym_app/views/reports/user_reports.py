@@ -6,12 +6,7 @@ import pandas as pd
 from django.utils import timezone
 
 from gym_app.models import Process, Case, User, ActivityFeed
-
-
-def _get_user_id():
-    """Read user_id from the package so tests can patch gym_app.views.reports.user_id."""
-    import gym_app.views.reports as pkg
-    return pkg.user_id
+from gym_app.views.reports import _get_user_id
 
 ROLE_DISPLAY_MAP = {
     'client': 'Cliente',

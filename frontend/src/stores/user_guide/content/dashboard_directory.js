@@ -4,7 +4,6 @@ import {
 } from '@heroicons/vue/24/outline';
 
 export const dashboardContent = {
-dashboard: {
   name: 'Inicio (Dashboard)',
   icon: HomeIcon,
   description: 'Panel principal con vista general de tu actividad en la plataforma',
@@ -153,11 +152,9 @@ dashboard: {
       ]
     }
   ]
-},
 };
 
 export const directoryContent = {
-directory: {
   name: 'Directorio',
   icon: UsersIcon,
   description: 'Listado completo de clientes y usuarios del sistema',
@@ -270,5 +267,4 @@ directory: {
       ]
     }
   ]
-},
 };
