@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from faker import Faker
 from gym_app.models import User
+from ._seeder_constants import RESERVED_CLIENT_EMAILS, SPECIAL_USERS_SPEC
 
 class Command(BaseCommand):
     help = 'Create fake data for clients and lawyers'
@@ -30,19 +31,10 @@ class Command(BaseCommand):
         num_clients = options['num_clients']
         num_lawyers = options['num_lawyers']
 
-        # These emails are managed by the special_users_spec block below with
-        # non-default roles, so the generic client loop must not touch them (otherwise
-        # it would reset their role back to 'client' on every rerun).
-        special_reserved_emails = {
-            'client1@example.com',
-            'client2@example.com',
-            'client3@example.com',
-        }
-
         # Create or reuse clients (idempotent by email)
         for i in range(num_clients):
             email = f'client{i+1}@example.com'
-            if email in special_reserved_emails:
+            if email in RESERVED_CLIENT_EMAILS:
                 continue
             client, created = User.objects.get_or_create(
                 email=email,
@@ -87,17 +79,7 @@ class Command(BaseCommand):
                     lawyer.save(update_fields=['role'])
                 self.stdout.write(self.style.WARNING(f'Lawyer already exists: {lawyer.email}'))
 
-        # Create or reuse the special weighted test users (referenced by email in
-        # create_dynamic_documents.py for weighted document assignment).
-        special_users_spec = [
-            ('carlos18bp@gmail.com', 'Carlos', 'Cliente Demo', 'client'),
-            ('info.montreal.studios@gmail.com', 'Montreal', 'Básico Demo', 'basic'),
-            ('corporate1@gmail.com', 'Corporativo', 'Demo', 'corporate_client'),
-            ('client1@example.com', 'Usuario', 'Básico Uno', 'basic'),
-            ('client2@example.com', 'Usuario', 'Cliente Dos', 'client'),
-            ('client3@example.com', 'Usuario', 'Corporativo Tres', 'corporate_client'),
-        ]
-        for email, first_name, last_name, role in special_users_spec:
+        for email, first_name, last_name, role in SPECIAL_USERS_SPEC:
             special_user, created = User.objects.get_or_create(
                 email=email,
                 defaults={

@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** April 8, 2026
-**Versión:** 1.6.0
+**Fecha:** April 10, 2026
+**Versión:** 1.7.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -597,6 +597,10 @@ Mismas ramificaciones que process-create, con datos precargados.
 - Botón "Nueva Minuta" (solo en tab Minutas) → modal nombre → editor
 - Botón "Nuevo Documento" (solo en tab Mis Documentos) → seleccionar plantilla
 
+**Cobertura E2E añadida (fix 1.6):** `docs-dashboard-lawyer-flow.spec.js` verifica que al abrir una carpeta, el FolderDetailsModal muestra las columnas Contraparte/Objeto/Fechas con datos reales (no "-") cuando el backend provee campos `summary_*`.
+
+**Cobertura E2E añadida (fix 1.7):** `docs-dashboard-lawyer-flow.spec.js` verifica que al hacer click en un doc `PendingSignatures` o `FullySigned` dentro de una carpeta, el modal se cierra y el tab activo cambia al correspondiente (Dcs. Por Firmar / Dcs. Firmados).
+
 ---
 
 ### docs-create-template: Crear minuta (plantilla)
@@ -627,6 +631,8 @@ Mismas ramificaciones que process-create, con datos precargados.
 ### docs-variables-config: Configurar variables
 - **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/lawyer/variables-config` | **E2E:** ✅
 - **Descripción:** Definir tipo y comportamiento de cada variable del documento
+
+**Cobertura E2E:** `document-variables-config-interactions.spec.js` verifica que la página renderiza las variables con heading, botones de acción, y que seleccionar la clasificación "Valor" revela el selector de moneda (COP/USD/EUR).
 
 **Campos por variable:**
 - Nombre (ES/EN)
@@ -879,6 +885,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### docs-preview: Previsualizar documento
 - **Módulo:** documents | **Prioridad:** P3 | **Ruta:** N/A (modal) | **E2E:** ✅
+
+**Cobertura E2E añadida (fix 1.3):** `document-preview-modal.spec.js` verifica que el modal de preview realiza un fetch del detalle del documento (`dynamic-documents/<id>/`) cuando la lista omite el campo `content`, protegiendo contra regresión al comportamiento anterior que mostraba contenido vacío.
 
 ---
 

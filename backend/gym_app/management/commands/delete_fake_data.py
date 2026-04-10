@@ -1,11 +1,12 @@
 from django.core.management.base import BaseCommand
 from gym_app.models import (
-    Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, 
-    LegalDiscipline, LegalRequestFiles, DynamicDocument, 
+    Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType,
+    LegalDiscipline, LegalRequestFiles, DynamicDocument,
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
     RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
     SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
 )
+from ._seeder_constants import PROTECTED_EMAILS
 
 class Command(BaseCommand):
     help = 'Delete all fake data for clients, lawyers, processes, stages, and case files'
@@ -91,20 +92,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Organization "{organization}" deleted'))
 
         # Delete clients and lawyers, but keep fixed test users and admin.superuser
-        protected_emails = {
-            'admin@gmail.com',
-            'core.paginaswebscolombia@gmail.com',
-            'carlos18bp@gmail.com',
-            'info.montreal.studios@gmail.com',
-            'corporate1@gmail.com',
-            'client1@example.com',
-            'client2@example.com',
-            'client3@example.com',
-        }
+        all_protected = PROTECTED_EMAILS | {'admin@gmail.com'}
 
         for user in User.objects.filter(
             role__in=['client', 'lawyer', 'basic', 'corporate_client']
-        ).exclude(email__in=protected_emails):
+        ).exclude(email__in=all_protected):
             user.delete()
             self.stdout.write(self.style.SUCCESS(f'User "{user}" deleted'))
 

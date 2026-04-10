@@ -1,6 +1,10 @@
 import random
 from datetime import timedelta
+from pathlib import Path
+
+from django.core.files import File
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from django.utils import timezone
 from faker import Faker
 
@@ -14,6 +18,7 @@ from gym_app.models import (
     DocumentRelationship,
     DocumentVisibilityPermission,
 )
+from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
 
 _OBJETOS = [
     "Prestación de servicios de asesoría jurídica en materia contractual y litigios ante entidades del Estado.",
@@ -27,6 +32,18 @@ _OBJETOS = [
     "Servicios de mediación y conciliación extrajudicial en conflictos contractuales entre empresas del sector privado.",
     "Gestión y trámite de licencias, permisos y autorizaciones ante entidades regulatorias del sector energético nacional.",
 ]
+
+
+def _mark_fully_signed(doc):
+    """Mark all signatures on *doc* as signed and transition to FullySigned."""
+    for sig in doc.signatures.all():
+        sig.signed = True
+        sig.signed_at = timezone.now() - timedelta(days=random.randint(1, 15))
+        sig.ip_address = f'192.168.1.{random.randint(1, 255)}'
+        sig.save()
+    doc.state = 'FullySigned'
+    doc.fully_signed = True
+    doc.save(update_fields=['state', 'fully_signed'])
 
 
 class Command(BaseCommand):
@@ -55,23 +72,17 @@ class Command(BaseCommand):
 
         # Preferred test users by email (if they already exist)
         special_lawyer = User.objects.filter(
-            email='core.paginaswebscolombia@gmail.com',
+            email=SPECIAL_LAWYER_EMAIL,
             role='lawyer'
         ).first()
 
-        # Non-lawyer special users that receive rich fake data for client-side validation.
-        # Looked up by email only so role changes (client/basic/corporate_client) do not
-        # break the lookup.
-        _SPECIAL_NON_LAWYER_EMAILS = [
-            'carlos18bp@gmail.com',             # client
-            'info.montreal.studios@gmail.com',  # basic
-            'corporate1@gmail.com',             # corporate_client
-            'client1@example.com',              # basic
-            'client2@example.com',              # client
-            'client3@example.com',              # corporate_client
-        ]
+        # Batch lookup instead of one query per email.
+        _by_email = {
+            u.email: u
+            for u in User.objects.filter(email__in=SPECIAL_NON_LAWYER_EMAILS)
+        }
         special_non_lawyer_users = [
-            u for u in (User.objects.filter(email=e).first() for e in _SPECIAL_NON_LAWYER_EMAILS) if u
+            _by_email[e] for e in SPECIAL_NON_LAWYER_EMAILS if e in _by_email
         ]
 
         # Build weighted candidate pools so these users receive more documents
@@ -84,8 +95,7 @@ class Command(BaseCommand):
             if user not in client_candidates:
                 client_candidates.extend([user] * 4)
 
-        # Document state choices (must match DynamicDocument.STATE_CHOICES)
-        states = ['Draft', 'Published', 'Progress', 'Completed', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired']
+        states = [choice[0] for choice in DynamicDocument.STATE_CHOICES]
         
         # Document template titles and content patterns
         document_templates = [
@@ -140,28 +150,6 @@ class Command(BaseCommand):
         ]
         
         # Variable names for document templates
-        variable_templates = [
-            {'name_en': 'client_name', 'name_es': 'nombre_cliente', 'tooltip': 'Nombre completo del cliente', 'field_type': 'input'},
-            {'name_en': 'lawyer_name', 'name_es': 'nombre_abogado', 'tooltip': 'Nombre completo del abogado', 'field_type': 'input'},
-            {'name_en': 'start_date', 'name_es': 'fecha_inicio', 'tooltip': 'Fecha de inicio', 'field_type': 'input'},
-            {'name_en': 'end_date', 'name_es': 'fecha_fin', 'tooltip': 'Fecha de fin', 'field_type': 'input'},
-            {'name_en': 'fee_amount', 'name_es': 'monto_honorarios', 'tooltip': 'Monto de honorarios', 'field_type': 'input'},
-            {'name_en': 'details', 'name_es': 'detalles', 'tooltip': 'Detalles adicionales', 'field_type': 'text_area'},
-            {'name_en': 'contract_number', 'name_es': 'numero_contrato', 'tooltip': 'Número de contrato', 'field_type': 'input'},
-            {'name_en': 'case_description', 'name_es': 'descripcion_caso', 'tooltip': 'Descripción del caso', 'field_type': 'text_area'},
-            {'name_en': 'property_address', 'name_es': 'direccion_propiedad', 'tooltip': 'Dirección de la propiedad', 'field_type': 'input'},
-            {'name_en': 'price', 'name_es': 'precio', 'tooltip': 'Precio o monto', 'field_type': 'input'},
-            {'name_en': 'deadline', 'name_es': 'fecha_limite', 'tooltip': 'Fecha límite', 'field_type': 'input'},
-            {'name_en': 'court_name', 'name_es': 'nombre_tribunal', 'tooltip': 'Nombre del tribunal', 'field_type': 'input'},
-            {'name_en': 'judge_name', 'name_es': 'nombre_juez', 'tooltip': 'Nombre del juez', 'field_type': 'input'},
-            {'name_en': 'hearing_date', 'name_es': 'fecha_audiencia', 'tooltip': 'Fecha de audiencia', 'field_type': 'input'},
-            {'name_en': 'payment_terms', 'name_es': 'terminos_pago', 'tooltip': 'Términos de pago', 'field_type': 'text_area'}
-        ]
-        
-        # Clear existing documents if needed (uncomment if you want to start fresh)
-        # DynamicDocument.objects.all().delete()
-        # self.stdout.write(self.style.SUCCESS('Cleared existing documents'))
-        
         # Create documents
         for i in range(num_documents):
             # Select a lawyer and client, prioritizing preferred test users when available
@@ -816,14 +804,7 @@ class Command(BaseCommand):
                     )
 
                     if doc and 4 <= cycle < 7:
-                        for sig in doc.signatures.all():
-                            sig.signed = True
-                            sig.signed_at = timezone.now() - timedelta(days=random.randint(1, 15))
-                            sig.ip_address = f'192.168.1.{random.randint(1, 255)}'
-                            sig.save()
-                        doc.state = 'FullySigned'
-                        doc.fully_signed = True
-                        doc.save(update_fields=['state', 'fully_signed'])
+                        _mark_fully_signed(doc)
 
             # Bloque explícito para el abogado especial: 5 PendingSignatures + 5 FullySigned
             # (los 10 docs que recibe vía create_full_document_for no tienen requires_signature=True)
@@ -847,14 +828,7 @@ class Command(BaseCommand):
                         create_signature_for_client=True,
                     )
                     if doc:
-                        for sig in doc.signatures.all():
-                            sig.signed = True
-                            sig.signed_at = timezone.now() - timedelta(days=random.randint(1, 15))
-                            sig.ip_address = f'192.168.1.{random.randint(1, 255)}'
-                            sig.save()
-                        doc.state = 'FullySigned'
-                        doc.fully_signed = True
-                        doc.save(update_fields=['state', 'fully_signed'])
+                        _mark_fully_signed(doc)
 
         # Crear algunos documentos de ejemplo en estados Rejected y Expired para pruebas del flujo de firmas
         # IMPORTANTE: Solo convertir una porción de los documentos, dejando otros en PendingSignatures
@@ -922,9 +896,6 @@ class Command(BaseCommand):
 
         # Seed letterhead images on a representative subset so Bug 1.4 verification
         # (outdated letterhead stays locked) can be checked with a real image, not the empty placeholder.
-        from django.core.files import File
-        from pathlib import Path
-
         fixture_path = Path(__file__).parent / 'fixtures' / 'sample_letterhead.png'
         if fixture_path.exists():
             letterhead_targets = []
@@ -977,36 +948,29 @@ class Command(BaseCommand):
             if user:
                 owners_set.add(user)
 
-        # Rich-metadata filter: only pick docs that have a non-empty counterparty, so
-        # Bug 1.6 columns render real values instead of "-".
-        def has_rich_metadata(doc):
-            return doc.variables.filter(
-                summary_field='counterparty'
-            ).exclude(value='').exists()
+        # IDs of documents that have a non-empty counterparty variable, so
+        # Bug 1.6 columns render real values instead of "-".  Single query
+        # instead of N+1 per doc.
+        rich_doc_ids = set(
+            DocumentVariable.objects
+            .filter(summary_field='counterparty')
+            .exclude(value='')
+            .values_list('document_id', flat=True)
+        )
 
         for owner in owners_set:
             if owner.role == 'lawyer':
                 # Lawyers have few assigned docs; fall back to docs they created in rich states.
                 owner_docs = list(
-                    DynamicDocument.objects
-                    .filter(assigned_to=owner)
-                ) + list(
-                    DynamicDocument.objects
-                    .filter(created_by=owner)
-                    .exclude(state__in=['Draft', 'Published'])
+                    DynamicDocument.objects.filter(
+                        Q(assigned_to=owner) |
+                        Q(created_by=owner, state__in=['Completed', 'Progress', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired'])
+                    ).distinct()
                 )
-                # De-duplicate by id
-                seen_ids = set()
-                deduped = []
-                for d in owner_docs:
-                    if d.id not in seen_ids:
-                        seen_ids.add(d.id)
-                        deduped.append(d)
-                owner_docs = deduped
             else:
                 owner_docs = list(DynamicDocument.objects.filter(assigned_to=owner))
 
-            owner_docs = [d for d in owner_docs if has_rich_metadata(d)]
+            owner_docs = [d for d in owner_docs if d.id in rich_doc_ids]
             if len(owner_docs) < 3:
                 continue
 
