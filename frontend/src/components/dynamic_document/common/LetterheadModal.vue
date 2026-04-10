@@ -17,7 +17,7 @@
       </div>
       
       <!-- Lock banner for signed documents -->
-      <div v-if="isLocked" class="px-6 py-3 bg-amber-50 border-b border-amber-200 flex items-center gap-2 text-sm text-amber-800">
+      <div v-if="isLocked" data-testid="letterhead-locked-banner" class="px-6 py-3 bg-amber-50 border-b border-amber-200 flex items-center gap-2 text-sm text-amber-800">
         <svg class="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
         El membrete es de solo lectura porque el documento está en proceso de firma o ya fue firmado.
       </div>
@@ -79,7 +79,7 @@
             </h3>
             
             <!-- File upload area -->
-            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            <div data-testid="letterhead-upload-dropzone" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
               <input
                 ref="fileInput"
                 type="file"

@@ -1,6 +1,6 @@
 <template>
   <ModalTransition v-show="isOpen">
-    <div class="w-full h-full flex items-center justify-center p-4" @click.self="emit('close')">
+    <div data-testid="select-folder-modal" class="w-full h-full flex items-center justify-center p-4" @click.self="emit('close')">
       <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200">
@@ -37,6 +37,7 @@
             <li
               v-for="folder in folderStore.folders"
               :key="folder.id"
+              :data-testid="`select-folder-option-${folder.id}`"
               @click="!alreadyInFolder(folder) && handleSelectFolder(folder)"
               :class="[
                 'flex items-center gap-3 px-6 py-4 transition-colors',

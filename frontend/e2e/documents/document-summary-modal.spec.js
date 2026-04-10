@@ -27,12 +27,13 @@ test("Completed document with summary fields renders in client list and opens ac
     createdBy: 100,
     assignedTo: userId,
     content: "<p>Contenido completo</p>",
-    summary_counterpart: "Juan Pérez García",
+    summary_counterparty: "Juan Pérez García",
     summary_object: "Prestación de servicios de consultoría legal",
     summary_value: "15000000",
     summary_term: "12 meses",
     summary_subscription_date: "2025-01-15",
-    summary_expiration_date: "2026-01-15",
+    summary_start_date: "2025-01-15",
+    summary_end_date: "2026-01-15",
   });
 
   await installDynamicDocumentApiMocks(page, {

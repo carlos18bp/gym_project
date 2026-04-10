@@ -495,7 +495,7 @@
       ],
       "priority": "P2",
       "description": "Crear, mover docs, eliminar carpetas, colores",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-download": {
       "name": "Descargar PDF/Word",
@@ -578,7 +578,7 @@
       ],
       "priority": "P2",
       "description": "Encabezado/pie global para documentos",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-preview": {
       "name": "Vista previa de documento",

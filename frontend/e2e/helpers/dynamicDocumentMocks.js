@@ -39,12 +39,13 @@ export function buildMockDocument({
   signatures = [],
   requires_signature = false,
   relationships_count = 0,
-  summary_counterpart = "",
+  summary_counterparty = "",
   summary_object = "",
   summary_value = "",
   summary_term = "",
   summary_subscription_date = null,
-  summary_expiration_date = null,
+  summary_start_date = null,
+  summary_end_date = null,
 } = {}) {
   const nowIso = new Date().toISOString();
 
@@ -63,12 +64,13 @@ export function buildMockDocument({
     signatures,
     requires_signature,
     relationships_count,
-    summary_counterpart,
+    summary_counterparty,
     summary_object,
     summary_value,
     summary_term,
     summary_subscription_date,
-    summary_expiration_date,
+    summary_start_date,
+    summary_end_date,
   };
 }
 
@@ -218,7 +220,10 @@ export async function installDynamicDocumentApiMocks(
       const page = parseInt(params.get("page") || "1", 10);
       const limit = parseInt(params.get("limit") || "10", 10);
       const start = (page - 1) * limit;
-      const paged = filtered.slice(start, start + limit);
+      // Mirror the production list serializer, which omits `content` for
+      // performance. Consumers that need content must hit the detail endpoint
+      // (regression guard for fix 1.3).
+      const paged = filtered.slice(start, start + limit).map(({ content, ...rest }) => rest);
 
       return {
         status: 200,
@@ -266,6 +271,35 @@ export async function installDynamicDocumentApiMocks(
         status: 201,
         contentType: "application/json",
         body: JSON.stringify(newFolder),
+      };
+    }
+
+    // Folder update (also used by "Add to folder" — SelectFolderModal delegates
+    // addDocumentsToFolder → updateFolder → PATCH folders/<id>/update/ with document_ids).
+    const folderUpdateMatch = apiPath.match(/^dynamic-documents\/folders\/(\d+)\/update\/$/);
+    if (folderUpdateMatch && route.request().method() === "PATCH") {
+      const folderId = Number(folderUpdateMatch[1]);
+      const folder = folderList.find((f) => f.id === folderId);
+      if (folder) {
+        const body = route.request().postDataJSON?.() || {};
+        if (Array.isArray(body.document_ids)) {
+          folder.document_ids = body.document_ids;
+          folder.documents = body.document_ids
+            .map((docId) => docs.find((d) => d.id === docId))
+            .filter(Boolean);
+        }
+        if (typeof body.name === "string") folder.name = body.name;
+        if (typeof body.color_id === "number") folder.color_id = body.color_id;
+        return {
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(folder),
+        };
+      }
+      return {
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Folder not found" }),
       };
     }
 

@@ -705,6 +705,8 @@ Mismas ramificaciones que process-create, con datos precargados.
 - ↩️ Editar y reenviar para firma (documentos Rejected/Expired)
 - ✏️ Editar contenido (documentos completados por clientes)
 
+**Cobertura E2E añadida (fix 1.8):** `docs-card-actions-flow.spec.js` verifica el atajo "Agregar a Carpeta" desde el modal de acciones, asegurando el PATCH a `dynamic-documents/folders/<id>/update/` con el `document_ids` correcto.
+
 ---
 
 ### sign-electronic-signature: Firma electrónica
@@ -828,6 +830,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - Editar nombre/descripción
 - Eliminar carpeta (con confirmación)
 
+**Cobertura E2E añadida (fix 1.5):** `add-documents-modal-flow.spec.js` protege la vista tabla del modal "Agregar documentos" (columnas Documento/Estado/Etiquetas) contra una regresión al grid de tarjetas.
+
 ---
 
 ### docs-folder-crud: Document folder CRUD
@@ -839,6 +843,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### docs-letterhead: Membrete global
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A (modal) | **E2E:** ✅
 - **Descripción:** Configurar encabezado y pie de página global
+
+**Cobertura E2E añadida (fix 1.4):** `docs-letterhead-locked-flow.spec.js` garantiza que documentos en `PendingSignatures` y `FullySigned` no expongan la acción "Editar membrete" en los tabs Dcs. Por Firmar / Dcs. Firmados.
 
 ---
 

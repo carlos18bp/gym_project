@@ -1,6 +1,6 @@
 <template>
   <ModalTransition v-if="folder">
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div data-testid="folder-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <!-- Header -->
         <div class="border-b px-6 py-4 flex-shrink-0">
