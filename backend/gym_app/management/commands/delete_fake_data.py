@@ -13,10 +13,24 @@ class Command(BaseCommand):
 
     """
     To delete fake data via console, run:
-    python3 manage.py delete_fake_data
+    python3 manage.py delete_fake_data --confirm
     """
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--confirm',
+            action='store_true',
+            default=False,
+            help='Required flag to confirm deletion of all fake data',
+        )
+
     def handle(self, *args, **options):
+        if not options.get('confirm'):
+            self.stdout.write(self.style.ERROR(
+                'This command deletes ALL fake data. Pass --confirm to proceed.\n'
+                'Usage: python3 manage.py delete_fake_data --confirm'
+            ))
+            return
         # Delete all processes
         for process in Process.objects.all():
             process.delete()

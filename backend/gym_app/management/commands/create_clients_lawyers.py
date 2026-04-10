@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from faker import Faker
 from gym_app.models import User
-from ._seeder_constants import RESERVED_CLIENT_EMAILS, SPECIAL_USERS_SPEC
+from ._seeder_constants import RESERVED_CLIENT_EMAILS, SPECIAL_USERS_SPEC, CLIENT_OWNED_EMAILS
 
 class Command(BaseCommand):
     help = 'Create fake data for clients and lawyers'
@@ -22,6 +22,12 @@ class Command(BaseCommand):
             default=10,
             help='Number of lawyers to create'
         )
+        parser.add_argument(
+            '--reset-passwords',
+            action='store_true',
+            default=False,
+            help='Reset passwords to "password" for all users (use with caution)',
+        )
 
     def handle(self, *args, **options):
         """
@@ -30,6 +36,7 @@ class Command(BaseCommand):
         fake = Faker()
         num_clients = options['num_clients']
         num_lawyers = options['num_lawyers']
+        reset_passwords = options.get('reset_passwords', False)
 
         # Create or reuse clients (idempotent by email)
         for i in range(num_clients):
@@ -45,10 +52,10 @@ class Command(BaseCommand):
                 },
             )
 
-            if created:
+            if created or reset_passwords:
                 client.set_password('password')
                 client.save()
-                self.stdout.write(self.style.SUCCESS(f'Client created: {client.email}'))
+                self.stdout.write(self.style.SUCCESS(f'Client {"created" if created else "password reset"}: {client.email}'))
             else:
                 # Ensure the role is at least client for existing test users
                 if client.role != 'client':
@@ -68,10 +75,10 @@ class Command(BaseCommand):
                 },
             )
 
-            if created:
+            if created or reset_passwords:
                 lawyer.set_password('password')
                 lawyer.save()
-                self.stdout.write(self.style.SUCCESS(f'Lawyer created: {lawyer.email}'))
+                self.stdout.write(self.style.SUCCESS(f'Lawyer {"created" if created else "password reset"}: {lawyer.email}'))
             else:
                 # Ensure the role is at least lawyer for existing test users
                 if lawyer.role != 'lawyer':
@@ -88,14 +95,15 @@ class Command(BaseCommand):
                     'role': role,
                 },
             )
-            if created:
+            if created or reset_passwords:
                 special_user.set_password('password')
                 special_user.save()
-                self.stdout.write(self.style.SUCCESS(f'Special user created: {special_user.email} ({role})'))
+                self.stdout.write(self.style.SUCCESS(f'Special user {"created" if created else "password reset"}: {special_user.email} ({role})'))
             else:
-                if special_user.role != role:
+                # For client-owned accounts, never overwrite their role
+                if email not in CLIENT_OWNED_EMAILS and special_user.role != role:
                     special_user.role = role
                     special_user.save(update_fields=['role'])
-                self.stdout.write(self.style.WARNING(f'Special user already exists: {special_user.email} ({role})'))
+                self.stdout.write(self.style.WARNING(f'Special user already exists: {special_user.email} ({special_user.role})'))
 
         self.stdout.write(self.style.SUCCESS(f'Successfully ensured {num_clients} clients and {num_lawyers} lawyers'))

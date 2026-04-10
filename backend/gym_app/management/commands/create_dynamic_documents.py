@@ -457,7 +457,8 @@ class Command(BaseCommand):
                 assigned_to=assigned,
                 created_at=created_at,
                 updated_at=created_at,
-                requires_signature=random.choice([True, False])
+                requires_signature=random.choice([True, False]),
+                is_public=as_template,
             )
 
             # Attach some tags similar to main documents
@@ -724,19 +725,21 @@ class Command(BaseCommand):
 
             return doc
 
-        # 10 minutas (templates) creadas por el abogado especial
-        if special_lawyer:
+        # Minutas (templates) for every lawyer so the Minutas tab is never
+        # empty regardless of which lawyer the tester logs in with.
+        # Templates are marked is_public=True so clients can see them in "Usar Plantilla".
+        for lawyer in lawyers:
             for i in range(EXTRA_PER_USER):
                 create_full_document_for(
-                    created_by_user=special_lawyer,
+                    created_by_user=lawyer,
                     assigned_to_user=None,
                     as_template=True,
-                    label_suffix=f"Minuta {i+1} - {special_lawyer.email}"
+                    label_suffix=f"Minuta {i+1} - {lawyer.email}"
                 )
 
-        # EXTRA_PER_USER documentos asignados directamente a cada usuario no-lawyer especial
+        # EXTRA_PER_USER documentos asignados directamente a cada usuario no-lawyer
         if lawyer_candidates:
-            for target_user in special_non_lawyer_users:
+            for target_user in clients:
                 for i in range(EXTRA_PER_USER):
                     lawyer = random.choice(lawyer_candidates)
                     create_full_document_for(
@@ -773,7 +776,7 @@ class Command(BaseCommand):
         if templates:
             CLIENT_DOCS_FROM_TEMPLATES = 20
 
-            for target_user in special_non_lawyer_users:
+            for target_user in clients:
                 for i in range(CLIENT_DOCS_FROM_TEMPLATES):
                     template_doc = random.choice(templates)
                     cycle = i % 10
