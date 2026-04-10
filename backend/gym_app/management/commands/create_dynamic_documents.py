@@ -15,6 +15,20 @@ from gym_app.models import (
     DocumentVisibilityPermission,
 )
 
+_OBJETOS = [
+    "Prestación de servicios de asesoría jurídica en materia contractual y litigios ante entidades del Estado.",
+    "Suministro de bienes y materiales de oficina necesarios para el funcionamiento de la sede principal de la firma.",
+    "Contratación de servicios profesionales de consultoría en derecho administrativo y contratación estatal.",
+    "Arrendamiento de espacio de oficina ubicado en el piso 8 del edificio Centro Empresarial Norte de Bogotá.",
+    "Prestación de servicios de representación legal ante autoridades judiciales y administrativas del orden nacional.",
+    "Diseño e implementación de un sistema de gestión documental para el área jurídica y de cumplimiento normativo.",
+    "Auditoría jurídica de contratos vigentes y asesoría en renegociación de cláusulas de incumplimiento y penalidades.",
+    "Elaboración y revisión de contratos de compraventa, arrendamiento y prestación de servicios para clientes corporativos.",
+    "Servicios de mediación y conciliación extrajudicial en conflictos contractuales entre empresas del sector privado.",
+    "Gestión y trámite de licencias, permisos y autorizaciones ante entidades regulatorias del sector energético nacional.",
+]
+
+
 class Command(BaseCommand):
     help = 'Create fake dynamic documents for testing the documents report functionality'
     
@@ -262,7 +276,7 @@ class Command(BaseCommand):
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8),
+                value=random.choice(_OBJETOS),
                 summary_field='object'
             )
 
@@ -516,7 +530,7 @@ class Command(BaseCommand):
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8),
+                value=random.choice(_OBJETOS),
                 summary_field='object'
             )
 
