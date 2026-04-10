@@ -1,6 +1,14 @@
+import json
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
+
+from gym_app.utils.auth_utils import generate_auth_tokens
 from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence
 from gym_app.models.user import UserSignature, ActivityFeed
 from gym_app.models.password_code import PasswordCode
@@ -23,7 +31,7 @@ class UserAdmin(BaseUserAdmin):
     filter_horizontal = ()
     
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
+        (None, {'fields': ('email', 'password', 'login_as_link')}),
         (_('Personal info'), {
             'fields': ('first_name', 'last_name', 'contact', 'birthday', 
                       'identification', 'document_type', 'photo_profile', 'letterhead_image')
@@ -52,7 +60,52 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
     
-    readonly_fields = ('last_login', 'created_at')
+    readonly_fields = ('last_login', 'created_at', 'login_as_link')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:user_id>/login-as/',
+                self.admin_site.admin_view(self.login_as_user),
+                name='user-login-as',
+            ),
+        ]
+        return custom_urls + urls
+
+    def login_as_user(self, request, user_id):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden('Only superusers can use this feature.')
+        user = get_object_or_404(User, pk=user_id)
+        tokens = generate_auth_tokens(user)
+        access_token = tokens['access']
+        user_data = json.dumps(tokens['user'])
+        html = f"""<!DOCTYPE html>
+<html>
+<head><title>Logging in as {user.email}...</title></head>
+<body>
+<p>Logging in as <strong>{user.email}</strong>...</p>
+<script>
+localStorage.setItem("token", {json.dumps(access_token)});
+localStorage.setItem("userAuth", {json.dumps(user_data)});
+window.location.href = "/dashboard";
+</script>
+</body>
+</html>"""
+        return HttpResponse(html)
+
+    def login_as_link(self, obj):
+        if not obj.pk:
+            return '-'
+        url = reverse('myadmin:user-login-as', args=[obj.pk])
+        return format_html(
+            '<a href="{}" target="_blank" style="'
+            'background:#417690;color:#fff;padding:5px 15px;'
+            'border-radius:4px;text-decoration:none;font-weight:bold;'
+            '">Login as this user</a>',
+            url
+        )
+    login_as_link.short_description = _('Impersonate')
 
 class UserSignatureAdmin(admin.ModelAdmin):
     """
