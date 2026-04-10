@@ -1,6 +1,6 @@
 {
-  "version": "1.6.0",
-  "lastUpdated": "2026-04-08",
+  "version": "1.7.0",
+  "lastUpdated": "2026-04-10",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -30,7 +30,7 @@
       ],
       "priority": "P1",
       "description": "Usuario crea cuenta nueva con verificación por código",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "auth-forgot-password": {
       "name": "Recuperar contraseña",
@@ -150,7 +150,7 @@
       ],
       "priority": "P2",
       "description": "Historial de acciones recientes con rangos de tiempo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "dashboard-quick-actions": {
       "name": "Dashboard botones de acción rápida",
@@ -190,7 +190,7 @@
       ],
       "priority": "P3",
       "description": "Actualizaciones legales activas en dashboard",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "dashboard-reports": {
       "name": "Generar reportes Excel",
@@ -230,7 +230,7 @@
       ],
       "priority": "P2",
       "description": "Visualizar planes disponibles y plan actual",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "subscriptions-checkout-free": {
       "name": "Checkout plan gratuito",
@@ -240,7 +240,7 @@
       ],
       "priority": "P1",
       "description": "Activar plan gratuito sin método de pago",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "subscriptions-checkout-paid": {
       "name": "Checkout plan pago (Wompi)",
@@ -250,7 +250,7 @@
       ],
       "priority": "P1",
       "description": "Pagar suscripción con tarjeta vía Wompi",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "subscriptions-management": {
       "name": "Gestión de suscripción",
@@ -260,7 +260,7 @@
       ],
       "priority": "P2",
       "description": "Reactivar suscripción, ver historial de pagos",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "subscriptions-cancel": {
       "name": "Cancelar suscripción",
@@ -291,7 +291,7 @@
       ],
       "priority": "P1",
       "description": "Pestañas Mis/Todos/Archivados con búsqueda y filtros",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "process-create": {
       "name": "Radicar (crear) proceso",
@@ -332,7 +332,7 @@
       ],
       "priority": "P2",
       "description": "Modal de línea de tiempo con etapas ordenadas",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "process-form-validation": {
       "name": "Validación de formulario de proceso",
@@ -393,7 +393,7 @@
       ],
       "priority": "P1",
       "description": "Editor TinyMCE con toolbar, navegación, contenido protegido",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "docs-variables-config": {
       "name": "Configurar variables de minuta",
@@ -403,7 +403,7 @@
       ],
       "priority": "P1",
       "description": "Definir campos dinámicos, tipos, clasificación, permisos. Includes field type selector, summary classification, dashboard integration tests.",
-      "expectedSpecs": 3
+      "expectedSpecs": 2
     },
     "docs-use-template": {
       "name": "Usar documento (completar minuta)",
@@ -413,7 +413,7 @@
       ],
       "priority": "P1",
       "description": "Cliente llena campos variables de plantilla asignada",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-form-interactions": {
       "name": "Formulario de documento interacciones",
@@ -423,7 +423,7 @@
       ],
       "priority": "P2",
       "description": "Campos, botones, validación, tipos de campo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-dashboard-lawyer": {
       "name": "Dashboard documentos (abogado)",
@@ -649,7 +649,7 @@
       ],
       "priority": "P1",
       "description": "Dibujar o subir firma electrónica personal",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "sign-document-flow": {
       "name": "Formalizar documento con firmas",
@@ -659,7 +659,7 @@
       ],
       "priority": "P1",
       "description": "Usar minuta, completar, enviar a firma",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "formalize-in-place": {
       "name": "Formalizar documento sin copia",
@@ -690,7 +690,7 @@
       ],
       "priority": "P1",
       "description": "Cliente firma documento electrónicamente",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-reject": {
       "name": "Rechazar documento",
@@ -701,7 +701,7 @@
       ],
       "priority": "P1",
       "description": "Rechazar documento con motivo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-reopen": {
       "name": "Reabrir documento rechazado",
@@ -722,7 +722,7 @@
       ],
       "priority": "P2",
       "description": "Lista de documentos completamente firmados",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-pending-documents": {
       "name": "Ver documentos pendientes de firma",
@@ -764,7 +764,7 @@
       ],
       "priority": "P1",
       "description": "Nueva consulta/asesoría legal con archivos",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-list-client": {
       "name": "Ver solicitudes (cliente)",
@@ -774,7 +774,7 @@
       ],
       "priority": "P1",
       "description": "Lista de solicitudes propias del cliente",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-detail-client": {
       "name": "Detalle solicitud (cliente)",
@@ -794,7 +794,7 @@
       ],
       "priority": "P2",
       "description": "Modal para subir archivos adicionales",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-management-lawyer": {
       "name": "Gestión de solicitudes (abogado)",
@@ -804,7 +804,7 @@
       ],
       "priority": "P1",
       "description": "Ver, responder, cambiar estado de solicitudes",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-response-thread": {
       "name": "Thread de conversación",
@@ -845,7 +845,7 @@
       ],
       "priority": "P1",
       "description": "Crear organización con nombre, descripción, imágenes",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-edit": {
       "name": "Editar organización",
@@ -855,7 +855,7 @@
       ],
       "priority": "P2",
       "description": "Actualizar info y portada de organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-invite-members": {
       "name": "Invitar miembros",
@@ -865,7 +865,7 @@
       ],
       "priority": "P1",
       "description": "Enviar invitaciones por email con validación",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-members-list": {
       "name": "Ver miembros",
@@ -875,7 +875,7 @@
       ],
       "priority": "P2",
       "description": "Lista de miembros del equipo",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-posts-management": {
       "name": "Gestión de publicaciones",
@@ -885,7 +885,7 @@
       ],
       "priority": "P2",
       "description": "Crear, editar, eliminar, fijar publicaciones",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "org-posts-visibility": {
       "name": "Visibilidad de publicaciones",
@@ -896,7 +896,7 @@
       ],
       "priority": "P2",
       "description": "Posts visibles para clientes, filtros, orden",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "org-corporate-requests": {
       "name": "Solicitudes corporativas (recibir/responder)",
@@ -906,7 +906,7 @@
       ],
       "priority": "P2",
       "description": "Ver solicitudes de miembros y responder",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "org-client-view": {
       "name": "Vista de cliente en organizaciones",
@@ -916,7 +916,7 @@
       ],
       "priority": "P2",
       "description": "Ver orgs, posts, tabs móvil",
-      "expectedSpecs": 1
+      "expectedSpecs": 6
     },
     "org-client-invitations": {
       "name": "Aceptar/rechazar invitación",
@@ -926,7 +926,7 @@
       ],
       "priority": "P1",
       "description": "Responder invitaciones de organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-client-requests": {
       "name": "Solicitudes corporativas (cliente)",
@@ -936,7 +936,7 @@
       ],
       "priority": "P2",
       "description": "Crear, ver, filtrar solicitudes en organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 8
     },
     "org-client-leave": {
       "name": "Salir de organización",
@@ -946,7 +946,7 @@
       ],
       "priority": "P3",
       "description": "Cliente abandona organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "org-cross-invite-flow": {
       "name": "Cross-role: flujo de invitación completo",
@@ -957,7 +957,7 @@
       ],
       "priority": "P1",
       "description": "Invitar, aceptar/rechazar, verificar stats",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-cross-request-flow": {
       "name": "Cross-role: flujo de solicitud corporativa",
@@ -968,7 +968,7 @@
       ],
       "priority": "P2",
       "description": "Cliente crea, corporate ve y responde",
-      "expectedSpecs": 1
+      "expectedSpecs": 5
     },
     "org-cross-member-management": {
       "name": "Cross-role: gestión de miembros",
@@ -979,7 +979,7 @@
       ],
       "priority": "P2",
       "description": "Remover miembro, desactivar org, salir",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-request-detail": {
       "name": "Detalle de solicitud organizacional",
@@ -1082,7 +1082,7 @@
       ],
       "priority": "P3",
       "description": "Toast de restricción, funciones limitadas. Route redirects and disabled UI controls (letterhead, SECOP filters overlay).",
-      "expectedSpecs": 2
+      "expectedSpecs": 3
     },
     "intranet-facturation-form": {
       "name": "Facturation form field interactions",
@@ -1092,7 +1092,7 @@
       ],
       "priority": "P2",
       "description": "Save button validation, file upload, successful submission, close modal",
-      "expectedSpecs": 4
+      "expectedSpecs": 1
     },
     "docs-form-field-types": {
       "name": "Document form field types",
@@ -1102,7 +1102,7 @@
       ],
       "priority": "P2",
       "description": "Rendering 6 field types, currency prefix, generate button state, cancel navigation, select options",
-      "expectedSpecs": 4
+      "expectedSpecs": 1
     },
     "docs-folder-crud": {
       "name": "Document folder CRUD",
@@ -1112,7 +1112,7 @@
       ],
       "priority": "P2",
       "description": "Folder list rendering, empty folders state",
-      "expectedSpecs": 2
+      "expectedSpecs": 1
     },
     "org-store-actions": {
       "name": "Organization store actions",
@@ -1232,7 +1232,7 @@
       ],
       "priority": "P3",
       "description": "View the last synchronization time and status indicator in the header",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "secop-trigger-sync": {
       "name": "Admin triggers manual sync",
