@@ -48,14 +48,11 @@
 
 | # | Issue | Severity | Area |
 |---|-------|----------|------|
-| 1 | `useDocumentPermissions_backup.js` exists in composables — leftover backup file | Low | Frontend cleanup |
-| 2 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
-| 3 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
-| 4 | `user_guide.js` store is 143KB — very large single file | Medium | Frontend maintainability |
-| 5 | `user_guide_updates.js` store is 28KB — could be modularized | Low | Frontend maintainability |
-| 6 | `reports.py` view is 74KB — very large single file | Medium | Backend maintainability |
-| 7 | `check_tags.py` in backend root is empty (0 bytes) | Low | Cleanup |
-| 8 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
+| 1 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
+| 2 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
+| 3 | `user_guide.js` store is 143KB — very large single file | Medium | Frontend maintainability |
+| 4 | `reports.py` view is 74KB — very large single file | Medium | Backend maintainability |
+| 5 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
 
 ---
 
@@ -157,6 +154,5 @@
 | 3 | Add S3/cloud storage option for media files and backups | Low | High |
 | 4 | Implement WebSocket for real-time notifications | Medium | High |
 | 5 | Add database connection pooling for production | Low | Low |
-| 6 | Remove `useDocumentPermissions_backup.js` and `check_tags.py` | Low | Low |
-| 7 | Add log rotation for `debug.log` | Low | Low |
-| 8 | Consider TypeScript migration for frontend | Low | Very High |
+| 6 | Add log rotation for `debug.log` | Low | Low |
+| 7 | Consider TypeScript migration for frontend | Low | Very High |
