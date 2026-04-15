@@ -312,7 +312,7 @@ const goBack = () => {
   if (isManager.value) {
     router.push({ name: "service_requests_inbox" });
   } else {
-    router.push({ name: "service_requests_my" });
+    router.push({ name: "services_hub", query: { tab: "my-requests" } });
   }
 };
 

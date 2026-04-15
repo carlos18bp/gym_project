@@ -221,8 +221,8 @@ const router = createRouter({
       children: [
         {
           path: "",
-          name: "services_list",
-          component: () => import(/* webpackChunkName: "services" */ "@/views/services/ServicesList.vue"),
+          name: "services_hub",
+          component: () => import(/* webpackChunkName: "services-hub" */ "@/views/services/ServicesHub.vue"),
           meta: { requiresAuth: true, title: "Servicios" },
         },
       ],
@@ -239,17 +239,19 @@ const router = createRouter({
         },
       ],
     },
+    // Redirect legacy routes to unified hub
     {
       path: "/service_requests/my",
-      component: SlideBar,
-      children: [
-        {
-          path: "",
-          name: "service_requests_my",
-          component: () => import(/* webpackChunkName: "service-requests-my" */ "@/views/services/MyServiceRequests.vue"),
-          meta: { requiresAuth: true, title: "Mis Solicitudes" },
-        },
-      ],
+      redirect: { name: "services_hub", query: { tab: "my-requests" } },
+    },
+    // Keep these route names for backwards compatibility
+    {
+      path: "/services_list",
+      redirect: { name: "services_hub" },
+    },
+    {
+      path: "/my_requests",
+      redirect: { name: "services_hub", query: { tab: "my-requests" } },
     },
     {
       path: "/service_requests/inbox",

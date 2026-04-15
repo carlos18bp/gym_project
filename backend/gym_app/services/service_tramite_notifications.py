@@ -1,4 +1,5 @@
 import logging
+import os
 from django.db.models import Q
 
 from gym_app.models import User
@@ -54,7 +55,6 @@ def notify_service_request_submission(service_request):
     base_context = {
         "title": "Nueva solicitud de servicio radicada",
         "badge_text": "Servicios",
-        "icon": "📌",
         "notification_title": f"Solicitud {service_request.tracking_number}",
         "message": (
             f"Servicio: {service_request.service.name}\n"
@@ -107,11 +107,24 @@ def notify_service_request_status_change(service_request, message=""):
     context = {
         "title": "Actualizacion de solicitud de servicio",
         "badge_text": "Servicios",
-        "icon": "📬",
         "notification_title": f"Solicitud {service_request.tracking_number}",
-        "message": f"El estado de tu solicitud ahora es: {status_label}",
+        "message": f"El estado de tu solicitud ahora es: <strong style='font-weight: 700; text-transform: uppercase; color: #1f2937;'>{status_label}</strong>",
         "additional_info": message or "Tu abogado actualizo el tramite.",
     }
+
+    # Recopilar archivos de la respuesta más reciente del abogado (si existe)
+    attachments = []
+    latest_response = (
+        service_request.lawyer_responses
+        .prefetch_related("files")
+        .order_by("-created_at")
+        .first()
+    )
+    if latest_response and latest_response.files.exists():
+        for response_file in latest_response.files.all():
+            if response_file.file and hasattr(response_file.file, "path"):
+                if os.path.isfile(response_file.file.path):
+                    attachments.append(response_file.file.path)
 
     try:
         send_template_email(
@@ -119,6 +132,7 @@ def notify_service_request_status_change(service_request, message=""):
             subject=f"Actualizacion de tramite - {service_request.tracking_number}",
             to_emails=[service_request.requester.email],
             context=context,
+            attachments=attachments,
         )
     except Exception:
         logger.error(

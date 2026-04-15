@@ -1,6 +1,6 @@
 {
-  "version": "1.7.0",
-  "lastUpdated": "2026-04-10",
+  "version": "1.8.0",
+  "lastUpdated": "2026-04-15",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -1408,6 +1408,38 @@
       ],
       "priority": "P2",
       "description": "Admin activa/desactiva y marca/desmarca como destacado",
+      "expectedSpecs": 1
+    },
+    "service-hub-tab-navigation": {
+      "name": "Navegar entre tabs en ServicesHub",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario cambia entre tab Servicios y Mis Solicitudes en /services, incluyendo navegacion por query param (?tab=my-requests) desde redirects legacy",
+      "expectedSpecs": 1
+    },
+    "service-upload-multiple-files": {
+      "name": "Subir multiples archivos en formulario de servicio",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario sube hasta 10 archivos a un campo tipo file en el formulario multi-etapa; puede eliminar archivos individuales y el contador X/10 se actualiza",
+      "expectedSpecs": 1
+    },
+    "service-admin-form-validation": {
+      "name": "Validacion de formulario admin de servicio",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P3",
+      "description": "Admin intenta guardar servicio sin datos requeridos (nombre vacio, sin etapas) y ve los mensajes de error de validateEditor()",
       "expectedSpecs": 1
     }
   }

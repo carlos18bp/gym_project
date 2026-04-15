@@ -1,11 +1,14 @@
 <template>
-  <div class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8 lg:hidden">
+  <div 
+    v-if="!embedded"
+    class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:px-6 lg:px-8 lg:hidden"
+  >
     <slot></slot>
   </div>
 
-  <section class="px-4 sm:px-6 lg:px-8 py-6">
+  <section :class="embedded ? '' : 'px-4 sm:px-6 lg:px-8 py-6'">
     <div class="max-w-7xl mx-auto">
-      <div class="mb-6">
+      <div v-if="!embedded" class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">Mis Solicitudes</h1>
         <p class="text-sm text-gray-600 mt-1">Consulta el historial y estado de tus tramites.</p>
       </div>
@@ -87,6 +90,13 @@ import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useServicesTramitesStore } from "@/stores/services_tramites";
 import { statusClass, formatDate } from "@/composables/useServiceRequestHelpers";
+
+defineProps({
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const router = useRouter();
 const store = useServicesTramitesStore();

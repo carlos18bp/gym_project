@@ -405,7 +405,8 @@ onMounted(async () => {
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M" &&
         navItem.name !== "Bandeja de Solicitudes" &&
-        navItem.name !== "Administrar Servicios"
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Organizaciones"
     );
   }
 
@@ -413,7 +414,6 @@ onMounted(async () => {
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Organizaciones" &&
-        navItem.name !== "Mis Solicitudes" &&
         navItem.name !== "Administrar Servicios"
     );
 
@@ -427,9 +427,9 @@ onMounted(async () => {
   if (isAdmin) {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Mis Solicitudes" &&
         navItem.name !== "Agendar Cita" &&
-        navItem.name !== "Organizaciones"
+        navItem.name !== "Organizaciones" &&
+        navItem.name !== "Archivos Juridicos"
     );
   } else {
     navigation.value = navigation.value.filter(
@@ -532,21 +532,11 @@ const navigation = ref([
     name: "Servicios",
     action: (item) => {
       setCurrent(item);
-      router.push({ name: "services_list" });
+      router.push({ name: "services_hub" });
     },
     icon: DocumentTextIcon,
     current: false,
     routes: ['/services']
-  },
-  {
-    name: "Mis Solicitudes",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "service_requests_my" });
-    },
-    icon: InboxArrowDownIcon,
-    current: false,
-    routes: ['/service_requests/my']
   },
   {
     name: "Bandeja de Solicitudes",

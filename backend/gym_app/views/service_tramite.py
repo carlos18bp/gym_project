@@ -745,10 +745,12 @@ def manage_service_request(request, request_id):
         service_request.status = new_status
         service_request.save(update_fields=["status", "updated_at"])
 
-    notify_service_request_status_change(service_request, message=message)
-
     # Refetch with prefetched relations so the new lawyer response is included
     service_request = get_object_or_404(_request_queryset(), id=request_id)
+    
+    # Send notification after refetch to ensure lawyer_responses are loaded
+    notify_service_request_status_change(service_request, message=message)
+    
     serializer = ServiceRequestDetailSerializer(service_request, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 

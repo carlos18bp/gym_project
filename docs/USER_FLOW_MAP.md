@@ -1780,14 +1780,15 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 ---
 
 ### service-view-my-requests: Ver mis solicitudes
-- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/my` | **E2E:** ✅
-- **Descripcion:** Cliente ve su historial de solicitudes con filtros
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services?tab=my-requests` (redirect desde `/service_requests/my`) | **E2E:** ✅
+- **Descripcion:** Cliente ve su historial de solicitudes con filtros. Desde Sprint Abril 2026 esta integrado en el tab "Mis Solicitudes" dentro de ServicesHub.
 
 **Pasos:**
-1. Navega a "Mis Solicitudes" en el sidebar
-2. Ve lista de solicitudes con estado, radicado, servicio
-3. Filtra por estado, servicio o radicado
-4. Click en solicitud para ver detalle
+1. Navega al sidebar "Servicios" (o accede directamente a `/service_requests/my`, que redirige)
+2. Hace click en el tab "Mis Solicitudes"
+3. Ve lista de solicitudes con estado, radicado, servicio
+4. Filtra por estado, servicio o radicado
+5. Click en solicitud para ver detalle
 
 ---
 
@@ -1869,6 +1870,62 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ---
 
+### service-hub-tab-navigation: Navegar entre tabs en ServicesHub
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services` | **E2E:** ✅
+- **Descripcion:** Usuario cambia entre el tab "Servicios" y "Mis Solicitudes" en la vista unificada. Incluye activacion por query param `?tab=my-requests` (redirect desde legacy paths).
+
+**Pasos:**
+1. Navega a `/services` (tab "Servicios" activo por defecto)
+2. Ve el catalogo de servicios renderizado en el tab
+3. Click en tab "Mis Solicitudes"
+4. La URL cambia a `/services?tab=my-requests`
+5. Ve la lista de solicitudes propias
+6. Click en tab "Servicios" para volver al catalogo
+
+**Ramificaciones:**
+- ├── **Desktop:** tabs horizontales
+- └── **Mobile:** dropdown `<select>`
+
+---
+
+### service-upload-multiple-files: Subir multiples archivos en formulario de servicio
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario sube hasta 10 archivos a un campo tipo file en el formulario multi-etapa. Puede eliminar archivos individuales con el boton x.
+
+**Pasos:**
+1. Navega a un servicio con campo tipo archivo
+2. Click en el input de archivo para seleccionar el primer archivo
+3. Selecciona un segundo archivo (se agrega al listado)
+4. Ve las tarjetas con nombre, tamano y boton eliminar
+5. Click en "x" de un archivo para eliminarlo de la lista
+6. Intenta agregar un 11mo archivo — el input esta deshabilitado
+
+**Ramificaciones:**
+- ├── **< 10 archivos:** Input habilitado, contador X/10 actualizado
+- ├── **= 10 archivos:** Input deshabilitado, mensaje de limite alcanzado
+- └── **Eliminar archivo:** Tarjeta desaparece, contador decrementado
+
+---
+
+### service-admin-form-validation: Validacion de formulario admin de servicio
+- **Modulo:** services | **Prioridad:** P3 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Admin intenta guardar un servicio con datos incompletos y ve mensajes de error de validateEditor().
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Hace click en "Crear servicio" sin llenar el nombre
+3. Intenta guardar
+4. Ve mensaje de error "Nombre del servicio es requerido"
+5. Agrega una etapa sin nombre
+6. Ve error "Cada etapa debe tener nombre"
+
+**Ramificaciones:**
+- ├── **Nombre vacio:** Error en campo nombre
+- ├── **Sin etapas:** Error por falta de etapas
+- └── **Opciones de select vacias:** Error en campo tipo select
+
+---
+
 ## Resumen de Cobertura E2E
 
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
@@ -1886,14 +1943,14 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 4 | 4 | 0 | 0 |
 | **SECOP** | **16** | **16** | **0** | **0** |
-| **Servicios y Tramites** | **12** | **11** | **1** | **0** |
+| **Servicios y Tramites** | **15** | **14** | **1** | **0** |
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **146** | **145** | **1** | **0** |
+| **Total** | **149** | **148** | **1** | **0** |
 
 ---
 
-**Documento generado:** April 8, 2026
-**Versión:** 1.6.0
-**Estado:** 145/146 flujos cubiertos (1 parcial: service-admin-edit)
+**Documento generado:** April 15, 2026
+**Versión:** 1.8.0
+**Estado:** 148/149 flujos cubiertos (1 parcial: service-admin-edit)

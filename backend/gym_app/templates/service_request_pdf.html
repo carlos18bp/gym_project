@@ -5,93 +5,169 @@
   <style>
     @page {
       size: letter;
-      margin: 2cm;
+      margin: 1.5cm;
     }
     body {
       font-family: Helvetica, Arial, sans-serif;
-      font-size: 11pt;
+      font-size: 10pt;
       color: #111827;
-      line-height: 1.4;
+      line-height: 1.5;
     }
-    h1 {
-      font-size: 16pt;
-      margin-bottom: 0;
-    }
-    .subtitle {
-      color: #4b5563;
-      margin-top: 4px;
-      margin-bottom: 18px;
-    }
-    .meta {
-      width: 100%;
-      border-collapse: collapse;
+    .header {
       margin-bottom: 16px;
     }
-    .meta td {
-      border: 1px solid #e5e7eb;
-      padding: 6px 8px;
-      vertical-align: top;
-    }
-    .stage {
-      margin-top: 14px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      padding: 10px;
-    }
-    .stage-title {
-      font-size: 12pt;
+    .company-name {
+      font-size: 14pt;
       font-weight: bold;
-      margin-bottom: 8px;
-      color: #111827;
+      color: #5B7C99;
+      margin: 0 0 2px 0;
     }
-    .answer-item {
+    .header-line {
+      border-bottom: 2px solid #5B7C99;
       margin-bottom: 6px;
     }
-    .label {
+    .document-title {
+      font-size: 11pt;
+      color: #6B7280;
+      margin: 6px 0 14px 0;
+    }
+    .meta-info {
+      font-size: 10pt;
+      color: #374151;
+      margin-bottom: 18px;
+      line-height: 1.6;
+    }
+    .meta-item {
+      display: inline;
+    }
+    .separator {
+      color: #D1D5DB;
+      margin: 0 8px;
+    }
+    .section {
+      margin-top: 14px;
+    }
+    .section-title {
+      color: #374151;
+      font-size: 12pt;
       font-weight: bold;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #5B7C99;
+    }
+    .section-content {
+      margin-top: 8px;
+    }
+    .field-row {
+      display: table;
+      width: 100%;
+      margin-bottom: 4px;
+    }
+    .field-label {
+      display: table-cell;
+      width: 40%;
+      color: #4B5563;
+      padding: 2px 8px 2px 0;
+      vertical-align: top;
+    }
+    .field-separator {
+      display: table-cell;
+      width: 20px;
+      text-align: center;
+      color: #D1D5DB;
+      vertical-align: top;
+    }
+    .field-value {
+      display: table-cell;
+      width: 60%;
+      color: #111827;
+      padding: 2px 0 2px 8px;
+      vertical-align: top;
+    }
+    .legal-reminder {
+      text-align: center;
+      font-style: italic;
+      font-size: 9pt;
+      color: #6B7280;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+    .disclaimer-box {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #F3F4F6;
+      border-left: 3px solid #5B7C99;
+    }
+    .disclaimer-text {
+      font-size: 9pt;
+      color: #4B5563;
+      line-height: 1.5;
+      margin: 0;
+      text-align: justify;
+    }
+    .disclaimer-text strong {
       color: #374151;
     }
-    .value {
-      color: #111827;
-    }
-    .footer-note {
-      margin-top: 18px;
-      font-size: 10pt;
-      color: #4b5563;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 10px;
+    .page-footer {
+      margin-top: 16px;
+      padding-top: 8px;
+      border-top: 1px solid #E5E7EB;
+      text-align: center;
+      font-size: 8pt;
+      color: #9CA3AF;
     }
   </style>
 </head>
 <body>
-  <h1>Resumen de Solicitud de Servicio</h1>
-  <p class="subtitle">{{ service.name }}</p>
+  <div class="header">
+    <h1 class="company-name">G&M CONSULTORES JURIDICOS</h1>
+    <div class="header-line"></div>
+    <p class="document-title">Resumen de Solicitud de Servicio — {{ service.name }}</p>
+  </div>
 
-  <table class="meta">
-    <tr>
-      <td><strong>Numero de radicado:</strong> {{ request_obj.tracking_number }}</td>
-      <td><strong>Fecha de solicitud:</strong> {{ request_obj.submitted_at|date:"Y-m-d H:i" }}</td>
-    </tr>
-    <tr>
-      <td><strong>Solicitante:</strong> {{ requester.first_name }} {{ requester.last_name }}</td>
-      <td><strong>Correo:</strong> {{ requester.email }}</td>
-    </tr>
-  </table>
+  <p class="meta-info">
+    <span class="meta-item"><strong>No. Radicado:</strong> {{ request_obj.tracking_number }}</span>
+    <span class="separator">|</span>
+    <span class="meta-item"><strong>Fecha:</strong> {{ request_obj.submitted_at|date:"Y-m-d" }}</span>
+    <span class="separator">|</span>
+    <span class="meta-item"><strong>Solicitante:</strong> {{ requester.first_name }} {{ requester.last_name }} — G&M</span>
+  </p>
 
   {% for stage in stages %}
-    <div class="stage">
-      <div class="stage-title">Fase {{ stage.order }} - {{ stage.title }}</div>
-      {% for item in stage.items %}
-        <div class="answer-item">
-          <span class="label">{{ item.label }}:</span>
-          <span class="value">{{ item.value|default:"-" }}</span>
-        </div>
-      {% endfor %}
+    <div class="section">
+      <h2 class="section-title">{{ stage.title }}</h2>
+      <div class="section-content">
+        {% for item in stage.items %}
+          <div class="field-row">
+            <span class="field-label">{{ item.label }}</span>
+            <span class="field-separator">|</span>
+            <span class="field-value">{{ item.value|default:"—" }}</span>
+          </div>
+        {% endfor %}
+      </div>
     </div>
   {% endfor %}
 
-  <div class="footer-note">
-    {{ legal_note }}
+  <p class="legal-reminder">
+    Esta solicitud está sujeta a estudio y revisión por parte del abogado asignado.
+  </p>
+
+  <div class="disclaimer-box">
+    <p class="disclaimer-text">
+      <strong>Aviso.</strong> Este documento es un resumen informativo de la solicitud de servicios 
+      presentada por el interesado(a) a través de nuestro formulario electrónico conforme número de 
+      radicado generado. Su expedición <strong>NO</strong> implica, en ningún caso, la aceptación, 
+      contratación ni adquisición de los servicios solicitados, ni genera obligación alguna de carácter 
+      contractual ni patrimonial. La información aquí consignada estará sujeta a revisión y análisis por 
+      parte de nuestro equipo de profesionales, quienes, una vez evaluada la viabilidad y condiciones de 
+      la solicitud, se comunicarán para socializarla, orientarlo y, de ser aceptado por el(la) solicitante, 
+      formalizar del servicio requerido.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <p>Documento generado automáticamente - Confidencial - G&M Consultores Jurídicos - Página 1</p>
   </div>
 </body>
 </html>

@@ -24,19 +24,21 @@ This file tracks known errors, their context, and resolutions. When a reusable f
 
 ## Known Issues
 
-### [ISSUE-001] Backup composable file left in codebase
-- **Date**: 2026-03-17 (discovered during deep-dive)
-- **Context**: `frontend/src/composables/document-variables/useDocumentPermissions_backup.js` exists alongside the actual `useDocumentPermissions.js`
-- **Root Cause**: Leftover from a refactor — developer created backup before editing, never cleaned up
-- **Resolution**: Safe to delete `useDocumentPermissions_backup.js`. Verify no imports reference it first: `grep -r "useDocumentPermissions_backup" frontend/src/`
-- **Files Affected**: `frontend/src/composables/document-variables/useDocumentPermissions_backup.js`
+### [ISSUE-010] Django email template renders HTML tags as literal text
+- **Date**: 2026-04-15
+- **Context**: `notify_service_request_status_change` passed a `message` containing `<strong style="...">STATUS</strong>`. In the email received, the status appeared as literal text `<strong style='...'>EN ESTUDIO</strong>` instead of bold.
+- **Root Cause**: Django templates auto-escape all variables by default. `{{message}}` converted `<` to `&lt;` etc.
+- **Resolution**: Added `|safe` filter: `{{message|safe}}` in `notification.html` and `notification.mjml`. Safe because `message` is built entirely from internal server-side code, not user input.
+- **Key Lesson**: Any template variable containing intentional HTML must use `|safe`. Never use `|safe` on user-controlled strings.
+- **Files Affected**: `backend/gym_app/templates/emails/notification/notification.html`, `backend/gym_app/templates/emails/notification/notification.mjml`
 
-### [ISSUE-002] Empty check_tags.py in backend root
-- **Date**: 2026-03-17 (discovered during deep-dive)
-- **Context**: `backend/check_tags.py` is 0 bytes — serves no purpose
-- **Root Cause**: Likely a debugging/scratch file that was committed accidentally
-- **Resolution**: Safe to delete
-- **Files Affected**: `backend/check_tags.py`
+### [ISSUE-011] Email notification misses lawyer response attachments
+- **Date**: 2026-04-15
+- **Context**: When a lawyer uploaded a file and changed request status, the notification email to the client did not include the attachment.
+- **Root Cause**: Two problems: (1) `notify_service_request_status_change` was called BEFORE the `refetch` of the service_request object with prefetched `lawyer_responses__files`, so the queryset manager returned no files. (2) The notification function had no logic to collect files.
+- **Resolution**: (1) Moved notification call to AFTER the `refetch` in `service_tramite.py`. (2) Added attachment logic in `service_tramite_notifications.py` — fetches latest `ServiceRequestLawyerResponse`, iterates `.files.all()`, validates `os.path.isfile()`, passes paths to `send_template_email(attachments=...)`.
+- **Key Lesson**: When a function depends on prefetched relations, ensure it is called after the queryset is refetched with those prefetches.
+- **Files Affected**: `backend/gym_app/views/service_tramite.py`, `backend/gym_app/services/service_tramite_notifications.py`
 
 ### [ISSUE-003] Unbounded debug.log growth
 - **Date**: 2026-03-17 (discovered during deep-dive)
@@ -92,6 +94,16 @@ This file tracks known errors, their context, and resolutions. When a reusable f
 ---
 
 ## Resolved Issues
+
+### [RESOLVED-010] Backup composable file cleaned up (was ISSUE-001)
+- **Date resolved**: 2026-04-15
+- **Original context**: `frontend/src/composables/document-variables/useDocumentPermissions_backup.js` leftover from a refactor.
+- **Resolution**: File deleted. Composable count corrected from 11 → 10.
+
+### [RESOLVED-011] Empty check_tags.py removed (was ISSUE-002)
+- **Date resolved**: 2026-04-15
+- **Original context**: `backend/check_tags.py` was 0 bytes, committed accidentally.
+- **Resolution**: File deleted from backend root.
 
 ### [RESOLVED-001] E2E bypassCaptcha timeout — Vue internals dependency
 - **Date**: 2025-07-17

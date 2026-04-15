@@ -21,7 +21,7 @@
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
 | 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store. Backend: 120 tests passing. Frontend: 53 unit tests passing. E2E: 8 spec files with data-testid selectors. UI/UX redesign applied. Fake data command idempotent. |
-| 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 6 frontend views, 1 store, 1 dashboard component, sidebar/router integration, backend tests passing |
+| 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 7 frontend views (incl. ServicesHub.vue), 1 store, 1 dashboard component, sidebar/router integration, backend tests passing. Sprint Abril 2026: 11 mejoras (admin icon preview, validación, errores, help_text UX, multi-file UI, PDF rediseño, tabs navigation, header corporativo, emails sin emojis, estado destacado, adjuntos automáticos) |
 
 ---
 
@@ -56,7 +56,7 @@
 
 ## 4. Testing Status
 
-### Backend Tests (73 files)
+### Backend Tests (76 files)
 
 | Directory | File Count | Purpose |
 |-----------|------------|--------|
@@ -66,9 +66,9 @@
 | `tests/utils/` | 7 | Utility function tests |
 | `tests/tasks/` | 3 | Huey task tests |
 | `tests/services/` | 3 | Service layer tests |
-| `tests/commands/` | 0 | Directory exists, no tests yet |
+| `tests/commands/` | 3 | Management command tests |
 
-### Frontend Unit Tests (156 files)
+### Frontend Unit Tests (167 files)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -84,7 +84,7 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (176 spec files) — **138/138 flow coverage**
+### Frontend E2E Tests (179 spec files) — **138/138 flow coverage**
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|

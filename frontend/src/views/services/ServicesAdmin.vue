@@ -85,7 +85,33 @@
             class="w-full rounded-md border border-gray-300 px-3 py-2 mb-4"
           ></textarea>
 
-          <input type="file" class="w-full rounded-md border border-gray-300 px-3 py-2 mb-4" @change="onIconSelected" />
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Imagen del servicio</label>
+            
+            <div v-if="editor.icon_image_url" class="mb-3 p-3 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-gray-200">
+              <div class="flex items-center gap-3">
+                <div class="w-20 h-20 rounded-lg overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
+                  <img 
+                    :src="editor.icon_image_url" 
+                    :alt="editor.name" 
+                    class="w-full h-full object-cover"
+                  />
+                </div>
+                <div class="text-sm">
+                  <p class="font-medium text-gray-900">Imagen actual</p>
+                  <p class="text-xs text-gray-600 mt-0.5">Selecciona un nuevo archivo para reemplazarla</p>
+                </div>
+              </div>
+            </div>
+            
+            <input 
+              type="file" 
+              accept="image/*"
+              class="w-full rounded-md border border-gray-300 px-3 py-2" 
+              @change="onIconSelected" 
+            />
+            <p class="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, WebP. Máximo 5MB.</p>
+          </div>
 
           <div class="space-y-4">
             <div
@@ -249,6 +275,7 @@ const editor = reactive({
   is_active: true,
   is_featured: false,
   featured_order: 0,
+  icon_image_url: null,
   stages: [emptyStage(1)],
 });
 
@@ -260,6 +287,7 @@ const resetEditor = () => {
   editor.is_active = true;
   editor.is_featured = false;
   editor.featured_order = 0;
+  editor.icon_image_url = null;
   editor.stages = [emptyStage(1)];
   selectedServiceId.value = null;
   iconFile.value = null;
@@ -282,6 +310,7 @@ const mapServiceToEditor = (service) => {
   editor.is_active = service.is_active;
   editor.is_featured = service.is_featured;
   editor.featured_order = service.featured_order || 0;
+  editor.icon_image_url = service.icon_image_url || null;
   editor.stages = (service.stages || []).map((stage, stageIndex) => ({
     id: stage.id || null,
     title: stage.title || "",
@@ -318,7 +347,20 @@ const startCreate = () => {
 };
 
 const onIconSelected = (event) => {
-  iconFile.value = event.target.files?.[0] || null;
+  const file = event.target.files?.[0];
+  if (!file) {
+    iconFile.value = null;
+    return;
+  }
+  
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showNotification("La imagen no debe superar 5MB", "warning");
+    event.target.value = "";
+    return;
+  }
+  
+  iconFile.value = file;
 };
 
 const addStage = () => {
@@ -341,6 +383,62 @@ const removeField = (stageIndex, fieldIndex) => {
   stage.fields.splice(fieldIndex, 1);
 };
 
+const validateEditor = () => {
+  const errors = [];
+
+  if (!editor.name || !editor.name.trim()) {
+    errors.push("El nombre del servicio es obligatorio");
+  }
+  if (!editor.short_title || !editor.short_title.trim()) {
+    errors.push("El título corto es obligatorio");
+  }
+  if (!editor.stages.length) {
+    errors.push("Debes agregar al menos una etapa");
+  }
+
+  editor.stages.forEach((stage, stageIndex) => {
+    if (!stage.title || !stage.title.trim()) {
+      errors.push(`Etapa ${stageIndex + 1}: El título es obligatorio`);
+    }
+    if (!stage.fields.length) {
+      errors.push(`Etapa ${stageIndex + 1}: Debes agregar al menos un campo`);
+    }
+
+    const stageKeys = new Set();
+    stage.fields.forEach((field, fieldIndex) => {
+      const fieldLabel = `Etapa ${stageIndex + 1}, Campo ${fieldIndex + 1}`;
+
+      if (!field.key || !field.key.trim()) {
+        errors.push(`${fieldLabel}: La clave (key) es obligatoria`);
+      } else if (stageKeys.has(field.key)) {
+        errors.push(`${fieldLabel}: La clave "${field.key}" está duplicada en esta etapa`);
+      } else {
+        stageKeys.add(field.key);
+      }
+
+      if (!field.label || !field.label.trim()) {
+        errors.push(`${fieldLabel}: La etiqueta es obligatoria`);
+      }
+
+      if (["select_single", "select_multiple"].includes(field.field_type)) {
+        const optionsText = (field.options_text || "").trim();
+        if (!optionsText) {
+          errors.push(`${fieldLabel}: Los campos de selección requieren al menos una opción (separadas por coma)`);
+        }
+      }
+
+      if (field.field_type === "file") {
+        const extensionsText = (field.allowed_extensions_text || "").trim();
+        if (!extensionsText) {
+          errors.push(`${fieldLabel}: Los campos de archivo requieren al menos una extensión permitida`);
+        }
+      }
+    });
+  });
+
+  return errors;
+};
+
 const buildPayload = () => ({
   name: editor.name,
   short_title: editor.short_title,
@@ -356,6 +454,9 @@ const buildPayload = () => ({
       order: Number(stage.order || 1),
       is_active: stage.is_active,
       fields: stage.fields.map((field) => {
+        const optionsText = (field.options_text || "").trim();
+        const extensionsText = (field.allowed_extensions_text || "").trim();
+
         const fieldPayload = {
           key: field.key,
           label: field.label,
@@ -364,17 +465,11 @@ const buildPayload = () => ({
           help_text: field.help_text || "",
           is_required: field.is_required,
           order: Number(field.order || 1),
-          options: ["select_single", "select_multiple"].includes(field.field_type)
-            ? field.options_text
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean)
+          options: ["select_single", "select_multiple"].includes(field.field_type) && optionsText
+            ? optionsText.split(",").map((item) => item.trim()).filter(Boolean)
             : null,
-          allowed_extensions: field.field_type === "file"
-            ? field.allowed_extensions_text
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean)
+          allowed_extensions: field.field_type === "file" && extensionsText
+            ? extensionsText.split(",").map((item) => item.trim()).filter(Boolean)
             : null,
           allow_multiple_files: field.field_type === "file" ? field.allow_multiple_files : false,
           max_files: field.field_type === "file" ? Number(field.max_files || 1) : 1,
@@ -390,11 +485,14 @@ const buildPayload = () => ({
 
 const saveService = async () => {
   try {
-    const payload = buildPayload();
-    if (!payload.name || !payload.short_title || !payload.stages.length) {
-      showNotification("Completa nombre, titulo corto y al menos una etapa", "warning");
+    const validationErrors = validateEditor();
+    if (validationErrors.length > 0) {
+      showNotification(validationErrors[0], "warning");
+      console.error("Errores de validación:", validationErrors);
       return;
     }
+
+    const payload = buildPayload();
 
     let savedId = selectedServiceId.value;
     if (savedId) {
@@ -415,7 +513,22 @@ const saveService = async () => {
     }
   } catch (error) {
     console.error("Error saving service:", error);
-    showNotification("No fue posible guardar el servicio", "warning");
+    
+    let errorMessage = "No fue posible guardar el servicio";
+    if (error.response?.data) {
+      const data = error.response.data;
+      if (typeof data === 'string') {
+        errorMessage += `: ${data}`;
+      } else if (data.detail) {
+        errorMessage += `: ${data.detail}`;
+      } else if (data.non_field_errors) {
+        errorMessage += `: ${data.non_field_errors.join(', ')}`;
+      } else if (data.stages) {
+        errorMessage += ": Error en las etapas o campos";
+      }
+    }
+    
+    showNotification(errorMessage, "warning");
   }
 };
 

@@ -48,3 +48,108 @@
 ### [RESOLVED-007] E2E SECOP alert `data-testid` mismatches
 - **Context**: `secop-alert-create-flow.spec.js` referenced `alert-form` and `alert-name-input` but components used `alert-form-modal` and `alert-name`.
 - **Resolution**: Updated selectors in the E2E spec to match actual component `data-testid` attributes (2026-03-19).
+
+### [RESOLVED-008] Service creation fails silently when select fields have no options
+- **Context**: Admin service creation form allowed creating select_single/select_multiple fields without defining options. Frontend sent `options: []` (empty array), Django model validation rejected it, but error message "No fue posible guardar el servicio" provided no details.
+- **Root Cause**: `buildPayload()` in `ServicesAdmin.vue` converted empty `options_text` to `[]` instead of `null`. Model `clean()` method raised `ValidationError` for empty options, but catch block showed generic error.
+- **Resolution** (2026-04-15):
+  1. **Preventive validation**: Added `validateEditor()` function that validates all required fields before submission, including checking that select fields have at least one option and file fields have allowed extensions.
+  2. **Null vs empty array**: Modified `buildPayload()` to send `null` instead of `[]` when options/extensions text is empty (lines 426-431).
+  3. **Improved error messages**: Enhanced catch block to extract and display specific error details from backend response (lines 475-489).
+  4. **Duplicate key detection**: Added validation to prevent duplicate field keys within the same stage.
+- **Affected file**: `frontend/src/views/services/ServicesAdmin.vue`
+
+### [RESOLVED-009] Service icon image preview missing in admin form
+- **Context**: Admin service edit form did not show preview of existing service icon image. When editing a service with an icon, the file input appeared empty with no visual indication that an image was already uploaded. The image worked correctly in service cards but was not visible in the admin form.
+- **Root Cause**: The `editor` reactive state did not include `icon_image_url`, and `mapServiceToEditor()` did not capture the image URL from the service object.
+- **Resolution** (2026-04-15):
+  1. **Added image URL to editor state**: Included `icon_image_url: null` in the editor reactive object.
+  2. **Updated state management**: Modified `resetEditor()` and `mapServiceToEditor()` to handle `icon_image_url`.
+  3. **Added image preview UI**: Created preview section that displays current image in a styled card above the file input (lines 88-114).
+  4. **File validation**: Added 5MB maximum file size validation in `onIconSelected()` with user notification on exceed.
+  5. **Accept attribute**: Restricted file input to `accept="image/*"` for better UX.
+- **UX improvements**: Users can now see the current image when editing, with clear indication that selecting a new file will replace it.
+- **Affected file**: `frontend/src/views/services/ServicesAdmin.vue`
+
+### [RESOLVED-010] Admin role showing "Archivos Jurídicos" menu item incorrectly
+- **Context**: Admin role users could see "Archivos Jurídicos" (Dynamic Documents) menu item in sidebar, but this is a lawyer-only feature. Clicking the menu item caused confusion as Admin users don't have permissions to view most documents.
+- **Root Cause**: The navigation filter for `isAdmin` in `SlideBar.vue` (line 427) did not include "Archivos Juridicos" in the exclusion list, allowing the menu item to appear for Admin users.
+- **Resolution** (2026-04-15):
+  - Added `navItem.name !== "Archivos Juridicos"` to the admin navigation filter (line 433).
+  - Verified backend permission checks exist: all dynamic document endpoints use `@permission_classes([IsAuthenticated])` with role-based decorators (`@require_lawyer_only`, `@require_lawyer_or_owner`) and `apply_visibility_filter()` function that restricts non-lawyer access.
+  - Backend already correctly limits Admin access to only documents where they are creator, signer, have explicit permission, or document is public.
+- **Note**: This fix only affects menu visibility. Backend security was already correct. No relation to Services module.
+- **Affected file**: `frontend/src/components/layouts/SlideBar.vue`
+
+### [RESOLVED-011] Help text appearing after input field in service request forms
+- **Context**: In service request forms, the help text (`field.help_text`) that provides guidance to users appeared after the input field, making it difficult for users to understand what information to provide before attempting to fill out the field.
+- **Root Cause**: The `help_text` element in `ServiceDetail.vue` was positioned after all input/select/textarea/file elements (line 163-165), instead of immediately after the field label.
+- **Resolution** (2026-04-15):
+  - Moved `help_text` block to appear immediately after the field label and before the input element (now at lines 89-91).
+  - Updated styling from `text-gray-500 mt-2` to `text-gray-600 mb-3` for better readability and proper spacing with the input below.
+  - New logical reading flow: Label → Help text → Input → Validation errors.
+- **UX improvements**: Users now see the description/guidance before attempting to fill the field, reducing errors and improving form comprehension. Especially beneficial for fields with specific format requirements or complex instructions.
+- **Affected file**: `frontend/src/views/services/ServiceDetail.vue`
+
+### [RESOLVED-012] Poor UX for multiple file uploads in service request forms
+- **Context**: When uploading multiple files in service request forms, users faced several issues: no way to remove individual files after selection, no visual feedback on file count/limits, and need to re-select all files if one was wrong. Users were resorting to creating compressed folders (.zip) which posed security risks (could contain .exe or malicious files).
+- **Root Cause**: The file input only showed a simple list of selected files without controls. The `onFileSelected` function replaced all files instead of adding to the list, and there was no limit enforcement or individual file removal capability.
+- **Resolution** (2026-04-15):
+  1. **Enhanced file list UI**: Each selected file now displays in a card with file icon, name, size, and individual delete button (lines 177-206).
+  2. **File counter**: Shows "Archivos seleccionados (3/10)" to indicate current count vs limit.
+  3. **10-file limit**: Added `MAX_FILES_LIMIT = 10` constant and `maxFilesForField()` function. Input disables when limit is reached.
+  4. **Incremental file selection**: Modified `onFileSelected()` to append files instead of replacing (lines 379-383).
+  5. **Individual file removal**: Added `removeFile()` function to delete specific files from the list (lines 341-353).
+  6. **File size display**: Added `formatFileSize()` helper to show human-readable sizes (KB/MB).
+  7. **Visual feedback**: Input grays out and shows message when limit is reached.
+  8. **Improved existing files display**: Changed from simple list to cards with icons for better consistency.
+- **Security benefit**: By providing better multi-file support and limiting to 10 files with specific extensions (.pdf, .docx, .png, etc.), users no longer need to use compressed folders that could contain malicious executables.
+- **Affected file**: `frontend/src/views/services/ServiceDetail.vue`
+
+### [RESOLVED-013] Basic PDF design for service request documents lacking professional appearance
+- **Context**: The automatically generated PDF for service requests had a basic appearance with simple gray borders and tables, lacking corporate branding and professional visual design. It also lacked a clear legal disclaimer explaining that the document is informational only and does not constitute contract acceptance.
+- **Root Cause**: The PDF template (`service_request_pdf.html`) used minimal styling with generic gray borders and simple table layouts, without corporate colors or professional design elements.
+- **Resolution** (2026-04-15):
+  1. **Corporate header**: Added "G&M CONSULTORES JURIDICOS" header in blue (#5B7C99) with horizontal line separator.
+  2. **Document title**: Service name appears as subtitle in gray below the corporate header.
+  3. **Inline meta information**: Changed from table format to inline format with separators: "No. Radicado: XXX | Fecha: YYY | Solicitante: ZZZ — G&M".
+  4. **Section titles with blue underline**: Each stage/section now has a title with 2px blue (#5B7C99) bottom border instead of gray box.
+  5. **Field layout as table**: Fields displayed as `Label | Value` using table-cell display for proper alignment.
+  6. **Legal reminder**: Added centered italic text "Esta solicitud está sujeta a estudio y revisión por parte del abogado asignado."
+  7. **Disclaimer box**: Added highlighted disclaimer with gray background (#F3F4F6) and blue left border explaining informational nature of document.
+  8. **Footer**: Added "Documento generado automáticamente - Confidencial - G&M Consultores Jurídicos - Página 1" footer.
+  9. **Color scheme**: Corporate colors throughout - Blue #5B7C99 for headers/borders, various grays for text hierarchy.
+  10. **Typography improvements**: Adjusted font sizes (10pt body, 12pt section titles, 14pt company name) and line heights for better readability.
+  11. **Reduced margins**: Changed from 2cm to 1.5cm for more content space.
+- **Design benefits**: Professional corporate appearance, clear visual hierarchy, improved readability, legal clarity through prominent disclaimer.
+- **Affected file**: `backend/gym_app/templates/service_request_pdf.html`
+
+### [RESOLVED-014] Services navigation split across two separate menu items causing menu clutter
+- **Context**: The sidebar menu had "Servicios" and "Mis Solicitudes" as two separate menu items, causing navigation clutter and lack of visual consistency with other sections (SECOP, Archivos Jurídicos) that use tabs. Additionally, these views lacked the blue corporate header present in other sections.
+- **Root Cause**: Services and service requests were implemented as separate routes (`/services` and `/service_requests/my`) without unified navigation, and views used simple gray headers instead of ModuleHeader component.
+- **Resolution** (2026-04-15):
+  1. **Created unified hub**: New `ServicesHub.vue` component that combines both views with tab navigation (similar to SECOP and Archivos Jurídicos pattern).
+  2. **Added corporate header**: Implemented blue ModuleHeader with title "Servicios y Solicitudes" and subtitle.
+  3. **Tab navigation**: Desktop tabs and mobile dropdown to switch between "Servicios" and "Mis Solicitudes".
+  4. **Embedded mode**: Modified `ServicesList.vue` and `MyServiceRequests.vue` to support `embedded` prop that hides standalone headers when rendered within hub.
+  5. **Router consolidation**: Unified `/services` route to point to `services_hub`, added redirects for backwards compatibility (`/service_requests/my`, `/my_requests`, `/services_list`).
+  6. **Query param support**: Tab selection via `?tab=my-requests` query parameter for deep linking.
+  7. **Menu cleanup**: Removed "Mis Solicitudes" item from sidebar, updated all role filters (admin, basic user).
+  8. **Updated internal links**: Modified links in `ServiceDetail.vue` and `ServiceRequestDetail.vue` to use new unified route.
+- **UX benefits**: Cleaner sidebar menu (1 item instead of 2), consistent blue header across all sections, intuitive tab navigation, better organization.
+- **Affected files**: 
+  - Created: `frontend/src/views/services/ServicesHub.vue`
+  - Modified: `frontend/src/views/services/ServicesList.vue`, `frontend/src/views/services/MyServiceRequests.vue`, `frontend/src/router/index.js`, `frontend/src/components/layouts/SlideBar.vue`, `frontend/src/views/services/ServiceDetail.vue`, `frontend/src/views/services/ServiceRequestDetail.vue`
+
+### [RESOLVED-015] Service request notification emails with emojis, unclear status, and missing attachments
+- **Context**: Service request notification emails had three issues: (1) emojis/icons that don't render well in all email clients, (2) status updates not visually emphasized, and (3) lawyer response files not attached to notification emails, forcing users to log in to download them.
+- **Root Cause**: (1) Template used emoji unicode characters in HTML which don't render consistently across email clients, (2) status label displayed as plain text without HTML formatting, (3) `notify_service_request_status_change` function didn't include attachments parameter and was called before lawyer_responses were loaded.
+- **Resolution** (2026-04-15):
+  1. **Removed emojis from template**: Deleted the circular icon div containing `{{icon|default:"🔔"}}` from `notification.html` for cleaner, more professional appearance.
+  2. **Removed icon fields from Python**: Eliminated `"icon": "📌"` and `"icon": "📬"` from notification contexts in `service_tramite_notifications.py`.
+  3. **Highlighted status with HTML**: Changed status message to use inline HTML: `<strong style='font-weight: 700; text-transform: uppercase; color: #1f2937;'>{status_label}</strong>` for bold, uppercase rendering.
+  4. **Added attachment logic**: Modified `notify_service_request_status_change` to fetch latest lawyer response files and build attachments list with file paths.
+  5. **Reordered notification call**: Moved `notify_service_request_status_change` call in `service_tramite.py` to execute after `_request_queryset()` refetch, ensuring `lawyer_responses__files` are prefetched.
+  6. **File validation**: Added checks for file existence (`os.path.isfile`) before adding to attachments list to prevent errors.
+- **Email improvements**: Professional appearance without emoji dependency, status prominently displayed in **BOLD UPPERCASE**, clients receive response files directly in email without needing to log in.
+- **Affected files**: `backend/gym_app/templates/emails/notification/notification.html`, `backend/gym_app/services/service_tramite_notifications.py`, `backend/gym_app/views/service_tramite.py`

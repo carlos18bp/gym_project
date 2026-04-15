@@ -48,7 +48,7 @@
               Descargar PDF
             </button>
             <router-link
-              :to="{ name: 'service_requests_my' }"
+              :to="{ name: 'services_hub', query: { tab: 'my-requests' } }"
               class="px-4 py-2 rounded-lg bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100"
             >
               Ver Mis Solicitudes
@@ -85,6 +85,10 @@
                   {{ field.label }}
                   <span v-if="field.is_required" class="text-red-500">*</span>
                 </label>
+
+                <p v-if="field.help_text" class="text-xs text-gray-600 mb-3">
+                  {{ field.help_text }}
+                </p>
 
                 <input
                   v-if="field.field_type === 'input' || field.field_type === 'email' || field.field_type === 'number' || field.field_type === 'date'"
@@ -137,32 +141,70 @@
                     type="file"
                     :multiple="field.allow_multiple_files"
                     :accept="acceptString(field.allowed_extensions)"
+                    :data-field-id="field.id"
+                    :disabled="fieldState(field).new_files.length >= maxFilesForField(field)"
                     @change="onFileSelected(field, $event)"
-                    class="w-full rounded-md border border-gray-300 px-3 py-2"
+                    :class="[
+                      'w-full rounded-md border px-3 py-2 transition-colors',
+                      fieldState(field).new_files.length >= maxFilesForField(field)
+                        ? 'border-gray-200 bg-gray-100 cursor-not-allowed'
+                        : 'border-gray-300 hover:border-gray-400'
+                    ]"
                   />
 
-                  <div v-if="fieldState(field).existing_files.length" class="text-sm text-gray-700">
-                    <p class="font-medium text-gray-800">Archivos guardados:</p>
-                    <ul class="list-disc ml-5 mt-1 space-y-1">
-                      <li v-for="file in fieldState(field).existing_files" :key="file.id">
-                        {{ file.file_name }}
-                      </li>
-                    </ul>
+                  <p v-if="field.allow_multiple_files" class="text-xs text-gray-500">
+                    Puedes seleccionar hasta {{ maxFilesForField(field) }} archivos
+                  </p>
+
+                  <p v-if="fieldState(field).new_files.length >= maxFilesForField(field)" class="text-xs text-orange-600">
+                    Has alcanzado el límite de {{ maxFilesForField(field) }} archivos
+                  </p>
+
+                  <div v-if="fieldState(field).existing_files.length" class="space-y-2">
+                    <p class="text-sm font-medium text-gray-800">Archivos guardados:</p>
+                    <div
+                      v-for="file in fieldState(field).existing_files"
+                      :key="file.id"
+                      class="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg"
+                    >
+                      <svg class="w-5 h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span class="text-sm text-gray-900 flex-1 truncate">{{ file.file_name }}</span>
+                    </div>
                   </div>
 
-                  <div v-if="fieldState(field).new_files.length" class="text-sm text-gray-700">
-                    <p class="font-medium text-gray-800">Archivos por cargar:</p>
-                    <ul class="list-disc ml-5 mt-1 space-y-1">
-                      <li v-for="(file, idx) in fieldState(field).new_files" :key="`${file.name}-${idx}`">
-                        {{ file.name }}
-                      </li>
-                    </ul>
+                  <div v-if="fieldState(field).new_files.length" class="space-y-2">
+                    <p class="text-sm font-medium text-gray-800">
+                      Archivos seleccionados ({{ fieldState(field).new_files.length }}/{{ maxFilesForField(field) }})
+                    </p>
+                    <div
+                      v-for="(file, idx) in fieldState(field).new_files"
+                      :key="`${file.name}-${idx}`"
+                      class="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg group hover:bg-gray-100 transition-colors"
+                    >
+                      <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm text-gray-900 truncate">{{ file.name }}</p>
+                          <p class="text-xs text-gray-500">{{ formatFileSize(file.size) }}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        @click="removeFile(field, idx)"
+                        class="ml-2 p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                        title="Eliminar archivo"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <p v-if="field.help_text" class="text-xs text-gray-500 mt-2">
-                  {{ field.help_text }}
-                </p>
 
                 <p v-if="validationErrors[field.id]" class="text-xs text-red-600 mt-2">
                   {{ validationErrors[field.id] }}
@@ -284,17 +326,63 @@ const toggleMultiOption = (field, option) => {
 
 const MAX_FILE_SIZE_MB = 30;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_FILES_LIMIT = 10;
+
+const maxFilesForField = (field) => {
+  return field.allow_multiple_files ? MAX_FILES_LIMIT : 1;
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
+
+const removeFile = (field, index) => {
+  const state = fieldState(field);
+  state.new_files = state.new_files.filter((_, idx) => idx !== index);
+  
+  // Limpiar validación de error si existía
+  delete validationErrors[field.id];
+  
+  // Limpiar el input para permitir volver a seleccionar archivos
+  const fileInput = document.querySelector(`input[type="file"][data-field-id="${field.id}"]`);
+  if (fileInput) {
+    fileInput.value = "";
+  }
+};
 
 const onFileSelected = (field, event) => {
   const selectedFiles = Array.from(event.target.files || []);
+  const maxFiles = maxFilesForField(field);
+  
+  // Validar límite de archivos
+  const currentCount = fieldState(field).new_files.length;
+  const availableSlots = maxFiles - currentCount;
+  
+  if (selectedFiles.length > availableSlots) {
+    validationErrors[field.id] = `Puedes agregar máximo ${maxFiles} archivos. Ya tienes ${currentCount} archivo(s) seleccionado(s).`;
+    event.target.value = "";
+    return;
+  }
+  
+  // Validar tamaño de archivos
   const oversized = selectedFiles.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
   if (oversized.length) {
     validationErrors[field.id] = `El archivo ${oversized[0].name} excede ${MAX_FILE_SIZE_MB}MB.`;
     event.target.value = "";
     return;
   }
+  
   delete validationErrors[field.id];
-  fieldState(field).new_files = selectedFiles;
+  
+  // Agregar archivos a los existentes en lugar de reemplazar
+  fieldState(field).new_files = [
+    ...fieldState(field).new_files,
+    ...selectedFiles
+  ];
+  
+  event.target.value = ""; // Limpiar input para permitir agregar más
 };
 
 const applyDraftToForm = (draft) => {

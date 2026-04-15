@@ -222,7 +222,10 @@ test(
 
     await page.goto("/service_requests/my");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({
+    // /service_requests/my redirects to /services?tab=my-requests (ServicesHub).
+    // MyServiceRequests renders with embedded=true, so its own h1 is hidden.
+    // Assert on the ModuleHeader h1 which is always visible in ServicesHub.
+    await expect(page.getByRole("heading", { name: "Servicios y Solicitudes" })).toBeVisible({
       timeout: 15_000,
     });
     // Tracking numbers render as <h2> inside a <button> per-request card.

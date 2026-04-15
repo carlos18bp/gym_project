@@ -6,18 +6,18 @@
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
         Router["Vue Router\n63 routes"]
-        Views["42 View Pages"]
-        Components["114 Components"]
-        Stores["35 Pinia Stores"]
-        Composables["11 Composables"]
+        Views["43 View Pages"]
+        Components["111 Components"]
+        Stores["37 Pinia Stores"]
+        Composables["10 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.0.6)"]
         DRF["Django REST Framework\n181 API endpoints"]
-        Models["51 Models\n(13 model files)"]
+        Models["53 Models\n(13 model files)"]
         Serializers["11 Serializer files"]
-        Views_BE["24 View files"]
+        Views_BE["28 View files"]
         Utils["3 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n73 test files"]
-        Jest["Jest\n156 test files"]
-        PW["Playwright\n172 E2E specs"]
+        Pytest["pytest\n76 test files"]
+        Jest["Jest\n167 test files"]
+        PW["Playwright\n179 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 

@@ -176,12 +176,12 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 73 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 156 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 156) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 156) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 156) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 176 spec files | `frontend/e2e/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 76 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 167 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 167) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 167) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 167) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 179 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -221,14 +221,14 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 13 files → 51 model classes (+ User via AbstractUser + UserManager)
-│   │   ├── views/            # 24 files (incl. dynamic_documents/, layouts/, secop, service_tramite)
+│   │   ├── models/           # 13 files → 53 model classes (+ User via AbstractUser + UserManager)
+│   │   ├── views/            # 28 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/)
 │   │   ├── serializers/      # 11 files
 │   │   ├── services/         # 5 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
-│   │   ├── management/commands/ # 11 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
-│   │   ├── templates/        # email/PDF templates
-│   │   ├── tests/            # 73 test files (models, serializers, tasks, utils, views, services)
+│   │   ├── management/commands/ # 12 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
+│   │   ├── templates/        # 21 email/PDF templates
+│   │   ├── tests/            # 76 test files (models, serializers, tasks, utils, views, services, commands)
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
 │   │   ├── urls.py           # 181 URL patterns
@@ -239,15 +239,15 @@ gym_project/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # 114 Vue components
-│   │   ├── views/            # 42 page-level components
-│   │   ├── stores/           # 35 store files (domain directories + root files)
-│   │   ├── composables/      # 11 composable files
+│   │   ├── components/       # 111 Vue components
+│   │   ├── views/            # 43 page-level components
+│   │   ├── stores/           # 37 store files (domain directories + root files)
+│   │   ├── composables/      # 10 composable files
 │   │   ├── router/           # 1 file, 63 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 156 unit test files (11 subdirectories)
-│   ├── e2e/                  # 172 E2E spec files
+│   ├── test/                 # 167 unit test files (11 subdirectories)
+│   ├── e2e/                  # 179 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

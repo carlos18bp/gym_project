@@ -2,7 +2,7 @@
 
 ## 1. Current State
 
-The application is **feature-complete** with all 17 major features implemented, tested, and operational:
+The application is **feature-complete** with all 18 major features implemented, tested, and operational:
 
 - User management with JWT + Google OAuth + reCAPTCHA
 - Process management with stages, case files, and recent tracking
@@ -17,27 +17,43 @@ The application is **feature-complete** with all 17 major features implemented, 
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
 - **Servicios y Trámites** ✅: catálogo de servicios, formularios dinámicos por etapas, guardado en borrador, radicado `AÑO-CONSECUTIVO`, PDF automático, notificaciones por correo, bandeja de solicitudes para abogados/admin y seguimiento para clientes
 
-### Codebase Metrics (verified 2026-04-08)
+### Codebase Metrics (verified 2026-04-15)
 
 | Metric | Count |
 |--------|-------|
 | Backend model files | 13 |
-| Backend model classes | 51 (+ User via AbstractUser + UserManager) |
-| Backend view files | 24 |
+| Backend model classes | 53 (+ User via AbstractUser + UserManager) |
+| Backend view files | 28 |
 | Backend serializer files | 11 |
 | Backend URL patterns | 181 |
-| Backend test files | 73 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views) |
-| Frontend Vue components | 114 |
-| Frontend view pages | 42 |
-| Frontend Pinia store files | 35 |
-| Frontend composables | 11 |
-| Frontend unit test files | 156 |
-| Frontend E2E spec files | 172 |
+| Backend test files | 76 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views + 3 commands) |
+| Backend templates | 21 |
+| Backend management commands | 12 |
+| Frontend Vue components | 111 |
+| Frontend view pages | 43 |
+| Frontend Pinia store files | 37 |
+| Frontend composables | 10 |
+| Frontend unit test files | 167 |
+| Frontend E2E spec files | 179 |
 | Frontend routes | 63 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Sprint Abril 2026 — Servicios y Trámites: 11 mejoras (2026-04-15)**:
+  - **1.1 ServicesAdmin — Vista previa de icono**: Campo `icon_image_url` en `editor` reactive, miniatura 80×80px con gradiente, validación 5MB.
+  - **1.2 ServicesAdmin — Validación exhaustiva**: Nueva función `validateEditor()` cubre nombre, etapas, campos, claves duplicadas, opciones de selección, extensiones de archivo.
+  - **1.3 ServicesAdmin — Manejo de errores**: Bloque `catch` extrae `error.response.data` y muestra mensaje específico del backend.
+  - **1.4 ServiceDetail — Help text reposicionado**: `field.help_text` ahora aparece ANTES del input (después del label) para mejor UX.
+  - **1.5 ServiceDetail — UI archivos múltiples**: Tarjetas con icono, nombre truncado, tamaño formateado, botón `×` eliminar individual, contador X/10, input deshabilitado al alcanzar límite, selección incremental.
+  - **1.6 PDF — Rediseño corporativo**: Header «G&M CONSULTORES JURIDICOS», metadatos inline, secciones con subrayado azul #5B7C99, aviso aclaratorio legal en bloque gris, footer corporativo.
+  - **1.7 Navegación — ServicesHub.vue**: Nuevo componente unifica «Servicios» y «Mis Solicitudes» con tabs desktop + dropdown mobile. Prop `embedded` en ServicesList/MyServiceRequests. Router redirects legacy paths. Menú lateral simplificado (1 ítem).
+  - **1.8 Header azul corporativo**: `ModuleHeader` integrado en ServicesHub con título «Servicios y Solicitudes».
+  - **1.9 Emails — Sin emojis**: Eliminado div circular con emoji de `notification.html` y `.mjml`. Removidos campos `"icon"` de contextos Python.
+  - **1.10 Emails — Estado destacado**: Estado en `<strong style='font-weight:700;text-transform:uppercase'>`. Fix crítico: `|safe` agregado al `{{message}}` en ambas plantillas (Django auto-escapa HTML sin este filtro).
+  - **1.11 Emails — Archivos adjuntos**: `notify_service_request_status_change` recopila archivos de la respuesta más reciente del abogado y los pasa como `attachments`. Llamada movida DESPUÉS del `refetch` para garantizar que `lawyer_responses__files` estén disponibles.
+  - **Archivos afectados**: `ServicesAdmin.vue`, `ServiceDetail.vue`, `service_request_pdf.html`, `ServicesHub.vue` (nuevo), `ServicesList.vue`, `MyServiceRequests.vue`, `SlideBar.vue`, `router/index.js`, `ServiceDetail.vue`, `ServiceRequestDetail.vue`, `notification.html`, `notification.mjml`, `service_tramite_notifications.py`, `service_tramite.py`.
 
 - **Codex configuration normalization (2026-04-09)**:
   - **Repo config simplified**: Reduced `.codex/config.toml` to project-scoped settings that materially change behavior (`model`, reasoning effort, approval policy, sandbox mode, web search).
