@@ -197,7 +197,7 @@ class TestReportsAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     @mock.patch('openpyxl.chart.PieChart.add_data')
     @mock.patch('openpyxl.chart.BarChart.add_data')
     def test_all_report_types_basic_functionality(self, mock_bar_add_data, mock_pie_add_data, api_client, admin_user, basic_data):

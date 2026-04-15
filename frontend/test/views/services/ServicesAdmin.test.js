@@ -150,6 +150,9 @@ describe("ServicesAdmin.vue", () => {
 
     await wrapper.find("input[placeholder='Nombre del servicio']").setValue("Nuevo Servicio");
     await wrapper.find("input[placeholder='Titulo corto (1-2 palabras)']").setValue("Nuevo");
+    await wrapper.find("input[placeholder='Titulo etapa']").setValue("Etapa de Prueba");
+    await wrapper.find("input[placeholder='key_campo']").setValue("campo_1");
+    await wrapper.find("input[placeholder='Etiqueta']").setValue("Campo Uno");
 
     const saveBtn = wrapper.findAll("button").find((b) =>
       b.text() === "Guardar servicio"

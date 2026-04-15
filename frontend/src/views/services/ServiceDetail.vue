@@ -329,7 +329,8 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_FILES_LIMIT = 10;
 
 const maxFilesForField = (field) => {
-  return field.allow_multiple_files ? MAX_FILES_LIMIT : 1;
+  if (!field.allow_multiple_files) return 1;
+  return field.max_files || MAX_FILES_LIMIT;
 };
 
 const formatFileSize = (bytes) => {

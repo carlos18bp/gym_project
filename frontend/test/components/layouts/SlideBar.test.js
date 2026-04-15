@@ -221,12 +221,12 @@ describe("SlideBar.vue", () => {
       .map((a) => (a.text() || "").trim())
       .filter(Boolean);
 
-    expect(texts).toContain("Organizaciones");
     expect(texts).not.toContain("Solicitudes");
     expect(texts).toContain("Agendar Cita");
     expect(texts).not.toContain("Directorio");
     expect(texts).not.toContain("Intranet G&M");
     expect(texts).not.toContain("Gestión de Solicitudes");
+    expect(texts).not.toContain("Organizaciones");
   });
 
   test("filters navigation for non-gym lawyer role", async () => {
@@ -522,9 +522,6 @@ describe("SlideBar.vue", () => {
       return mockRouterPush.mock.calls[0]?.[0];
     };
 
-    expect(await clickNav("Organizaciones")).toEqual({
-      name: "organizations_dashboard",
-    });
     expect(await clickNav("Mis Solicitudes")).toEqual({ name: "service_requests_my" });
     expect(await clickNav("Agendar Cita")).toEqual({ name: "schedule_appointment" });
   });
@@ -555,9 +552,9 @@ describe("SlideBar.vue", () => {
       .map((a) => (a.text() || "").trim())
       .filter(Boolean);
 
-    expect(texts).toContain("Organizaciones");
     expect(texts).not.toContain("Solicitudes");
     expect(texts).not.toContain("Gestión de Solicitudes");
     expect(texts).not.toContain("Intranet G&M");
+    expect(texts).not.toContain("Organizaciones");
   });
 });

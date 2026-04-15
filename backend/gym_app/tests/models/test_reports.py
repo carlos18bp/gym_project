@@ -127,7 +127,7 @@ def sample_data(sample_users, fixed_now):
     # Create activity feeds
     activity = ActivityFeed.objects.create(
         user=sample_users['lawyer'],
-        action_type='create_process',
+        action_type='create',
         description=f"Created process {process.ref}",
         created_at=fixed_now - datetime.timedelta(days=10)
     )
@@ -329,8 +329,8 @@ class TestReportFunctions:
         assert not df.empty
         assert sample_users['lawyer'].email in df['Usuario'].values
         
-        # Check action types
-        assert 'create_process' in df['Tipo de Acción'].values
+        # Check action types — fixture uses action_type='create', report renders the display label
+        assert 'Create' in df['Tipo de Acción'].values
         
         # Check description
         description = df[df['Usuario'] == sample_users['lawyer'].email]['Descripción'].iloc[0]
@@ -368,7 +368,7 @@ class TestReportFunctions:
         # Mock the user_id variable that's used in the function
         monkeypatch.setattr('gym_app.views.reports.user_id', None)
         # Mock the models.Q function since it's used directly in the function
-        monkeypatch.setattr('gym_app.views.reports.models', models)
+        monkeypatch.setattr('gym_app.views.reports.document_reports.models', models)
         
         # Get dates for report range
         start_date, end_date = report_window

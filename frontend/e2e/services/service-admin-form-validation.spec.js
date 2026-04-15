@@ -61,7 +61,7 @@ test(
 );
 
 test(
-  "admin sees validation error when trying to save service without stages",
+  "admin sees validation error when saving service with empty stage title",
   {
     tag: [
       "@flow:service-admin-form-validation",
@@ -73,7 +73,9 @@ test(
   async ({ page }) => {
     await setupAdminPage(page);
 
-    // Fill name and short title but add no stages
+    // Fill name and short title but leave the default stage title empty.
+    // removeStage guards against 0 stages so the editor always has at least one;
+    // the first validation error for an untitled stage is this message.
     await page.locator('input[placeholder="Nombre del servicio"]').fill("Servicio Sin Etapas");
     await page.locator('input[placeholder="Titulo corto (1-2 palabras)"]').fill("Sin Etapas");
 
@@ -81,7 +83,7 @@ test(
 
     // quality: allow-fragile-selector (SweetAlert2 portal class is a library-stable anchor)
     await expect(
-      page.locator(".swal2-popup").getByText(/Debes agregar al menos una etapa/i)
+      page.locator(".swal2-popup").getByText(/Etapa 1: El título es obligatorio/i)
     ).toBeVisible({ timeout: 5_000 });
   }
 );
