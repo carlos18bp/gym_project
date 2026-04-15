@@ -522,7 +522,7 @@ describe("SlideBar.vue", () => {
       return mockRouterPush.mock.calls[0]?.[0];
     };
 
-    expect(await clickNav("Mis Solicitudes")).toEqual({ name: "service_requests_my" });
+    expect(await clickNav("Servicios")).toEqual({ name: "services_hub" });
     expect(await clickNav("Agendar Cita")).toEqual({ name: "schedule_appointment" });
   });
 
