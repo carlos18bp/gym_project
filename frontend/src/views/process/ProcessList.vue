@@ -300,9 +300,6 @@
                   Nombre
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  E-mail
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tipo Proceso
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -365,9 +362,6 @@
                       </button>
                     </div>
                   </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{{ getPrimaryClient(process)?.email }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -1070,13 +1064,12 @@ const exportProcesses = () => {
     : filteredAndSortedProcesses.value;
 
   // Create CSV content
-  const headers = ['Nombre', 'Email', 'Tipo Proceso', 'Dte./Accionante', 'Ddo./Accionado', 'Etapa'];
+  const headers = ['Nombre', 'Tipo Proceso', 'Dte./Accionante', 'Ddo./Accionado', 'Etapa'];
   const rows = processesToExport.map(process => {
     const primaryClient = getPrimaryClient(process) || {};
     const lastStage = process.stages?.[process.stages.length - 1] || null;
     return [
       `${primaryClient.first_name || ''} ${primaryClient.last_name || ''}`,
-      primaryClient.email || '',
       process.case?.type || '',
       process.plaintiff || '-',
       process.defendant || '-',
