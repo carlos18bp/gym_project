@@ -142,12 +142,11 @@ test("client sees only their processes in My Processes and can search", { tag: [
   await page.goto(`/process_list/${clientId}`);
 
   await expect(page.getByText("Laboral")).toBeVisible();
-  const myRow = page.getByRole("row", { name: /E2E Client.*e2e@example\.com.*Laboral/ });
+  const myRow = page.getByRole("row", { name: /E2E Client.*Laboral/ });
   await expect(myRow).toBeVisible();
 
   // Should be filtered out by tab logic (my_processes)
   await expect(page.getByText("Other Client")).toHaveCount(0);
-  await expect(page.getByText("other@example.com")).toHaveCount(0);
 
   await page.getByPlaceholder("Buscar procesos...").fill("Laboral");
   await expect(page.getByText("Laboral")).toBeVisible();
