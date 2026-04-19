@@ -76,6 +76,12 @@ class DynamicDocument(models.Model):
         ('Expired', 'Expired'),
     ]
 
+    SIGNATURE_TYPE_CHOICES = [
+        ('normal', 'Normal'),
+        ('issuer_only', 'Issuer Only'),
+        ('informative', 'Informative'),
+    ]
+
     title = models.CharField(max_length=200, help_text="Title of the dynamic document.")
     content = models.TextField(help_text="Content of the document.")
     # NEW FIELD – manual tags assigned by lawyers
@@ -130,6 +136,12 @@ class DynamicDocument(models.Model):
         null=True,
         blank=True,
         help_text="Plantilla Word (.docx) para membrete específica de este documento, utilizada al generar documentos Word cuando está configurada."
+    )
+    signature_type = models.CharField(
+        max_length=20,
+        choices=SIGNATURE_TYPE_CHOICES,
+        default='normal',
+        help_text="Type of signature workflow: 'normal' (all parties sign), 'issuer_only' (only creator signs), 'informative' (no signatures needed)."
     )
 
     def __str__(self):
@@ -443,6 +455,10 @@ class DynamicDocument(models.Model):
             bool: True if all signatures are complete, False otherwise
         """
         if not self.requires_signature:
+            return False
+
+        # Informative documents never require signatures
+        if self.signature_type == 'informative':
             return False
             
         # If no signatures are required, it's not considered fully signed

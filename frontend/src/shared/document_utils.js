@@ -83,6 +83,45 @@ export const openPreviewModal = (document) => {
   }
 };
 
+/**
+ * Returns template content with variables formatted for preview display.
+ * Known variables (with name_es) are shown as styled pills/badges.
+ * Unknown variables are shown as [variable_name] in plain text.
+ * This is used for Draft/Published templates where variables have no values yet.
+ * @param {Object} document - The document with content and variables array.
+ * @returns {string} Processed HTML content with formatted variable placeholders.
+ */
+export const getPreviewContentWithFormattedVariables = (document) => {
+  if (!document) return "";
+
+  let processedContent = document.content || "";
+  const variables = document.variables && Array.isArray(document.variables) ? document.variables : [];
+
+  // Build a map of variable name_en -> name_es for quick lookup
+  const variableMap = new Map();
+  variables.forEach((v) => {
+    if (v && v.name_en) {
+      variableMap.set(v.name_en.trim(), v.name_es || "");
+    }
+  });
+
+  // Replace all {{variable_name}} occurrences
+  processedContent = processedContent.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, varName) => {
+    const trimmedName = varName.trim();
+    const nameEs = variableMap.get(trimmedName);
+
+    if (nameEs && nameEs.trim().length > 0) {
+      // Known variable: render as a styled pill with the Spanish name
+      return `<span style="background-color:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:12px;font-size:0.85em;font-weight:500;white-space:nowrap;">${nameEs}</span>`;
+    }
+
+    // Unknown variable: render as plain text in brackets
+    return `[${trimmedName}]`;
+  });
+
+  return processedContent;
+};
+
 export async function previewDocument(document, store) {
   try {
     // Set last updated document ID to highlight it in the list when returning

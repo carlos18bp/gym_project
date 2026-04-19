@@ -594,7 +594,7 @@ const loadService = async () => {
 };
 
 const goBack = () => {
-  router.push({ name: "services_list" });
+  router.push({ name: "services_hub" });
 };
 
 const captureSnapshot = () => {

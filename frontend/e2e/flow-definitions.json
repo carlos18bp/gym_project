@@ -668,8 +668,8 @@
         "lawyer"
       ],
       "priority": "P1",
-      "description": "Transicionar documento Completado a PendingSignatures sin crear copia",
-      "expectedSpecs": 1
+      "description": "Transicionar documento Completado a PendingSignatures sin crear copia (normal, issuer_only, informative)",
+      "expectedSpecs": 2
     },
     "correct-document": {
       "name": "Corregir documento rechazado/expirado",

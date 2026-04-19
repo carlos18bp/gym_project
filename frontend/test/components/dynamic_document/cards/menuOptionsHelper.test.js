@@ -64,6 +64,20 @@ describe("menuOptionsHelper.js", () => {
   });
 
   describe("lawyer", () => {
+    test("use-template context returns only preview and useTemplate", () => {
+      const options = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Published" },
+        "use-template",
+        { currentUser: { email: "x@x.com" } }
+      );
+
+      expect(options).toEqual([
+        { label: "Previsualización", action: "preview" },
+        { label: "Usar plantilla", action: "useTemplate" },
+      ]);
+    });
+
     test("legal-documents Draft uses edit submenu and does not include relationships", () => {
       const options = getMenuOptionsForCardType(
         "lawyer",
@@ -179,6 +193,30 @@ describe("menuOptionsHelper.js", () => {
       expect(options.some((o) => o.action === "downloadPDF")).toBe(true);
       expect(options.some((o) => o.action === "downloadWord")).toBe(true);
       expect(options.some((o) => o.action === "email")).toBe(true);
+    });
+
+    test("Completed informative document excludes edit-submenu and formalize in client card", () => {
+      const options = getMenuOptionsForCardType(
+        "client",
+        { id: 1, state: "Completed", signature_type: "informative" },
+        "list",
+        { currentUser: { email: "x@x.com", role: "client" } }
+      );
+
+      expect(options.some((o) => o.action === "edit-submenu")).toBe(false);
+      expect(options.some((o) => o.action === "formalize")).toBe(false);
+    });
+
+    test("Completed issuer_only document retains edit-submenu and formalize in client card", () => {
+      const options = getMenuOptionsForCardType(
+        "client",
+        { id: 1, state: "Completed", signature_type: "issuer_only" },
+        "list",
+        { currentUser: { email: "x@x.com", role: "client" } }
+      );
+
+      expect(options.some((o) => o.action === "edit-submenu")).toBe(true);
+      expect(options.some((o) => o.action === "formalize")).toBe(true);
     });
   });
 
@@ -354,6 +392,20 @@ describe("menuOptionsHelper.js", () => {
   });
 
   describe("client", () => {
+    test("use-template context returns only preview and useTemplate", () => {
+      const options = getMenuOptionsForCardType(
+        "client",
+        { id: 1, state: "Published" },
+        "use-template",
+        { currentUser: { role: "client" } }
+      );
+
+      expect(options).toEqual([
+        { label: "Previsualización", action: "preview" },
+        { label: "Usar plantilla", action: "useTemplate" },
+      ]);
+    });
+
     test("Completed with non-standard role omits formalize", () => {
       const options = getMenuOptionsForCardType(
         "client",

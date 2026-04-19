@@ -49,6 +49,14 @@ function canSignDocument(document, userStore) {
 const cardConfigs = {
   lawyer: {
     getMenuOptions: (document, context, userStore) => {
+      // Template selection flow: only preview and use actions
+      if (context === 'use-template') {
+        return [
+          { label: "Previsualización", action: "preview" },
+          { label: "Usar plantilla", action: "useTemplate" },
+        ];
+      }
+
       // Locked documents (in signature workflow) — read-only menu for lawyers too
       if (document.state === 'FullySigned' || document.state === 'PendingSignatures') {
         const lockedOptions = [
@@ -257,6 +265,14 @@ const cardConfigs = {
 
   client: {
     getMenuOptions: (document, context, userStore) => {
+      // Template selection flow: only preview and use actions
+      if (context === 'use-template') {
+        return [
+          { label: "Previsualización", action: "preview" },
+          { label: "Usar plantilla", action: "useTemplate" },
+        ];
+      }
+
       const options = [];
       const isBasicUser = userStore?.currentUser?.role === 'basic';
       const isCorporateOrClient = userStore?.currentUser?.role === 'corporate_client' || 
@@ -316,30 +332,36 @@ const cardConfigs = {
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
-        const editChildren = [
-          {
-            label: "Editar Formulario",
-            action: "editForm"
-          }
-        ];
+        // Informative documents should not be editable or re-formalized
+        const isInformative = document.signature_type === 'informative';
 
-        // Only non-basic users (client, corporate_client, lawyer) can access the raw document editor
-        if (!isBasicUser) {
-          editChildren.push({
-            label: "Editar Documento",
-            action: "editDocument"
+        if (!isInformative) {
+          const editChildren = [
+            {
+              label: "Editar Formulario",
+              action: "editForm"
+            }
+          ];
+
+          // Only non-basic users (client, corporate_client, lawyer) can access the raw document editor
+          if (!isBasicUser) {
+            editChildren.push({
+              label: "Editar Documento",
+              action: "editDocument"
+            });
+          }
+
+          options.push({
+            label: "Editar",
+            action: "edit-submenu",
+            isGroup: true,
+            children: editChildren
           });
         }
-
-        options.push({
-          label: "Editar",
-          action: "edit-submenu",
-          isGroup: true,
-          children: editChildren
-        });
         
-        // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles and show disabled for Basic
-        if (isCorporateOrClient || isBasicUser || isLawyer) {
+        // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles
+        // but NOT for informative documents (already formalized)
+        if (!isInformative && (isCorporateOrClient || isBasicUser || isLawyer)) {
           options.push({
             label: "Formalizar y Agregar Firmas",
             action: "formalize",

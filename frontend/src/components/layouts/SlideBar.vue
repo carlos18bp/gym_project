@@ -142,6 +142,36 @@
                           {{ item.name }}
                         </a>
                       </li>
+                    </ul>
+                  </li>
+                  <li class="mt-auto pb-10">
+                    <ul role="list" class="-mx-2 space-y-1">
+                      <li v-for="item in bottomNavigation" :key="item.name">
+                        <a
+                          :href="item.href || 'javascript:void(0)'"
+                          :target="item.target || null"
+                          @click="!item.href && item.action(item)"
+                          class="cursor-pointer"
+                          :class="[
+                            item.current
+                              ? 'bg-gray-50 text-secondary'
+                              : 'text-primary hover:bg-gray-50 hover:text-secondary',
+                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                          ]"
+                        >
+                          <component
+                            :is="item.icon"
+                            :class="[
+                              item.current
+                                ? 'text-secondary'
+                                : 'text-primary group-hover:text-secondary',
+                              'h-6 w-6 shrink-0',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          {{ item.name }}
+                        </a>
+                      </li>
                       <PWAInstallButton></PWAInstallButton>
                     </ul>
                   </li>
@@ -274,6 +304,36 @@
                   {{ item.name }}
                 </a>
               </li>
+            </ul>
+          </li>
+          <li class="mt-auto pb-10">
+            <ul role="list" class="-mx-2 space-y-1">
+              <li v-for="item in bottomNavigation" :key="item.name">
+                <a
+                  :href="item.href || 'javascript:void(0)'"
+                  :target="item.target || null"
+                  @click="!item.href && item.action(item)"
+                  class="cursor-pointer"
+                  :class="[
+                    item.current
+                      ? 'bg-selected-background text-secondary'
+                      : 'text-primary hover:bg-gray-50 hover:text-secondary',
+                    'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                  ]"
+                >
+                  <component
+                    :is="item.icon"
+                    :class="[
+                      item.current
+                        ? 'text-secondary'
+                        : 'text-primary group-hover:text-secondary',
+                      'h-6 w-6 shrink-0',
+                    ]"
+                    aria-hidden="true"
+                  />
+                  {{ item.name }}
+                </a>
+              </li>
               <PWAInstallButton></PWAInstallButton>
             </ul>
           </li>
@@ -369,6 +429,7 @@ import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
+import RegisteredIcon from "@/components/icons/RegisteredIcon.vue";
 import WhatsappIcon from "@/assets/icons/social_network/whatsapp.svg";
 import FacebookIcon from "@/assets/icons/social_network/facebook.svg";
 import InstagramIcon from "@/assets/icons/social_network/instagram.svg";
@@ -428,8 +489,7 @@ onMounted(async () => {
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Agendar Cita" &&
-        navItem.name !== "Organizaciones" &&
-        navItem.name !== "Archivos Juridicos"
+        navItem.name !== "Organizaciones"
     );
   } else {
     navigation.value = navigation.value.filter(
@@ -529,12 +589,12 @@ const navigation = ref([
     routes: ['/dynamic_document_dashboard']
   },
   {
-    name: "Servicios",
+    name: "Servicios y Solicitudes",
     action: (item) => {
       setCurrent(item);
       router.push({ name: "services_hub" });
     },
-    icon: DocumentTextIcon,
+    icon: RegisteredIcon,
     current: false,
     routes: ['/services']
   },
@@ -608,11 +668,13 @@ const navigation = ref([
     current: false,
     routes: ['/secop']
   },
+]);
+
+const bottomNavigation = ref([
   {
     name: "Manual de Usuario",
     action: (item) => {
-      setCurrent(item);
-      // Force navigation even if already on the route
+      setCurrentBottom(item);
       if (route.path === '/user_guide') {
         router.push({ name: "user_guide", params: { refresh: Date.now() } });
       } else {
@@ -674,10 +736,22 @@ const updateActiveNavItem = () => {
       navItem.current = false;
     }
   });
+
+  bottomNavigation.value.forEach((navItem) => {
+    if (navItem.routes && navItem.routes.some(routePath => currentPath.startsWith(routePath))) {
+      navItem.current = true;
+      foundMatch = true;
+    } else {
+      navItem.current = false;
+    }
+  });
   
   // If no match is found, no button should be highlighted
   if (!foundMatch) {
     navigation.value.forEach(navItem => {
+      navItem.current = false;
+    });
+    bottomNavigation.value.forEach(navItem => {
       navItem.current = false;
     });
   }
@@ -708,6 +782,21 @@ watch(
  */
 const setCurrent = (item) => {
   navigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+  bottomNavigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+
+  item.current = true;
+  slidebarOpen.value = false;
+};
+
+const setCurrentBottom = (item) => {
+  navigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+  bottomNavigation.value.forEach((navItem) => {
     navItem.current = false;
   });
 

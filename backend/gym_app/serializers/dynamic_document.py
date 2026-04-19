@@ -200,7 +200,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
             'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
-            'signatures', 'signers', 'signer_ids', 'fully_signed',
+            'signature_type', 'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
             'is_public', 'visibility_user_ids', 'usability_user_ids',
             'user_permission_level', 'can_view', 'can_edit', 'can_delete',
@@ -398,6 +398,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         """
         # Extract signature-related data
         requires_signature = validated_data.pop('requires_signature', False)
+        signature_type = validated_data.pop('signature_type', 'normal')
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', [])
         tags = validated_data.pop('tags', [])  # Extract tags
@@ -421,7 +422,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Create the document
         document = DynamicDocument.objects.create(
             **validated_data,
-            requires_signature=requires_signature  # Explicitly set requires_signature
+            requires_signature=requires_signature,
+            signature_type=signature_type,
         )
 
         # Assign tags to the document
@@ -526,6 +528,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         original_state = instance.state
 
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
+        signature_type = validated_data.pop('signature_type', instance.signature_type)
         signers = validated_data.pop('signers', [])
         variables_data = validated_data.pop('variables', None)
         tags = validated_data.pop('tags', None)  # Extract tags
@@ -653,8 +656,9 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                 Q(source_document=instance) | Q(target_document=instance)
             ).delete()
 
-        # Set requires_signature explicitly
+        # Set requires_signature and signature_type explicitly
         instance.requires_signature = requires_signature
+        instance.signature_type = signature_type
         instance.save()
         return instance
 

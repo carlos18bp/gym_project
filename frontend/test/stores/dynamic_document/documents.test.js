@@ -1189,6 +1189,46 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     consoleSpy.mockRestore();
   });
 
+  test("formalizeDocument sends signature_type and recipients for issuer_only", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/15/formalize/").reply(200, {
+      id: 15, state: "PendingSignatures", signature_type: "issuer_only",
+    });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.formalizeDocument(15, {
+      signature_type: "issuer_only",
+      recipients: [10, 20],
+      title: "Terminacion",
+    });
+
+    const payload = JSON.parse(mock.history.post[0].data);
+    expect(payload.signature_type).toBe("issuer_only");
+    expect(payload.recipients).toEqual([10, 20]);
+    expect(payload.signers).toBeUndefined();
+  });
+
+  test("formalizeDocument sends signature_type and recipients for informative", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onPost("/api/dynamic-documents/16/formalize/").reply(200, {
+      id: 16, state: "Completed", signature_type: "informative",
+    });
+    mock.onPost("/api/create-activity/").reply(200, { id: 1 });
+
+    await store.formalizeDocument(16, {
+      signature_type: "informative",
+      recipients: [30],
+      title: "Aviso",
+    });
+
+    const payload = JSON.parse(mock.history.post[0].data);
+    expect(payload.signature_type).toBe("informative");
+    expect(payload.recipients).toEqual([30]);
+    expect(payload.signers).toBeUndefined();
+  });
+
   // ── correctDocument behavioral scenarios ──
 
   test("correctDocument updates cache, list, lastUpdatedDocumentId, and registers activity", async () => {

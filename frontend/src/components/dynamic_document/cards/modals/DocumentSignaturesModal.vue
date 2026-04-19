@@ -25,6 +25,8 @@
         <div v-else>
           <div class="mb-4">
             <h3 class="text-lg font-medium text-gray-900">{{ document.title }}</h3>
+            <span v-if="document.signature_type === 'issuer_only'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mb-2">Solo firma del emisor</span>
+            <span v-else-if="document.signature_type === 'informative'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mb-2">Documento informativo</span>
             <p class="text-sm text-gray-500">
               <span class="inline-flex items-center">
                 <span 

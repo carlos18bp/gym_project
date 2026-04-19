@@ -1100,10 +1100,15 @@ const getStateLabel = (state) => {
 };
 
 const getStatusText = (document) => {
-  return getStateLabel(document.state);
+  const label = getStateLabel(document.state);
+  if (document.signature_type === 'informative') return `${label} (Informativo)`;
+  if (document.signature_type === 'issuer_only') return `${label} (Solo Emisor)`;
+  return label;
 };
 
 const getStatusBadgeClass = (document) => {
+  if (document.signature_type === 'informative') return 'bg-purple-100 text-purple-800';
+  if (document.signature_type === 'issuer_only') return 'bg-blue-100 text-blue-800';
   const classes = {
     'Draft': 'bg-gray-100 text-gray-800',
     'Published': 'bg-blue-100 text-blue-800',

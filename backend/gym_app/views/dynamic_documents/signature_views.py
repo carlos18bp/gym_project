@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable
+from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
@@ -360,6 +360,10 @@ def sign_document(request, document_id, user_id):
             document.fully_signed = True
             document.updated_at = timezone.now()
             document.save(update_fields=['state', 'fully_signed', 'updated_at'])
+
+            # For issuer_only documents, notify recipients when fully signed
+            if document.signature_type == 'issuer_only':
+                _notify_issuer_only_recipients(document, signing_user)
         
         # Return the updated signature record
         serializer = DocumentSignatureSerializer(signature_record)
@@ -549,19 +553,26 @@ def reopen_document_signatures(request, document_id):
 @require_lawyer_or_owner_by_id
 @transaction.atomic
 def formalize_document(request, document_id):
-    """Formalize a completed document by transitioning it to PendingSignatures.
+    """Formalize a completed document by transitioning it based on signature_type.
 
-    Instead of creating a copy, this endpoint updates the **same** document
-    instance from 'Completed' to 'PendingSignatures' and creates
-    DocumentSignature records for the requested signers.
+    Supports three signature types:
+    - 'normal' (default): All parties sign. Creates DocumentSignature for each signer.
+    - 'issuer_only': Only the creator/emisor signs. Recipients receive notification.
+    - 'informative': No signatures needed. Document goes directly to Completed.
 
-    Effects:
-    - Only works for documents in the 'Completed' state.
-    - Sets requires_signature=True and state='PendingSignatures'.
-    - Creates DocumentSignature records for each signer.
-    - Auto-adds the requesting lawyer as a signer if not already included.
-    - Optionally sets signature_due_date.
-    - Does NOT modify the document title.
+    Effects (normal):
+    - Sets requires_signature=True, state='PendingSignatures', signature_type='normal'.
+    - Creates DocumentSignature records for each signer + auto-adds lawyer.
+
+    Effects (issuer_only):
+    - Sets requires_signature=True, state='PendingSignatures', signature_type='issuer_only'.
+    - Creates DocumentSignature ONLY for the requesting user (creator/emisor).
+    - Grants visibility to recipients so they can view the document.
+
+    Effects (informative):
+    - Sets requires_signature=False, state='Completed', signature_type='informative'.
+    - No DocumentSignature records created.
+    - Grants visibility to recipients and sends notification email.
     """
 
     try:
@@ -578,7 +589,130 @@ def formalize_document(request, document_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Validate signers
+    signature_type = request.data.get('signature_type', 'normal')
+    if signature_type not in ('normal', 'issuer_only', 'informative'):
+        return Response(
+            {'detail': 'Tipo de firma inválido. Opciones: normal, issuer_only, informative.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    signature_due_date = request.data.get('signature_due_date', None)
+    recipient_ids = request.data.get('recipients', [])
+
+    # ── INFORMATIVE: no signatures, goes to Completed ──
+    if signature_type == 'informative':
+        # Validate recipients
+        if not recipient_ids:
+            return Response(
+                {'detail': 'Debe incluir al menos un destinatario para documentos informativos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        recipients = User.objects.filter(pk__in=recipient_ids)
+        if recipients.count() != len(recipient_ids):
+            return Response(
+                {'detail': 'Uno o más IDs de destinatario no son válidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rows_updated = DynamicDocument.objects.filter(
+            pk=document_id,
+            state='Completed',
+        ).update(
+            state='Completed',
+            requires_signature=False,
+            signature_type='informative',
+            fully_signed=False,
+            updated_at=timezone.now(),
+        )
+
+        if rows_updated == 0:
+            logger.warning(
+                "409 Conflict: formalize_document(informative) doc_id=%d user_id=%d",
+                document_id, request.user.pk,
+            )
+            return Response(
+                {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Grant visibility to recipients
+        _grant_visibility_to_recipients(document, recipients, request.user)
+
+        # Send notification emails to recipients
+        creator_name = request.user.get_full_name() or request.user.email
+        for recipient in recipients:
+            try:
+                email_message = EmailMessage(
+                    subject=f"[Documento Informativo] '{document.title}'",
+                    body=(
+                        f"El usuario {creator_name} le ha enviado el documento informativo "
+                        f"'{document.title}'.\n\n"
+                        f"Este documento no requiere firma. Puede consultarlo en su repositorio documental."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[recipient.email],
+                )
+                email_message.send()
+            except Exception:
+                logger.warning(
+                    "Failed to send informative notification email to %s for doc_id=%d",
+                    recipient.email, document_id, exc_info=True,
+                )
+
+        document = get_optimized_document_queryset().get(pk=document_id)
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ── ISSUER_ONLY: only the creator signs ──
+    if signature_type == 'issuer_only':
+        if not recipient_ids:
+            return Response(
+                {'detail': 'Debe incluir al menos un destinatario para documentos de solo firma del emisor.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        recipients = User.objects.filter(pk__in=recipient_ids)
+        if recipients.count() != len(recipient_ids):
+            return Response(
+                {'detail': 'Uno o más IDs de destinatario no son válidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rows_updated = DynamicDocument.objects.filter(
+            pk=document_id,
+            state='Completed',
+        ).update(
+            state='PendingSignatures',
+            requires_signature=True,
+            signature_type='issuer_only',
+            fully_signed=False,
+            signature_due_date=signature_due_date if signature_due_date else None,
+            updated_at=timezone.now(),
+        )
+
+        if rows_updated == 0:
+            logger.warning(
+                "409 Conflict: formalize_document(issuer_only) doc_id=%d user_id=%d",
+                document_id, request.user.pk,
+            )
+            return Response(
+                {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Create DocumentSignature ONLY for the creator/emisor
+        DocumentSignature.objects.get_or_create(
+            document=document,
+            signer=request.user,
+        )
+
+        # Grant visibility to recipients
+        _grant_visibility_to_recipients(document, recipients, request.user)
+
+        document = get_optimized_document_queryset().get(pk=document_id)
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ── NORMAL: all parties sign (existing behavior) ──
     signer_ids = request.data.get('signers', [])
     if not signer_ids:
         return Response(
@@ -598,14 +732,13 @@ def formalize_document(request, document_id):
         signers = list(signers)
         signers.append(request.user)
 
-    # Optimistic state transition: only update if document is still Completed
-    signature_due_date = request.data.get('signature_due_date', None)
     rows_updated = DynamicDocument.objects.filter(
         pk=document_id,
         state='Completed',
     ).update(
         state='PendingSignatures',
         requires_signature=True,
+        signature_type='normal',
         fully_signed=False,
         signature_due_date=signature_due_date if signature_due_date else None,
         updated_at=timezone.now(),
@@ -621,16 +754,53 @@ def formalize_document(request, document_id):
             status=status.HTTP_409_CONFLICT,
         )
 
-    # Create DocumentSignature records for each signer (single INSERT)
     DocumentSignature.objects.bulk_create(
         [DocumentSignature(document=document, signer=signer) for signer in signers],
         ignore_conflicts=True,
     )
 
-    # Return the fully serialized document
     document = get_optimized_document_queryset().get(pk=document_id)
     serializer = DynamicDocumentSerializer(document, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def _grant_visibility_to_recipients(document, recipients, granted_by):
+    """Grant visibility permissions to recipients so they can view the document."""
+    for recipient in recipients:
+        if recipient.role == 'lawyer' or getattr(recipient, 'is_gym_lawyer', False):
+            continue
+        DocumentVisibilityPermission.objects.get_or_create(
+            document=document,
+            user=recipient,
+            defaults={'granted_by': granted_by},
+        )
+
+
+def _notify_issuer_only_recipients(document, signing_user):
+    """Notify recipients (visibility permission holders) that an issuer_only document was signed."""
+    signer_ids = set(document.signatures.values_list('signer_id', flat=True))
+    recipient_perms = document.visibility_permissions.select_related('user').exclude(
+        user_id__in=signer_ids,
+    )
+    creator_name = signing_user.get_full_name() or signing_user.email
+    for perm in recipient_perms:
+        try:
+            email_message = EmailMessage(
+                subject=f"[Documento Firmado] '{document.title}'",
+                body=(
+                    f"El usuario {creator_name} ha firmado el documento '{document.title}'.\n\n"
+                    f"Este documento ha sido firmado por el emisor y no requiere su firma. "
+                    f"Puede consultarlo en su repositorio documental."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[perm.user.email],
+            )
+            email_message.send()
+        except Exception:
+            logger.warning(
+                "Failed to send issuer_only notification email to %s for doc_id=%d",
+                perm.user.email, document.pk, exc_info=True,
+            )
 
 
 @api_view(['POST'])

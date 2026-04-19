@@ -934,19 +934,20 @@ const getSignatureStatusClasses = (document) => {
 
 // Get signature status text
 const getSignatureStatusText = (document) => {
+  const suffix = document.signature_type === 'issuer_only' ? ' (Solo Emisor)' : '';
   if (props.state === 'FullySigned') {
-    return 'Firmado';
+    return 'Firmado' + suffix;
   }
   if (props.state === 'Archived') {
     if (document.state === 'Rejected') {
-      return 'Rechazado';
+      return 'Rechazado' + suffix;
     }
     if (document.state === 'Expired') {
-      return 'Expirado';
+      return 'Expirado' + suffix;
     }
-    return 'Archivado';
+    return 'Archivado' + suffix;
   }
-  return 'Pendiente';
+  return 'Pendiente' + suffix;
 };
 
 // Selection functions

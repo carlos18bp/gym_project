@@ -348,9 +348,9 @@ export const documentActions = {
   },
 
   /**
-   * Formalize an existing completed document (transition to PendingSignatures in-place).
+   * Formalize an existing completed document based on signature_type.
    * @param {number|string} documentId - ID of the document to formalize
-   * @param {Object} formalizeData - { signers: [ids], signature_due_date: string|null, title: string }
+   * @param {Object} formalizeData - { signature_type: 'normal'|'issuer_only'|'informative', signers?: [ids], recipients?: [ids], signature_due_date: string|null, title: string }
    * @returns {Object} The updated document data
    */
   async formalizeDocument(documentId, formalizeData) {

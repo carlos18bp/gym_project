@@ -16,7 +16,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from gym_app.models import DocumentSignature, DynamicDocument, UserSignature
-from gym_app.models.dynamic_document import DocumentVariable
+from gym_app.models.dynamic_document import DocumentVariable, DocumentVisibilityPermission
 
 try:
     from PIL import Image as PILImage
@@ -2743,6 +2743,244 @@ class TestFormalizeDocument:
         ).update(state='PendingSignatures')
 
         assert rows_updated == 0
+
+    # ── issuer_only formalization ──
+
+    def test_formalize_issuer_only_success(self, api, lawyer, client_user):
+        """Issuer-only: only creator gets signature, recipients get visibility, state is PendingSignatures."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "PendingSignatures"
+        assert doc.signature_type == "issuer_only"
+        assert doc.requires_signature is True
+        assert doc.fully_signed is False
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer).exists()
+        assert not DocumentSignature.objects.filter(document=doc, signer=client_user).exists()
+        assert DocumentSignature.objects.filter(document=doc).count() == 1
+        assert DocumentVisibilityPermission.objects.filter(
+            document=doc, user=client_user,
+        ).exists()
+
+    def test_formalize_issuer_only_no_recipients(self, api, lawyer, client_user):
+        """Issuer-only with empty recipients returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_issuer_only_invalid_recipients(self, api, lawyer, client_user):
+        """Issuer-only with non-existent recipient IDs returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [999999],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_issuer_only_with_due_date(self, api, lawyer, client_user):
+        """Issuer-only formalization sets signature_due_date when provided."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+            "signature_due_date": "2026-12-31",
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert str(doc.signature_due_date) == "2026-12-31"
+
+    # ── informative formalization ──
+
+    def test_formalize_informative_success(self, api, lawyer, client_user):
+        """Informative: state stays Completed, no signatures created, recipients get visibility."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "Completed"
+        assert doc.signature_type == "informative"
+        assert doc.requires_signature is False
+        assert doc.fully_signed is False
+        assert DocumentSignature.objects.filter(document=doc).count() == 0
+        assert DocumentVisibilityPermission.objects.filter(
+            document=doc, user=client_user,
+        ).exists()
+
+    def test_formalize_informative_no_recipients(self, api, lawyer, client_user):
+        """Informative with empty recipients returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_informative_invalid_recipients(self, api, lawyer, client_user):
+        """Informative with non-existent recipient IDs returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [999999],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    def test_formalize_informative_sends_notification_email(self, mock_email_cls, api, lawyer, client_user):
+        """Informative formalization sends notification email to recipients."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        mock_email_cls.assert_called()
+        call_kwargs = mock_email_cls.call_args
+        assert client_user.email in call_kwargs.kwargs.get("to", call_kwargs[1].get("to", []))
+
+    # ── invalid signature_type ──
+
+    def test_formalize_invalid_signature_type(self, api, lawyer, client_user):
+        """Invalid signature_type returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "invalid_type",
+            "signers": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ── sign_document – issuer_only auto-completion + notification ─────
+
+
+@pytest.mark.django_db
+class TestSignDocumentIssuerOnly:
+    """Tests for signing issuer_only documents and recipient notification."""
+
+    @pytest.fixture
+    def api(self):
+        return APIClient()
+
+    @pytest.fixture
+    def lawyer(self):
+        return User.objects.create_user(
+            email="sign_io_lawyer@t.com", password="pw", role="lawyer",
+            first_name="Law", last_name="Yer",
+        )
+
+    @pytest.fixture
+    def client_user(self):
+        return User.objects.create_user(
+            email="sign_io_client@t.com", password="pw", role="client",
+            first_name="Cli", last_name="Ent",
+        )
+
+    @staticmethod
+    def _create_signature_image():
+        """Create a minimal PNG for UserSignature."""
+        buf = BytesIO()
+        if PILImage is not None:
+            img = PILImage.new("RGBA", (100, 50), (0, 0, 0, 0))
+            img.save(buf, "PNG")
+        else:
+            buf.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+        buf.seek(0)
+        return SimpleUploadedFile("sig.png", buf.read(), content_type="image/png")
+
+    def _setup_issuer_only_doc(self, lawyer, client_user):
+        """Create a PendingSignatures issuer_only document with only the lawyer as signer."""
+        doc = DynamicDocument.objects.create(
+            title="Terminacion Unilateral",
+            content="<p>Se termina el contrato</p>",
+            state="PendingSignatures",
+            created_by=lawyer,
+            assigned_to=client_user,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        doc.visibility_permissions.create(user=lawyer, granted_by=lawyer)
+        doc.visibility_permissions.create(user=client_user, granted_by=lawyer)
+        DocumentSignature.objects.create(document=doc, signer=lawyer)
+        return doc
+
+    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    def test_sign_issuer_only_completes_and_notifies(self, mock_email_cls, api, lawyer, client_user):
+        """Signing issuer_only doc marks it FullySigned and triggers recipient notification."""
+        doc = self._setup_issuer_only_doc(lawyer, client_user)
+        UserSignature.objects.create(user=lawyer, signature_image=self._create_signature_image(), method="draw")
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("sign-document", args=[doc.id, lawyer.id])
+        resp = api.post(url)
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "FullySigned"
+        assert doc.fully_signed is True
+        assert mock_email_cls.called
+        recipient_emails = [
+            call.kwargs.get("to", call[1].get("to", []))
+            for call in mock_email_cls.call_args_list
+        ]
+        flat_emails = [e for sublist in recipient_emails for e in sublist]
+        assert client_user.email in flat_emails
+
+    def test_sign_issuer_only_recipient_not_in_pending(self, api, lawyer, client_user):
+        """Recipient (client_user) should NOT appear in pending signatures for issuer_only doc."""
+        doc = self._setup_issuer_only_doc(lawyer, client_user)
+        api.force_authenticate(user=client_user)
+
+        url = reverse("get-pending-signatures")
+        resp = api.get(url)
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc_ids = [d["id"] for d in resp.data]
+        assert doc.id not in doc_ids
 
 
 # ── correct_document ──────────────────────────────────────────────

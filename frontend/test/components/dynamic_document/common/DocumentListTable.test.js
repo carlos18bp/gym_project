@@ -203,6 +203,43 @@ describe("DocumentListTable.vue", () => {
     SUMMARY_COLUMNS.forEach((col) => expect(thTexts).toContain(col));
   });
 
+  test("renders Informativo suffix in status badge for informative documents", async () => {
+    const wrapper = mountView({
+      promptDocuments: [
+        { id: 10, title: "Aviso Legal", state: "Completed", signature_type: "informative", tags: [] },
+      ],
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("(Informativo)");
+  });
+
+  test("renders Solo Emisor suffix in status badge for issuer_only documents", async () => {
+    const wrapper = mountView({
+      promptDocuments: [
+        { id: 11, title: "Terminacion", state: "PendingSignatures", signature_type: "issuer_only", tags: [] },
+      ],
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("(Solo Emisor)");
+  });
+
+  test("does not render signature type suffix for normal documents", async () => {
+    const wrapper = mountView({
+      promptDocuments: [
+        { id: 12, title: "Contrato Normal", state: "PendingSignatures", signature_type: "normal", tags: [] },
+      ],
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("(Informativo)");
+    expect(wrapper.text()).not.toContain("(Solo Emisor)");
+  });
+
   test("toggle all selection selects and clears document IDs", async () => {
     const wrapper = mountView({
       promptDocuments: [

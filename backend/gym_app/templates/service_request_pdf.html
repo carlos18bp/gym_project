@@ -58,31 +58,27 @@
     }
     .section-content {
       margin-top: 8px;
+      border-left: 3px solid #5B7C99;
+      padding-left: 6px;
     }
-    .field-row {
-      display: table;
+    .fields-table {
       width: 100%;
-      margin-bottom: 4px;
+      border-collapse: collapse;
     }
-    .field-label {
-      display: table-cell;
-      width: 40%;
+    .fields-table tr.row-even {
+      background-color: #F9FAFB;
+    }
+    .col-label {
+      width: 38%;
+      font-weight: bold;
       color: #4B5563;
-      padding: 2px 8px 2px 0;
+      padding: 4px 8px 4px 6px;
       vertical-align: top;
     }
-    .field-separator {
-      display: table-cell;
-      width: 20px;
-      text-align: center;
-      color: #D1D5DB;
-      vertical-align: top;
-    }
-    .field-value {
-      display: table-cell;
-      width: 60%;
+    .col-value {
+      width: 62%;
       color: #111827;
-      padding: 2px 0 2px 8px;
+      padding: 4px 6px 4px 8px;
       vertical-align: top;
     }
     .legal-reminder {
@@ -138,13 +134,14 @@
     <div class="section">
       <h2 class="section-title">{{ stage.title }}</h2>
       <div class="section-content">
-        {% for item in stage.items %}
-          <div class="field-row">
-            <span class="field-label">{{ item.label }}</span>
-            <span class="field-separator">|</span>
-            <span class="field-value">{{ item.value|default:"—" }}</span>
-          </div>
-        {% endfor %}
+        <table class="fields-table">
+          {% for item in stage.items %}
+            <tr class="{% cycle 'row-odd' 'row-even' %}">
+              <td class="col-label">{{ item.label }}</td>
+              <td class="col-value">{{ item.value|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </table>
       </div>
     </div>
   {% endfor %}
