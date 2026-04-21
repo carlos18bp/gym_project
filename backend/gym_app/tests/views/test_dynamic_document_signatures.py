@@ -2747,7 +2747,7 @@ class TestFormalizeDocument:
     # ── issuer_only formalization ──
 
     def test_formalize_issuer_only_success(self, api, lawyer, client_user):
-        """Issuer-only: only creator gets signature, recipients get visibility, state is PendingSignatures."""
+        """Issuer-only: creator gets pending DS, recipients get auto-signed DS + visibility, state is PendingSignatures."""
         doc = _make_completed_doc(lawyer, client_user)
         api.force_authenticate(user=lawyer)
 
@@ -2763,9 +2763,10 @@ class TestFormalizeDocument:
         assert doc.signature_type == "issuer_only"
         assert doc.requires_signature is True
         assert doc.fully_signed is False
-        assert DocumentSignature.objects.filter(document=doc, signer=lawyer).exists()
-        assert not DocumentSignature.objects.filter(document=doc, signer=client_user).exists()
-        assert DocumentSignature.objects.filter(document=doc).count() == 1
+        # Emisor DS (pending) + recipient DS (auto-signed as Notificado)
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=False).exists()
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
+        assert DocumentSignature.objects.filter(document=doc).count() == 2
         assert DocumentVisibilityPermission.objects.filter(
             document=doc, user=client_user,
         ).exists()
@@ -2815,7 +2816,7 @@ class TestFormalizeDocument:
     # ── informative formalization ──
 
     def test_formalize_informative_success(self, api, lawyer, client_user):
-        """Informative: state stays Completed, no signatures created, recipients get visibility."""
+        """Informative: state goes to FullySigned, DS created for emisor and recipient, recipients get visibility."""
         doc = _make_completed_doc(lawyer, client_user)
         api.force_authenticate(user=lawyer)
 
@@ -2827,11 +2828,14 @@ class TestFormalizeDocument:
 
         assert resp.status_code == status.HTTP_200_OK
         doc.refresh_from_db()
-        assert doc.state == "Completed"
+        assert doc.state == "FullySigned"
         assert doc.signature_type == "informative"
-        assert doc.requires_signature is False
-        assert doc.fully_signed is False
-        assert DocumentSignature.objects.filter(document=doc).count() == 0
+        assert doc.requires_signature is True
+        assert doc.fully_signed is True
+        # DS for emisor (auto-signed) + DS for recipient (auto-signed)
+        assert DocumentSignature.objects.filter(document=doc).count() == 2
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=True).exists()
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
         assert DocumentVisibilityPermission.objects.filter(
             document=doc, user=client_user,
         ).exists()
@@ -2933,7 +2937,7 @@ class TestSignDocumentIssuerOnly:
         return SimpleUploadedFile("sig.png", buf.read(), content_type="image/png")
 
     def _setup_issuer_only_doc(self, lawyer, client_user):
-        """Create a PendingSignatures issuer_only document with only the lawyer as signer."""
+        """Create a PendingSignatures issuer_only document with emisor DS (pending) and recipient DS (auto-signed)."""
         doc = DynamicDocument.objects.create(
             title="Terminacion Unilateral",
             content="<p>Se termina el contrato</p>",
@@ -2946,6 +2950,7 @@ class TestSignDocumentIssuerOnly:
         doc.visibility_permissions.create(user=lawyer, granted_by=lawyer)
         doc.visibility_permissions.create(user=client_user, granted_by=lawyer)
         DocumentSignature.objects.create(document=doc, signer=lawyer)
+        DocumentSignature.objects.create(document=doc, signer=client_user, signed=True, signed_at=timezone.now())
         return doc
 
     @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")

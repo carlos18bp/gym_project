@@ -4,7 +4,7 @@
     <div class="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Estado de firmas del documento</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Estado de Formalización del Documento</h2>
         <button 
           @click="close" 
           class="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
@@ -43,12 +43,16 @@
                 ></span>
                 {{
                   document.state === 'FullySigned'
-                    ? 'Documento completamente firmado'
+                    ? (document.signature_type === 'informative'
+                        ? 'Documento formalizado (informativo)'
+                        : document.signature_type === 'issuer_only'
+                          ? 'Documento formalizado (firma unilateral)'
+                          : 'Documento completamente firmado')
                     : document.state === 'Rejected'
                       ? 'Documento rechazado'
                       : document.state === 'Expired'
                         ? 'Documento expirado'
-                        : 'Pendiente de firmas'
+                        : 'Pendiente de formalización'
                 }}
               </span>
             </p>
@@ -56,7 +60,7 @@
               Creado por: {{ document.creator.name }} ({{ document.creator.email }})
             </p>
             <p class="text-sm text-gray-500 mt-1">
-              Firmas: {{ document.completed_signatures || 0 }}/{{ document.total_signatures || 0 }}
+              {{ document.signature_type === 'informative' ? 'Notificaciones' : document.signature_type === 'issuer_only' ? 'Firma emisor' : 'Firmas' }}: {{ document.completed_signatures || 0 }}/{{ document.total_signatures || 0 }}
             </p>
           </div>
           
@@ -66,7 +70,7 @@
                 <tr>
                   <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
                   <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de firma</th>
+                  <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -87,14 +91,10 @@
                     <span 
                       :class="[
                         'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                        signer.rejected
-                          ? 'bg-red-100 text-red-800'
-                          : signer.signed 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
+                        getSignerStatusClass(signer)
                       ]"
                     >
-                      {{ signer.rejected ? 'Rechazado' : signer.signed ? 'Firmado' : 'Pendiente' }}
+                      {{ getSignerStatusLabel(signer) }}
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -118,14 +118,10 @@
                     <span 
                       :class="[
                         'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                        signature.rejected
-                          ? 'bg-red-100 text-red-800'
-                          : signature.signed 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
+                        getSignatureStatusClass(signature)
                       ]"
                     >
-                      {{ signature.rejected ? 'Rechazado' : signature.signed ? 'Firmado' : 'Pendiente' }}
+                      {{ getSignatureStatusLabel(signature) }}
                     </span>
                   </td>
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -274,6 +270,91 @@ const canCurrentUserSign = computed(() => {
   
   return true;
 });
+
+/**
+ * Determine if a signer is the emisor (document creator).
+ */
+const isEmisor = (signerObj) => {
+  if (!document.value) return false;
+  const createdById = document.value.created_by_id || document.value.created_by;
+  return signerObj.signer_id === createdById || signerObj.signer === createdById;
+};
+
+/**
+ * Get the status label for a signer row in the new format, adapted by signature_type.
+ */
+const getSignerStatusLabel = (signer) => {
+  if (signer.rejected) return 'Rechazado';
+
+  const sigType = document.value?.signature_type;
+  if (sigType === 'informative') {
+    return isEmisor(signer) ? 'Emitido' : 'Informado';
+  }
+  if (sigType === 'issuer_only') {
+    if (isEmisor(signer)) {
+      return signer.signed ? 'Firmado' : 'Pendiente';
+    }
+    return 'Notificado';
+  }
+  return signer.signed ? 'Firmado' : 'Pendiente';
+};
+
+/**
+ * Get the badge CSS classes for a signer row, adapted by signature_type.
+ */
+const getSignerStatusClass = (signer) => {
+  if (signer.rejected) return 'bg-red-100 text-red-800';
+
+  const sigType = document.value?.signature_type;
+  if (sigType === 'informative') {
+    return isEmisor(signer) ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+  }
+  if (sigType === 'issuer_only' && !isEmisor(signer)) {
+    return 'bg-blue-100 text-blue-800';
+  }
+  return signer.signed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+};
+
+/**
+ * Get the badge CSS classes for a signature row (legacy format), adapted by signature_type.
+ */
+const getSignatureStatusClass = (signature) => {
+  if (signature.rejected) return 'bg-red-100 text-red-800';
+
+  const sigType = document.value?.signature_type;
+  const createdById = document.value?.created_by_id || document.value?.created_by;
+  const isCreator = signature.signer_id === createdById || signature.signer === createdById;
+
+  if (sigType === 'informative') {
+    return isCreator ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+  }
+  if (sigType === 'issuer_only' && !isCreator) {
+    return 'bg-blue-100 text-blue-800';
+  }
+  return signature.signed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+};
+
+/**
+ * Get the status label for a signature row in the legacy format, adapted by signature_type.
+ */
+const getSignatureStatusLabel = (signature) => {
+  if (signature.rejected) return 'Rechazado';
+
+  const sigType = document.value?.signature_type;
+  const createdById = document.value?.created_by_id || document.value?.created_by;
+  const isCreator = signature.signer_id === createdById || signature.signer === createdById;
+
+  if (sigType === 'informative') {
+    return isCreator ? 'Emitido' : 'Informado';
+  }
+  if (sigType === 'issuer_only') {
+    if (isCreator) {
+      return signature.signed ? 'Firmado' : 'Pendiente';
+    }
+    return 'Notificado';
+  }
+  return signature.signed ? 'Firmado' : 'Pendiente';
+};
 
 // Methods
 /**

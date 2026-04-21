@@ -457,9 +457,9 @@ class DynamicDocument(models.Model):
         if not self.requires_signature:
             return False
 
-        # Informative documents never require signatures
+        # Informative documents are already fully formalized at creation
         if self.signature_type == 'informative':
-            return False
+            return self.fully_signed
             
         # If no signatures are required, it's not considered fully signed
         signature_count = self.signatures.count()

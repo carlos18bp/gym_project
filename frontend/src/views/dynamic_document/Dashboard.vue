@@ -957,7 +957,7 @@ const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
-  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'signed-documents', label: 'Dcs. Formalizados' },
   { name: 'archived-documents', label: 'Dcs. Archivados' }
 ];
 
@@ -967,7 +967,7 @@ const lawyerNavigationTabs = [
   { name: 'folders', label: 'Carpetas' },
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
-  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'signed-documents', label: 'Dcs. Formalizados' },
   { name: 'archived-documents', label: 'Dcs. Archivados' },
   { name: 'finished-documents', label: 'Dcs. Clientes' },
   { name: 'in-progress-documents', label: 'Dcs. Clientes en Progreso' },

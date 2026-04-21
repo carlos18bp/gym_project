@@ -232,6 +232,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             full_name = f"{first_name} {last_name}".strip() or signer.email
             signers_data.append({
                 'signature_id': signature.id,
+                'signer_id': signer.id,
                 'signer_email': signer.email,
                 'signer_name': full_name,
                 'signed': signature.signed,

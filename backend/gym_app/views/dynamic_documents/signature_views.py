@@ -558,7 +558,7 @@ def formalize_document(request, document_id):
     Supports three signature types:
     - 'normal' (default): All parties sign. Creates DocumentSignature for each signer.
     - 'issuer_only': Only the creator/emisor signs. Recipients receive notification.
-    - 'informative': No signatures needed. Document goes directly to Completed.
+    - 'informative': No signatures needed. Document goes directly to FullySigned.
 
     Effects (normal):
     - Sets requires_signature=True, state='PendingSignatures', signature_type='normal'.
@@ -566,12 +566,12 @@ def formalize_document(request, document_id):
 
     Effects (issuer_only):
     - Sets requires_signature=True, state='PendingSignatures', signature_type='issuer_only'.
-    - Creates DocumentSignature ONLY for the requesting user (creator/emisor).
+    - Creates DocumentSignature for the emisor (pending) + auto-signed DS for recipients.
     - Grants visibility to recipients so they can view the document.
 
     Effects (informative):
-    - Sets requires_signature=False, state='Completed', signature_type='informative'.
-    - No DocumentSignature records created.
+    - Sets requires_signature=True, state='FullySigned', signature_type='informative'.
+    - Creates auto-signed DocumentSignature for emisor + each recipient.
     - Grants visibility to recipients and sends notification email.
     """
 
@@ -599,7 +599,7 @@ def formalize_document(request, document_id):
     signature_due_date = request.data.get('signature_due_date', None)
     recipient_ids = request.data.get('recipients', [])
 
-    # ── INFORMATIVE: no signatures, goes to Completed ──
+    # ── INFORMATIVE: no signatures needed, goes directly to FullySigned ──
     if signature_type == 'informative':
         # Validate recipients
         if not recipient_ids:
@@ -614,15 +614,16 @@ def formalize_document(request, document_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        now = timezone.now()
         rows_updated = DynamicDocument.objects.filter(
             pk=document_id,
             state='Completed',
         ).update(
-            state='Completed',
-            requires_signature=False,
+            state='FullySigned',
+            requires_signature=True,
             signature_type='informative',
-            fully_signed=False,
-            updated_at=timezone.now(),
+            fully_signed=True,
+            updated_at=now,
         )
 
         if rows_updated == 0:
@@ -633,6 +634,21 @@ def formalize_document(request, document_id):
             return Response(
                 {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
                 status=status.HTTP_409_CONFLICT,
+            )
+
+        # Create DocumentSignature for the emisor (auto-signed as "Emitido")
+        DocumentSignature.objects.get_or_create(
+            document=document,
+            signer=request.user,
+            defaults={'signed': True, 'signed_at': now},
+        )
+
+        # Create DocumentSignature for each recipient (auto-signed as "Informado")
+        for recipient in recipients:
+            DocumentSignature.objects.get_or_create(
+                document=document,
+                signer=recipient,
+                defaults={'signed': True, 'signed_at': now},
             )
 
         # Grant visibility to recipients
@@ -699,11 +715,20 @@ def formalize_document(request, document_id):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Create DocumentSignature ONLY for the creator/emisor
+        # Create DocumentSignature for the creator/emisor (pending their signature)
         DocumentSignature.objects.get_or_create(
             document=document,
             signer=request.user,
         )
+
+        # Create DocumentSignature for each recipient (auto-signed as "Notificado")
+        now_issuer = timezone.now()
+        for recipient in recipients:
+            DocumentSignature.objects.get_or_create(
+                document=document,
+                signer=recipient,
+                defaults={'signed': True, 'signed_at': now_issuer},
+            )
 
         # Grant visibility to recipients
         _grant_visibility_to_recipients(document, recipients, request.user)
@@ -778,9 +803,8 @@ def _grant_visibility_to_recipients(document, recipients, granted_by):
 
 def _notify_issuer_only_recipients(document, signing_user):
     """Notify recipients (visibility permission holders) that an issuer_only document was signed."""
-    signer_ids = set(document.signatures.values_list('signer_id', flat=True))
     recipient_perms = document.visibility_permissions.select_related('user').exclude(
-        user_id__in=signer_ids,
+        user=signing_user,
     )
     creator_name = signing_user.get_full_name() or signing_user.email
     for perm in recipient_perms:

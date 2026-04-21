@@ -728,7 +728,7 @@ const emptyMessage = computed(() => {
     return 'No tienes documentos pendientes por firmar';
   }
   if (props.state === 'FullySigned') {
-    return 'No tienes documentos firmados';
+    return 'No tienes documentos formalizados';
   }
   return 'No tienes documentos archivados';
 });
@@ -738,7 +738,7 @@ const getDetailedEmptyMessage = computed(() => {
     return 'Cuando tengas documentos que requieran tu firma electrónica aparecerán aquí.';
   }
   if (props.state === 'FullySigned') {
-    return 'Una vez que firmes documentos electrónicamente, aparecerán aquí.';
+    return 'Una vez que formalices documentos, aparecerán aquí.';
   }
   return 'Aquí aparecerán los documentos rechazados o expirados relacionados contigo.';
 });
@@ -918,6 +918,8 @@ const getTagClasses = (tag) => {
 // Get signature status classes
 const getSignatureStatusClasses = (document) => {
   if (props.state === 'FullySigned') {
+    if (document.signature_type === 'informative') return 'bg-purple-100 text-purple-700 border border-purple-200';
+    if (document.signature_type === 'issuer_only') return 'bg-blue-100 text-blue-700 border border-blue-200';
     return 'bg-green-100 text-green-700 border border-green-200';
   }
   if (props.state === 'Archived') {
@@ -934,9 +936,12 @@ const getSignatureStatusClasses = (document) => {
 
 // Get signature status text
 const getSignatureStatusText = (document) => {
-  const suffix = document.signature_type === 'issuer_only' ? ' (Solo Emisor)' : '';
+  const sigType = document.signature_type;
+  const suffix = sigType === 'issuer_only' ? ' (Solo Emisor)' : sigType === 'informative' ? ' (Informativo)' : '';
   if (props.state === 'FullySigned') {
-    return 'Firmado' + suffix;
+    if (sigType === 'informative') return 'Formalizado (Informativo)';
+    if (sigType === 'issuer_only') return 'Formalizado (Unilateral)';
+    return 'Firmado';
   }
   if (props.state === 'Archived') {
     if (document.state === 'Rejected') {
