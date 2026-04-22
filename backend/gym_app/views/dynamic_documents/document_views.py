@@ -39,6 +39,35 @@ logger = logging.getLogger(__name__)
 LOCKED_STATES = frozenset(['PendingSignatures', 'FullySigned'])
 
 
+def normalize_fragmented_variables(html_content):
+    """Reassemble ``{{variable}}`` patterns that TinyMCE may have split across
+    inline HTML tags (e.g. ``<span>{{</span><span>name</span><span>}}</span>``).
+
+    The function strips inline tags between the opening ``{{`` and closing ``}}``
+    so that later string-based replacement (``str.replace``) can find them.
+    """
+    if not html_content:
+        return html_content
+
+    # Pattern explanation:
+    #   \{\{          – literal {{
+    #   ((?:[^}]|     – capture group: any char except } OR
+    #   \}(?!\}))*)   –   a single } not followed by another }
+    #   \}\}          – literal }}
+    # The inner content may contain HTML tags from TinyMCE formatting.
+    pattern = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
+
+    def _clean_match(m):
+        inner = m.group(1)
+        # Strip any HTML tags that TinyMCE injected inside the variable marker
+        clean_name = re.sub(r'<[^>]*>', '', inner).strip()
+        if clean_name:
+            return '{{' + clean_name + '}}'
+        return m.group(0)  # leave unchanged if stripping left nothing
+
+    return pattern.sub(_clean_match, html_content)
+
+
 def get_optimized_document_queryset(base_qs=None):
     """Return a DynamicDocument queryset with all relations needed by DynamicDocumentSerializer.
 
@@ -382,8 +411,10 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
+        # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
+        processed_content = normalize_fragmented_variables(document.content)
+
         # Replace variables within the content (use formatted values when available)
-        processed_content = document.content
         for variable in document.variables.all():
             try:
                 replacement_value = variable.get_formatted_value()
@@ -425,7 +456,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         # Define background image style if letterhead exists
         background_style = ""
-        letterhead_image = get_letterhead_for_document(document, request.user)
+        letterhead_image = get_letterhead_for_document(document, document.created_by)
         if letterhead_image:
             try:
                 # Get the absolute path to the letterhead image
@@ -515,6 +546,29 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         u {{
             text-decoration: underline !important;
         }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8pt 0;
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        td, th {{
+            border: 1px solid #999;
+            padding: 4pt 6pt;
+            vertical-align: top;
+            font-family: 'Carlito', sans-serif !important;
+        }}
+
+        th {{
+            font-weight: bold;
+            background-color: #f5f5f5;
+        }}
+
+        tr {{
+            page-break-inside: avoid;
+        }}
         </style>
         """
 
@@ -528,7 +582,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             {styles}
         </head>
         <body>
-            {soup.prettify()}
+            {str(soup)}
         </body>
         </html>
         """
@@ -585,6 +639,9 @@ def download_dynamic_document_word(request, pk):
         # Retrieve the document from the database
         document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
+        # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
+        normalized_content = normalize_fragmented_variables(document.content)
+
         # Replace variables dynamically
         def replace_variables(text):
             processed_text = text
@@ -597,7 +654,7 @@ def download_dynamic_document_word(request, pk):
                 processed_text = pattern.sub(replacement_value or "", processed_text)
             return processed_text
 
-        processed_content = replace_variables(document.content)
+        processed_content = replace_variables(normalized_content)
         
         # Render HTML with template
         template = get_template("pdf_template.html")
@@ -612,15 +669,15 @@ def download_dynamic_document_word(request, pk):
         # Create Word document, optionally using a Word letterhead template
         # Priority:
         # 1. Document-specific Word template (document.letterhead_word_template)
-        # 2. User's global Word template (request.user.letterhead_word_template)
+        # 2. Document creator's global Word template (document.created_by.letterhead_word_template)
         # 3. Blank document
         use_word_template = False
 
         # First, try document-specific template
         word_template = getattr(document, 'letterhead_word_template', None)
         if not word_template:
-            # Fall back to user's global template
-            word_template = getattr(request.user, 'letterhead_word_template', None)
+            # Fall back to document creator's global template
+            word_template = getattr(document.created_by, 'letterhead_word_template', None) if document.created_by else None
 
         if word_template and hasattr(word_template, 'path') and os.path.exists(word_template.path):
             try:
@@ -660,7 +717,7 @@ def download_dynamic_document_word(request, pk):
         # Process HTML content
         # Include both <p> and <div> tags as paragraph blocks so that
         # templates that wrap content in <div> elements are still rendered.
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr"]):
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr", "table"]):
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 heading = doc.add_heading(tag.get_text().strip(), level=level)
@@ -872,7 +929,41 @@ def download_dynamic_document_word(request, pk):
                 # Ensure Calibri is applied to the horizontal rule
                 for run in hr_paragraph.runs:
                     run.font.name = font_name
-        
+
+            elif tag.name == "table":
+                # Process HTML <table> into a python-docx Table
+                rows = tag.find_all("tr")
+                if not rows:
+                    continue
+
+                # Determine number of columns from the first row
+                first_row_cells = rows[0].find_all(["td", "th"])
+                num_cols = len(first_row_cells) if first_row_cells else 1
+
+                docx_table = doc.add_table(rows=0, cols=num_cols)
+                docx_table.style = 'Table Grid'
+
+                for row_tag in rows:
+                    cells = row_tag.find_all(["td", "th"])
+                    if not cells:
+                        continue
+                    docx_row = docx_table.add_row()
+                    for idx, cell_tag in enumerate(cells):
+                        if idx >= num_cols:
+                            break
+                        cell = docx_row.cells[idx]
+                        cell_text = cell_tag.get_text(strip=True)
+                        cell.text = cell_text
+                        # Apply font to cell paragraphs
+                        for para in cell.paragraphs:
+                            for run in para.runs:
+                                run.font.name = font_name
+                        # Bold for <th> header cells
+                        if cell_tag.name == "th":
+                            for para in cell.paragraphs:
+                                for run in para.runs:
+                                    run.bold = True
+
         # Save the document to a buffer
         docx_buffer = io.BytesIO()
         doc.save(docx_buffer)

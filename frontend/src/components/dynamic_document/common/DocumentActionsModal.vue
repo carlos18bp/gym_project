@@ -212,7 +212,7 @@ const organizedOptions = computed(() => {
     view: 'Visualización',
     share: 'Compartir',
     manage: 'Gestión',
-    signatures: 'Firmas',
+    signatures: 'Formalización',
     delete: 'Eliminación'
   };
   

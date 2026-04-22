@@ -160,7 +160,13 @@ class DynamicDocument(models.Model):
         Returns:
             bool: True if user is a lawyer, False otherwise
         """
-        return user.role == 'lawyer' or user.is_gym_lawyer
+        return (
+            user.role == 'lawyer'
+            or user.is_gym_lawyer
+            or user.role == 'admin'
+            or user.is_staff
+            or user.is_superuser
+        )
 
     def can_view(self, user):
         """

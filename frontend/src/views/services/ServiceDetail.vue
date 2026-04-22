@@ -39,6 +39,9 @@
           <p class="text-sm text-emerald-800 mt-1">
             Radicado generado: <strong>{{ submissionSuccess.tracking_number }}</strong>
           </p>
+          <p class="text-sm text-emerald-800 mt-2">
+            Dentro de las próximas <strong>24 HORAS</strong> recibirás Respuesta o Actualización a tu Solicitud.
+          </p>
           <div class="mt-4 flex flex-wrap gap-3">
             <button
               type="button"

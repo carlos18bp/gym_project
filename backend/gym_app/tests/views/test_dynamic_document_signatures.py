@@ -837,7 +837,7 @@ class TestGenerateSignaturesPdf:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'completamente firmado' in response.data['detail']
+        assert 'formalizado' in response.data['detail']
 
     def test_generate_signatures_pdf_not_found(self, api_client, lawyer_user):
         """Verify generate signatures pdf not found."""
@@ -2112,7 +2112,7 @@ class TestSignatureViewsRegressionScenarios:
         r = api_client.get(reverse(
             'generate-signatures-pdf', kwargs={'pk': pending_doc.pk}))
         assert r.status_code == 400
-        assert 'completamente firmado' in r.data['detail']
+        assert 'formalizado' in r.data['detail']
 
     # --- generate_signatures_pdf: fully signed ---
     def test_gen_sig_pdf_success(self, api_client, lawyer, signed_doc):

@@ -215,7 +215,7 @@
               <input type="radio" v-model="signatureType" value="normal"
                 class="mt-0.5 h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500" />
               <div>
-                <span class="text-sm font-medium text-gray-900">Documento normal (todas las partes firman)</span>
+                <span class="text-sm font-medium text-gray-900">Todas las partes firman</span>
                 <p class="text-xs text-gray-500 mt-0.5">Todos los firmantes seleccionados deben firmar el documento.</p>
               </div>
             </label>

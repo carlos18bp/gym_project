@@ -66,7 +66,7 @@ const cardConfigs = {
           { label: "Ver Firmas", action: "viewSignatures" },
         ];
         if (document.state === 'FullySigned') {
-          lockedOptions.splice(3, 0, { label: "Descargar Documento firmado", action: "downloadSignedDocument" });
+          lockedOptions.splice(3, 0, { label: "Descargar Doc. Formalizado", action: "downloadSignedDocument" });
         }
         if (canSignDocument(document, userStore)) {
           lockedOptions.push({ label: "Firmar documento", action: "sign" });
@@ -197,7 +197,7 @@ const cardConfigs = {
         const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
         if (signatureStates.includes(document.state)) {
           options.push({
-            label: "Estado de las firmas",
+            label: "Estado de Formalización",
             action: "viewSignatures"
           });
         }
@@ -222,7 +222,7 @@ const cardConfigs = {
       // Download signed document option (only for fully signed documents)
       if (document.state === 'FullySigned') {
         options.push({
-          label: "Descargar Documento firmado",
+          label: "Descargar Doc. Formalizado",
           action: "downloadSignedDocument"
         });
       }
@@ -316,7 +316,7 @@ const cardConfigs = {
           // Para documentos totalmente firmados, exponer también la descarga del documento firmado
           if (document.state === 'FullySigned') {
             options.push({
-              label: "Descargar Documento firmado",
+              label: "Descargar Doc. Formalizado",
               action: "downloadSignedDocument",
             });
           }

@@ -534,7 +534,7 @@ const cardConfigs = {
       // Add signature-related options
       if (document.requires_signature && (document.state === 'PendingSignatures' || document.state === 'FullySigned')) {
         options.push({
-          label: "Estado de las firmas",
+          label: "Estado de Formalización",
           action: "viewSignatures"
         });
       }
@@ -550,7 +550,7 @@ const cardConfigs = {
       // Download signed document option (only for fully signed documents)
       if (document.state === 'FullySigned') {
         options.push({
-          label: "Descargar Documento firmado",
+          label: "Descargar Doc. Formalizado",
           action: "downloadSignedDocument"
         });
       }

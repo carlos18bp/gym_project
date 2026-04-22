@@ -46,7 +46,7 @@
                     ? (document.signature_type === 'informative'
                         ? 'Documento formalizado (informativo)'
                         : document.signature_type === 'issuer_only'
-                          ? 'Documento formalizado (firma unilateral)'
+                          ? 'Documento formalizado (solo emisor)'
                           : 'Documento completamente firmado')
                     : document.state === 'Rejected'
                       ? 'Documento rechazado'
@@ -60,7 +60,7 @@
               Creado por: {{ document.creator.name }} ({{ document.creator.email }})
             </p>
             <p class="text-sm text-gray-500 mt-1">
-              {{ document.signature_type === 'informative' ? 'Notificaciones' : document.signature_type === 'issuer_only' ? 'Firma emisor' : 'Firmas' }}: {{ document.completed_signatures || 0 }}/{{ document.total_signatures || 0 }}
+              {{ document.signature_type === 'informative' || document.signature_type === 'issuer_only' ? 'Participantes' : 'Firmas' }}: {{ document.completed_signatures || 0 }}/{{ document.total_signatures || 0 }}
             </p>
           </div>
           
@@ -292,9 +292,9 @@ const getSignerStatusLabel = (signer) => {
   }
   if (sigType === 'issuer_only') {
     if (isEmisor(signer)) {
-      return signer.signed ? 'Firmado' : 'Pendiente';
+      return signer.signed ? 'Firmado' : 'Pendiente de Firma';
     }
-    return 'Notificado';
+    return 'Informado';
   }
   return signer.signed ? 'Firmado' : 'Pendiente';
 };
@@ -349,9 +349,9 @@ const getSignatureStatusLabel = (signature) => {
   }
   if (sigType === 'issuer_only') {
     if (isCreator) {
-      return signature.signed ? 'Firmado' : 'Pendiente';
+      return signature.signed ? 'Firmado' : 'Pendiente de Firma';
     }
-    return 'Notificado';
+    return 'Informado';
   }
   return signature.signed ? 'Firmado' : 'Pendiente';
 };

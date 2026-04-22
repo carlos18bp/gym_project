@@ -91,9 +91,12 @@ onMounted(async () => {
  */
 const extractVariables = (content = null) => {
   const textToAnalyze = content || editorContent.value;
+  // Strip HTML tags so that {{ }} patterns split across <span> elements
+  // (e.g. from TinyMCE formatting or table paste) are still detected.
+  const plainText = textToAnalyze.replace(/<[^>]*>/g, '');
   const regex = /{{(.*?)}}/g;
   return Array.from(
-    new Set([...textToAnalyze.matchAll(regex)].map((match) => match[1]))
+    new Set([...plainText.matchAll(regex)].map((match) => match[1].trim()))
   );
 };
 
@@ -482,7 +485,7 @@ const editorConfig = computed(() => ({
   menubar: "",
   toolbar: isClient.value 
     ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
-    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table",
   height: "100vh",
   width: "100%",
 

@@ -940,7 +940,7 @@ const getSignatureStatusText = (document) => {
   const suffix = sigType === 'issuer_only' ? ' (Solo Emisor)' : sigType === 'informative' ? ' (Informativo)' : '';
   if (props.state === 'FullySigned') {
     if (sigType === 'informative') return 'Formalizado (Informativo)';
-    if (sigType === 'issuer_only') return 'Formalizado (Unilateral)';
+    if (sigType === 'issuer_only') return 'Formalizado (Solo Emisor)';
     return 'Firmado';
   }
   if (props.state === 'Archived') {

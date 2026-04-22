@@ -7,7 +7,7 @@
     <!-- Main content -->
     <div class="p-4 sm:p-6 lg:p-8">
     <!-- Documents for lawyers -->
-    <div v-if="userRole === 'lawyer'">
+    <div v-if="isLawyerLike">
       <!-- Lawyer use-document section: select published minuta and create document -->
       <div v-if="currentSection === 'useDocument'">
         <UseDocumentTable
@@ -624,6 +624,12 @@ const userRole = computed(() => {
   return currentUser.value.role;
 });
 
+const isLawyerLike = computed(() => {
+  const user = currentUser.value;
+  if (!user) return false;
+  return user.role === 'lawyer' || user.role === 'admin' || user.is_staff || user.is_superuser;
+});
+
 /**
  * Handles section updates from the navigation.
  *
@@ -637,7 +643,7 @@ const handleSection = async (message) => {
     isNavigatingToUseDocument.value = true;
     // When entering the useDocument section for clients/basic/corporate
     // users, clear the active client tab so no tab appears selected
-    if (userRole.value !== 'lawyer') {
+    if (!isLawyerLike.value) {
       activeTab.value = null;
     }
   }
@@ -781,7 +787,7 @@ const handleCreateDocument = () => {
 const handleNavigateToDocument = (payload) => {
   const { tab, searchQuery: docTitle } = payload;
 
-  if (userRole.value === 'lawyer') {
+  if (isLawyerLike.value) {
     activeLawyerTab.value = tab;
   } else {
     // 'legal-documents' is a lawyer-only tab; map it to the equivalent non-lawyer tab
@@ -868,7 +874,7 @@ const handleNavigateToMain = async () => {
   if (currentSection.value === 'useDocument') {
     currentSection.value = "default";
     // Para abogados, volver al tab "Mis Documentos" de abogado
-    if (userRole.value === 'lawyer') {
+    if (isLawyerLike.value) {
       activeLawyerTab.value = 'my-documents';
     } else {
       // Para clientes/básicos/corporativos, volver al tab "Mis Documentos" del cliente
@@ -883,7 +889,7 @@ const handleNavigateToMain = async () => {
   }
   
   // Keep the folders tab active but ensure all modals are closed
-  if (userRole.value === 'lawyer') {
+  if (isLawyerLike.value) {
     activeLawyerTab.value = 'folders';
   } else {
     activeTab.value = 'folders';

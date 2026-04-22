@@ -13,7 +13,7 @@ from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
-from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
+from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset, normalize_fragmented_variables
 from .permissions import (
     apply_visibility_filter,
     require_document_visibility,
@@ -1169,8 +1169,10 @@ def generate_original_document_pdf(document, user=None):
         document: DynamicDocument instance
         user: User instance (optional, for global letterhead fallback)
     """
+    # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
+    processed_content = normalize_fragmented_variables(document.content)
+
     # Replace variables within the content (use formatted values when available)
-    processed_content = document.content
     for variable in document.variables.all():
         try:
             replacement_value = variable.get_formatted_value()
@@ -1279,6 +1281,29 @@ def generate_original_document_pdf(document, user=None):
     u {{
         text-decoration: underline !important;
     }}
+
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8pt 0;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    td, th {{
+        border: 1px solid #999;
+        padding: 4pt 6pt;
+        vertical-align: top;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    th {{
+        font-weight: bold;
+        background-color: #f5f5f5;
+    }}
+
+    tr {{
+        page-break-inside: avoid;
+    }}
     </style>
     """
 
@@ -1292,7 +1317,7 @@ def generate_original_document_pdf(document, user=None):
         {styles}
     </head>
     <body>
-        {soup.prettify()}
+        {str(soup)}
     </body>
     </html>
     """
@@ -1386,8 +1411,16 @@ def create_signatures_pdf(document, request):
     # Build the PDF content
     elements = []
     
-    # Título principal centrado
-    elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
+    sig_type = document.signature_type or 'normal'
+    is_informative = sig_type == 'informative'
+    is_issuer_only = sig_type == 'issuer_only'
+    creator_id = document.created_by_id
+    
+    # Título principal centrado — adapted per signature_type
+    if is_informative:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO E INFORMADO", title_style))
+    else:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
     elements.append(Spacer(1, 12))
     
     # Generate encrypted document identifier
@@ -1424,36 +1457,68 @@ def create_signatures_pdf(document, request):
     elements.append(doc_table)
     elements.append(Spacer(1, 20))
     
-    # Resumen de Firmas centrado
-    total_signatures = document.signatures.count()
-    signed_count = document.signatures.filter(signed=True).count()
-    
-    elements.append(Paragraph("<b>Resumen Firmas</b>", subtitle_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(
-        f"Firmas Requeridas: {total_signatures} | Firmas Completadas: {signed_count} | Estado: {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}",
-        normal_center_style
-    ))
+    # Resumen — adapted per signature_type
+    if is_informative:
+        elements.append(Paragraph("<b>Resumen</b>", subtitle_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph("Estado: INFORMADO", normal_center_style))
+    else:
+        # For issuer_only, count only the emisor's signature
+        if is_issuer_only:
+            emisor_sigs = document.signatures.filter(signer_id=creator_id)
+            total_signatures = emisor_sigs.count()
+            signed_count = emisor_sigs.filter(signed=True).count()
+        else:
+            total_signatures = document.signatures.count()
+            signed_count = document.signatures.filter(signed=True).count()
+        elements.append(Paragraph("<b>Resumen Firmas</b>", subtitle_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            f"Firmas Requeridas: {total_signatures} | Firmas Completadas: {signed_count} | Estado: {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}",
+            normal_center_style
+        ))
     elements.append(Spacer(1, 20))
     
-    # Registro de Firmas
+    # Registro
     elements.append(Paragraph("<b>Registro</b>", subtitle_style))
     elements.append(Spacer(1, 10))
     
     signature_images_added = False
-    for idx, signature in enumerate(document.signatures.all().order_by('created_at'), 1):
+    all_signatures = document.signatures.all().order_by('created_at')
+
+    for idx, signature in enumerate(all_signatures, 1):
         try:
             user = signature.signer
+            is_creator = (user.pk == creator_id)
+
+            # issuer_only: skip recipients entirely — audit only shows the emisor
+            if is_issuer_only and not is_creator:
+                continue
+
             user_signature = getattr(user, 'signature', None)
             
-            # Generate unique identifier for this signature
+            # Determine role label and status label per signature_type
+            if is_informative:
+                role_label = "Emisor" if is_creator else "Destinatario"
+                status_label = "Emitido" if is_creator else "Informado"
+            elif is_issuer_only:
+                role_label = "Firmante"
+                status_label = "Firmado" if signature.signed else "Pendiente de Firma"
+            else:
+                role_label = "Firmante"
+                status_label = None  # not shown for normal docs
+            
+            # Generate unique identifier for this signature (only for actual signers)
             signature_id = f"{idx:02d}{signature.signed_at.strftime('%m%d%H%M') if signature.signed_at else '0000'}"
             
-            # Firmante con nombre completo
-            elements.append(Paragraph(f"<b>Firmante:</b> {user.get_full_name() or user.email}", detail_style))
+            # Role + nombre completo
+            elements.append(Paragraph(f"<b>{role_label}:</b> {user.get_full_name() or user.email}", detail_style))
             
-            # Email e ID Firma en la misma línea
-            elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
+            # Email (and ID Firma only for actual signers, not informative)
+            if is_informative:
+                elements.append(Paragraph(f"<b>Email:</b> {user.email}", detail_style))
+            else:
+                elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
             
             # Identificación
             id_info = []
@@ -1467,12 +1532,18 @@ def create_signatures_pdf(document, request):
             # Fecha y Hora
             elements.append(Paragraph(f"<b>Fecha y Hora:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
             
-            # IP de Registro - mostrar "No Registrada" si no hay IP
-            ip_text = signature.ip_address if signature.ip_address else "No Registrada"
-            elements.append(Paragraph(f"<b>IP de Registro:</b> {ip_text}", detail_style))
+            # IP de Registro (skip for informative recipients)
+            if not (is_informative and not is_creator):
+                ip_text = signature.ip_address if signature.ip_address else "No Registrada"
+                elements.append(Paragraph(f"<b>IP de Registro:</b> {ip_text}", detail_style))
             
-            # Imagen de firma alineada a la derecha
-            if user_signature and user_signature.signature_image:
+            # Estado line for informative and issuer_only
+            if status_label:
+                elements.append(Paragraph(f"<b>Estado:</b> {status_label}", detail_style))
+            
+            # Signature image — only for actual signers (not informative docs, not issuer_only recipients)
+            show_signature_image = not is_informative
+            if show_signature_image and user_signature and user_signature.signature_image:
                 try:
                     img = Image(user_signature.signature_image.path)
                     img.drawHeight = 50
@@ -1493,11 +1564,11 @@ def create_signatures_pdf(document, request):
         except Exception as e:  # pragma: no cover – signature processing error
             pass
     
-    if not signature_images_added:
+    if not is_informative and not signature_images_added:
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
         elements.append(Spacer(1, 4))
     
-    # Constancia final (texto justificado)
+    # Constancia final (texto justificado) — adapted per signature_type
     constancia_style = ParagraphStyle(
         'ConstanciaStyle',
         parent=styles['Normal'],
@@ -1507,12 +1578,20 @@ def create_signatures_pdf(document, request):
         fontName='Carlito'
     )
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph(
-        "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
-        "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
-        "generador(es) del documento como del(los) destinatario(s) firmante(s).",
-        constancia_style
-    ))
+    if is_informative:
+        elements.append(Paragraph(
+            "Este documento registra la emisión y comunicación del documento referenciado, "
+            "verificado bajo autenticidad del(los) usuario(s) generador(es) del documento "
+            "como del(los) destinatario(s).",
+            constancia_style
+        ))
+    else:
+        elements.append(Paragraph(
+            "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
+            "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
+            "generador(es) del documento como del(los) destinatario(s) firmante(s).",
+            constancia_style
+        ))
     elements.append(Spacer(1, 6))
     
     # Build the PDF sin marca de agua ni línea 'Generado el'
@@ -1609,7 +1688,7 @@ def generate_signatures_pdf(request, pk):
         # Verify document state
         if document.state != 'FullySigned':
             return Response(
-                {'detail': 'El documento debe estar completamente firmado para generar el PDF de firmas.'},
+                {'detail': 'El documento debe estar completamente formalizado para generar el PDF.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -1621,7 +1700,7 @@ def generate_signatures_pdf(request, pk):
             )
         
         # Get the original document PDF
-        original_pdf_buffer = generate_original_document_pdf(document, request.user)
+        original_pdf_buffer = generate_original_document_pdf(document, document.created_by)
         
         # Create the signatures PDF
         signatures_pdf_buffer = create_signatures_pdf(document, request)
