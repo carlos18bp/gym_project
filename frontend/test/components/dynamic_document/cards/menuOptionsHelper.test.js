@@ -389,6 +389,57 @@ describe("menuOptionsHelper.js", () => {
 
       expect(options.some((o) => o.action === "editAndResend")).toBe(true);
     });
+
+    test("Expired adds editAndResend when user is creator", () => {
+      const options = getMenuOptionsForCardType(
+        "signatures",
+        {
+          id: 1,
+          state: "Expired",
+          requires_signature: true,
+          created_by: 7,
+          signatures: [],
+        },
+        "list",
+        { currentUser: { id: 7, role: "client" } }
+      );
+
+      expect(options.some((o) => o.action === "editAndResend")).toBe(true);
+    });
+
+    test("Expired adds editAndResend when user is lawyer", () => {
+      const options = getMenuOptionsForCardType(
+        "signatures",
+        {
+          id: 1,
+          state: "Expired",
+          requires_signature: true,
+          created_by: 99,
+          signatures: [],
+        },
+        "list",
+        { currentUser: { id: 7, role: "lawyer" } }
+      );
+
+      expect(options.some((o) => o.action === "editAndResend")).toBe(true);
+    });
+
+    test("Expired does not add editAndResend for unrelated non-lawyer user", () => {
+      const options = getMenuOptionsForCardType(
+        "signatures",
+        {
+          id: 1,
+          state: "Expired",
+          requires_signature: true,
+          created_by: 99,
+          signatures: [],
+        },
+        "list",
+        { currentUser: { id: 7, role: "client" } }
+      );
+
+      expect(options.some((o) => o.action === "editAndResend")).toBe(false);
+    });
   });
 
   describe("client", () => {

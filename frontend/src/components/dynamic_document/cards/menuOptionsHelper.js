@@ -44,6 +44,21 @@ function canSignDocument(document, userStore) {
 }
 
 /**
+ * Check if the current user can edit and resend a signature document.
+ */
+function canEditAndResendSignatureDocument(document, userStore) {
+  if (!['Rejected', 'Expired'].includes(document.state)) {
+    return false;
+  }
+
+  const currentUser = userStore?.currentUser;
+  const isLawyer = currentUser?.role === 'lawyer';
+  const isCreator = document.created_by === currentUser?.id;
+
+  return isLawyer || isCreator;
+}
+
+/**
  * Card configurations - same as BaseDocumentCard
  */
 const cardConfigs = {
@@ -235,21 +250,16 @@ const cardConfigs = {
         });
       }
 
-      // Additional options for rejected documents
+      // Allow creator or lawyer to correct and resend archived signature documents
+      if (canEditAndResendSignatureDocument(document, userStore)) {
+        options.push({
+          label: "Editar y reenviar para firma",
+          action: "editAndResend"
+        });
+      }
+
+      // View rejection reason option for rejected documents when there is a comment
       if (document.state === 'Rejected') {
-        const currentUser = userStore?.currentUser;
-        const isLawyer = currentUser?.role === 'lawyer';
-        const isCreator = document.created_by === currentUser?.id;
-
-        // Allow creator or lawyer to edit and resend the document for signatures
-        if (isLawyer || isCreator) {
-          options.push({
-            label: "Editar y reenviar para firma",
-            action: "editAndResend"
-          });
-        }
-
-        // View rejection reason option for rejected documents when there is a comment
         const hasComment = Array.isArray(document.signatures) && document.signatures.some(sig => sig.rejection_comment);
         if (hasComment) {
           options.push({
@@ -497,4 +507,3 @@ export function getMenuOptionsForCardType(cardType, document, context = 'list', 
 }
 
 export { canPublishDocument, canSignDocument };
-
