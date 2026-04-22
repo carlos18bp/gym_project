@@ -62,7 +62,7 @@ test("fully signed document shows all signers completed in status view", { tag: 
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Dcs. Firmados" }).click();
+  await page.getByRole("button", { name: "Dcs. Formalizados" }).click();
   await expect(page.getByText("Contrato Todo Firmado")).toBeVisible({ timeout: 10_000 });
 
   await page.getByText("Contrato Todo Firmado").first().click();

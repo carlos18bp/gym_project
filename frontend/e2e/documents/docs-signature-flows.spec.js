@@ -40,7 +40,7 @@ test("lawyer sees pending signature documents on Dcs. Por Firmar tab", { tag: ['
   await expect(page.getByText("Contrato Pendiente Firma")).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer sees fully signed documents on Dcs. Firmados tab", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees fully signed documents on Dcs. Formalizados tab", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8501;
   const docs = [
     buildMockDocument({
@@ -62,7 +62,7 @@ test("lawyer sees fully signed documents on Dcs. Firmados tab", { tag: ['@flow:s
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Dcs. Firmados" }).click();
+  await page.getByRole("button", { name: "Dcs. Formalizados" }).click();
   await expect(page.getByText("Contrato Firmado Completo")).toBeVisible({ timeout: 10_000 });
 });
 

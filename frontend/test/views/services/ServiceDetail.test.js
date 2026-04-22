@@ -311,7 +311,7 @@ describe("ServiceDetail.vue", () => {
     expect(wrapper.text()).toContain("2026-00099");
   });
 
-  test("goBack navigates to services_list", async () => {
+  test("goBack navigates to services_hub", async () => {
     const wrapper = mount(ServiceDetail);
     await flushPromises();
 
@@ -320,7 +320,7 @@ describe("ServiceDetail.vue", () => {
     );
     await backBtn.trigger("click");
 
-    expect(mockRouterPush).toHaveBeenCalledWith({ name: "services_list" });
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: "services_hub" });
   });
 
   test("toggleMultiOption adds option when not present in value_json", async () => {

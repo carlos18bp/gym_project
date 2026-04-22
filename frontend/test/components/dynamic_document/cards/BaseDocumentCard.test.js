@@ -886,7 +886,7 @@ describe("BaseDocumentCard.vue", () => {
 
     expect(textsPending).toEqual(
       expect.arrayContaining([
-        "Estado de las firmas",
+        "Estado de Formalización",
         "Firmar documento",
         "Descargar PDF",
         "Quitar de Carpeta",
@@ -904,7 +904,7 @@ describe("BaseDocumentCard.vue", () => {
       await b.trigger("click");
     };
 
-    await clickPending("Estado de las firmas");
+    await clickPending("Estado de Formalización");
     await clickPending("Firmar documento");
     await clickPending("Descargar PDF");
     await clickPending("Quitar de Carpeta");
@@ -951,11 +951,11 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .map((b) => (b.text() || "").trim())
       .filter(Boolean);
-    expect(textsSigned).toContain("Descargar Documento firmado");
+    expect(textsSigned).toContain("Descargar Doc. Formalizado");
 
     const dlSignedBtn = wrapperFullySigned
       .findAll("button")
-      .find((b) => (b.text() || "").trim() === "Descargar Documento firmado");
+      .find((b) => (b.text() || "").trim() === "Descargar Doc. Formalizado");
     await dlSignedBtn.trigger("click");
     expect(mockDownloadSignedDocument).toHaveBeenCalledWith(
       expect.objectContaining({ id: 20 })

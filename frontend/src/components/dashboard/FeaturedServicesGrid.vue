@@ -3,7 +3,6 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-lg font-semibold text-gray-900">Servicios Destacados</h2>
-        <p class="text-sm text-gray-600">Aplica por uno o varios servicios y estudiaremos tu solicitud - Con esta(s) aplicación(es) NO estás comprando NI obligando a adquirir el(los) servicio(s) -</p>
       </div>
       <router-link
         :to="{ name: 'services_list' }"

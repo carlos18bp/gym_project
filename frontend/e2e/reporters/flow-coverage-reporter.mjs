@@ -63,6 +63,25 @@ class FlowCoverageReporter {
         status: 'missing',
       });
     }
+
+    // Track flow ids touched by this run so merge can distinguish flows
+    // executed now vs. flows only present in prior snapshot state.
+    this.flowsTouchedThisRun = new Set();
+
+    // Preload prior report state so incremental batch runs accumulate
+    // instead of overwriting each other. FLOW_COVERAGE_RESET=1 forces
+    // a clean rebuild.
+    this.priorReport = null;
+    if (!process.env.FLOW_COVERAGE_RESET) {
+      const priorPath = path.join(this.outputDir, 'flow-coverage.json');
+      if (fs.existsSync(priorPath)) {
+        try {
+          this.priorReport = JSON.parse(fs.readFileSync(priorPath, 'utf-8'));
+        } catch (err) {
+          console.warn(`\n  ⚠️  Could not parse existing ${priorPath}: ${err.message}\n`);
+        }
+      }
+    }
   }
 
   /**
@@ -104,6 +123,7 @@ class FlowCoverageReporter {
 
       stats.tests.total++;
       stats.specs.add(specFile);
+      this.flowsTouchedThisRun.add(flowId);
 
       switch (result.status) {
         case 'passed':
@@ -124,7 +144,7 @@ class FlowCoverageReporter {
    * @param {import('@playwright/test/reporter').FullResult} result
    */
   onEnd(result) {
-    // Calculate final status for each flow
+    // Calculate final status for each flow touched this run.
     for (const stats of this.flowStats.values()) {
       if (stats.tests.total === 0) {
         stats.status = 'missing';
@@ -134,6 +154,27 @@ class FlowCoverageReporter {
         stats.status = 'covered';
       } else {
         stats.status = 'partial';
+      }
+    }
+
+    // Merge prior snapshot for flows NOT executed in this batch so partial
+    // runs (--max 20 tests) accumulate instead of overwriting. Bypass with
+    // FLOW_COVERAGE_RESET=1.
+    if (this.priorReport && this.priorReport.flows) {
+      for (const [flowId, priorFlow] of Object.entries(this.priorReport.flows)) {
+        if (this.flowsTouchedThisRun.has(flowId)) continue;
+        const stats = this.flowStats.get(flowId);
+        if (!stats) continue;
+        stats.tests = {
+          total: priorFlow.tests?.total ?? 0,
+          passed: priorFlow.tests?.passed ?? 0,
+          failed: priorFlow.tests?.failed ?? 0,
+          skipped: priorFlow.tests?.skipped ?? 0,
+        };
+        if (Array.isArray(priorFlow.specs)) {
+          for (const spec of priorFlow.specs) stats.specs.add(spec);
+        }
+        stats.status = priorFlow.status || stats.status;
       }
     }
 

@@ -63,7 +63,7 @@ test.describe("Letterhead locked for signed documents", { tag: ['@flow:docs-lett
     await expect(page.getByTestId("document-action-letterhead")).toHaveCount(0);
   });
 
-  test("lawyer FullySigned doc in Dcs. Firmados tab hides letterhead action", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer FullySigned doc in Dcs. Formalizados tab hides letterhead action", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9702;
     const docTitle = "Contrato Firmado Completo";
 
@@ -87,7 +87,7 @@ test.describe("Letterhead locked for signed documents", { tag: ['@flow:docs-lett
     await setAuthLocalStorage(page, buildLawyerAuth({ userId }));
     await page.goto("/dynamic_document_dashboard");
 
-    await page.getByRole("button", { name: "Dcs. Firmados" }).click();
+    await page.getByRole("button", { name: "Dcs. Formalizados" }).click();
     await openDocumentActionsModal(page, docTitle);
 
     await expect(page.getByTestId("document-action-preview")).toBeVisible({ timeout: 10_000 });

@@ -166,7 +166,7 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText(pendingTitle).first()).toBeVisible();
   });
 
-  test("lawyer clicking a FullySigned doc inside a folder navigates to Dcs. Firmados tab", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer clicking a FullySigned doc inside a folder navigates to Dcs. Formalizados tab", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9007;
     const signedTitle = "Contrato Firmado En Carpeta";
     const docs = [
@@ -194,9 +194,9 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await folderDetailsModal.getByText(signedTitle).click();
 
     // Regression guard for fix 1.7: clicking a FullySigned doc must navigate
-    // to the Dcs. Firmados tab.
+    // to the Dcs. Formalizados tab.
     await expect(folderDetailsModal).toBeHidden({ timeout: 10_000 });
-    const signedTab = page.getByRole("button", { name: "Dcs. Firmados" });
+    const signedTab = page.getByRole("button", { name: "Dcs. Formalizados" });
     await expect(signedTab).toHaveClass(/text-primary/);
     await expect(page.getByText(signedTitle).first()).toBeVisible();
   });
@@ -295,6 +295,7 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Plantilla de Prueba")).toBeVisible();
 
     await page.getByText("Plantilla de Prueba", { exact: true }).click();
+    await page.getByRole("button", { name: "Usar plantilla" }).click();
 
     const nameInput = page.locator("#document-name"); // quality: allow-fragile-selector (stable DOM id)
     await expect(nameInput).toBeVisible();

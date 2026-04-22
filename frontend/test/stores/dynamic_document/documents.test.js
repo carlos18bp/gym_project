@@ -928,6 +928,31 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     expect(url).toContain("unassigned=true");
   });
 
+  test("fetchDocumentsForTab sends search, tag_id, and sort_by params when provided", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({ search: "contrato", tagId: 7, sortBy: "title" });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("search=contrato");
+    expect(url).toContain("tag_id=7");
+    expect(url).toContain("sort_by=title");
+  });
+
+  test("fetchDocumentsForTab sends date_from and date_to params when provided", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, []);
+
+    await store.fetchDocumentsForTab({ dateFrom: "2026-01-01", dateTo: "2026-12-31" });
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("date_from=2026-01-01");
+    expect(url).toContain("date_to=2026-12-31");
+  });
+
   test("fetchDocumentsForTab does not send optional params when falsy", async () => {
     const store = useDynamicDocumentStore();
 

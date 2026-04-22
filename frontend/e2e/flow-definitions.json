@@ -453,7 +453,7 @@
       ],
       "priority": "P1",
       "description": "Permisos de visibilidad/uso por usuario y rol",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-card-actions": {
       "name": "Acciones de tarjeta de documento",
@@ -515,8 +515,8 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "Enviar documentos por correo electrónico",
-      "expectedSpecs": 1
+      "description": "Enviar documentos por correo electrónico — incluye manejo de fallas del backend",
+      "expectedSpecs": 2
     },
     "docs-duplicate": {
       "name": "Duplicar documento",
@@ -545,8 +545,8 @@
         "shared"
       ],
       "priority": "P2",
-      "description": "Draft, Published, Completed, signing states",
-      "expectedSpecs": 1
+      "description": "Draft, Published, Completed, signing states — incluye acciones de transición (publish, move-to-draft)",
+      "expectedSpecs": 2
     },
     "docs-relationships": {
       "name": "Asociar documentos",
@@ -681,6 +681,16 @@
       "description": "Corregir y reenviar documento rechazado o expirado en un solo endpoint",
       "expectedSpecs": 1
     },
+    "minutas-columns": {
+      "name": "Columnas de tabla de minutas",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Visibilidad y orden de columnas de resumen en la tabla de minutas",
+      "expectedSpecs": 1
+    },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
       "module": "signatures",
@@ -753,8 +763,8 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "Modal con estado de cada firmante",
-      "expectedSpecs": 1
+      "description": "Modal con estado de cada firmante, incluyendo labels por signature_type y rechazos",
+      "expectedSpecs": 2
     },
     "legal-create-request": {
       "name": "Crear solicitud legal",

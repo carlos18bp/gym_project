@@ -120,6 +120,19 @@ describe("services_tramites store", () => {
     );
   });
 
+  // ─── fetchRequestDetail ────────────────────────────────────────────────
+
+  test("fetchRequestDetail calls GET service-requests/{id}/ and sets selectedRequest", async () => {
+    const detail = { id: 77, status: "OPEN", service: { id: 5 } };
+    mockGetRequest.mockResolvedValueOnce({ data: detail });
+
+    const result = await store.fetchRequestDetail(77);
+
+    expect(mockGetRequest).toHaveBeenCalledWith("service-requests/77/");
+    expect(store.selectedRequest).toEqual(detail);
+    expect(result).toEqual(detail);
+  });
+
   // ─── manageRequest ─────────────────────────────────────────────────────
 
   test("manageRequest posts status and message as FormData", async () => {

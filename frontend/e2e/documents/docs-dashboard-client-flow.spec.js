@@ -48,7 +48,7 @@ test.describe("Client Document Dashboard", { tag: ['@flow:docs-dashboard-client'
     const tabs = page.locator("nav[aria-label='Tabs'] button");
     await expect(tabs.filter({ hasText: "Mis Documentos" })).toBeVisible();
     await expect(tabs.filter({ hasText: "Dcs. Por Firmar" })).toBeVisible();
-    await expect(tabs.filter({ hasText: "Dcs. Firmados" })).toBeVisible();
+    await expect(tabs.filter({ hasText: "Dcs. Formalizados" })).toBeVisible();
 
     // Navigate through tabs
     await tabs.filter({ hasText: "Mis Documentos" }).click();
@@ -57,7 +57,7 @@ test.describe("Client Document Dashboard", { tag: ['@flow:docs-dashboard-client'
     await tabs.filter({ hasText: "Dcs. Por Firmar" }).click();
     await page.waitForLoadState("networkidle");
 
-    await tabs.filter({ hasText: "Dcs. Firmados" }).click();
+    await tabs.filter({ hasText: "Dcs. Formalizados" }).click();
     await page.waitForLoadState("networkidle");
 
     await tabs.filter({ hasText: "Dcs. Archivados" }).click();

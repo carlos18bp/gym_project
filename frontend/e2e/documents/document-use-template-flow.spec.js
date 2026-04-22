@@ -138,12 +138,13 @@ test.describe("UseDocumentCard: template selection and use flow", { tag: ['@flow
     // Click "Previsualización" in the actions modal
     await page.getByTestId("document-action-preview").click();
 
-    // Preview modal should appear with formatted content
-    await expect(page.getByTestId("document-preview-modal")).toBeVisible();
-    await expect(page.getByTestId("document-preview-heading")).toContainText("Plantilla Preview");
+    // Dashboard.vue and UseDocumentTable.vue both mount DocumentPreviewModal
+    // keyed on the shared showPreviewModal state, so two instances exist in DOM.
+    await expect(page.getByTestId("document-preview-modal").first()).toBeVisible();
+    await expect(page.getByTestId("document-preview-heading").first()).toContainText("Plantilla Preview");
 
     // Known variable should appear as pill with Spanish name
-    const previewContent = page.getByTestId("document-preview-content");
+    const previewContent = page.getByTestId("document-preview-content").first();
     await expect(previewContent).toContainText("Nombre");
 
     // Unknown variable should appear as bracketed text
