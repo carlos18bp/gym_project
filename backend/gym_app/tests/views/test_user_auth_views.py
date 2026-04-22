@@ -67,9 +67,8 @@ def _pin_user_auth_now(monkeypatch, fixed_now=FIXED_REFERENCE_TIME):
 class TestSignOn:
     """Tests for Sign On."""
 
-    def test_sign_on_success(self, api_client, monkeypatch):
+    def test_sign_on_success(self, api_client):
         """Verify sign on success."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="newuser@example.com", code="123456")
         url = reverse("sign_on")
         data = {
@@ -78,7 +77,6 @@ class TestSignOn:
             "first_name": "New",
             "last_name": "User",
             "passcode": "123456",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
@@ -88,9 +86,8 @@ class TestSignOn:
         # Verify verification code was marked as used
         assert EmailVerificationCode.objects.get(email="newuser@example.com").used is True
 
-    def test_sign_on_duplicate_email(self, api_client, user, monkeypatch):
+    def test_sign_on_duplicate_email(self, api_client, user):
         """Verify sign on duplicate email."""
-        _mock_captcha_success(monkeypatch)
         url = reverse("sign_on")
         data = {
             "email": user.email,
@@ -98,24 +95,21 @@ class TestSignOn:
             "first_name": "Dup",
             "last_name": "User",
             "passcode": "123456",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_409_CONFLICT
         assert "warning" in response.data
 
-    def test_sign_on_invalid_data(self, api_client, monkeypatch):
+    def test_sign_on_invalid_data(self, api_client):
         """Verify sign on invalid data."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="bad", code="123456")
         url = reverse("sign_on")
-        data = {"email": "bad", "passcode": "123456", "captcha_token": "tok"}
+        data = {"email": "bad", "passcode": "123456"}
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_sign_on_default_role_basic(self, api_client, monkeypatch):
+    def test_sign_on_default_role_basic(self, api_client):
         """Verify sign on default role basic."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="basic@example.com", code="654321")
         url = reverse("sign_on")
         data = {
@@ -124,43 +118,27 @@ class TestSignOn:
             "first_name": "Basic",
             "last_name": "User",
             "passcode": "654321",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         u = User.objects.get(email="basic@example.com")
         assert u.role == "basic"
 
-    def test_sign_on_missing_captcha(self, api_client):
-        """Verify sign on missing captcha."""
-        url = reverse("sign_on")
-        data = {
-            "email": "x@x.com",
-            "password": "SecurePass123!",
-            "passcode": "123456",
-        }
-        response = api_client.post(url, data, format="json")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["error"] == "Captcha verification is required"
-
-    def test_sign_on_missing_passcode(self, api_client, monkeypatch):
+    def test_sign_on_missing_passcode(self, api_client):
         """Verify sign on missing passcode."""
-        _mock_captcha_success(monkeypatch)
         url = reverse("sign_on")
         data = {
             "email": "nopcode@example.com",
             "password": "SecurePass123!",
             "first_name": "No",
             "last_name": "Code",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Verification code is required"
 
-    def test_sign_on_wrong_passcode(self, api_client, monkeypatch):
+    def test_sign_on_wrong_passcode(self, api_client):
         """Verify sign on wrong passcode."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="wrong@example.com", code="111111")
         url = reverse("sign_on")
         data = {
@@ -169,7 +147,6 @@ class TestSignOn:
             "first_name": "Wrong",
             "last_name": "Code",
             "passcode": "999999",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -177,7 +154,6 @@ class TestSignOn:
 
     def test_sign_on_expired_passcode(self, api_client, monkeypatch):
         """T12: sign_on rejects expired verification code (>30 min)."""
-        _mock_captcha_success(monkeypatch)
         _pin_user_auth_now(monkeypatch)
         code = EmailVerificationCode.objects.create(email="expired@example.com", code="777888")
         EmailVerificationCode.objects.filter(pk=code.pk).update(
@@ -190,16 +166,14 @@ class TestSignOn:
             "first_name": "Expired",
             "last_name": "Code",
             "passcode": "777888",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["error"] == "Invalid or expired verification code"
         assert not User.objects.filter(email="expired@example.com").exists()
 
-    def test_sign_on_email_with_whitespace(self, api_client, monkeypatch):
+    def test_sign_on_email_with_whitespace(self, api_client):
         """T6: sign_on normalizes email with leading/trailing whitespace."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="spaces@example.com", code="111222")
         url = reverse("sign_on")
         data = {
@@ -208,15 +182,13 @@ class TestSignOn:
             "first_name": "Space",
             "last_name": "User",
             "passcode": "111222",
-            "captcha_token": "tok",
         }
         response = api_client.post(url, data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert User.objects.filter(email="spaces@example.com").exists()
 
-    def test_sign_on_sends_admin_notification(self, api_client, monkeypatch):
+    def test_sign_on_sends_admin_notification(self, api_client):
         """Verify that a registration alert is sent to the admin inbox on success."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="notify@example.com", code="777888")
         url = reverse("sign_on")
         data = {
@@ -225,7 +197,6 @@ class TestSignOn:
             "first_name": "Notify",
             "last_name": "Test",
             "passcode": "777888",
-            "captcha_token": "tok",
         }
         with patch("gym_app.views.userAuth.notify_admin_new_user") as mock_notify:
             response = api_client.post(url, data, format="json")
@@ -235,9 +206,8 @@ class TestSignOn:
         notified_user = mock_notify.call_args.args[0]
         assert notified_user.email == "notify@example.com"
 
-    def test_sign_on_admin_notification_failure_does_not_break_registration(self, api_client, monkeypatch):
+    def test_sign_on_admin_notification_failure_does_not_break_registration(self, api_client):
         """Verify registration succeeds even if the admin notification email fails."""
-        _mock_captcha_success(monkeypatch)
         EmailVerificationCode.objects.create(email="resilient@example.com", code="444555")
         url = reverse("sign_on")
         data = {
@@ -246,7 +216,6 @@ class TestSignOn:
             "first_name": "Resilient",
             "last_name": "User",
             "passcode": "444555",
-            "captcha_token": "tok",
         }
         with patch("gym_app.utils.email_notifications.send_template_email", side_effect=Exception("SMTP error")):
             response = api_client.post(url, data, format="json")

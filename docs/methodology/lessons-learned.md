@@ -163,3 +163,10 @@
 ### SavedView Duplicate Name: Serializer-Level Validation
 - Unique constraints (user+name) must be validated in the serializer `validate()` method
 - Django ORM raises `IntegrityError` at DB level (500) unless caught at serializer level (400)
+
+### reCAPTCHA v2 Tokens Are Single-Use
+- Each token can be verified against Google `siteverify` **only once**; subsequent verifications return `success: false` with `timeout-or-duplicate`
+- Tokens also expire ~2 minutes after the user solves the challenge
+- In multi-step flows (e.g. registration: `send_verification_code` → `sign_on`), only the **first** step should call `verify_captcha`. The second step relies on the emailed passcode/token as its bot-proof gate
+- E2E mocks (`authSignOnMocks.js`) always return `success: true`, so they cannot detect token-reuse bugs — validate in staging against the real Google endpoint
+- If every step genuinely needs captcha, migrate to reCAPTCHA v3 (score-based, multi-action)

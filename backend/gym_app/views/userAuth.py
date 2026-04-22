@@ -34,19 +34,17 @@ def sign_on(request):
         Response: A Response object with the JWT tokens and user data if successful,
                   or an error message if the registration fails.
     """
-    # Get the email, passcode, and captcha_token from the request data
+    # Get the email and passcode from the request data
     email = request.data.get('email')
     passcode = request.data.get('passcode')
-    captcha_token = request.data.get('captcha_token')
 
     if email:
         email = email.strip().lower()
 
-    # Validate captcha token (REFACTOR-3)
-    captcha_ok, captcha_error = verify_captcha(captcha_token, request.META.get("REMOTE_ADDR"))
-    if not captcha_ok:
-        return captcha_error
-    
+    # Note: captcha validation lives in send_verification_code (first step).
+    # reCAPTCHA v2 tokens are single-use, so we can't re-verify here; the
+    # 6-digit emailed passcode (with 30-min TTL) is the bot-proof gate for
+    # this step.
     # Check if the email is already registered
     if User.objects.filter(email=email).exists():
         return Response({'warning': 'The email is already registered.'}, status=status.HTTP_409_CONFLICT)

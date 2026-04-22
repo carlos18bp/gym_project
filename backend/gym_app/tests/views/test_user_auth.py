@@ -9,15 +9,6 @@ from rest_framework import status
 from gym_app.models import EmailVerificationCode, PasswordCode, User
 
 
-def _mock_captcha_success_patch(monkeypatch):
-    """Mock successful captcha verification."""
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"success": True}
-    mock_resp.raise_for_status = MagicMock()
-    monkeypatch.setattr(
-        "gym_app.utils.captcha.requests.post", lambda *a, **kw: mock_resp
-    )
-
 @pytest.fixture
 def user_data():
     """User data."""
@@ -56,12 +47,10 @@ class TestSignOn:
     """Tests for Sign On."""
     
     @pytest.mark.contract
-    def test_sign_on_success(self, api_client, user_data, monkeypatch):
+    def test_sign_on_success(self, api_client, user_data):
         """Test successful user registration."""
-        _mock_captcha_success_patch(monkeypatch)
         EmailVerificationCode.objects.create(email=user_data['email'], code='123456')
         user_data['passcode'] = '123456'
-        user_data['captcha_token'] = 'tok'
         # Make the request
         url = reverse('sign_on')
         response = api_client.post(url, user_data, format='json')
@@ -81,14 +70,12 @@ class TestSignOn:
         assert user.check_password(user_data['password'])
     
     @pytest.mark.edge
-    def test_sign_on_existing_email(self, api_client, user_data, existing_user, monkeypatch):
+    def test_sign_on_existing_email(self, api_client, user_data, existing_user):
         """Test registration with an existing email."""
-        _mock_captcha_success_patch(monkeypatch)
         # Use an existing email
         user_data['email'] = existing_user.email
         user_data['passcode'] = '123456'
-        user_data['captcha_token'] = 'tok'
-        
+
         # Make the request
         url = reverse('sign_on')
         response = api_client.post(url, user_data, format='json')
@@ -99,15 +86,13 @@ class TestSignOn:
         assert 'already registered' in response.data['warning']
     
     @pytest.mark.edge
-    def test_sign_on_invalid_data(self, api_client, monkeypatch):
+    def test_sign_on_invalid_data(self, api_client):
         """Test registration with invalid data."""
-        _mock_captcha_success_patch(monkeypatch)
         # Invalid data (missing required field - email)
         invalid_data = {
             'password': 'securepassword123',
             'first_name': 'Test',
             'last_name': 'User',
-            'captcha_token': 'tok',
         }
         
         # Make the request

@@ -299,10 +299,6 @@ const signOnUser = async () => {
     );
     return;
   }
-  if (!captchaToken.value) {
-    showNotification("Por favor verifica que no eres un robot", "warning");
-    return;
-  }
   if (!passcode.value) {
     showNotification("El código de verificación es obligatorio", "warning");
     return;
@@ -315,7 +311,6 @@ const signOnUser = async () => {
       first_name: userForm.firstName,
       last_name: userForm.lastName,
       passcode: passcode.value,
-      captcha_token: captchaToken.value,
     });
     authStore.login(response.data);
 
