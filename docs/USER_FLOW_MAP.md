@@ -943,6 +943,17 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### minutas-columns: Columnas de tabla en vista Minutas
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅
+- **Descripción:** La tabla de Minutas no muestra las columnas de campos clave (Contraparte, Objeto, Valor, Plazo, fechas) que son irrelevantes para plantillas sin datos de contrato
+
+**Pasos:**
+1. Lawyer navega a `/dynamic_document_dashboard`
+2. Click en tab "Minutas"
+3. La tabla renderiza sin las columnas: Contraparte, Objeto, Valor, Plazo, Fecha Suscripción, Fecha Inicio, Fecha Terminación
+
+---
+
 ### docs-empty-states: Estados vacíos
 - **Módulo:** documents | **Prioridad:** P4 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅
 - **Descripción:** UI cuando no hay documentos, carpetas, tags u otros elementos
@@ -1506,9 +1517,9 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - **Descripción:** Funcionalidades limitadas con botones deshabilitados y overlays de bloqueo
 
 **Restricciones (cubierto por E2E):**
-- ❌ **Rutas de abogado:** Redirect a `/dashboard` (directorio, editor, variables-config)
-- ❌ **Membrete global:** Botón deshabilitado en `/dynamic_document_dashboard`
-- ❌ **Filtros SECOP:** Overlay de bloqueo sobre el panel de filtros en `/secop`
+- ✅ **Rutas de abogado:** Redirect a `/dashboard` (directorio, editor, variables-config)
+- ✅ **Membrete global:** Botón deshabilitado en `/dynamic_document_dashboard`
+- ✅ **Filtros SECOP:** Overlay de bloqueo sobre el panel de filtros en `/secop`
 - ✅ **Crear solicitudes:** Acceso a `/legal_request_create`
 - ✅ **Agendar cita:** Acceso a `/schedule_appointment`
 - ✅ **Usar documentos:** Puede completar formularios (sin firma electrónica)
@@ -1936,7 +1947,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Dashboard | 9 | 9 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 9 | 9 | 0 | 0 |
-| Documents | 33 | 33 | 0 | 0 |
+| Documents | 34 | 34 | 0 | 0 |
 | Signatures | 11 | 11 | 0 | 0 |
 | Legal Requests | 10 | 10 | 0 | 0 |
 | Organizations | 15 | 15 | 0 | 0 |
@@ -1947,10 +1958,10 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **149** | **148** | **1** | **0** |
+| **Total** | **150** | **149** | **1** | **0** |
 
 ---
 
-**Documento generado:** April 15, 2026
-**Versión:** 1.8.0
-**Estado:** 148/149 flujos cubiertos (1 parcial: service-admin-edit)
+**Documento generado:** April 22, 2026
+**Versión:** 1.8.1
+**Estado:** 149/150 flujos cubiertos (1 parcial: service-admin-edit). Añadido: minutas-columns (Documents). Corregido: basic-restrictions sub-variants ❌→✅.

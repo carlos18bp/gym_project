@@ -16,7 +16,7 @@
 | 10 | Intranet (legal documents, profiles, facturation) | ✅ Complete | 2 models, 1 view file, 1 serializer |
 | 11 | Legal Updates | ✅ Complete | 1 model, 1 view file, 1 serializer |
 | 12 | PWA Support (service worker, install prompts, offline page) | ✅ Complete | vite-plugin-pwa, 3 PWA components |
-| 13 | User Guide (interactive, module-based, role-specific) | ✅ Complete | 8 view files, 1 store (sub-module pattern: index, modules, getters, 4 content files) |
+| 13 | User Guide (interactive, module-based, role-specific) | ✅ Complete — extended 2026-04-22 | 8 view files, 1 store (sub-module pattern: index, modules, getters, 6 content files). Audit + extension in `tasks/user_guide_gap_audit.md`: added modules **SECOP** (`content/secop.js`, 6 sections) and **Servicios y Trámites** (`content/services_tramites.js`, 8 sections); added sections `featured-services`, `variables-config`, `document-permissions`, `user-signature`, `payment-method-update`, `payment-history`; corrected tab labels to `Dcs. Por Firmar / Dcs. Formalizados / Dcs. Archivados` (commit `d60eeb4`); rewrote appointments section to match real Calendly-only implementation. QuickLinksCard updated with SECOP/Services per role. Tests: 17/17 passing (2 new tests covering SECOP+Services registration and search). |
 | 14 | Automated Backups (daily, retention, manual trigger) | ✅ Complete | Huey periodic task |
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |

@@ -75,21 +75,6 @@
                     </ol>
                   </div>
 
-                  <!-- Screenshot -->
-                  <div v-if="example.screenshot" class="mb-6">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-3">Ejemplo Visual:</h4>
-                    <div class="border border-gray-200 rounded-lg overflow-hidden">
-                      <img
-                        :src="example.screenshot.url"
-                        :alt="example.screenshot.caption"
-                        class="w-full h-auto"
-                      />
-                      <div v-if="example.screenshot.caption" class="p-3 bg-gray-50">
-                        <p class="text-sm text-gray-600">{{ example.screenshot.caption }}</p>
-                      </div>
-                    </div>
-                  </div>
-
                   <!-- Tips -->
                   <div v-if="example.tips && example.tips.length > 0" class="mb-6">
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">

@@ -44,9 +44,9 @@ export const documentsContent = {
         'Minutas: Crear y gestionar plantillas de documentos (solo plantillas)',
         'Mis Documentos: Usar minutas para crear documentos propios y formalizarlos',
         'Carpetas: Organizar documentos en carpetas personalizadas',
-        'Por Firmar: Ver documentos pendientes de firma',
-        'Firmados: Archivo de documentos completados',
-        'Archivados: Documentos rechazados o expirados para referencia y corrección',
+        'Dcs. Por Firmar: Documentos pendientes de firma',
+        'Dcs. Formalizados: Archivo de documentos con firmas completadas',
+        'Dcs. Archivados: Documentos rechazados o expirados para referencia y corrección',
         'Completados por Clientes: Revisar información llenada',
         'En Progreso por Clientes: Ver avance de completado'
       ]
@@ -865,6 +865,98 @@ export const documentsContent = {
         'Los documentos Rechazados y Expirados se encuentran en la pestaña "Documentos Archivados"',
         'Define fechas límite realistas para evitar expiraciones innecesarias',
         'Revisa el motivo de rechazo antes de corregir y reenviar'
+      ]
+    },
+    {
+      id: 'variables-config',
+      name: 'Configuración de Variables',
+      description: 'Definir los campos dinámicos reutilizables de una minuta',
+      roles: ['lawyer'],
+      content: `
+        <p>Desde la ruta <code>/dynamic_document_dashboard/lawyer/variables-config</code> los abogados configuran las <strong>variables dinámicas</strong> de una minuta: los campos que el cliente (o el propio abogado) llenará al usar el documento.</p>
+        <p class="mt-2">Cada variable define su nombre, tipo de dato, si es obligatoria, texto de ayuda y opciones (para selectores).</p>
+      `,
+      features: [
+        'Nombre de la variable (aparece subrayada en amarillo en el editor)',
+        'Tipo de campo: texto, área de texto, número (moneda), fecha, email, selector',
+        'Obligatoriedad y validaciones por tipo',
+        'Help text / tooltip para guiar al cliente',
+        'Opciones del selector (para campos tipo selector)',
+        'Reutilización en múltiples minutas'
+      ],
+      steps: [
+        {
+          title: 'Abre la minuta',
+          description: 'Desde la pestaña "Minutas", click en "⚙️ Configurar Variables"'
+        },
+        {
+          title: 'Agrega variables',
+          description: 'Define nombre técnico, etiqueta visible y tipo de dato'
+        },
+        {
+          title: 'Configura validaciones',
+          description: 'Marca obligatoriedad y agrega help text'
+        },
+        {
+          title: 'Guarda la configuración',
+          description: 'Las variables quedan disponibles para el formulario de uso'
+        }
+      ],
+      tips: [
+        'Usa nombres técnicos sin espacios (ej: nombre_cliente) y etiquetas descriptivas',
+        'El help text ayuda a los clientes a llenar correctamente el campo',
+        'Los campos tipo moneda formatean automáticamente miles y decimales'
+      ],
+      restrictions: [
+        'Solo accesible para abogados',
+        'Los cambios afectan a documentos futuros, no a los ya formalizados'
+      ]
+    },
+    {
+      id: 'document-permissions',
+      name: 'Permisos sobre Documentos',
+      description: 'Controlar quién ve y quién usa cada minuta/documento',
+      roles: ['lawyer'],
+      content: `
+        <p>Cada documento dinámico tiene un sistema de permisos granular que distingue entre <strong>visibilidad</strong> (quién puede verlo) y <strong>usabilidad</strong> (quién puede usarlo para crear un documento propio).</p>
+        <p class="mt-2">Los permisos se otorgan por usuario específico, por rol, o combinando ambos. También existe un modo público (cualquier usuario autenticado).</p>
+      `,
+      features: [
+        'Acceso público: toggle para que cualquier usuario autenticado vea la minuta',
+        'Permisos de visibilidad: qué usuarios pueden ver el documento',
+        'Permisos de usabilidad: qué usuarios pueden usar la minuta para crear un documento propio',
+        'Otorgar por usuario: seleccionar clientes individuales',
+        'Otorgar por rol: abrir a todos los "client", "corporate_client" o "basic"',
+        'Otorgar combinado: mezclar usuarios específicos + roles en la misma operación',
+        'Revocar por usuario o por rol',
+        'Historial de permisos otorgados visible en el modal'
+      ],
+      steps: [
+        {
+          title: 'Abre el modal de permisos',
+          description: 'Desde la tabla de documentos, click en el ícono de candado / permisos'
+        },
+        {
+          title: 'Elige el tipo de permiso',
+          description: 'Visibilidad (solo ver) o Usabilidad (ver + usar)'
+        },
+        {
+          title: 'Selecciona beneficiarios',
+          description: 'Busca y marca usuarios, y/o selecciona roles completos'
+        },
+        {
+          title: 'Confirma',
+          description: 'Los permisos se otorgan atómicamente; se listan en la tabla del modal'
+        }
+      ],
+      tips: [
+        'Usa "por rol" cuando quieras abrir una minuta a todos los clientes sin seleccionarlos uno por uno',
+        'El acceso público es útil para minutas genéricas de alto volumen',
+        'Revoca permisos al cerrar una colaboración para evitar accesos residuales'
+      ],
+      restrictions: [
+        'Solo abogados pueden gestionar permisos',
+        'El creador del documento siempre conserva acceso'
       ]
     }
   ]

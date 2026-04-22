@@ -159,13 +159,11 @@ export const appointmentsContent = {
         <p>Los clientes pueden agendar citas con abogados usando el sistema Calendly integrado.</p>
       `,
       features: [
-        'Calendario interactivo con disponibilidad en tiempo real',
-        'Selección de fecha y hora',
-        'Tipos de cita: Consulta inicial, Asesoría, Seguimiento, Revisión',
+        'Widget de Calendly embebido en la plataforma',
+        'Calendario con disponibilidad en tiempo real gestionada por G&M',
+        'Selección de fecha y hora disponibles',
         'Formulario con datos de contacto',
-        'Confirmación automática por email',
-        'Agregar a calendario personal (Google, Outlook, iCal)',
-        'Recordatorios automáticos'
+        'Confirmación automática por email (enviada por Calendly)'
       ],
       steps: [
         {
@@ -173,30 +171,26 @@ export const appointmentsContent = {
           description: 'Click en "Agendar Cita" en el menú lateral'
         },
         {
-          title: 'Selecciona tipo de cita',
-          description: 'Elige el tipo de consulta que necesitas'
-        },
-        {
           title: 'Elige fecha y hora',
-          description: 'Selecciona del calendario según disponibilidad'
+          description: 'Selecciona un horario disponible dentro del widget de Calendly'
         },
         {
           title: 'Completa tus datos',
-          description: 'Nombre, email, teléfono y motivo de la consulta'
+          description: 'Ingresa nombre, email y motivo breve de la consulta'
         },
         {
           title: 'Confirma la cita',
-          description: 'Revisa la información y confirma'
+          description: 'Revisa la información y confirma desde el widget'
         },
         {
           title: 'Recibe confirmación',
-          description: 'Recibirás un email con los detalles y enlace al calendario'
+          description: 'Calendly te envía un email con los detalles y un enlace para reprogramar o cancelar'
         }
       ],
       tips: [
         'Agenda con anticipación para mejor disponibilidad',
         'Prepara tus documentos antes de la cita',
-        'Llega puntual a la cita agendada'
+        'Usa el enlace de Calendly en el email si necesitas reprogramar'
       ]
     }
   ]
@@ -979,6 +973,46 @@ export const authenticationContent = {
         'Contador visible de segundos restantes',
         'Opción de recuperar contraseña durante bloqueo'
       ]
+    },
+    {
+      id: 'user-signature',
+      name: 'Firma Digital del Perfil',
+      description: 'Registrar la firma que se usará en documentos electrónicos',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>Desde el perfil puedes registrar tu <strong>firma digital</strong>, que luego se aplicará automáticamente a los documentos que firmes desde el módulo de Archivos Jurídicos.</p>
+        <p class="mt-2">Puedes dibujarla con el mouse/touch o cargar una imagen (PNG con fondo transparente recomendado).</p>
+      `,
+      features: [
+        'Dibujar la firma directamente en el navegador',
+        'Cargar imagen de firma (PNG/JPG)',
+        'Vista previa antes de guardar',
+        'Reemplazar firma existente en cualquier momento',
+        'La firma se usa en el flujo de firma electrónica de documentos'
+      ],
+      steps: [
+        {
+          title: 'Accede a tu perfil',
+          description: 'Click en tu avatar en el menú lateral y selecciona "Mi Perfil"'
+        },
+        {
+          title: 'Abre la sección Firma',
+          description: 'Scroll hasta "Firma Digital"'
+        },
+        {
+          title: 'Dibuja o carga',
+          description: 'Elige entre dibujar con el mouse/touch o subir una imagen de tu firma'
+        },
+        {
+          title: 'Guarda',
+          description: 'Click en "Guardar Firma". Se almacena asociada a tu usuario'
+        }
+      ],
+      tips: [
+        'Para mejor calidad, usa PNG con fondo transparente',
+        'Si dibujas la firma, hazlo con el trackpad o una pantalla táctil para más control',
+        'Puedes actualizar tu firma cuando quieras; los documentos ya firmados conservan la firma original'
+      ]
     }
   ]
 };
@@ -1090,6 +1124,57 @@ export const subscriptionsContent = {
         { title: 'Selecciona plan superior', description: 'Elige un plan con más beneficios' },
         { title: 'Completa el pago', description: 'Ingresa datos de pago si es plan pago' },
         { title: 'Beneficios activados', description: 'Los nuevos beneficios se activan inmediatamente' }
+      ]
+    },
+    {
+      id: 'payment-method-update',
+      name: 'Actualizar método de pago',
+      description: 'Cambiar la tarjeta asociada a tu suscripción',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>Puedes actualizar la tarjeta que cobra tu suscripción recurrente sin interrumpir el servicio.</p>
+        <p class="mt-2">La tarjeta se re-tokeniza de forma segura a través de Wompi; G&M no almacena el número completo de tarjeta.</p>
+      `,
+      features: [
+        'Cambio de tarjeta sin cancelar la suscripción',
+        'Tokenización segura vía Wompi (PCI-DSS)',
+        'Vigente desde el siguiente ciclo de facturación',
+        'Valida la tarjeta con un cobro mínimo de prueba antes de aceptar el cambio'
+      ],
+      steps: [
+        { title: 'Abre tu suscripción', description: 'Menú → Suscripciones → plan activo' },
+        { title: 'Click en "Actualizar método de pago"', description: 'Se abre el formulario seguro de Wompi' },
+        { title: 'Ingresa los datos de la nueva tarjeta', description: 'Número, vencimiento, CVV y titular' },
+        { title: 'Confirma', description: 'Si la validación es exitosa, la tarjeta queda activa para el próximo cobro' }
+      ],
+      tips: [
+        'Actualiza la tarjeta antes de que venza para evitar fallos de cobro y suspensiones',
+        'Si el cobro falla, recibirás un email con instrucciones para reintentar'
+      ]
+    },
+    {
+      id: 'payment-history',
+      name: 'Historial de pagos',
+      description: 'Consultar los cobros realizados en tu suscripción',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>Consulta el <strong>historial de pagos</strong> de tu suscripción: fechas, montos, estado de cada transacción y reintentos automáticos.</p>
+      `,
+      features: [
+        'Listado cronológico de todas las transacciones',
+        'Estado por pago: Aprobado, Pendiente, Rechazado',
+        'Monto, fecha y método utilizado',
+        'Reintentos automáticos cuando un cobro falla',
+        'Referencia de transacción para soporte'
+      ],
+      steps: [
+        { title: 'Abre tu suscripción', description: 'Menú → Suscripciones' },
+        { title: 'Click en "Historial de Pagos"', description: 'Se despliega la tabla de transacciones' },
+        { title: 'Filtra si es necesario', description: 'Por estado o por rango de fechas' }
+      ],
+      tips: [
+        'Guarda la referencia de transacción si necesitas contactar soporte por un cobro',
+        'Los pagos rechazados se reintentan automáticamente antes de suspender el servicio'
       ]
     }
   ]

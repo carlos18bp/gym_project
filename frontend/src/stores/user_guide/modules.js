@@ -8,7 +8,9 @@ import {
   BuildingOfficeIcon,
   ScaleIcon,
   UserCircleIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  BriefcaseIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/vue/24/outline';
 
 export const allModules = [
@@ -39,6 +41,20 @@ export const allModules = [
     icon: DocumentTextIcon,
     roles: ['lawyer', 'client', 'corporate_client', 'basic'],
     description: 'Documentos dinámicos, minutas y contratos'
+  },
+  {
+    id: 'secop',
+    name: 'SECOP — Contratación Estatal',
+    icon: BriefcaseIcon,
+    roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+    description: 'Consulta de procesos de contratación pública (datos.gov.co)'
+  },
+  {
+    id: 'services',
+    name: 'Servicios y Trámites',
+    icon: ClipboardDocumentListIcon,
+    roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+    description: 'Catálogo de servicios legales con formularios por etapas'
   },
   {
     id: 'requests',

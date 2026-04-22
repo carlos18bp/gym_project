@@ -46,7 +46,7 @@ test.describe("user guide: main page", { tag: ['@flow:user-guide-navigation', '@
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // User guide should load
@@ -63,7 +63,7 @@ test.describe("user guide: main page", { tag: ['@flow:user-guide-navigation', '@
       userAuth: { id: userId, role: "client", is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // User guide should load
@@ -80,7 +80,7 @@ test.describe("user guide: main page", { tag: ['@flow:user-guide-navigation', '@
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Should have navigation elements
@@ -99,7 +99,7 @@ test.describe("user guide: navigation component", { tag: ['@flow:user-guide-navi
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Look for navigation links or buttons
@@ -120,7 +120,7 @@ test.describe("user guide: navigation component", { tag: ['@flow:user-guide-navi
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Page should be stable
@@ -139,7 +139,7 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Look for search input
@@ -163,7 +163,7 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Look for search input
@@ -193,7 +193,7 @@ test.describe("user guide: module guide component", { tag: ['@flow:user-guide-na
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Should have content sections
@@ -210,7 +210,7 @@ test.describe("user guide: module guide component", { tag: ['@flow:user-guide-na
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Scroll the page
@@ -233,7 +233,7 @@ test.describe("user guide: example modal component", { tag: ['@flow:user-guide-n
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Look for example buttons or links
@@ -259,7 +259,7 @@ test.describe("user guide: role info card component", { tag: ['@flow:user-guide-
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Page should display role-appropriate content
@@ -278,7 +278,7 @@ test.describe("user guide: quick links card component", { tag: ['@flow:user-guid
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/user-guide");
+    await page.goto("/user_guide");
     await page.waitForLoadState("domcontentloaded");
 
     // Look for quick links
@@ -287,5 +287,111 @@ test.describe("user guide: quick links card component", { tag: ['@flow:user-guid
 
     // Page should have links
     await expect(page.locator("body")).toBeVisible();
+  });
+});
+
+test.describe("user guide: SECOP module", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("SECOP module is listed in navigation for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6070;
+
+    await installUserGuideMocks(page, { userId, role: "lawyer" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByText(/SECOP/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("SECOP module is listed in navigation for basic role", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6071;
+
+    await installUserGuideMocks(page, { userId, role: "basic" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "basic", is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByText(/SECOP/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("search surfaces SECOP content for UNSPSC query", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6072;
+
+    await installUserGuideMocks(page, { userId, role: "lawyer" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
+    await searchInput.fill("UNSPSC");
+    await expect(page.getByText(/SECOP/i).first()).toBeVisible({ timeout: 5000 });
+  });
+});
+
+test.describe("user guide: Servicios y Trámites module", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
+  test("Servicios module is listed in navigation for client", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6080;
+
+    await installUserGuideMocks(page, { userId, role: "client" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "client", is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByText(/Servicios y Trámites/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("Servicios module is listed in navigation for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6081;
+
+    await installUserGuideMocks(page, { userId, role: "lawyer" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByText(/Servicios y Trámites/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test("search surfaces Servicios content for radicado query", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const userId = 6082;
+
+    await installUserGuideMocks(page, { userId, role: "client" });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "client", is_profile_completed: true },
+    });
+
+    await page.goto("/user_guide");
+    await page.waitForLoadState("domcontentloaded");
+
+    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
+    await expect(searchInput).toBeVisible({ timeout: 10000 });
+    await searchInput.fill("radicado");
+    await expect(page.getByText(/Servicios/i).first()).toBeVisible({ timeout: 5000 });
   });
 });

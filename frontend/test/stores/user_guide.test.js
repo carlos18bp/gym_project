@@ -58,6 +58,31 @@ describe("User Guide Store", () => {
     expect(clientModules).toContain("processes");
   });
 
+  test("initializeGuideContent registers SECOP and Servicios modules", () => {
+    const store = useUserGuideStore();
+    store.initializeGuideContent();
+
+    expect(store.guideContent.secop).toBeTruthy();
+    expect(store.guideContent.services).toBeTruthy();
+
+    const secopLawyer = store.getModuleContent("secop", "lawyer");
+    expect(secopLawyer.sections.length).toBeGreaterThan(0);
+
+    const servicesBasic = store.getModuleContent("services", "basic");
+    expect(servicesBasic.sections.length).toBeGreaterThan(0);
+  });
+
+  test("searchGuideContent surfaces SECOP and Servicios terms", () => {
+    const store = useUserGuideStore();
+    store.initializeGuideContent();
+
+    const radicado = store.searchGuideContent("radicado");
+    expect(radicado.some((r) => r.moduleId === "services")).toBe(true);
+
+    const alerta = store.searchGuideContent("alerta");
+    expect(alerta.some((r) => r.moduleId === "secop")).toBe(true);
+  });
+
   test("getModuleContent filters sections by role without mutating state", () => {
     const store = useUserGuideStore();
     store.initializeGuideContent();

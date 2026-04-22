@@ -3,6 +3,8 @@ import { guideGetters } from './getters.js';
 import { dashboardContent, directoryContent } from './content/dashboard_directory.js';
 import { processesContent } from './content/processes.js';
 import { documentsContent } from './content/documents.js';
+import { secopContent } from './content/secop.js';
+import { servicesTramitesContent } from './content/services_tramites.js';
 import {
   requestsContent,
   appointmentsContent,
@@ -43,6 +45,8 @@ export const useUserGuideStore = defineStore('userGuide', {
         directory: directoryContent,
         processes: processesContent,
         documents: documentsContent,
+        secop: secopContent,
+        services: servicesTramitesContent,
         requests: requestsContent,
         appointments: appointmentsContent,
         organizations: organizationsContent,

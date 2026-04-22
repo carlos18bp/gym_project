@@ -41,6 +41,8 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **User Guide gap audit (2026-04-22)**: Systematic comparison of `frontend/src/stores/user_guide/` content (10 modules, 65 sections, ~2.8k lines) against real system (63 routes, 181 backend endpoints). Critical gaps: **SECOP** and **Servicios y Trámites** are entire modules missing from `modules.js` despite being full features in production. Also: outdated tab labels (`Firmados` vs real `Dcs. Formalizados` post commit d60eeb4), missing sections (variables-config, document-permissions, user-signature, payment-method-update, payment-history, featured-services), and inaccurate `appointments` content describing features that don't exist (Calendly iframe only). Full plan in `tasks/user_guide_gap_audit.md`.
+
 - **Sprint Abril 2026 — Servicios y Trámites: 11 mejoras (2026-04-15)**:
   - **1.1 ServicesAdmin — Vista previa de icono**: Campo `icon_image_url` en `editor` reactive, miniatura 80×80px con gradiente, validación 5MB.
   - **1.2 ServicesAdmin — Validación exhaustiva**: Nueva función `validateEditor()` cubre nombre, etapas, campos, claves duplicadas, opciones de selección, extensiones de archivo.

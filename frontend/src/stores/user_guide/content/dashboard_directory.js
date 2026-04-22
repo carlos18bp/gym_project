@@ -150,6 +150,27 @@ export const dashboardContent = {
         'El archivo Excel incluye múltiples hojas con datos detallados',
         'Usa rangos de fecha cortos para reportes más específicos'
       ]
+    },
+    {
+      id: 'featured-services',
+      name: 'Servicios Destacados',
+      description: 'Accesos directos a los trámites más usados',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>El Dashboard muestra una cuadrícula con los <strong>servicios destacados</strong> configurados por el administrador (ej: Registro Marcario).</p>
+        <p class="mt-2">Cada tarjeta lleva directo al formulario del servicio para iniciar la solicitud.</p>
+      `,
+      features: [
+        'Grid con íconos personalizados por servicio',
+        'Nombre y descripción breve de cada servicio',
+        'Click directo al formulario del trámite',
+        'Solo aparecen servicios marcados como destacados por el admin',
+        'Integra con el módulo Servicios y Trámites'
+      ],
+      tips: [
+        'Si no ves servicios destacados, accede al catálogo completo desde el menú "Servicios"',
+        'Los administradores controlan qué servicios aparecen destacados'
+      ]
     }
   ]
 };
