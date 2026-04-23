@@ -12,7 +12,6 @@ from gym_app.models import (
     ServiceRequestAnswer,
     ServiceRequestFieldFile,
     ServiceRequestLawyerResponse,
-    ServiceRequestLawyerResponseFile,
     ServiceStage,
 )
 from gym_app.serializers.service_tramite import (
@@ -20,7 +19,6 @@ from gym_app.serializers.service_tramite import (
     ServiceRequestAnswerSerializer,
     ServiceRequestDetailSerializer,
     ServiceRequestFieldFileSerializer,
-    ServiceRequestLawyerResponseFileSerializer,
     ServiceRequestLawyerResponseSerializer,
     ServiceSerializer,
 )
@@ -35,6 +33,7 @@ User = get_user_model()
 
 @pytest.fixture
 def ser_admin():
+    """Create an admin/staff user for serializer tests."""
     return User.objects.create_user(
         email="ser_admin@test.com",
         password="pw",
@@ -47,6 +46,7 @@ def ser_admin():
 
 @pytest.fixture
 def ser_client():
+    """Create a client user for serializer tests."""
     return User.objects.create_user(
         email="ser_client@test.com",
         password="pw",
@@ -58,6 +58,7 @@ def ser_client():
 
 @pytest.fixture
 def service_with_stages():
+    """Create a Service with two stages and one field each for serializer tests."""
     service = Service.objects.create(
         name="Servicio Serializador",
         short_title="Serializ",
@@ -73,6 +74,7 @@ def service_with_stages():
 
 @pytest.fixture
 def submitted_request_ser(service_with_stages, ser_client):
+    """Create a submitted ServiceRequest with a tracking number for serializer tests."""
     req = ServiceRequest.objects.create(
         service=service_with_stages,
         requester=ser_client,
@@ -128,6 +130,7 @@ def _service_create_payload(slug="new-ser-svc", with_stages=True):
 
 @pytest.mark.django_db
 class TestServiceIconMixin:
+    """Tests for ServiceIconMixin via ServiceListSerializer."""
 
     def test_icon_image_url_returns_none_when_no_image(self, service_with_stages):
         """icon_image_url returns None when no image is set."""
@@ -168,6 +171,7 @@ class TestServiceIconMixin:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestServiceSerializerCreate:
+    """Tests for ServiceSerializer create (nested stages and fields)."""
 
     def test_create_service_with_stages_and_fields(self, ser_admin):
         """Create serializer persists service with nested stages and fields."""
@@ -214,6 +218,7 @@ class TestServiceSerializerCreate:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestServiceSerializerUpdate:
+    """Tests for ServiceSerializer update (nested stage/field mutations)."""
 
     def _update_payload(self, service, stages):
         return {
@@ -376,6 +381,7 @@ class TestServiceSerializerUpdate:
 @pytest.mark.django_db
 @pytest.mark.contract
 class TestServiceRequestFieldFileSerializer:
+    """Tests for ServiceRequestFieldFileSerializer field computations."""
 
     def test_file_name_uses_original_name_when_set(self, submitted_request_ser):
         """file_name returns the original_name when set."""
@@ -440,6 +446,7 @@ class TestServiceRequestFieldFileSerializer:
 @pytest.mark.django_db
 @pytest.mark.contract
 class TestServiceRequestAnswerSerializer:
+    """Tests for ServiceRequestAnswerSerializer nested file handling."""
 
     def test_files_returned_for_file_type_answer(self, submitted_request_ser, service_with_stages):
         """Nested files are returned for a file-type answer."""
@@ -529,6 +536,7 @@ class TestServiceRequestAnswerSerializer:
 @pytest.mark.django_db
 @pytest.mark.contract
 class TestServiceRequestLawyerResponseSerializer:
+    """Tests for ServiceRequestLawyerResponseSerializer field computations."""
 
     def _make_response(self, service_request, responder, **kwargs):
         defaults = {
@@ -585,6 +593,7 @@ class TestServiceRequestLawyerResponseSerializer:
 @pytest.mark.django_db
 @pytest.mark.contract
 class TestServiceRequestDetailSerializer:
+    """Tests for ServiceRequestDetailSerializer field computations."""
 
     def test_document_url_returns_none_when_no_document(self, submitted_request_ser):
         """document_url returns None when no generated document is attached."""

@@ -61,7 +61,7 @@ test.describe("AddDocumentsModal table view", { tag: ['@flow:docs-folders', '@mo
     await page
       .getByTestId("folder-details-modal")
       .getByRole("button", { name: /Agregar documentos/i })
-      .first()
+      .first() // quality: allow-fragile-selector (toolbar may also render "Agregar documentos"; first() targets empty-state CTA)
       .click();
 
     const modal = page.getByTestId("add-documents-modal");

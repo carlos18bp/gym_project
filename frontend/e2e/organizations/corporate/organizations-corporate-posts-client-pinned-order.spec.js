@@ -97,7 +97,7 @@ test("corporate_client pins an older post and client sees pinned posts first", {
   const postCards = orgPostsSection.locator('[data-testid^="client-post-card-"]');
 
   await expect(postCards).toHaveCount(2);
-  await expect(postCards.nth(0)).toContainText("Post B (viejo)");
-  await expect(postCards.nth(0)).toContainText("Fijado");
-  await expect(postCards.nth(1)).toContainText("Post A (nuevo)");
+  await expect(postCards.nth(0)).toContainText("Post B (viejo)"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
+  await expect(postCards.nth(0)).toContainText("Fijado"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
+  await expect(postCards.nth(1)).toContainText("Post A (nuevo)"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
 });

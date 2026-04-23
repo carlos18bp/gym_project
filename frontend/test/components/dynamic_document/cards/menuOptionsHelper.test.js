@@ -64,7 +64,7 @@ describe("menuOptionsHelper.js", () => {
   });
 
   describe("lawyer", () => {
-    test("use-template context returns only preview and useTemplate", () => {
+    test("use-template context as lawyer returns only preview and useTemplate", () => {
       const options = getMenuOptionsForCardType(
         "lawyer",
         { id: 1, state: "Published" },
@@ -443,7 +443,7 @@ describe("menuOptionsHelper.js", () => {
   });
 
   describe("client", () => {
-    test("use-template context returns only preview and useTemplate", () => {
+    test("use-template context as client returns only preview and useTemplate", () => {
       const options = getMenuOptionsForCardType(
         "client",
         { id: 1, state: "Published" },

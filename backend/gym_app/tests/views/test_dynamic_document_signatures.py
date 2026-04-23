@@ -16,7 +16,10 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from gym_app.models import DocumentSignature, DynamicDocument, UserSignature
-from gym_app.models.dynamic_document import DocumentVariable, DocumentVisibilityPermission
+from gym_app.models.dynamic_document import (
+    DocumentVariable,
+    DocumentVisibilityPermission,
+)
 
 try:
     from PIL import Image as PILImage
@@ -2567,10 +2570,12 @@ class TestFormalizeDocument:
 
     @pytest.fixture
     def api(self):
+        """Provide an unauthenticated APIClient."""
         return APIClient()
 
     @pytest.fixture
     def lawyer(self):
+        """Create a lawyer user for formalize_document tests."""
         return User.objects.create_user(
             email="formalize_lawyer@t.com", password="pw", role="lawyer",
             first_name="Law", last_name="Yer",
@@ -2578,6 +2583,7 @@ class TestFormalizeDocument:
 
     @pytest.fixture
     def client_user(self):
+        """Create a client user for formalize_document tests."""
         return User.objects.create_user(
             email="formalize_client@t.com", password="pw", role="client",
             first_name="Cli", last_name="Ent",
@@ -2585,6 +2591,7 @@ class TestFormalizeDocument:
 
     @pytest.fixture
     def other_client(self):
+        """Create a second client user for formalize_document tests."""
         return User.objects.create_user(
             email="formalize_other@t.com", password="pw", role="client",
             first_name="Oth", last_name="Er",
@@ -2746,8 +2753,8 @@ class TestFormalizeDocument:
 
     # ── issuer_only formalization ──
 
-    def test_formalize_issuer_only_success(self, api, lawyer, client_user):
-        """Issuer-only: creator gets pending DS, recipients get auto-signed DS + visibility, state is PendingSignatures."""
+    def test_formalize_issuer_only_success_state(self, api, lawyer, client_user):
+        """Issuer-only formalization sets state to PendingSignatures with correct document fields."""
         doc = _make_completed_doc(lawyer, client_user)
         api.force_authenticate(user=lawyer)
 
@@ -2763,7 +2770,18 @@ class TestFormalizeDocument:
         assert doc.signature_type == "issuer_only"
         assert doc.requires_signature is True
         assert doc.fully_signed is False
-        # Emisor DS (pending) + recipient DS (auto-signed as Notificado)
+
+    def test_formalize_issuer_only_success_signatures(self, api, lawyer, client_user):
+        """Issuer-only formalization creates pending DS for creator and auto-signed DS + visibility for recipient."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+        }, format="json")
+
         assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=False).exists()
         assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
         assert DocumentSignature.objects.filter(document=doc).count() == 2
@@ -2815,8 +2833,8 @@ class TestFormalizeDocument:
 
     # ── informative formalization ──
 
-    def test_formalize_informative_success(self, api, lawyer, client_user):
-        """Informative: state goes to FullySigned, DS created for emisor and recipient, recipients get visibility."""
+    def test_formalize_informative_success_state(self, api, lawyer, client_user):
+        """Informative formalization sets state to FullySigned with correct document fields."""
         doc = _make_completed_doc(lawyer, client_user)
         api.force_authenticate(user=lawyer)
 
@@ -2832,7 +2850,18 @@ class TestFormalizeDocument:
         assert doc.signature_type == "informative"
         assert doc.requires_signature is True
         assert doc.fully_signed is True
-        # DS for emisor (auto-signed) + DS for recipient (auto-signed)
+
+    def test_formalize_informative_success_signatures(self, api, lawyer, client_user):
+        """Informative formalization auto-signs DS for both creator and recipient and grants visibility."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
         assert DocumentSignature.objects.filter(document=doc).count() == 2
         assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=True).exists()
         assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
@@ -2908,10 +2937,12 @@ class TestSignDocumentIssuerOnly:
 
     @pytest.fixture
     def api(self):
+        """Provide an unauthenticated APIClient."""
         return APIClient()
 
     @pytest.fixture
     def lawyer(self):
+        """Create a lawyer user for issuer-only sign tests."""
         return User.objects.create_user(
             email="sign_io_lawyer@t.com", password="pw", role="lawyer",
             first_name="Law", last_name="Yer",
@@ -2919,6 +2950,7 @@ class TestSignDocumentIssuerOnly:
 
     @pytest.fixture
     def client_user(self):
+        """Create a client user for issuer-only sign tests."""
         return User.objects.create_user(
             email="sign_io_client@t.com", password="pw", role="client",
             first_name="Cli", last_name="Ent",
@@ -2967,7 +2999,7 @@ class TestSignDocumentIssuerOnly:
         doc.refresh_from_db()
         assert doc.state == "FullySigned"
         assert doc.fully_signed is True
-        assert mock_email_cls.called
+        assert mock_email_cls.call_count >= 1
         recipient_emails = [
             call.kwargs.get("to", call[1].get("to", []))
             for call in mock_email_cls.call_args_list
@@ -3020,10 +3052,12 @@ class TestCorrectDocument:
 
     @pytest.fixture
     def api(self):
+        """Provide an unauthenticated APIClient."""
         return APIClient()
 
     @pytest.fixture
     def lawyer(self):
+        """Create a lawyer user for correct_document tests."""
         return User.objects.create_user(
             email="correct_lawyer@t.com", password="pw", role="lawyer",
             first_name="Law", last_name="Yer",
@@ -3031,6 +3065,7 @@ class TestCorrectDocument:
 
     @pytest.fixture
     def client_user(self):
+        """Create a client user for correct_document tests."""
         return User.objects.create_user(
             email="correct_client@t.com", password="pw", role="client",
             first_name="Cli", last_name="Ent",
@@ -3038,6 +3073,7 @@ class TestCorrectDocument:
 
     @pytest.fixture
     def other_client(self):
+        """Create a second client user for correct_document tests."""
         return User.objects.create_user(
             email="correct_other@t.com", password="pw", role="client",
             first_name="Oth", last_name="Er",

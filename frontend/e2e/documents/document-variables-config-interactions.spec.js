@@ -108,6 +108,7 @@ test("variables config: selecting 'Valor' classification reveals currency select
 
   // Classify as 'Valor' → currency selector should appear.
   await summarySelect.selectOption("value");
+  // quality: allow-fragile-selector (stable DOM id indexed by variable position)
   await expect(page.locator("#currency_1")).toBeVisible();
 
   // COP, USD, EUR plus the empty "Sin moneda" option = 4 total.

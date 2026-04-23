@@ -1,3 +1,5 @@
+"""Test configuration for gym_app tasks tests."""
+
 import sys
 from unittest.mock import MagicMock
 

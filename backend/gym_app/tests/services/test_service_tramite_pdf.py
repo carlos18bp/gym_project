@@ -1,23 +1,23 @@
 """Tests for gym_app.services.service_tramite_pdf."""
 
 import types
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 from django.contrib.auth import get_user_model
 
-from gym_app.services.service_tramite_pdf import (
-    _normalize_answer_value,
-    generate_service_request_pdf,
-    ServiceRequestPDFError,
-)
 from gym_app.models import (
     Service,
-    ServiceStage,
     ServiceField,
     ServiceRequest,
     ServiceRequestAnswer,
     ServiceRequestFieldFile,
+    ServiceStage,
+)
+from gym_app.services.service_tramite_pdf import (
+    ServiceRequestPDFError,
+    _normalize_answer_value,
+    generate_service_request_pdf,
 )
 
 User = get_user_model()
@@ -38,6 +38,7 @@ def _mock_answer(field_type, value_text=None, value_json=None):
 
 @pytest.fixture
 def pdf_service():
+    """Create a Service with stages and fields for PDF tests."""
     service = Service.objects.create(
         name="Servicio PDF",
         short_title="PDF",
@@ -61,6 +62,7 @@ def pdf_service():
 
 @pytest.fixture
 def pdf_requester():
+    """Create a client user as the PDF service request requester."""
     return User.objects.create_user(
         email="pdf_requester@test.com",
         password="testpassword",
@@ -72,6 +74,7 @@ def pdf_requester():
 
 @pytest.fixture
 def pdf_request(pdf_service, pdf_requester):
+    """Create a submitted ServiceRequest for PDF generation tests."""
     req = ServiceRequest.objects.create(
         service=pdf_service,
         requester=pdf_requester,
@@ -132,8 +135,10 @@ def _make_pisa_fail():
 
 
 class TestNormalizeAnswerValue:
+    """Tests for _normalize_answer_value helper."""
 
     def test_select_multiple_list_joined(self):
+        """Join select_multiple list values with a comma separator."""
         answer = _mock_answer("select_multiple", value_json=["A", "B"])
 
         result = _normalize_answer_value(answer)
@@ -141,6 +146,7 @@ class TestNormalizeAnswerValue:
         assert result == "A, B"
 
     def test_select_single_with_json_string(self):
+        """Return value_json directly when it is a plain string for select_single."""
         answer = _mock_answer("select_single", value_json="Nominativa")
 
         result = _normalize_answer_value(answer)
@@ -148,6 +154,7 @@ class TestNormalizeAnswerValue:
         assert result == "Nominativa"
 
     def test_select_single_with_json_list(self):
+        """Join value_json list for select_single when multiple values are present."""
         answer = _mock_answer("select_single", value_json=["Nominativa", "Figurativa"])
 
         result = _normalize_answer_value(answer)
@@ -155,6 +162,7 @@ class TestNormalizeAnswerValue:
         assert result == "Nominativa, Figurativa"
 
     def test_file_with_json_returns_string(self):
+        """Return value_json as a string for file-type answers."""
         answer = _mock_answer("file", value_json="doc.pdf")
 
         result = _normalize_answer_value(answer)
@@ -162,6 +170,7 @@ class TestNormalizeAnswerValue:
         assert result == "doc.pdf"
 
     def test_returns_empty_string_when_value_text_none(self):
+        """Return empty string when value_text is None for input-type answers."""
         answer = _mock_answer("input", value_text=None)
 
         result = _normalize_answer_value(answer)
@@ -169,6 +178,7 @@ class TestNormalizeAnswerValue:
         assert result == ""
 
     def test_returns_string_of_value_text(self):
+        """Return value_text as a string for input-type answers."""
         answer = _mock_answer("input", value_text="Hola")
 
         result = _normalize_answer_value(answer)
@@ -184,8 +194,10 @@ class TestNormalizeAnswerValue:
 @pytest.mark.django_db
 @pytest.mark.integration
 class TestGenerateServiceRequestPdf:
+    """Tests for generate_service_request_pdf."""
 
     def test_saves_document_as_pdf_file(self, pdf_request_with_answers, settings, tmp_path):
+        """Save the generated PDF as a file attached to the service request."""
         settings.MEDIA_ROOT = str(tmp_path)
         with patch(MOCK_RENDER, return_value="<html></html>"):
             with patch(MOCK_PISA, return_value=_make_pisa_ok()):
@@ -194,6 +206,7 @@ class TestGenerateServiceRequestPdf:
         assert pdf_request_with_answers.generated_document.name.endswith(".pdf")
 
     def test_groups_answers_by_stage_order(self, pdf_request_with_answers, settings, tmp_path):
+        """Group answers in the PDF context by stage order."""
         settings.MEDIA_ROOT = str(tmp_path)
         captured_context = {}
 
@@ -210,6 +223,7 @@ class TestGenerateServiceRequestPdf:
         assert orders == sorted(orders)
 
     def test_file_answer_value_replaced_by_uploaded_filenames(self, pdf_request_with_answers, settings, tmp_path):
+        """Replace file-type answer values with the uploaded filenames in the PDF context."""
         settings.MEDIA_ROOT = str(tmp_path)
         captured_context = {}
 
@@ -226,6 +240,7 @@ class TestGenerateServiceRequestPdf:
         assert "soporte.pdf" in soporte_item["value"]
 
     def test_select_multiple_value_joined(self, pdf_request_with_answers, settings, tmp_path):
+        """Join select_multiple answer values with a comma in the PDF context."""
         settings.MEDIA_ROOT = str(tmp_path)
         captured_context = {}
 
@@ -242,6 +257,7 @@ class TestGenerateServiceRequestPdf:
         assert categorias_item["value"] == "A, B"
 
     def test_raises_service_request_pdf_error_on_pisa_failure(self, pdf_request_with_answers, settings, tmp_path):
+        """Raise ServiceRequestPDFError when xhtml2pdf reports a rendering failure."""
         settings.MEDIA_ROOT = str(tmp_path)
         with patch(MOCK_RENDER, return_value="<html></html>"):
             with patch(MOCK_PISA, return_value=_make_pisa_fail()):
@@ -250,6 +266,7 @@ class TestGenerateServiceRequestPdf:
         assert exc_info.type is ServiceRequestPDFError
 
     def test_context_includes_requester_and_service(self, pdf_request_with_answers, settings, tmp_path):
+        """Include requester and service objects in the template context."""
         settings.MEDIA_ROOT = str(tmp_path)
         captured_context = {}
 
@@ -265,6 +282,7 @@ class TestGenerateServiceRequestPdf:
         assert captured_context["service"] == pdf_request_with_answers.service
 
     def test_field_without_key_skipped_in_files_by_field_key(self, pdf_request, settings, tmp_path):
+        """Skip field files whose field FK is None (SET_NULL after deletion) in file grouping."""
         settings.MEDIA_ROOT = str(tmp_path)
         # Create a field file whose field FK is None (simulates SET_NULL after field deletion)
         ServiceRequestFieldFile.objects.create(

@@ -1,12 +1,14 @@
+"""Tests for service tramite views."""
+
 import json
 import re
 
 import pytest
-from freezegun import freeze_time
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from freezegun import freeze_time
 
 from gym_app.models import (
     Service,
@@ -24,6 +26,7 @@ User = get_user_model()
 
 @pytest.fixture
 def admin_user():
+    """Create an admin/staff user for service views tests."""
     return User.objects.create_user(
         email="admin_services@test.com",
         password="testpassword",
@@ -36,6 +39,7 @@ def admin_user():
 
 @pytest.fixture
 def second_client_user():
+    """Create a second client user for service views tests."""
     return User.objects.create_user(
         email="client2_services@test.com",
         password="testpassword",
@@ -47,6 +51,7 @@ def second_client_user():
 
 @pytest.fixture
 def sample_service():
+    """Create a sample Service with stages and fields for views tests."""
     service = Service.objects.create(
         name="Registro Marcario",
         short_title="Registro",
@@ -137,7 +142,7 @@ def draft_request(sample_service, client_user):
 
 @pytest.fixture
 def request_with_answers(submitted_request, sample_service):
-    """Submitted request with answers."""
+    """Return a submitted request pre-populated with answers."""
     stage = sample_service.stages.first()
     field = stage.fields.first()
     ServiceRequestAnswer.objects.create(
@@ -756,7 +761,7 @@ def test_single_file_field_rejects_multiple_uploads(api_client, client_user, sam
     file1 = SimpleUploadedFile("doc1.pdf", b"%PDF-1.4 one", content_type="application/pdf")
     file2 = SimpleUploadedFile("doc2.pdf", b"%PDF-1.4 two", content_type="application/pdf")
 
-    from django.test.client import encode_multipart, BOUNDARY
+    from django.test.client import BOUNDARY, encode_multipart
 
     payload_str = json.dumps({
         "service_id": sample_service.id,
@@ -1026,8 +1031,9 @@ def test_latest_draft_returns_null_when_no_draft_exists(api_client, client_user,
 @pytest.mark.django_db
 def test_latest_draft_returns_only_most_recent_draft(api_client, client_user, sample_service):
     """Latest-draft endpoint returns the most recently updated draft."""
-    from django.utils import timezone
     from datetime import timedelta
+
+    from django.utils import timezone
 
     draft_old = ServiceRequest.objects.create(
         service=sample_service, requester=client_user, status="DRAFT", is_submitted=False
@@ -1097,7 +1103,7 @@ def test_latest_draft_isolates_per_user(
 
 @pytest.fixture
 def field_file_on_disk(submitted_request, sample_service, settings, tmp_path):
-    """A ServiceRequestFieldFile backed by a real file on disk."""
+    """Create a ServiceRequestFieldFile backed by a real file on disk."""
     settings.MEDIA_ROOT = str(tmp_path)
     from django.core.files.base import ContentFile as CF
     ff = ServiceRequestFieldFile(service_request=submitted_request, field=None, original_name="doc.pdf")
@@ -1108,7 +1114,7 @@ def field_file_on_disk(submitted_request, sample_service, settings, tmp_path):
 
 @pytest.fixture
 def lawyer_response_file_on_disk(submitted_request, lawyer_user, settings, tmp_path):
-    """A ServiceRequestLawyerResponseFile backed by a real file on disk."""
+    """Create a ServiceRequestLawyerResponseFile backed by a real file on disk."""
     settings.MEDIA_ROOT = str(tmp_path)
     from django.core.files.base import ContentFile as CF
     resp = ServiceRequestLawyerResponse.objects.create(
@@ -1352,8 +1358,9 @@ def test_date_from_filters_out_older_requests(
     api_client, client_user, sample_service, submitted_request
 ):
     """date_from filter excludes requests created before the given date."""
-    from django.utils import timezone
     from datetime import timedelta
+
+    from django.utils import timezone
 
     old_req = ServiceRequest.objects.create(
         service=sample_service, requester=client_user, status="OPEN", is_submitted=True
@@ -1381,8 +1388,9 @@ def test_date_to_filters_out_newer_requests(
     api_client, client_user, sample_service, submitted_request
 ):
     """date_to filter excludes requests created after the given date."""
-    from django.utils import timezone
     from datetime import timedelta
+
+    from django.utils import timezone
 
     old_req = ServiceRequest.objects.create(
         service=sample_service, requester=client_user, status="OPEN", is_submitted=True

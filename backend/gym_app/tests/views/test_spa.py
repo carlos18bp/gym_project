@@ -13,13 +13,13 @@ from django.template import TemplateDoesNotExist
 
 from gym_app.views.spa import SPAView
 
-
 # ------------------------------------------------------------------
 # Production-mode path (DEBUG=False)
 # ------------------------------------------------------------------
 
 
 def test_renders_template_when_debug_false_and_template_exists(rf, settings):
+    """Render index.html template when DEBUG=False and template exists."""
     settings.DEBUG = False
     request = rf.get('/some/route')
 
@@ -33,6 +33,7 @@ def test_renders_template_when_debug_false_and_template_exists(rf, settings):
 
 
 def test_falls_back_to_candidate_paths_when_template_missing_in_production(rf, settings):
+    """Fall back to candidate file paths when TemplateDoesNotExist in production."""
     settings.DEBUG = False
     request = rf.get('/route')
 
@@ -52,6 +53,7 @@ def test_falls_back_to_candidate_paths_when_template_missing_in_production(rf, s
 
 
 def test_serves_first_candidate_file_in_debug_mode(rf, settings):
+    """Serve the first available candidate file when DEBUG=True."""
     settings.DEBUG = True
     request = rf.get('/some/route')
 
@@ -65,6 +67,7 @@ def test_serves_first_candidate_file_in_debug_mode(rf, settings):
 
 
 def test_uses_static_root_candidate_when_other_paths_missing(rf, settings):
+    """Use STATIC_ROOT candidate when all other paths are missing."""
     settings.DEBUG = True
     settings.STATIC_ROOT = '/tmp/fake_static'
     request = rf.get('/route')
@@ -81,6 +84,7 @@ def test_uses_static_root_candidate_when_other_paths_missing(rf, settings):
 
 
 def test_returns_500_when_no_candidate_exists(rf, settings):
+    """Return HTTP 500 when no candidate file path exists."""
     settings.DEBUG = True
     request = rf.get('/missing')
 
@@ -92,6 +96,7 @@ def test_returns_500_when_no_candidate_exists(rf, settings):
 
 
 def test_skips_static_root_candidate_when_setting_is_none(rf, settings):
+    """Skip STATIC_ROOT candidate path when STATIC_ROOT is None."""
     settings.DEBUG = True
     settings.STATIC_ROOT = None
     request = rf.get('/route')
@@ -108,6 +113,7 @@ def test_skips_static_root_candidate_when_setting_is_none(rf, settings):
 
 
 def test_post_method_also_serves_index(rf, settings):
+    """Serve index via POST method when candidate file exists."""
     settings.DEBUG = True
     request = rf.post('/some/route')
 
@@ -120,6 +126,7 @@ def test_post_method_also_serves_index(rf, settings):
 
 
 def test_post_method_returns_500_when_missing(rf, settings):
+    """Return HTTP 500 via POST when no candidate file exists."""
     settings.DEBUG = True
     request = rf.post('/missing')
 

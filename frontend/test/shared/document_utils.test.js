@@ -409,11 +409,11 @@ describe("document_utils.getProcessedDocumentContent (additional)", () => {
 });
 
 describe("document_utils.getPreviewContentWithFormattedVariables", () => {
-  test("returns empty string when document is null", () => {
+  test("getPreviewContentWithFormattedVariables returns empty string when document is null", () => {
     expect(getPreviewContentWithFormattedVariables(null)).toBe("");
   });
 
-  test("returns empty string when document content is missing", () => {
+  test("getPreviewContentWithFormattedVariables returns empty string when document content is missing", () => {
     expect(getPreviewContentWithFormattedVariables({ variables: [] })).toBe("");
   });
 

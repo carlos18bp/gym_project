@@ -97,6 +97,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     await openDocumentActionsModal(page, docTitle);
     await openDocumentPreviewFromActions(page);
     await closeDocumentPreview(page);
+    await expect(page.getByTestId("document-preview-modal")).toBeHidden();
   });
 
   test("preview shows empty state for document without content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
