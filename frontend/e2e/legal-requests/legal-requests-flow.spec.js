@@ -68,8 +68,8 @@ test("lawyer can view legal requests list and open a request detail", { tag: ['@
   await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible();
   await expect(page.getByText("REQ-1001")).toBeVisible();
 
-  const reqCard = page.locator("div.bg-white.rounded-lg.shadow").filter({ hasText: "REQ-1001" });
-  await reqCard.getByRole("button", { name: /Ver detalles/i }).click();
+  await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: /Ver detalles/i }).click();
 
   await expect(page).toHaveURL(/\/legal_request_detail\/1001/);
   await expect(page.getByRole("heading", { name: "REQ-1001" })).toBeVisible();

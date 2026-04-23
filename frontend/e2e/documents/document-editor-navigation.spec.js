@@ -86,24 +86,26 @@ test.describe("Client use template navigation", { tag: ['@flow:docs-editor', '@m
     await page.getByRole("button", { name: /Nuevo Documento/i }).first().click();
     await expect(page.getByRole("button", { name: /Volver a Mis Documentos/i })).toBeVisible({ timeout: 10000 });
 
-    // Click template row
-    const templateRow = page.getByText("Plantilla Cliente");
-    if (await templateRow.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await templateRow.click();
+    // Click template row — opens "Acciones del Documento" sidebar
+    const templateRow = page.locator("table tbody tr").filter({ hasText: "Plantilla Cliente" });
+    await expect(templateRow).toBeVisible({ timeout: 10_000 });
+    await templateRow.click();
 
-      // UseDocumentByClient modal should open
-      // quality: allow-fragile-selector (stable application ID)
-      const nameInput = page.locator("#document-name");
-      await expect(nameInput).toBeVisible({ timeout: 5000 });
+    // Sidebar now opens first — click "Usar plantilla" to open the UseDocumentByClient modal
+    await page.getByRole("button", { name: "Usar plantilla" }).click();
 
-      // Fill name and submit
-      await nameInput.fill("Mi Contrato Personal");
-      const submitBtn = page.locator("form button[type='submit']");
-      await submitBtn.click();
+    // UseDocumentByClient modal should open
+    // quality: allow-fragile-selector (stable application ID)
+    const nameInput = page.locator("#document-name");
+    await expect(nameInput).toBeVisible({ timeout: 5000 });
 
-      // Should navigate to document use/form route
-      await page.waitForURL(/\/document\/use\//, { timeout: 10000 });
-    }
+    // Fill name and submit
+    await nameInput.fill("Mi Contrato Personal");
+    const submitBtn = page.locator("form button[type='submit']");
+    await submitBtn.click();
+
+    // Should navigate to document use/form route
+    await page.waitForURL(/\/document\/use\//, { timeout: 10000 });
   });
 });
 
