@@ -2,19 +2,18 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
+import {
+  closeSuccessDialog,
+  getClientPostCardByTitle,
+  getCorporatePostCardByTitle,
+  openCorporatePostActions,
+} from "../../helpers/organizationPosts.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 // quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
 
 // quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
-
-async function closeSuccessDialog(page, expectedText) {
-  const successDialog = page.getByRole("dialog");
-  await expect(successDialog).toBeVisible({ timeout: 15_000 });
-  await expect(successDialog).toContainText(expectedText);
-  await successDialog.getByRole("button").click();
-}
 
 test("corporate_client edits a post and client sees updated title/content/link", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
@@ -45,7 +44,7 @@ test("corporate_client edits a post and client sees updated title/content/link",
   });
 
   await page.goto("/organizations_dashboard");
-  const newPostButton = page.getByRole("button", { name: "Nuevo Post", exact: true });
+  const newPostButton = page.getByTestId("corporate-new-post-1");
   await expect(newPostButton).toBeVisible({ timeout: 15_000 });
 
   await newPostButton.click();
@@ -59,18 +58,11 @@ test("corporate_client edits a post and client sees updated title/content/link",
 
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
-  const postCard = page.locator(
-    "xpath=//h3[normalize-space()='Post A Editar']/ancestor::div[contains(@class,'bg-white') and contains(@class,'rounded-lg')][1]"
-  );
+  const postCard = getCorporatePostCardByTitle(page, "Post A Editar");
   await expect(postCard).toBeVisible();
 
-  // Step 2: corporate edits the post
-  await postCard.locator("button:has(svg.h-5.w-5)").click();
-  const actionsMenu = postCard.locator(
-    "xpath=.//div[contains(@class,'absolute') and contains(@class,'right-0') and contains(@class,'w-48')]"
-  );
-  await expect(actionsMenu).toBeVisible();
-  await actionsMenu.locator('button:has-text("Editar")').click();
+  const actionsMenu = await openCorporatePostActions(postCard);
+  await actionsMenu.locator('[data-testid^="corporate-post-edit-"]').click();
 
   await expect(page.getByRole("heading", { name: "Editar Post" })).toBeVisible();
 
@@ -88,9 +80,9 @@ test("corporate_client edits a post and client sees updated title/content/link",
 
   await expect(page.getByRole("heading", { name: "Editar Post" })).toHaveCount(0);
 
-  // Post should reflect updated content
-  await expect(page.getByText("Post Editado", { exact: true })).toBeVisible();
-  await expect(page.getByText("Contenido actualizado")).toBeVisible();
+  const updatedCorporateCard = getCorporatePostCardByTitle(page, "Post Editado");
+  await expect(updatedCorporateCard).toBeVisible();
+  await expect(updatedCorporateCard.locator('[data-testid^="corporate-post-content-"]')).toContainText("Contenido actualizado");
   await expect(page.getByText("Post A Editar")).toHaveCount(0);
 
   // Step 3: client sees updated post in public posts
@@ -112,12 +104,9 @@ test("corporate_client edits a post and client sees updated title/content/link",
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  await expect(page.getByRole("heading", { name: "Post Editado" })).toBeVisible();
-  await expect(page.getByText("Contenido actualizado")).toBeVisible();
-
-  const publicPostCard = page.locator(
-    "xpath=//h3[normalize-space()='Post Editado']/ancestor::div[contains(@class,'bg-white') and contains(@class,'rounded-lg')][1]"
-  );
+  const publicPostCard = getClientPostCardByTitle(page, "Post Editado");
+  await expect(publicPostCard).toBeVisible();
+  await expect(publicPostCard).toContainText("Contenido actualizado");
   const link = publicPostCard.getByRole("link", { name: "Ver documento" });
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", "https://example.com/doc");

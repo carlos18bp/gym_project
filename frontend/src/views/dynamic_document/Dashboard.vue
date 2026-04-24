@@ -7,7 +7,7 @@
     <!-- Main content -->
     <div class="p-4 sm:p-6 lg:p-8">
     <!-- Documents for lawyers -->
-    <div v-if="userRole === 'lawyer'">
+    <div v-if="isLawyerLike">
       <!-- Lawyer use-document section: select published minuta and create document -->
       <div v-if="currentSection === 'useDocument'">
         <UseDocumentTable
@@ -417,6 +417,7 @@
           :selectedTags="selectedTags"
           @refresh="handleRefresh"
           @navigate-to-main="handleNavigateToMain"
+          @navigate-to-document="handleNavigateToDocument"
         />
         <DocumentListTable
           v-else-if="activeTab === 'my-documents'"
@@ -623,6 +624,12 @@ const userRole = computed(() => {
   return currentUser.value.role;
 });
 
+const isLawyerLike = computed(() => {
+  const user = currentUser.value;
+  if (!user) return false;
+  return user.role === 'lawyer' || user.role === 'admin' || user.is_staff || user.is_superuser;
+});
+
 /**
  * Handles section updates from the navigation.
  *
@@ -636,7 +643,7 @@ const handleSection = async (message) => {
     isNavigatingToUseDocument.value = true;
     // When entering the useDocument section for clients/basic/corporate
     // users, clear the active client tab so no tab appears selected
-    if (userRole.value !== 'lawyer') {
+    if (!isLawyerLike.value) {
       activeTab.value = null;
     }
   }
@@ -779,17 +786,16 @@ const handleCreateDocument = () => {
  */
 const handleNavigateToDocument = (payload) => {
   const { tab, searchQuery: docTitle } = payload;
-  
-  // Switch to the appropriate tab
-  activeLawyerTab.value = tab;
-  
-  // Apply the search filter with the document title
+
+  if (isLawyerLike.value) {
+    activeLawyerTab.value = tab;
+  } else {
+    // 'legal-documents' is a lawyer-only tab; map it to the equivalent non-lawyer tab
+    const tabMapping = { 'legal-documents': 'my-documents' };
+    activeTab.value = tabMapping[tab] ?? tab;
+  }
+
   searchQuery.value = docTitle;
-  
-  // Small delay to ensure the tab content is rendered before the filter is applied
-  setTimeout(() => {
-    // The searchQuery reactive variable will automatically filter the documents in the table
-  }, 100);
 };
 
 /**
@@ -868,7 +874,7 @@ const handleNavigateToMain = async () => {
   if (currentSection.value === 'useDocument') {
     currentSection.value = "default";
     // Para abogados, volver al tab "Mis Documentos" de abogado
-    if (userRole.value === 'lawyer') {
+    if (isLawyerLike.value) {
       activeLawyerTab.value = 'my-documents';
     } else {
       // Para clientes/básicos/corporativos, volver al tab "Mis Documentos" del cliente
@@ -883,7 +889,7 @@ const handleNavigateToMain = async () => {
   }
   
   // Keep the folders tab active but ensure all modals are closed
-  if (userRole.value === 'lawyer') {
+  if (isLawyerLike.value) {
     activeLawyerTab.value = 'folders';
   } else {
     activeTab.value = 'folders';
@@ -957,7 +963,7 @@ const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
-  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'signed-documents', label: 'Dcs. Formalizados' },
   { name: 'archived-documents', label: 'Dcs. Archivados' }
 ];
 
@@ -967,7 +973,7 @@ const lawyerNavigationTabs = [
   { name: 'folders', label: 'Carpetas' },
   { name: 'my-documents', label: 'Mis Documentos' },
   { name: 'pending-signatures', label: 'Dcs. Por Firmar' },
-  { name: 'signed-documents', label: 'Dcs. Firmados' },
+  { name: 'signed-documents', label: 'Dcs. Formalizados' },
   { name: 'archived-documents', label: 'Dcs. Archivados' },
   { name: 'finished-documents', label: 'Dcs. Clientes' },
   { name: 'in-progress-documents', label: 'Dcs. Clientes en Progreso' },

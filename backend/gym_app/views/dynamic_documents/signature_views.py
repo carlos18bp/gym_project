@@ -1,17 +1,24 @@
 import datetime
 import io
+import logging
 import os
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature
+from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
+from gym_app.utils.documents import (
+    normalize_fragmented_variables,
+    sanitize_soup_for_pdf,
+    get_letterhead_for_document,
+)
 from .permissions import (
     apply_visibility_filter,
     require_document_visibility,
@@ -43,6 +50,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -357,6 +365,10 @@ def sign_document(request, document_id, user_id):
             document.fully_signed = True
             document.updated_at = timezone.now()
             document.save(update_fields=['state', 'fully_signed', 'updated_at'])
+
+            # For issuer_only documents, notify recipients when fully signed
+            if document.signature_type == 'issuer_only':
+                _notify_issuer_only_recipients(document, signing_user)
         
         # Return the updated signature record
         serializer = DocumentSignatureSerializer(signature_record)
@@ -539,6 +551,395 @@ def reopen_document_signatures(request, document_id):
             {'detail': f'An unexpected error occurred: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
+@transaction.atomic
+def formalize_document(request, document_id):
+    """Formalize a completed document by transitioning it based on signature_type.
+
+    Supports three signature types:
+    - 'normal' (default): All parties sign. Creates DocumentSignature for each signer.
+    - 'issuer_only': Only the creator/emisor signs. Recipients receive notification.
+    - 'informative': No signatures needed. Document goes directly to FullySigned.
+
+    Effects (normal):
+    - Sets requires_signature=True, state='PendingSignatures', signature_type='normal'.
+    - Creates DocumentSignature records for each signer + auto-adds lawyer.
+
+    Effects (issuer_only):
+    - Sets requires_signature=True, state='PendingSignatures', signature_type='issuer_only'.
+    - Creates DocumentSignature for the emisor (pending) + auto-signed DS for recipients.
+    - Grants visibility to recipients so they can view the document.
+
+    Effects (informative):
+    - Sets requires_signature=True, state='FullySigned', signature_type='informative'.
+    - Creates auto-signed DocumentSignature for emisor + each recipient.
+    - Grants visibility to recipients and sends notification email.
+    """
+
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if document.state != 'Completed':
+        return Response(
+            {'detail': 'Solo los documentos en estado "Completado" pueden ser formalizados.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    signature_type = request.data.get('signature_type', 'normal')
+    if signature_type not in ('normal', 'issuer_only', 'informative'):
+        return Response(
+            {'detail': 'Tipo de firma inválido. Opciones: normal, issuer_only, informative.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    signature_due_date = request.data.get('signature_due_date', None)
+    recipient_ids = request.data.get('recipients', [])
+
+    # ── INFORMATIVE: no signatures needed, goes directly to FullySigned ──
+    if signature_type == 'informative':
+        # Validate recipients
+        if not recipient_ids:
+            return Response(
+                {'detail': 'Debe incluir al menos un destinatario para documentos informativos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        recipients = User.objects.filter(pk__in=recipient_ids)
+        if recipients.count() != len(recipient_ids):
+            return Response(
+                {'detail': 'Uno o más IDs de destinatario no son válidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        now = timezone.now()
+        rows_updated = DynamicDocument.objects.filter(
+            pk=document_id,
+            state='Completed',
+        ).update(
+            state='FullySigned',
+            requires_signature=True,
+            signature_type='informative',
+            fully_signed=True,
+            updated_at=now,
+        )
+
+        if rows_updated == 0:
+            logger.warning(
+                "409 Conflict: formalize_document(informative) doc_id=%d user_id=%d",
+                document_id, request.user.pk,
+            )
+            return Response(
+                {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Create DocumentSignature for the emisor (auto-signed as "Emitido")
+        DocumentSignature.objects.get_or_create(
+            document=document,
+            signer=request.user,
+            defaults={'signed': True, 'signed_at': now},
+        )
+
+        # Create DocumentSignature for each recipient (auto-signed as "Informado")
+        for recipient in recipients:
+            DocumentSignature.objects.get_or_create(
+                document=document,
+                signer=recipient,
+                defaults={'signed': True, 'signed_at': now},
+            )
+
+        # Grant visibility to recipients
+        _grant_visibility_to_recipients(document, recipients, request.user)
+
+        # Send notification emails to recipients
+        creator_name = request.user.get_full_name() or request.user.email
+        for recipient in recipients:
+            try:
+                email_message = EmailMessage(
+                    subject=f"[Documento Informativo] '{document.title}'",
+                    body=(
+                        f"El usuario {creator_name} le ha enviado el documento informativo "
+                        f"'{document.title}'.\n\n"
+                        f"Este documento no requiere firma. Puede consultarlo en su repositorio documental."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[recipient.email],
+                )
+                email_message.send()
+            except Exception:
+                logger.warning(
+                    "Failed to send informative notification email to %s for doc_id=%d",
+                    recipient.email, document_id, exc_info=True,
+                )
+
+        document = get_optimized_document_queryset().get(pk=document_id)
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ── ISSUER_ONLY: only the creator signs ──
+    if signature_type == 'issuer_only':
+        if not recipient_ids:
+            return Response(
+                {'detail': 'Debe incluir al menos un destinatario para documentos de solo firma del emisor.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        recipients = User.objects.filter(pk__in=recipient_ids)
+        if recipients.count() != len(recipient_ids):
+            return Response(
+                {'detail': 'Uno o más IDs de destinatario no son válidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        rows_updated = DynamicDocument.objects.filter(
+            pk=document_id,
+            state='Completed',
+        ).update(
+            state='PendingSignatures',
+            requires_signature=True,
+            signature_type='issuer_only',
+            fully_signed=False,
+            signature_due_date=signature_due_date if signature_due_date else None,
+            updated_at=timezone.now(),
+        )
+
+        if rows_updated == 0:
+            logger.warning(
+                "409 Conflict: formalize_document(issuer_only) doc_id=%d user_id=%d",
+                document_id, request.user.pk,
+            )
+            return Response(
+                {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Create DocumentSignature for the creator/emisor (pending their signature)
+        DocumentSignature.objects.get_or_create(
+            document=document,
+            signer=request.user,
+        )
+
+        # Create DocumentSignature for each recipient (auto-signed as "Notificado")
+        now_issuer = timezone.now()
+        for recipient in recipients:
+            DocumentSignature.objects.get_or_create(
+                document=document,
+                signer=recipient,
+                defaults={'signed': True, 'signed_at': now_issuer},
+            )
+
+        # Grant visibility to recipients
+        _grant_visibility_to_recipients(document, recipients, request.user)
+
+        document = get_optimized_document_queryset().get(pk=document_id)
+        serializer = DynamicDocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # ── NORMAL: all parties sign (existing behavior) ──
+    signer_ids = request.data.get('signers', [])
+    if not signer_ids:
+        return Response(
+            {'detail': 'Debe incluir al menos un firmante.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    signers = User.objects.filter(pk__in=signer_ids)
+    if signers.count() != len(signer_ids):
+        return Response(
+            {'detail': 'Uno o más IDs de firmante no son válidos.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Auto-add the requesting lawyer as signer if not already included
+    if request.user.role == 'lawyer' and request.user.pk not in signer_ids:
+        signers = list(signers)
+        signers.append(request.user)
+
+    rows_updated = DynamicDocument.objects.filter(
+        pk=document_id,
+        state='Completed',
+    ).update(
+        state='PendingSignatures',
+        requires_signature=True,
+        signature_type='normal',
+        fully_signed=False,
+        signature_due_date=signature_due_date if signature_due_date else None,
+        updated_at=timezone.now(),
+    )
+
+    if rows_updated == 0:
+        logger.warning(
+            "409 Conflict: formalize_document doc_id=%d user_id=%d — state changed concurrently",
+            document_id, request.user.pk,
+        )
+        return Response(
+            {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    DocumentSignature.objects.bulk_create(
+        [DocumentSignature(document=document, signer=signer) for signer in signers],
+        ignore_conflicts=True,
+    )
+
+    document = get_optimized_document_queryset().get(pk=document_id)
+    serializer = DynamicDocumentSerializer(document, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def _grant_visibility_to_recipients(document, recipients, granted_by):
+    """Grant visibility permissions to recipients so they can view the document."""
+    for recipient in recipients:
+        if recipient.role == 'lawyer' or getattr(recipient, 'is_gym_lawyer', False):
+            continue
+        DocumentVisibilityPermission.objects.get_or_create(
+            document=document,
+            user=recipient,
+            defaults={'granted_by': granted_by},
+        )
+
+
+def _notify_issuer_only_recipients(document, signing_user):
+    """Notify recipients (visibility permission holders) that an issuer_only document was signed."""
+    recipient_perms = document.visibility_permissions.select_related('user').exclude(
+        user=signing_user,
+    )
+    creator_name = signing_user.get_full_name() or signing_user.email
+    for perm in recipient_perms:
+        try:
+            email_message = EmailMessage(
+                subject=f"[Documento Firmado] '{document.title}'",
+                body=(
+                    f"El usuario {creator_name} ha firmado el documento '{document.title}'.\n\n"
+                    f"Este documento ha sido firmado por el emisor y no requiere su firma. "
+                    f"Puede consultarlo en su repositorio documental."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[perm.user.email],
+            )
+            email_message.send()
+        except Exception:
+            logger.warning(
+                "Failed to send issuer_only notification email to %s for doc_id=%d",
+                perm.user.email, document.pk, exc_info=True,
+            )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_lawyer_or_owner_by_id
+@transaction.atomic
+def correct_document(request, document_id):
+    """Correct a rejected/expired document and reopen its signature workflow.
+
+    Combines document content update and signature reopening into a single
+    atomic operation, replacing the previous two-step flow (update + reopen).
+
+    Accepts:
+    - content: updated HTML content (optional)
+    - variables: array of variable objects to replace existing ones (optional)
+    - signature_due_date: new deadline for signatures (optional)
+
+    Effects:
+    - Only works for documents in 'Rejected' or 'Expired' state.
+    - Updates content and/or variables if provided.
+    - Resets all DocumentSignature records to pending status.
+    - Transitions document state to PendingSignatures.
+    """
+
+    try:
+        document = DynamicDocument.objects.get(pk=document_id)
+    except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
+        return Response(
+            {'detail': 'Documento no encontrado.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not document.requires_signature:
+        return Response(
+            {'detail': 'Este documento no requiere firmas.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if document.state not in ['Rejected', 'Expired']:
+        return Response(
+            {'detail': 'Solo documentos rechazados o expirados pueden ser corregidos.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Extract request data for validation before any mutations
+    content = request.data.get('content')
+    variables_data = request.data.get('variables')
+    signature_due_date = request.data.get('signature_due_date')
+
+    # Optimistic state transition FIRST — ensures no partial writes on conflict.
+    # All document-level field updates are done in a single .update() call
+    # to avoid stale in-memory object issues.
+    update_kwargs = {
+        'state': 'PendingSignatures',
+        'fully_signed': False,
+        'updated_at': timezone.now(),
+    }
+    if content is not None:
+        update_kwargs['content'] = content
+    if signature_due_date is not None:
+        update_kwargs['signature_due_date'] = signature_due_date if signature_due_date else None
+
+    rows_updated = DynamicDocument.objects.filter(
+        pk=document_id,
+        state__in=['Rejected', 'Expired'],
+    ).update(**update_kwargs)
+
+    if rows_updated == 0:
+        logger.warning(
+            "409 Conflict: correct_document doc_id=%d user_id=%d — state changed concurrently",
+            document_id, request.user.pk,
+        )
+        return Response(
+            {'detail': 'El documento fue modificado por otro usuario. Intente nuevamente.'},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    # All mutations below are safe — the optimistic lock succeeded.
+
+    # Replace variables if provided
+    if variables_data is not None:
+        document.variables.all().delete()
+        DocumentVariable.objects.bulk_create([
+            DocumentVariable(
+                document=document,
+                name_en=var_data.get('name_en', ''),
+                name_es=var_data.get('name_es', ''),
+                tooltip=var_data.get('tooltip', ''),
+                field_type=var_data.get('field_type', 'input'),
+                value=var_data.get('value', ''),
+                select_options=var_data.get('select_options'),
+                summary_field=var_data.get('summary_field', 'none'),
+                currency=var_data.get('currency'),
+            )
+            for var_data in variables_data
+        ])
+
+    # Reset all signature records to pending
+    DocumentSignature.objects.filter(document=document).update(
+        signed=False,
+        signed_at=None,
+        rejected=False,
+        rejected_at=None,
+        rejection_comment=None,
+    )
+
+    # Return the fully serialized document
+    document = get_optimized_document_queryset().get(pk=document_id)
+    serializer = DynamicDocumentSerializer(document, context={'request': request})
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['DELETE'])
@@ -736,45 +1137,21 @@ def register_carlito_fonts():
 
     return font_paths
 
-def get_letterhead_for_document(document, user):
-    """
-    Get the appropriate letterhead image for a document.
-    
-    Priority:
-    1. Document-specific letterhead (if exists)
-    2. User's global letterhead (if exists)
-    3. None (no letterhead)
-    
-    Args:
-        document: DynamicDocument instance
-        user: User instance (document creator/owner)
-    
-    Returns:
-        ImageField or None: The letterhead image to use
-    """
-    # First priority: document-specific letterhead
-    if document.letterhead_image:
-        return document.letterhead_image
-    
-    # Second priority: user's global letterhead
-    if user and user.letterhead_image:
-        return user.letterhead_image
-    
-    # No letterhead available
-    return None
-
-
-def generate_original_document_pdf(document, user=None):
+def generate_original_document_pdf(document, user=None, fallback_user=None):
     """
     Generates the original document PDF.
     Returns a BytesIO buffer containing the PDF.
-    
+
     Args:
         document: DynamicDocument instance
-        user: User instance (optional, for global letterhead fallback)
+        user: User instance (creator, for global letterhead primary lookup)
+        fallback_user: Optional User instance (e.g. the downloader) used as a
+            last-resort letterhead source when the creator has none configured.
     """
+    # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
+    processed_content = normalize_fragmented_variables(document.content)
+
     # Replace variables within the content (use formatted values when available)
-    processed_content = document.content
     for variable in document.variables.all():
         try:
             replacement_value = variable.get_formatted_value()
@@ -785,8 +1162,9 @@ def generate_original_document_pdf(document, user=None):
             replacement_value or ""
         )
 
-    # Convert HTML to XHTML using BeautifulSoup
-    soup = BeautifulSoup(processed_content, 'html.parser')
+    # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+    # preserves table formatting and alignment.
+    soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
 
     # Create temporary buffer for initial PDF
     temp_buffer = BytesIO()
@@ -797,9 +1175,8 @@ def generate_original_document_pdf(document, user=None):
     # Define background image style if letterhead exists
     background_style = ""
     body_extra_top_padding = ""
-    letterhead_image = get_letterhead_for_document(document, user)
+    letterhead_image = get_letterhead_for_document(document, user, fallback_user)
     if letterhead_image:  # pragma: no cover – letterhead image processing
-        body_extra_top_padding = "\n        padding-top: 1.5cm;"
         try:
             # Get the absolute path to the letterhead image
             letterhead_path = os.path.abspath(letterhead_image.path)
@@ -815,6 +1192,7 @@ def generate_original_document_pdf(document, user=None):
         background-position: center;
         background-size: contain;
         background-attachment: fixed;"""
+                    body_extra_top_padding = "\n        padding-top: 1.5cm;"
         except (ValueError, AttributeError, IOError):
             # Image file doesn't exist or path is invalid
             background_style = ""
@@ -883,6 +1261,32 @@ def generate_original_document_pdf(document, user=None):
     u {{
         text-decoration: underline !important;
     }}
+
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8pt 0;
+        table-layout: fixed;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    td, th {{
+        border: 1px solid #999;
+        padding: 4pt 6pt;
+        vertical-align: top;
+        text-align: left;
+        word-wrap: break-word;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    th {{
+        font-weight: bold;
+        background-color: #f5f5f5;
+    }}
+
+    tr {{
+        page-break-inside: avoid;
+    }}
     </style>
     """
 
@@ -896,7 +1300,7 @@ def generate_original_document_pdf(document, user=None):
         {styles}
     </head>
     <body>
-        {soup.prettify()}
+        {str(soup)}
     </body>
     </html>
     """
@@ -990,8 +1394,25 @@ def create_signatures_pdf(document, request):
     # Build the PDF content
     elements = []
     
-    # Título principal centrado
-    elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
+    sig_type = document.signature_type or 'normal'
+    is_informative = sig_type == 'informative'
+    is_issuer_only = sig_type == 'issuer_only'
+    # For informative/issuer_only the emisor is the formalizer (request.user at
+    # formalization time), which is stored as granted_by in visibility permissions.
+    # Fall back to created_by_id when no permissions exist (e.g. all-lawyer recipients).
+    if is_informative or is_issuer_only:
+        vp = document.visibility_permissions.select_related('granted_by').first()
+        creator_id = vp.granted_by_id if vp and vp.granted_by_id else document.created_by_id
+    else:
+        creator_id = document.created_by_id
+    
+    # Título principal centrado — adapted per signature_type
+    if is_informative:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO E INFORMADO", title_style))
+    elif is_issuer_only:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMA DEL EMISOR", title_style))
+    else:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
     elements.append(Spacer(1, 12))
     
     # Generate encrypted document identifier
@@ -1028,36 +1449,68 @@ def create_signatures_pdf(document, request):
     elements.append(doc_table)
     elements.append(Spacer(1, 20))
     
-    # Resumen de Firmas centrado
-    total_signatures = document.signatures.count()
-    signed_count = document.signatures.filter(signed=True).count()
-    
-    elements.append(Paragraph("<b>Resumen Firmas</b>", subtitle_style))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(
-        f"Firmas Requeridas: {total_signatures} | Firmas Completadas: {signed_count} | Estado: {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}",
-        normal_center_style
-    ))
+    # Resumen — adapted per signature_type
+    if is_informative:
+        elements.append(Paragraph("<b>Resumen</b>", subtitle_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph("Estado: INFORMADO", normal_center_style))
+    else:
+        # For issuer_only, count only the emisor's signature
+        if is_issuer_only:
+            emisor_sigs = document.signatures.filter(signer_id=creator_id)
+            total_signatures = emisor_sigs.count()
+            signed_count = emisor_sigs.filter(signed=True).count()
+        else:
+            total_signatures = document.signatures.count()
+            signed_count = document.signatures.filter(signed=True).count()
+        elements.append(Paragraph("<b>Resumen Firmas</b>", subtitle_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(
+            f"Firmas Requeridas: {total_signatures} | Firmas Completadas: {signed_count} | Estado: {'COMPLETAMENTE FIRMADO' if document.fully_signed else 'PENDIENTE'}",
+            normal_center_style
+        ))
     elements.append(Spacer(1, 20))
     
-    # Registro de Firmas
+    # Registro
     elements.append(Paragraph("<b>Registro</b>", subtitle_style))
     elements.append(Spacer(1, 10))
     
     signature_images_added = False
-    for idx, signature in enumerate(document.signatures.all().order_by('created_at'), 1):
+    all_signatures = document.signatures.all().order_by('created_at')
+
+    for idx, signature in enumerate(all_signatures, 1):
         try:
             user = signature.signer
+            is_creator = (user.pk == creator_id)
+
+            # issuer_only: skip recipients entirely — audit only shows the emisor
+            if is_issuer_only and not is_creator:
+                continue
+
             user_signature = getattr(user, 'signature', None)
             
-            # Generate unique identifier for this signature
+            # Determine role label and status label per signature_type
+            if is_informative:
+                role_label = "Emisor" if is_creator else "Destinatario"
+                status_label = "Emitido" if is_creator else "Informado"
+            elif is_issuer_only:
+                role_label = "Emisor"
+                status_label = "Firmado" if signature.signed else "Pendiente de Firma"
+            else:
+                role_label = "Firmante"
+                status_label = None  # not shown for normal docs
+            
+            # Generate unique identifier for this signature (only for actual signers)
             signature_id = f"{idx:02d}{signature.signed_at.strftime('%m%d%H%M') if signature.signed_at else '0000'}"
             
-            # Firmante con nombre completo
-            elements.append(Paragraph(f"<b>Firmante:</b> {user.get_full_name() or user.email}", detail_style))
+            # Role + nombre completo
+            elements.append(Paragraph(f"<b>{role_label}:</b> {user.get_full_name() or user.email}", detail_style))
             
-            # Email e ID Firma en la misma línea
-            elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
+            # Email (and ID Firma only for actual signers, not informative)
+            if is_informative:
+                elements.append(Paragraph(f"<b>Email:</b> {user.email}", detail_style))
+            else:
+                elements.append(Paragraph(f"<b>Email:</b> {user.email} | <b>ID Firma:</b> {signature_id}", detail_style))
             
             # Identificación
             id_info = []
@@ -1071,12 +1524,18 @@ def create_signatures_pdf(document, request):
             # Fecha y Hora
             elements.append(Paragraph(f"<b>Fecha y Hora:</b> {signature.signed_at.strftime('%d/%m/%Y %H:%M:%S') if signature.signed_at else 'N/A'}", detail_style))
             
-            # IP de Registro - mostrar "No Registrada" si no hay IP
-            ip_text = signature.ip_address if signature.ip_address else "No Registrada"
-            elements.append(Paragraph(f"<b>IP de Registro:</b> {ip_text}", detail_style))
+            # IP de Registro (skip for informative recipients)
+            if not (is_informative and not is_creator):
+                ip_text = signature.ip_address if signature.ip_address else "No Registrada"
+                elements.append(Paragraph(f"<b>IP de Registro:</b> {ip_text}", detail_style))
             
-            # Imagen de firma alineada a la derecha
-            if user_signature and user_signature.signature_image:
+            # Estado line for informative and issuer_only
+            if status_label:
+                elements.append(Paragraph(f"<b>Estado:</b> {status_label}", detail_style))
+            
+            # Signature image — only for actual signers (not informative docs, not issuer_only recipients)
+            show_signature_image = not is_informative
+            if show_signature_image and user_signature and user_signature.signature_image:
                 try:
                     img = Image(user_signature.signature_image.path)
                     img.drawHeight = 50
@@ -1097,11 +1556,11 @@ def create_signatures_pdf(document, request):
         except Exception as e:  # pragma: no cover – signature processing error
             pass
     
-    if not signature_images_added:
+    if not is_informative and not signature_images_added:
         elements.append(Paragraph("<b>Nota:</b> No se encontraron imágenes de firmas registradas.", normal_style))
         elements.append(Spacer(1, 4))
     
-    # Constancia final (texto justificado)
+    # Constancia final (texto justificado) — adapted per signature_type
     constancia_style = ParagraphStyle(
         'ConstanciaStyle',
         parent=styles['Normal'],
@@ -1111,12 +1570,27 @@ def create_signatures_pdf(document, request):
         fontName='Carlito'
     )
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph(
-        "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
-        "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
-        "generador(es) del documento como del(los) destinatario(s) firmante(s).",
-        constancia_style
-    ))
+    if is_informative:
+        elements.append(Paragraph(
+            "Este documento registra la emisión y comunicación del documento referenciado, "
+            "verificado bajo autenticidad del(los) usuario(s) generador(es) del documento "
+            "como del(los) destinatario(s).",
+            constancia_style
+        ))
+    elif is_issuer_only:
+        elements.append(Paragraph(
+            "Este documento registra la firma digitalizada aplicada por el usuario emisor "
+            "del documento referenciado. La firma ha sido verificada bajo autenticidad del "
+            "usuario generador; los destinatarios fueron notificados y no requieren firma.",
+            constancia_style
+        ))
+    else:
+        elements.append(Paragraph(
+            "Este documento registra las firmas digitalizadas aplicadas al documento referenciado, "
+            "las firmas en este registro han sido verificadas bajo autenticidad del(los) usuario(s) "
+            "generador(es) del documento como del(los) destinatario(s) firmante(s).",
+            constancia_style
+        ))
     elements.append(Spacer(1, 6))
     
     # Build the PDF sin marca de agua ni línea 'Generado el'
@@ -1213,7 +1687,7 @@ def generate_signatures_pdf(request, pk):
         # Verify document state
         if document.state != 'FullySigned':
             return Response(
-                {'detail': 'El documento debe estar completamente firmado para generar el PDF de firmas.'},
+                {'detail': 'El documento debe estar completamente formalizado para generar el PDF.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -1225,7 +1699,9 @@ def generate_signatures_pdf(request, pk):
             )
         
         # Get the original document PDF
-        original_pdf_buffer = generate_original_document_pdf(document, request.user)
+        original_pdf_buffer = generate_original_document_pdf(
+            document, document.created_by, fallback_user=request.user
+        )
         
         # Create the signatures PDF
         signatures_pdf_buffer = create_signatures_pdf(document, request)

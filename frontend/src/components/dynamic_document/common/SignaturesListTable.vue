@@ -179,7 +179,7 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contraparte
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[400px]">
                 Objeto
               </th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -247,10 +247,10 @@
                   {{ getSummaryCounterparty(document) || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+              <td class="px-6 py-4 min-w-[400px]">
+                <div class="text-sm text-gray-700 break-words">
                   {{ document.summary_object || '-' }}
-                </span>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">
@@ -483,6 +483,12 @@
         @action="handleModalAction"
       />
 
+      <SelectFolderModal
+        :is-open="showFolderPickerModal"
+        :document="folderPickerDocument"
+        @close="showFolderPickerModal = false"
+      />
+
       <DocumentRelationshipsModal
         v-if="activeModals.relationships.isOpen"
         :is-open="activeModals.relationships.isOpen"
@@ -615,6 +621,7 @@ import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/m
 import { useCardModals, useDocumentActions, SendDocumentModal, DocumentSignaturesModal } from "@/components/dynamic_document/cards";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import SelectFolderModal from "@/components/dynamic_document/common/SelectFolderModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
 import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
@@ -721,7 +728,7 @@ const emptyMessage = computed(() => {
     return 'No tienes documentos pendientes por firmar';
   }
   if (props.state === 'FullySigned') {
-    return 'No tienes documentos firmados';
+    return 'No tienes documentos formalizados';
   }
   return 'No tienes documentos archivados';
 });
@@ -731,7 +738,7 @@ const getDetailedEmptyMessage = computed(() => {
     return 'Cuando tengas documentos que requieran tu firma electrónica aparecerán aquí.';
   }
   if (props.state === 'FullySigned') {
-    return 'Una vez que firmes documentos electrónicamente, aparecerán aquí.';
+    return 'Una vez que formalices documentos, aparecerán aquí.';
   }
   return 'Aquí aparecerán los documentos rechazados o expirados relacionados contigo.';
 });
@@ -911,6 +918,8 @@ const getTagClasses = (tag) => {
 // Get signature status classes
 const getSignatureStatusClasses = (document) => {
   if (props.state === 'FullySigned') {
+    if (document.signature_type === 'informative') return 'bg-purple-100 text-purple-700 border border-purple-200';
+    if (document.signature_type === 'issuer_only') return 'bg-blue-100 text-blue-700 border border-blue-200';
     return 'bg-green-100 text-green-700 border border-green-200';
   }
   if (props.state === 'Archived') {
@@ -927,19 +936,23 @@ const getSignatureStatusClasses = (document) => {
 
 // Get signature status text
 const getSignatureStatusText = (document) => {
+  const sigType = document.signature_type;
+  const suffix = sigType === 'issuer_only' ? ' (Solo Emisor)' : sigType === 'informative' ? ' (Informativo)' : '';
   if (props.state === 'FullySigned') {
+    if (sigType === 'informative') return 'Formalizado (Informativo)';
+    if (sigType === 'issuer_only') return 'Formalizado (Solo Emisor)';
     return 'Firmado';
   }
   if (props.state === 'Archived') {
     if (document.state === 'Rejected') {
-      return 'Rechazado';
+      return 'Rechazado' + suffix;
     }
     if (document.state === 'Expired') {
-      return 'Expirado';
+      return 'Expirado' + suffix;
     }
-    return 'Archivado';
+    return 'Archivado' + suffix;
   }
-  return 'Pendiente';
+  return 'Pendiente' + suffix;
 };
 
 // Selection functions
@@ -1086,6 +1099,8 @@ const exportDocuments = () => {
 // Handle document click
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
+const showFolderPickerModal = ref(false);
+const folderPickerDocument = ref(null);
 const showRejectModal = ref(false);
 const documentToReject = ref(null);
 const rejectComment = ref('');
@@ -1168,7 +1183,12 @@ const handleMenuAction = async (action, document) => {
         }
         break;
       }
-      
+
+      case "addToFolder":
+        folderPickerDocument.value = document;
+        showFolderPickerModal.value = true;
+        break;
+
       default:
         console.warn("Unknown action:", action);
     }

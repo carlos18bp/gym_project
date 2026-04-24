@@ -166,11 +166,11 @@
           type="button"
           class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm transition-all duration-200"
           :class="
-            !allFieldsComplete || (route.params.mode === 'formalize' && selectedSigners.length === 0)
+            !allFieldsComplete || formalizeButtonDisabled
               ? 'bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300 cursor-not-allowed'
               : 'bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
           "
-          :disabled="!allFieldsComplete || (route.params.mode === 'formalize' && selectedSigners.length === 0)"
+          :disabled="!allFieldsComplete || formalizeButtonDisabled"
           @click="saveDocument(route.params.mode === 'formalize' ? 'Published' : 'Completed')"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,7 +179,7 @@
           <span>
             {{
               route.params.mode === 'formalize'
-                ? 'Formalizar y Agregar Firmas'
+                ? formalizeButtonLabel
                 : route.params.mode === 'correction'
                   ? 'Guardar y reenviar para firma'
                   : (isEditMode ? "Completar y Generar" : "Generar")
@@ -200,63 +200,152 @@
         </button>
       </div>
 
-      <!-- User Selection for Signatures (visible only when requires_signature is true) -->
+      <!-- Formalize Mode: Signature Type + Signers/Recipients -->
       <div v-if="route.params.mode === 'formalize'" class="mt-4">
-        <label class="block text-sm font-medium text-primary mb-2">
-          Seleccionar usuarios que deben firmar
-        </label>
 
-        <!-- User search input -->
-        <div class="relative">
-          <input
-            type="text"
-            v-model="userSearchQuery"
-            @input="searchUsers"
-            placeholder="Buscar usuario por nombre o correo..."
-            class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
-          />
+        <!-- Signature Type Selector -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-primary mb-3">
+            Tipo de documento
+          </label>
+          <div class="space-y-3">
+            <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+              :class="signatureType === 'normal' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'"
+            >
+              <input type="radio" v-model="signatureType" value="normal"
+                class="mt-0.5 h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500" />
+              <div>
+                <span class="text-sm font-medium text-gray-900">Todas las partes firman</span>
+                <p class="text-xs text-gray-500 mt-0.5">Todos los firmantes seleccionados deben firmar el documento.</p>
+              </div>
+            </label>
+            <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+              :class="signatureType === 'issuer_only' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'"
+            >
+              <input type="radio" v-model="signatureType" value="issuer_only"
+                class="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" />
+              <div>
+                <span class="text-sm font-medium text-gray-900">Solo firma del emisor</span>
+                <p class="text-xs text-gray-500 mt-0.5">Solo usted firma. Los destinatarios reciben el documento firmado sin necesidad de firmarlo.</p>
+              </div>
+            </label>
+            <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+              :class="signatureType === 'informative' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'"
+            >
+              <input type="radio" v-model="signatureType" value="informative"
+                class="mt-0.5 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500" />
+              <div>
+                <span class="text-sm font-medium text-gray-900">Documento informativo (sin firmas)</span>
+                <p class="text-xs text-gray-500 mt-0.5">No requiere firma de ninguna parte. Se envía como notificación a los destinatarios.</p>
+              </div>
+            </label>
+          </div>
+        </div>
 
-          <!-- Search results dropdown -->
-          <div v-if="showUserResults && filteredUsers.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto">
-            <ul class="py-1">
+        <!-- Signer Search (only for normal type) -->
+        <div v-if="signatureType === 'normal'">
+          <label class="block text-sm font-medium text-primary mb-2">
+            Seleccionar usuarios que deben firmar
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              v-model="userSearchQuery"
+              @input="searchUsers"
+              placeholder="Buscar usuario por nombre o correo..."
+              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+            />
+            <div v-if="showUserResults && filteredUsers.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto">
+              <ul class="py-1">
+                <li 
+                  v-for="user in filteredUsers" 
+                  :key="user.id"
+                  @click="addSigner(user)"
+                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  {{ user.first_name }} {{ user.last_name }} ({{ user.email }})
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div v-if="selectedSigners.length > 0" class="mt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Firmantes seleccionados:</h4>
+            <ul class="space-y-2">
               <li 
-                v-for="user in filteredUsers" 
-                :key="user.id"
-                @click="addSigner(user)"
-                class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                v-for="(signer, index) in selectedSigners" 
+                :key="signer.id"
+                class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
               >
-                {{ user.first_name }} {{ user.last_name }} ({{ user.email }})
+                <div>
+                  <span class="font-medium">{{ index + 1 }}.</span>
+                  {{ signer.first_name }} {{ signer.last_name }} ({{ signer.email }})
+                </div>
+                <button 
+                  @click="removeSigner(signer)"
+                  class="text-red-500 hover:text-red-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                  </svg>
+                </button>
               </li>
             </ul>
           </div>
         </div>
 
-        <!-- Selected signers list -->
-        <div v-if="selectedSigners.length > 0" class="mt-4">
-          <h4 class="text-sm font-medium text-gray-700 mb-2">Firmantes seleccionados:</h4>
-          <ul class="space-y-2">
-            <li 
-              v-for="(signer, index) in selectedSigners" 
-              :key="signer.id"
-              class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-            >
-              <div>
-                <span class="font-medium">{{ index + 1 }}.</span>
-                {{ signer.first_name }} {{ signer.last_name }} ({{ signer.email }})
-              </div>
-              <button 
-                @click="removeSigner(signer)"
-                class="text-red-500 hover:text-red-700"
+        <!-- Recipient Search (for informative and issuer_only types) -->
+        <div v-if="signatureType === 'informative' || signatureType === 'issuer_only'">
+          <label class="block text-sm font-medium text-primary mb-2">
+            {{ signatureType === 'informative' ? 'Seleccionar destinatarios para notificación' : 'Seleccionar destinatarios que recibirán el documento' }}
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              v-model="recipientSearchQuery"
+              @input="searchRecipients"
+              placeholder="Buscar destinatario por nombre o correo..."
+              class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
+            />
+            <div v-if="showRecipientResults && filteredRecipients.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto">
+              <ul class="py-1">
+                <li 
+                  v-for="user in filteredRecipients" 
+                  :key="user.id"
+                  @click="addRecipient(user)"
+                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  {{ user.first_name }} {{ user.last_name }} ({{ user.email }})
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div v-if="selectedRecipients.length > 0" class="mt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Destinatarios seleccionados:</h4>
+            <ul class="space-y-2">
+              <li 
+                v-for="(recipient, index) in selectedRecipients" 
+                :key="recipient.id"
+                class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </li>
-          </ul>
+                <div>
+                  <span class="font-medium">{{ index + 1 }}.</span>
+                  {{ recipient.first_name }} {{ recipient.last_name }} ({{ recipient.email }})
+                </div>
+                <button 
+                  @click="removeRecipient(recipient)"
+                  class="text-red-500 hover:text-red-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div class="mt-6">
+        <!-- Signature due date (only for normal and issuer_only) -->
+        <div v-if="signatureType !== 'informative'" class="mt-6">
           <label class="block text-sm font-medium text-primary mb-1">
             Fecha límite para firmar (opcional)
           </label>
@@ -333,8 +422,6 @@ import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
 import { showNotification } from "@/shared/notification_message";
-import { create_request } from "@/stores/services/request_http";
-import { registerUserActivity, ACTION_TYPES } from "@/stores/dashboard/activity_feed";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
@@ -351,6 +438,8 @@ const userSearchQuery = ref("");
 const showUserResults = ref(false);
 const filteredUsers = ref([]);
 const selectedSigners = ref([]);
+const selectedRecipients = ref([]);
+const signatureType = ref("normal");
 const signatureDueDate = ref("");
 const validationErrors = ref([]);
 const showAssociationsModal = ref(false);
@@ -426,6 +515,54 @@ const removeSigner = (user) => {
   selectedSigners.value = selectedSigners.value.filter(s => s.id !== user.id);
 };
 
+/**
+ * Searches for users to add as recipients (for informative/issuer_only)
+ */
+const recipientSearchQuery = ref("");
+const showRecipientResults = ref(false);
+const filteredRecipients = ref([]);
+
+const searchRecipients = () => {
+  if (recipientSearchQuery.value.trim() === '') {
+    filteredRecipients.value = [];
+    showRecipientResults.value = false;
+    return;
+  }
+  const query = recipientSearchQuery.value.toLowerCase();
+  filteredRecipients.value = userStore.users.filter(user => {
+    if (selectedRecipients.value.some(selected => selected.id === user.id)) {
+      return false;
+    }
+    // Exclude current user from recipients
+    if (user.id === userStore.currentUser?.id) {
+      return false;
+    }
+    return (
+      user.email.toLowerCase().includes(query) ||
+      (user.first_name && user.first_name.toLowerCase().includes(query)) ||
+      (user.last_name && user.last_name.toLowerCase().includes(query))
+    );
+  }).slice(0, 5);
+  showRecipientResults.value = true;
+};
+
+const addRecipient = (user) => {
+  selectedRecipients.value.push(user);
+  recipientSearchQuery.value = '';
+  filteredRecipients.value = [];
+  showRecipientResults.value = false;
+};
+
+const removeRecipient = (user) => {
+  selectedRecipients.value = selectedRecipients.value.filter(r => r.id !== user.id);
+};
+
+watch(recipientSearchQuery, (newValue) => {
+  if (newValue === '') {
+    showRecipientResults.value = false;
+  }
+});
+
 // Hide results when input is cleared
 watch(userSearchQuery, (newValue) => {
   if (newValue === '') {
@@ -484,14 +621,24 @@ const validateForm = () => {
     }
   });
 
-  // Validate that at least one signer is selected if in formalize mode
-  if (route.params.mode === 'formalize' && selectedSigners.value.length === 0) {
-    Swal.fire({
-      title: "Firmantes requeridos",
-      text: "Debe seleccionar al menos un usuario para firmar el documento.",
-      icon: "warning",
-    });
-    return false;
+  // Validate signers/recipients based on signature type in formalize mode
+  if (route.params.mode === 'formalize') {
+    if (signatureType.value === 'normal' && selectedSigners.value.length === 0) {
+      Swal.fire({
+        title: "Firmantes requeridos",
+        text: "Debe seleccionar al menos un usuario para firmar el documento.",
+        icon: "warning",
+      });
+      return false;
+    }
+    if ((signatureType.value === 'informative' || signatureType.value === 'issuer_only') && selectedRecipients.value.length === 0) {
+      Swal.fire({
+        title: "Destinatarios requeridos",
+        text: "Debe seleccionar al menos un destinatario para este documento.",
+        icon: "warning",
+      });
+      return false;
+    }
   }
 
   if (!isValid) {
@@ -558,6 +705,25 @@ const allFieldsComplete = computed(() => {
   return document.value?.variables.every(
     (variable) => variable.value !== null && variable.value !== undefined && String(variable.value).trim().length > 0
   );
+});
+
+/**
+ * Whether the formalize button should be disabled based on signature type and selections
+ */
+const formalizeButtonDisabled = computed(() => {
+  if (route.params.mode !== 'formalize') return false;
+  if (signatureType.value === 'normal') return selectedSigners.value.length === 0;
+  if (signatureType.value === 'issuer_only' || signatureType.value === 'informative') return selectedRecipients.value.length === 0;
+  return false;
+});
+
+/**
+ * Dynamic label for the formalize button based on signature type
+ */
+const formalizeButtonLabel = computed(() => {
+  if (signatureType.value === 'informative') return 'Enviar como Documento Informativo';
+  if (signatureType.value === 'issuer_only') return 'Formalizar y Firmar';
+  return 'Formalizar y Agregar Firmas';
 });
 
 /**
@@ -708,19 +874,39 @@ const saveDocument = async (state = 'Draft') => {
 
     let documentId = null;
     
-    // In formalize mode, always create a new document
+    // In formalize mode, transition the SAME document based on signature_type
     if (route.params.mode === 'formalize') {
-      const response = await store.createDocument(documentData);
+      const formalizeData = {
+        signature_type: signatureType.value,
+        signature_due_date: signatureDueDate.value || null,
+        title: document.value.title,
+      };
+
+      if (signatureType.value === 'normal') {
+        const signerIds = selectedSigners.value.map(user => user.id);
+        const currentUserId = userStore.currentUser?.id;
+        if (currentUserId && !signerIds.includes(currentUserId)) {
+          signerIds.push(currentUserId);
+        }
+        formalizeData.signers = signerIds;
+      } else {
+        // issuer_only and informative use recipients
+        formalizeData.recipients = selectedRecipients.value.map(user => user.id);
+      }
+      const response = await store.formalizeDocument(document.value.id, formalizeData);
       if (response && response.id) {
         documentId = response.id;
-        
-        // Create pending relationships for the new document
+
+        // Refresh documents to reflect new PendingSignatures state
+        await store.init(true);
+
+        // Create pending relationships for the formalized document
         if (pendingRelationships.value.length > 0) {
           try {
             const { documentRelationshipsActions } = await import('@/stores/dynamic_document/relationships');
             let successCount = 0;
             let failCount = 0;
-            
+
             for (const targetDocId of pendingRelationships.value) {
               try {
                 await documentRelationshipsActions.createDocumentRelationship({
@@ -734,7 +920,7 @@ const saveDocument = async (state = 'Draft') => {
                 failCount++;
               }
             }
-            
+
             if (successCount > 0) {
               console.log(`Successfully created ${successCount} relationship(s)`);
             }
@@ -755,38 +941,47 @@ const saveDocument = async (state = 'Draft') => {
         }
       }
     }
+    // In correction mode, correct and reopen signatures in a single call
+    else if (route.params.mode === 'correction' && isEditMode.value && document.value.id) {
+      try {
+        const correctionData = {
+          content: document.value.content,
+          variables: document.value.variables.map((variable) => {
+            let cleanValue = variable.value;
+            if (variable.field_type === 'number' && variable.value) {
+              const numValue = getNumericValue(variable.value);
+              cleanValue = numValue !== null ? String(numValue) : variable.value;
+            }
+            return {
+              name_en: variable.name_en,
+              name_es: variable.name_es,
+              tooltip: variable.tooltip || "",
+              field_type: variable.field_type,
+              value: cleanValue,
+              select_options: variable.field_type === 'select' ? variable.select_options : null,
+              summary_field: variable.summary_field || 'none',
+              currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
+            };
+          }),
+          signature_due_date: signatureDueDate.value || document.value.signature_due_date || null,
+          title: document.value.title,
+        };
+        const response = await store.correctDocument(document.value.id, correctionData);
+        if (response && response.id) {
+          documentId = response.id;
+          // Refresh documents to reflect new PendingSignatures state
+          await store.init(true);
+        }
+      } catch (error) {
+        console.error('Error correcting document:', error);
+        await showNotification('Error al corregir el documento para firma.', 'error');
+        return;
+      }
+    }
     // For other modes, update or create as needed
     else if (isEditMode.value && document.value.id) {
       await store.updateDocument(document.value.id, documentData);
       documentId = document.value.id;
-
-      // In correction mode, after updating the rejected document, reopen signatures
-      if (route.params.mode === 'correction' && documentId) {
-        try {
-          const reopenUrl = `dynamic-documents/${documentId}/reopen-signatures/`;
-          const response = await create_request(reopenUrl, {});
-          if (!response || (response.status !== 200 && response.status !== 201)) {
-            await showNotification('Error al reabrir el documento para firma.', 'error');
-            return;
-          }
-          // Refresh documents to reflect new PendingSignatures state
-          await store.init(true);
-
-          // Register user activity for correction and resend to signatures
-          try {
-            await registerUserActivity(
-              ACTION_TYPES.UPDATE,
-              `Corregiste y reenviaste el documento "${document.value.title}" para firma`
-            );
-          } catch (activityError) {
-            console.warn('No se pudo registrar la actividad de corrección y reenvío:', activityError);
-          }
-        } catch (error) {
-          console.error('Error reopening document for signatures:', error);
-          await showNotification('Error al reabrir el documento para firma.', 'error');
-          return;
-        }
-      }
     } else {
       const response = await store.createDocument(documentData);
       if (response && response.id) {
@@ -802,9 +997,15 @@ const saveDocument = async (state = 'Draft') => {
       store.lastUpdatedDocumentId = documentId;
     }
     
+    const formalizeMessage = signatureType.value === 'informative'
+      ? "Documento informativo enviado a los destinatarios"
+      : signatureType.value === 'issuer_only'
+        ? "Documento formalizado. Pendiente de su firma."
+        : "Documento formalizado y listo para firmas";
+
     await showNotification(
       route.params.mode === 'formalize'
-        ? "Documento formalizado y listo para firmas"
+        ? formalizeMessage
         : route.params.mode === 'correction'
           ? "Documento corregido y reenviado para firmas"
           : state === "Draft"
@@ -815,15 +1016,18 @@ const saveDocument = async (state = 'Draft') => {
     
     // Redirect to dashboard after a short delay
     setTimeout(() => {
-      // If in formalize mode, redirect to pending signatures tab
+      // If in formalize mode, redirect based on signature type
       if (route.params.mode === 'formalize' || route.params.mode === 'correction') {
-        const currentUser = userStore.currentUser;
-        if (currentUser?.role === 'lawyer') {
-          // For lawyers, use query param to set the tab
-          router.push({ path: '/dynamic_document_dashboard', query: { lawyerTab: 'pending-signatures' } });
+        // Informative documents go back to my-documents since they stay Completed
+        if (signatureType.value === 'informative') {
+          router.push({ path: '/dynamic_document_dashboard', query: { tab: 'my-documents' } });
         } else {
-          // For clients/corporate, use query param to set the tab
-          router.push({ path: '/dynamic_document_dashboard', query: { tab: 'pending-signatures' } });
+          const currentUser = userStore.currentUser;
+          if (currentUser?.role === 'lawyer') {
+            router.push({ path: '/dynamic_document_dashboard', query: { lawyerTab: 'pending-signatures' } });
+          } else {
+            router.push({ path: '/dynamic_document_dashboard', query: { tab: 'pending-signatures' } });
+          }
         }
       } else {
         // For client/basic/corporate flows, always return to "Mis Documentos" tab

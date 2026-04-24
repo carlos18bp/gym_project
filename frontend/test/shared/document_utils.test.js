@@ -1,5 +1,6 @@
 import {
   getProcessedDocumentContent,
+  getPreviewContentWithFormattedVariables,
   openPreviewModal,
   previewDocument,
   downloadFile,
@@ -404,5 +405,99 @@ describe("document_utils.getProcessedDocumentContent (additional)", () => {
     };
 
     expect(getProcessedDocumentContent(doc)).toBe("Hello {{ name }}");
+  });
+});
+
+describe("document_utils.getPreviewContentWithFormattedVariables", () => {
+  test("getPreviewContentWithFormattedVariables returns empty string when document is null", () => {
+    expect(getPreviewContentWithFormattedVariables(null)).toBe("");
+  });
+
+  test("getPreviewContentWithFormattedVariables returns empty string when document content is missing", () => {
+    expect(getPreviewContentWithFormattedVariables({ variables: [] })).toBe("");
+  });
+
+  test("returns content unchanged when no variables in template", () => {
+    const doc = {
+      content: "<p>Sin variables</p>",
+      variables: [],
+    };
+
+    expect(getPreviewContentWithFormattedVariables(doc)).toBe(
+      "<p>Sin variables</p>"
+    );
+  });
+
+  test("renders known variable as styled pill with name_es", () => {
+    const doc = {
+      content: "Hola {{ name }}",
+      variables: [{ name_en: "name", name_es: "Nombre" }],
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toContain("<span");
+    expect(result).toContain("Nombre");
+    expect(result).toContain("background-color:#EDE9FE");
+    expect(result).not.toContain("{{ name }}");
+  });
+
+  test("renders unknown variable as bracketed plain text", () => {
+    const doc = {
+      content: "Valor: {{ unknown_var }}",
+      variables: [],
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toBe("Valor: [unknown_var]");
+  });
+
+  test("treats variable with empty name_es as unknown", () => {
+    const doc = {
+      content: "Dato: {{ field }}",
+      variables: [{ name_en: "field", name_es: "" }],
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toBe("Dato: [field]");
+  });
+
+  test("handles mixed known and unknown variables", () => {
+    const doc = {
+      content: "{{ name }} tiene {{ unknown }}",
+      variables: [{ name_en: "name", name_es: "Nombre" }],
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toContain("Nombre");
+    expect(result).toContain("[unknown]");
+    expect(result).not.toContain("{{ name }}");
+    expect(result).not.toContain("{{ unknown }}");
+  });
+
+  test("handles variables with extra whitespace in template", () => {
+    const doc = {
+      content: "Hola {{   name   }}",
+      variables: [{ name_en: "name", name_es: "Nombre" }],
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toContain("Nombre");
+    expect(result).not.toContain("{{");
+  });
+
+  test("returns content unchanged when variables is not an array", () => {
+    const doc = {
+      content: "Hola {{ name }}",
+      variables: null,
+    };
+
+    const result = getPreviewContentWithFormattedVariables(doc);
+
+    expect(result).toBe("Hola [name]");
   });
 });

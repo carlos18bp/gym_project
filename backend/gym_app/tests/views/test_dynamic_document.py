@@ -2886,3 +2886,33 @@ class TestListDynamicDocumentsEdges:  # noqa: F811
         assert resp2.status_code == status.HTTP_200_OK
 
 
+class TestUpdateLockedDocument:
+    """HTTP 403 guard on update_dynamic_document for documents in signature states."""
+
+    def test_update_returns_403_when_pending_signatures(self, api_client, user):
+        """Return 403 Forbidden when document has pending signatures."""
+        doc = DynamicDocument.objects.create(
+            title="Locked", content="<p>x</p>", state="PendingSignatures", created_by=user
+        )
+        api_client.force_authenticate(user=user)
+        resp = api_client.patch(
+            reverse("update_dynamic_document", kwargs={"pk": doc.pk}),
+            {"title": "Hack"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert "firma" in resp.data["detail"].lower()
+
+    def test_update_returns_403_when_fully_signed(self, api_client, user):
+        """Return 403 Forbidden when document is fully signed."""
+        doc = DynamicDocument.objects.create(
+            title="Signed", content="<p>x</p>", state="FullySigned", created_by=user
+        )
+        api_client.force_authenticate(user=user)
+        resp = api_client.patch(
+            reverse("update_dynamic_document", kwargs={"pk": doc.pk}),
+            {"title": "Hack"},
+            format="json",
+        )
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+        assert "firma" in resp.data["detail"].lower()

@@ -2,53 +2,15 @@
   "permissions": {
     "allow": [
       "Read",
-      "WebSearch",
-      "Bash(tmux:*)",
-      "Bash(git:*)",
-      "Bash(source:*)",
-      "Bash(pip install:*)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(pytest:*)",
-      "Bash(ruff:*)",
-      "Bash(npm:*)",
-      "Bash(npx:*)",
-      "Bash(node:*)",
-      "Bash(npx vite:*)",
-      "Bash(E2E_REUSE_SERVER=1:*)",
-      "Bash(LD_LIBRARY_PATH=*)",
-      "Bash(DJANGO_SETTINGS_MODULE=*)",
-      "Bash(timeout:*)",
-      "Bash(curl:*)",
-      "Bash(find:*)",
-      "Bash(grep:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(echo:*)",
-      "Bash(head:*)",
-      "Bash(wc:*)",
-      "Bash(ldd:*)",
-      "Bash(unzip:*)",
-      "Bash(mkdir:*)",
-      "Bash(dpkg:*)",
-      "Bash(dpkg-deb:*)",
-      "Bash(ldconfig:*)",
-      "Bash(apt-cache:*)",
-      "Bash(apt-get:*)",
-      "Bash(ssh-keygen:*)",
-      "Bash(bash:*)",
-      "Bash(for:*)",
-      "Bash(do:*)",
-      "Bash(done)",
-      "Bash(xargs:*)",
-      "Bash(sudo systemctl:*)",
-      "Bash(sudo chmod:*)",
-      "Bash(sudo cat:*)",
-      "Bash(systemctl:*)"
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash",
+      "WebSearch"
     ],
-    "deny": [
-    ],
-    "ask": [
-    ]
-  }
+    "defaultMode": "auto"
+  },
+  "effortLevel": "high",
+  "model": "sonnet"
 }

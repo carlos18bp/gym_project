@@ -132,6 +132,17 @@
 - UNSPSC filter results are **unioned** with keyword search results, not intersected
 - Implemented in `SecopList.vue`, `secop/index.js` store, `SavedViewModal.vue`, `SavedViewsList.vue`
 
+### Optimistic Locking for State Transitions
+- For document state transitions (formalize, correct), use `filter(pk=..., state='Expected').update(...)` instead of `select_for_update()`
+- Returns 0 rows if state was changed concurrently — respond with 409 Conflict
+- Avoids holding row locks during validation; `@transaction.atomic` still ensures atomicity of multi-step operations
+- Applied pattern: `formalize_document` (Completed → PendingSignatures), `correct_document` (Rejected/Expired → PendingSignatures)
+
+### Single-Endpoint State Transitions
+- Prefer dedicated endpoints for state transitions (e.g., `formalize_document`, `correct_document`) over multi-step frontend flows (update + reopen)
+- Pattern follows `reopen_document_signatures` — single POST that validates state, mutates fields, and returns serialized result
+- Benefits: atomic from client perspective, cleaner error handling, consistent with existing patterns
+
 ### Fake Data: Idempotency via `update_or_create` + `random.seed(42)`
 - All management commands for fake data use `update_or_create` to be idempotent
 - `random.seed(42)` ensures deterministic data generation across runs

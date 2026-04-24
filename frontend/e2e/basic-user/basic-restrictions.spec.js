@@ -1,7 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
-import { BASIC_RESTRICTIONS } from "../helpers/flow-tags.js";
+// @flow: tags must be inline strings — imported constants are invisible to the coverage scanner
 import { installDynamicDocumentApiMocks } from "../helpers/dynamicDocumentMocks.js";
 import { installSecopApiMocks } from "../secop/secopMocks.js";
 
@@ -78,7 +78,7 @@ function basicAuth(userId) {
 
 test.describe("Basic User Restrictions", () => {
   test("basic user is redirected from directory (lawyer-only route)", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9600;
     await installBasicUserMocks(page, { userId });
@@ -89,7 +89,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user is redirected from process form (lawyer-only route)", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9601;
     await installBasicUserMocks(page, { userId });
@@ -100,7 +100,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user is redirected from document editor (lawyer-only route)", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9602;
     await installBasicUserMocks(page, { userId });
@@ -111,7 +111,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user can access legal request creation page", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9603;
     await installBasicUserMocks(page, { userId });
@@ -122,7 +122,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user can access schedule appointment page", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9604;
     await installBasicUserMocks(page, { userId });
@@ -133,7 +133,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user has no signature available", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9605;
     await installBasicUserMocks(page, { userId });
@@ -149,7 +149,7 @@ test.describe("Basic User Restrictions", () => {
   });
 
   test("basic user sees disabled letterhead button in document dashboard", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9606;
 
@@ -166,13 +166,13 @@ test.describe("Basic User Restrictions", () => {
     await expect(page).toHaveURL(/\/dynamic_document_dashboard/, { timeout: 15_000 });
 
     // Wait for the client/basic section to render (it's inside a v-if on userRole)
-    const letterheadBtn = page.locator('button:has-text("Membrete Global")');
-    await expect(letterheadBtn.first()).toBeVisible({ timeout: 10_000 });
-    await expect(letterheadBtn.first()).toBeDisabled();
+    const letterheadBtn = page.getByRole('button', { name: 'Membrete Global' });
+    await expect(letterheadBtn).toBeVisible({ timeout: 10_000 });
+    await expect(letterheadBtn).toBeDisabled();
   });
 
   test("basic user sees SECOP advanced filters disabled overlay", {
-    tag: [...BASIC_RESTRICTIONS, "@role:basic"],
+    tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'],
   }, async ({ page }) => {
     const userId = 9607;
     const basicUser = {

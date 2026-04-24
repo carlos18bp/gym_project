@@ -12,6 +12,18 @@ from .secop import (
     ProcessClassificationSerializer, SECOPAlertSerializer,
     SyncLogSerializer, SavedViewSerializer
 )
+from .service_tramite import (
+    ServiceSerializer,
+    ServiceListSerializer,
+    ServiceStageSerializer,
+    ServiceFieldSerializer,
+    ServiceRequestListSerializer,
+    ServiceRequestDetailSerializer,
+    ServiceRequestAnswerSerializer,
+    ServiceRequestFieldFileSerializer,
+    ServiceRequestLawyerResponseSerializer,
+    ServiceRequestLawyerResponseFileSerializer,
+)
 
 __all__ = [
     'UserSerializer', 'ProcessSerializer', 'StageSerializer', 'CaseFileSerializer', 'CaseSerializer',
@@ -22,4 +34,8 @@ __all__ = [
     'SECOPProcessListSerializer', 'SECOPProcessDetailSerializer',
     'ProcessClassificationSerializer', 'SECOPAlertSerializer',
     'SyncLogSerializer', 'SavedViewSerializer',
+    'ServiceSerializer', 'ServiceListSerializer', 'ServiceStageSerializer', 'ServiceFieldSerializer',
+    'ServiceRequestListSerializer', 'ServiceRequestDetailSerializer', 'ServiceRequestAnswerSerializer',
+    'ServiceRequestFieldFileSerializer', 'ServiceRequestLawyerResponseSerializer',
+    'ServiceRequestLawyerResponseFileSerializer',
 ]

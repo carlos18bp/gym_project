@@ -53,28 +53,6 @@
         </ul>
       </div>
 
-      <!-- Screenshots -->
-      <div v-if="sectionData.screenshots && sectionData.screenshots.length > 0" class="mt-8">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Capturas de Pantalla:</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            v-for="(screenshot, index) in sectionData.screenshots"
-            :key="index"
-            class="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-            @click="openImageModal(screenshot)"
-          >
-            <img
-              :src="screenshot.url"
-              :alt="screenshot.caption"
-              class="w-full h-auto"
-            />
-            <div v-if="screenshot.caption" class="p-3 bg-gray-50">
-              <p class="text-sm text-gray-600">{{ screenshot.caption }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Step by Step Guide -->
       <div v-if="sectionData.steps && sectionData.steps.length > 0" class="mt-8">
         <div class="flex items-center justify-between mb-4">
@@ -179,21 +157,6 @@
       </div>
     </div>
 
-    <!-- Related Links -->
-    <div v-if="relatedLinks.length > 0" class="mt-8 pt-8 border-t border-gray-200">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">Enlaces Relacionados:</h3>
-      <div class="space-y-2">
-        <a
-          v-for="(link, index) in relatedLinks"
-          :key="index"
-          :href="link.url"
-          class="flex items-center space-x-2 text-indigo-600 hover:text-indigo-800 transition-colors"
-        >
-          <ArrowTopRightOnSquareIcon class="h-4 w-4" />
-          <span>{{ link.text }}</span>
-        </a>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -202,8 +165,7 @@ import { ref, computed } from 'vue';
 import {
   CheckCircleIcon,
   LightBulbIcon,
-  ExclamationTriangleIcon,
-  ArrowTopRightOnSquareIcon
+  ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline';
 import { useUserGuideStore } from '@/stores/user_guide';
 import ExampleModal from './ExampleModal.vue';
@@ -241,14 +203,4 @@ const sectionData = computed(() => {
   if (!props.section || !moduleData.value) return null;
   return moduleData.value.sections?.find(s => s.id === props.section);
 });
-
-const relatedLinks = computed(() => {
-  // Return related links based on module and section
-  return [];
-});
-
-const openImageModal = (screenshot) => {
-  // Implement image modal functionality
-  console.log('Open image:', screenshot);
-};
 </script>

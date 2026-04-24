@@ -13,7 +13,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -173,6 +173,8 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
     path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
     path('dynamic-documents/<int:document_id>/reopen-signatures/', signature_views.reopen_document_signatures, name='reopen-document-signatures'),
+    path('dynamic-documents/<int:document_id>/formalize/', signature_views.formalize_document, name='formalize-document'),
+    path('dynamic-documents/<int:document_id>/correct/', signature_views.correct_document, name='correct-document'),
     path('dynamic-documents/<int:document_id>/remove-signature/<int:user_id>/', signature_views.remove_signature_request, name='remove-signature-request'),
     
     # User signature management
@@ -300,6 +302,34 @@ secop_urls = [
     path('secop/export/', secop.secop_export_excel, name='secop-export-excel'),
 ]
 
+# Services and procedures module URLs
+service_tramite_urls = [
+    # Catalog visibility
+    path('services/', service_tramite.list_services, name='services-list'),
+    path('services/featured/', service_tramite.list_featured_services, name='services-featured'),
+    path('services/<int:service_id>/', service_tramite.get_service_detail, name='services-detail'),
+
+    # Admin management
+    path('services/admin/list/', service_tramite.admin_list_services, name='services-admin-list'),
+    path('services/admin/create/', service_tramite.admin_create_service, name='services-admin-create'),
+    path('services/admin/<int:service_id>/update/', service_tramite.admin_update_service, name='services-admin-update'),
+    path('services/admin/<int:service_id>/toggle-active/', service_tramite.admin_toggle_service_active, name='services-admin-toggle-active'),
+    path('services/admin/<int:service_id>/toggle-featured/', service_tramite.admin_toggle_service_featured, name='services-admin-toggle-featured'),
+
+    # Request lifecycle
+    path('service-requests/save/', service_tramite.save_or_submit_service_request, name='service-request-save'),
+    path('service-requests/service/<int:service_id>/draft/', service_tramite.get_latest_service_draft, name='service-request-draft'),
+    path('service-requests/my/', service_tramite.list_my_service_requests, name='service-request-my-list'),
+    path('service-requests/inbox/', service_tramite.list_service_requests_inbox, name='service-request-inbox-list'),
+    path('service-requests/<int:request_id>/', service_tramite.get_service_request_detail, name='service-request-detail'),
+    path('service-requests/<int:request_id>/manage/', service_tramite.manage_service_request, name='service-request-manage'),
+
+    # Files and generated document downloads
+    path('service-requests/<int:request_id>/document/download/', service_tramite.download_service_request_document, name='service-request-document-download'),
+    path('service-requests/<int:request_id>/field-files/<int:file_id>/download/', service_tramite.download_service_request_field_file, name='service-request-field-file-download'),
+    path('service-requests/<int:request_id>/responses/<int:response_id>/files/<int:file_id>/download/', service_tramite.download_service_request_response_file, name='service-request-response-file-download'),
+]
+
 # Combine all URL patterns
 urlpatterns = (
     sign_in_sign_on_urls +
@@ -316,5 +346,6 @@ urlpatterns = (
     recent_process_urls +
     reports_urls +
     subscription_urls +
-    secop_urls
+    secop_urls +
+    service_tramite_urls
 )

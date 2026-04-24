@@ -1,9 +1,12 @@
 <template>
-  <div class="bg-white shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+  <div
+    class="bg-white shadow rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+    :data-testid="`client-post-card-${post.id}`"
+  >
     <!-- Header -->
     <div class="mb-4">
       <div class="flex items-center space-x-2 mb-2">
-        <h3 class="text-lg font-semibold text-gray-900">
+        <h3 class="text-lg font-semibold text-gray-900" :data-testid="`client-post-title-${post.id}`">
           {{ post.title }}
         </h3>
         <span v-if="post.is_pinned" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -35,6 +38,7 @@
         :href="post.link_url"
         target="_blank"
         rel="noopener noreferrer"
+        :data-testid="`client-post-link-${post.id}`"
         class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
       >
         <LinkIcon class="h-4 w-4 mr-2" />

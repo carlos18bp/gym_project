@@ -379,6 +379,12 @@
         @close="showActionsModal = false"
         @action="handleModalAction"
       />
+
+      <SelectFolderModal
+        :is-open="showFolderPickerModal"
+        :document="folderPickerDocument"
+        @close="showFolderPickerModal = false"
+      />
     </teleport>
   </div>
 </template>
@@ -406,6 +412,7 @@ import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
+import SelectFolderModal from "@/components/dynamic_document/common/SelectFolderModal.vue";
 
 const documentStore = useDynamicDocumentStore();
 const userStore = useUserStore();
@@ -796,7 +803,12 @@ const handleMenuAction = async (action, document) => {
       case "email":
         openModal('email', document);
         break;
-        
+
+      case "addToFolder":
+        folderPickerDocument.value = document;
+        showFolderPickerModal.value = true;
+        break;
+
       default:
         console.warn("Unknown action:", action);
     }
@@ -808,6 +820,8 @@ const handleMenuAction = async (action, document) => {
 // Handle document click
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
+const showFolderPickerModal = ref(false);
+const folderPickerDocument = ref(null);
 
 const handleDocumentClick = (document) => {
   // Open actions modal instead of navigating

@@ -1,26 +1,91 @@
-"""Tests for SPAView fallback behavior and static index serving."""
+"""Tests for SPAView fallback behavior and static index serving.
+
+Covers both branches of `_render_spa`:
+- Production (DEBUG=False) path: Django template render succeeds.
+- Production fallback: render raises TemplateDoesNotExist → candidate file paths.
+- Dev (DEBUG=True) path: skips template render, goes straight to candidate files.
+"""
 
 from unittest.mock import mock_open, patch
 
+from django.http import HttpResponse
+from django.template import TemplateDoesNotExist
+
 from gym_app.views.spa import SPAView
 
+# ------------------------------------------------------------------
+# Production-mode path (DEBUG=False)
+# ------------------------------------------------------------------
 
-def test_spa_view_serves_index_html_when_found(rf):
-    """Serve index HTML content when a candidate index file exists."""
+
+def test_renders_template_when_debug_false_and_template_exists(rf, settings):
+    """Render index.html template when DEBUG=False and template exists."""
+    settings.DEBUG = False
     request = rf.get('/some/route')
 
-    with patch('gym_app.views.spa.os.path.exists', return_value=True), patch(
-        'gym_app.views.spa.open', mock_open(read_data='<!doctype html>SPA'), create=True
-    ):
+    rendered = HttpResponse('rendered by django', content_type='text/html; charset=utf-8')
+    with patch('gym_app.views.spa.render', return_value=rendered) as mock_render:
+        response = SPAView.as_view()(request)
+
+    mock_render.assert_called_once_with(request, 'index.html')
+    assert response.status_code == 200
+    assert response.content == b'rendered by django'
+
+
+def test_falls_back_to_candidate_paths_when_template_missing_in_production(rf, settings):
+    """Fall back to candidate file paths when TemplateDoesNotExist in production."""
+    settings.DEBUG = False
+    request = rf.get('/route')
+
+    with patch('gym_app.views.spa.render', side_effect=TemplateDoesNotExist('index.html')), \
+         patch('gym_app.views.spa.os.path.exists', return_value=True), \
+         patch('gym_app.views.spa.open', mock_open(read_data='<!doctype html>FALLBACK'), create=True):
+        response = SPAView.as_view()(request)
+
+    assert response.status_code == 200
+    assert b'FALLBACK' in response.content
+    assert response['Content-Type'] == 'text/html; charset=utf-8'
+
+
+# ------------------------------------------------------------------
+# Debug-mode path (DEBUG=True) — skips Django render
+# ------------------------------------------------------------------
+
+
+def test_serves_first_candidate_file_in_debug_mode(rf, settings):
+    """Serve the first available candidate file when DEBUG=True."""
+    settings.DEBUG = True
+    request = rf.get('/some/route')
+
+    with patch('gym_app.views.spa.os.path.exists', return_value=True), \
+         patch('gym_app.views.spa.open', mock_open(read_data='<!doctype html>DEV SPA'), create=True):
         response = SPAView.as_view()(request)
 
     assert response.status_code == 200
     assert response['Content-Type'] == 'text/html; charset=utf-8'
-    assert b'SPA' in response.content
+    assert b'DEV SPA' in response.content
 
 
-def test_spa_view_returns_500_when_missing_index(rf):
-    """Return HTTP 500 with fallback text when index file is missing."""
+def test_uses_static_root_candidate_when_other_paths_missing(rf, settings):
+    """Use STATIC_ROOT candidate when all other paths are missing."""
+    settings.DEBUG = True
+    settings.STATIC_ROOT = '/tmp/fake_static'
+    request = rf.get('/route')
+
+    def exists_side_effect(path):
+        return 'fake_static' in path
+
+    with patch('gym_app.views.spa.os.path.exists', side_effect=exists_side_effect), \
+         patch('gym_app.views.spa.open', mock_open(read_data='<!doctype html>STATIC ROOT'), create=True):
+        response = SPAView.as_view()(request)
+
+    assert response.status_code == 200
+    assert b'STATIC ROOT' in response.content
+
+
+def test_returns_500_when_no_candidate_exists(rf, settings):
+    """Return HTTP 500 when no candidate file path exists."""
+    settings.DEBUG = True
     request = rf.get('/missing')
 
     with patch('gym_app.views.spa.os.path.exists', return_value=False):
@@ -30,22 +95,11 @@ def test_spa_view_returns_500_when_missing_index(rf):
     assert response.content == b'SPA index.html not found.'
 
 
-def test_spa_view_post_serves_index_html(rf):
-    """Cover SPAView.post method (line 49)."""
-    request = rf.post('/some/route')
-
-    with patch('gym_app.views.spa.os.path.exists', return_value=True), patch(
-        'gym_app.views.spa.open', mock_open(read_data='<!doctype html>SPA POST'), create=True
-    ):
-        response = SPAView.as_view()(request)
-
-    assert response.status_code == 200
-    assert b'SPA POST' in response.content
-
-
-def test_spa_view_post_returns_500_when_missing(rf):
-    """Cover SPAView.post fallback to 500."""
-    request = rf.post('/missing')
+def test_skips_static_root_candidate_when_setting_is_none(rf, settings):
+    """Skip STATIC_ROOT candidate path when STATIC_ROOT is None."""
+    settings.DEBUG = True
+    settings.STATIC_ROOT = None
+    request = rf.get('/route')
 
     with patch('gym_app.views.spa.os.path.exists', return_value=False):
         response = SPAView.as_view()(request)
@@ -53,23 +107,30 @@ def test_spa_view_post_returns_500_when_missing(rf):
     assert response.status_code == 500
 
 
-def test_spa_view_static_root_candidate(rf, settings):
-    """Cover STATIC_ROOT candidate path (lines 30-31)."""
-    settings.STATIC_ROOT = '/tmp/fake_static'
-    request = rf.get('/route')
+# ------------------------------------------------------------------
+# HTTP method coverage
+# ------------------------------------------------------------------
 
-    call_count = {'n': 0}
-    def exists_side_effect(path):
-        call_count['n'] += 1
-        # Return True on the third candidate (STATIC_ROOT path)
-        if 'fake_static' in path:
-            return True
-        return False
 
-    with patch('gym_app.views.spa.os.path.exists', side_effect=exists_side_effect), patch(
-        'gym_app.views.spa.open', mock_open(read_data='<!doctype html>STATIC'), create=True
-    ):
+def test_post_method_also_serves_index(rf, settings):
+    """Serve index via POST method when candidate file exists."""
+    settings.DEBUG = True
+    request = rf.post('/some/route')
+
+    with patch('gym_app.views.spa.os.path.exists', return_value=True), \
+         patch('gym_app.views.spa.open', mock_open(read_data='<!doctype html>POST'), create=True):
         response = SPAView.as_view()(request)
 
     assert response.status_code == 200
-    assert b'STATIC' in response.content
+    assert b'POST' in response.content
+
+
+def test_post_method_returns_500_when_missing(rf, settings):
+    """Return HTTP 500 via POST when no candidate file exists."""
+    settings.DEBUG = True
+    request = rf.post('/missing')
+
+    with patch('gym_app.views.spa.os.path.exists', return_value=False):
+        response = SPAView.as_view()(request)
+
+    assert response.status_code == 500

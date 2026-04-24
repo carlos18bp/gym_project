@@ -1601,3 +1601,43 @@ class TestUploadUserWordTemplate:
         api.force_authenticate(user=law)
         resp = api.post(reverse("upload-user-letterhead-word-template"))
         assert resp.status_code == 400
+
+
+class TestLockedDocumentLetterhead:
+    """HTTP 403 guard on all 4 letterhead mutation endpoints for signed documents."""
+
+    def test_upload_png_blocked_when_pending_signatures(self, api, law):
+        """Block PNG letterhead upload when document has pending signatures."""
+        doc = DynamicDocument.objects.create(title="L1", content="<p>x</p>", state="PendingSignatures", created_by=law)
+        doc.usability_permissions.create(user=law, granted_by=law)
+        api.force_authenticate(user=law)
+        resp = api.post(reverse("upload-letterhead-image", args=[doc.id]), {"image": _png_file()})
+        assert resp.status_code == 403
+        assert "firma" in resp.data["detail"].lower()
+
+    def test_delete_png_blocked_when_fully_signed(self, api, law):
+        """Block PNG letterhead deletion when document is fully signed."""
+        doc = DynamicDocument.objects.create(title="L2", content="<p>x</p>", state="FullySigned", created_by=law)
+        doc.usability_permissions.create(user=law, granted_by=law)
+        api.force_authenticate(user=law)
+        resp = api.delete(reverse("delete-letterhead-image", args=[doc.id]))
+        assert resp.status_code == 403
+        assert "firma" in resp.data["detail"].lower()
+
+    def test_upload_word_template_blocked_when_pending_signatures(self, api, law):
+        """Block Word template upload when document has pending signatures."""
+        doc = DynamicDocument.objects.create(title="L3", content="<p>x</p>", state="PendingSignatures", created_by=law)
+        doc.usability_permissions.create(user=law, granted_by=law)
+        api.force_authenticate(user=law)
+        resp = api.post(reverse("upload-document-letterhead-word-template", args=[doc.id]), {"template": _docx()}, format="multipart")
+        assert resp.status_code == 403
+        assert "firma" in resp.data["detail"].lower()
+
+    def test_delete_word_template_blocked_when_fully_signed(self, api, law):
+        """Block Word template deletion when document is fully signed."""
+        doc = DynamicDocument.objects.create(title="L4", content="<p>x</p>", state="FullySigned", created_by=law)
+        doc.usability_permissions.create(user=law, granted_by=law)
+        api.force_authenticate(user=law)
+        resp = api.delete(reverse("delete-document-letterhead-word-template", args=[doc.id]))
+        assert resp.status_code == 403
+        assert "firma" in resp.data["detail"].lower()

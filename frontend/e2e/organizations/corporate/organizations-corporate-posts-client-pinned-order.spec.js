@@ -2,17 +2,15 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
+import {
+  closeSuccessDialog,
+  getCorporatePostCardByTitle,
+  openCorporatePostActions,
+} from "../../helpers/organizationPosts.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 // quality: allow-test-too-long (complex cross-role E2E flow requiring extensive setup and validation)
-
-async function closeSuccessDialog(page, expectedText) {
-  const successDialog = page.getByRole("dialog");
-  await expect(successDialog).toBeVisible({ timeout: 15_000 });
-  await expect(successDialog).toContainText(expectedText);
-  await successDialog.getByRole("button").click();
-}
 
 test("corporate_client pins an older post and client sees pinned posts first", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
@@ -47,7 +45,7 @@ test("corporate_client pins an older post and client sees pinned posts first", {
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
 
   const createPost = async ({ title, content }) => {
-    await page.getByRole("button", { name: "Nuevo Post" }).click();
+    await page.getByTestId("corporate-new-post-1").click();
     await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toBeVisible();
 
     await page.locator("input#title").fill(title);
@@ -63,23 +61,14 @@ test("corporate_client pins an older post and client sees pinned posts first", {
   await createPost({ title: "Post B (viejo)", content: "Contenido B" });
   await createPost({ title: "Post A (nuevo)", content: "Contenido A" });
 
-  const postCardA = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post A (nuevo)" });
-
-  const postCardB = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post B (viejo)" });
+  const postCardA = getCorporatePostCardByTitle(page, "Post A (nuevo)");
+  const postCardB = getCorporatePostCardByTitle(page, "Post B (viejo)");
 
   await expect(postCardA).toBeVisible();
   await expect(postCardB).toBeVisible();
 
-  // Step 2: pin the older post (B)
-  await postCardB.locator('button:has(svg.h-5.w-5)').click();
-  const actionsMenu = postCardB.locator("div.absolute.right-0.mt-1.w-48");
-  await expect(actionsMenu).toBeVisible();
-  await expect(actionsMenu.locator('button:has-text("Fijar")')).toBeVisible();
-  await actionsMenu.locator('button:has-text("Fijar")').click();
+  const actionsMenu = await openCorporatePostActions(postCardB);
+  await actionsMenu.locator('[data-testid^="corporate-post-toggle-pin-"]').click();
 
   await closeSuccessDialog(page, "Post fijado exitosamente");
 
@@ -102,21 +91,13 @@ test("corporate_client pins an older post and client sees pinned posts first", {
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  // OrganizationPostsSection root: div > div.mb-6 > div.flex > div > h2
-  // We need the root div that contains both the header and the posts list
-  const orgPostsSection = page
-    .getByRole("heading", { name: "Anuncios de la Organización" })
-    .locator("xpath=ancestor::div[4]");
+  const orgPostsSection = page.getByTestId("organization-posts-section-1");
   await expect(orgPostsSection).toBeVisible();
 
-  const postCards = orgPostsSection
-    .locator("div.bg-white.shadow.rounded-lg.border")
-    .filter({ hasText: /Post (A|B)/ });
+  const postCards = orgPostsSection.locator('[data-testid^="client-post-card-"]');
 
   await expect(postCards).toHaveCount(2);
-
-  const orderedPostCards = await postCards.all();
-  await expect(orderedPostCards[0]).toContainText("Post B (viejo)");
-  await expect(orderedPostCards[0]).toContainText("Fijado");
-  await expect(orderedPostCards[1]).toContainText("Post A (nuevo)");
+  await expect(postCards.nth(0)).toContainText("Post B (viejo)"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
+  await expect(postCards.nth(0)).toContainText("Fijado"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
+  await expect(postCards.nth(1)).toContainText("Post A (nuevo)"); // quality: allow-fragile-selector (nth() needed for pinned-order sequence test)
 });

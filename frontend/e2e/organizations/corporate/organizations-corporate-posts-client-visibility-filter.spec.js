@@ -2,17 +2,15 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
+import {
+  closeSuccessDialog,
+  getCorporatePostCardByTitle,
+  openCorporatePostActions,
+} from "../../helpers/organizationPosts.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 // quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
-
-async function assertSuccessDialog(page, expectedText) {
-  const successDialog = page.getByRole("dialog");
-  await expect(successDialog).toBeVisible({ timeout: 15_000 });
-  await expect(successDialog).toContainText(expectedText);
-  await successDialog.getByRole("button").click();
-}
 
 test("corporate_client deactivates a post and client does not see it in public posts", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
@@ -45,7 +43,7 @@ test("corporate_client deactivates a post and client does not see it in public p
   await page.goto("/organizations_dashboard");
 
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
-  await page.getByRole("button", { name: "Nuevo Post" }).first().click();
+  await page.getByTestId("corporate-new-post-1").click();
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toBeVisible();
 
   await page.locator("input#title").fill("Post Oculto Cliente");
@@ -53,27 +51,20 @@ test("corporate_client deactivates a post and client does not see it in public p
 
   await page.getByRole("button", { name: "Crear Post" }).click();
 
-  await assertSuccessDialog(page, "Post creado exitosamente");
+  await closeSuccessDialog(page, "Post creado exitosamente");
 
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
-  const postCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post Oculto Cliente" })
-    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
+  const postCard = getCorporatePostCardByTitle(page, "Post Oculto Cliente");
   await expect(postCard).toBeVisible();
-  await expect(postCard.getByText("Activo")).toBeVisible();
+  await expect(postCard.locator('[data-testid^="corporate-post-state-"]')).toContainText("Activo");
 
-  // Step 2: corporate deactivates the post
-  await postCard.locator('button:has(svg.h-5.w-5)').click();
-  const actionsMenu = postCard.locator("div.absolute.right-0.mt-1.w-48");
-  await expect(actionsMenu).toBeVisible();
-  await expect(actionsMenu.locator('button:has-text("Desactivar")')).toBeVisible();
-  await actionsMenu.locator('button:has-text("Desactivar")').click();
+  const actionsMenu = await openCorporatePostActions(postCard);
+  await actionsMenu.locator('[data-testid^="corporate-post-toggle-status-"]').click();
 
-  await assertSuccessDialog(page, "Post desactivado exitosamente");
+  await closeSuccessDialog(page, "Post desactivado exitosamente");
 
-  await expect(postCard.getByText("Inactivo")).toBeVisible();
+  await expect(postCard.locator('[data-testid^="corporate-post-state-"]')).toContainText("Inactivo");
 
   // Step 3: switch to client and verify it is not visible
   await setAuthLocalStorage(page, {
@@ -94,9 +85,9 @@ test("corporate_client deactivates a post and client does not see it in public p
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  const orgPostsSection = page.locator('div:has(h2:has-text("Anuncios de la Organización"))').first(); // quality: allow-fragile-selector (positional selector for first matching element)
+  const orgPostsSection = page.getByTestId("organization-posts-section-1");
   await expect(orgPostsSection).toBeVisible();
 
   await expect(page.getByText("Post Oculto Cliente")).toHaveCount(0);
-  await expect(orgPostsSection.getByText("No hay anuncios disponibles")).toBeVisible();
+  await expect(page.getByTestId("organization-posts-empty-title-1")).toContainText("No hay anuncios disponibles");
 });

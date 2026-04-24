@@ -16,7 +16,10 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from gym_app.models import DocumentSignature, DynamicDocument, UserSignature
-from gym_app.models.dynamic_document import DocumentVariable
+from gym_app.models.dynamic_document import (
+    DocumentVariable,
+    DocumentVisibilityPermission,
+)
 
 try:
     from PIL import Image as PILImage
@@ -837,7 +840,7 @@ class TestGenerateSignaturesPdf:
         response = api_client.get(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'completamente firmado' in response.data['detail']
+        assert 'formalizado' in response.data['detail']
 
     def test_generate_signatures_pdf_not_found(self, api_client, lawyer_user):
         """Verify generate signatures pdf not found."""
@@ -1984,6 +1987,69 @@ class TestCreateSignaturesPdf:
         result = signature_views.create_signatures_pdf(doc, request)
         assert isinstance(result, BytesIO)
 
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_title(self, lawyer_user, client_user):
+        """issuer_only docs show the emitter-specific audit title."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.2",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = PdfReader(buf).pages[0].extract_text() or ""
+        assert "FIRMA DEL EMISOR" in text
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_omits_recipient(self, lawyer_user, client_user):
+        """issuer_only docs must not list the recipient as a firmante."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.2",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = "".join((p.extract_text() or "") for p in PdfReader(buf).pages)
+        assert client_user.email not in text
+        assert lawyer_user.email in text
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_role_is_emisor(self, lawyer_user, client_user):
+        """issuer_only docs label the sole firmante as 'Emisor'."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = "".join((p.extract_text() or "") for p in PdfReader(buf).pages)
+        assert "Emisor:" in text
+
 
 # ===========================================================================
 # 2. expire_overdue_documents email failure path
@@ -2112,7 +2178,7 @@ class TestSignatureViewsRegressionScenarios:
         r = api_client.get(reverse(
             'generate-signatures-pdf', kwargs={'pk': pending_doc.pk}))
         assert r.status_code == 400
-        assert 'completamente firmado' in r.data['detail']
+        assert 'formalizado' in r.data['detail']
 
     # --- generate_signatures_pdf: fully signed ---
     def test_gen_sig_pdf_success(self, api_client, lawyer, signed_doc):
@@ -2541,3 +2607,679 @@ class TestGetLetterheadForDocument:  # noqa: F811
 
         assert result is not None
         assert result == doc.letterhead_image
+
+
+# ── formalize_document ────────────────────────────────────────────
+
+
+def _make_completed_doc(lawyer, client):
+    """Create a Completed document owned by the lawyer with visibility for both users."""
+    doc = DynamicDocument.objects.create(
+        title="Contrato Arrendamiento",
+        content="<p>El arrendador y arrendatario acuerdan...</p>",
+        state="Completed",
+        created_by=lawyer,
+        assigned_to=client,
+        requires_signature=False,
+    )
+    doc.visibility_permissions.create(user=lawyer, granted_by=lawyer)
+    doc.visibility_permissions.create(user=client, granted_by=lawyer)
+    return doc
+
+
+@pytest.mark.django_db
+class TestFormalizeDocument:
+    """Tests for the formalize_document endpoint."""
+
+    @pytest.fixture
+    def api(self):
+        """Provide an unauthenticated APIClient."""
+        return APIClient()
+
+    @pytest.fixture
+    def lawyer(self):
+        """Create a lawyer user for formalize_document tests."""
+        return User.objects.create_user(
+            email="formalize_lawyer@t.com", password="pw", role="lawyer",
+            first_name="Law", last_name="Yer",
+        )
+
+    @pytest.fixture
+    def client_user(self):
+        """Create a client user for formalize_document tests."""
+        return User.objects.create_user(
+            email="formalize_client@t.com", password="pw", role="client",
+            first_name="Cli", last_name="Ent",
+        )
+
+    @pytest.fixture
+    def other_client(self):
+        """Create a second client user for formalize_document tests."""
+        return User.objects.create_user(
+            email="formalize_other@t.com", password="pw", role="client",
+            first_name="Oth", last_name="Er",
+        )
+
+    def test_formalize_success(self, api, lawyer, client_user):
+        """Happy path: Completed document transitions to PendingSignatures with signatures created."""
+        doc = _make_completed_doc(lawyer, client_user)
+        original_title = doc.title
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "PendingSignatures"
+        assert doc.requires_signature is True
+        assert doc.fully_signed is False
+        assert doc.title == original_title
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user).exists()
+        # Lawyer should be auto-added as signer
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer).exists()
+
+    def test_formalize_preserves_title(self, api, lawyer, client_user):
+        """Title must NOT have _firma suffix appended."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        api.post(url, {"signers": [client_user.id]}, format="json")
+
+        doc.refresh_from_db()
+        assert "_firma" not in doc.title
+        assert doc.title == "Contrato Arrendamiento"
+
+    @pytest.mark.parametrize("wrong_state", [
+        "Draft", "Progress", "PendingSignatures", "FullySigned", "Rejected", "Expired",
+    ])
+    def test_formalize_wrong_state(self, api, lawyer, client_user, wrong_state):
+        """Only Completed documents can be formalized."""
+        doc = _make_completed_doc(lawyer, client_user)
+        doc.state = wrong_state
+        doc.save(update_fields=["state"])
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_no_signers(self, api, lawyer, client_user):
+        """Must provide at least one signer."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": []}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_missing_signers_field(self, api, lawyer, client_user):
+        """Must provide the signers field."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_invalid_signer_ids(self, api, lawyer, client_user):
+        """Invalid signer IDs should return 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [999999]}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_permission_denied(self, api, lawyer, client_user, other_client):
+        """Non-owner non-lawyer user cannot formalize."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=other_client)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_formalize_with_due_date(self, api, lawyer, client_user):
+        """Signature due date is set when provided."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signers": [client_user.id],
+            "signature_due_date": "2026-12-31",
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert str(doc.signature_due_date) == "2026-12-31"
+
+    def test_formalize_without_due_date(self, api, lawyer, client_user):
+        """Formalization works without a due date."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.signature_due_date is None
+
+    def test_formalize_lawyer_auto_added_as_signer(self, api, lawyer, client_user):
+        """Lawyer is auto-added as signer even if not explicitly in signers list."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer).exists()
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user).exists()
+        assert DocumentSignature.objects.filter(document=doc).count() == 2
+
+    def test_formalize_same_document_id(self, api, lawyer, client_user):
+        """The returned document must have the same ID — no copy created."""
+        doc = _make_completed_doc(lawyer, client_user)
+        original_id = doc.id
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {"signers": [client_user.id]}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["id"] == original_id
+        # No new document should exist with a different ID
+        assert DynamicDocument.objects.filter(created_by=lawyer).count() == 1
+
+    def test_formalize_optimistic_lock_mechanism(self, lawyer, client_user):
+        """Verify the optimistic lock: filter(state='Completed').update() returns 0 when state changed."""
+        doc = _make_completed_doc(lawyer, client_user)
+
+        # Simulate concurrent state change
+        DynamicDocument.objects.filter(pk=doc.pk).update(state='PendingSignatures')
+
+        # The optimistic-lock query finds 0 rows since state is no longer 'Completed'
+        rows_updated = DynamicDocument.objects.filter(
+            pk=doc.pk, state='Completed',
+        ).update(state='PendingSignatures')
+
+        assert rows_updated == 0
+
+    # ── issuer_only formalization ──
+
+    def test_formalize_issuer_only_success_state(self, api, lawyer, client_user):
+        """Issuer-only formalization sets state to PendingSignatures with correct document fields."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "PendingSignatures"
+        assert doc.signature_type == "issuer_only"
+        assert doc.requires_signature is True
+        assert doc.fully_signed is False
+
+    def test_formalize_issuer_only_success_signatures(self, api, lawyer, client_user):
+        """Issuer-only formalization creates pending DS for creator and auto-signed DS + visibility for recipient."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=False).exists()
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
+        assert DocumentSignature.objects.filter(document=doc).count() == 2
+        assert DocumentVisibilityPermission.objects.filter(
+            document=doc, user=client_user,
+        ).exists()
+
+    def test_formalize_issuer_only_no_recipients(self, api, lawyer, client_user):
+        """Issuer-only with empty recipients returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_issuer_only_invalid_recipients(self, api, lawyer, client_user):
+        """Issuer-only with non-existent recipient IDs returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [999999],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_issuer_only_with_due_date(self, api, lawyer, client_user):
+        """Issuer-only formalization sets signature_due_date when provided."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "issuer_only",
+            "recipients": [client_user.id],
+            "signature_due_date": "2026-12-31",
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert str(doc.signature_due_date) == "2026-12-31"
+
+    # ── informative formalization ──
+
+    def test_formalize_informative_success_state(self, api, lawyer, client_user):
+        """Informative formalization sets state to FullySigned with correct document fields."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "FullySigned"
+        assert doc.signature_type == "informative"
+        assert doc.requires_signature is True
+        assert doc.fully_signed is True
+
+    def test_formalize_informative_success_signatures(self, api, lawyer, client_user):
+        """Informative formalization auto-signs DS for both creator and recipient and grants visibility."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert DocumentSignature.objects.filter(document=doc).count() == 2
+        assert DocumentSignature.objects.filter(document=doc, signer=lawyer, signed=True).exists()
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user, signed=True).exists()
+        assert DocumentVisibilityPermission.objects.filter(
+            document=doc, user=client_user,
+        ).exists()
+
+    def test_formalize_informative_no_recipients(self, api, lawyer, client_user):
+        """Informative with empty recipients returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_formalize_informative_invalid_recipients(self, api, lawyer, client_user):
+        """Informative with non-existent recipient IDs returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [999999],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    def test_formalize_informative_sends_notification_email(self, mock_email_cls, api, lawyer, client_user):
+        """Informative formalization sends notification email to recipients."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "informative",
+            "recipients": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        mock_email_cls.assert_called()
+        call_kwargs = mock_email_cls.call_args
+        assert client_user.email in call_kwargs.kwargs.get("to", call_kwargs[1].get("to", []))
+
+    # ── invalid signature_type ──
+
+    def test_formalize_invalid_signature_type(self, api, lawyer, client_user):
+        """Invalid signature_type returns 400."""
+        doc = _make_completed_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("formalize-document", args=[doc.id])
+        resp = api.post(url, {
+            "signature_type": "invalid_type",
+            "signers": [client_user.id],
+        }, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+
+# ── sign_document – issuer_only auto-completion + notification ─────
+
+
+@pytest.mark.django_db
+class TestSignDocumentIssuerOnly:
+    """Tests for signing issuer_only documents and recipient notification."""
+
+    @pytest.fixture
+    def api(self):
+        """Provide an unauthenticated APIClient."""
+        return APIClient()
+
+    @pytest.fixture
+    def lawyer(self):
+        """Create a lawyer user for issuer-only sign tests."""
+        return User.objects.create_user(
+            email="sign_io_lawyer@t.com", password="pw", role="lawyer",
+            first_name="Law", last_name="Yer",
+        )
+
+    @pytest.fixture
+    def client_user(self):
+        """Create a client user for issuer-only sign tests."""
+        return User.objects.create_user(
+            email="sign_io_client@t.com", password="pw", role="client",
+            first_name="Cli", last_name="Ent",
+        )
+
+    @staticmethod
+    def _create_signature_image():
+        """Create a minimal PNG for UserSignature."""
+        buf = BytesIO()
+        if PILImage is not None:
+            img = PILImage.new("RGBA", (100, 50), (0, 0, 0, 0))
+            img.save(buf, "PNG")
+        else:
+            buf.write(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+        buf.seek(0)
+        return SimpleUploadedFile("sig.png", buf.read(), content_type="image/png")
+
+    def _setup_issuer_only_doc(self, lawyer, client_user):
+        """Create a PendingSignatures issuer_only document with emisor DS (pending) and recipient DS (auto-signed)."""
+        doc = DynamicDocument.objects.create(
+            title="Terminacion Unilateral",
+            content="<p>Se termina el contrato</p>",
+            state="PendingSignatures",
+            created_by=lawyer,
+            assigned_to=client_user,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        doc.visibility_permissions.create(user=lawyer, granted_by=lawyer)
+        doc.visibility_permissions.create(user=client_user, granted_by=lawyer)
+        DocumentSignature.objects.create(document=doc, signer=lawyer)
+        DocumentSignature.objects.create(document=doc, signer=client_user, signed=True, signed_at=timezone.now())
+        return doc
+
+    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    def test_sign_issuer_only_completes_and_notifies(self, mock_email_cls, api, lawyer, client_user):
+        """Signing issuer_only doc marks it FullySigned and triggers recipient notification."""
+        doc = self._setup_issuer_only_doc(lawyer, client_user)
+        UserSignature.objects.create(user=lawyer, signature_image=self._create_signature_image(), method="draw")
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("sign-document", args=[doc.id, lawyer.id])
+        resp = api.post(url)
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "FullySigned"
+        assert doc.fully_signed is True
+        assert mock_email_cls.call_count >= 1
+        recipient_emails = [
+            call.kwargs.get("to", call[1].get("to", []))
+            for call in mock_email_cls.call_args_list
+        ]
+        flat_emails = [e for sublist in recipient_emails for e in sublist]
+        assert client_user.email in flat_emails
+
+    def test_sign_issuer_only_recipient_not_in_pending(self, api, lawyer, client_user):
+        """Recipient (client_user) should NOT appear in pending signatures for issuer_only doc."""
+        doc = self._setup_issuer_only_doc(lawyer, client_user)
+        api.force_authenticate(user=client_user)
+
+        url = reverse("get-pending-signatures")
+        resp = api.get(url)
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc_ids = [d["id"] for d in resp.data]
+        assert doc.id not in doc_ids
+
+
+# ── correct_document ──────────────────────────────────────────────
+
+
+def _make_rejected_doc(lawyer, client):
+    """Create a Rejected document with an existing signature for correction tests."""
+    doc = DynamicDocument.objects.create(
+        title="Contrato Rechazado",
+        content="<p>Contenido original</p>",
+        state="Rejected",
+        created_by=lawyer,
+        assigned_to=client,
+        requires_signature=True,
+    )
+    doc.visibility_permissions.create(user=lawyer, granted_by=lawyer)
+    doc.visibility_permissions.create(user=client, granted_by=lawyer)
+    DocumentSignature.objects.create(
+        document=doc, signer=client, rejected=True,
+        rejected_at=timezone.now(), rejection_comment="Error en cláusula",
+    )
+    DocumentVariable.objects.create(
+        document=doc, name_en="clause", name_es="Cláusula",
+        field_type="input", value="Original value",
+    )
+    return doc
+
+
+@pytest.mark.django_db
+class TestCorrectDocument:
+    """Tests for the correct_document endpoint."""
+
+    @pytest.fixture
+    def api(self):
+        """Provide an unauthenticated APIClient."""
+        return APIClient()
+
+    @pytest.fixture
+    def lawyer(self):
+        """Create a lawyer user for correct_document tests."""
+        return User.objects.create_user(
+            email="correct_lawyer@t.com", password="pw", role="lawyer",
+            first_name="Law", last_name="Yer",
+        )
+
+    @pytest.fixture
+    def client_user(self):
+        """Create a client user for correct_document tests."""
+        return User.objects.create_user(
+            email="correct_client@t.com", password="pw", role="client",
+            first_name="Cli", last_name="Ent",
+        )
+
+    @pytest.fixture
+    def other_client(self):
+        """Create a second client user for correct_document tests."""
+        return User.objects.create_user(
+            email="correct_other@t.com", password="pw", role="client",
+            first_name="Oth", last_name="Er",
+        )
+
+    def test_correct_success_updates_document_state(self, api, lawyer, client_user):
+        """Corrected document transitions to PendingSignatures with new content."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {
+            "content": "<p>Contenido corregido</p>",
+            "variables": [
+                {"name_en": "clause", "name_es": "Cláusula", "field_type": "input", "value": "Corrected value"},
+            ],
+        }, format="json")
+
+        doc.refresh_from_db()
+        assert resp.status_code == status.HTTP_200_OK
+        assert doc.state == "PendingSignatures"
+        assert doc.content == "<p>Contenido corregido</p>"
+        assert doc.fully_signed is False
+
+    def test_correct_success_resets_signature_state(self, api, lawyer, client_user):
+        """Correction resets variable values and clears all signer rejection flags."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        api.post(url, {
+            "content": "<p>Contenido corregido</p>",
+            "variables": [
+                {"name_en": "clause", "name_es": "Cláusula", "field_type": "input", "value": "Corrected value"},
+            ],
+        }, format="json")
+
+        doc.refresh_from_db()
+        assert doc.variables.count() == 1
+        assert doc.variables.first().value == "Corrected value"
+        sig = DocumentSignature.objects.get(document=doc, signer=client_user)
+        assert sig.rejected is False
+        assert sig.rejection_comment is None
+        assert sig.signed is False
+
+    def test_correct_expired_document(self, api, lawyer, client_user):
+        """Expired documents can also be corrected."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        doc.state = "Expired"
+        doc.save(update_fields=["state"])
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>Updated</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.state == "PendingSignatures"
+
+    @pytest.mark.parametrize("wrong_state", [
+        "Draft", "Progress", "Completed", "PendingSignatures", "FullySigned",
+    ])
+    def test_correct_wrong_state(self, api, lawyer, client_user, wrong_state):
+        """Only Rejected or Expired documents can be corrected."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        doc.state = wrong_state
+        doc.save(update_fields=["state"])
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>x</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_correct_no_signature_required(self, api, lawyer, client_user):
+        """Documents that don't require signatures cannot be corrected."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        doc.requires_signature = False
+        doc.save(update_fields=["requires_signature"])
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>x</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_correct_permission_denied(self, api, lawyer, client_user, other_client):
+        """Non-owner non-lawyer user cannot correct a document."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        api.force_authenticate(user=other_client)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>x</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_correct_content_only(self, api, lawyer, client_user):
+        """Correction with only content update preserves existing variables."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        original_var_count = doc.variables.count()
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>Nuevo contenido</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert doc.content == "<p>Nuevo contenido</p>"
+        assert doc.variables.count() == original_var_count
+
+    def test_correct_updates_due_date(self, api, lawyer, client_user):
+        """Signature due date is updated when provided."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"signature_due_date": "2026-12-31"}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        doc.refresh_from_db()
+        assert str(doc.signature_due_date) == "2026-12-31"
+
+    def test_correct_same_document_id(self, api, lawyer, client_user):
+        """The returned document must have the same ID — no copy created."""
+        doc = _make_rejected_doc(lawyer, client_user)
+        original_id = doc.id
+        api.force_authenticate(user=lawyer)
+
+        url = reverse("correct-document", args=[doc.id])
+        resp = api.post(url, {"content": "<p>Fixed</p>"}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert resp.data["id"] == original_id
+
+    def test_correct_optimistic_lock_mechanism(self, lawyer, client_user):
+        """Verify the optimistic lock: filter(state__in=...).update() returns 0 when state changed."""
+        doc = _make_rejected_doc(lawyer, client_user)
+
+        # Simulate concurrent state change
+        DynamicDocument.objects.filter(pk=doc.pk).update(state='PendingSignatures')
+
+        rows_updated = DynamicDocument.objects.filter(
+            pk=doc.pk, state__in=['Rejected', 'Expired'],
+        ).update(state='PendingSignatures')
+
+        assert rows_updated == 0

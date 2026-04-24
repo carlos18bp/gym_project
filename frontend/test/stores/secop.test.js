@@ -349,6 +349,85 @@ describe("SECOP Store", () => {
     expect(store.savedViews).toHaveLength(2);
   });
 
+  test("favoriteView getter returns the view flagged is_favorite", () => {
+    const store = useSecopStore();
+    store.$patch({
+      savedViews: [
+        { id: 1, name: "A", is_favorite: false },
+        { id: 2, name: "B", is_favorite: true },
+        { id: 3, name: "C", is_favorite: false },
+      ],
+    });
+
+    expect(store.favoriteView).toEqual({ id: 2, name: "B", is_favorite: true });
+  });
+
+  test("favoriteView getter returns null when no view is favorite", () => {
+    const store = useSecopStore();
+    store.$patch({
+      savedViews: [
+        { id: 1, name: "A", is_favorite: false },
+        { id: 2, name: "B", is_favorite: false },
+      ],
+    });
+
+    expect(store.favoriteView).toBeNull();
+  });
+
+  test("updateSavedView replaces matching view and returns response data", async () => {
+    const store = useSecopStore();
+    store.$patch({
+      savedViews: [
+        { id: 1, name: "Old A" },
+        { id: 2, name: "Old B" },
+      ],
+    });
+    const updated = { id: 2, name: "New B", filters: { status: "Abierto" } };
+    mock.onPut(/secop\/saved-views\/2\//).reply(200, updated);
+
+    const result = await store.updateSavedView(2, { name: "New B", filters: { status: "Abierto" } });
+
+    expect(store.savedViews[1]).toEqual(updated);
+    expect(result).toEqual(updated);
+  });
+
+  test("updateSavedView sets error message and rethrows on network failure", async () => {
+    const store = useSecopStore();
+    mock.onPut(/secop\/saved-views\/5\//).networkError();
+
+    await expect(store.updateSavedView(5, { name: "X" })).rejects.toThrow();
+    expect(store.error).toBe("Network Error");
+  });
+
+  test("toggleFavoriteView marks target as favorite and clears others", async () => {
+    const store = useSecopStore();
+    store.$patch({
+      savedViews: [
+        { id: 1, name: "A", is_favorite: true },
+        { id: 2, name: "B", is_favorite: false },
+        { id: 3, name: "C", is_favorite: false },
+      ],
+    });
+    mock.onPost(/secop\/saved-views\/3\/set-favorite\//).reply(200, { id: 3, is_favorite: true });
+
+    const result = await store.toggleFavoriteView(3);
+
+    expect(store.savedViews.map((v) => [v.id, v.is_favorite])).toEqual([
+      [1, false],
+      [2, false],
+      [3, true],
+    ]);
+    expect(result).toEqual({ id: 3, is_favorite: true });
+  });
+
+  test("toggleFavoriteView sets error message and rethrows on network failure", async () => {
+    const store = useSecopStore();
+    mock.onPost(/secop\/saved-views\/9\/set-favorite\//).networkError();
+
+    await expect(store.toggleFavoriteView(9)).rejects.toThrow();
+    expect(store.error).toBe("Network Error");
+  });
+
   test("deleteSavedView removes from savedViews", async () => {
     const store = useSecopStore();
     store.$patch({

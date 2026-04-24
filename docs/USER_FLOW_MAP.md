@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** March 28, 2026
-**Versión:** 1.5.0
+**Fecha:** April 10, 2026
+**Versión:** 1.7.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -19,7 +19,8 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 7. [Flujos — Basic](#flujos--basic)
 8. [Flujos — Lawyer G&M (is_gym_lawyer)](#flujos--lawyer-gm-is_gym_lawyer)
 9. [Flujos — SECOP (Contratación Estatal)](#flujos--secop-contratación-pública)
-10. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
+10. [Flujos — Servicios y Tramites](#flujos--servicios-y-tramites)
+11. [Resumen de Cobertura E2E](#resumen-de-cobertura-e2e)
 
 ---
 
@@ -596,6 +597,10 @@ Mismas ramificaciones que process-create, con datos precargados.
 - Botón "Nueva Minuta" (solo en tab Minutas) → modal nombre → editor
 - Botón "Nuevo Documento" (solo en tab Mis Documentos) → seleccionar plantilla
 
+**Cobertura E2E añadida (fix 1.6):** `docs-dashboard-lawyer-flow.spec.js` verifica que al abrir una carpeta, el FolderDetailsModal muestra las columnas Contraparte/Objeto/Fechas con datos reales (no "-") cuando el backend provee campos `summary_*`.
+
+**Cobertura E2E añadida (fix 1.7):** `docs-dashboard-lawyer-flow.spec.js` verifica que al hacer click en un doc `PendingSignatures` o `FullySigned` dentro de una carpeta, el modal se cierra y el tab activo cambia al correspondiente (Dcs. Por Firmar / Dcs. Firmados).
+
 ---
 
 ### docs-create-template: Crear minuta (plantilla)
@@ -626,6 +631,8 @@ Mismas ramificaciones que process-create, con datos precargados.
 ### docs-variables-config: Configurar variables
 - **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/lawyer/variables-config` | **E2E:** ✅
 - **Descripción:** Definir tipo y comportamiento de cada variable del documento
+
+**Cobertura E2E:** `document-variables-config-interactions.spec.js` verifica que la página renderiza las variables con heading, botones de acción, y que seleccionar la clasificación "Valor" revela el selector de moneda (COP/USD/EUR).
 
 **Campos por variable:**
 - Nombre (ES/EN)
@@ -704,6 +711,8 @@ Mismas ramificaciones que process-create, con datos precargados.
 - ↩️ Editar y reenviar para firma (documentos Rejected/Expired)
 - ✏️ Editar contenido (documentos completados por clientes)
 
+**Cobertura E2E añadida (fix 1.8):** `docs-card-actions-flow.spec.js` verifica el atajo "Agregar a Carpeta" desde el modal de acciones, asegurando el PATCH a `dynamic-documents/folders/<id>/update/` con el `document_ids` correcto.
+
 ---
 
 ### sign-electronic-signature: Firma electrónica
@@ -751,6 +760,46 @@ Mismas ramificaciones que process-create, con datos precargados.
 
 ---
 
+### formalize-in-place: Formalizar documento sin copia
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/document/use/formalize/:id/:title` | **E2E:** ✅
+- **Descripción:** Transicionar documento Completado a PendingSignatures en el mismo registro (sin crear copia)
+
+**Pasos:**
+1. En Mis Documentos o tabla de documentos, click "Formalizar y Agregar Firmas" en documento Completed
+2. Se navega a DocumentForm en modo `formalize`
+3. Seleccionar firmantes + fecha límite de firma
+4. Click "Formalizar y Agregar Firmas"
+5. `POST /api/dynamic-documents/:id/formalize/` con `{ signers, signature_due_date }`
+6. Mismo documento transiciona a PendingSignatures (sin `_firma` suffix en título, sin duplicación)
+7. Redirección a pestaña "Dcs. Por Firmar"
+
+**Diferencia con flujo anterior:**
+- Antes: `POST /api/dynamic-documents/create/` creaba copia con sufijo `_firma`
+- Ahora: `POST /api/dynamic-documents/:id/formalize/` transiciona el mismo documento
+- Usa bloqueo optimista (`filter(state='Completed').update(...)`) → 409 si hay conflicto concurrente
+
+---
+
+### correct-document: Corregir documento rechazado/expirado
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard/document/use/correction/:id/:title` | **E2E:** ✅
+- **Descripción:** Corregir y reenviar documento rechazado o expirado en un solo endpoint atómico
+
+**Pasos:**
+1. En Dcs. Archivados, click "Editar y reenviar para firma" en documento Rejected/Expired
+2. Se navega a DocumentForm en modo `correction`
+3. Editar contenido y/o variables
+4. Click "Guardar y reenviar para firma"
+5. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }`
+6. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
+7. Redirección a pestaña "Dcs. Por Firmar"
+
+**Diferencia con flujo anterior:**
+- Antes: dos llamadas HTTP (`PUT update` + `POST reopen-signatures`)
+- Ahora: una sola llamada atómica (`POST correct`)
+- Usa bloqueo optimista (`filter(state__in=['Rejected','Expired']).update(...)`) → 409 si hay conflicto
+
+---
+
 ### docs-state-transitions: Estados y transiciones de documentos
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
 - **Descripción:** Ciclo de vida del documento
@@ -787,6 +836,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - Editar nombre/descripción
 - Eliminar carpeta (con confirmación)
 
+**Cobertura E2E añadida (fix 1.5):** `add-documents-modal-flow.spec.js` protege la vista tabla del modal "Agregar documentos" (columnas Documento/Estado/Etiquetas) contra una regresión al grid de tarjetas.
+
 ---
 
 ### docs-folder-crud: Document folder CRUD
@@ -798,6 +849,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### docs-letterhead: Membrete global
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** N/A (modal) | **E2E:** ✅
 - **Descripción:** Configurar encabezado y pie de página global
+
+**Cobertura E2E añadida (fix 1.4):** `docs-letterhead-locked-flow.spec.js` garantiza que documentos en `PendingSignatures` y `FullySigned` no expongan la acción "Editar membrete" en los tabs Dcs. Por Firmar / Dcs. Firmados.
 
 ---
 
@@ -832,6 +885,8 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### docs-preview: Previsualizar documento
 - **Módulo:** documents | **Prioridad:** P3 | **Ruta:** N/A (modal) | **E2E:** ✅
+
+**Cobertura E2E añadida (fix 1.3):** `document-preview-modal.spec.js` verifica que el modal de preview realiza un fetch del detalle del documento (`dynamic-documents/<id>/`) cuando la lista omite el campo `content`, protegiendo contra regresión al comportamiento anterior que mostraba contenido vacío.
 
 ---
 
@@ -885,6 +940,17 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### docs-list-table: Tabla de documentos
 - **Módulo:** documents | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅
 - **Descripción:** Ordenamiento, export, interacciones de tabla en la lista de documentos
+
+---
+
+### minutas-columns: Columnas de tabla en vista Minutas
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅
+- **Descripción:** La tabla de Minutas no muestra las columnas de campos clave (Contraparte, Objeto, Valor, Plazo, fechas) que son irrelevantes para plantillas sin datos de contrato
+
+**Pasos:**
+1. Lawyer navega a `/dynamic_document_dashboard`
+2. Click en tab "Minutas"
+3. La tabla renderiza sin las columnas: Contraparte, Objeto, Valor, Plazo, Fecha Suscripción, Fecha Inicio, Fecha Terminación
 
 ---
 
@@ -1451,9 +1517,9 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 - **Descripción:** Funcionalidades limitadas con botones deshabilitados y overlays de bloqueo
 
 **Restricciones (cubierto por E2E):**
-- ❌ **Rutas de abogado:** Redirect a `/dashboard` (directorio, editor, variables-config)
-- ❌ **Membrete global:** Botón deshabilitado en `/dynamic_document_dashboard`
-- ❌ **Filtros SECOP:** Overlay de bloqueo sobre el panel de filtros en `/secop`
+- ✅ **Rutas de abogado:** Redirect a `/dashboard` (directorio, editor, variables-config)
+- ✅ **Membrete global:** Botón deshabilitado en `/dynamic_document_dashboard`
+- ✅ **Filtros SECOP:** Overlay de bloqueo sobre el panel de filtros en `/secop`
 - ✅ **Crear solicitudes:** Acceso a `/legal_request_create`
 - ✅ **Agendar cita:** Acceso a `/schedule_appointment`
 - ✅ **Usar documentos:** Puede completar formularios (sin firma electrónica)
@@ -1649,6 +1715,228 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ---
 
+## Flujos — Servicios y Tramites
+
+### service-browse-catalog: Explorar catalogo de servicios
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services` | **E2E:** ✅
+- **Descripcion:** Usuario autenticado ve la lista completa de servicios activos
+
+**Pasos:**
+1. Navega al sidebar "Servicios"
+2. Ve la grilla de servicios con nombre, descripcion e icono
+3. Click en un servicio para ver su detalle
+
+**Ramificaciones:**
+- ├── **Con servicios:** Muestra grilla de servicios
+- └── **Sin servicios:** Muestra mensaje vacio
+
+---
+
+### service-browse-featured: Ver servicios destacados en Dashboard
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/dashboard` | **E2E:** ✅
+- **Descripcion:** El Dashboard muestra hasta 6 servicios destacados como tarjetas cuadradas
+
+**Pasos:**
+1. Navega a `/dashboard`
+2. Ve seccion "Servicios Destacados" con tarjetas
+3. Click en una tarjeta navega a `/services/:id`
+
+---
+
+### service-fill-form: Diligenciar formulario multi-etapa
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario completa el formulario del servicio paso a paso
+
+**Pasos:**
+1. Navega a `/services/:id`
+2. Completa campos de la etapa actual
+3. Click "Siguiente" para avanzar
+4. Repite hasta la ultima etapa
+
+**Ramificaciones:**
+- ├── **Validacion exitosa:** Avanza a la siguiente etapa
+- └── **Campo requerido vacio:** Muestra error de validacion
+
+---
+
+### service-save-draft: Guardar borrador del formulario
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario guarda progreso parcial sin enviar
+
+**Pasos:**
+1. Completa campos parcialmente
+2. Click "Guardar borrador"
+3. El sistema guarda sin validar campos obligatorios
+4. Al volver al servicio, se carga el borrador existente
+
+---
+
+### service-submit-request: Enviar solicitud de servicio
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario envia la solicitud y recibe numero de radicado
+
+**Pasos:**
+1. Completa todas las etapas del formulario
+2. Adjunta archivos requeridos
+3. Click "Enviar solicitud"
+4. Recibe numero de radicado (formato YYYY-NNNNN)
+5. Puede descargar PDF de confirmacion
+6. Recibe correo de confirmacion
+
+**Ramificaciones:**
+- ├── **Exito:** Estado cambia a OPEN, se genera PDF y radicado
+- ├── **Campos obligatorios faltantes:** Error 400, muestra campos faltantes
+- └── **Archivo con extension invalida:** Error de validacion
+
+---
+
+### service-view-my-requests: Ver mis solicitudes
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services?tab=my-requests` (redirect desde `/service_requests/my`) | **E2E:** ✅
+- **Descripcion:** Cliente ve su historial de solicitudes con filtros. Desde Sprint Abril 2026 esta integrado en el tab "Mis Solicitudes" dentro de ServicesHub.
+
+**Pasos:**
+1. Navega al sidebar "Servicios" (o accede directamente a `/service_requests/my`, que redirige)
+2. Hace click en el tab "Mis Solicitudes"
+3. Ve lista de solicitudes con estado, radicado, servicio
+4. Filtra por estado, servicio o radicado
+5. Click en solicitud para ver detalle
+
+---
+
+### service-view-request-detail: Ver detalle de solicitud
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/:id` | **E2E:** ✅
+- **Descripcion:** Usuario ve detalle completo de su solicitud
+
+**Pasos:**
+1. Navega al detalle de la solicitud
+2. Ve radicado, estado, respuestas del formulario por etapa
+3. Descarga PDF si esta disponible
+4. Ve respuestas del abogado si existen
+
+---
+
+### service-inbox-view: Bandeja de solicitudes (Abogado)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/inbox` | **E2E:** ✅
+- **Descripcion:** Abogado ve todas las solicitudes recibidas
+
+**Pasos:**
+1. Navega a "Bandeja de Solicitudes" en el sidebar
+2. Ve tabla con radicado, servicio, solicitante, estado
+3. Filtra por estado, servicio, busqueda, rango de fechas
+4. Click para ver detalle
+
+---
+
+### service-manage-request: Gestionar solicitud (Abogado)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/service_requests/:id` | **E2E:** ✅
+- **Descripcion:** Abogado cambia estado, envia respuesta o adjunta archivo
+
+**Pasos:**
+1. Abre detalle de solicitud desde la bandeja
+2. Cambia estado (OPEN → IN_STUDY → IN_PROGRESS → ANSWERED → FINALIZED)
+3. Escribe mensaje y/o adjunta archivo
+4. Click "Guardar actualizacion"
+5. Se envia notificacion por correo al solicitante
+
+**Ramificaciones:**
+- ├── **Transicion valida:** Estado actualizado, respuesta creada
+- ├── **Transicion invalida:** Error 400 (ej: FINALIZED no permite cambios)
+- └── **Sin mensaje ni cambio:** Error 400
+
+---
+
+### service-admin-create: Crear servicio (Admin)
+- **Modulo:** services | **Prioridad:** P1 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Administrador crea un nuevo servicio con etapas y campos
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Click "Crear servicio"
+3. Define nombre, descripcion, icono
+4. Agrega etapas con campos (texto, email, numero, fecha, select, archivo)
+5. Guarda el servicio
+
+---
+
+### service-admin-edit: Editar servicio (Admin)
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ⚠️
+- **Descripcion:** Administrador edita un servicio existente
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Click en servicio existente
+3. Modifica nombre, etapas o campos
+4. Guarda los cambios
+
+---
+
+### service-admin-toggle: Activar/desactivar servicio (Admin)
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Administrador activa o desactiva un servicio sin eliminarlo
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Toggle "Activo" para ocultar/mostrar servicio
+3. Toggle "Destacado" para incluir/excluir del Dashboard
+
+---
+
+### service-hub-tab-navigation: Navegar entre tabs en ServicesHub
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services` | **E2E:** ✅
+- **Descripcion:** Usuario cambia entre el tab "Servicios" y "Mis Solicitudes" en la vista unificada. Incluye activacion por query param `?tab=my-requests` (redirect desde legacy paths).
+
+**Pasos:**
+1. Navega a `/services` (tab "Servicios" activo por defecto)
+2. Ve el catalogo de servicios renderizado en el tab
+3. Click en tab "Mis Solicitudes"
+4. La URL cambia a `/services?tab=my-requests`
+5. Ve la lista de solicitudes propias
+6. Click en tab "Servicios" para volver al catalogo
+
+**Ramificaciones:**
+- ├── **Desktop:** tabs horizontales
+- └── **Mobile:** dropdown `<select>`
+
+---
+
+### service-upload-multiple-files: Subir multiples archivos en formulario de servicio
+- **Modulo:** services | **Prioridad:** P2 | **Ruta:** `/services/:id` | **E2E:** ✅
+- **Descripcion:** Usuario sube hasta 10 archivos a un campo tipo file en el formulario multi-etapa. Puede eliminar archivos individuales con el boton x.
+
+**Pasos:**
+1. Navega a un servicio con campo tipo archivo
+2. Click en el input de archivo para seleccionar el primer archivo
+3. Selecciona un segundo archivo (se agrega al listado)
+4. Ve las tarjetas con nombre, tamano y boton eliminar
+5. Click en "x" de un archivo para eliminarlo de la lista
+6. Intenta agregar un 11mo archivo — el input esta deshabilitado
+
+**Ramificaciones:**
+- ├── **< 10 archivos:** Input habilitado, contador X/10 actualizado
+- ├── **= 10 archivos:** Input deshabilitado, mensaje de limite alcanzado
+- └── **Eliminar archivo:** Tarjeta desaparece, contador decrementado
+
+---
+
+### service-admin-form-validation: Validacion de formulario admin de servicio
+- **Modulo:** services | **Prioridad:** P3 | **Ruta:** `/services_admin` | **E2E:** ✅
+- **Descripcion:** Admin intenta guardar un servicio con datos incompletos y ve mensajes de error de validateEditor().
+
+**Pasos:**
+1. Navega a "Administrar Servicios"
+2. Hace click en "Crear servicio" sin llenar el nombre
+3. Intenta guardar
+4. Ve mensaje de error "Nombre del servicio es requerido"
+5. Agrega una etapa sin nombre
+6. Ve error "Cada etapa debe tener nombre"
+
+**Ramificaciones:**
+- ├── **Nombre vacio:** Error en campo nombre
+- ├── **Sin etapas:** Error por falta de etapas
+- └── **Opciones de select vacias:** Error en campo tipo select
+
+---
+
 ## Resumen de Cobertura E2E
 
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
@@ -1659,20 +1947,21 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Dashboard | 9 | 9 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 9 | 9 | 0 | 0 |
-| Documents | 33 | 33 | 0 | 0 |
+| Documents | 34 | 34 | 0 | 0 |
 | Signatures | 11 | 11 | 0 | 0 |
 | Legal Requests | 10 | 10 | 0 | 0 |
 | Organizations | 15 | 15 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 4 | 4 | 0 | 0 |
 | **SECOP** | **16** | **16** | **0** | **0** |
+| **Servicios y Tramites** | **15** | **14** | **1** | **0** |
 | Basic | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **134** | **134** | **0** | **0** |
+| **Total** | **150** | **149** | **1** | **0** |
 
 ---
 
-**Documento generado:** March 28, 2026
-**Versión:** 1.5.0
-**Estado:** ✅ Completo — 134/134 flujos cubiertos
+**Documento generado:** April 22, 2026
+**Versión:** 1.8.1
+**Estado:** 149/150 flujos cubiertos (1 parcial: service-admin-edit). Añadido: minutas-columns (Documents). Corregido: basic-restrictions sub-variants ❌→✅.

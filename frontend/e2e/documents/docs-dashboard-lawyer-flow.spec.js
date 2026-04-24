@@ -82,10 +82,22 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Minuta Beta")).toBeHidden();
   });
 
-  test("lawyer opens folder detail and sees documents inside", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer opens folder detail and sees Contraparte/Objeto/Fechas columns populated", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9002;
+    const counterparty = "Acme Industrial S.A.S.";
+    const objectDesc = "Prestación de servicios jurídicos de representación";
     const docs = [
-      buildMockDocument({ id: 301, title: "Doc en Carpeta", state: "Draft", createdBy: userId }),
+      buildMockDocument({
+        id: 301,
+        title: "Doc en Carpeta",
+        state: "Completed",
+        createdBy: userId,
+        assignedTo: userId,
+        summary_counterparty: counterparty,
+        summary_object: objectDesc,
+        summary_start_date: "2025-01-15",
+        summary_end_date: "2026-01-15",
+      }),
     ];
     const folders = [
       buildMockFolder({ id: 401, name: "Carpeta Laboral", colorId: 1, documents: docs }),
@@ -98,8 +110,95 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Carpeta Laboral")).toBeVisible({ timeout: 10_000 });
 
     await page.getByText("Carpeta Laboral", { exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Carpeta Laboral" })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Doc en Carpeta")).toBeVisible();
+
+    const folderDetailsModal = page.getByTestId("folder-details-modal");
+    await expect(folderDetailsModal).toBeVisible({ timeout: 10_000 });
+    await expect(folderDetailsModal.getByRole("heading", { name: "Carpeta Laboral" })).toBeVisible();
+    await expect(folderDetailsModal.getByText("Doc en Carpeta")).toBeVisible();
+
+    // Regression guard for fix 1.6: Contraparte / Objeto / Fechas columns
+    // must be present and populated (not '-') when the backend provides
+    // the summary_* fields.
+    await expect(folderDetailsModal.getByRole("columnheader", { name: "Contraparte" })).toBeVisible();
+    await expect(folderDetailsModal.getByRole("columnheader", { name: "Objeto" })).toBeVisible();
+    await expect(folderDetailsModal.getByRole("columnheader", { name: "Fechas" })).toBeVisible();
+
+    await expect(folderDetailsModal.getByText(counterparty)).toBeVisible();
+    await expect(folderDetailsModal.getByText(objectDesc)).toBeVisible();
+    // The Fechas column renders a "Vigencia:" label with the formatted range.
+    await expect(folderDetailsModal.getByText("Vigencia:")).toBeVisible();
+  });
+
+  test("lawyer clicking a PendingSignatures doc inside a folder navigates to Dcs. Por Firmar tab", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    const userId = 9006;
+    const pendingTitle = "Contrato Pendiente En Carpeta";
+    const docs = [
+      buildMockDocument({
+        id: 410,
+        title: pendingTitle,
+        state: "PendingSignatures",
+        createdBy: userId,
+        requires_signature: true,
+      }),
+    ];
+    const folders = [
+      buildMockFolder({ id: 420, name: "Carpeta Firmas", colorId: 2, documents: docs }),
+    ];
+
+    await setupLawyerDashboard(page, { userId, documents: docs, folders });
+    await page.goto("/dynamic_document_dashboard");
+
+    await page.getByRole("button", { name: "Carpetas" }).click();
+    await page.getByText("Carpeta Firmas", { exact: true }).click();
+
+    const folderDetailsModal = page.getByTestId("folder-details-modal");
+    await expect(folderDetailsModal).toBeVisible({ timeout: 10_000 });
+
+    // Click the doc row inside the folder details modal.
+    await folderDetailsModal.getByText(pendingTitle).click();
+
+    // Regression guard for fix 1.7: clicking a PendingSignatures doc inside a
+    // folder must close the folder modal and navigate to the Dcs. Por Firmar
+    // tab (active = border-primary text-primary class).
+    await expect(folderDetailsModal).toBeHidden({ timeout: 10_000 });
+    const pendingTab = page.getByRole("button", { name: "Dcs. Por Firmar" });
+    await expect(pendingTab).toHaveClass(/text-primary/);
+    await expect(page.getByText(pendingTitle).first()).toBeVisible();
+  });
+
+  test("lawyer clicking a FullySigned doc inside a folder navigates to Dcs. Formalizados tab", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    const userId = 9007;
+    const signedTitle = "Contrato Firmado En Carpeta";
+    const docs = [
+      buildMockDocument({
+        id: 430,
+        title: signedTitle,
+        state: "FullySigned",
+        createdBy: userId,
+        requires_signature: true,
+      }),
+    ];
+    const folders = [
+      buildMockFolder({ id: 440, name: "Carpeta Firmados", colorId: 3, documents: docs }),
+    ];
+
+    await setupLawyerDashboard(page, { userId, documents: docs, folders });
+    await page.goto("/dynamic_document_dashboard");
+
+    await page.getByRole("button", { name: "Carpetas" }).click();
+    await page.getByText("Carpeta Firmados", { exact: true }).click();
+
+    const folderDetailsModal = page.getByTestId("folder-details-modal");
+    await expect(folderDetailsModal).toBeVisible({ timeout: 10_000 });
+
+    await folderDetailsModal.getByText(signedTitle).click();
+
+    // Regression guard for fix 1.7: clicking a FullySigned doc must navigate
+    // to the Dcs. Formalizados tab.
+    await expect(folderDetailsModal).toBeHidden({ timeout: 10_000 });
+    const signedTab = page.getByRole("button", { name: "Dcs. Formalizados" });
+    await expect(signedTab).toHaveClass(/text-primary/);
+    await expect(page.getByText(signedTitle).first()).toBeVisible();
   });
 
   test("lawyer opens Nueva Minuta modal, types name, and closes it", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -196,6 +295,7 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Plantilla de Prueba")).toBeVisible();
 
     await page.getByText("Plantilla de Prueba", { exact: true }).click();
+    await page.getByRole("button", { name: "Usar plantilla" }).click();
 
     const nameInput = page.locator("#document-name"); // quality: allow-fragile-selector (stable DOM id)
     await expect(nameInput).toBeVisible();

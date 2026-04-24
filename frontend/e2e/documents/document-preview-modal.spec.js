@@ -5,6 +5,11 @@ import {
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
+import {
+  closeDocumentPreview,
+  openDocumentActionsModal,
+  openDocumentPreviewFromActions,
+} from "../helpers/documentActions.js";
 
 const buildLawyerAuth = ({ userId }) => ({
   token: "e2e-token",
@@ -16,43 +21,31 @@ const buildLawyerAuth = ({ userId }) => ({
   },
 });
 
-async function openMinutasTab(page, { userId, documents }) {
+async function setupLawyerDashboard(page, { userId, documents }) {
   await installDynamicDocumentApiMocks(page, {
     userId,
     role: "lawyer",
+    hasSignature: false,
     documents,
+    folders: [],
   });
 
   await setAuthLocalStorage(page, buildLawyerAuth({ userId }));
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: "Minutas" }).click();
-}
-
-function getDocumentRow(page, title) {
-  return page.locator("tbody tr").filter({ hasText: title });
-}
-
-async function openDocumentActionsModal(page, title) {
-  const row = getDocumentRow(page, title);
-  await expect(row).toBeVisible();
-  await row.click();
-  await expect(
-    page.getByRole("heading", { name: "Acciones del Documento" })
-  ).toBeVisible();
 }
 
 test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
   test("lawyer opens document preview and sees title and content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 3000;
+    const docId = 201;
     const docTitle = "Contrato de Prueba";
     const docContent = "<p>Este es el contenido del contrato de prueba.</p>";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
-          id: 201,
+          id: docId,
           title: docTitle,
           state: "Draft",
           createdBy: userId,
@@ -63,25 +56,32 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
 
     await openDocumentActionsModal(page, docTitle);
 
-    // Click Previsualización to open DocumentPreviewModal
-    await page.getByRole("button", { name: "Previsualización" }).click();
+    // Regression guard for fix 1.3: opening the preview must hit the document
+    // detail endpoint so we receive the full `content` (the list serializer
+    // omits it for performance). If the fetch disappears we're back to the
+    // pre-fix behaviour where content never loads.
+    const detailRequest = page.waitForRequest(
+      (req) =>
+        req.url().includes(`dynamic-documents/${docId}/`) &&
+        req.method() === "GET",
+      { timeout: 10_000 }
+    );
+    await openDocumentPreviewFromActions(page);
+    await detailRequest;
 
-    // Verify the preview modal renders with title and content
-    const previewHeading = page.getByRole("heading", {
-      name: /Previsualización del Documento/,
-    });
-    await expect(previewHeading).toBeVisible();
+    const previewHeading = page.getByTestId("document-preview-heading");
+    await expect(previewHeading).toBeVisible({ timeout: 10_000 });
     await expect(previewHeading).toContainText(docTitle);
     await expect(
-      page.getByText("Este es el contenido del contrato de prueba.")
-    ).toBeVisible();
+      page.getByTestId("document-preview-content")
+    ).toContainText("Este es el contenido del contrato de prueba.", { timeout: 10_000 });
   });
 
   test("lawyer closes document preview modal via close button", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 3001;
     const docTitle = "Minuta para Cerrar";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -95,32 +95,16 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await page.getByRole("button", { name: "Previsualización" }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /Previsualización del Documento/ })
-    ).toBeVisible();
-
-    // Close the preview modal via the X button
-    const previewHeading = page.getByRole("heading", {
-      name: /Previsualización del Documento/,
-    });
-    const closeButton = previewHeading
-      .locator("xpath=ancestor::div[1]")
-      .getByRole("button");
-    await closeButton.click();
-
-    // Verify the preview modal is dismissed
-    await expect(
-      page.getByRole("heading", { name: /Previsualización del Documento/ })
-    ).toHaveCount(0);
+    await openDocumentPreviewFromActions(page);
+    await closeDocumentPreview(page);
+    await expect(page.getByTestId("document-preview-modal")).toBeHidden();
   });
 
   test("preview shows empty state for document without content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 3002;
     const docTitle = "Documento Sin Contenido";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -134,13 +118,9 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await page.getByRole("button", { name: "Previsualización" }).click();
-
-    // Modal should still render with the document title even if content is empty
-    const previewHeading = page.getByRole("heading", {
-      name: /Previsualización del Documento/,
-    });
-    await expect(previewHeading).toBeVisible();
+    await openDocumentPreviewFromActions(page);
+    const previewHeading = page.getByTestId("document-preview-heading");
+    await expect(previewHeading).toBeVisible({ timeout: 10_000 });
     await expect(previewHeading).toContainText(docTitle);
   });
 
@@ -150,7 +130,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     const htmlContent =
       "<h3>Cláusula Primera</h3><p>Las partes acuerdan lo siguiente:</p><ul><li>Punto uno</li><li>Punto dos</li></ul>";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -164,26 +144,19 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await page.getByRole("button", { name: "Previsualización" }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /Previsualización del Documento/ })
-    ).toBeVisible();
-
-    // Verify that the rendered HTML includes expected text elements
-    await expect(page.getByText("Cláusula Primera")).toBeVisible();
-    await expect(
-      page.getByText("Las partes acuerdan lo siguiente:")
-    ).toBeVisible();
-    await expect(page.getByText("Punto uno")).toBeVisible();
-    await expect(page.getByText("Punto dos")).toBeVisible();
+    await openDocumentPreviewFromActions(page);
+    await expect(page.getByTestId("document-preview-heading")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("document-preview-content")).toContainText("Cláusula Primera");
+    await expect(page.getByTestId("document-preview-content")).toContainText("Las partes acuerdan lo siguiente:");
+    await expect(page.getByTestId("document-preview-content")).toContainText("Punto uno");
+    await expect(page.getByTestId("document-preview-content")).toContainText("Punto dos");
   });
 
   test("preview modal shows document title in heading", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 3004;
     const docTitle = "Minuta Título Encabezado";
 
-    await openMinutasTab(page, {
+    await setupLawyerDashboard(page, {
       userId,
       documents: [
         buildMockDocument({
@@ -197,14 +170,10 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await page.getByRole("button", { name: "Previsualización" }).click();
-
-    // The heading should contain the document title
-    const heading = page.getByRole("heading", { name: /Previsualización del Documento/ });
-    await expect(heading).toBeVisible();
+    await openDocumentPreviewFromActions(page);
+    const heading = page.getByTestId("document-preview-heading");
+    await expect(heading).toBeVisible({ timeout: 10_000 });
     await expect(heading).toContainText(docTitle);
-
-    // Content should also be rendered
-    await expect(page.getByText("Contenido verificación título")).toBeVisible();
+    await expect(page.getByTestId("document-preview-content")).toContainText("Contenido verificación título", { timeout: 10_000 });
   });
 });

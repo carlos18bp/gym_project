@@ -192,7 +192,12 @@
                   >
                     <div class="py-1">
                       <MenuItem v-slot="{ active }">
-                        <a @click="handleDocumentClick(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                        <a @click="handlePreviewTemplate(document)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
+                          Previsualización
+                        </a>
+                      </MenuItem>
+                      <MenuItem v-slot="{ active }">
+                        <a @click="openUseModal(document.id)" :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700 cursor-pointer']">
                           Usar plantilla
                         </a>
                       </MenuItem>
@@ -289,6 +294,25 @@
         @close="handleUseModalClose"
       />
     </ModalTransition>
+
+    <!-- Actions modal (row click → choose preview or use template) -->
+    <DocumentActionsModal
+      v-if="showActionsModal"
+      :is-visible="showActionsModal"
+      :document="selectedDocumentForActions"
+      :card-type="userStore.currentUser?.role === 'lawyer' ? 'lawyer' : 'client'"
+      context="use-template"
+      :user-store="userStore"
+      @close="showActionsModal = false"
+      @action="handleModalAction"
+    />
+
+    <!-- Preview modal (formatted variables) -->
+    <DocumentPreviewModal
+      :isVisible="showPreviewModal"
+      :documentData="previewDocumentData"
+      @close="showPreviewModal = false"
+    />
   </div>
 </template>
 
@@ -309,10 +333,15 @@ import {
   ChevronRightIcon
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
+import { useUserStore } from "@/stores/auth/user";
 import UseDocumentByClient from "@/components/dynamic_document/client/modals/UseDocumentByClient.vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
+import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
+import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
+import { showPreviewModal, previewDocumentData, getPreviewContentWithFormattedVariables } from "@/shared/document_utils";
 
 const documentStore = useDynamicDocumentStore();
+const userStore = useUserStore();
 const router = useRouter();
 
 const props = defineProps({
@@ -335,6 +364,10 @@ const isLoading = ref(false);
 // Modal state for naming document before use
 const showUseModal = ref(false);
 const selectedTemplateId = ref(null);
+
+// Actions modal state (row click → choose preview or use)
+const showActionsModal = ref(false);
+const selectedDocumentForActions = ref(null);
 
 // Menu refs for scroll handling
 const menuButtonRefs = ref({});
@@ -518,20 +551,42 @@ const handleUseModalClose = () => {
   selectedTemplateId.value = null;
 };
 
-// Handle document click
+// Handle document row click: open the actions modal with preview and use options
 const handleDocumentClick = (document) => {
-  // All documents in this table are published templates, but keep a safety check
-  const isTemplate = document.state === "Published" && !document.assigned_to;
+  selectedDocumentForActions.value = document;
+  showActionsModal.value = true;
+};
 
-  if (isTemplate) {
-    // Open naming modal so user can assign a custom title before generating
+/**
+ * Handle preview template: fetch full content and show formatted preview
+ */
+const handlePreviewTemplate = async (document) => {
+  let docWithContent = document;
+  if (!document.content) {
+    try {
+      const fetched = await documentStore.fetchDocumentById(document.id, true);
+      if (fetched) docWithContent = fetched;
+    } catch {
+      // fall back to the list-serializer document (preview will show empty content)
+    }
+  }
+  const processedContent = getPreviewContentWithFormattedVariables(docWithContent);
+  previewDocumentData.value = {
+    title: docWithContent.title || "",
+    content: processedContent,
+  };
+  showPreviewModal.value = true;
+};
+
+/**
+ * Handle action from the DocumentActionsModal
+ */
+const handleModalAction = async (action, document) => {
+  showActionsModal.value = false;
+  if (action === 'preview') {
+    await handlePreviewTemplate(document);
+  } else if (action === 'useTemplate') {
     openUseModal(document.id);
-  } else {
-    // Fallback: direct navigation for non-template documents
-    const editRoute = `/dynamic_document_dashboard/document/use/editor/${document.id}/${encodeURIComponent(
-      document.title.trim()
-    )}`;
-    router.push(editRoute);
   }
 };
 

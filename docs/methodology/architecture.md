@@ -5,19 +5,19 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n50 routes"]
-        Views["36 View Pages"]
-        Components["112 Components"]
-        Stores["34 Pinia Stores"]
+        Router["Vue Router\n63 routes"]
+        Views["43 View Pages"]
+        Components["111 Components"]
+        Stores["37 Pinia Stores"]
         Composables["10 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.0.6)"]
-        DRF["Django REST Framework\n162 API endpoints"]
-        Models["43 Models\n(12 model files)"]
-        Serializers["10 Serializer files"]
-        Views_BE["23 View files"]
+        DRF["Django REST Framework\n181 API endpoints"]
+        Models["53 Models\n(13 model files)"]
+        Serializers["11 Serializer files"]
+        Views_BE["28 View files"]
         Utils["3 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n72 test files"]
-        Jest["Jest\n158 test files"]
-        PW["Playwright\n172 E2E specs"]
+        Pytest["pytest\n76 test files"]
+        Jest["Jest\n167 test files"]
+        PW["Playwright\n179 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -182,6 +182,15 @@ erDiagram
     CorporateRequestResponse }o--o{ CorporateRequestFiles : "M2M response_files"
 
     Subscription ||--o{ PaymentHistory : "has"
+
+    Service ||--o{ ServiceStage : "has"
+    ServiceStage ||--o{ ServiceField : "has"
+    Service ||--o{ ServiceRequest : "receives"
+    User ||--o{ ServiceRequest : "submits"
+    ServiceRequest ||--o{ ServiceRequestAnswer : "has"
+    ServiceRequest ||--o{ ServiceRequestFieldFile : "has"
+    ServiceRequest ||--o{ ServiceRequestLawyerResponse : "has"
+    ServiceRequestLawyerResponse ||--o{ ServiceRequestLawyerResponseFile : "has"
 ```
 
 ---
@@ -273,7 +282,21 @@ erDiagram
 | `SyncLog` | started_at, finished_at, status (IN_PROGRESS/SUCCESS/FAILED), records_processed/created/updated, error_message | — |
 | `SavedView` | name, filters (JSON), created_at | FK → User (unique_together with name) |
 
-### 5.10 Other Models (3 models)
+### 5.10 Servicios y Trámites Domain (9 models)
+
+| Model | Key Fields | Relationships |
+|-------|-----------|---------------|
+| `Service` | title, description, is_active, is_featured, icon, created_at | — |
+| `ServiceStage` | name, order, description | FK → Service |
+| `ServiceField` | label, field_type, is_required, order, options (JSON) | FK → ServiceStage |
+| `ServiceRequestSequence` | year, last_number | — (auto-increment tracking per year) |
+| `ServiceRequest` | tracking_number (YYYY-NNNNN), status, current_stage, submitted_at | FK → Service, FK → User (requester) |
+| `ServiceRequestAnswer` | value | FK → ServiceRequest, FK → ServiceField |
+| `ServiceRequestFieldFile` | file, original_filename | FK → ServiceRequest, FK → ServiceField |
+| `ServiceRequestLawyerResponse` | response_text, new_status, created_at | FK → ServiceRequest, FK → User (responder) |
+| `ServiceRequestLawyerResponseFile` | file, original_filename | FK → ServiceRequestLawyerResponse |
+
+### 5.11 Other Models (3 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|

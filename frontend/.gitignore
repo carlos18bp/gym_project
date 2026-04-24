@@ -19,6 +19,7 @@ coverage-e2e/
 playwright-report/
 e2e-results/
 test-results/
+blob-report/
 
 # Editor directories and files
 .vscode/*

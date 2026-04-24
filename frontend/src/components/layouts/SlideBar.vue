@@ -142,6 +142,36 @@
                           {{ item.name }}
                         </a>
                       </li>
+                    </ul>
+                  </li>
+                  <li class="mt-auto pb-10">
+                    <ul role="list" class="-mx-2 space-y-1">
+                      <li v-for="item in bottomNavigation" :key="item.name">
+                        <a
+                          :href="item.href || 'javascript:void(0)'"
+                          :target="item.target || null"
+                          @click="!item.href && item.action(item)"
+                          class="cursor-pointer"
+                          :class="[
+                            item.current
+                              ? 'bg-gray-50 text-secondary'
+                              : 'text-primary hover:bg-gray-50 hover:text-secondary',
+                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                          ]"
+                        >
+                          <component
+                            :is="item.icon"
+                            :class="[
+                              item.current
+                                ? 'text-secondary'
+                                : 'text-primary group-hover:text-secondary',
+                              'h-6 w-6 shrink-0',
+                            ]"
+                            aria-hidden="true"
+                          />
+                          {{ item.name }}
+                        </a>
+                      </li>
                       <PWAInstallButton></PWAInstallButton>
                     </ul>
                   </li>
@@ -274,6 +304,36 @@
                   {{ item.name }}
                 </a>
               </li>
+            </ul>
+          </li>
+          <li class="mt-auto pb-10">
+            <ul role="list" class="-mx-2 space-y-1">
+              <li v-for="item in bottomNavigation" :key="item.name">
+                <a
+                  :href="item.href || 'javascript:void(0)'"
+                  :target="item.target || null"
+                  @click="!item.href && item.action(item)"
+                  class="cursor-pointer"
+                  :class="[
+                    item.current
+                      ? 'bg-selected-background text-secondary'
+                      : 'text-primary hover:bg-gray-50 hover:text-secondary',
+                    'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                  ]"
+                >
+                  <component
+                    :is="item.icon"
+                    :class="[
+                      item.current
+                        ? 'text-secondary'
+                        : 'text-primary group-hover:text-secondary',
+                      'h-6 w-6 shrink-0',
+                    ]"
+                    aria-hidden="true"
+                  />
+                  {{ item.name }}
+                </a>
+              </li>
               <PWAInstallButton></PWAInstallButton>
             </ul>
           </li>
@@ -369,6 +429,7 @@ import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
+import RegisteredIcon from "@/components/icons/RegisteredIcon.vue";
 import WhatsappIcon from "@/assets/icons/social_network/whatsapp.svg";
 import FacebookIcon from "@/assets/icons/social_network/facebook.svg";
 import InstagramIcon from "@/assets/icons/social_network/instagram.svg";
@@ -390,39 +451,50 @@ onMounted(async () => {
   await userStore.init();
   showProfile.value = !!!currentUser.value.is_profile_completed;
 
-  // Filter navigation based on user role
-  if (currentUser.value.role == 'client' || currentUser.value.role == 'corporate_client' || currentUser.value.role == 'basic') {
-    // For clients, basic users and corporate clients: Remove lawyer-specific options
+  // Hide legacy legal-request menu entries now replaced by Services module navigation.
+  navigation.value = navigation.value.filter(
+    (navItem) =>
+      navItem.name !== "Solicitudes" && navItem.name !== "Gestión de Solicitudes"
+  );
+
+  const role = currentUser.value.role;
+  const isAdmin = role === "admin" || currentUser.value.is_staff || currentUser.value.is_superuser;
+
+  if (role === "client" || role === "corporate_client" || role === "basic") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Radicar Proceso" &&
         navItem.name !== "Directorio" &&
-        navItem.name !== "Intranet G&M"
-    );
-  } else if (currentUser.value.role == 'lawyer' && !currentUser.value.is_gym_lawyer) {
-    // Remove "Intranet G&M" for lawyers who are not GYM lawyers
-    navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Intranet G&M"
-    );
-  } else if (currentUser.value.role == 'lawyer') {
-    // For lawyers: Remove "Organizaciones" since it's only for clients
-    navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Organizaciones"
+        navItem.name !== "Intranet G&M" &&
+        navItem.name !== "Bandeja de Solicitudes" &&
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Organizaciones"
     );
   }
 
-  // Filter navigation for legal requests based on user role
-  if (currentUser.value.role === 'lawyer' || currentUser.value.is_gym_lawyer) {
-    // Lawyers: Remove "Solicitudes" (client creation) and "Agendar Cita", keep "Gestión de Solicitudes"
+  if (role === "lawyer") {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Solicitudes" && navItem.name !== "Agendar Cita"
+        navItem.name !== "Organizaciones" &&
+        navItem.name !== "Administrar Servicios"
     );
-  } else if (currentUser.value.role === 'client' || currentUser.value.role === 'corporate_client' || currentUser.value.role === 'basic') {
-      // Clients and Basic users: Remove "Gestión de Solicitudes" (lawyer management), keep "Solicitudes"
+
+    if (!currentUser.value.is_gym_lawyer) {
       navigation.value = navigation.value.filter(
-        (navItem) => navItem.name !== "Gestión de Solicitudes"
+        (navItem) => navItem.name !== "Intranet G&M"
       );
+    }
+  }
+
+  if (isAdmin) {
+    navigation.value = navigation.value.filter(
+      (navItem) =>
+        navItem.name !== "Agendar Cita" &&
+        navItem.name !== "Organizaciones"
+    );
+  } else {
+    navigation.value = navigation.value.filter(
+      (navItem) => navItem.name !== "Administrar Servicios"
+    );
   }
 
   updateActiveNavItem();
@@ -517,6 +589,36 @@ const navigation = ref([
     routes: ['/dynamic_document_dashboard']
   },
   {
+    name: "Servicios y Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "services_hub" });
+    },
+    icon: RegisteredIcon,
+    current: false,
+    routes: ['/services']
+  },
+  {
+    name: "Bandeja de Solicitudes",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "service_requests_inbox" });
+    },
+    icon: EnvelopeIcon,
+    current: false,
+    routes: ['/service_requests/inbox']
+  },
+  {
+    name: "Administrar Servicios",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "services_admin" });
+    },
+    icon: BookOpenIcon,
+    current: false,
+    routes: ['/services_admin']
+  },
+  {
     name: "Solicitudes",
     action: (item) => {
       setCurrent(item);
@@ -566,11 +668,13 @@ const navigation = ref([
     current: false,
     routes: ['/secop']
   },
+]);
+
+const bottomNavigation = ref([
   {
     name: "Manual de Usuario",
     action: (item) => {
-      setCurrent(item);
-      // Force navigation even if already on the route
+      setCurrentBottom(item);
       if (route.path === '/user_guide') {
         router.push({ name: "user_guide", params: { refresh: Date.now() } });
       } else {
@@ -632,10 +736,22 @@ const updateActiveNavItem = () => {
       navItem.current = false;
     }
   });
+
+  bottomNavigation.value.forEach((navItem) => {
+    if (navItem.routes && navItem.routes.some(routePath => currentPath.startsWith(routePath))) {
+      navItem.current = true;
+      foundMatch = true;
+    } else {
+      navItem.current = false;
+    }
+  });
   
   // If no match is found, no button should be highlighted
   if (!foundMatch) {
     navigation.value.forEach(navItem => {
+      navItem.current = false;
+    });
+    bottomNavigation.value.forEach(navItem => {
       navItem.current = false;
     });
   }
@@ -666,6 +782,21 @@ watch(
  */
 const setCurrent = (item) => {
   navigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+  bottomNavigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+
+  item.current = true;
+  slidebarOpen.value = false;
+};
+
+const setCurrentBottom = (item) => {
+  navigation.value.forEach((navItem) => {
+    navItem.current = false;
+  });
+  bottomNavigation.value.forEach((navItem) => {
     navItem.current = false;
   });
 

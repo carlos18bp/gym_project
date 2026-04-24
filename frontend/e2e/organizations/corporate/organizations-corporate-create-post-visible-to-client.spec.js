@@ -2,15 +2,13 @@ import { test, expect } from "../../helpers/test.js";
 
 import { setAuthLocalStorage } from "../../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../../helpers/organizationsDashboardMocks.js";
+import {
+  closeSuccessDialog,
+  getClientPostCardByTitle,
+  getCorporatePostCardByTitle,
+} from "../../helpers/organizationPosts.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
-
-async function assertSuccessDialog(page, expectedText) {
-  const successDialog = page.getByRole("dialog");
-  await expect(successDialog).toBeVisible({ timeout: 15_000 });
-  await expect(successDialog).toContainText(expectedText);
-  await successDialog.getByRole("button").click();
-}
 
 test("corporate_client creates a pinned post with link and client can see it in public posts", { tag: ['@flow:org-posts-visibility', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   test.setTimeout(60_000);
@@ -45,7 +43,7 @@ test("corporate_client creates a pinned post with link and client can see it in 
   await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
   await expect(page.getByText("Posts de la Organización").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Nuevo Post" }).first().click();
+  await page.getByTestId("corporate-new-post-1").click();
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toBeVisible();
 
   await page.locator("input#title").fill("Post Visible Cliente");
@@ -60,14 +58,11 @@ test("corporate_client creates a pinned post with link and client can see it in 
 
   await page.getByRole("button", { name: "Crear Post" }).click();
 
-  await assertSuccessDialog(page, "Post creado exitosamente");
+  await closeSuccessDialog(page, "Post creado exitosamente");
 
-  // Ensure the create modal is closed (avoids strict-mode collisions with preview)
   await expect(page.getByRole("heading", { name: "Crear Nuevo Post" })).toHaveCount(0);
 
-  const createdPostCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border.border-gray-200.p-6")
-    .filter({ hasText: "Post Visible Cliente" });
+  const createdPostCard = getCorporatePostCardByTitle(page, "Post Visible Cliente");
   await expect(createdPostCard).toBeVisible();
   await expect(createdPostCard.getByText("Fijado").first()).toBeVisible();
 
@@ -90,11 +85,7 @@ test("corporate_client creates a pinned post with link and client can see it in 
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  const postCard = page
-    .locator("div.bg-white.shadow.rounded-lg.border")
-    .filter({ hasText: "Post Visible Cliente" })
-    .first(); // quality: allow-fragile-selector (positional selector for first matching element)
-
+  const postCard = getClientPostCardByTitle(page, "Post Visible Cliente");
   await expect(postCard).toBeVisible();
   await expect(postCard).toContainText("Fijado");
 

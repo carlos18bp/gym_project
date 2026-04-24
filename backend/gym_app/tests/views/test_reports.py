@@ -640,7 +640,7 @@ class TestReportViews:
         assert lawyer_row['Procesos Completados'] == 1  # One with Fallo stage
     
     @mock.patch('gym_app.views.reports.user_id', None)
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     def test_documents_by_state_report(self, api_client, sample_users, sample_documents):
         """Test generating documents by state report."""
         # Authenticate
@@ -1396,7 +1396,7 @@ class TestReportsRegressionScenarios:
         df = pd.read_excel(io.BytesIO(r.content))
         assert len(df) >= 2
 
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     def test_docs_state_uid_lawyer(self, api_client, admin, lawyer, dr):
         """Lines 1080-1085: user_id as lawyer in documents_by_state."""
         DynamicDocument.objects.create(
@@ -1408,7 +1408,7 @@ class TestReportsRegressionScenarios:
             r = _post(api_client, 'documents_by_state', dr)
         assert r.status_code == 200
 
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     def test_docs_state_uid_client(self, api_client, admin, client_u, lawyer, dr):
         """Lines 1086-1087: user_id as client in documents_by_state."""
         DynamicDocument.objects.create(
@@ -1421,7 +1421,7 @@ class TestReportsRegressionScenarios:
             r = _post(api_client, 'documents_by_state', dr)
         assert r.status_code == 200
 
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_docs_state_empty(self, api_client, admin, dr):
         """Lines 1242-1247: empty documents returns 'Sin Datos' sheet."""
@@ -1495,7 +1495,7 @@ class TestReportsRegressionScenarios:
         df = pd.read_excel(io.BytesIO(r.content))
         assert len(df) == 1
 
-    @mock.patch('gym_app.views.reports.models', models)
+    @mock.patch('gym_app.views.reports.document_reports.models', models)
     def test_docs_state_uid_nonexistent(self, api_client, admin, dr):
         """Lines 1088-1089: non-existent user_id returns 404."""
         api_client.force_authenticate(user=admin)
@@ -1547,7 +1547,7 @@ class TestReportsRegressionScenarios:
         mock_req.created_at.date.return_value = datetime.date.today()
 
         with mock.patch(
-            'gym_app.views.reports.LegalRequest.objects'
+            'gym_app.views.reports.legal_request_reports.LegalRequest.objects'
         ) as mock_qs:
             mock_qs.filter.return_value.select_related.return_value \
                 .prefetch_related.return_value = [mock_req]
@@ -1592,11 +1592,11 @@ class TestReportsRegressionScenarios:
         disc_mock.name = "DiscNull"
 
         with mock.patch(
-            'gym_app.views.reports.LegalRequest.objects'
+            'gym_app.views.reports.legal_request_reports.LegalRequest.objects'
         ) as mock_lr, mock.patch(
-            'gym_app.views.reports.LegalRequestType.objects'
+            'gym_app.views.reports.legal_request_reports.LegalRequestType.objects'
         ) as mock_rt, mock.patch(
-            'gym_app.views.reports.LegalDiscipline.objects'
+            'gym_app.views.reports.legal_request_reports.LegalDiscipline.objects'
         ) as mock_ld:
             # Setup queryset chain for LegalRequest
             qs = mock.MagicMock()

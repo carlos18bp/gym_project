@@ -17,6 +17,7 @@ from gym_app.views.layouts.sendEmail import send_template_email
 logger = logging.getLogger(__name__)
 
 _ROLE_LABELS = {
+    'admin': 'Administrador',
     'client': 'Cliente',
     'lawyer': 'Abogado',
     'corporate_client': 'Cliente Corporativo',

@@ -176,12 +176,12 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 72 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 158 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 158) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 158) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 158) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 172 spec files | `frontend/e2e/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 76 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 167 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 167) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 167) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 167) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 179 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -221,33 +221,33 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 12 files → 43 model classes (+ 1 UserManager) — incl. 6 SECOP models
-│   │   ├── views/            # 23 files (incl. dynamic_documents/, layouts/, secop)
-│   │   ├── serializers/      # 10 files — incl. secop.py
-│   │   ├── services/         # 3 files (secop_client, secop_sync_service, secop_alert_service)
+│   │   ├── models/           # 13 files → 53 model classes (+ User via AbstractUser + UserManager)
+│   │   ├── views/            # 28 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/)
+│   │   ├── serializers/      # 11 files
+│   │   ├── services/         # 5 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
-│   │   ├── management/commands/ # 11 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
-│   │   ├── templates/        # 20 email/PDF templates — incl. 2 SECOP alert templates
-│   │   ├── tests/            # 72 test files (models, serializers, tasks, utils, views, services)
+│   │   ├── management/commands/ # 12 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
+│   │   ├── templates/        # 21 email/PDF templates
+│   │   ├── tests/            # 76 test files (models, serializers, tasks, utils, views, services, commands)
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
-│   │   ├── urls.py           # 162 URL patterns (15 SECOP endpoints)
+│   │   ├── urls.py           # 181 URL patterns
 │   │   └── admin.py          # Django admin configuration
 │   ├── scripts/              # run-tests-blocks.py (block-based test runner)
-│   ├── requirements.txt      # 99 lines, production dependencies
+│   ├── requirements.txt      # production dependencies
 │   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # 112 Vue components (12 subdirectories) — incl. secop/
-│   │   ├── views/            # 36 page-level components (14 subdirectories) — incl. secop/
-│   │   ├── stores/           # 34 store files (domain directories + root files) — incl. secop/
-│   │   ├── composables/      # 10 composable files (incl. document-variables/)
-│   │   ├── router/           # 1 file, 48 route definitions
+│   │   ├── components/       # 111 Vue components
+│   │   ├── views/            # 43 page-level components
+│   │   ├── stores/           # 37 store files (domain directories + root files)
+│   │   ├── composables/      # 10 composable files
+│   │   ├── router/           # 1 file, 63 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 158 unit test files (11 subdirectories)
-│   ├── e2e/                  # 172 E2E spec files
+│   ├── test/                 # 167 unit test files (11 subdirectories)
+│   ├── e2e/                  # 179 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

@@ -1,6 +1,11 @@
 import { mount } from "@vue/test-utils";
 
 import UseDocumentTable from "@/components/dynamic_document/client/UseDocumentTable.vue";
+import {
+  showPreviewModal as mockShowPreviewModal,
+  previewDocumentData as mockPreviewDocumentData,
+  getPreviewContentWithFormattedVariables as mockGetPreviewFn,
+} from "@/shared/document_utils";
 
 const mockRouterPush = jest.fn();
 
@@ -22,6 +27,13 @@ jest.mock("@/stores/dynamic_document", () => ({
 jest.mock("@/stores/auth/user", () => ({
   __esModule: true,
   useUserStore: () => mockUserStore,
+}));
+
+jest.mock("@/shared/document_utils", () => ({
+  __esModule: true,
+  showPreviewModal: { value: false },
+  previewDocumentData: { value: { title: "", content: "" } },
+  getPreviewContentWithFormattedVariables: jest.fn(() => "<p>formatted</p>"),
 }));
 
 jest.mock("@heroicons/vue/24/outline", () => ({
@@ -65,6 +77,8 @@ const mountView = () =>
         MenuItem: MenuItemStub,
         UseDocumentByClient: { template: "<div data-test='use-modal' />" },
         ModalTransition: { template: "<div><slot /></div>" },
+        DocumentActionsModal: { template: "<div data-test='actions-modal' />" },
+        DocumentPreviewModal: { template: "<div data-test='preview-modal' />" },
         Teleport: true,
       },
     },
@@ -73,7 +87,10 @@ const mountView = () =>
 describe("UseDocumentTable.vue", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUserStore = {};
+    mockShowPreviewModal.value = false;
+    mockPreviewDocumentData.value = { title: "", content: "" };
+    mockGetPreviewFn.mockClear();
+    mockUserStore = { currentUser: { role: "client" } };
     mockDocumentStore = {
       documents: [],
       init: jest.fn().mockResolvedValue(),
@@ -83,6 +100,7 @@ describe("UseDocumentTable.vue", () => {
         totalPages: 0,
         currentPage: 1,
       }),
+      fetchDocumentById: jest.fn(),
       publishedDocumentsUnassigned: [],
       selectedDocument: { id: 99 },
     };
@@ -105,7 +123,7 @@ describe("UseDocumentTable.vue", () => {
     expect(wrapper.emitted("go-back")).toBeTruthy();
   });
 
-  test("opens use modal for published template", async () => {
+  test("opens actions modal on row click", async () => {
     mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
       items: [{ id: 1, title: "Plantilla", state: "Published", assigned_to: null }],
       totalItems: 1,
@@ -119,14 +137,16 @@ describe("UseDocumentTable.vue", () => {
     await wrapper.find("tbody tr").trigger("click");
 
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
-    expect(wrapper.vm.$.setupState.showUseModal).toBe(true);
-    expect(wrapper.vm.$.setupState.selectedTemplateId).toBe(1);
-    expect(mockDocumentStore.selectedDocument).toBe(null);
+    const state = wrapper.vm.$.setupState;
+    expect(state.showActionsModal).toBe(true);
+    expect(state.selectedDocumentForActions).toEqual(
+      expect.objectContaining({ id: 1, title: "Plantilla" })
+    );
   });
 
-  test("navigates to editor for non-template documents", async () => {
+  test("handleModalAction with useTemplate opens use modal", async () => {
     mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
-      items: [{ id: 2, title: "Borrador", state: "Draft" }],
+      items: [{ id: 5, title: "Plantilla X", state: "Published" }],
       totalItems: 1,
       totalPages: 1,
       currentPage: 1,
@@ -135,10 +155,55 @@ describe("UseDocumentTable.vue", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    await wrapper.find("tbody tr").trigger("click");
+    // quality: allow-implementation-coupling (calling internal handler directly)
+    const state = wrapper.vm.$.setupState;
+    await state.handleModalAction("useTemplate", { id: 5 });
 
-    expect(mockRouterPush).toHaveBeenCalledWith(
-      "/dynamic_document_dashboard/document/use/editor/2/Borrador"
-    );
+    expect(state.showActionsModal).toBe(false);
+    expect(state.showUseModal).toBe(true);
+    expect(state.selectedTemplateId).toBe(5);
+    expect(mockDocumentStore.selectedDocument).toBe(null);
+  });
+
+  test("handleModalAction with preview calls getPreviewContentWithFormattedVariables", async () => {
+    const doc = { id: 7, title: "Contrato", state: "Published", content: "<p>Hola {{ name }}</p>" };
+    mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
+      items: [doc],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    });
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    // quality: allow-implementation-coupling (calling internal handler directly)
+    await wrapper.vm.$.setupState.handleModalAction("preview", doc);
+
+    expect(mockGetPreviewFn).toHaveBeenCalledWith(doc);
+    expect(mockShowPreviewModal.value).toBe(true);
+    expect(mockPreviewDocumentData.value.title).toBe("Contrato");
+  });
+
+  test("handlePreviewTemplate fetches content when missing", async () => {
+    const partialDoc = { id: 10, title: "Sin contenido", state: "Published" };
+    const fullDoc = { id: 10, title: "Sin contenido", state: "Published", content: "<p>Full</p>" };
+    mockDocumentStore.fetchDocumentById.mockResolvedValue(fullDoc);
+    mockDocumentStore.fetchDocumentsForTab.mockResolvedValue({
+      items: [partialDoc],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    });
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    // quality: allow-implementation-coupling (calling internal handler directly)
+    await wrapper.vm.$.setupState.handlePreviewTemplate(partialDoc);
+
+    expect(mockDocumentStore.fetchDocumentById).toHaveBeenCalledWith(10, true);
+    expect(mockGetPreviewFn).toHaveBeenCalledWith(fullDoc);
+    expect(mockShowPreviewModal.value).toBe(true);
   });
 });

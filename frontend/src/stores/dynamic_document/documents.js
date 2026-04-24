@@ -10,6 +10,18 @@ import { downloadFile } from "@/shared/document_utils";
 import { registerUserActivity, ACTION_TYPES } from "../dashboard/activity_feed";
 
 /**
+ * Apply a document update to cache, list, and localStorage tracking.
+ * Shared by actions that mutate a single document and need to sync local state.
+ */
+function _applyDocumentUpdate(store, documentId, data) {
+  store.documentCache[documentId] = data;
+  const idx = store.documents.findIndex(doc => doc.id == documentId);
+  if (idx >= 0) store.documents[idx] = data;
+  store.lastUpdatedDocumentId = documentId;
+  localStorage.setItem('lastUpdatedDocumentId', documentId);
+}
+
+/**
  * Document management actions
  */
 export const documentActions = {
@@ -331,6 +343,48 @@ export const documentActions = {
       return response.data;
     } catch (error) {
       console.error(`Error updating document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Formalize an existing completed document based on signature_type.
+   * @param {number|string} documentId - ID of the document to formalize
+   * @param {Object} formalizeData - { signature_type: 'normal'|'issuer_only'|'informative', signers?: [ids], recipients?: [ids], signature_due_date: string|null, title: string }
+   * @returns {Object} The updated document data
+   */
+  async formalizeDocument(documentId, formalizeData) {
+    try {
+      const response = await create_request(`dynamic-documents/${documentId}/formalize/`, formalizeData);
+      _applyDocumentUpdate(this, documentId, response.data);
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Formalizaste el documento "${formalizeData.title || ''}"`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error formalizing document ID ${documentId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Correct a rejected/expired document and reopen its signature workflow in a single call.
+   * @param {number|string} documentId - ID of the document to correct
+   * @param {Object} correctionData - { content, variables, signature_due_date, title }
+   * @returns {Object} The updated document data
+   */
+  async correctDocument(documentId, correctionData) {
+    try {
+      const response = await create_request(`dynamic-documents/${documentId}/correct/`, correctionData);
+      _applyDocumentUpdate(this, documentId, response.data);
+      await registerUserActivity(
+        ACTION_TYPES.UPDATE,
+        `Corregiste y reenviaste el documento "${correctionData.title || ''}" para firma`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error correcting document ID ${documentId}:`, error);
       throw error;
     }
   },

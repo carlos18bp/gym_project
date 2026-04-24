@@ -1,7 +1,15 @@
+import json
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory
+
+from gym_app.utils.auth_utils import generate_auth_tokens
+from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence
 from gym_app.models.user import UserSignature, ActivityFeed
 from gym_app.models.password_code import PasswordCode
 from gym_app.models.email_verification_code import EmailVerificationCode
@@ -23,7 +31,7 @@ class UserAdmin(BaseUserAdmin):
     filter_horizontal = ()
     
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
+        (None, {'fields': ('email', 'password', 'login_as_link')}),
         (_('Personal info'), {
             'fields': ('first_name', 'last_name', 'contact', 'birthday', 
                       'identification', 'document_type', 'photo_profile', 'letterhead_image')
@@ -52,7 +60,52 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
     
-    readonly_fields = ('last_login', 'created_at')
+    readonly_fields = ('last_login', 'created_at', 'login_as_link')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:user_id>/login-as/',
+                self.admin_site.admin_view(self.login_as_user),
+                name='user-login-as',
+            ),
+        ]
+        return custom_urls + urls
+
+    def login_as_user(self, request, user_id):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden('Only superusers can use this feature.')
+        user = get_object_or_404(User, pk=user_id)
+        tokens = generate_auth_tokens(user)
+        access_token = tokens['access']
+        user_data = json.dumps(tokens['user'])
+        html = f"""<!DOCTYPE html>
+<html>
+<head><title>Logging in as {user.email}...</title></head>
+<body>
+<p>Logging in as <strong>{user.email}</strong>...</p>
+<script>
+localStorage.setItem("token", {json.dumps(access_token)});
+localStorage.setItem("userAuth", {json.dumps(user_data)});
+window.location.href = "/dashboard";
+</script>
+</body>
+</html>"""
+        return HttpResponse(html)
+
+    def login_as_link(self, obj):
+        if not obj.pk:
+            return '-'
+        url = reverse('myadmin:user-login-as', args=[obj.pk])
+        return format_html(
+            '<a href="{}" target="_blank" style="'
+            'background:#417690;color:#fff;padding:5px 15px;'
+            'border-radius:4px;text-decoration:none;font-weight:bold;'
+            '">Login as this user</a>',
+            url
+        )
+    login_as_link.short_description = _('Impersonate')
 
 class UserSignatureAdmin(admin.ModelAdmin):
     """
@@ -206,6 +259,67 @@ class LegalRequestResponseAdmin(admin.ModelAdmin):
         """Get a preview of the response text."""
         return obj.response_text[:100] + '...' if len(obj.response_text) > 100 else obj.response_text
     get_response_preview.short_description = 'Respuesta'
+
+
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'short_title', 'slug', 'is_active', 'is_featured', 'featured_order', 'updated_at')
+    search_fields = ('name', 'short_title', 'slug', 'description')
+    list_filter = ('is_active', 'is_featured')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+class ServiceStageAdmin(admin.ModelAdmin):
+    list_display = ('service', 'title', 'order', 'is_active')
+    list_filter = ('is_active', 'service')
+    search_fields = ('service__name', 'title')
+
+
+class ServiceFieldAdmin(admin.ModelAdmin):
+    list_display = ('stage', 'key', 'label', 'field_type', 'is_required', 'order')
+    list_filter = ('field_type', 'is_required')
+    search_fields = ('key', 'label', 'stage__service__name', 'stage__title')
+
+
+class ServiceRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'tracking_number', 'service', 'requester', 'status', 'is_submitted', 'submitted_at', 'created_at'
+    )
+    search_fields = (
+        'tracking_number', 'service__name', 'requester__email', 'requester__first_name', 'requester__last_name'
+    )
+    list_filter = ('status', 'is_submitted', 'service')
+    readonly_fields = ('tracking_number', 'tracking_year', 'tracking_sequence', 'created_at', 'updated_at')
+
+
+class ServiceRequestAnswerAdmin(admin.ModelAdmin):
+    list_display = ('service_request', 'field_key', 'field_type', 'stage_title', 'updated_at')
+    search_fields = ('service_request__tracking_number', 'field_key', 'field_label', 'value_text')
+    list_filter = ('field_type', 'stage_title')
+
+
+class ServiceRequestFieldFileAdmin(admin.ModelAdmin):
+    list_display = ('service_request', 'field', 'original_name', 'created_at')
+    search_fields = ('service_request__tracking_number', 'original_name')
+    list_filter = ('created_at',)
+    readonly_fields = ('created_at',)
+
+
+class ServiceRequestLawyerResponseAdmin(admin.ModelAdmin):
+    list_display = ('service_request', 'responder', 'status_before', 'status_after', 'created_at')
+    search_fields = ('service_request__tracking_number', 'responder__email', 'message')
+    list_filter = ('status_before', 'status_after')
+    readonly_fields = ('created_at',)
+
+
+class ServiceRequestLawyerResponseFileAdmin(admin.ModelAdmin):
+    list_display = ('response', 'original_name', 'created_at')
+    search_fields = ('response__service_request__tracking_number', 'original_name')
+    list_filter = ('created_at',)
+    readonly_fields = ('created_at',)
+
+
+class ServiceRequestSequenceAdmin(admin.ModelAdmin):
+    list_display = ('year', 'last_value')
 
 class CorporateRequestAdmin(admin.ModelAdmin):
     """
@@ -796,6 +910,19 @@ class GyMAdminSite(admin.AdminSite):
                 ]
             },
             {
+                'name': _('Services & Procedures'),
+                'app_label': 'services_procedures',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in [
+                        'Service', 'ServiceStage', 'ServiceField', 'ServiceRequest',
+                        'ServiceRequestAnswer', 'ServiceRequestFieldFile',
+                        'ServiceRequestLawyerResponse', 'ServiceRequestLawyerResponseFile',
+                        'ServiceRequestSequence'
+                    ]
+                ]
+            },
+            {
                 'name': _('Organization Management'),
                 'app_label': 'organization_management',
                 'models': [
@@ -852,6 +979,15 @@ admin_site.register(LegalRequestType, LegalRequestTypeAdmin)
 admin_site.register(LegalDiscipline, LegalDisciplineAdmin)
 admin_site.register(LegalRequestFiles, LegalRequestFilesAdmin)
 admin_site.register(LegalRequestResponse, LegalRequestResponseAdmin)
+admin_site.register(Service, ServiceAdmin)
+admin_site.register(ServiceStage, ServiceStageAdmin)
+admin_site.register(ServiceField, ServiceFieldAdmin)
+admin_site.register(ServiceRequest, ServiceRequestAdmin)
+admin_site.register(ServiceRequestAnswer, ServiceRequestAnswerAdmin)
+admin_site.register(ServiceRequestFieldFile, ServiceRequestFieldFileAdmin)
+admin_site.register(ServiceRequestLawyerResponse, ServiceRequestLawyerResponseAdmin)
+admin_site.register(ServiceRequestLawyerResponseFile, ServiceRequestLawyerResponseFileAdmin)
+admin_site.register(ServiceRequestSequence, ServiceRequestSequenceAdmin)
 admin_site.register(CorporateRequest, CorporateRequestAdmin)
 admin_site.register(CorporateRequestType, CorporateRequestTypeAdmin)
 admin_site.register(CorporateRequestFiles, CorporateRequestFilesAdmin)

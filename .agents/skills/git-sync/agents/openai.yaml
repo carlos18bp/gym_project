@@ -1,0 +1,3 @@
+interface:
+  display_name: "Git Sync"
+  short_description: "Rebase current branch onto its parent (main/master) to pull in teammates' merged work"

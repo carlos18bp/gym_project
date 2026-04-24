@@ -2,7 +2,7 @@
 
 ## 1. Current State
 
-The application is **feature-complete** with all 17 major features implemented, tested, and operational:
+The application is **feature-complete** with all 18 major features implemented, tested, and operational:
 
 - User management with JWT + Google OAuth + reCAPTCHA
 - Process management with stages, case files, and recent tracking
@@ -15,28 +15,70 @@ The application is **feature-complete** with all 17 major features implemented, 
 - Intranet, legal updates, PWA support, and interactive user guide
 - Automated backups, query profiling (django-silk), and test quality gate
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
+- **Servicios y Trámites** ✅: catálogo de servicios, formularios dinámicos por etapas, guardado en borrador, radicado `AÑO-CONSECUTIVO`, PDF automático, notificaciones por correo, bandeja de solicitudes para abogados/admin y seguimiento para clientes
 
-### Codebase Metrics (verified 2026-03-30)
+### Codebase Metrics (verified 2026-04-15)
 
 | Metric | Count |
 |--------|-------|
-| Backend model classes | 43 (+ 1 UserManager) — 6 SECOP models |
-| Backend view files | 23 |
-| Backend serializer files | 10 |
-| Backend URL patterns | 162 |
-| Backend test files | 72 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 31 views) |
-| Backend migrations | 54 |
-| Backend management commands | 11 |
-| Frontend Vue components | 112 |
-| Frontend view pages | 36 |
-| Frontend Pinia store files | 34 |
+| Backend model files | 13 |
+| Backend model classes | 53 (+ User via AbstractUser + UserManager) |
+| Backend view files | 28 |
+| Backend serializer files | 11 |
+| Backend URL patterns | 181 |
+| Backend test files | 76 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views + 3 commands) |
+| Backend templates | 21 |
+| Backend management commands | 12 |
+| Frontend Vue components | 111 |
+| Frontend view pages | 43 |
+| Frontend Pinia store files | 37 |
 | Frontend composables | 10 |
-| Frontend unit test files | 158 |
-| Frontend E2E spec files | 172 |
+| Frontend unit test files | 167 |
+| Frontend E2E spec files | 179 |
+| Frontend routes | 63 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **User Guide gap audit (2026-04-22)**: Systematic comparison of `frontend/src/stores/user_guide/` content (10 modules, 65 sections, ~2.8k lines) against real system (63 routes, 181 backend endpoints). Critical gaps: **SECOP** and **Servicios y Trámites** are entire modules missing from `modules.js` despite being full features in production. Also: outdated tab labels (`Firmados` vs real `Dcs. Formalizados` post commit d60eeb4), missing sections (variables-config, document-permissions, user-signature, payment-method-update, payment-history, featured-services), and inaccurate `appointments` content describing features that don't exist (Calendly iframe only). Full plan in `tasks/user_guide_gap_audit.md`.
+
+- **Sprint Abril 2026 — Servicios y Trámites: 11 mejoras (2026-04-15)**:
+  - **1.1 ServicesAdmin — Vista previa de icono**: Campo `icon_image_url` en `editor` reactive, miniatura 80×80px con gradiente, validación 5MB.
+  - **1.2 ServicesAdmin — Validación exhaustiva**: Nueva función `validateEditor()` cubre nombre, etapas, campos, claves duplicadas, opciones de selección, extensiones de archivo.
+  - **1.3 ServicesAdmin — Manejo de errores**: Bloque `catch` extrae `error.response.data` y muestra mensaje específico del backend.
+  - **1.4 ServiceDetail — Help text reposicionado**: `field.help_text` ahora aparece ANTES del input (después del label) para mejor UX.
+  - **1.5 ServiceDetail — UI archivos múltiples**: Tarjetas con icono, nombre truncado, tamaño formateado, botón `×` eliminar individual, contador X/10, input deshabilitado al alcanzar límite, selección incremental.
+  - **1.6 PDF — Rediseño corporativo**: Header «G&M CONSULTORES JURIDICOS», metadatos inline, secciones con subrayado azul #5B7C99, aviso aclaratorio legal en bloque gris, footer corporativo.
+  - **1.7 Navegación — ServicesHub.vue**: Nuevo componente unifica «Servicios» y «Mis Solicitudes» con tabs desktop + dropdown mobile. Prop `embedded` en ServicesList/MyServiceRequests. Router redirects legacy paths. Menú lateral simplificado (1 ítem).
+  - **1.8 Header azul corporativo**: `ModuleHeader` integrado en ServicesHub con título «Servicios y Solicitudes».
+  - **1.9 Emails — Sin emojis**: Eliminado div circular con emoji de `notification.html` y `.mjml`. Removidos campos `"icon"` de contextos Python.
+  - **1.10 Emails — Estado destacado**: Estado en `<strong style='font-weight:700;text-transform:uppercase'>`. Fix crítico: `|safe` agregado al `{{message}}` en ambas plantillas (Django auto-escapa HTML sin este filtro).
+  - **1.11 Emails — Archivos adjuntos**: `notify_service_request_status_change` recopila archivos de la respuesta más reciente del abogado y los pasa como `attachments`. Llamada movida DESPUÉS del `refetch` para garantizar que `lawyer_responses__files` estén disponibles.
+  - **Archivos afectados**: `ServicesAdmin.vue`, `ServiceDetail.vue`, `service_request_pdf.html`, `ServicesHub.vue` (nuevo), `ServicesList.vue`, `MyServiceRequests.vue`, `SlideBar.vue`, `router/index.js`, `ServiceDetail.vue`, `ServiceRequestDetail.vue`, `notification.html`, `notification.mjml`, `service_tramite_notifications.py`, `service_tramite.py`.
+
+- **Codex configuration normalization (2026-04-09)**:
+  - **Repo config simplified**: Reduced `.codex/config.toml` to project-scoped settings that materially change behavior (`model`, reasoning effort, approval policy, sandbox mode, web search).
+  - **Skills auto-discovery confirmed**: Codex reads `.agents/skills/` from the repository root automatically — no installer needed. `scripts/install-codex-skills.sh` was removed.
+  - **User-level cleanup completed**: Removed duplicate repo-managed `gym-*` symlinks from `~/.codex/skills`; system skills under `~/.codex/skills/.system` remain untouched.
+  - **Scope boundary preserved**: No Claude or Windsurf configuration was changed as part of this normalization.
+
+- **In-Place Document Formalization (2026-04-08)**:
+  - **Problem**: Formalization created a copy of the document instead of transitioning the same document, causing duplication, title modification (`_firma` suffix), and user confusion.
+  - **New `formalize_document` endpoint**: `POST /api/dynamic-documents/{id}/formalize/` — transitions Completed → PendingSignatures on the same document. No copy, no title change, creates DocumentSignature records for selected signers.
+  - **New `correct_document` endpoint**: `POST /api/dynamic-documents/{id}/correct/` — combines content update + signature reopening into a single atomic call for Rejected/Expired documents (previously required two separate HTTP calls).
+  - **Optimistic locking**: Both endpoints use `filter(state=...).update()` instead of `select_for_update()` — no row lock held during signer validation. Returns 409 on concurrent state conflicts.
+  - **Frontend**: New `formalizeDocument` and `correctDocument` store actions. `DocumentForm.vue` formalize and correction branches refactored to use single-endpoint calls.
+  - **Tests**: 30 new backend tests (16 formalize + 14 correct) covering happy path, validation, permissions, optimistic lock mechanism, title preservation, same-document-ID verification.
+  - Implements planned feature #12 (In-Place Formalize) from `docs/next_requirements/`.
+
+- **Servicios y Trámites module implemented (2026-04-08)**:
+  - **Backend models**: `Service`, `ServiceStage`, `ServiceField`, `ServiceRequest`, `ServiceRequestSequence`, `ServiceRequestAnswer`, file/response models; includes yearly sequential tracking number format `YYYY-00001`.
+  - **Backend APIs**: service catalog (featured + list + detail), admin service management, draft/save/submit flow, my requests, inbox requests, request detail, lawyer/admin status management, and secure file/PDF downloads.
+  - **Document + notifications**: PDF generation with submission summary and legal note; email notifications for submission and status updates to requester/managers.
+  - **Seed data**: migration seeds initial `Registro Marcario` service with 4 stages and required fields/files.
+  - **Frontend**: new `services_tramites` store, dashboard featured services grid, services list/detail, my requests, inbox, request detail, and admin builder view; router + sidebar role-based navigation integrated.
+  - **Testing**: backend tests added for create/list/submit/manage/permissions and oversized attachment validation; feature test suite passing.
 
 - **Dynamic Documents N+1 Query Fix (2026-03-29)**:
   - **Root cause**: Silk profiling reported 170–255 DB queries per request on `GET /api/dynamic-documents/` and related signature endpoints.

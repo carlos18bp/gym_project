@@ -1,0 +1,3 @@
+interface:
+  display_name: "Server Diagnostic"
+  short_description: "Run phased server diagnostics and prioritize actions"

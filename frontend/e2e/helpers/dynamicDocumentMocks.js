@@ -38,13 +38,15 @@ export function buildMockDocument({
   variables = [],
   signatures = [],
   requires_signature = false,
+  signature_type = "normal",
   relationships_count = 0,
-  summary_counterpart = "",
+  summary_counterparty = "",
   summary_object = "",
   summary_value = "",
   summary_term = "",
   summary_subscription_date = null,
-  summary_expiration_date = null,
+  summary_start_date = null,
+  summary_end_date = null,
 } = {}) {
   const nowIso = new Date().toISOString();
 
@@ -62,13 +64,15 @@ export function buildMockDocument({
     variables,
     signatures,
     requires_signature,
+    signature_type,
     relationships_count,
-    summary_counterpart,
+    summary_counterparty,
     summary_object,
     summary_value,
     summary_term,
     summary_subscription_date,
-    summary_expiration_date,
+    summary_start_date,
+    summary_end_date,
   };
 }
 
@@ -218,7 +222,10 @@ export async function installDynamicDocumentApiMocks(
       const page = parseInt(params.get("page") || "1", 10);
       const limit = parseInt(params.get("limit") || "10", 10);
       const start = (page - 1) * limit;
-      const paged = filtered.slice(start, start + limit);
+      // Mirror the production list serializer, which omits `content` for
+      // performance. Consumers that need content must hit the detail endpoint
+      // (regression guard for fix 1.3).
+      const paged = filtered.slice(start, start + limit).map(({ content, ...rest }) => rest);
 
       return {
         status: 200,
@@ -266,6 +273,35 @@ export async function installDynamicDocumentApiMocks(
         status: 201,
         contentType: "application/json",
         body: JSON.stringify(newFolder),
+      };
+    }
+
+    // Folder update (also used by "Add to folder" — SelectFolderModal delegates
+    // addDocumentsToFolder → updateFolder → PATCH folders/<id>/update/ with document_ids).
+    const folderUpdateMatch = apiPath.match(/^dynamic-documents\/folders\/(\d+)\/update\/$/);
+    if (folderUpdateMatch && route.request().method() === "PATCH") {
+      const folderId = Number(folderUpdateMatch[1]);
+      const folder = folderList.find((f) => f.id === folderId);
+      if (folder) {
+        const body = route.request().postDataJSON?.() || {};
+        if (Array.isArray(body.document_ids)) {
+          folder.document_ids = body.document_ids;
+          folder.documents = body.document_ids
+            .map((docId) => docs.find((d) => d.id === docId))
+            .filter(Boolean);
+        }
+        if (typeof body.name === "string") folder.name = body.name;
+        if (typeof body.color_id === "number") folder.color_id = body.color_id;
+        return {
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(folder),
+        };
+      }
+      return {
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Folder not found" }),
       };
     }
 
@@ -377,6 +413,194 @@ export async function installDynamicDocumentApiMocks(
         contentType: "application/json",
         body: JSON.stringify({ site_key: "e2e-site-key" }),
       };
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Install API mocks for formalize/correct document flows.
+ * Includes formalize and correct endpoint handlers, paginated document list,
+ * document detail/update, permissions, relationships, signatures, and misc.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {Object} options
+ * @param {number} options.userId - Lawyer user ID
+ * @param {Array} options.documents - Array of mock documents (from buildMockDocument)
+ * @param {Function|null} [options.formalizeHandler] - Custom handler for POST /formalize/
+ * @param {Function|null} [options.correctHandler] - Custom handler for POST /correct/
+ */
+export async function installFormalizeMocks(
+  page,
+  { userId, documents, formalizeHandler = null, correctHandler = null }
+) {
+  const lawyer = buildMockUser({ id: userId, role: "lawyer", hasSignature: true });
+  const client = buildMockUser({ id: userId + 1, role: "client", hasSignature: false, isGymLawyer: false });
+  const nowIso = new Date().toISOString();
+
+  await mockApi(page, async ({ route, apiPath }) => {
+    const method = route.request().method();
+
+    if (apiPath === "validate_token/") {
+      return { status: 200, contentType: "application/json", body: "{}" };
+    }
+
+    if (apiPath === "google-captcha/site-key/") {
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    }
+
+    if (apiPath === "users/") {
+      return { status: 200, contentType: "application/json", body: JSON.stringify([lawyer, client]) };
+    }
+
+    if (apiPath === `users/${userId}/`) {
+      return { status: 200, contentType: "application/json", body: JSON.stringify(lawyer) };
+    }
+
+    if (apiPath === `users/${userId}/signature/`) {
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: true }) };
+    }
+
+    // Formalize endpoint
+    if (apiPath.match(/^dynamic-documents\/\d+\/formalize\/$/) && method === "POST") {
+      if (formalizeHandler) {
+        return formalizeHandler(route);
+      }
+      const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/formalize\/$/)[1]);
+      const doc = documents.find((d) => d.id === docId);
+      if (doc) {
+        const updated = { ...doc, state: "PendingSignatures", requires_signature: true, fully_signed: false };
+        return { status: 200, contentType: "application/json", body: JSON.stringify(updated) };
+      }
+      return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Not found" }) };
+    }
+
+    // Correct endpoint
+    if (apiPath.match(/^dynamic-documents\/\d+\/correct\/$/) && method === "POST") {
+      if (correctHandler) {
+        return correctHandler(route);
+      }
+      const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/correct\/$/)[1]);
+      const doc = documents.find((d) => d.id === docId);
+      if (doc) {
+        const updated = { ...doc, state: "PendingSignatures", fully_signed: false };
+        return { status: 200, contentType: "application/json", body: JSON.stringify(updated) };
+      }
+      return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Not found" }) };
+    }
+
+    // Document list (paginated)
+    if (apiPath === "dynamic-documents/" && method === "GET") {
+      const url = new URL(route.request().url());
+      const params = url.searchParams;
+      let filtered = [...documents];
+
+      const stateParam = params.get("state");
+      const statesParam = params.get("states");
+
+      if (statesParam) {
+        const statesList = statesParam.split(",").map((s) => s.trim());
+        filtered = filtered.filter((d) => statesList.includes(d.state));
+      } else if (stateParam) {
+        filtered = filtered.filter((d) => d.state === stateParam);
+      }
+
+      const pg = parseInt(params.get("page") || "1", 10);
+      const limit = parseInt(params.get("limit") || "10", 10);
+      const start = (pg - 1) * limit;
+      const paged = filtered.slice(start, start + limit);
+
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: paged,
+          totalItems: filtered.length,
+          totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+          currentPage: pg,
+        }),
+      };
+    }
+
+    // Document detail
+    if (apiPath.match(/^dynamic-documents\/\d+\/$/) && method === "GET") {
+      const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/$/)[1]);
+      const doc = documents.find((d) => d.id === docId);
+      if (doc) {
+        return { status: 200, contentType: "application/json", body: JSON.stringify(doc) };
+      }
+    }
+
+    // Document update
+    if (apiPath.match(/^dynamic-documents\/\d+\/update\/$/) && method === "PUT") {
+      const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/update\/$/)[1]);
+      const doc = documents.find((d) => d.id === docId);
+      if (doc) {
+        return { status: 200, contentType: "application/json", body: JSON.stringify(doc) };
+      }
+    }
+
+    // Document permissions
+    if (apiPath.match(/^dynamic-documents\/\d+\/permissions\/$/)) {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ is_public: false, visibility_user_ids: [], usability_user_ids: [], visibility_roles: [], usability_roles: [] }),
+      };
+    }
+
+    // Relationships
+    if (apiPath.match(/^dynamic-documents\/\d+\/relationships\/$/)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath.match(/^dynamic-documents\/\d+\/relationships\/create\/$/)) {
+      return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 1 }) };
+    }
+
+    // Pending/signed/archived docs
+    if (apiPath.match(/pending-documents-full/)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath.match(/signed-documents/)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath.match(/archived-documents/)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath.match(/pending-signatures/)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+
+    // Tags, folders, letterheads
+    if (apiPath === "dynamic-documents/tags/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath === "dynamic-documents/folders/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath === "dynamic-documents/recent/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath.match(/letterhead/)) {
+      return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "not_found" }) };
+    }
+
+    // Activity & misc
+    if (apiPath === "user-activities/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath === "create-activity/") {
+      return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 1, action_type: "other", description: "", created_at: nowIso }) };
+    }
+    if (apiPath === "recent-processes/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath === "legal-updates/active/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
+    }
+    if (apiPath === "processes/") {
+      return { status: 200, contentType: "application/json", body: "[]" };
     }
 
     return null;

@@ -25,6 +25,7 @@
 - [Performance Monitoring](#performance-monitoring)
 - [Task Queue](#task-queue)
 - [Documentation](#documentation)
+- [AI Development Tools](#ai-development-tools)
 - [Project change guidelines](#project-change-guidelines)
 
 ## Overview
@@ -903,6 +904,48 @@ Project documentation lives in the `docs/` directory:
 | `docs/FUNCTIONAL_GUIDE_BY_ROLE.md` | Feature guide by user role |
 | `docs/USER_FLOW_MAP.md` | User flow maps |
 | `docs/GLOBAL_RULES_GUIDELINES.md` | Global development rules and guidelines |
+| `docs/CODEX_METHODOLOGY_GUIDE.md` | Codex skills usage, invocation model, and daily routine |
+| `docs/CODEX_SETUP.md` | Codex setup, configuration, and skill validation |
+| `docs/CODEX_MIGRATION_MAP.md` | Mapping from legacy Claude/Windsurf assets to Codex skills |
+
+## AI Development Tools
+
+This project uses three AI coding assistants that coexist without interfering:
+
+| Tool | Config | Skills/Workflows |
+|---|---|---|
+| **OpenAI Codex** | `.codex/config.toml` | `.agents/skills/` (16 skills, invoke with `/skill-name`) |
+| **Claude Code** | `.claude/settings.json`, `CLAUDE.md` | `.claude/skills/` (16 skills, invoke with `/skill-name`) |
+| **Windsurf** | `.windsurf/rules/`, `.windsurf/workflows/` | 13 rules + 14 workflows |
+
+### Codex skills quick reference
+
+Skills in `.agents/skills/` are auto-discovered by Codex. Validate structure after changes:
+
+```bash
+scripts/check-codex-skills.sh
+```
+
+| Skill | Invoke | Description |
+|---|---|---|
+| `plan` | `/plan` | Plan a feature or approach before coding |
+| `implement` | `/implement` | Systematic multi-file implementation |
+| `debugme` | `/debugme` | Read-only diagnosis of bugs |
+| `methodology-setup` | `/methodology-setup` | Refresh Memory Bank methodology files |
+| `test-quality-gate` | `/test-quality-gate` | Improve test quality gate score |
+| `backend-test-coverage` | `/backend-test-coverage` | Increase pytest coverage |
+| `frontend-unit-test-coverage` | `/frontend-unit-test-coverage` | Increase Jest unit coverage |
+| `frontend-e2e-test-coverage` | `/frontend-e2e-test-coverage` | Increase Playwright flow coverage |
+| `e2e-user-flows-check` | `/e2e-user-flows-check` | Audit E2E coverage gaps across user flows |
+| `new-feature-checklist` | `/new-feature-checklist` | Checklist for fake data and test coverage on new features |
+| `fix-broken-tests` | `/fix-broken-tests` | Fix a specific list of failing tests |
+| `git-commit` *(manual)* | `/git-commit` | Stage, commit, and push |
+| `git-sync` *(manual)* | `/git-sync` | Sync branch with remote |
+| `deploy-staging` *(manual)* | `/deploy-staging` | Deploy a release branch to staging |
+| `deploy-and-check` *(manual)* | `/deploy-and-check` | Deploy to production |
+| `server-diagnostic-report` *(manual)* | `/server-diagnostic-report` | Run a full server health diagnostic |
+
+See `docs/CODEX_SETUP.md` for configuration and validation details.
 
 ## Project change guidelines
 

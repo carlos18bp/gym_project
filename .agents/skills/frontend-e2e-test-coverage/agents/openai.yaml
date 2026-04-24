@@ -1,0 +1,3 @@
+interface:
+  display_name: "Frontend E2E Coverage"
+  short_description: "Increase Playwright flow coverage for user journeys"

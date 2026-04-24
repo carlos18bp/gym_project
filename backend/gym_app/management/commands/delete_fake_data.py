@@ -1,21 +1,36 @@
 from django.core.management.base import BaseCommand
 from gym_app.models import (
-    Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType, 
-    LegalDiscipline, LegalRequestFiles, DynamicDocument, 
+    Process, Stage, Case, CaseFile, User, LegalRequest, LegalRequestType,
+    LegalDiscipline, LegalRequestFiles, DynamicDocument,
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
     RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
     SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
 )
+from ._seeder_constants import PROTECTED_EMAILS
 
 class Command(BaseCommand):
     help = 'Delete all fake data for clients, lawyers, processes, stages, and case files'
 
     """
     To delete fake data via console, run:
-    python3 manage.py delete_fake_data
+    python3 manage.py delete_fake_data --confirm
     """
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--confirm',
+            action='store_true',
+            default=False,
+            help='Required flag to confirm deletion of all fake data',
+        )
+
     def handle(self, *args, **options):
+        if not options.get('confirm'):
+            self.stdout.write(self.style.ERROR(
+                'This command deletes ALL fake data. Pass --confirm to proceed.\n'
+                'Usage: python3 manage.py delete_fake_data --confirm'
+            ))
+            return
         # Delete all processes
         for process in Process.objects.all():
             process.delete()
@@ -91,14 +106,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Organization "{organization}" deleted'))
 
         # Delete clients and lawyers, but keep fixed test users and admin.superuser
-        protected_emails = {
-            'admin@gmail.com',
-            'core.paginaswebscolombia@gmail.com',
-            'carlos18bp@gmail.com',
-            'info.montreal.studios@gmail.com',
-        }
+        all_protected = PROTECTED_EMAILS | {'admin@gmail.com'}
 
-        for user in User.objects.filter(role__in=['client', 'lawyer']).exclude(email__in=protected_emails):
+        for user in User.objects.filter(
+            role__in=['client', 'lawyer', 'basic', 'corporate_client']
+        ).exclude(email__in=all_protected):
             user.delete()
             self.stdout.write(self.style.SUCCESS(f'User "{user}" deleted'))
 

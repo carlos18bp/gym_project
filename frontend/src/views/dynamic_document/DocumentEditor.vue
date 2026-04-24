@@ -91,10 +91,19 @@ onMounted(async () => {
  */
 const extractVariables = (content = null) => {
   const textToAnalyze = content || editorContent.value;
-  const regex = /{{(.*?)}}/g;
-  return Array.from(
-    new Set([...textToAnalyze.matchAll(regex)].map((match) => match[1]))
-  );
+  // Match across tags, newlines and &nbsp; that TinyMCE may inject between
+  // the opening {{ and the closing }} (common when pasting tables from Word).
+  // Mirrors backend normalize_fragmented_variables pattern.
+  const pattern = /\{\{((?:[^}]|\}(?!\}))*)\}\}/g;
+  const names = [];
+  for (const match of textToAnalyze.matchAll(pattern)) {
+    const clean = match[1]
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+    if (clean) names.push(clean);
+  }
+  return Array.from(new Set(names));
 };
 
 /**
@@ -479,10 +488,11 @@ function enforceCarlito(content) {
 const editorConfig = computed(() => ({
   language: "es",
   plugins: "lists link image table code wordcount autolink searchreplace",
-  menubar: "",
-  toolbar: isClient.value 
+  menubar: isClient.value ? "" : "edit insert format table",
+  toolbar: isClient.value
     ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
-    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol",
+  contextmenu: isClient.value ? "" : "table",
   height: "100vh",
   width: "100%",
 
@@ -511,6 +521,27 @@ const editorConfig = computed(() => ({
   paste_remove_styles_if_webkit: false,
   paste_merge_formats: true,
   paste_as_text: false,
+
+  // Strip Word-specific noise that xhtml2pdf cannot render (mso-* styles
+  // and Mso* class names). Prevents formatting loss when the same tables
+  // are later exported to PDF.
+  paste_postprocess: (_plugin, args) => {
+    if (!args?.node) return;
+    args.node.querySelectorAll('[style]').forEach((el) => {
+      const cleaned = el
+        .getAttribute('style')
+        .replace(/mso-[^:;"']*:[^;"']*;?/gi, '')
+        .trim();
+      if (cleaned) {
+        el.setAttribute('style', cleaned);
+      } else {
+        el.removeAttribute('style');
+      }
+    });
+    args.node.querySelectorAll('[class*="Mso"]').forEach((el) => {
+      el.removeAttribute('class');
+    });
+  },
   
   keep_styles: true,
   

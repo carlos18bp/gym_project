@@ -1,6 +1,10 @@
 import random
 from datetime import timedelta
+from pathlib import Path
+
+from django.core.files import File
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 from django.utils import timezone
 from faker import Faker
 
@@ -14,6 +18,33 @@ from gym_app.models import (
     DocumentRelationship,
     DocumentVisibilityPermission,
 )
+from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
+
+_OBJETOS = [
+    "Prestación de servicios de asesoría jurídica en materia contractual y litigios ante entidades del Estado.",
+    "Suministro de bienes y materiales de oficina necesarios para el funcionamiento de la sede principal de la firma.",
+    "Contratación de servicios profesionales de consultoría en derecho administrativo y contratación estatal.",
+    "Arrendamiento de espacio de oficina ubicado en el piso 8 del edificio Centro Empresarial Norte de Bogotá.",
+    "Prestación de servicios de representación legal ante autoridades judiciales y administrativas del orden nacional.",
+    "Diseño e implementación de un sistema de gestión documental para el área jurídica y de cumplimiento normativo.",
+    "Auditoría jurídica de contratos vigentes y asesoría en renegociación de cláusulas de incumplimiento y penalidades.",
+    "Elaboración y revisión de contratos de compraventa, arrendamiento y prestación de servicios para clientes corporativos.",
+    "Servicios de mediación y conciliación extrajudicial en conflictos contractuales entre empresas del sector privado.",
+    "Gestión y trámite de licencias, permisos y autorizaciones ante entidades regulatorias del sector energético nacional.",
+]
+
+
+def _mark_fully_signed(doc):
+    """Mark all signatures on *doc* as signed and transition to FullySigned."""
+    for sig in doc.signatures.all():
+        sig.signed = True
+        sig.signed_at = timezone.now() - timedelta(days=random.randint(1, 15))
+        sig.ip_address = f'192.168.1.{random.randint(1, 255)}'
+        sig.save()
+    doc.state = 'FullySigned'
+    doc.fully_signed = True
+    doc.save(update_fields=['state', 'fully_signed'])
+
 
 class Command(BaseCommand):
     help = 'Create fake dynamic documents for testing the documents report functionality'
@@ -41,17 +72,18 @@ class Command(BaseCommand):
 
         # Preferred test users by email (if they already exist)
         special_lawyer = User.objects.filter(
-            email='core.paginaswebscolombia@gmail.com',
+            email=SPECIAL_LAWYER_EMAIL,
             role='lawyer'
         ).first()
-        # Locate special client by email ONLY so it works even if role changes (client/basic/corporate_client)
-        special_client = User.objects.filter(
-            email='carlos18bp@gmail.com',
-        ).first()
-        # Same for basic test user
-        special_basic = User.objects.filter(
-            email='info.montreal.studios@gmail.com',
-        ).first()
+
+        # Batch lookup instead of one query per email.
+        _by_email = {
+            u.email: u
+            for u in User.objects.filter(email__in=SPECIAL_NON_LAWYER_EMAILS)
+        }
+        special_non_lawyer_users = [
+            _by_email[e] for e in SPECIAL_NON_LAWYER_EMAILS if e in _by_email
+        ]
 
         # Build weighted candidate pools so these users receive more documents
         lawyer_candidates = lawyers.copy()
@@ -59,12 +91,11 @@ class Command(BaseCommand):
             lawyer_candidates.extend([special_lawyer] * 5)
 
         client_candidates = clients.copy()
-        for user in [special_client, special_basic]:
-            if user and user not in client_candidates:
+        for user in special_non_lawyer_users:
+            if user not in client_candidates:
                 client_candidates.extend([user] * 4)
 
-        # Document state choices (must match DynamicDocument.STATE_CHOICES)
-        states = ['Draft', 'Published', 'Progress', 'Completed', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired']
+        states = [choice[0] for choice in DynamicDocument.STATE_CHOICES]
         
         # Document template titles and content patterns
         document_templates = [
@@ -119,28 +150,6 @@ class Command(BaseCommand):
         ]
         
         # Variable names for document templates
-        variable_templates = [
-            {'name_en': 'client_name', 'name_es': 'nombre_cliente', 'tooltip': 'Nombre completo del cliente', 'field_type': 'input'},
-            {'name_en': 'lawyer_name', 'name_es': 'nombre_abogado', 'tooltip': 'Nombre completo del abogado', 'field_type': 'input'},
-            {'name_en': 'start_date', 'name_es': 'fecha_inicio', 'tooltip': 'Fecha de inicio', 'field_type': 'input'},
-            {'name_en': 'end_date', 'name_es': 'fecha_fin', 'tooltip': 'Fecha de fin', 'field_type': 'input'},
-            {'name_en': 'fee_amount', 'name_es': 'monto_honorarios', 'tooltip': 'Monto de honorarios', 'field_type': 'input'},
-            {'name_en': 'details', 'name_es': 'detalles', 'tooltip': 'Detalles adicionales', 'field_type': 'text_area'},
-            {'name_en': 'contract_number', 'name_es': 'numero_contrato', 'tooltip': 'Número de contrato', 'field_type': 'input'},
-            {'name_en': 'case_description', 'name_es': 'descripcion_caso', 'tooltip': 'Descripción del caso', 'field_type': 'text_area'},
-            {'name_en': 'property_address', 'name_es': 'direccion_propiedad', 'tooltip': 'Dirección de la propiedad', 'field_type': 'input'},
-            {'name_en': 'price', 'name_es': 'precio', 'tooltip': 'Precio o monto', 'field_type': 'input'},
-            {'name_en': 'deadline', 'name_es': 'fecha_limite', 'tooltip': 'Fecha límite', 'field_type': 'input'},
-            {'name_en': 'court_name', 'name_es': 'nombre_tribunal', 'tooltip': 'Nombre del tribunal', 'field_type': 'input'},
-            {'name_en': 'judge_name', 'name_es': 'nombre_juez', 'tooltip': 'Nombre del juez', 'field_type': 'input'},
-            {'name_en': 'hearing_date', 'name_es': 'fecha_audiencia', 'tooltip': 'Fecha de audiencia', 'field_type': 'input'},
-            {'name_en': 'payment_terms', 'name_es': 'terminos_pago', 'tooltip': 'Términos de pago', 'field_type': 'text_area'}
-        ]
-        
-        # Clear existing documents if needed (uncomment if you want to start fresh)
-        # DynamicDocument.objects.all().delete()
-        # self.stdout.write(self.style.SUCCESS('Cleared existing documents'))
-        
         # Create documents
         for i in range(num_documents):
             # Select a lawyer and client, prioritizing preferred test users when available
@@ -262,7 +271,7 @@ class Command(BaseCommand):
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8),
+                value=random.choice(_OBJETOS),
                 summary_field='object'
             )
 
@@ -448,7 +457,8 @@ class Command(BaseCommand):
                 assigned_to=assigned,
                 created_at=created_at,
                 updated_at=created_at,
-                requires_signature=random.choice([True, False])
+                requires_signature=random.choice([True, False]),
+                is_public=as_template,
             )
 
             # Attach some tags similar to main documents
@@ -516,7 +526,7 @@ class Command(BaseCommand):
                 name_es='Objeto del contrato',
                 tooltip='Objeto principal del documento',
                 field_type='text_area',
-                value=fake.sentence(nb_words=8),
+                value=random.choice(_OBJETOS),
                 summary_field='object'
             )
 
@@ -715,37 +725,29 @@ class Command(BaseCommand):
 
             return doc
 
-        # 10 minutas (templates) creadas por el abogado especial
-        if special_lawyer:
+        # Minutas (templates) for every lawyer so the Minutas tab is never
+        # empty regardless of which lawyer the tester logs in with.
+        # Templates are marked is_public=True so clients can see them in "Usar Plantilla".
+        for lawyer in lawyers:
             for i in range(EXTRA_PER_USER):
                 create_full_document_for(
-                    created_by_user=special_lawyer,
+                    created_by_user=lawyer,
                     assigned_to_user=None,
                     as_template=True,
-                    label_suffix=f"Minuta {i+1} - {special_lawyer.email}"
+                    label_suffix=f"Minuta {i+1} - {lawyer.email}"
                 )
 
-        # 10 documentos asignados directamente al cliente especial
-        if special_client and lawyer_candidates:
-            for i in range(EXTRA_PER_USER):
-                lawyer = random.choice(lawyer_candidates)
-                create_full_document_for(
-                    created_by_user=lawyer,
-                    assigned_to_user=special_client,
-                    as_template=False,
-                    label_suffix=f"Documento cliente {special_client.email} #{i+1}"
-                )
-
-        # 10 documentos asignados directamente al usuario básico especial
-        if special_basic and lawyer_candidates:
-            for i in range(EXTRA_PER_USER):
-                lawyer = random.choice(lawyer_candidates)
-                create_full_document_for(
-                    created_by_user=lawyer,
-                    assigned_to_user=special_basic,
-                    as_template=False,
-                    label_suffix=f"Documento básico {special_basic.email} #{i+1}"
-                )
+        # EXTRA_PER_USER documentos asignados directamente a cada usuario no-lawyer
+        if lawyer_candidates:
+            for target_user in clients:
+                for i in range(EXTRA_PER_USER):
+                    lawyer = random.choice(lawyer_candidates)
+                    create_full_document_for(
+                        created_by_user=lawyer,
+                        assigned_to_user=target_user,
+                        as_template=False,
+                        label_suffix=f"Documento para {target_user.email} #{i+1}"
+                    )
 
         # Documentos asignados directamente al abogado especial para pruebas
         # Estos documentos permiten poblar la pestaña "Mis Documentos" cuando se inicia sesión
@@ -761,31 +763,31 @@ class Command(BaseCommand):
                     label_suffix=f"Documento abogado {special_lawyer.email} #{i+1}"
                 )
 
-        # Extra documentos creados realmente desde minutas para el cliente especial
-        if special_client:
-            templates = list(
-                DynamicDocument.objects.filter(
-                    state='Published',
-                    assigned_to__isnull=True,
-                )
+        # Extra documentos creados desde minutas para los usuarios especiales no-lawyer.
+        # Ciclo de estados balanceado por usuario: 40% PendingSignatures, 30% FullySigned,
+        # 20% Completed, 10% Progress. Garantiza >=5 PendingSignatures y >=5 FullySigned por usuario.
+        templates = list(
+            DynamicDocument.objects.filter(
+                state='Published',
+                assigned_to__isnull=True,
             )
+        )
 
-            if templates:
-                CLIENT_DOCS_FROM_TEMPLATES = 20  # Aumentado de 10 a 20
+        if templates:
+            CLIENT_DOCS_FROM_TEMPLATES = 20
+
+            for target_user in clients:
                 for i in range(CLIENT_DOCS_FROM_TEMPLATES):
                     template_doc = random.choice(templates)
-
-                    # Ciclo de estados para tener mezcla balanceada:
-                    # 40% PendingSignatures, 30% FullySigned, 20% Completed, 10% Progress
                     cycle = i % 10
                     if cycle < 4:  # 40% PendingSignatures
                         state = 'PendingSignatures'
                         requires_signature = True
                         create_sig = True
-                    elif cycle < 7:  # 30% FullySigned (firmas completadas)
-                        state = 'PendingSignatures'  # Inicialmente pending
+                    elif cycle < 7:  # 30% FullySigned (inicialmente pending, luego marcado)
+                        state = 'PendingSignatures'
                         requires_signature = True
-                        create_sig = True  # Crearemos firmas y las marcaremos como firmadas
+                        create_sig = True
                     elif cycle < 9:  # 20% Completed
                         state = 'Completed'
                         requires_signature = False
@@ -797,28 +799,52 @@ class Command(BaseCommand):
 
                     doc = create_document_from_template(
                         template_doc=template_doc,
-                        assigned_to_user=special_client,
+                        assigned_to_user=target_user,
                         state=state,
                         requires_signature=requires_signature,
-                        label_suffix=f"Desde plantilla #{i+1} para {special_client.email}",
+                        label_suffix=f"Desde plantilla #{i+1} para {target_user.email}",
                         create_signature_for_client=create_sig,
                     )
-                    
-                    # Si el ciclo indica que debe estar FullySigned, marcar todas las firmas como firmadas
-                    if doc and cycle >= 4 and cycle < 7:
-                        for sig in doc.signatures.all():
-                            sig.signed = True
-                            sig.signed_at = timezone.now() - timedelta(days=random.randint(1, 15))
-                            sig.ip_address = f'192.168.1.{random.randint(1, 255)}'
-                            sig.save()
-                        doc.state = 'FullySigned'
-                        doc.fully_signed = True
-                        doc.save(update_fields=['state', 'fully_signed'])
+
+                    if doc and 4 <= cycle < 7:
+                        _mark_fully_signed(doc)
+
+            # Bloque explícito para el abogado especial: 5 PendingSignatures + 5 FullySigned
+            # (los 10 docs que recibe vía create_full_document_for no tienen requires_signature=True)
+            if special_lawyer:
+                for i in range(5):
+                    create_document_from_template(
+                        template_doc=random.choice(templates),
+                        assigned_to_user=special_lawyer,
+                        state='PendingSignatures',
+                        requires_signature=True,
+                        label_suffix=f"Pendiente de firma #{i+1} para {special_lawyer.email}",
+                        create_signature_for_client=True,
+                    )
+                for i in range(5):
+                    doc = create_document_from_template(
+                        template_doc=random.choice(templates),
+                        assigned_to_user=special_lawyer,
+                        state='PendingSignatures',
+                        requires_signature=True,
+                        label_suffix=f"Firmado #{i+1} para {special_lawyer.email}",
+                        create_signature_for_client=True,
+                    )
+                    if doc:
+                        _mark_fully_signed(doc)
 
         # Crear algunos documentos de ejemplo en estados Rejected y Expired para pruebas del flujo de firmas
         # IMPORTANTE: Solo convertir una porción de los documentos, dejando otros en PendingSignatures
-        # para que los usuarios de prueba tengan documentos reales por firmar
-        signature_docs = list(DynamicDocument.objects.filter(requires_signature=True))
+        # para que los usuarios de prueba tengan documentos reales por firmar.
+        # Excluir a los special users para garantizar que siempre tengan docs en PendingSignatures.
+        special_user_ids = {
+            u.id for u in [*special_non_lawyer_users, special_lawyer] if u
+        }
+        signature_docs = list(
+            DynamicDocument.objects
+            .filter(requires_signature=True)
+            .exclude(assigned_to_id__in=special_user_ids)
+        )
 
         # Separar documentos PendingSignatures de los demás
         pending_docs = [doc for doc in signature_docs if doc.state == 'PendingSignatures']
@@ -871,6 +897,35 @@ class Command(BaseCommand):
             f'Remaining PendingSignatures: {DynamicDocument.objects.filter(state="PendingSignatures").count()}'
         ))
 
+        # Seed letterhead images on a representative subset so Bug 1.4 verification
+        # (outdated letterhead stays locked) can be checked with a real image, not the empty placeholder.
+        fixture_path = Path(__file__).parent / 'fixtures' / 'sample_letterhead.png'
+        if fixture_path.exists():
+            letterhead_targets = []
+            for user in [*special_non_lawyer_users, special_lawyer]:
+                if not user:
+                    continue
+                pending = DynamicDocument.objects.filter(
+                    assigned_to=user, state='PendingSignatures'
+                ).first()
+                signed = DynamicDocument.objects.filter(
+                    assigned_to=user, state='FullySigned'
+                ).first()
+                for candidate in (pending, signed):
+                    if candidate and not candidate.letterhead_image:
+                        letterhead_targets.append(candidate)
+
+            for doc in letterhead_targets:
+                with fixture_path.open('rb') as f:
+                    doc.letterhead_image.save(
+                        f'letterhead_seed_{doc.id}.png',
+                        File(f),
+                        save=True,
+                    )
+            self.stdout.write(self.style.SUCCESS(
+                f'Seeded letterhead_image on {len(letterhead_targets)} documents'
+            ))
+
         # Ensure visibility permissions for all assigned documents so clients/basic/corporate can see them
         all_docs_with_assignee = DynamicDocument.objects.filter(assigned_to__isnull=False)
         for doc in all_docs_with_assignee.select_related('assigned_to'):
@@ -884,18 +939,42 @@ class Command(BaseCommand):
                 # Fake data helper: swallow any unexpected errors here
                 continue
 
-        # Create folders (DocumentFolder) for users with assigned documents
-        owners = (
+        # Create folders (DocumentFolder) for users with assigned documents.
+        # Extended to ALL 4 roles (client, basic, corporate_client, lawyer) so Bugs
+        # 1.5, 1.6, 1.7 and Feature 1.8 can be validated across every role.
+        owners_set = set(
             User.objects
-            .exclude(role='lawyer')
             .filter(assigned_documents__isnull=False)
             .distinct()
         )
+        for user in [*special_non_lawyer_users, special_lawyer]:
+            if user:
+                owners_set.add(user)
 
-        for owner in owners:
-            owner_docs_qs = DynamicDocument.objects.filter(assigned_to=owner)
-            owner_docs = list(owner_docs_qs)
-            if not owner_docs:
+        # IDs of documents that have a non-empty counterparty variable, so
+        # Bug 1.6 columns render real values instead of "-".  Single query
+        # instead of N+1 per doc.
+        rich_doc_ids = set(
+            DocumentVariable.objects
+            .filter(summary_field='counterparty')
+            .exclude(value='')
+            .values_list('document_id', flat=True)
+        )
+
+        for owner in owners_set:
+            if owner.role == 'lawyer':
+                # Lawyers have few assigned docs; fall back to docs they created in rich states.
+                owner_docs = list(
+                    DynamicDocument.objects.filter(
+                        Q(assigned_to=owner) |
+                        Q(created_by=owner, state__in=['Completed', 'Progress', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired'])
+                    ).distinct()
+                )
+            else:
+                owner_docs = list(DynamicDocument.objects.filter(assigned_to=owner))
+
+            owner_docs = [d for d in owner_docs if d.id in rich_doc_ids]
+            if len(owner_docs) < 3:
                 continue
 
             folder_specs = [
@@ -905,9 +984,10 @@ class Command(BaseCommand):
             ]
 
             for name, color_id in folder_specs:
-                if len(owner_docs) == 0:
-                    break
-                sample_size = min(len(owner_docs), max(1, random.randint(1, len(owner_docs))))
+                # Idempotency guard: skip if the owner already has a folder with this name
+                if DocumentFolder.objects.filter(owner=owner, name=name).exists():
+                    continue
+                sample_size = min(len(owner_docs), random.randint(3, min(8, len(owner_docs))))
                 docs_sample = random.sample(owner_docs, sample_size)
                 folder = DocumentFolder.objects.create(
                     name=name,

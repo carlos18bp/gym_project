@@ -217,25 +217,25 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contraparte
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[400px]">
                 Objeto
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Valor
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Plazo
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha Suscripción
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha Inicio
               </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Fecha Terminación
               </th>
               <th v-if="showAssociationsColumn && !isMinutasView" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -285,39 +285,39 @@
                   {{ getStatusText(document) }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">
                   {{ getSummaryCounterparty(document) || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span class="text-sm text-gray-900 line-clamp-2 max-w-xs">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 min-w-[400px]">
+                <div class="text-sm text-gray-700 break-words">
                   {{ document.summary_object || '-' }}
-                </span>
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">
                   {{ getSummaryValue(document) || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-900">
                   {{ document.summary_term || '-' }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
                 <span v-if="document.summary_subscription_date">
                   {{ formatDate(document.summary_subscription_date) }}
                 </span>
                 <span v-else class="text-gray-400">-</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
                 <span v-if="document.summary_start_date">
                   {{ formatDate(document.summary_start_date) }}
                 </span>
                 <span v-else class="text-gray-400">-</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
+              <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap text-xs text-gray-900">
                 <span v-if="document.summary_end_date">
                   {{ formatDate(document.summary_end_date) }}
                 </span>
@@ -460,13 +460,6 @@
     </div>
 
     <!-- Modals -->
-    <DocumentPreviewModal
-      v-if="showPreviewModal"
-      :is-open="showPreviewModal"
-      :document="previewDocumentData"
-      @close="showPreviewModal = false"
-    />
-
     <EditDocumentModal
       v-if="activeModals.edit.isOpen"
       :is-open="activeModals.edit.isOpen"
@@ -527,6 +520,12 @@
       @close="showActionsModal = false"
       @refresh="emit('refresh')"
       @action="handleModalAction"
+    />
+
+    <SelectFolderModal
+      :is-open="showFolderPickerModal"
+      :document="folderPickerDocument"
+      @close="showFolderPickerModal = false"
     />
 
     <!-- Tags List Modal -->
@@ -613,12 +612,12 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
-import DocumentPreviewModal from "@/components/dynamic_document/common/DocumentPreviewModal.vue";
-import { showPreviewModal, previewDocumentData, openPreviewModal } from "@/shared/document_utils";
+import { openPreviewModal } from "@/shared/document_utils";
 import { getMenuOptionsForCardType } from "@/components/dynamic_document/cards/menuOptionsHelper";
 import { useCardModals, useDocumentActions, EditDocumentModal, SendDocumentModal, DocumentSignaturesModal, DocumentPermissionsModal } from "@/components/dynamic_document/cards";
 import DocumentActionsModal from "@/components/dynamic_document/common/DocumentActionsModal.vue";
 import LetterheadModal from "@/components/dynamic_document/common/LetterheadModal.vue";
+import SelectFolderModal from "@/components/dynamic_document/common/SelectFolderModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
 
@@ -712,6 +711,8 @@ const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
+const showFolderPickerModal = ref(false);
+const folderPickerDocument = ref(null);
 const showTagsModal = ref(false);
 const tagsModalDocument = ref(null);
 const currentPage = ref(1);
@@ -1099,10 +1100,15 @@ const getStateLabel = (state) => {
 };
 
 const getStatusText = (document) => {
-  return getStateLabel(document.state);
+  const label = getStateLabel(document.state);
+  if (document.signature_type === 'informative') return `${label} (Informativo)`;
+  if (document.signature_type === 'issuer_only') return `${label} (Solo Emisor)`;
+  return label;
 };
 
 const getStatusBadgeClass = (document) => {
+  if (document.signature_type === 'informative') return 'bg-purple-100 text-purple-800';
+  if (document.signature_type === 'issuer_only') return 'bg-blue-100 text-blue-800';
   const classes = {
     'Draft': 'bg-gray-100 text-gray-800',
     'Published': 'bg-blue-100 text-blue-800',
@@ -1389,6 +1395,12 @@ const handleMenuAction = async (action, document) => {
     // Copia
     case 'copy':
       await copyDocument(document);
+      break;
+
+    // Agregar a carpeta
+    case 'addToFolder':
+      folderPickerDocument.value = document;
+      showFolderPickerModal.value = true;
       break;
 
     // Fallback

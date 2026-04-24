@@ -94,7 +94,7 @@ describe("DocumentActionsModal.vue", () => {
     expect(wrapper.text()).toContain("Edición");
     expect(wrapper.text()).toContain("Visualización");
     expect(wrapper.text()).toContain("Compartir");
-    expect(wrapper.text()).toContain("Firmas");
+    expect(wrapper.text()).toContain("Formalización");
     expect(wrapper.text()).toContain("Gestión");
     expect(wrapper.text()).toContain("Eliminación");
 

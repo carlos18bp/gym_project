@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "lastUpdated": "2026-03-28",
+  "version": "1.8.0",
+  "lastUpdated": "2026-04-15",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -30,7 +30,7 @@
       ],
       "priority": "P1",
       "description": "Usuario crea cuenta nueva con verificación por código",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "auth-forgot-password": {
       "name": "Recuperar contraseña",
@@ -150,7 +150,7 @@
       ],
       "priority": "P2",
       "description": "Historial de acciones recientes con rangos de tiempo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "dashboard-quick-actions": {
       "name": "Dashboard botones de acción rápida",
@@ -190,7 +190,7 @@
       ],
       "priority": "P3",
       "description": "Actualizaciones legales activas en dashboard",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "dashboard-reports": {
       "name": "Generar reportes Excel",
@@ -230,7 +230,7 @@
       ],
       "priority": "P2",
       "description": "Visualizar planes disponibles y plan actual",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "subscriptions-checkout-free": {
       "name": "Checkout plan gratuito",
@@ -240,7 +240,7 @@
       ],
       "priority": "P1",
       "description": "Activar plan gratuito sin método de pago",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "subscriptions-checkout-paid": {
       "name": "Checkout plan pago (Wompi)",
@@ -250,7 +250,7 @@
       ],
       "priority": "P1",
       "description": "Pagar suscripción con tarjeta vía Wompi",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "subscriptions-management": {
       "name": "Gestión de suscripción",
@@ -260,7 +260,7 @@
       ],
       "priority": "P2",
       "description": "Reactivar suscripción, ver historial de pagos",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "subscriptions-cancel": {
       "name": "Cancelar suscripción",
@@ -291,7 +291,7 @@
       ],
       "priority": "P1",
       "description": "Pestañas Mis/Todos/Archivados con búsqueda y filtros",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "process-create": {
       "name": "Radicar (crear) proceso",
@@ -332,7 +332,7 @@
       ],
       "priority": "P2",
       "description": "Modal de línea de tiempo con etapas ordenadas",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "process-form-validation": {
       "name": "Validación de formulario de proceso",
@@ -393,7 +393,7 @@
       ],
       "priority": "P1",
       "description": "Editor TinyMCE con toolbar, navegación, contenido protegido",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "docs-variables-config": {
       "name": "Configurar variables de minuta",
@@ -403,7 +403,7 @@
       ],
       "priority": "P1",
       "description": "Definir campos dinámicos, tipos, clasificación, permisos. Includes field type selector, summary classification, dashboard integration tests.",
-      "expectedSpecs": 3
+      "expectedSpecs": 2
     },
     "docs-use-template": {
       "name": "Usar documento (completar minuta)",
@@ -413,7 +413,7 @@
       ],
       "priority": "P1",
       "description": "Cliente llena campos variables de plantilla asignada",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-form-interactions": {
       "name": "Formulario de documento interacciones",
@@ -423,7 +423,7 @@
       ],
       "priority": "P2",
       "description": "Campos, botones, validación, tipos de campo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-dashboard-lawyer": {
       "name": "Dashboard documentos (abogado)",
@@ -453,7 +453,7 @@
       ],
       "priority": "P1",
       "description": "Permisos de visibilidad/uso por usuario y rol",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-card-actions": {
       "name": "Acciones de tarjeta de documento",
@@ -495,7 +495,7 @@
       ],
       "priority": "P2",
       "description": "Crear, mover docs, eliminar carpetas, colores",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-download": {
       "name": "Descargar PDF/Word",
@@ -515,8 +515,8 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "Enviar documentos por correo electrónico",
-      "expectedSpecs": 1
+      "description": "Enviar documentos por correo electrónico — incluye manejo de fallas del backend",
+      "expectedSpecs": 2
     },
     "docs-duplicate": {
       "name": "Duplicar documento",
@@ -545,8 +545,8 @@
         "shared"
       ],
       "priority": "P2",
-      "description": "Draft, Published, Completed, signing states",
-      "expectedSpecs": 1
+      "description": "Draft, Published, Completed, signing states — incluye acciones de transición (publish, move-to-draft)",
+      "expectedSpecs": 2
     },
     "docs-relationships": {
       "name": "Asociar documentos",
@@ -578,7 +578,7 @@
       ],
       "priority": "P2",
       "description": "Encabezado/pie global para documentos",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "docs-preview": {
       "name": "Vista previa de documento",
@@ -649,7 +649,7 @@
       ],
       "priority": "P1",
       "description": "Dibujar o subir firma electrónica personal",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "sign-document-flow": {
       "name": "Formalizar documento con firmas",
@@ -659,6 +659,36 @@
       ],
       "priority": "P1",
       "description": "Usar minuta, completar, enviar a firma",
+      "expectedSpecs": 2
+    },
+    "formalize-in-place": {
+      "name": "Formalizar documento sin copia",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Transicionar documento Completado a PendingSignatures sin crear copia (normal, issuer_only, informative)",
+      "expectedSpecs": 2
+    },
+    "correct-document": {
+      "name": "Corregir documento rechazado/expirado",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Corregir y reenviar documento rechazado o expirado en un solo endpoint",
+      "expectedSpecs": 1
+    },
+    "minutas-columns": {
+      "name": "Columnas de tabla de minutas",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Visibilidad y orden de columnas de resumen en la tabla de minutas",
       "expectedSpecs": 1
     },
     "sign-client-flow": {
@@ -670,7 +700,7 @@
       ],
       "priority": "P1",
       "description": "Cliente firma documento electrónicamente",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-reject": {
       "name": "Rechazar documento",
@@ -681,7 +711,7 @@
       ],
       "priority": "P1",
       "description": "Rechazar documento con motivo",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-reopen": {
       "name": "Reabrir documento rechazado",
@@ -702,7 +732,7 @@
       ],
       "priority": "P2",
       "description": "Lista de documentos completamente firmados",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "sign-pending-documents": {
       "name": "Ver documentos pendientes de firma",
@@ -733,8 +763,8 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "Modal con estado de cada firmante",
-      "expectedSpecs": 1
+      "description": "Modal con estado de cada firmante, incluyendo labels por signature_type y rechazos",
+      "expectedSpecs": 2
     },
     "legal-create-request": {
       "name": "Crear solicitud legal",
@@ -744,7 +774,7 @@
       ],
       "priority": "P1",
       "description": "Nueva consulta/asesoría legal con archivos",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-list-client": {
       "name": "Ver solicitudes (cliente)",
@@ -754,7 +784,7 @@
       ],
       "priority": "P1",
       "description": "Lista de solicitudes propias del cliente",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-detail-client": {
       "name": "Detalle solicitud (cliente)",
@@ -774,7 +804,7 @@
       ],
       "priority": "P2",
       "description": "Modal para subir archivos adicionales",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-management-lawyer": {
       "name": "Gestión de solicitudes (abogado)",
@@ -784,7 +814,7 @@
       ],
       "priority": "P1",
       "description": "Ver, responder, cambiar estado de solicitudes",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "legal-response-thread": {
       "name": "Thread de conversación",
@@ -825,7 +855,7 @@
       ],
       "priority": "P1",
       "description": "Crear organización con nombre, descripción, imágenes",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-edit": {
       "name": "Editar organización",
@@ -835,7 +865,7 @@
       ],
       "priority": "P2",
       "description": "Actualizar info y portada de organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-invite-members": {
       "name": "Invitar miembros",
@@ -845,7 +875,7 @@
       ],
       "priority": "P1",
       "description": "Enviar invitaciones por email con validación",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-members-list": {
       "name": "Ver miembros",
@@ -855,7 +885,7 @@
       ],
       "priority": "P2",
       "description": "Lista de miembros del equipo",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-posts-management": {
       "name": "Gestión de publicaciones",
@@ -865,7 +895,7 @@
       ],
       "priority": "P2",
       "description": "Crear, editar, eliminar, fijar publicaciones",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "org-posts-visibility": {
       "name": "Visibilidad de publicaciones",
@@ -876,7 +906,7 @@
       ],
       "priority": "P2",
       "description": "Posts visibles para clientes, filtros, orden",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "org-corporate-requests": {
       "name": "Solicitudes corporativas (recibir/responder)",
@@ -886,7 +916,7 @@
       ],
       "priority": "P2",
       "description": "Ver solicitudes de miembros y responder",
-      "expectedSpecs": 1
+      "expectedSpecs": 4
     },
     "org-client-view": {
       "name": "Vista de cliente en organizaciones",
@@ -896,7 +926,7 @@
       ],
       "priority": "P2",
       "description": "Ver orgs, posts, tabs móvil",
-      "expectedSpecs": 1
+      "expectedSpecs": 6
     },
     "org-client-invitations": {
       "name": "Aceptar/rechazar invitación",
@@ -906,7 +936,7 @@
       ],
       "priority": "P1",
       "description": "Responder invitaciones de organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-client-requests": {
       "name": "Solicitudes corporativas (cliente)",
@@ -916,7 +946,7 @@
       ],
       "priority": "P2",
       "description": "Crear, ver, filtrar solicitudes en organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 8
     },
     "org-client-leave": {
       "name": "Salir de organización",
@@ -926,7 +956,7 @@
       ],
       "priority": "P3",
       "description": "Cliente abandona organización",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "org-cross-invite-flow": {
       "name": "Cross-role: flujo de invitación completo",
@@ -937,7 +967,7 @@
       ],
       "priority": "P1",
       "description": "Invitar, aceptar/rechazar, verificar stats",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-cross-request-flow": {
       "name": "Cross-role: flujo de solicitud corporativa",
@@ -948,7 +978,7 @@
       ],
       "priority": "P2",
       "description": "Cliente crea, corporate ve y responde",
-      "expectedSpecs": 1
+      "expectedSpecs": 5
     },
     "org-cross-member-management": {
       "name": "Cross-role: gestión de miembros",
@@ -959,7 +989,7 @@
       ],
       "priority": "P2",
       "description": "Remover miembro, desactivar org, salir",
-      "expectedSpecs": 1
+      "expectedSpecs": 3
     },
     "org-request-detail": {
       "name": "Detalle de solicitud organizacional",
@@ -1062,7 +1092,7 @@
       ],
       "priority": "P3",
       "description": "Toast de restricción, funciones limitadas. Route redirects and disabled UI controls (letterhead, SECOP filters overlay).",
-      "expectedSpecs": 2
+      "expectedSpecs": 3
     },
     "intranet-facturation-form": {
       "name": "Facturation form field interactions",
@@ -1072,7 +1102,7 @@
       ],
       "priority": "P2",
       "description": "Save button validation, file upload, successful submission, close modal",
-      "expectedSpecs": 4
+      "expectedSpecs": 1
     },
     "docs-form-field-types": {
       "name": "Document form field types",
@@ -1082,7 +1112,7 @@
       ],
       "priority": "P2",
       "description": "Rendering 6 field types, currency prefix, generate button state, cancel navigation, select options",
-      "expectedSpecs": 4
+      "expectedSpecs": 1
     },
     "docs-folder-crud": {
       "name": "Document folder CRUD",
@@ -1092,7 +1122,7 @@
       ],
       "priority": "P2",
       "description": "Folder list rendering, empty folders state",
-      "expectedSpecs": 2
+      "expectedSpecs": 1
     },
     "org-store-actions": {
       "name": "Organization store actions",
@@ -1212,7 +1242,7 @@
       ],
       "priority": "P3",
       "description": "View the last synchronization time and status indicator in the header",
-      "expectedSpecs": 1
+      "expectedSpecs": 2
     },
     "secop-trigger-sync": {
       "name": "Admin triggers manual sync",
@@ -1262,6 +1292,164 @@
       ],
       "priority": "P3",
       "description": "Open the edit modal on an existing saved view, update its name and/or filters (including multi-select UNSPSC), and save the changes via PATCH secop/saved-views/:id/.",
+      "expectedSpecs": 1
+    },
+    "service-browse-catalog": {
+      "name": "Explorar catalogo de servicios",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario ve la grilla de servicios activos y navega al detalle",
+      "expectedSpecs": 1
+    },
+    "service-browse-featured": {
+      "name": "Ver servicios destacados en Dashboard",
+      "module": "services",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P1",
+      "description": "Dashboard muestra hasta 6 servicios destacados como tarjetas",
+      "expectedSpecs": 1
+    },
+    "service-fill-form": {
+      "name": "Diligenciar formulario multi-etapa",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario completa formulario del servicio paso a paso con validacion por etapa",
+      "expectedSpecs": 1
+    },
+    "service-save-draft": {
+      "name": "Guardar borrador del formulario",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario guarda progreso parcial sin enviar, se carga al volver",
+      "expectedSpecs": 1
+    },
+    "service-submit-request": {
+      "name": "Enviar solicitud de servicio",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario envia solicitud y recibe numero de radicado YYYY-NNNNN",
+      "expectedSpecs": 1
+    },
+    "service-view-my-requests": {
+      "name": "Ver mis solicitudes",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Cliente ve historial de solicitudes con filtros por estado, servicio, radicado",
+      "expectedSpecs": 1
+    },
+    "service-view-request-detail": {
+      "name": "Ver detalle de solicitud",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Usuario ve detalle completo con respuestas por etapa, PDF y respuestas del abogado",
+      "expectedSpecs": 1
+    },
+    "service-inbox-view": {
+      "name": "Bandeja de solicitudes (Abogado)",
+      "module": "services",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Abogado ve solicitudes recibidas con filtros por estado, busqueda, fechas",
+      "expectedSpecs": 1
+    },
+    "service-manage-request": {
+      "name": "Gestionar solicitud (Abogado)",
+      "module": "services",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P1",
+      "description": "Abogado cambia estado, envia respuesta con mensaje y/o archivo adjunto",
+      "expectedSpecs": 1
+    },
+    "service-admin-create": {
+      "name": "Crear servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P1",
+      "description": "Admin crea servicio con etapas y campos dinamicos",
+      "expectedSpecs": 1
+    },
+    "service-admin-edit": {
+      "name": "Editar servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin edita servicio existente, modifica etapas y campos",
+      "expectedSpecs": 1
+    },
+    "service-admin-toggle": {
+      "name": "Activar/desactivar servicio (Admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin activa/desactiva y marca/desmarca como destacado",
+      "expectedSpecs": 1
+    },
+    "service-hub-tab-navigation": {
+      "name": "Navegar entre tabs en ServicesHub",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario cambia entre tab Servicios y Mis Solicitudes en /services, incluyendo navegacion por query param (?tab=my-requests) desde redirects legacy",
+      "expectedSpecs": 1
+    },
+    "service-upload-multiple-files": {
+      "name": "Subir multiples archivos en formulario de servicio",
+      "module": "services",
+      "roles": [
+        "client",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Usuario sube hasta 10 archivos a un campo tipo file en el formulario multi-etapa; puede eliminar archivos individuales y el contador X/10 se actualiza",
+      "expectedSpecs": 1
+    },
+    "service-admin-form-validation": {
+      "name": "Validacion de formulario admin de servicio",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P3",
+      "description": "Admin intenta guardar servicio sin datos requeridos (nombre vacio, sin etapas) y ve los mensajes de error de validateEditor()",
       "expectedSpecs": 1
     }
   }

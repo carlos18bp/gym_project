@@ -42,7 +42,9 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   ArrowRightIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  BriefcaseIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -60,23 +62,28 @@ const quickLinks = computed(() => {
       { module: 'dashboard', name: 'Inicio', icon: HomeIcon },
       { module: 'directory', name: 'Directorio', icon: UsersIcon },
       { module: 'processes', name: 'Procesos', icon: FolderIcon },
-      { module: 'documents', name: 'Archivos Jurídicos', icon: DocumentTextIcon }
+      { module: 'documents', name: 'Archivos Jurídicos', icon: DocumentTextIcon },
+      { module: 'secop', name: 'SECOP', icon: BriefcaseIcon },
+      { module: 'services', name: 'Servicios', icon: ClipboardDocumentListIcon }
     ],
     client: [
       { module: 'dashboard', name: 'Inicio', icon: HomeIcon },
       { module: 'processes', name: 'Mis Procesos', icon: FolderIcon },
       { module: 'documents', name: 'Documentos', icon: DocumentTextIcon },
+      { module: 'services', name: 'Servicios', icon: ClipboardDocumentListIcon },
       { module: 'requests', name: 'Solicitudes', icon: InboxArrowDownIcon }
     ],
     corporate_client: [
       { module: 'dashboard', name: 'Inicio', icon: HomeIcon },
       { module: 'processes', name: 'Procesos', icon: FolderIcon },
       { module: 'organizations', name: 'Organizaciones', icon: BuildingOfficeIcon },
+      { module: 'services', name: 'Servicios', icon: ClipboardDocumentListIcon },
       { module: 'requests', name: 'Solicitudes', icon: InboxArrowDownIcon }
     ],
     basic: [
       { module: 'dashboard', name: 'Inicio', icon: HomeIcon },
       { module: 'processes', name: 'Mis Procesos', icon: FolderIcon },
+      { module: 'services', name: 'Servicios', icon: ClipboardDocumentListIcon },
       { module: 'requests', name: 'Solicitudes', icon: InboxArrowDownIcon }
     ]
   };

@@ -141,7 +141,16 @@ export function useDocumentActions(documentStore, userStore, emit) {
    */
   const handlePreviewDocument = async (document) => {
     await registerView('document', document.id);
-    openPreviewModal(document);
+    let docWithContent = document;
+    if (!document.content) {
+      try {
+        const fetched = await documentStore.fetchDocumentById(document.id, true);
+        if (fetched) docWithContent = fetched;
+      } catch {
+        // fall back to the list-serializer document (preview will show empty content)
+      }
+    }
+    openPreviewModal(docWithContent);
   };
 
   /**

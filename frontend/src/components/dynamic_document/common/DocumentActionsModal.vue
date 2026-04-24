@@ -1,15 +1,20 @@
 <template>
   <ModalTransition v-show="isVisible">
     <div class="w-full h-full flex items-center justify-center p-4" @click.self="close">
-    <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div
+      class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+      data-testid="document-actions-modal"
+    >
       <!-- Modal header -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-800">Acciones del Documento</h2>
+        <h2 class="text-xl font-semibold text-gray-800" data-testid="document-actions-heading">Acciones del Documento</h2>
         <p class="text-sm text-gray-500 mt-1">
           {{ document?.title || 'Cargando...' }}
         </p>
         <button 
           @click="close" 
+          data-testid="document-actions-close"
+          aria-label="Cerrar acciones del documento"
           class="absolute top-4 right-4 text-gray-400 hover:text-gray-500 transition-colors"
         >
           <XMarkIcon class="h-6 w-6" />
@@ -36,6 +41,7 @@
                 <button
                   @click="handleAction(option.action)"
                   :disabled="option.disabled"
+                  :data-testid="`document-action-${option.action}`"
                   :class="[
                     'flex items-center justify-start w-full px-4 py-3 rounded-lg border transition-all duration-200',
                     option.disabled 
@@ -151,7 +157,8 @@ import {
   PhotoIcon,
   ShareIcon,
   XCircleIcon,
-  HandThumbDownIcon
+  HandThumbDownIcon,
+  FolderPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { getMenuOptionsForCardType } from '@/components/dynamic_document/cards/menuOptionsHelper.js';
 
@@ -205,7 +212,7 @@ const organizedOptions = computed(() => {
     view: 'Visualización',
     share: 'Compartir',
     manage: 'Gestión',
-    signatures: 'Firmas',
+    signatures: 'Formalización',
     delete: 'Eliminación'
   };
   
@@ -307,6 +314,8 @@ const getIcon = (action) => {
     return LinkIcon;
   } else if (actionLower.includes('letterhead') || actionLower.includes('membrete')) {
     return PhotoIcon;
+  } else if (actionLower === 'addtofolder' || actionLower.includes('carpeta')) {
+    return FolderPlusIcon;
   } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
     return XCircleIcon;
   } else if (actionLower.includes('signature') || actionLower.includes('firma')) {
@@ -401,4 +410,3 @@ const close = () => {
   emit('close');
 };
 </script>
-

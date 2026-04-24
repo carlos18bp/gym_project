@@ -1,7 +1,13 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
-import { buildMockDocument, buildMockUser } from "../helpers/dynamicDocumentMocks.js";
+import {
+  buildMockDocument,
+  buildMockFolder,
+  buildMockUser,
+  installDynamicDocumentApiMocks,
+} from "../helpers/dynamicDocumentMocks.js";
 import { mockApi } from "../helpers/api.js";
+import { openDocumentActionsModal } from "../helpers/documentActions.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -182,4 +188,64 @@ test("document card displays multiple documents with different states", { tag: [
 
   await expect(page.getByText("Doc Draft")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Doc Published")).toBeVisible();
+});
+
+test("lawyer adds Draft document to existing folder via Agregar a Carpeta shortcut", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  // Regression coverage for fix 1.8 — the "Agregar a Carpeta" shortcut on the
+  // DocumentActionsModal must open SelectFolderModal, and clicking a folder
+  // option must PATCH dynamic-documents/folders/<id>/update/ with the doc id.
+  const userId = 7800;
+  const folderId = 7810;
+  const docId = 7820;
+  const docTitle = "Doc Para Agregar A Carpeta";
+  const folderName = "Carpeta Destino Rápida";
+
+  await installDynamicDocumentApiMocks(page, {
+    userId,
+    role: "lawyer",
+    hasSignature: true,
+    documents: [
+      buildMockDocument({
+        id: docId,
+        title: docTitle,
+        state: "Draft",
+        createdBy: userId,
+      }),
+    ],
+    folders: [
+      buildMockFolder({ id: folderId, name: folderName, colorId: 1, documents: [] }),
+    ],
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+  await openDocumentActionsModal(page, docTitle);
+
+  // Shortcut: click "Agregar a Carpeta" in the document actions modal.
+  const addToFolderAction = page.getByTestId("document-action-addToFolder");
+  await expect(addToFolderAction).toBeVisible({ timeout: 10_000 });
+  await addToFolderAction.click();
+
+  const selectFolderModal = page.getByTestId("select-folder-modal");
+  await expect(selectFolderModal).toBeVisible({ timeout: 10_000 });
+  await expect(selectFolderModal.getByText(folderName)).toBeVisible();
+
+  // Click the folder option → SelectFolderModal PATCHes the folder.
+  const patchRequest = page.waitForRequest(
+    (req) =>
+      req.url().includes(`dynamic-documents/folders/${folderId}/update/`) &&
+      req.method() === "PATCH",
+    { timeout: 10_000 }
+  );
+  await page.getByTestId(`select-folder-option-${folderId}`).click();
+  const patched = await patchRequest;
+
+  // The PATCH payload must include the document id being added.
+  const payload = patched.postDataJSON?.() || {};
+  expect(Array.isArray(payload.document_ids)).toBe(true);
+  expect(payload.document_ids).toContain(docId);
 });

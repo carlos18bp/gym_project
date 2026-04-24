@@ -35,7 +35,7 @@ def apply_visibility_filter(queryset, user):
     Returns:
         Filtered (and possibly ``.distinct()``) queryset.
     """
-    if user.role == 'lawyer' or user.is_gym_lawyer:
+    if user.role == 'lawyer' or user.is_gym_lawyer or user.role == 'admin' or user.is_staff or user.is_superuser:
         return queryset
 
     visibility_q = (
@@ -255,7 +255,7 @@ def require_lawyer_only(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         # Check if user is a lawyer
-        if not (request.user.role == 'lawyer' or request.user.is_gym_lawyer):
+        if not (request.user.role == 'lawyer' or request.user.is_gym_lawyer or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser):
             return Response(
                 {'detail': 'Only lawyers can perform this action.'}, 
                 status=status.HTTP_403_FORBIDDEN
@@ -284,7 +284,7 @@ def filter_documents_by_visibility(view_func):
         response = view_func(request, *args, **kwargs)
         
         # If user is a lawyer, return all documents
-        if request.user.role == 'lawyer' or request.user.is_gym_lawyer:
+        if request.user.role == 'lawyer' or request.user.is_gym_lawyer or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser:
             return response
         
         # For non-lawyers, we need to filter the response data

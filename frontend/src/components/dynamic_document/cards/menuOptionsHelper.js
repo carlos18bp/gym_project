@@ -44,11 +44,51 @@ function canSignDocument(document, userStore) {
 }
 
 /**
+ * Check if the current user can edit and resend a signature document.
+ */
+function canEditAndResendSignatureDocument(document, userStore) {
+  if (!['Rejected', 'Expired'].includes(document.state)) {
+    return false;
+  }
+
+  const currentUser = userStore?.currentUser;
+  const isLawyer = currentUser?.role === 'lawyer';
+  const isCreator = document.created_by === currentUser?.id;
+
+  return isLawyer || isCreator;
+}
+
+/**
  * Card configurations - same as BaseDocumentCard
  */
 const cardConfigs = {
   lawyer: {
     getMenuOptions: (document, context, userStore) => {
+      // Template selection flow: only preview and use actions
+      if (context === 'use-template') {
+        return [
+          { label: "Previsualización", action: "preview" },
+          { label: "Usar plantilla", action: "useTemplate" },
+        ];
+      }
+
+      // Locked documents (in signature workflow) — read-only menu for lawyers too
+      if (document.state === 'FullySigned' || document.state === 'PendingSignatures') {
+        const lockedOptions = [
+          { label: "Previsualización", action: "preview" },
+          { label: "Descargar PDF", action: "downloadPDF" },
+          { label: "Descargar Word", action: "downloadWord" },
+          { label: "Ver Firmas", action: "viewSignatures" },
+        ];
+        if (document.state === 'FullySigned') {
+          lockedOptions.splice(3, 0, { label: "Descargar Doc. Formalizado", action: "downloadSignedDocument" });
+        }
+        if (canSignDocument(document, userStore)) {
+          lockedOptions.push({ label: "Firmar documento", action: "sign" });
+        }
+        return lockedOptions;
+      }
+
       let baseOptions;
 
       // For Minutas (archivos jurídicos) in lawyer view, provide a submenu
@@ -79,6 +119,7 @@ const cardConfigs = {
           { label: "Previsualización", action: "preview" },
           { label: "Crear una Copia", action: "copy" },
           { label: "Gestionar Membrete", action: "letterhead" },
+          { label: "Agregar a Carpeta", action: "addToFolder" },
         ];
       } else {
         // Default behavior for other contexts/states
@@ -89,6 +130,7 @@ const cardConfigs = {
           { label: "Previsualización", action: "preview" },
           { label: "Crear una Copia", action: "copy" },
           { label: "Gestionar Membrete", action: "letterhead" },
+          { label: "Agregar a Carpeta", action: "addToFolder" },
         ];
       }
       
@@ -147,8 +189,14 @@ const cardConfigs = {
       // For signatures context (documentos por firmar/firmados/archivados)
       const options = [
         { label: "Previsualizar", action: "preview" },
-        { label: "Gestionar Membrete", action: "letterhead" }
       ];
+
+      if (document.state !== 'FullySigned' && document.state !== 'PendingSignatures') {
+        options.push({ label: "Gestionar Membrete", action: "letterhead" });
+      }
+
+      // Add to folder option
+      options.push({ label: "Agregar a Carpeta", action: "addToFolder" });
 
       // Document relationships management (read-only in signatures context)
       // Enabled only when the document already has associations
@@ -164,7 +212,7 @@ const cardConfigs = {
         const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
         if (signatureStates.includes(document.state)) {
           options.push({
-            label: "Estado de las firmas",
+            label: "Estado de Formalización",
             action: "viewSignatures"
           });
         }
@@ -189,7 +237,7 @@ const cardConfigs = {
       // Download signed document option (only for fully signed documents)
       if (document.state === 'FullySigned') {
         options.push({
-          label: "Descargar Documento firmado",
+          label: "Descargar Doc. Formalizado",
           action: "downloadSignedDocument"
         });
       }
@@ -202,21 +250,16 @@ const cardConfigs = {
         });
       }
 
-      // Additional options for rejected documents
+      // Allow creator or lawyer to correct and resend archived signature documents
+      if (canEditAndResendSignatureDocument(document, userStore)) {
+        options.push({
+          label: "Editar y reenviar para firma",
+          action: "editAndResend"
+        });
+      }
+
+      // View rejection reason option for rejected documents when there is a comment
       if (document.state === 'Rejected') {
-        const currentUser = userStore?.currentUser;
-        const isLawyer = currentUser?.role === 'lawyer';
-        const isCreator = document.created_by === currentUser?.id;
-
-        // Allow creator or lawyer to edit and resend the document for signatures
-        if (isLawyer || isCreator) {
-          options.push({
-            label: "Editar y reenviar para firma",
-            action: "editAndResend"
-          });
-        }
-
-        // View rejection reason option for rejected documents when there is a comment
         const hasComment = Array.isArray(document.signatures) && document.signatures.some(sig => sig.rejection_comment);
         if (hasComment) {
           options.push({
@@ -232,6 +275,14 @@ const cardConfigs = {
 
   client: {
     getMenuOptions: (document, context, userStore) => {
+      // Template selection flow: only preview and use actions
+      if (context === 'use-template') {
+        return [
+          { label: "Previsualización", action: "preview" },
+          { label: "Usar plantilla", action: "useTemplate" },
+        ];
+      }
+
       const options = [];
       const isBasicUser = userStore?.currentUser?.role === 'basic';
       const isCorporateOrClient = userStore?.currentUser?.role === 'corporate_client' || 
@@ -275,7 +326,7 @@ const cardConfigs = {
           // Para documentos totalmente firmados, exponer también la descarga del documento firmado
           if (document.state === 'FullySigned') {
             options.push({
-              label: "Descargar Documento firmado",
+              label: "Descargar Doc. Formalizado",
               action: "downloadSignedDocument",
             });
           }
@@ -291,30 +342,36 @@ const cardConfigs = {
       
       // Edit options with submenu for completed documents
       if (document.state === "Completed") {
-        const editChildren = [
-          {
-            label: "Editar Formulario",
-            action: "editForm"
-          }
-        ];
+        // Informative documents should not be editable or re-formalized
+        const isInformative = document.signature_type === 'informative';
 
-        // Only non-basic users (client, corporate_client, lawyer) can access the raw document editor
-        if (!isBasicUser) {
-          editChildren.push({
-            label: "Editar Documento",
-            action: "editDocument"
+        if (!isInformative) {
+          const editChildren = [
+            {
+              label: "Editar Formulario",
+              action: "editForm"
+            }
+          ];
+
+          // Only non-basic users (client, corporate_client, lawyer) can access the raw document editor
+          if (!isBasicUser) {
+            editChildren.push({
+              label: "Editar Documento",
+              action: "editDocument"
+            });
+          }
+
+          options.push({
+            label: "Editar",
+            action: "edit-submenu",
+            isGroup: true,
+            children: editChildren
           });
         }
-
-        options.push({
-          label: "Editar",
-          action: "edit-submenu",
-          isGroup: true,
-          children: editChildren
-        });
         
-        // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles and show disabled for Basic
-        if (isCorporateOrClient || isBasicUser || isLawyer) {
+        // Add "Formalizar y Agregar Firmas" for Corporate/Client/Lawyer roles
+        // but NOT for informative documents (already formalized)
+        if (!isInformative && (isCorporateOrClient || isBasicUser || isLawyer)) {
           options.push({
             label: "Formalizar y Agregar Firmas",
             action: "formalize",
@@ -370,9 +427,12 @@ const cardConfigs = {
         });
       }
 
+      // Add to folder option
+      options.push({ label: "Agregar a Carpeta", action: "addToFolder" });
+
       // Add document relationships management option (restricted for basic users)
-      options.push({ 
-        label: "Administrar Asociaciones", 
+      options.push({
+        label: "Administrar Asociaciones",
         action: "relationships",
         // Disabled for basic users and when document is still in Progress
         disabled: isBasicUser || isProgress
@@ -447,4 +507,3 @@ export function getMenuOptionsForCardType(cardType, document, context = 'list', 
 }
 
 export { canPublishDocument, canSignDocument };
-

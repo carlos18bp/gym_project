@@ -14,7 +14,7 @@ This file captures important patterns, preferences, and project intelligence tha
 - **Domain-split models**: Models are organized by business domain in separate files under `backend/gym_app/models/` (user.py, process.py, dynamic_document.py, organization.py, etc.). All exported via `__init__.py` with explicit `__all__`.
 - **Sub-packaged views**: Complex view domains use sub-packages (`views/dynamic_documents/` has 6 files: document_views, permissions, permission_views, relationship_views, signature_views, tag_folder_views). Simpler domains are single files.
 - **Modular Pinia stores**: Complex stores use sub-module pattern (e.g., `stores/dynamic_document/` has state.js, getters.js, index.js, tags.js, permissions.js, relationships.js, filters.js, plus `folders/` sub-package with actions/getters/state/utilities/index).
-- **Composables for cross-cutting concerns**: `useIdleLogout`, `usePWAInstall`, `useSearch`, `useRecentViews`, `useSendEmail`, `useBasicUserRestrictions`, `useDocumentRelationships`, `useDocumentPermissions`, `useDocumentTags`.
+- **Composables for cross-cutting concerns**: `useIdleLogout`, `usePWAInstall`, `useSearch`, `useRecentViews`, `useSendEmail`, `useBasicUserRestrictions`, `useDocumentRelationships`, `useDocumentPermissions`, `useDocumentTags`, `useServiceRequestHelpers`.
 - **Centralized HTTP service**: All API calls go through `stores/services/request_http.js` (Axios instance with JWT interceptor).
 - **SlideBar layout wrapper**: All authenticated routes use `SlideBar` component as parent, with the actual page as a child route.
 - **Lazy route loading**: Every route uses dynamic `import()` with webpack chunk names for code splitting.
@@ -99,8 +99,37 @@ This file captures important patterns, preferences, and project intelligence tha
 
 - **Huey immediate mode**: In development, tasks run synchronously. No need for Redis or `run_huey`. But behavior may differ from production where tasks are async.
 - **User model**: Custom user model at `gym_app.User` extending `AbstractUser`. Must always reference via `AUTH_USER_MODEL` or `get_user_model()`.
-- **Large files**: `user_guide.js` (143KB) and `reports.py` (74KB) are maintenance risks — consider modularization before adding features to them.
-- **Backup file**: `useDocumentPermissions_backup.js` exists in composables — leftover from a refactor, should be cleaned up.
-- **Empty file**: `check_tags.py` in backend root is 0 bytes — can be safely removed.
-- **Debug log**: `backend/debug.log` grows unbounded (6.7MB) — needs rotation or size limit in production.
+- **Large files**: `user_guide.js` and `reports.py` are maintenance risks — consider modularization before adding features to them.
+- **Debug log**: `backend/debug.log` grows unbounded — needs rotation or size limit in production.
 - **Settings split**: `settings.py` imports `settings_dev.py` or `settings_prod.py` based on `DJANGO_ENV`. Environment-specific overrides go in those files.
+
+---
+
+## 8. Django Templates
+
+- **Auto-escaping is always ON**: Django auto-escapes all template variables by default. `{{variable}}` renders HTML entities (`<` → `&lt;`). When passing trusted HTML inline from internal Python code (not user input), add `|safe`: `{{message|safe}}`.
+- **Never use `|safe` on user input**: Use `|linebreaks`, `|escape`, or Django’s `mark_safe()` only for controlled server-side strings. User input must go through `|escape` or Django’s built-in XSS protection.
+- **Email templates with inline HTML**: When building notification contexts in Python that include `<strong>`, `<em>`, or inline `style=` attributes, the receiving template must use `|safe`. Example: `service_tramite_notifications.py` passes HTML-formatted status label; `notification.html` uses `{{message|safe}}`.
+
+---
+
+## 9. Python Import Hygiene
+
+- **Imports always at file top**: Never place `import` statements inside functions, loops, or conditionals. Python allows this but it violates PEP-8, hides dependencies, and causes performance overhead (module lookup on every call).
+- **Pattern to avoid**:
+  ```python
+  # ❌ Wrong
+  for item in items:
+      import os
+      if os.path.isfile(item.path):
+          ...
+  ```
+- **Correct pattern**:
+  ```python
+  # ✅ Correct
+  import os
+  ...
+  for item in items:
+      if os.path.isfile(item.path):
+          ...
+  ```

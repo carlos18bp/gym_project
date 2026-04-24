@@ -17,8 +17,17 @@ Este módulo proporciona un manual interactivo y contextual para guiar a los usu
 │   └── QuickLinksCard.vue     # Enlaces rápidos a módulos
 └── README.md                  # Este archivo
 
-/stores/
-└── user_guide.js              # Store con contenido y lógica
+/stores/user_guide/
+├── index.js                   # Define el store Pinia y ensambla guideContent
+├── modules.js                 # Lista de módulos (id, name, icon, roles)
+├── getters.js                 # getModulesForRole, getModuleContent, searchGuideContent
+└── content/
+    ├── dashboard_directory.js # Dashboard + Directorio
+    ├── processes.js           # Procesos judiciales
+    ├── documents.js           # Archivos Jurídicos / Documentos dinámicos
+    ├── secop.js               # SECOP — Contratación Estatal
+    ├── services_tramites.js   # Servicios y Trámites
+    └── services.js            # Solicitudes, Citas, Organizaciones, Intranet, Auth, Suscripciones
 ```
 
 ## ✨ Características Implementadas
@@ -41,7 +50,6 @@ Este módulo proporciona un manual interactivo y contextual para guiar a los usu
   - Guías paso a paso
   - Consejos y tips
   - Restricciones por rol
-  - Capturas de pantalla (preparado)
 - ✅ Formato HTML enriquecido
 
 ### 4. Responsive Design
@@ -65,7 +73,9 @@ Este módulo proporciona un manual interactivo y contextual para guiar a los usu
 
 ### 1. Agregar un Nuevo Módulo
 
-Edita `/stores/user_guide.js` en el método `initializeGuideContent()`:
+1. Crea `stores/user_guide/content/<nombre>.js` exportando un `<nombre>Content` con `{ name, icon, description, overview, sections }`.
+2. Registra la entrada correspondiente en `stores/user_guide/modules.js` (`id`, `name`, `icon`, `roles`, `description`).
+3. Importa y fusiona el contenido en `stores/user_guide/index.js` dentro de `initializeGuideContent()`:
 
 ```javascript
 this.guideContent = {
@@ -99,12 +109,6 @@ this.guideContent = {
         ],
         restrictions: [
           'Restricción para ciertos roles'
-        ],
-        screenshots: [
-          {
-            url: '/path/to/image.png',
-            caption: 'Descripción de la imagen'
-          }
         ]
       }
     ]
@@ -127,20 +131,6 @@ const allModules = [
     description: 'Descripción breve'
   }
 ];
-```
-
-### 3. Agregar Capturas de Pantalla
-
-1. Coloca las imágenes en `/public/img/user_guide/`
-2. Referencia en el contenido:
-
-```javascript
-screenshots: [
-  {
-    url: '/img/user_guide/modulo/screenshot1.png',
-    caption: 'Descripción de la funcionalidad'
-  }
-]
 ```
 
 ## 🔍 Búsqueda
@@ -232,6 +222,6 @@ Para agregar más contenido o modificar funcionalidades, consulta:
 
 ---
 
-**Última actualización**: Nov 21, 2025  
-**Versión**: 1.0.0  
+**Última actualización**: Abr 22, 2026  
+**Versión**: 1.1.0 — añadidos módulos SECOP y Servicios y Trámites (12 módulos totales)  
 **Estado**: ✅ Implementado y funcional
