@@ -25,6 +25,12 @@ from gym_app.models.dynamic_document import (
     DocumentVisibilityPermission, DocumentUsabilityPermission, Tag,
 )
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, DynamicDocumentListSerializer, RecentDocumentSerializer
+from gym_app.utils.documents import (
+    normalize_fragmented_variables,
+    sanitize_soup_for_pdf,
+    get_letterhead_for_document,
+    get_letterhead_word_template,
+)
 from django.utils import timezone
 from .permissions import (
     apply_visibility_filter,
@@ -37,35 +43,6 @@ logger = logging.getLogger(__name__)
 
 # States in which a document is locked for any write operations (content, letterhead, etc.)
 LOCKED_STATES = frozenset(['PendingSignatures', 'FullySigned'])
-
-
-def normalize_fragmented_variables(html_content):
-    """Reassemble ``{{variable}}`` patterns that TinyMCE may have split across
-    inline HTML tags (e.g. ``<span>{{</span><span>name</span><span>}}</span>``).
-
-    The function strips inline tags between the opening ``{{`` and closing ``}}``
-    so that later string-based replacement (``str.replace``) can find them.
-    """
-    if not html_content:
-        return html_content
-
-    # Pattern explanation:
-    #   \{\{          – literal {{
-    #   ((?:[^}]|     – capture group: any char except } OR
-    #   \}(?!\}))*)   –   a single } not followed by another }
-    #   \}\}          – literal }}
-    # The inner content may contain HTML tags from TinyMCE formatting.
-    pattern = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
-
-    def _clean_match(m):
-        inner = m.group(1)
-        # Strip any HTML tags that TinyMCE injected inside the variable marker
-        clean_name = re.sub(r'<[^>]*>', '', inner).strip()
-        if clean_name:
-            return '{{' + clean_name + '}}'
-        return m.group(0)  # leave unchanged if stripping left nothing
-
-    return pattern.sub(_clean_match, html_content)
 
 
 def get_optimized_document_queryset(base_qs=None):
@@ -425,8 +402,9 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
                 replacement_value or ""
             )
 
-        # Convert HTML to XHTML using BeautifulSoup
-        soup = BeautifulSoup(processed_content, 'html.parser')
+        # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+        # preserves table formatting and alignment.
+        soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
 
         # Create the PDF buffer
         pdf_buffer = io.BytesIO()
@@ -456,7 +434,9 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         # Define background image style if letterhead exists
         background_style = ""
-        letterhead_image = get_letterhead_for_document(document, document.created_by)
+        letterhead_image = get_letterhead_for_document(
+            document, document.created_by, fallback_user=request.user
+        )
         if letterhead_image:
             try:
                 # Get the absolute path to the letterhead image
@@ -473,12 +453,19 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             background-position: center;
             background-size: contain;
             background-attachment: fixed;"""
-            except (ValueError, AttributeError, IOError):  # pragma: no cover – image path error
-                # Image file doesn't exist or path is invalid
+                else:
+                    logger.warning(
+                        "Letterhead file missing on disk for doc_id=%s path=%s",
+                        document.pk, letterhead_path,
+                    )
+            except (ValueError, AttributeError, IOError) as e:
+                logger.warning(
+                    "Failed to embed letterhead for doc_id=%s: %s", document.pk, e,
+                )
                 background_style = ""
 
         body_extra_top_padding = ""
-        if letterhead_image:
+        if background_style:
             body_extra_top_padding = "padding-top: 1cm;"
 
         # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches)
@@ -551,6 +538,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             width: 100%;
             border-collapse: collapse;
             margin: 8pt 0;
+            table-layout: fixed;
             font-family: 'Carlito', sans-serif !important;
         }}
 
@@ -558,6 +546,8 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             border: 1px solid #999;
             padding: 4pt 6pt;
             vertical-align: top;
+            text-align: left;
+            word-wrap: break-word;
             font-family: 'Carlito', sans-serif !important;
         }}
 
@@ -673,18 +663,19 @@ def download_dynamic_document_word(request, pk):
         # 3. Blank document
         use_word_template = False
 
-        # First, try document-specific template
-        word_template = getattr(document, 'letterhead_word_template', None)
-        if not word_template:
-            # Fall back to document creator's global template
-            word_template = getattr(document.created_by, 'letterhead_word_template', None) if document.created_by else None
+        word_template = get_letterhead_word_template(
+            document, document.created_by, fallback_user=request.user,
+        )
 
         if word_template and hasattr(word_template, 'path') and os.path.exists(word_template.path):
             try:
                 doc = Document(word_template.path)
                 use_word_template = True
-            except Exception:
-                # Fall back to a blank document if the template cannot be opened
+            except Exception as e:
+                logger.warning(
+                    "Failed to open Word letterhead template for doc_id=%s: %s",
+                    document.pk, e,
+                )
                 doc = Document()
         else:
             doc = Document()
@@ -1540,36 +1531,6 @@ def delete_user_letterhead_word_template(request):
             {'detail': f'Error al eliminar la plantilla: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-
-# ==================== LETTERHEAD HELPER FUNCTIONS ====================
-
-def get_letterhead_for_document(document, user):
-    """
-    Get the appropriate letterhead image for a document.
-    
-    Priority:
-    1. Document-specific letterhead (if exists)
-    2. User's global letterhead (if exists)
-    3. None (no letterhead)
-    
-    Args:
-        document: DynamicDocument instance
-        user: User instance (document creator/owner)
-    
-    Returns:
-        ImageField or None: The letterhead image to use
-    """
-    # First priority: document-specific letterhead
-    if document.letterhead_image:
-        return document.letterhead_image
-    
-    # Second priority: user's global letterhead
-    if user.letterhead_image:
-        return user.letterhead_image
-    
-    # No letterhead available
-    return None
 
 
 # ==================== USER GLOBAL LETTERHEAD ENDPOINTS ====================

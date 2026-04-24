@@ -1,0 +1,232 @@
+"""Tests for gym_app.utils.documents module."""
+import pytest
+from types import SimpleNamespace
+
+from gym_app.utils.documents import (
+    normalize_fragmented_variables,
+    sanitize_soup_for_pdf,
+    sanitize_html_for_pdf,
+    get_letterhead_for_document,
+    get_letterhead_word_template,
+)
+
+
+# ── normalize_fragmented_variables ────────────────────────────────────────────
+
+
+class TestNormalizeFragmentedVariables:
+    """Tests for reassembling TinyMCE-fragmented {{variable}} markers."""
+
+    def test_returns_none_for_none_input(self):
+        assert normalize_fragmented_variables(None) is None
+
+    def test_returns_empty_string_for_empty_input(self):
+        assert normalize_fragmented_variables("") == ""
+
+    def test_simple_variable_unchanged(self):
+        html = "<p>Hello {{nombre}}</p>"
+        assert normalize_fragmented_variables(html) == html
+
+    def test_strips_inline_tags_inside_variable(self):
+        html = "<p>{{<span>nombre</span>}}</p>"
+        assert "{{nombre}}" in normalize_fragmented_variables(html)
+
+    def test_strips_nested_spans_inside_variable(self):
+        html = "{{<span style='color:red'><b>fecha</b></span>}}"
+        assert "{{fecha}}" in normalize_fragmented_variables(html)
+
+    def test_strips_nbsp_inside_variable(self):
+        html = "{{&nbsp;nombre&nbsp;}}"
+        assert "{{nombre}}" in normalize_fragmented_variables(html)
+
+    def test_multiple_variables_cleaned(self):
+        html = "<p>{{<span>a</span>}} and {{<b>b</b>}}</p>"
+        result = normalize_fragmented_variables(html)
+        assert "{{a}}" in result
+        assert "{{b}}" in result
+
+    def test_empty_variable_left_unchanged(self):
+        html = "<p>{{}}</p>"
+        result = normalize_fragmented_variables(html)
+        assert "{{}}" in result
+
+
+# ── sanitize_soup_for_pdf ─────────────────────────────────────────────────────
+
+
+class TestSanitizeSoupForPdf:
+    """Tests for Word markup sanitization for xhtml2pdf."""
+
+    def test_removes_mso_styles(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p style="mso-line-height-rule:exactly;color:red;">text</p>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('p')
+        assert 'mso-' not in p.get('style', '')
+        assert 'color:red' in p.get('style', '')
+
+    def test_removes_empty_style_after_mso_strip(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p style="mso-bidi-font-size:12.0pt;">text</p>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('p')
+        assert p.get('style') is None
+
+    def test_removes_mso_classes(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p class="MsoNormal">text</p>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('p')
+        assert p.get('class') is None
+
+    def test_preserves_non_mso_classes(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p class="MsoNormal custom-class">text</p>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('p')
+        assert 'custom-class' in p.get('class', [])
+        assert 'MsoNormal' not in p.get('class', [])
+
+    def test_adds_width_to_tables_without_width(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup('<table><tr><td>x</td></tr></table>', 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        table = result.find('table')
+        assert 'width:100%' in table.get('style', '')
+
+    def test_preserves_existing_table_width(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<table style="width:50%"><tr><td>x</td></tr></table>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        table = result.find('table')
+        assert 'width:50%' in table.get('style', '')
+
+    def test_promotes_text_align_to_align_attribute(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<table><tr><td style="text-align: center;">x</td></tr></table>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        td = result.find('td')
+        assert td.get('align') == 'center'
+
+    def test_returns_same_soup_object(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup('<p>text</p>', 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        assert result is soup
+
+
+class TestSanitizeHtmlForPdf:
+    """Tests for string-in/string-out wrapper."""
+
+    def test_returns_none_for_none_input(self):
+        assert sanitize_html_for_pdf(None) is None
+
+    def test_returns_empty_string_for_empty_input(self):
+        assert sanitize_html_for_pdf("") == ""
+
+    def test_strips_mso_from_html_string(self):
+        html = '<p style="mso-bidi-font-size:12.0pt;color:blue;">text</p>'
+        result = sanitize_html_for_pdf(html)
+        assert 'mso-' not in result
+        assert 'color:blue' in result
+
+
+# ── get_letterhead_for_document ───────────────────────────────────────────────
+
+
+class TestGetLetterheadForDocument:
+    """Tests for letterhead image resolution priority chain."""
+
+    def _make_obj(self, letterhead_image=None):
+        return SimpleNamespace(letterhead_image=letterhead_image)
+
+    def test_document_letterhead_takes_priority(self):
+        doc = self._make_obj(letterhead_image="doc_img.png")
+        creator = self._make_obj(letterhead_image="creator_img.png")
+        fallback = self._make_obj(letterhead_image="fallback_img.png")
+        assert get_letterhead_for_document(doc, creator, fallback) == "doc_img.png"
+
+    def test_creator_letterhead_when_document_has_none(self):
+        doc = self._make_obj(letterhead_image=None)
+        creator = self._make_obj(letterhead_image="creator_img.png")
+        assert get_letterhead_for_document(doc, creator) == "creator_img.png"
+
+    def test_fallback_user_letterhead_when_creator_has_none(self):
+        doc = self._make_obj(letterhead_image=None)
+        creator = self._make_obj(letterhead_image=None)
+        fallback = self._make_obj(letterhead_image="fallback_img.png")
+        assert get_letterhead_for_document(doc, creator, fallback) == "fallback_img.png"
+
+    def test_returns_none_when_all_empty(self):
+        doc = self._make_obj(letterhead_image=None)
+        creator = self._make_obj(letterhead_image=None)
+        fallback = self._make_obj(letterhead_image=None)
+        assert get_letterhead_for_document(doc, creator, fallback) is None
+
+    def test_handles_none_creator(self):
+        doc = self._make_obj(letterhead_image=None)
+        fallback = self._make_obj(letterhead_image="fallback_img.png")
+        assert get_letterhead_for_document(doc, None, fallback) == "fallback_img.png"
+
+    def test_handles_none_creator_and_none_fallback(self):
+        doc = self._make_obj(letterhead_image=None)
+        assert get_letterhead_for_document(doc, None, None) is None
+
+
+# ── get_letterhead_word_template ──────────────────────────────────────────────
+
+
+class TestGetLetterheadWordTemplate:
+    """Tests for Word template resolution priority chain."""
+
+    def _make_obj(self, template=None):
+        obj = SimpleNamespace()
+        if template is not None:
+            obj.letterhead_word_template = template
+        return obj
+
+    def test_document_template_takes_priority(self):
+        doc = SimpleNamespace(letterhead_word_template="doc_tpl.docx")
+        creator = SimpleNamespace(letterhead_word_template="creator_tpl.docx")
+        fallback = SimpleNamespace(letterhead_word_template="fallback_tpl.docx")
+        assert get_letterhead_word_template(doc, creator, fallback) == "doc_tpl.docx"
+
+    def test_creator_template_when_document_has_none(self):
+        doc = SimpleNamespace(letterhead_word_template=None)
+        creator = SimpleNamespace(letterhead_word_template="creator_tpl.docx")
+        assert get_letterhead_word_template(doc, creator) == "creator_tpl.docx"
+
+    def test_fallback_user_template_when_creator_has_none(self):
+        doc = SimpleNamespace(letterhead_word_template=None)
+        creator = SimpleNamespace(letterhead_word_template=None)
+        fallback = SimpleNamespace(letterhead_word_template="fallback_tpl.docx")
+        assert get_letterhead_word_template(doc, creator, fallback) == "fallback_tpl.docx"
+
+    def test_returns_none_when_all_empty(self):
+        doc = SimpleNamespace(letterhead_word_template=None)
+        creator = SimpleNamespace(letterhead_word_template=None)
+        fallback = SimpleNamespace(letterhead_word_template=None)
+        assert get_letterhead_word_template(doc, creator, fallback) is None
+
+    def test_handles_object_without_attribute(self):
+        doc = SimpleNamespace()  # no letterhead_word_template attr
+        creator = SimpleNamespace(letterhead_word_template="creator_tpl.docx")
+        assert get_letterhead_word_template(doc, creator) == "creator_tpl.docx"

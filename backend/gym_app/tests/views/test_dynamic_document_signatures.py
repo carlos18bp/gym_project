@@ -1987,6 +1987,69 @@ class TestCreateSignaturesPdf:
         result = signature_views.create_signatures_pdf(doc, request)
         assert isinstance(result, BytesIO)
 
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_title(self, lawyer_user, client_user):
+        """issuer_only docs show the emitter-specific audit title."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.2",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = PdfReader(buf).pages[0].extract_text() or ""
+        assert "FIRMA DEL EMISOR" in text
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_omits_recipient(self, lawyer_user, client_user):
+        """issuer_only docs must not list the recipient as a firmante."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.2",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = "".join((p.extract_text() or "") for p in PdfReader(buf).pages)
+        assert client_user.email not in text
+        assert lawyer_user.email in text
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_audit_pdf_issuer_only_role_is_emisor(self, lawyer_user, client_user):
+        """issuer_only docs label the sole firmante as 'Emisor'."""
+        doc = DynamicDocument.objects.create(
+            title="UnilateralDoc", content="<p>x</p>", state="FullySigned",
+            created_by=lawyer_user, requires_signature=True, fully_signed=True,
+            signature_type='issuer_only',
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer_user, signed=True,
+            signed_at=timezone.now(), ip_address="10.0.0.1",
+        )
+        request = SimpleNamespace(user=lawyer_user)
+
+        buf = signature_views.create_signatures_pdf(doc, request)
+        text = "".join((p.extract_text() or "") for p in PdfReader(buf).pages)
+        assert "Emisor:" in text
+
 
 # ===========================================================================
 # 2. expire_overdue_documents email failure path

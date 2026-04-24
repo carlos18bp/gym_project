@@ -111,11 +111,15 @@ const statusIcon = computed(() => {
   return null; // Will use SVG in template
 });
 
-// Status text based on document state
+// Status text based on document state and signature_type
 const statusText = computed(() => {
-  return props.document.state === 'PendingSignatures' 
-    ? 'Pendiente de firmas' 
-    : 'Completamente firmado';
+  if (props.document.state === 'PendingSignatures') {
+    return 'Pendiente de firmas';
+  }
+  const sigType = props.document.signature_type;
+  if (sigType === 'issuer_only') return 'Firmado (solo emisor)';
+  if (sigType === 'informative') return 'Formalizado (informativo)';
+  return 'Completamente firmado';
 });
 
 // Status badge classes based on document state

@@ -7,6 +7,7 @@ from gym_app.models.dynamic_document import (
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 from gym_app.views.layouts.sendEmail import send_template_email
+from gym_app.utils.documents import normalize_fragmented_variables
 
 User = get_user_model()
 
@@ -95,7 +96,6 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
     signer_id = serializers.PrimaryKeyRelatedField(
         source='signer',
         queryset=User.objects.all(),
-        write_only=True
     )
     signer_email = serializers.EmailField(source='signer.email', read_only=True)
     signer_name = serializers.SerializerMethodField(read_only=True)
@@ -420,6 +420,14 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         if not validated_data.get('created_by') and creator:
             validated_data['created_by'] = creator
 
+        # Reassemble {{variable}} markers that TinyMCE may have fragmented
+        # across inline tags (typical after pasting a table from Word) before
+        # the HTML is persisted.
+        if 'content' in validated_data and validated_data['content']:
+            validated_data['content'] = normalize_fragmented_variables(
+                validated_data['content']
+            )
+
         # Create the document
         document = DynamicDocument.objects.create(
             **validated_data,
@@ -640,6 +648,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                         )
                     except Exception as e:
                         print(f"Error updating usability permission for {user.email}: {e}")
+
+        # Reassemble {{variable}} markers before persisting (see create()).
+        if 'content' in validated_data and validated_data['content']:
+            validated_data['content'] = normalize_fragmented_variables(
+                validated_data['content']
+            )
 
         # Update main document fields
         for attr, value in validated_data.items():

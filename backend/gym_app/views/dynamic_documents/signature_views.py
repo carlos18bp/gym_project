@@ -13,7 +13,12 @@ from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
-from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset, normalize_fragmented_variables
+from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
+from gym_app.utils.documents import (
+    normalize_fragmented_variables,
+    sanitize_soup_for_pdf,
+    get_letterhead_for_document,
+)
 from .permissions import (
     apply_visibility_filter,
     require_document_visibility,
@@ -1132,42 +1137,16 @@ def register_carlito_fonts():
 
     return font_paths
 
-def get_letterhead_for_document(document, user):
-    """
-    Get the appropriate letterhead image for a document.
-    
-    Priority:
-    1. Document-specific letterhead (if exists)
-    2. User's global letterhead (if exists)
-    3. None (no letterhead)
-    
-    Args:
-        document: DynamicDocument instance
-        user: User instance (document creator/owner)
-    
-    Returns:
-        ImageField or None: The letterhead image to use
-    """
-    # First priority: document-specific letterhead
-    if document.letterhead_image:
-        return document.letterhead_image
-    
-    # Second priority: user's global letterhead
-    if user and user.letterhead_image:
-        return user.letterhead_image
-    
-    # No letterhead available
-    return None
-
-
-def generate_original_document_pdf(document, user=None):
+def generate_original_document_pdf(document, user=None, fallback_user=None):
     """
     Generates the original document PDF.
     Returns a BytesIO buffer containing the PDF.
-    
+
     Args:
         document: DynamicDocument instance
-        user: User instance (optional, for global letterhead fallback)
+        user: User instance (creator, for global letterhead primary lookup)
+        fallback_user: Optional User instance (e.g. the downloader) used as a
+            last-resort letterhead source when the creator has none configured.
     """
     # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
     processed_content = normalize_fragmented_variables(document.content)
@@ -1183,8 +1162,9 @@ def generate_original_document_pdf(document, user=None):
             replacement_value or ""
         )
 
-    # Convert HTML to XHTML using BeautifulSoup
-    soup = BeautifulSoup(processed_content, 'html.parser')
+    # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+    # preserves table formatting and alignment.
+    soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
 
     # Create temporary buffer for initial PDF
     temp_buffer = BytesIO()
@@ -1195,9 +1175,8 @@ def generate_original_document_pdf(document, user=None):
     # Define background image style if letterhead exists
     background_style = ""
     body_extra_top_padding = ""
-    letterhead_image = get_letterhead_for_document(document, user)
+    letterhead_image = get_letterhead_for_document(document, user, fallback_user)
     if letterhead_image:  # pragma: no cover – letterhead image processing
-        body_extra_top_padding = "\n        padding-top: 1.5cm;"
         try:
             # Get the absolute path to the letterhead image
             letterhead_path = os.path.abspath(letterhead_image.path)
@@ -1213,6 +1192,7 @@ def generate_original_document_pdf(document, user=None):
         background-position: center;
         background-size: contain;
         background-attachment: fixed;"""
+                    body_extra_top_padding = "\n        padding-top: 1.5cm;"
         except (ValueError, AttributeError, IOError):
             # Image file doesn't exist or path is invalid
             background_style = ""
@@ -1286,6 +1266,7 @@ def generate_original_document_pdf(document, user=None):
         width: 100%;
         border-collapse: collapse;
         margin: 8pt 0;
+        table-layout: fixed;
         font-family: 'Carlito', sans-serif !important;
     }}
 
@@ -1293,6 +1274,8 @@ def generate_original_document_pdf(document, user=None):
         border: 1px solid #999;
         padding: 4pt 6pt;
         vertical-align: top;
+        text-align: left;
+        word-wrap: break-word;
         font-family: 'Carlito', sans-serif !important;
     }}
 
@@ -1414,11 +1397,20 @@ def create_signatures_pdf(document, request):
     sig_type = document.signature_type or 'normal'
     is_informative = sig_type == 'informative'
     is_issuer_only = sig_type == 'issuer_only'
-    creator_id = document.created_by_id
+    # For informative/issuer_only the emisor is the formalizer (request.user at
+    # formalization time), which is stored as granted_by in visibility permissions.
+    # Fall back to created_by_id when no permissions exist (e.g. all-lawyer recipients).
+    if is_informative or is_issuer_only:
+        vp = document.visibility_permissions.select_related('granted_by').first()
+        creator_id = vp.granted_by_id if vp and vp.granted_by_id else document.created_by_id
+    else:
+        creator_id = document.created_by_id
     
     # Título principal centrado — adapted per signature_type
     if is_informative:
         elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO E INFORMADO", title_style))
+    elif is_issuer_only:
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMA DEL EMISOR", title_style))
     else:
         elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMAS", title_style))
     elements.append(Spacer(1, 12))
@@ -1502,7 +1494,7 @@ def create_signatures_pdf(document, request):
                 role_label = "Emisor" if is_creator else "Destinatario"
                 status_label = "Emitido" if is_creator else "Informado"
             elif is_issuer_only:
-                role_label = "Firmante"
+                role_label = "Emisor"
                 status_label = "Firmado" if signature.signed else "Pendiente de Firma"
             else:
                 role_label = "Firmante"
@@ -1583,6 +1575,13 @@ def create_signatures_pdf(document, request):
             "Este documento registra la emisión y comunicación del documento referenciado, "
             "verificado bajo autenticidad del(los) usuario(s) generador(es) del documento "
             "como del(los) destinatario(s).",
+            constancia_style
+        ))
+    elif is_issuer_only:
+        elements.append(Paragraph(
+            "Este documento registra la firma digitalizada aplicada por el usuario emisor "
+            "del documento referenciado. La firma ha sido verificada bajo autenticidad del "
+            "usuario generador; los destinatarios fueron notificados y no requieren firma.",
             constancia_style
         ))
     else:
@@ -1700,7 +1699,9 @@ def generate_signatures_pdf(request, pk):
             )
         
         # Get the original document PDF
-        original_pdf_buffer = generate_original_document_pdf(document, document.created_by)
+        original_pdf_buffer = generate_original_document_pdf(
+            document, document.created_by, fallback_user=request.user
+        )
         
         # Create the signatures PDF
         signatures_pdf_buffer = create_signatures_pdf(document, request)
