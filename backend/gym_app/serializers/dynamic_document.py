@@ -99,22 +99,28 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
     )
     signer_email = serializers.EmailField(source='signer.email', read_only=True)
     signer_name = serializers.SerializerMethodField(read_only=True)
-    
+    is_creator = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = DocumentSignature
         fields = [
             'id', 'signer_id', 'signer_email', 'signer_name',
             'signed', 'signed_at', 'rejected', 'rejected_at',
-            'rejection_comment', 'created_at'
+            'rejection_comment', 'created_at', 'is_creator'
         ]
         read_only_fields = ['signed', 'signed_at', 'rejected', 'rejected_at', 'rejection_comment', 'created_at']
-    
+
     def get_signer_name(self, obj):
         """Return the full name of the signer if available."""
         first_name = obj.signer.first_name or ""
         last_name = obj.signer.last_name or ""
         full_name = f"{first_name} {last_name}".strip()
         return full_name if full_name else obj.signer.email
+
+    def get_is_creator(self, obj):
+        """True when this signer is the document's creator (emisor)."""
+        creator_id = obj.document.created_by_id
+        return bool(creator_id and obj.signer_id == creator_id)
 
 
 class DynamicDocumentSerializer(serializers.ModelSerializer):
@@ -213,6 +219,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     def get_signers(self, obj):
         request = self.context.get('request')
         current_user = request.user if request and hasattr(request, 'user') else None
+        creator_id = obj.created_by_id
         signers_data = []
         # Iterate over prefetched signatures — signer is select_related in the Prefetch
         for signature in obj.signatures.all():
@@ -233,6 +240,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                 'rejected_at': signature.rejected_at,
                 'rejection_comment': signature.rejection_comment,
                 'is_current_user': bool(current_user and signer.id == current_user.id),
+                'is_creator': bool(creator_id and signer.id == creator_id),
             })
         return signers_data
         

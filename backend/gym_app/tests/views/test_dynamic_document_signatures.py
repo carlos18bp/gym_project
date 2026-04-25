@@ -3427,7 +3427,7 @@ class TestLetterheadSnapshot:
         signer_user.letterhead_image = "letterheads/downloader.png"
         signer_user.save(update_fields=["letterhead_image"])
 
-        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+        result = get_letterhead_for_document(doc, fallback_user=signer_user)
 
         assert result == doc.letterhead_image_snapshot
 
@@ -3445,14 +3445,35 @@ class TestLetterheadSnapshot:
         signer_user.letterhead_image = "letterheads/downloader.png"
         signer_user.save(update_fields=["letterhead_image"])
 
-        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+        result = get_letterhead_for_document(doc, fallback_user=signer_user)
 
         # Even though signer_user (downloader) has a letterhead, locked state
         # must NEVER fall back to it.
         assert result is None
 
-    def test_resolver_pre_formalization_keeps_legacy_priority(self, lawyer_user, signer_user):
-        """Pre-formalization the existing fallback_user behavior is preserved."""
+    def test_resolver_locked_state_uses_formalized_by_letterhead_when_snapshot_missing(
+        self, lawyer_user, signer_user,
+    ):
+        """When snapshot is empty, the issuer (formalized_by) takes priority over created_by."""
+        from gym_app.utils.documents import get_letterhead_for_document
+
+        signer_user.letterhead_image = "letterheads/issuer.png"
+        signer_user.save(update_fields=["letterhead_image"])
+
+        doc = DynamicDocument.objects.create(
+            title="Locked No Snapshot",
+            content="<p>x</p>",
+            state="FullySigned",
+            created_by=lawyer_user,        # lawyer with no letterhead
+            formalized_by=signer_user,     # actual issuer (has letterhead)
+        )
+
+        result = get_letterhead_for_document(doc)
+
+        assert result == signer_user.letterhead_image
+
+    def test_resolver_pre_formalization_keeps_fallback_user_priority(self, lawyer_user, signer_user):
+        """Pre-formalization the fallback_user (downloader) is still allowed."""
         from gym_app.utils.documents import get_letterhead_for_document
 
         doc = DynamicDocument.objects.create(
@@ -3464,29 +3485,31 @@ class TestLetterheadSnapshot:
         signer_user.letterhead_image = "letterheads/downloader.png"
         signer_user.save(update_fields=["letterhead_image"])
 
-        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+        result = get_letterhead_for_document(doc, fallback_user=signer_user)
 
         assert result == signer_user.letterhead_image
 
-    def test_formalize_normal_creates_letterhead_image_snapshot(self, lawyer_user, signer_user):
-        """formalize_document copies the creator's letterhead onto the snapshot field."""
+    def test_snapshot_uses_formalizer_letterhead_not_creator(self, lawyer_user, signer_user):
+        """The frozen letterhead must come from the formalizer, not from created_by."""
         from gym_app.utils.documents import snapshot_letterhead_on_formalize
 
-        # Configure creator-level letterhead
-        lawyer_user.letterhead_image.save(
-            "creator_lh.png",
-            SimpleUploadedFile("creator_lh.png", self._png_bytes(), content_type="image/png"),
+        # The lawyer (creator) has NO letterhead.
+        # The signer (formalizer/issuer) has one.
+        signer_user.letterhead_image.save(
+            "issuer_lh.png",
+            SimpleUploadedFile("issuer_lh.png", self._png_bytes(), content_type="image/png"),
             save=True,
         )
-
         doc = DynamicDocument.objects.create(
-            title="Snap Normal",
+            title="Snap From Formalizer",
             content="<p>x</p>",
             state="PendingSignatures",
             created_by=lawyer_user,
+            formalized_by=signer_user,
             requires_signature=True,
         )
-        snapshot_letterhead_on_formalize(doc, lawyer_user)
+
+        snapshot_letterhead_on_formalize(doc, signer_user)
         doc.refresh_from_db()
 
         assert doc.letterhead_image_snapshot
@@ -3506,13 +3529,14 @@ class TestLetterheadSnapshot:
             content="<p>x</p>",
             state="PendingSignatures",
             created_by=lawyer_user,
+            formalized_by=lawyer_user,
             requires_signature=True,
         )
         snapshot_letterhead_on_formalize(doc, lawyer_user)
         doc.refresh_from_db()
         first_snapshot_name = doc.letterhead_image_snapshot.name
 
-        # Replace the creator's letterhead — snapshot must remain stable.
+        # Replace the formalizer's letterhead — snapshot must remain stable.
         lawyer_user.letterhead_image.save(
             "lh_v2.png",
             SimpleUploadedFile("lh_v2.png", self._png_bytes(), content_type="image/png"),
@@ -3522,3 +3546,133 @@ class TestLetterheadSnapshot:
         doc.refresh_from_db()
 
         assert doc.letterhead_image_snapshot.name == first_snapshot_name
+
+    def test_ensure_letterhead_snapshot_lazy_creates_for_legacy_locked_doc(
+        self, lawyer_user, signer_user,
+    ):
+        """Locked legacy doc with no snapshot is healed on first download."""
+        from gym_app.utils.documents import ensure_letterhead_snapshot
+
+        signer_user.letterhead_image.save(
+            "issuer_lh.png",
+            SimpleUploadedFile("issuer_lh.png", self._png_bytes(), content_type="image/png"),
+            save=True,
+        )
+        doc = DynamicDocument.objects.create(
+            title="Legacy Lazy",
+            content="<p>x</p>",
+            state="FullySigned",
+            created_by=lawyer_user,
+            formalized_by=signer_user,
+            fully_signed=True,
+        )
+        assert not doc.letterhead_image_snapshot
+
+        ensure_letterhead_snapshot(doc)
+        doc.refresh_from_db()
+
+        assert doc.letterhead_image_snapshot
+        assert doc.letterhead_image_snapshot.name.startswith('letterheads_snapshot/')
+
+
+@pytest.mark.django_db
+class TestSignersIsCreatorFlag:
+    """The signers payload must mark the document creator with is_creator=True."""
+
+    def _detail_signers(self, api_client, user, document):
+        api_client.force_authenticate(user=user)
+        url = reverse("get_dynamic_document", kwargs={"pk": document.id})
+        response = api_client.get(url)
+        assert response.status_code == status.HTTP_200_OK, response.data
+        return response.data["signers"]
+
+    def test_creator_signer_is_marked_is_creator_true(self, api_client, lawyer_user, signer_user):
+        doc = DynamicDocument.objects.create(
+            title="Issuer-only",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        DocumentSignature.objects.create(document=doc, signer=lawyer_user, signed=False)
+        DocumentSignature.objects.create(document=doc, signer=signer_user, signed=True, signed_at=timezone.now())
+
+        signers = self._detail_signers(api_client, lawyer_user, doc)
+
+        creator_row = next(s for s in signers if s["signer_id"] == lawyer_user.id)
+        assert creator_row["is_creator"] is True
+
+    def test_recipient_signer_is_marked_is_creator_false(self, api_client, lawyer_user, signer_user):
+        doc = DynamicDocument.objects.create(
+            title="Issuer-only",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        DocumentSignature.objects.create(document=doc, signer=lawyer_user, signed=False)
+        DocumentSignature.objects.create(document=doc, signer=signer_user, signed=True, signed_at=timezone.now())
+
+        signers = self._detail_signers(api_client, lawyer_user, doc)
+
+        recipient_row = next(s for s in signers if s["signer_id"] == signer_user.id)
+        assert recipient_row["is_creator"] is False
+
+    def test_is_creator_persists_after_creator_signs(self, api_client, lawyer_user, signer_user):
+        doc = DynamicDocument.objects.create(
+            title="Issuer-only signed",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        signature = DocumentSignature.objects.create(document=doc, signer=lawyer_user, signed=False)
+        signature.signed = True
+        signature.signed_at = timezone.now()
+        signature.save(update_fields=["signed", "signed_at"])
+
+        signers = self._detail_signers(api_client, lawyer_user, doc)
+
+        creator_row = next(s for s in signers if s["signer_id"] == lawyer_user.id)
+        assert creator_row["is_creator"] is True
+        assert creator_row["signed"] is True
+
+    def test_is_creator_false_when_created_by_is_null(self, api_client, lawyer_user, signer_user):
+        """When the creator was deleted (created_by=NULL), no signer is flagged as creator."""
+        doc = DynamicDocument.objects.create(
+            title="Orphan",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+        )
+        DocumentSignature.objects.create(document=doc, signer=signer_user)
+        DynamicDocument.objects.filter(pk=doc.pk).update(created_by=None)
+
+        signers = self._detail_signers(api_client, signer_user, doc)
+
+        assert all(s["is_creator"] is False for s in signers)
+
+    def test_document_signature_serializer_exposes_is_creator(self, api_client, lawyer_user, signer_user):
+        """The /signatures/ legacy endpoint also exposes is_creator per row."""
+        doc = DynamicDocument.objects.create(
+            title="Legacy signatures",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+        )
+        DocumentSignature.objects.create(document=doc, signer=lawyer_user, signed=False)
+        DocumentSignature.objects.create(document=doc, signer=signer_user, signed=False)
+
+        api_client.force_authenticate(user=lawyer_user)
+        url = reverse("get-document-signatures", kwargs={"document_id": doc.id})
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        rows_by_signer = {row["signer_id"]: row for row in response.data}
+        assert rows_by_signer[lawyer_user.id]["is_creator"] is True
+        assert rows_by_signer[signer_user.id]["is_creator"] is False

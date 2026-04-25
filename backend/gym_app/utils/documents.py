@@ -5,8 +5,11 @@ PDF rendering (via xhtml2pdf) work consistently regardless of whether the
 user typed content directly or pasted it from Word / Google Docs.
 """
 
+import logging
 import re
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 # Matches ``{{variable}}`` even when TinyMCE fragments it across inline tags,
 # newlines, or &nbsp; sequences (common after pasting a table from Word).
@@ -66,11 +69,20 @@ def sanitize_soup_for_pdf(soup):
 
     for table in soup.find_all('table'):
         style = table.get('style', '')
-        if 'width' not in style:
-            style = (style + ';width:100%').strip(';')
+        has_explicit_width = (
+            'width' in style
+            or table.get('width')
+            or any(
+                col.get('width') or 'width' in (col.get('style') or '')
+                for col in table.find_all('col')
+            )
+        )
+        if not has_explicit_width:
+            style = (style + ';width:100%;table-layout:fixed').strip(';')
         if 'border-collapse' not in style:
             style = (style + ';border-collapse:collapse').strip(';')
-        table['style'] = style
+        if style:
+            table['style'] = style
 
     # xhtml2pdf honours align="center" on cells more reliably than CSS.
     for cell in soup.find_all(['td', 'th']):
@@ -79,6 +91,15 @@ def sanitize_soup_for_pdf(soup):
             match = re.search(r'text-align\s*:\s*([a-zA-Z]+)', style)
             if match and not cell.get('align'):
                 cell['align'] = match.group(1).lower()
+
+    # xhtml2pdf inherits cell alignment to inner blocks only via the legacy
+    # align attribute, so promote text-align from <p>/<div> inside cells too.
+    for block in soup.select('td p, td div, th p, th div'):
+        style = block.get('style', '')
+        if 'text-align' in style and not block.get('align'):
+            match = re.search(r'text-align\s*:\s*([a-zA-Z]+)', style)
+            if match:
+                block['align'] = match.group(1).lower()
 
     return soup
 
@@ -97,7 +118,17 @@ def sanitize_html_for_pdf(html_content):
 LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')
 
 
-def get_letterhead_for_document(document, creator, fallback_user=None):
+def _resolve_issuer(document):
+    """Return the user whose letterhead represents the document's emisor.
+
+    Priority: ``document.formalized_by`` (the user who clicked "Formalizar")
+    falls back to ``document.created_by`` for documents predating the
+    ``formalized_by`` field. The caller decides what to do when both are None.
+    """
+    return getattr(document, 'formalized_by', None) or getattr(document, 'created_by', None)
+
+
+def get_letterhead_for_document(document, fallback_user=None):
     """Resolve which letterhead image applies to ``document``.
 
     Once the document is formalized (state in :data:`LETTERHEAD_LOCKED_STATES`)
@@ -105,112 +136,143 @@ def get_letterhead_for_document(document, creator, fallback_user=None):
     contents (including the letterhead) must remain inalterable regardless of
     who downloads it. ``fallback_user`` is intentionally ignored in those states.
 
-    For pre-formalization states the original priority applies:
-    document-specific → creator's global → ``fallback_user``'s global → ``None``.
+    Pre-formalization priority: doc-specific → formalized_by → created_by →
+    ``fallback_user`` → ``None``.
     """
+    issuer = _resolve_issuer(document)
     if getattr(document, 'state', None) in LETTERHEAD_LOCKED_STATES:
         snapshot = getattr(document, 'letterhead_image_snapshot', None)
         if snapshot:
             return snapshot
-        # No snapshot yet (pre-fix legacy doc): degrade to creator's letterhead
-        # without ever using the downloader as a fallback so the contents stay
-        # stable across viewers.
+        # Snapshot empty (legacy or formalize-time failure): keep the result
+        # deterministic across downloaders by walking the issuer chain. Never
+        # use the downloader as a fallback here.
         if document.letterhead_image:
             return document.letterhead_image
-        if creator and creator.letterhead_image:
-            return creator.letterhead_image
+        if issuer and issuer.letterhead_image:
+            return issuer.letterhead_image
         return None
     if document.letterhead_image:
         return document.letterhead_image
-    if creator and creator.letterhead_image:
-        return creator.letterhead_image
+    if issuer and issuer.letterhead_image:
+        return issuer.letterhead_image
     if fallback_user and fallback_user.letterhead_image:
         return fallback_user.letterhead_image
     return None
 
 
-def get_letterhead_word_template(document, creator, fallback_user=None):
+def get_letterhead_word_template(document, fallback_user=None):
     """Resolve which Word letterhead template applies to ``document``.
 
     Mirrors the snapshot/locked-state behaviour of
     :func:`get_letterhead_for_document` for the Word path.
     """
+    issuer = _resolve_issuer(document)
     if getattr(document, 'state', None) in LETTERHEAD_LOCKED_STATES:
         snapshot = getattr(document, 'letterhead_word_template_snapshot', None)
         if snapshot:
             return snapshot
         if getattr(document, 'letterhead_word_template', None):
             return document.letterhead_word_template
-        if creator and getattr(creator, 'letterhead_word_template', None):
-            return creator.letterhead_word_template
+        if issuer and getattr(issuer, 'letterhead_word_template', None):
+            return issuer.letterhead_word_template
         return None
     if getattr(document, 'letterhead_word_template', None):
         return document.letterhead_word_template
-    if creator and getattr(creator, 'letterhead_word_template', None):
-        return creator.letterhead_word_template
+    if issuer and getattr(issuer, 'letterhead_word_template', None):
+        return issuer.letterhead_word_template
     if fallback_user and getattr(fallback_user, 'letterhead_word_template', None):
         return fallback_user.letterhead_word_template
     return None
 
 
-def snapshot_letterhead_on_formalize(document, creator):
-    """Freeze the letterhead (image + Word template) on the document at formalization.
+def _copy_field_to_snapshot(source_field, target_field, document_pk, default_ext):
+    """Copy a FileField/ImageField's bytes into another field of the same model.
 
-    Idempotent: existing snapshots are not overwritten. Called from
-    ``formalize_document`` for every signature_type so the contents of the
-    formalized document never depend on the viewer or future creator changes.
+    Returns True if the snapshot field was populated. Failures are logged and
+    swallowed so they never block the calling flow (formalization or download).
     """
     from django.core.files.base import ContentFile
 
+    if not source_field:
+        return False
+    try:
+        source_field.open('rb')
+        try:
+            raw = source_field.read()
+        finally:
+            source_field.close()
+    except (FileNotFoundError, ValueError, IOError) as exc:
+        logger.warning(
+            "Letterhead snapshot: source file unreadable for doc_id=%s name=%s: %s",
+            document_pk, getattr(source_field, 'name', None), exc,
+        )
+        return False
+
+    base_name = source_field.name.rsplit('/', 1)[-1] if source_field.name else f'letterhead.{default_ext}'
+    try:
+        target_field.save(
+            f"snapshot_{document_pk}_{base_name}",
+            ContentFile(raw),
+            save=False,
+        )
+    except (ValueError, IOError) as exc:
+        logger.warning(
+            "Letterhead snapshot: failed to write snapshot for doc_id=%s: %s",
+            document_pk, exc,
+        )
+        return False
+    return True
+
+
+def snapshot_letterhead_on_formalize(document, formalizer):
+    """Freeze the letterhead (image + Word template) on the document at formalization.
+
+    Idempotent: existing snapshots are not overwritten. ``formalizer`` is the
+    user who clicked "Formalizar" — their letterhead is what gets frozen.
+    Falls back to ``document.created_by`` for legacy callers.
+    """
     fields_to_save = []
+    issuer = formalizer or _resolve_issuer(document)
 
     if not document.letterhead_image_snapshot:
         source_img = document.letterhead_image or (
-            creator.letterhead_image if creator and creator.letterhead_image else None
+            issuer.letterhead_image if issuer and issuer.letterhead_image else None
         )
-        if source_img:
-            try:
-                source_img.open('rb')
-                try:
-                    raw = source_img.read()
-                finally:
-                    source_img.close()
-                base_name = source_img.name.rsplit('/', 1)[-1] if source_img.name else 'letterhead.png'
-                document.letterhead_image_snapshot.save(
-                    f"snapshot_{document.pk}_{base_name}",
-                    ContentFile(raw),
-                    save=False,
-                )
-                fields_to_save.append('letterhead_image_snapshot')
-            except (FileNotFoundError, ValueError, IOError):
-                # Source file is missing on disk — leave snapshot empty rather
-                # than block formalization. The locked-state fallback in
-                # get_letterhead_for_document covers this gracefully.
-                pass
+        if _copy_field_to_snapshot(source_img, document.letterhead_image_snapshot, document.pk, 'png'):
+            fields_to_save.append('letterhead_image_snapshot')
 
     if not document.letterhead_word_template_snapshot:
         source_doc = (
             document.letterhead_word_template
             if getattr(document, 'letterhead_word_template', None) else None
         )
-        if not source_doc and creator and getattr(creator, 'letterhead_word_template', None):
-            source_doc = creator.letterhead_word_template
-        if source_doc:
-            try:
-                source_doc.open('rb')
-                try:
-                    raw = source_doc.read()
-                finally:
-                    source_doc.close()
-                base_name = source_doc.name.rsplit('/', 1)[-1] if source_doc.name else 'letterhead.docx'
-                document.letterhead_word_template_snapshot.save(
-                    f"snapshot_{document.pk}_{base_name}",
-                    ContentFile(raw),
-                    save=False,
-                )
-                fields_to_save.append('letterhead_word_template_snapshot')
-            except (FileNotFoundError, ValueError, IOError):
-                pass
+        if not source_doc and issuer and getattr(issuer, 'letterhead_word_template', None):
+            source_doc = issuer.letterhead_word_template
+        if _copy_field_to_snapshot(
+            source_doc, document.letterhead_word_template_snapshot, document.pk, 'docx',
+        ):
+            fields_to_save.append('letterhead_word_template_snapshot')
 
     if fields_to_save:
         document.save(update_fields=fields_to_save)
+        logger.info(
+            "Letterhead snapshot saved for doc_id=%s fields=%s formalizer_id=%s",
+            document.pk, fields_to_save, getattr(formalizer, 'pk', None),
+        )
+
+
+def ensure_letterhead_snapshot(document):
+    """Defensive lazy snapshot: backfill missing snapshots at download time.
+
+    Called from download endpoints. If the document is in a locked state and
+    its snapshot fields are empty, attempt the snapshot now using the
+    persisted ``formalized_by`` (or ``created_by`` as legacy fallback). This
+    catches documents that slipped through the formalization snapshot for any
+    reason (legacy data, prior code path, transient failure).
+    """
+    if getattr(document, 'state', None) not in LETTERHEAD_LOCKED_STATES:
+        return
+    if document.letterhead_image_snapshot and document.letterhead_word_template_snapshot:
+        return
+    snapshot_letterhead_on_formalize(document, _resolve_issuer(document))

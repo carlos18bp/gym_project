@@ -33,6 +33,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
+import { normalizeFragmentedVariables } from "@/shared/document_utils";
 
 const editorContent = ref(""); // Content of the editor
 const router = useRouter();
@@ -65,6 +66,15 @@ const isClient = computed(() => {
 // Detect if we're creating from a template (creator route) vs editing existing document (editor route)
 const isCreatingFromTemplate = computed(() => {
   return route.path.includes('/creator/');
+});
+
+// Lawyer-equivalent role check: gates editing tools (e.g. table toolbar, menubar)
+// independently from `isClient`, which only governs variable protection. This
+// way an abogado editing a client document still gets the table ribbon while
+// the protected-variable behavior remains intact.
+const isLawyer = computed(() => {
+  const role = userStore.currentUser?.role;
+  return role && role !== 'client' && role !== 'corporate_client' && role !== 'basic';
 });
 
 // Store the original content with variables
@@ -129,11 +139,14 @@ const extractVariables = (content = null) => {
  */
 const replaceVariablesWithValues = (content) => {
   if (!content || !store.selectedDocument?.variables) return content;
-  
-  let processedContent = content;
-  
+
+  // Reassemble {{var}} markers TinyMCE may have fragmented across inline tags
+  // (typical when the template has tables pasted from Word) before substitution.
+  let processedContent = normalizeFragmentedVariables(content);
+
   store.selectedDocument.variables.forEach(variable => {
-    const variablePattern = new RegExp(`{{${variable.name_en}}}`, 'g');
+    const escapedName = variable.name_en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const variablePattern = new RegExp(`{{\\s*${escapedName}\\s*}}`, 'g');
     const value = variable.value || `[${variable.name_es || variable.name_en}]`;
     
     // Create a highly protected span with multiple protection layers
@@ -508,11 +521,16 @@ const editorConfig = computed(() => ({
   promotion: false,
   content_css: [contentCss, contentUiCss],
   plugins: "lists link image table code wordcount autolink searchreplace",
-  menubar: isClient.value ? "" : "edit insert format table",
-  toolbar: isClient.value
-    ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
-    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol",
-  contextmenu: isClient.value ? "" : "table",
+  menubar: isLawyer.value ? "edit insert format table" : "",
+  toolbar_mode: 'wrap',
+  toolbar: isLawyer.value
+    ? [
+        (isClient.value ? "save return" : "save continue return") +
+          " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+        "table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol",
+      ]
+    : "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+  contextmenu: isLawyer.value ? "table" : "",
   height: "100vh",
   width: "100%",
 

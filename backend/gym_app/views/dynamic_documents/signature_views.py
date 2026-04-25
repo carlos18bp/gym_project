@@ -19,6 +19,7 @@ from gym_app.utils.documents import (
     sanitize_soup_for_pdf,
     get_letterhead_for_document,
     snapshot_letterhead_on_formalize,
+    ensure_letterhead_snapshot,
 )
 from .permissions import (
     apply_visibility_filter,
@@ -367,6 +368,11 @@ def sign_document(request, document_id, user_id):
             document.updated_at = timezone.now()
             document.save(update_fields=['state', 'fully_signed', 'updated_at'])
 
+            # Safety net: if formalization-time snapshot was missed for any
+            # reason (legacy data, transient failure), backfill it now using
+            # whatever issuer the document already knows about.
+            ensure_letterhead_snapshot(document)
+
             # For issuer_only documents, notify recipients when fully signed
             if document.signature_type == 'issuer_only':
                 _notify_issuer_only_recipients(document, signing_user)
@@ -629,6 +635,7 @@ def formalize_document(request, document_id):
             requires_signature=True,
             signature_type='informative',
             fully_signed=True,
+            formalized_by=request.user,
             updated_at=now,
         )
 
@@ -682,8 +689,10 @@ def formalize_document(request, document_id):
                 )
 
         # Freeze letterhead at formalization so the contents stay inalterable.
-        document.refresh_from_db(fields=['state'])
-        snapshot_letterhead_on_formalize(document, document.created_by)
+        # The "emisor" whose letterhead gets frozen is request.user (the user
+        # who clicked Formalize), persisted in document.formalized_by above.
+        document.refresh_from_db(fields=['state', 'formalized_by'])
+        snapshot_letterhead_on_formalize(document, request.user)
 
         document = get_optimized_document_queryset().get(pk=document_id)
         serializer = DynamicDocumentSerializer(document, context={'request': request})
@@ -712,6 +721,7 @@ def formalize_document(request, document_id):
             signature_type='issuer_only',
             fully_signed=False,
             signature_due_date=signature_due_date if signature_due_date else None,
+            formalized_by=request.user,
             updated_at=timezone.now(),
         )
 
@@ -744,8 +754,10 @@ def formalize_document(request, document_id):
         _grant_visibility_to_recipients(document, recipients, request.user)
 
         # Freeze letterhead at formalization so the contents stay inalterable.
-        document.refresh_from_db(fields=['state'])
-        snapshot_letterhead_on_formalize(document, document.created_by)
+        # The "emisor" whose letterhead gets frozen is request.user (the user
+        # who clicked Formalize), persisted in document.formalized_by above.
+        document.refresh_from_db(fields=['state', 'formalized_by'])
+        snapshot_letterhead_on_formalize(document, request.user)
 
         document = get_optimized_document_queryset().get(pk=document_id)
         serializer = DynamicDocumentSerializer(document, context={'request': request})
@@ -780,6 +792,7 @@ def formalize_document(request, document_id):
         signature_type='normal',
         fully_signed=False,
         signature_due_date=signature_due_date if signature_due_date else None,
+        formalized_by=request.user,
         updated_at=timezone.now(),
     )
 
@@ -799,8 +812,10 @@ def formalize_document(request, document_id):
     )
 
     # Freeze letterhead at formalization so the contents stay inalterable.
-    document.refresh_from_db(fields=['state'])
-    snapshot_letterhead_on_formalize(document, document.created_by)
+    # The "emisor" whose letterhead gets frozen is request.user, persisted in
+    # document.formalized_by above.
+    document.refresh_from_db(fields=['state', 'formalized_by'])
+    snapshot_letterhead_on_formalize(document, request.user)
 
     document = get_optimized_document_queryset().get(pk=document_id)
     serializer = DynamicDocumentSerializer(document, context={'request': request})
@@ -1150,17 +1165,15 @@ def register_carlito_fonts():
 
     return font_paths
 
-def generate_original_document_pdf(document, user=None, fallback_user=None):
-    """
-    Generates the original document PDF.
-    Returns a BytesIO buffer containing the PDF.
+def generate_original_document_pdf(document, fallback_user=None):
+    """Generate the original document PDF and return its BytesIO buffer.
 
-    Args:
-        document: DynamicDocument instance
-        user: User instance (creator, for global letterhead primary lookup)
-        fallback_user: Optional User instance (e.g. the downloader) used as a
-            last-resort letterhead source when the creator has none configured.
+    Letterhead resolution reads ``document.formalized_by`` (with
+    ``created_by`` as legacy fallback) internally via
+    :func:`get_letterhead_for_document`. ``fallback_user`` is only consulted
+    for non-locked states.
     """
+    ensure_letterhead_snapshot(document)
     # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
     processed_content = normalize_fragmented_variables(document.content)
 
@@ -1188,7 +1201,7 @@ def generate_original_document_pdf(document, user=None, fallback_user=None):
     # Define background image style if letterhead exists
     background_style = ""
     body_extra_top_padding = ""
-    letterhead_image = get_letterhead_for_document(document, user, fallback_user)
+    letterhead_image = get_letterhead_for_document(document, fallback_user=fallback_user)
     if letterhead_image:  # pragma: no cover – letterhead image processing
         try:
             # Get the absolute path to the letterhead image
@@ -1713,7 +1726,7 @@ def generate_signatures_pdf(request, pk):
         
         # Get the original document PDF
         original_pdf_buffer = generate_original_document_pdf(
-            document, document.created_by, fallback_user=request.user
+            document, fallback_user=request.user
         )
         
         # Create the signatures PDF

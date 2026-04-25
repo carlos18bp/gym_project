@@ -257,28 +257,33 @@ const canCurrentUserSign = computed(() => {
   if (!document.value || !document.value.requires_signature || document.value.state !== 'PendingSignatures') {
     return false;
   }
-  
+
   if (!document.value.signers || document.value.signers.length === 0) {
     return false;
   }
-  
+
+  const sigType = document.value.signature_type;
+  // Informative documents: nobody signs.
+  if (sigType === 'informative') return false;
+
   const currentUserSigner = document.value.signers.find(s => s.is_current_user);
-  
+
   if (!currentUserSigner || currentUserSigner.signed) {
     return false;
   }
-  
+
+  // Issuer-only: only the creator can sign; recipients are "Informado" only.
+  if (sigType === 'issuer_only' && !currentUserSigner.is_creator) {
+    return false;
+  }
+
   return true;
 });
 
 /**
  * Determine if a signer is the emisor (document creator).
  */
-const isEmisor = (signerObj) => {
-  if (!document.value) return false;
-  const createdById = document.value.created_by_id || document.value.created_by;
-  return signerObj.signer_id === createdById || signerObj.signer === createdById;
-};
+const isEmisor = (signerObj) => Boolean(signerObj?.is_creator);
 
 /**
  * Get the status label for a signer row in the new format, adapted by signature_type.
@@ -322,8 +327,7 @@ const getSignatureStatusClass = (signature) => {
   if (signature.rejected) return 'bg-red-100 text-red-800';
 
   const sigType = document.value?.signature_type;
-  const createdById = document.value?.created_by_id || document.value?.created_by;
-  const isCreator = signature.signer_id === createdById || signature.signer === createdById;
+  const isCreator = Boolean(signature?.is_creator);
 
   if (sigType === 'informative') {
     return isCreator ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
@@ -341,8 +345,7 @@ const getSignatureStatusLabel = (signature) => {
   if (signature.rejected) return 'Rechazado';
 
   const sigType = document.value?.signature_type;
-  const createdById = document.value?.created_by_id || document.value?.created_by;
-  const isCreator = signature.signer_id === createdById || signature.signer === createdById;
+  const isCreator = Boolean(signature?.is_creator);
 
   if (sigType === 'informative') {
     return isCreator ? 'Emitido' : 'Informado';

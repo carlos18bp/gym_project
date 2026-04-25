@@ -169,6 +169,18 @@ class DynamicDocument(models.Model):
         default='normal',
         help_text="Type of signature workflow: 'normal' (all parties sign), 'issuer_only' (only creator signs), 'informative' (no signatures needed)."
     )
+    formalized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="formalized_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=(
+            "Usuario que oprimió \"Formalizar\". Es el emisor real cuyo membrete "
+            "se congela en el snapshot del documento. Puede diferir de created_by "
+            "cuando un abogado armó el template y otro usuario lo formalizó."
+        ),
+    )
 
     def __str__(self):
         """
