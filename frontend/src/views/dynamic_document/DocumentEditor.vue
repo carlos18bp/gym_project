@@ -501,6 +501,7 @@ function enforceCarlito(content) {
  */
 const editorConfig = computed(() => ({
   promotion: false,
+  branding: false,
   plugins: "lists link image table code wordcount autolink searchreplace",
   menubar: isLawyer.value ? "edit insert format table" : "",
   toolbar_mode: 'wrap',
