@@ -72,10 +72,9 @@ const isCreatingFromTemplate = computed(() => {
 // independently from `isClient`, which only governs variable protection. This
 // way an abogado editing a client document still gets the table ribbon while
 // the protected-variable behavior remains intact.
-const isLawyer = computed(() => {
-  const role = userStore.currentUser?.role;
-  return role && role !== 'client' && role !== 'corporate_client' && role !== 'basic';
-});
+// All roles see the full editor toolbar (including table tools and menubar).
+// `isClient` still governs variable protection separately.
+const isLawyer = computed(() => true);
 
 // Store the original content with variables
 const originalContent = ref("");
