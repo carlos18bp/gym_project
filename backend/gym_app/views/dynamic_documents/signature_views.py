@@ -18,6 +18,7 @@ from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_pdf,
     get_letterhead_for_document,
+    snapshot_letterhead_on_formalize,
 )
 from .permissions import (
     apply_visibility_filter,
@@ -680,6 +681,10 @@ def formalize_document(request, document_id):
                     recipient.email, document_id, exc_info=True,
                 )
 
+        # Freeze letterhead at formalization so the contents stay inalterable.
+        document.refresh_from_db(fields=['state'])
+        snapshot_letterhead_on_formalize(document, document.created_by)
+
         document = get_optimized_document_queryset().get(pk=document_id)
         serializer = DynamicDocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -738,6 +743,10 @@ def formalize_document(request, document_id):
         # Grant visibility to recipients
         _grant_visibility_to_recipients(document, recipients, request.user)
 
+        # Freeze letterhead at formalization so the contents stay inalterable.
+        document.refresh_from_db(fields=['state'])
+        snapshot_letterhead_on_formalize(document, document.created_by)
+
         document = get_optimized_document_queryset().get(pk=document_id)
         serializer = DynamicDocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -788,6 +797,10 @@ def formalize_document(request, document_id):
         [DocumentSignature(document=document, signer=signer) for signer in signers],
         ignore_conflicts=True,
     )
+
+    # Freeze letterhead at formalization so the contents stay inalterable.
+    document.refresh_from_db(fields=['state'])
+    snapshot_letterhead_on_formalize(document, document.created_by)
 
     document = get_optimized_document_queryset().get(pk=document_id)
     serializer = DynamicDocumentSerializer(document, context={'request': request})
@@ -1408,7 +1421,7 @@ def create_signatures_pdf(document, request):
     
     # Título principal centrado — adapted per signature_type
     if is_informative:
-        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO E INFORMADO", title_style))
+        elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO INFORMADO", title_style))
     elif is_issuer_only:
         elements.append(Paragraph("CONSTANCIA AUDITORIA DOCUMENTO Y FIRMA DEL EMISOR", title_style))
     else:

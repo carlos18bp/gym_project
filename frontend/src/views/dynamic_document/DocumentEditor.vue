@@ -1,7 +1,6 @@
 <template>
   <main class="flex h-screen w-full">
     <Editor
-      api-key="tmizyezb3c6j68qwkp8d5hrr3vgk5va6uouidoe2hj7nxp3p"
       v-model="editorContent"
       :init="editorConfig"
     />
@@ -9,6 +8,25 @@
 </template>
 
 <script setup>
+// TinyMCE self-hosted (GPL) — no API key, no domain validation
+import "tinymce/tinymce";
+import "tinymce/models/dom";
+import "tinymce/themes/silver";
+import "tinymce/icons/default";
+
+import "tinymce/skins/ui/oxide/skin.min.css";
+import contentCss from "tinymce/skins/content/default/content.min.css?url";
+import contentUiCss from "tinymce/skins/ui/oxide/content.min.css?url";
+
+import "tinymce/plugins/lists";
+import "tinymce/plugins/link";
+import "tinymce/plugins/image";
+import "tinymce/plugins/table";
+import "tinymce/plugins/code";
+import "tinymce/plugins/wordcount";
+import "tinymce/plugins/autolink";
+import "tinymce/plugins/searchreplace";
+
 import Editor from "@tinymce/tinymce-vue";
 import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
@@ -486,7 +504,9 @@ function enforceCarlito(content) {
  * Configuration object for the TinyMCE editor.
  */
 const editorConfig = computed(() => ({
-  language: "es",
+  license_key: "gpl",
+  promotion: false,
+  content_css: [contentCss, contentUiCss],
   plugins: "lists link image table code wordcount autolink searchreplace",
   menubar: isClient.value ? "" : "edit insert format table",
   toolbar: isClient.value

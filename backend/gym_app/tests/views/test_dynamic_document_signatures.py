@@ -3283,3 +3283,242 @@ class TestCorrectDocument:
         ).update(state='PendingSignatures')
 
         assert rows_updated == 0
+
+
+# ── DynamicDocumentSerializer exposes ``signers`` in GET responses ────────
+
+
+@pytest.mark.django_db
+class TestDocumentDetailSignersExposed:
+    """Regression: GET /dynamic-documents/{pk}/ must include ``signers`` with ``signed`` flag.
+
+    The frontend modal "Estado de Formalización" depends on the ``signers`` array
+    to render the "Firmado" badge for the emisor of an issuer_only document.
+    """
+
+    @pytest.fixture
+    def api(self):
+        return APIClient()
+
+    @pytest.fixture
+    def lawyer(self):
+        return User.objects.create_user(
+            email="signers_lawyer@t.com", password="pw", role="lawyer",
+            first_name="Law", last_name="Yer",
+        )
+
+    @pytest.fixture
+    def client_user(self):
+        return User.objects.create_user(
+            email="signers_client@t.com", password="pw", role="client",
+            first_name="Cli", last_name="Ent",
+        )
+
+    def test_detail_response_includes_signers_array_for_issuer_only(self, api, lawyer, client_user):
+        """GET detail returns a ``signers`` list with one entry per DocumentSignature."""
+        doc = DynamicDocument.objects.create(
+            title="Issuer Only Doc",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer,
+            requires_signature=True,
+            signature_type="issuer_only",
+        )
+        DocumentSignature.objects.create(document=doc, signer=lawyer, signed=False)
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True, signed_at=timezone.now(),
+        )
+        api.force_authenticate(user=lawyer)
+
+        resp = api.get(reverse("get_dynamic_document", kwargs={"pk": doc.id}))
+
+        assert resp.status_code == status.HTTP_200_OK
+        assert "signers" in resp.data
+        assert isinstance(resp.data["signers"], list)
+        assert len(resp.data["signers"]) == 2
+
+    def test_emisor_signer_entry_has_signed_true_after_signing(self, api, lawyer, client_user):
+        """After the emisor signs an issuer_only doc, the signers entry reflects signed=True."""
+        doc = DynamicDocument.objects.create(
+            title="Issuer Only Signed",
+            content="<p>x</p>",
+            state="FullySigned",
+            created_by=lawyer,
+            requires_signature=True,
+            signature_type="issuer_only",
+            fully_signed=True,
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=lawyer, signed=True, signed_at=timezone.now(),
+        )
+        DocumentSignature.objects.create(
+            document=doc, signer=client_user, signed=True, signed_at=timezone.now(),
+        )
+        api.force_authenticate(user=lawyer)
+
+        resp = api.get(reverse("get_dynamic_document", kwargs={"pk": doc.id}))
+
+        emisor_entry = next(s for s in resp.data["signers"] if s["signer_id"] == lawyer.id)
+        assert emisor_entry["signed"] is True
+
+    def test_signers_payload_still_creates_signatures_after_field_removal(self, api, lawyer, client_user):
+        """Sending ``signers`` IDs in the create payload still creates DocumentSignature rows.
+
+        Regression: the write_only override of ``signers`` was removed so the
+        SerializerMethodField could expose enriched output. The write path must
+        still accept the legacy ``signers: [id1, id2]`` shape via initial_data.
+        """
+        from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
+        from rest_framework.test import APIRequestFactory
+
+        rf = APIRequestFactory()
+        request = rf.post("/")
+        request.user = lawyer
+
+        serializer = DynamicDocumentSerializer(
+            data={
+                "title": "Write Path Doc",
+                "content": "<p>x</p>",
+                "state": "Progress",
+                "requires_signature": True,
+                "signers": [client_user.id],
+            },
+            context={"request": request},
+        )
+        assert serializer.is_valid(), serializer.errors
+        doc = serializer.save()
+
+        assert DocumentSignature.objects.filter(document=doc, signer=client_user).exists()
+
+
+# ── Letterhead snapshot at formalization ──────────────────────────────────
+
+
+@pytest.mark.django_db
+class TestLetterheadSnapshot:
+    """Once formalized, the letterhead must be frozen so the document content
+    is identical regardless of who downloads it (security/integrity)."""
+
+    def _png_bytes(self):
+        from io import BytesIO
+        if PILImage is None:
+            return b"PNGFAKE"
+        buf = BytesIO()
+        PILImage.new('RGB', (10, 10), color='red').save(buf, format='PNG')
+        return buf.getvalue()
+
+    def test_resolver_in_locked_state_uses_snapshot_and_ignores_fallback_user(self, lawyer_user, signer_user):
+        """In post-formalization states the snapshot is the only source — fallback
+        users (downloaders) must not influence the rendered letterhead."""
+        from gym_app.utils.documents import get_letterhead_for_document
+
+        doc = DynamicDocument.objects.create(
+            title="Snapshot Resolver",
+            content="<p>x</p>",
+            state="FullySigned",
+            created_by=lawyer_user,
+            requires_signature=True,
+            fully_signed=True,
+        )
+        doc.letterhead_image_snapshot = "letterheads_snapshot/fake_snap.png"
+        doc.save(update_fields=["letterhead_image_snapshot"])
+
+        # Downloader (fallback_user) has a letterhead but it MUST be ignored.
+        signer_user.letterhead_image = "letterheads/downloader.png"
+        signer_user.save(update_fields=["letterhead_image"])
+
+        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+
+        assert result == doc.letterhead_image_snapshot
+
+    def test_resolver_in_locked_state_without_snapshot_falls_back_to_creator_not_downloader(self, lawyer_user, signer_user):
+        """Legacy formalized docs without snapshot must NOT reach the downloader path."""
+        from gym_app.utils.documents import get_letterhead_for_document
+
+        doc = DynamicDocument.objects.create(
+            title="Legacy Locked",
+            content="<p>x</p>",
+            state="FullySigned",
+            created_by=lawyer_user,
+        )
+        # No snapshot, no doc-specific letterhead. Creator has none either.
+        signer_user.letterhead_image = "letterheads/downloader.png"
+        signer_user.save(update_fields=["letterhead_image"])
+
+        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+
+        # Even though signer_user (downloader) has a letterhead, locked state
+        # must NEVER fall back to it.
+        assert result is None
+
+    def test_resolver_pre_formalization_keeps_legacy_priority(self, lawyer_user, signer_user):
+        """Pre-formalization the existing fallback_user behavior is preserved."""
+        from gym_app.utils.documents import get_letterhead_for_document
+
+        doc = DynamicDocument.objects.create(
+            title="Draft Doc",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=lawyer_user,
+        )
+        signer_user.letterhead_image = "letterheads/downloader.png"
+        signer_user.save(update_fields=["letterhead_image"])
+
+        result = get_letterhead_for_document(doc, lawyer_user, fallback_user=signer_user)
+
+        assert result == signer_user.letterhead_image
+
+    def test_formalize_normal_creates_letterhead_image_snapshot(self, lawyer_user, signer_user):
+        """formalize_document copies the creator's letterhead onto the snapshot field."""
+        from gym_app.utils.documents import snapshot_letterhead_on_formalize
+
+        # Configure creator-level letterhead
+        lawyer_user.letterhead_image.save(
+            "creator_lh.png",
+            SimpleUploadedFile("creator_lh.png", self._png_bytes(), content_type="image/png"),
+            save=True,
+        )
+
+        doc = DynamicDocument.objects.create(
+            title="Snap Normal",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+        )
+        snapshot_letterhead_on_formalize(doc, lawyer_user)
+        doc.refresh_from_db()
+
+        assert doc.letterhead_image_snapshot
+        assert doc.letterhead_image_snapshot.name.startswith('letterheads_snapshot/')
+
+    def test_snapshot_is_idempotent_and_does_not_overwrite(self, lawyer_user):
+        """Calling the helper twice does not change an existing snapshot."""
+        from gym_app.utils.documents import snapshot_letterhead_on_formalize
+
+        lawyer_user.letterhead_image.save(
+            "lh_v1.png",
+            SimpleUploadedFile("lh_v1.png", self._png_bytes(), content_type="image/png"),
+            save=True,
+        )
+        doc = DynamicDocument.objects.create(
+            title="Snap Idempotent",
+            content="<p>x</p>",
+            state="PendingSignatures",
+            created_by=lawyer_user,
+            requires_signature=True,
+        )
+        snapshot_letterhead_on_formalize(doc, lawyer_user)
+        doc.refresh_from_db()
+        first_snapshot_name = doc.letterhead_image_snapshot.name
+
+        # Replace the creator's letterhead — snapshot must remain stable.
+        lawyer_user.letterhead_image.save(
+            "lh_v2.png",
+            SimpleUploadedFile("lh_v2.png", self._png_bytes(), content_type="image/png"),
+            save=True,
+        )
+        snapshot_letterhead_on_formalize(doc, lawyer_user)
+        doc.refresh_from_db()
+
+        assert doc.letterhead_image_snapshot.name == first_snapshot_name

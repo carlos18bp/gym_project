@@ -94,13 +94,32 @@ def sanitize_html_for_pdf(html_content):
     return str(sanitize_soup_for_pdf(BeautifulSoup(html_content, 'html.parser')))
 
 
+LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')
+
+
 def get_letterhead_for_document(document, creator, fallback_user=None):
     """Resolve which letterhead image applies to ``document``.
 
-    Priority: document-specific → creator's global → ``fallback_user``'s
-    global (typically the downloader, so recipients still see a letterhead
-    when the creator has none configured) → ``None``.
+    Once the document is formalized (state in :data:`LETTERHEAD_LOCKED_STATES`)
+    the snapshot frozen at formalization is the only valid source — the document
+    contents (including the letterhead) must remain inalterable regardless of
+    who downloads it. ``fallback_user`` is intentionally ignored in those states.
+
+    For pre-formalization states the original priority applies:
+    document-specific → creator's global → ``fallback_user``'s global → ``None``.
     """
+    if getattr(document, 'state', None) in LETTERHEAD_LOCKED_STATES:
+        snapshot = getattr(document, 'letterhead_image_snapshot', None)
+        if snapshot:
+            return snapshot
+        # No snapshot yet (pre-fix legacy doc): degrade to creator's letterhead
+        # without ever using the downloader as a fallback so the contents stay
+        # stable across viewers.
+        if document.letterhead_image:
+            return document.letterhead_image
+        if creator and creator.letterhead_image:
+            return creator.letterhead_image
+        return None
     if document.letterhead_image:
         return document.letterhead_image
     if creator and creator.letterhead_image:
@@ -113,8 +132,18 @@ def get_letterhead_for_document(document, creator, fallback_user=None):
 def get_letterhead_word_template(document, creator, fallback_user=None):
     """Resolve which Word letterhead template applies to ``document``.
 
-    Same priority chain as :func:`get_letterhead_for_document`.
+    Mirrors the snapshot/locked-state behaviour of
+    :func:`get_letterhead_for_document` for the Word path.
     """
+    if getattr(document, 'state', None) in LETTERHEAD_LOCKED_STATES:
+        snapshot = getattr(document, 'letterhead_word_template_snapshot', None)
+        if snapshot:
+            return snapshot
+        if getattr(document, 'letterhead_word_template', None):
+            return document.letterhead_word_template
+        if creator and getattr(creator, 'letterhead_word_template', None):
+            return creator.letterhead_word_template
+        return None
     if getattr(document, 'letterhead_word_template', None):
         return document.letterhead_word_template
     if creator and getattr(creator, 'letterhead_word_template', None):
@@ -122,3 +151,66 @@ def get_letterhead_word_template(document, creator, fallback_user=None):
     if fallback_user and getattr(fallback_user, 'letterhead_word_template', None):
         return fallback_user.letterhead_word_template
     return None
+
+
+def snapshot_letterhead_on_formalize(document, creator):
+    """Freeze the letterhead (image + Word template) on the document at formalization.
+
+    Idempotent: existing snapshots are not overwritten. Called from
+    ``formalize_document`` for every signature_type so the contents of the
+    formalized document never depend on the viewer or future creator changes.
+    """
+    from django.core.files.base import ContentFile
+
+    fields_to_save = []
+
+    if not document.letterhead_image_snapshot:
+        source_img = document.letterhead_image or (
+            creator.letterhead_image if creator and creator.letterhead_image else None
+        )
+        if source_img:
+            try:
+                source_img.open('rb')
+                try:
+                    raw = source_img.read()
+                finally:
+                    source_img.close()
+                base_name = source_img.name.rsplit('/', 1)[-1] if source_img.name else 'letterhead.png'
+                document.letterhead_image_snapshot.save(
+                    f"snapshot_{document.pk}_{base_name}",
+                    ContentFile(raw),
+                    save=False,
+                )
+                fields_to_save.append('letterhead_image_snapshot')
+            except (FileNotFoundError, ValueError, IOError):
+                # Source file is missing on disk — leave snapshot empty rather
+                # than block formalization. The locked-state fallback in
+                # get_letterhead_for_document covers this gracefully.
+                pass
+
+    if not document.letterhead_word_template_snapshot:
+        source_doc = (
+            document.letterhead_word_template
+            if getattr(document, 'letterhead_word_template', None) else None
+        )
+        if not source_doc and creator and getattr(creator, 'letterhead_word_template', None):
+            source_doc = creator.letterhead_word_template
+        if source_doc:
+            try:
+                source_doc.open('rb')
+                try:
+                    raw = source_doc.read()
+                finally:
+                    source_doc.close()
+                base_name = source_doc.name.rsplit('/', 1)[-1] if source_doc.name else 'letterhead.docx'
+                document.letterhead_word_template_snapshot.save(
+                    f"snapshot_{document.pk}_{base_name}",
+                    ContentFile(raw),
+                    save=False,
+                )
+                fields_to_save.append('letterhead_word_template_snapshot')
+            except (FileNotFoundError, ValueError, IOError):
+                pass
+
+    if fields_to_save:
+        document.save(update_fields=fields_to_save)

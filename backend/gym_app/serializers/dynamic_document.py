@@ -141,14 +141,6 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         source='tags'
     )
     
-    # Users who need to sign this document - write only field for creating signature requests
-    signers = serializers.PrimaryKeyRelatedField(
-        many=True, 
-        write_only=True, 
-        queryset=User.objects.all(),
-        required=False
-    )
-    
     # Permission fields for document creation
     visibility_user_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -400,7 +392,20 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Extract signature-related data
         requires_signature = validated_data.pop('requires_signature', False)
         signature_type = validated_data.pop('signature_type', 'normal')
-        signers = validated_data.pop('signers', [])
+        # ``signers`` is read-only in the serializer (SerializerMethodField returns
+        # rich output with signed/signed_at/... for the frontend). The write path
+        # reads raw IDs from initial_data when available, and falls back to the
+        # legacy dict shape used by callers that invoke .create() directly.
+        legacy_signers = validated_data.pop('signers', None)
+        raw_signer_ids = (
+            self.initial_data.get('signers', [])
+            if hasattr(self, 'initial_data') and isinstance(self.initial_data, dict)
+            else []
+        )
+        if raw_signer_ids:
+            signers = list(User.objects.filter(pk__in=raw_signer_ids))
+        else:
+            signers = list(legacy_signers) if legacy_signers else []
         variables_data = validated_data.pop('variables', [])
         tags = validated_data.pop('tags', [])  # Extract tags
         
@@ -538,7 +543,19 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
 
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
         signature_type = validated_data.pop('signature_type', instance.signature_type)
-        signers = validated_data.pop('signers', [])
+        # ``signers`` is read-only on the serializer (see get_signers for rich output).
+        # The write path reads raw IDs from initial_data when available, with a legacy
+        # dict fallback for callers that invoke .update() directly.
+        legacy_signers = validated_data.pop('signers', None)
+        raw_signer_ids = (
+            self.initial_data.get('signers', [])
+            if hasattr(self, 'initial_data') and isinstance(self.initial_data, dict)
+            else []
+        )
+        if raw_signer_ids:
+            signers = list(User.objects.filter(pk__in=raw_signer_ids))
+        else:
+            signers = list(legacy_signers) if legacy_signers else []
         variables_data = validated_data.pop('variables', None)
         tags = validated_data.pop('tags', None)  # Extract tags
         
