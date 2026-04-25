@@ -44,10 +44,10 @@
           <div
             v-for="role in availableRoles"
             :key="role.code"
-            class="flex items-center justify-between p-3 bg-gray-50 border rounded-lg"
+            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 border rounded-lg"
           >
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
                 <p class="text-sm font-medium text-gray-900">{{ role.display_name }}</p>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {{ role.user_count }} usuarios
@@ -58,8 +58,8 @@
               </div>
               <p class="text-xs text-gray-500 mt-1">{{ role.description }}</p>
             </div>
-            
-            <div v-if="role.can_be_granted_permissions" class="flex items-center space-x-4">
+
+            <div v-if="role.can_be_granted_permissions" class="flex items-center gap-4 sm:space-x-4 sm:gap-0 flex-shrink-0">
               <!-- Visibility Permission -->
               <div class="flex items-center">
                 <input
@@ -173,14 +173,14 @@
           <div
             v-for="client in filteredClients"
             :key="client.id"
-            class="flex items-center justify-between p-3 bg-white border rounded-lg hover:bg-gray-50"
+            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-white border rounded-lg hover:bg-gray-50"
           >
-            <div class="flex-1">
-              <p class="text-sm font-medium text-gray-900">{{ client.full_name }}</p>
-              <p class="text-sm text-gray-500">{{ client.email }}</p>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 break-words">{{ client.full_name }}</p>
+              <p class="text-sm text-gray-500 break-all">{{ client.email }}</p>
             </div>
-            
-            <div class="flex items-center space-x-4">
+
+            <div class="flex items-center gap-4 sm:space-x-4 sm:gap-0 flex-shrink-0">
               <!-- Visibility Permission -->
               <div class="flex items-center">
                 <input

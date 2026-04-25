@@ -9,7 +9,7 @@
 
       <!-- Modal -->
       <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-        <div class="max-h-[80vh] overflow-y-auto px-6 pb-5 pt-6">
+        <div class="max-h-[80vh] overflow-y-auto px-4 sm:px-6 pb-5 pt-6">
           <div class="flex items-center gap-3 mb-5">
             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
               <BellAlertIcon class="h-5 w-5 text-secondary" />
@@ -114,7 +114,7 @@
           </div>
 
           <!-- Budget range -->
-          <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             <div>
               <label class="block text-xs font-medium text-gray-500 mb-1.5">Presupuesto min. (COP)</label>
               <div class="relative">
@@ -167,7 +167,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="border-t border-gray-100 bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <div class="border-t border-gray-100 bg-gray-50 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button
             @click="$emit('close')"
             data-testid="alert-cancel"

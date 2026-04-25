@@ -10,7 +10,7 @@
       id="viewProfileModal"
       class="absolute w-full h-full px-4 flex justify-center items-center"
     >
-      <div class="w-full xl:w-1/2 bg-white rounded-xl">
+      <div class="w-full max-w-sm md:max-w-2xl xl:w-1/2 bg-white rounded-xl max-h-[90vh] overflow-y-auto">
         <!-- Profile photo container -->
         <div>
           <div
@@ -36,7 +36,7 @@
               </XMarkIcon>
             </div>
             <div
-              class="absolute bottom-0 left-0 -mb-16 ml-8 w-40 h-40 rounded-full border-4 border-white overflow-hidden flex justify-center items-center"
+              class="absolute bottom-0 left-0 -mb-12 sm:-mb-16 ml-4 sm:ml-8 w-28 h-28 sm:w-40 sm:h-40 rounded-full border-4 border-white overflow-hidden flex justify-center items-center"
             >
               <img
                 :src="currentUser.photo_profile || userAvatar"
@@ -49,7 +49,7 @@
         <!-- Content container -->
         <div>
           <!-- Main information -->
-          <div class="p-8 border-b border-gray-300">
+          <div class="p-4 sm:p-6 md:p-8 border-b border-gray-300">
             <h2 class="text-2xl font-semibold text-primary">
               {{ currentUser.first_name }} {{ currentUser.last_name }}
               <span class="text-gray-400">
@@ -64,7 +64,7 @@
             </p>
           </div>
           <!-- Secondary information -->
-          <div class="p-8 mt-6">
+          <div class="p-4 sm:p-6 md:p-8 mt-6">
             <h2 class="text-xl font-semibold text-primary">Acerca de mi</h2>
             <div class="grid gap-1">
               <p
@@ -138,7 +138,7 @@
         <h1 class="mt-4 text-2xl font-semibold text-primary">Editar perfil</h1>
         <!-- Main information -->
 
-        <div class="mt-4 grid md:grid-cols-2 gap-3">
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
           <!-- First name form -->
           <div>
             <label

@@ -1,12 +1,12 @@
 <template>
   <!-- Tag Management Section (visible only to lawyers) -->
   <div v-if="isLawyer" class="mt-6">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
       <h3 class="text-lg font-medium text-primary">Etiquetas del Documento</h3>
       <button
         @click="openCreateTagModal"
         type="button"
-        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-secondary hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+        class="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-secondary hover:bg-secondary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
       >
         <PlusIcon class="h-4 w-4 mr-2" />
         Nueva Etiqueta
@@ -93,7 +93,7 @@
     @click="closeTagModal"
   >
     <div
-      class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+      class="relative top-10 sm:top-20 mx-4 sm:mx-auto p-4 sm:p-5 border w-auto sm:w-96 shadow-lg rounded-md bg-white"
       @click.stop
     >
       <div class="mt-3">
@@ -121,7 +121,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Color de la etiqueta
           </label>
-          <div class="grid grid-cols-8 gap-2">
+          <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
             <div
               v-for="color in availableColors"
               :key="color.id"
@@ -139,7 +139,7 @@
         </div>
 
         <!-- Modal Actions -->
-        <div class="flex justify-end space-x-3">
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 sm:space-x-0">
           <button
             @click="closeTagModal"
             type="button"
