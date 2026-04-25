@@ -902,3 +902,13 @@ const handleBack = () => {
   router.push("/dynamic_document_dashboard");
 };
 </script>
+
+<style>
+/* Hide TinyMCE "Explore trial / Try premium" promotion button — rendered
+   outside the Vue tree, so this style must be global (unscoped). */
+.tox .tox-promotion,
+.tox-promotion,
+.tox .tox-promotion-link {
+  display: none !important;
+}
+</style>
