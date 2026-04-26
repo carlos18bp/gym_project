@@ -20,7 +20,7 @@ export const normalizeFragmentedVariables = (html) => {
       .replace(/<[^>]*>/g, '')
       .replace(/&nbsp;/g, ' ')
       .trim();
-    return clean ? `{{${clean}}}` : match;
+    return clean ? `{{ ${clean} }}` : match;
   });
 };
 

@@ -160,9 +160,7 @@ class TestGetLetterheadForDocument:
 
     def test_document_letterhead_takes_priority(self):
         doc = self._make_obj(letterhead_image="doc_img.png")
-        creator = self._make_obj(letterhead_image="creator_img.png")
-        fallback = self._make_obj(letterhead_image="fallback_img.png")
-        assert get_letterhead_for_document(doc, creator, fallback) == "doc_img.png"
+        assert get_letterhead_for_document(doc) == "doc_img.png"
 
     def test_creator_letterhead_when_document_has_none(self):
         doc = self._make_obj(letterhead_image=None)
@@ -171,24 +169,22 @@ class TestGetLetterheadForDocument:
 
     def test_fallback_user_letterhead_when_creator_has_none(self):
         doc = self._make_obj(letterhead_image=None)
-        creator = self._make_obj(letterhead_image=None)
         fallback = self._make_obj(letterhead_image="fallback_img.png")
-        assert get_letterhead_for_document(doc, creator, fallback) == "fallback_img.png"
+        assert get_letterhead_for_document(doc, fallback) == "fallback_img.png"
 
     def test_returns_none_when_all_empty(self):
         doc = self._make_obj(letterhead_image=None)
-        creator = self._make_obj(letterhead_image=None)
         fallback = self._make_obj(letterhead_image=None)
-        assert get_letterhead_for_document(doc, creator, fallback) is None
+        assert get_letterhead_for_document(doc, fallback) is None
 
     def test_handles_none_creator(self):
         doc = self._make_obj(letterhead_image=None)
         fallback = self._make_obj(letterhead_image="fallback_img.png")
-        assert get_letterhead_for_document(doc, None, fallback) == "fallback_img.png"
+        assert get_letterhead_for_document(doc, fallback) == "fallback_img.png"
 
     def test_handles_none_creator_and_none_fallback(self):
         doc = self._make_obj(letterhead_image=None)
-        assert get_letterhead_for_document(doc, None, None) is None
+        assert get_letterhead_for_document(doc) is None
 
 
 # ── get_letterhead_word_template ──────────────────────────────────────────────
@@ -205,9 +201,7 @@ class TestGetLetterheadWordTemplate:
 
     def test_document_template_takes_priority(self):
         doc = SimpleNamespace(letterhead_word_template="doc_tpl.docx")
-        creator = SimpleNamespace(letterhead_word_template="creator_tpl.docx")
-        fallback = SimpleNamespace(letterhead_word_template="fallback_tpl.docx")
-        assert get_letterhead_word_template(doc, creator, fallback) == "doc_tpl.docx"
+        assert get_letterhead_word_template(doc) == "doc_tpl.docx"
 
     def test_creator_template_when_document_has_none(self):
         doc = SimpleNamespace(letterhead_word_template=None)
@@ -216,15 +210,13 @@ class TestGetLetterheadWordTemplate:
 
     def test_fallback_user_template_when_creator_has_none(self):
         doc = SimpleNamespace(letterhead_word_template=None)
-        creator = SimpleNamespace(letterhead_word_template=None)
         fallback = SimpleNamespace(letterhead_word_template="fallback_tpl.docx")
-        assert get_letterhead_word_template(doc, creator, fallback) == "fallback_tpl.docx"
+        assert get_letterhead_word_template(doc, fallback) == "fallback_tpl.docx"
 
     def test_returns_none_when_all_empty(self):
         doc = SimpleNamespace(letterhead_word_template=None)
-        creator = SimpleNamespace(letterhead_word_template=None)
         fallback = SimpleNamespace(letterhead_word_template=None)
-        assert get_letterhead_word_template(doc, creator, fallback) is None
+        assert get_letterhead_word_template(doc, fallback) is None
 
     def test_handles_object_without_attribute(self):
         doc = SimpleNamespace()  # no letterhead_word_template attr

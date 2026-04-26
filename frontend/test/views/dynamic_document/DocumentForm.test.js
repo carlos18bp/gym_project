@@ -299,7 +299,7 @@ describe("DocumentForm.vue", () => {
 
     // quality: allow-fragile-selector (stable DOM id)
     const textareaContainer = wrapper.find("#field-1").element.closest("[class*='col-span']");
-    expect(textareaContainer.classList.contains("col-span-3")).toBe(true);
+    expect(textareaContainer.classList.contains("lg:col-span-3")).toBe(true);
   });
 
   test("formalize mode renders signer search section", async () => {
