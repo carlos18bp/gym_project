@@ -21,7 +21,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="text-xs text-gray-500">
               {{ userRole === 'lawyer' ? 'Respondiendo como abogado' : 'Respondiendo como cliente' }}
             </div>

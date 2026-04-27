@@ -1,7 +1,8 @@
 <template>
   <main class="flex h-screen w-full">
     <Editor
-      api-key="tmizyezb3c6j68qwkp8d5hrr3vgk5va6uouidoe2hj7nxp3p"
+      :api-key="tinymceApiKey"
+      cloud-channel="7"
       v-model="editorContent"
       :init="editorConfig"
     />
@@ -15,7 +16,9 @@ import { useRouter, useRoute } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
+import { normalizeFragmentedVariables } from "@/shared/document_utils";
 
+const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY;
 const editorContent = ref(""); // Content of the editor
 const router = useRouter();
 const route = useRoute();
@@ -48,6 +51,14 @@ const isClient = computed(() => {
 const isCreatingFromTemplate = computed(() => {
   return route.path.includes('/creator/');
 });
+
+// Lawyer-equivalent role check: gates editing tools (e.g. table toolbar, menubar)
+// independently from `isClient`, which only governs variable protection. This
+// way an abogado editing a client document still gets the table ribbon while
+// the protected-variable behavior remains intact.
+// All roles see the full editor toolbar (including table tools and menubar).
+// `isClient` still governs variable protection separately.
+const isLawyer = computed(() => true);
 
 // Store the original content with variables
 const originalContent = ref("");
@@ -111,11 +122,14 @@ const extractVariables = (content = null) => {
  */
 const replaceVariablesWithValues = (content) => {
   if (!content || !store.selectedDocument?.variables) return content;
-  
-  let processedContent = content;
-  
+
+  // Reassemble {{var}} markers TinyMCE may have fragmented across inline tags
+  // (typical when the template has tables pasted from Word) before substitution.
+  let processedContent = normalizeFragmentedVariables(content);
+
   store.selectedDocument.variables.forEach(variable => {
-    const variablePattern = new RegExp(`{{${variable.name_en}}}`, 'g');
+    const escapedName = variable.name_en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const variablePattern = new RegExp(`{{\\s*${escapedName}\\s*}}`, 'g');
     const value = variable.value || `[${variable.name_es || variable.name_en}]`;
     
     // Create a highly protected span with multiple protection layers
@@ -486,13 +500,19 @@ function enforceCarlito(content) {
  * Configuration object for the TinyMCE editor.
  */
 const editorConfig = computed(() => ({
-  language: "es",
+  promotion: false,
+  branding: false,
   plugins: "lists link image table code wordcount autolink searchreplace",
-  menubar: isClient.value ? "" : "edit insert format table",
-  toolbar: isClient.value
-    ? "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr"
-    : "save continue return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol",
-  contextmenu: isClient.value ? "" : "table",
+  menubar: isLawyer.value ? "edit insert format table" : "",
+  toolbar_mode: 'wrap',
+  toolbar: isLawyer.value
+    ? [
+        (isClient.value ? "save return" : "save continue return") +
+          " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+        "table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells",
+      ]
+    : "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
+  contextmenu: isLawyer.value ? "table" : "",
   height: "100vh",
   width: "100%",
 
@@ -882,3 +902,13 @@ const handleBack = () => {
   router.push("/dynamic_document_dashboard");
 };
 </script>
+
+<style>
+/* Hide TinyMCE "Explore trial / Try premium" promotion button — rendered
+   outside the Vue tree, so this style must be global (unscoped). */
+.tox .tox-promotion,
+.tox-promotion,
+.tox .tox-promotion-link {
+  display: none !important;
+}
+</style>

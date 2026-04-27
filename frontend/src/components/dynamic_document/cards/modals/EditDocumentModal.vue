@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click.self="closeModal">
-    <div class="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full">
+    <div class="bg-white rounded-lg p-4 sm:p-6 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
       <div class="flex justify-end">
         <button @click="closeModal">
           <XMarkIcon class="size-6" />
@@ -25,7 +25,7 @@
           </div>
         </div>
         <!-- Buttons Container -->
-        <div class="flex gap-2 mt-2.5">
+        <div class="flex flex-col sm:flex-row gap-2 mt-2.5">
           <!-- Update Name Button - Only visible in edit mode -->
           <button
             v-if="isEditMode"

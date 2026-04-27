@@ -101,7 +101,7 @@
       class="space-y-6"
     >
       <!-- Card: process header and information -->
-      <div class="p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div class="p-4 sm:p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
         <!-- Header with case type and users button -->
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
           <div class="flex items-center gap-3">
@@ -153,7 +153,7 @@
         </div>
 
         <!-- Information sections -->
-        <div class="grid md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Left column: Process details -->
         <div class="space-y-4">
           <!-- Authority section -->
@@ -202,7 +202,7 @@
       </div>
 
       <!-- Card: expediente and document list -->
-      <div class="p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div class="p-4 sm:p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
         <!-- Title and searchbar container -->
         <div
           class="flex flex-col gap-3 justify-between font-medium md:flex-row mb-4"

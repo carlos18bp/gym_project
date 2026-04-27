@@ -4,7 +4,7 @@
       <!-- Logo -->
       <div class="text-center mb-8">
         <img class="mx-auto h-16 w-auto" src="@/assets/images/logo/logo2.png" alt="G&M Abogados" />
-        <h2 class="mt-6 text-3xl font-bold text-primary">
+        <h2 class="mt-6 text-2xl sm:text-3xl font-bold text-primary">
           Inicia sesión para continuar
         </h2>
         <p class="mt-2 text-sm text-gray-600">
@@ -13,7 +13,7 @@
       </div>
 
       <!-- Form -->
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 md:p-8">
         <form class="space-y-6" @submit.prevent="signInUser">
           <div>
             <label for="email" class="block text-sm font-medium text-gray-900 mb-2">

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full">
+  <div class="bg-white rounded-lg p-4 sm:p-6 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
     <div class="flex justify-end">
       <button @click="emit('close')">
         <XMarkIcon class="size-6"></XMarkIcon>

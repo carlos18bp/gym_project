@@ -55,7 +55,7 @@
         />
       </div>
 
-      <div class="grid md:grid-cols-2 md:gap-6 xl:space-y-0">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 xl:space-y-0">
         <div>
           <label
             for="first_name"
@@ -127,7 +127,7 @@
         Registrarse
       </button>
 
-      <div v-if="passcodeSent" class="grid md:grid-cols-2 md:gap-6">
+      <div v-if="passcodeSent" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
         <input
           v-model="passcode"
           type="text"

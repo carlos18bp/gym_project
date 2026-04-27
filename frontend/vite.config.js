@@ -198,6 +198,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@tinymce/tinymce-vue', 'tinymce'],
+    include: ['@tinymce/tinymce-vue'],
   },
 })

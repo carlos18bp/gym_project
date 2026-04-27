@@ -2,7 +2,7 @@
   <ModalTransition v-if="isVisible">
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click.self="handleClose">
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div class="flex justify-between items-center p-6 border-b">
+        <div class="flex justify-between items-center p-4 sm:p-6 border-b">
           <h3 class="text-lg font-semibold text-gray-900">
             {{ editingFolder ? 'Editar Carpeta' : 'Nueva Carpeta' }}
           </h3>
@@ -11,7 +11,7 @@
           </button>
         </div>
 
-        <form @submit.prevent="handleSubmit" class="p-6">
+        <form @submit.prevent="handleSubmit" class="p-4 sm:p-6">
           <!-- Folder Name -->
           <div class="mb-4">
             <label for="folderName" class="block text-sm font-medium text-gray-700 mb-2">
@@ -33,7 +33,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-3">
               Color de la carpeta
             </label>
-            <div class="grid grid-cols-8 gap-2">
+            <div class="grid grid-cols-6 sm:grid-cols-8 gap-2">
               <button
                 v-for="color in availableColors"
                 :key="color.id"

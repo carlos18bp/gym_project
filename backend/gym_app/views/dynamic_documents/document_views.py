@@ -30,6 +30,7 @@ from gym_app.utils.documents import (
     sanitize_soup_for_pdf,
     get_letterhead_for_document,
     get_letterhead_word_template,
+    ensure_letterhead_snapshot,
 )
 from django.utils import timezone
 from .permissions import (
@@ -53,7 +54,7 @@ def get_optimized_document_queryset(base_qs=None):
     """
     qs = base_qs if base_qs is not None else DynamicDocument.objects.all()
     return qs.select_related(
-        'created_by', 'assigned_to'
+        'created_by', 'assigned_to', 'formalized_by'
     ).prefetch_related(
         'variables',
         Prefetch('tags', queryset=Tag.objects.select_related('created_by')),
@@ -386,21 +387,25 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
     """
     try:
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
+        document = DynamicDocument.objects.select_related(
+            'created_by', 'formalized_by'
+        ).prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
         # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
         processed_content = normalize_fragmented_variables(document.content)
 
-        # Replace variables within the content (use formatted values when available)
+        # Replace variables within the content (use formatted values when available).
+        # Use a regex so we tolerate whitespace inside ``{{ name }}`` markers that
+        # the editor or paste-postprocessing may have introduced.
         for variable in document.variables.all():
             try:
                 replacement_value = variable.get_formatted_value()
             except AttributeError:  # pragma: no cover – defensive fallback for missing method
                 replacement_value = variable.value or ""
-            processed_content = processed_content.replace(
-                f"{{{{{variable.name_en}}}}}",
-                replacement_value or ""
+            pattern = re.compile(
+                r'\{\{\s*' + re.escape(variable.name_en) + r'\s*\}\}'
             )
+            processed_content = pattern.sub(replacement_value or "", processed_content)
 
         # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
         # preserves table formatting and alignment.
@@ -432,10 +437,12 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         except Exception as e:  # pragma: no cover – font registration failure
             raise
 
+        ensure_letterhead_snapshot(document)
+
         # Define background image style if letterhead exists
         background_style = ""
         letterhead_image = get_letterhead_for_document(
-            document, document.created_by, fallback_user=request.user
+            document, fallback_user=request.user
         )
         if letterhead_image:
             try:
@@ -535,10 +542,8 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         }}
 
         table {{
-            width: 100%;
             border-collapse: collapse;
             margin: 8pt 0;
-            table-layout: fixed;
             font-family: 'Carlito', sans-serif !important;
         }}
 
@@ -546,7 +551,6 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             border: 1px solid #999;
             padding: 4pt 6pt;
             vertical-align: top;
-            text-align: left;
             word-wrap: break-word;
             font-family: 'Carlito', sans-serif !important;
         }}
@@ -627,7 +631,9 @@ def download_dynamic_document_word(request, pk):
     """
     try:
         # Retrieve the document from the database
-        document = DynamicDocument.objects.prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
+        document = DynamicDocument.objects.select_related(
+            'created_by', 'formalized_by'
+        ).prefetch_related('variables', 'signatures__signer', 'tags').get(pk=pk)
 
         # Normalize any {{ }} patterns that TinyMCE may have split across HTML tags
         normalized_content = normalize_fragmented_variables(document.content)
@@ -656,15 +662,11 @@ def download_dynamic_document_word(request, pk):
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
-        # Create Word document, optionally using a Word letterhead template
-        # Priority:
-        # 1. Document-specific Word template (document.letterhead_word_template)
-        # 2. Document creator's global Word template (document.created_by.letterhead_word_template)
-        # 3. Blank document
+        ensure_letterhead_snapshot(document)
         use_word_template = False
 
         word_template = get_letterhead_word_template(
-            document, document.created_by, fallback_user=request.user,
+            document, fallback_user=request.user,
         )
 
         if word_template and hasattr(word_template, 'path') and os.path.exists(word_template.path):

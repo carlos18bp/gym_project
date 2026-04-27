@@ -99,22 +99,28 @@ class DocumentSignatureSerializer(serializers.ModelSerializer):
     )
     signer_email = serializers.EmailField(source='signer.email', read_only=True)
     signer_name = serializers.SerializerMethodField(read_only=True)
-    
+    is_creator = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = DocumentSignature
         fields = [
             'id', 'signer_id', 'signer_email', 'signer_name',
             'signed', 'signed_at', 'rejected', 'rejected_at',
-            'rejection_comment', 'created_at'
+            'rejection_comment', 'created_at', 'is_creator'
         ]
         read_only_fields = ['signed', 'signed_at', 'rejected', 'rejected_at', 'rejection_comment', 'created_at']
-    
+
     def get_signer_name(self, obj):
         """Return the full name of the signer if available."""
         first_name = obj.signer.first_name or ""
         last_name = obj.signer.last_name or ""
         full_name = f"{first_name} {last_name}".strip()
         return full_name if full_name else obj.signer.email
+
+    def get_is_creator(self, obj):
+        """True when this signer is the document's creator (emisor)."""
+        creator_id = obj.document.created_by_id
+        return bool(creator_id and obj.signer_id == creator_id)
 
 
 class DynamicDocumentSerializer(serializers.ModelSerializer):
@@ -139,14 +145,6 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         queryset=Tag.objects.all(),
         required=False,
         source='tags'
-    )
-    
-    # Users who need to sign this document - write only field for creating signature requests
-    signers = serializers.PrimaryKeyRelatedField(
-        many=True, 
-        write_only=True, 
-        queryset=User.objects.all(),
-        required=False
     )
     
     # Permission fields for document creation
@@ -221,6 +219,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     def get_signers(self, obj):
         request = self.context.get('request')
         current_user = request.user if request and hasattr(request, 'user') else None
+        creator_id = obj.created_by_id
         signers_data = []
         # Iterate over prefetched signatures — signer is select_related in the Prefetch
         for signature in obj.signatures.all():
@@ -241,6 +240,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                 'rejected_at': signature.rejected_at,
                 'rejection_comment': signature.rejection_comment,
                 'is_current_user': bool(current_user and signer.id == current_user.id),
+                'is_creator': bool(creator_id and signer.id == creator_id),
             })
         return signers_data
         
@@ -400,7 +400,20 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Extract signature-related data
         requires_signature = validated_data.pop('requires_signature', False)
         signature_type = validated_data.pop('signature_type', 'normal')
-        signers = validated_data.pop('signers', [])
+        # ``signers`` is read-only in the serializer (SerializerMethodField returns
+        # rich output with signed/signed_at/... for the frontend). The write path
+        # reads raw IDs from initial_data when available, and falls back to the
+        # legacy dict shape used by callers that invoke .create() directly.
+        legacy_signers = validated_data.pop('signers', None)
+        raw_signer_ids = (
+            self.initial_data.get('signers', [])
+            if hasattr(self, 'initial_data') and isinstance(self.initial_data, dict)
+            else []
+        )
+        if raw_signer_ids:
+            signers = list(User.objects.filter(pk__in=raw_signer_ids))
+        else:
+            signers = list(legacy_signers) if legacy_signers else []
         variables_data = validated_data.pop('variables', [])
         tags = validated_data.pop('tags', [])  # Extract tags
         
@@ -538,7 +551,19 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
 
         requires_signature = validated_data.pop('requires_signature', instance.requires_signature)
         signature_type = validated_data.pop('signature_type', instance.signature_type)
-        signers = validated_data.pop('signers', [])
+        # ``signers`` is read-only on the serializer (see get_signers for rich output).
+        # The write path reads raw IDs from initial_data when available, with a legacy
+        # dict fallback for callers that invoke .update() directly.
+        legacy_signers = validated_data.pop('signers', None)
+        raw_signer_ids = (
+            self.initial_data.get('signers', [])
+            if hasattr(self, 'initial_data') and isinstance(self.initial_data, dict)
+            else []
+        )
+        if raw_signer_ids:
+            signers = list(User.objects.filter(pk__in=raw_signer_ids))
+        else:
+            signers = list(legacy_signers) if legacy_signers else []
         variables_data = validated_data.pop('variables', None)
         tags = validated_data.pop('tags', None)  # Extract tags
         

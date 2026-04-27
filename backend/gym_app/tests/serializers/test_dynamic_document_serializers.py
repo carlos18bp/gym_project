@@ -1699,7 +1699,7 @@ class TestDynamicDocumentSummaryEdges:
             def all(self):
                 return [mock_sig]
         
-        mock_obj = SimpleNamespace(signatures=MockSignatures())
+        mock_obj = SimpleNamespace(signatures=MockSignatures(), created_by_id=None)
         result = serializer.get_signers(mock_obj)
         assert result == []
 

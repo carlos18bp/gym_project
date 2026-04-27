@@ -9,7 +9,7 @@
 
       <!-- Modal -->
       <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-        <div class="px-6 pb-5 pt-6 max-h-[80vh] overflow-y-auto">
+        <div class="px-4 sm:px-6 pb-5 pt-6 max-h-[80vh] overflow-y-auto">
           <h3 class="text-lg font-semibold text-primary mb-1" data-testid="saved-view-modal-title">
             {{ isEditing ? 'Editar Filtros' : 'Guardar Filtros' }}
           </h3>
@@ -156,7 +156,7 @@
             </div>
 
             <!-- Budget range -->
-            <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Presupuesto mínimo (COP)</label>
                 <input
@@ -180,7 +180,7 @@
             </div>
 
             <!-- Publication date range -->
-            <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Publicación desde</label>
                 <input
@@ -202,7 +202,7 @@
             </div>
 
             <!-- Closing date range -->
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Cierre desde</label>
                 <input
@@ -226,7 +226,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="border-t border-gray-100 bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+        <div class="border-t border-gray-100 bg-gray-50 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <button
             @click="$emit('close')"
             data-testid="saved-view-modal-cancel"

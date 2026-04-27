@@ -8,12 +8,12 @@
       </div>
 
       <!-- Dynamic form fields grid -->
-      <div class="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
           v-for="(variable, index) in document.variables"
           :key="index"
           :class="{
-            'col-span-3': variable.field_type === 'text_area',
+            'col-span-1 sm:col-span-2 lg:col-span-3': variable.field_type === 'text_area',
             'col-span-1': variable.field_type !== 'text_area',
           }"
         >
@@ -147,7 +147,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 pt-6 border-t border-gray-200">
+      <div class="flex flex-col md:flex-row md:flex-wrap gap-3 md:gap-4 mt-6 pt-6 border-t border-gray-200">
         <!-- Save Progress button (only in non-formalize mode) -->
         <button
           v-if="route.params.mode === 'editor' || route.params.mode === 'creator'"
@@ -191,7 +191,7 @@
         <button
           @click="handleBack()"
           type="button"
-          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 sm:ml-auto"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 md:ml-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -255,7 +255,7 @@
               placeholder="Buscar usuario por nombre o correo..."
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
             />
-            <div v-if="showUserResults && filteredUsers.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto">
+            <div v-if="showUserResults && filteredUsers.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-40 sm:max-h-60 overflow-auto">
               <ul class="py-1">
                 <li 
                   v-for="user in filteredUsers" 

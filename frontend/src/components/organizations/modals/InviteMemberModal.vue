@@ -24,7 +24,7 @@
             leave-from="opacity-100 translate-y-0 sm:scale-100"
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
-            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white px-4 py-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
               <!-- Modal Header -->
               <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
                 <div>
@@ -138,7 +138,7 @@
                 </div>
 
                 <!-- Form Actions -->
-                <div class="flex justify-end space-x-3 border-t border-gray-200 pt-6">
+                <div class="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 border-t border-gray-200 pt-6">
                   <button
                     type="button"
                     @click="handleClose"

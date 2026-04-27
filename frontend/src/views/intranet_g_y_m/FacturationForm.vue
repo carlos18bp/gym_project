@@ -14,7 +14,7 @@
       <form @submit.prevent="submitHandler()">
         <div class="mt-4 space-y-3">
           <!-- First row -->
-          <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <!-- Document's number form -->
             <div>
               <label
@@ -142,7 +142,7 @@
                 Anexos
               </label>
               <div
-                class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-6 py-10"
+                class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-4 sm:px-6 py-6 sm:py-10"
                 @dragover.prevent
                 @drop.prevent="handleDrop"
               >

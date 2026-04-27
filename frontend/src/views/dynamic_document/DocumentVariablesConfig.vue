@@ -10,14 +10,14 @@
         <div
           v-for="(variable, index) in store.selectedDocument?.variables || []"
           :key="index"
-          class="grid grid-cols-12 gap-4 items-center"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-start"
         >
-          <h2 class="text-primary text-lg font-semibold col-span-12">
+          <h2 class="text-primary text-lg font-semibold col-span-1 sm:col-span-2 lg:col-span-12">
             {{ variable.name_en }}
           </h2>
 
           <!-- Display name in Spanish input -->
-          <div class="col-span-4">
+          <div class="col-span-1 sm:col-span-1 lg:col-span-4">
             <label
               :for="'name_es_' + index"
               class="block text-sm font-medium leading-6 text-primary"
@@ -37,7 +37,7 @@
           </div>
 
           <!-- Display tooltip input -->
-          <div class="col-span-4">
+          <div class="col-span-1 sm:col-span-1 lg:col-span-4">
             <label
               for="tooltip"
               class="block text-sm font-medium leading-6 text-primary"
@@ -54,7 +54,7 @@
           </div>
 
           <!-- Input type selector -->
-          <div class="col-span-4">
+          <div class="col-span-1 sm:col-span-1 lg:col-span-4">
             <label
               for="field_type"
               class="block text-sm font-medium leading-6 text-primary"
@@ -76,7 +76,7 @@
           </div>
 
           <!-- Summary field classification selector -->
-          <div class="col-span-4">
+          <div class="col-span-1 sm:col-span-1 lg:col-span-4">
             <label
               :for="'summary_field_' + index"
               class="block text-sm font-medium leading-6 text-primary"
@@ -101,7 +101,7 @@
           </div>
 
           <!-- Currency selector (only for Valor classification) -->
-          <div v-if="variable.summary_field === 'value'" class="col-span-4">
+          <div v-if="variable.summary_field === 'value'" class="col-span-1 sm:col-span-1 lg:col-span-4">
             <label
               :for="'currency_' + index"
               class="block text-sm font-medium leading-6 text-primary"
@@ -121,7 +121,7 @@
           </div>
 
           <!-- Select options configuration -->
-          <div v-if="variable.field_type === 'select'" class="col-span-12 mt-2">
+          <div v-if="variable.field_type === 'select'" class="col-span-1 sm:col-span-2 lg:col-span-12 mt-2">
             <label class="block text-sm font-medium leading-6 text-primary">
               Opciones del selector (separadas por coma) <span class="text-red-500">*</span>
             </label>
@@ -149,7 +149,7 @@
       />
 
       <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 pt-6 border-t border-gray-200">
+      <div class="flex flex-col md:flex-row md:flex-wrap gap-3 md:gap-4 mt-6 pt-6 border-t border-gray-200">
         <!-- Save as Draft button -->
         <button
           @click="validateAndSave('Draft')"
@@ -178,7 +178,7 @@
         <button
           @click="handleBack()"
           type="button"
-          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 sm:ml-auto"
+          class="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-lg shadow-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 md:ml-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

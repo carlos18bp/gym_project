@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div class="relative top-10 sm:top-20 mx-4 sm:mx-auto p-4 sm:p-5 border w-auto sm:w-96 shadow-lg rounded-md bg-white">
       <!-- Header -->
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium text-gray-900">
@@ -46,7 +46,7 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex justify-end space-x-3">
+      <div class="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 sm:space-x-0">
         <button
           @click="$emit('close')"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"

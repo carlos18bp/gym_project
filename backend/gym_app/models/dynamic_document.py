@@ -25,6 +25,20 @@ def document_letterhead_template_path(instance, filename):
     return os.path.join('document_letterhead_templates', str(instance.id), filename)
 
 
+def letterhead_image_snapshot_path(instance, filename):
+    """Generate unique path for letterhead snapshots frozen at formalization."""
+    ext = filename.split('.')[-1].lower()
+    filename = f"letterhead_snapshot_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('letterheads_snapshot', str(instance.id), filename)
+
+
+def document_letterhead_template_snapshot_path(instance, filename):
+    """Generate unique path for Word letterhead template snapshots frozen at formalization."""
+    ext = filename.split('.')[-1].lower()
+    filename = f"letterhead_template_snapshot_{uuid.uuid4().hex}.{ext}"
+    return os.path.join('document_letterhead_templates_snapshot', str(instance.id), filename)
+
+
 class Tag(models.Model):
     """
     Model representing a tag that lawyers can assign to document templates (formats).
@@ -137,11 +151,35 @@ class DynamicDocument(models.Model):
         blank=True,
         help_text="Plantilla Word (.docx) para membrete específica de este documento, utilizada al generar documentos Word cuando está configurada."
     )
+    letterhead_image_snapshot = models.ImageField(
+        upload_to=letterhead_image_snapshot_path,
+        null=True,
+        blank=True,
+        help_text="Copia congelada del membrete (PNG) al momento de formalizar. Inmutable: garantiza que el documento formalizado no varíe según quién lo descargue."
+    )
+    letterhead_word_template_snapshot = models.FileField(
+        upload_to=document_letterhead_template_snapshot_path,
+        null=True,
+        blank=True,
+        help_text="Copia congelada de la plantilla Word de membrete al momento de formalizar. Inmutable."
+    )
     signature_type = models.CharField(
         max_length=20,
         choices=SIGNATURE_TYPE_CHOICES,
         default='normal',
         help_text="Type of signature workflow: 'normal' (all parties sign), 'issuer_only' (only creator signs), 'informative' (no signatures needed)."
+    )
+    formalized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="formalized_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=(
+            "Usuario que oprimió \"Formalizar\". Es el emisor real cuyo membrete "
+            "se congela en el snapshot del documento. Puede diferir de created_by "
+            "cuando un abogado armó el template y otro usuario lo formalizó."
+        ),
     )
 
     def __str__(self):

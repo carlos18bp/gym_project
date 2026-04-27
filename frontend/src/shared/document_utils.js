@@ -8,6 +8,24 @@ export const showPreviewModal = ref(false);
 export const previewDocumentData = ref({ title: "", content: "" });
 const { registerView } = useRecentViews();
 
+// Mirrors backend ``normalize_fragmented_variables``: reassembles ``{{var}}``
+// markers that TinyMCE may have split across inline tags, newlines or
+// ``&nbsp;`` (typical when pasting a table from Word) so downstream regex
+// substitution can match them.
+export const normalizeFragmentedVariables = (html) => {
+  if (!html) return html;
+  const pattern = /\{\{((?:[^}]|\}(?!\}))*)\}\}/g;
+  return html.replace(pattern, (match, inner) => {
+    const clean = inner
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+    return clean ? `{{ ${clean} }}` : match;
+  });
+};
+
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Returns the document content with variables replaced by their values
  * for final states (Completed, PendingSignatures, FullySigned).
@@ -18,14 +36,14 @@ const { registerView } = useRecentViews();
 export const getProcessedDocumentContent = (document) => {
   if (!document) return "";
 
-  let processedContent = document.content || "";
+  let processedContent = normalizeFragmentedVariables(document.content || "");
 
   // Only process variables for specific states
   const statesToProcess = ['Completed', 'PendingSignatures', 'FullySigned'];
   if (statesToProcess.includes(document.state) && document.variables && Array.isArray(document.variables)) {
     document.variables.forEach((variable) => {
       if (!variable || !variable.name_en) return;
-      const regex = new RegExp(`{{\\s*${variable.name_en}\\s*}}`, "g");
+      const regex = new RegExp(`{{\\s*${escapeRegExp(variable.name_en)}\\s*}}`, "g");
       let replacement = variable.value || "";
 
       // Apply numeric + currency formatting for value-type summary fields
@@ -94,7 +112,7 @@ export const openPreviewModal = (document) => {
 export const getPreviewContentWithFormattedVariables = (document) => {
   if (!document) return "";
 
-  let processedContent = document.content || "";
+  let processedContent = normalizeFragmentedVariables(document.content || "");
   const variables = document.variables && Array.isArray(document.variables) ? document.variables : [];
 
   // Build a map of variable name_en -> name_es for quick lookup

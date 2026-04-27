@@ -102,7 +102,7 @@
             <!-- Dropdown Menu -->
             <div
               v-if="showLawyerDropdown"
-              class="absolute z-20 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden w-full"
+              class="relative z-20 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden w-full"
             >
               <button
                 v-for="tab in lawyerNavigationTabs"
@@ -338,9 +338,9 @@
           </button>
           
           <!-- Dropdown Menu -->
-          <div 
+          <div
             v-if="showClientDropdown"
-            class="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
+            class="relative z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden"
           >
             <button
               v-for="tab in navigationTabs"

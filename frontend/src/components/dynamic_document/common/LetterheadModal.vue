@@ -3,7 +3,7 @@
     <div class="w-full h-full flex items-center justify-center p-4" @click.self="close">
     <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->
-      <div class="px-6 py-4 border-b border-gray-200">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
         <h2 class="text-xl font-semibold text-gray-800">Gestión de Membrete</h2>
         <p class="text-sm text-gray-500 mt-1">
           Documento: {{ document?.title || 'Cargando...' }}
@@ -23,7 +23,7 @@
       </div>
 
       <!-- Modal body -->
-      <div class="p-6 overflow-y-auto flex-grow">
+      <div class="p-4 sm:p-6 overflow-y-auto flex-grow">
         <!-- Loading state -->
         <div v-if="loading" class="text-center py-10">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -42,7 +42,7 @@
                 class="max-w-full h-auto max-h-64 mx-auto shadow-sm"
                 @error="handleImageError"
               />
-              <div class="mt-4 flex justify-center space-x-3">
+              <div class="mt-4 flex flex-col sm:flex-row sm:justify-center gap-2 sm:gap-3 sm:space-x-0">
                 <button
                   @click="downloadImage"
                   class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -90,16 +90,16 @@
               
               <div v-if="!selectedFile">
                 <PhotoIcon class="mx-auto h-12 w-12 text-gray-400" />
-                <div class="mt-4">
+                <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-center gap-2 sm:gap-3">
                   <button
                     @click="$refs.fileInput.click()"
-                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Seleccionar Imagen PNG
                   </button>
                   <button
                     @click="showSpecifications = !showSpecifications"
-                    class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                   >
                     <InformationCircleIcon class="h-4 w-4 mr-2" />
                     {{ showSpecifications ? 'Ocultar' : 'Ver' }} Especificaciones
@@ -129,7 +129,7 @@
                   />
                 </div>
                 
-                <div class="flex justify-center space-x-3">
+                <div class="flex flex-col sm:flex-row sm:justify-center gap-2 sm:gap-3 sm:space-x-0">
                   <button
                     @click="clearSelection"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -223,7 +223,7 @@
                   <span class="text-gray-400">({{ formatFileSize(selectedWordTemplate.size) }})</span>
                 </div>
 
-                <div class="flex justify-center space-x-3">
+                <div class="flex flex-col sm:flex-row sm:justify-center gap-2 sm:gap-3 sm:space-x-0">
                   <button
                     @click="clearWordTemplateSelection"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -245,7 +245,7 @@
           </div>
 
           <!-- Specifications Panel -->
-          <div v-if="showSpecifications" class="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-6">
+          <div v-if="showSpecifications" class="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 space-y-6">
             <div class="flex items-center space-x-2">
               <InformationCircleIcon class="h-6 w-6 text-blue-600" />
               <h3 class="text-lg font-semibold text-blue-900">Especificaciones del Membrete para PDF</h3>

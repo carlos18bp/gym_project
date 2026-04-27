@@ -52,7 +52,7 @@ test("issuer_only document shows 'Solo firma del emisor' badge and 'Pendiente de
       id: 4301, title: "Contrato Issuer Only", state: "PendingSignatures",
       createdBy: userId, requires_signature: true, signature_type: "issuer_only",
       signatures: [
-        { id: 50, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: false },
+        { id: 50, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: false, is_creator: true },
       ],
     }),
   ];
@@ -65,6 +65,28 @@ test("issuer_only document shows 'Solo firma del emisor' badge and 'Pendiente de
 });
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
+test("issuer_only document shows 'Firmado' for issuer once signed and 'Informado' for recipient", { tag: ['@flow:sign-status-modal', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  const userId = 8733;
+  const recipientId = 99003;
+  const docs = [
+    buildMockDocument({
+      id: 4304, title: "Issuer Only Firmado", state: "FullySigned",
+      createdBy: userId, requires_signature: true, signature_type: "issuer_only",
+      signatures: [
+        { id: 80, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: true, signed_at: "2026-04-05T10:00:00Z", is_creator: true },
+        { id: 81, signer: recipientId, signer_email: "recipient@example.com", signer_name: "Destinatario", signed: true, signed_at: "2026-04-05T10:00:00Z", is_creator: false },
+      ],
+    }),
+  ];
+
+  await setupDashboard(page, { userId, docs });
+  await openSignaturesModal(page, { tab: "Dcs. Formalizados", docTitle: "Issuer Only Firmado" });
+
+  await expect(page.getByText("Firmado", { exact: true })).toBeVisible();
+  await expect(page.getByText("Informado", { exact: true })).toBeVisible();
+});
+
+// quality: allow-fragile-test-data (mock signer email in signature test double)
 test("informative document shows 'Emitido' for issuer and 'Informado' for other participants", { tag: ['@flow:sign-status-modal', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8731;
   const otherSigner = 99001;
@@ -73,8 +95,8 @@ test("informative document shows 'Emitido' for issuer and 'Informado' for other 
       id: 4302, title: "Circular Informativa", state: "FullySigned",
       createdBy: userId, requires_signature: true, signature_type: "informative",
       signatures: [
-        { id: 60, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: true, signed_at: "2026-04-01T12:00:00Z" },
-        { id: 61, signer: otherSigner, signer_email: "client@example.com", signer_name: "Cliente Participante", signed: true, signed_at: "2026-04-02T12:00:00Z" },
+        { id: 60, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: true, signed_at: "2026-04-01T12:00:00Z", is_creator: true },
+        { id: 61, signer: otherSigner, signer_email: "client@example.com", signer_name: "Cliente Participante", signed: true, signed_at: "2026-04-02T12:00:00Z", is_creator: false },
       ],
     }),
   ];
@@ -97,8 +119,8 @@ test("rejected signer shows 'Rechazado' label even when signature_type is inform
       id: 4303, title: "Informativa Rechazada", state: "Rejected",
       createdBy: userId, requires_signature: true, signature_type: "informative",
       signatures: [
-        { id: 70, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: true, signed_at: "2026-04-03T12:00:00Z" },
-        { id: 71, signer: otherSigner, signer_email: "client@example.com", signer_name: "Cliente Participante", signed: false, rejected: true, rejected_at: "2026-04-04T10:00:00Z" },
+        { id: 70, signer: userId, signer_email: "e2e@example.com", signer_name: "E2E Lawyer", signed: true, signed_at: "2026-04-03T12:00:00Z", is_creator: true },
+        { id: 71, signer: otherSigner, signer_email: "client@example.com", signer_name: "Cliente Participante", signed: false, rejected: true, rejected_at: "2026-04-04T10:00:00Z", is_creator: false },
       ],
     }),
   ];

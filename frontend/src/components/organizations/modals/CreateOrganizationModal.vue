@@ -24,7 +24,7 @@
             leave-from="opacity-100 translate-y-0 sm:scale-100"
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
-            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
+            <DialogPanel class="relative transform overflow-hidden rounded-lg bg-white px-4 py-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
               <!-- Modal Header -->
               <div class="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
                 <div>
@@ -129,7 +129,7 @@
                     <label class="block text-sm font-medium leading-6 text-gray-900">
                       Imagen de Perfil
                     </label>
-                    <div class="mt-2 flex items-center space-x-4">
+                    <div class="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                       <!-- Profile Image Preview -->
                       <div class="flex-shrink-0">
                         <img
@@ -173,7 +173,7 @@
                         <img
                           :src="coverImagePreview || defaultCoverImage"
                           alt="Cover preview"
-                          class="w-full h-32 rounded-lg object-cover border-2 border-gray-200 bg-gray-50"
+                          class="w-full h-20 sm:h-32 rounded-lg object-cover border-2 border-gray-200 bg-gray-50"
                         />
                       </div>
                       

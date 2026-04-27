@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click.self="closeModal">
-    <div class="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full">
+    <div class="bg-white rounded-lg p-4 sm:p-6 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
       <!-- Close button -->
       <div class="flex justify-end">
         <button @click="closeModal()">
@@ -39,7 +39,7 @@
             Anexos
           </label>
           <div
-            class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-6 py-10"
+            class="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 bg-white px-4 sm:px-6 py-6 sm:py-10"
             @dragover.prevent
             @drop.prevent="handleDrop"
           >
