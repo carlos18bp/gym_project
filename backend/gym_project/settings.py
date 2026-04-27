@@ -12,7 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Environment detection
 # ---------------------------------------------------------------------------
 DJANGO_ENV = config('DJANGO_ENV', default='development')
-IS_PRODUCTION = DJANGO_ENV == 'production'
+# Staging is production-grade infra (HTTPS, fail2ban, MemoryMax, gunicorn, etc.);
+# only operational gates differ (BACKUPS_ENABLED, ENABLE_SLOW_QUERIES_REPORT).
+IS_STAGING = DJANGO_ENV == 'staging'
+IS_PRODUCTION = DJANGO_ENV in ('production', 'staging')
 
 # ---------------------------------------------------------------------------
 # Security
@@ -244,6 +247,11 @@ DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.{extension}'
 DBBACKUP_COMPRESS = True
 DBBACKUP_CLEANUP_KEEP = 5
 DBBACKUP_CLEANUP_KEEP_MEDIA = 5
+
+# Staging-friendly gates: defaults to True so production runs normally without
+# touching its .env; staging .env sets these to False to skip operational tasks.
+BACKUPS_ENABLED = config('BACKUPS_ENABLED', default=True, cast=bool)
+ENABLE_SLOW_QUERIES_REPORT = config('ENABLE_SLOW_QUERIES_REPORT', default=True, cast=bool)
 
 # ---------------------------------------------------------------------------
 # Silk profiling configuration (only active when ENABLE_SILK=true)

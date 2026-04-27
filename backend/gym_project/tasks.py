@@ -27,7 +27,12 @@ def scheduled_backup():
     Storage: configured via BACKUP_STORAGE_PATH env var.
     Retention: 5 DB + 5 media backups (~5 days), synchronized cleanup.
     Compression enabled for both DB (.sql.gz) and media (.tar.gz).
+
+    Skipped when BACKUPS_ENABLED=False (e.g. staging environments).
     """
+    if not getattr(settings, 'BACKUPS_ENABLED', True):
+        return
+
     from django.core.management import call_command
 
     timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
@@ -83,9 +88,12 @@ def weekly_slow_queries_report():
     """
     Weekly report of slow queries and potential N+1 patterns.
     Output: backend/logs/silk-weekly-report.log
-    Only runs when Silk is enabled.
+    Only runs when Silk is enabled and the report gate is on
+    (ENABLE_SLOW_QUERIES_REPORT=False disables in staging).
     """
     if not getattr(settings, 'ENABLE_SILK', False):
+        return
+    if not getattr(settings, 'ENABLE_SLOW_QUERIES_REPORT', True):
         return
 
     from silk.models import Request, SQLQuery
