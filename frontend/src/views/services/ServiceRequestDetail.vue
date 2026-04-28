@@ -22,7 +22,10 @@
       </div>
 
       <div v-else class="space-y-4">
-        <div class="bg-white border border-gray-200 rounded-xl p-6">
+        <div
+          class="bg-white border rounded-xl p-6 transition-all duration-500"
+          :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 animate-pulse' : 'border-gray-200'"
+        >
           <div class="flex flex-wrap justify-between gap-3">
             <div>
               <p class="text-sm text-gray-500">{{ requestDetail.service?.name }}</p>
@@ -169,7 +172,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
 import { showNotification } from "@/shared/notification_message";
@@ -185,6 +188,8 @@ const userStore = useUserStore();
 const loading = ref(false);
 const requestDetail = ref(null);
 const responseFile = ref(null);
+const isHighlighted = ref(false);
+let highlightTimer = null;
 const manageForm = reactive({
   status: "OPEN",
   message: "",
@@ -316,5 +321,22 @@ const goBack = () => {
   }
 };
 
-onMounted(loadDetail);
+onMounted(async () => {
+  await loadDetail();
+  if (route.query.highlight) {
+    isHighlighted.value = true;
+    highlightTimer = setTimeout(() => {
+      isHighlighted.value = false;
+      router.replace({ ...route, query: { ...route.query, highlight: undefined } });
+      highlightTimer = null;
+    }, 5000);
+  }
+});
+
+onUnmounted(() => {
+  if (highlightTimer) {
+    clearTimeout(highlightTimer);
+    highlightTimer = null;
+  }
+});
 </script>

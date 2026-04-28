@@ -36,6 +36,14 @@ jest.mock("@heroicons/vue/24/outline", () => {
   };
 });
 
+jest.mock("@heroicons/vue/24/solid", () => {
+  const createIcon = (name) => ({ name, template: "<span />" });
+  return {
+    __esModule: true,
+    BellAlertIcon: createIcon("BellAlertIcon"),
+  };
+});
+
 const MenuStub = {
   name: "Menu",
   setup(_, { slots }) {
@@ -212,5 +220,77 @@ describe("ProcessDetail.vue", () => {
     window.URL.revokeObjectURL = originalRevokeObjectURL;
     createElementSpy.mockRestore();
     openSpy.mockRestore();
+  });
+
+  test("lastStageAlert returns the alert of the last stage", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({
+        stages: [
+          { id: 1, status: "Apertura", date: "2026-05-01", alert: { is_active: false, notify_clients: true } },
+          { id: 2, status: "Audiencia", date: "2026-06-15", alert: { is_active: true, notify_clients: true } },
+        ],
+      }),
+    });
+
+    expect(wrapper.vm.$.setupState.lastStageAlert).toEqual({
+      is_active: true,
+      notify_clients: true,
+    });
+  });
+
+  test("lastStageAlert is null when last stage has no alert", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({
+        stages: [{ id: 1, status: "Apertura", date: "2026-05-01" }],
+      }),
+    });
+
+    expect(wrapper.vm.$.setupState.lastStageAlert).toBeNull();
+  });
+
+  test("lastStageAlert is null when there are no stages", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({ stages: [] }),
+    });
+
+    expect(wrapper.vm.$.setupState.lastStageAlert).toBeNull();
+  });
+
+  test("alert indicator shows lawyer-and-clients copy when notify_clients=true", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({
+        stages: [
+          { id: 1, status: "Audiencia", date: "2026-06-15", alert: { is_active: true, notify_clients: true } },
+        ],
+      }),
+    });
+
+    expect(wrapper.text()).toContain("Notifica al abogado y clientes");
+    expect(wrapper.text()).not.toContain("Notifica solo al abogado");
+  });
+
+  test("alert indicator shows lawyer-only copy when notify_clients=false", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({
+        stages: [
+          { id: 1, status: "Audiencia", date: "2026-06-15", alert: { is_active: true, notify_clients: false } },
+        ],
+      }),
+    });
+
+    expect(wrapper.text()).toContain("Notifica solo al abogado");
+    expect(wrapper.text()).not.toContain("al abogado y clientes");
+  });
+
+  test("alert indicator hidden when alert is_active=false", async () => {
+    const { wrapper } = await mountView({
+      process: buildProcess({
+        stages: [
+          { id: 1, status: "Audiencia", date: "2026-06-15", alert: { is_active: false, notify_clients: true } },
+        ],
+      }),
+    });
+
+    expect(wrapper.text()).not.toContain("Alerta activa");
   });
 });

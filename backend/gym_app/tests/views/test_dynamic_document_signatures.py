@@ -1023,17 +1023,17 @@ class TestExpireOverdue:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
-    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    @patch("gym_app.services.signature_notification_service.send_template_email")
     @freeze_time("2025-01-15 12:00:00")
-    def test_expire_overdue_sends_email(self, mock_email, law):
-        """Verify expire overdue sends email."""
+    def test_expire_overdue_sends_email(self, mock_send_email, law):
+        """Verify expire overdue sends email via notification service."""
         doc = DynamicDocument.objects.create(
             title="Overdue2", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
             signature_due_date=timezone.now().date() - datetime.timedelta(days=1),
         )
         expire_overdue_documents()
-        mock_email.assert_called_once()
+        mock_send_email.assert_called_once()
         doc.refresh_from_db()
         assert doc.state == "Expired"
 

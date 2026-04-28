@@ -112,6 +112,18 @@ const router = createRouter({
       ],
     },
     {
+      path: "/notifications",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "notifications",
+          component: () => import(/* webpackChunkName: "notifications" */ "@/views/notifications/NotificationsList.vue"),
+          meta: { requiresAuth: true, title: "Notificaciones" },
+        },
+      ],
+    },
+    {
       path: "/process_list/:user_id?/:display?",
       component: SlideBar,
       children: [
