@@ -4,6 +4,7 @@ from datetime import timedelta
 
 import pytest
 from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models import Notification
 from gym_app.notification_tasks import reactivate_snoozed_notifications
@@ -14,6 +15,7 @@ def _run_task():
     return reactivate_snoozed_notifications.call_local()
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 def test_reactivates_expired_snoozed_notifications(client_user):
     """Notifications whose snoozed_until is in the past are set back to unread."""
@@ -31,6 +33,7 @@ def test_reactivates_expired_snoozed_notifications(client_user):
     assert notif.is_read is False
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 def test_ignores_still_snoozed_notifications(client_user):
     """Notifications whose snoozed_until is in the future are not touched."""
@@ -48,6 +51,7 @@ def test_ignores_still_snoozed_notifications(client_user):
     assert notif.is_read is True
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 def test_ignores_deleted_notifications(client_user):
     """Soft-deleted notifications are not reactivated."""

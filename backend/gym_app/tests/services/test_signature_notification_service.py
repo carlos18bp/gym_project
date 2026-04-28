@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models import DynamicDocument, DocumentSignature, Notification
 from gym_app.services.signature_notification_service import (
@@ -283,6 +284,7 @@ def test_daily_reminder_skips_users_with_only_recent_documents(
     ).exists()
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 @patch("gym_app.services.signature_notification_service.send_template_email")
 def test_daily_reminder_aggregates_documents_per_user(

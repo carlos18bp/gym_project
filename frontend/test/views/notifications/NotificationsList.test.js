@@ -4,6 +4,8 @@ import { setActivePinia, createPinia } from "pinia";
 import { useNotificationStore } from "@/stores/notification";
 import NotificationsList from "@/views/notifications/NotificationsList.vue";
 
+const TEST_DATE = "2026-01-15T10:00:00.000Z";
+
 jest.mock("@heroicons/vue/24/outline", () => ({
   __esModule: true,
   CheckIcon: { name: "CheckIcon", template: "<svg />" },
@@ -86,8 +88,8 @@ describe("NotificationsList.vue", () => {
   test("renders a list item per notification", async () => {
     buildStore({
       notifications: [
-        { id: 1, title: "A", message: "msg", category: "general", priority: "medium", is_read: true, created_at: new Date().toISOString() },
-        { id: 2, title: "B", message: "msg", category: "process_alert", priority: "high", is_read: false, created_at: new Date().toISOString() },
+        { id: 1, title: "A", message: "msg", category: "general", priority: "medium", is_read: true, created_at: TEST_DATE },
+        { id: 2, title: "B", message: "msg", category: "process_alert", priority: "high", is_read: false, created_at: TEST_DATE },
       ],
       totalCount: 2,
     });
@@ -112,10 +114,10 @@ describe("NotificationsList.vue", () => {
     expect(store.fetchNotifications).toHaveBeenCalledWith("unread", 1);
   });
 
-  test("clicking a process notification deep-links with highlight query", async () => {
+  test("clicking a process notification navigates with highlight query param", async () => {
     const store = buildStore({
       notifications: [
-        { id: 11, title: "p", message: "m", category: "process_alert", priority: "low", is_read: true, link_type: "process", link_id: 99, created_at: new Date().toISOString() },
+        { id: 11, title: "p", message: "m", category: "process_alert", priority: "low", is_read: true, link_type: "process", link_id: 99, created_at: TEST_DATE },
       ],
       totalCount: 1,
     });
@@ -133,10 +135,10 @@ describe("NotificationsList.vue", () => {
     expect(store.markAsRead).not.toHaveBeenCalled();
   });
 
-  test("clicking a document notification deep-links with highlight query", async () => {
+  test("clicking a document notification navigates with highlight query param", async () => {
     buildStore({
       notifications: [
-        { id: 12, title: "d", message: "m", category: "signature_request", priority: "low", is_read: true, link_type: "document", link_id: 77, created_at: new Date().toISOString() },
+        { id: 12, title: "d", message: "m", category: "signature_request", priority: "low", is_read: true, link_type: "document", link_id: 77, created_at: TEST_DATE },
       ],
       totalCount: 1,
     });
@@ -152,10 +154,10 @@ describe("NotificationsList.vue", () => {
     });
   });
 
-  test("clicking a service_request notification deep-links with highlight query", async () => {
+  test("clicking a service_request notification navigates with highlight query param", async () => {
     buildStore({
       notifications: [
-        { id: 13, title: "s", message: "m", category: "general", priority: "low", is_read: true, link_type: "service_request", link_id: 55, created_at: new Date().toISOString() },
+        { id: 13, title: "s", message: "m", category: "general", priority: "low", is_read: true, link_type: "service_request", link_id: 55, created_at: TEST_DATE },
       ],
       totalCount: 1,
     });
@@ -175,7 +177,7 @@ describe("NotificationsList.vue", () => {
   test("clicking an unread notification marks it as read before navigating", async () => {
     const store = buildStore({
       notifications: [
-        { id: 14, title: "x", message: "m", category: "general", priority: "low", is_read: false, link_type: "process", link_id: 1, created_at: new Date().toISOString() },
+        { id: 14, title: "x", message: "m", category: "general", priority: "low", is_read: false, link_type: "process", link_id: 1, created_at: TEST_DATE },
       ],
       totalCount: 1,
     });
@@ -215,7 +217,7 @@ describe("NotificationsList.vue", () => {
       pageSize: 20,
       currentPage: 1,
       notifications: [
-        { id: 1, title: "A", message: "m", category: "general", priority: "low", is_read: true, created_at: new Date().toISOString() },
+        { id: 1, title: "A", message: "m", category: "general", priority: "low", is_read: true, created_at: TEST_DATE },
       ],
     });
 
