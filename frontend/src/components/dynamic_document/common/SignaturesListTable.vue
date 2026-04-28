@@ -214,7 +214,12 @@
             <tr
               v-for="(document, index) in paginatedDocuments"
               :key="document.id"
-              class="hover:bg-gray-50 cursor-pointer transition-colors"
+              :data-testid="`signatures-list-row-${document.id}`"
+              :class="[
+                'hover:bg-gray-50 cursor-pointer transition-colors',
+                shouldPulsate(document) ? 'animate-pulse bg-blue-50' : '',
+                isHighlighted(document) ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+              ]"
               @click="handleDocumentClick(document)"
             >
               <td class="px-6 py-4 whitespace-nowrap" @click.stop>
@@ -596,7 +601,7 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { computed, ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   MagnifyingGlassIcon,
@@ -640,6 +645,10 @@ const props = defineProps({
   selectedTags: {
     type: Array,
     default: () => []
+  },
+  highlightDocumentId: {
+    type: [String, Number],
+    default: null
   }
 });
 
@@ -671,6 +680,33 @@ const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 const showSummaryModal = ref(false);
 const summaryDocument = ref(null);
+
+const PULSE_DURATION_MS = 8000;
+const isPulseActive = ref(true);
+let pulseTimeoutId = null;
+
+const shouldPulsate = (document) => {
+  if (!isPulseActive.value) {
+    return false;
+  }
+  if (props.state !== 'PendingSignatures') {
+    return false;
+  }
+
+  const currentUser = userStore.currentUser;
+  if (!currentUser) {
+    return false;
+  }
+
+  return document.signatures?.some(
+    sig => sig.signer_id === currentUser.id && !sig.signed && !sig.rejected
+  );
+};
+
+// Computed property to determine if document is highlighted
+const isHighlighted = (document) => {
+  return props.highlightDocumentId && document.id.toString() === props.highlightDocumentId.toString();
+};
 
 // Per-tab pagination state (independent of shared store)
 const tabDocuments = ref([]);
@@ -1255,7 +1291,17 @@ const handleRefresh = async () => {
 };
 
 onMounted(async () => {
+  pulseTimeoutId = setTimeout(() => {
+    isPulseActive.value = false;
+  }, PULSE_DURATION_MS);
   await fetchTabData(1);
+});
+
+onBeforeUnmount(() => {
+  if (pulseTimeoutId) {
+    clearTimeout(pulseTimeoutId);
+    pulseTimeoutId = null;
+  }
 });
 
 // Expose refresh function

@@ -210,10 +210,11 @@
             state="PendingSignatures" 
             :searchQuery="searchQuery" 
             :selectedTags="selectedTags"
+            :highlightDocumentId="route.query.highlight"
             @refresh="handleRefresh"
-            @open-electronic-signature="handleLawyerSignatureClick"
             @document-fully-signed="handleDocumentFullySigned"
             @document-rejected="handleDocumentRejected"
+            @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           />
         </div>
 
@@ -436,6 +437,7 @@
           state="PendingSignatures"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
+          :highlightDocumentId="route.query.highlight"
           @refresh="handleRefresh"
           @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           @document-fully-signed="handleClientDocumentFullySigned"
@@ -535,6 +537,7 @@ import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
+import { usePendingSignatures } from "@/composables/usePendingSignatures";
 import { useRouter, useRoute } from "vue-router";
 import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
@@ -571,6 +574,9 @@ const documentStore = useDynamicDocumentStore();
 const folderStore = useDocumentFolderStore();
 const router = useRouter();
 const route = useRoute();
+
+// Initialize pending signatures composable
+const { hasPending, shouldAlert, fetchPendingCount, markAlerted } = usePendingSignatures();
 
 // Basic user restrictions
 const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
@@ -954,6 +960,18 @@ watch(() => route.query, (query) => {
   }
 }, { immediate: true });
 
+// Watch for highlight query parameter from notifications
+watch(() => route.query.highlight, (highlightId) => {
+  if (highlightId) {
+    // Switch to pending signatures tab to show the highlighted document
+    if (currentUser.value?.role === 'lawyer') {
+      activeLawyerTab.value = 'pending-signatures';
+    } else {
+      activeTab.value = 'pending-signatures';
+    }
+  }
+}, { immediate: true });
+
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
@@ -1039,6 +1057,22 @@ onMounted(async () => {
     ]);
   } catch (error) {
     console.error('Error initializing dynamic document dashboard:', error);
+  }
+
+  // Fetch pending signatures count and handle intelligent redirection
+  await fetchPendingCount();
+
+  // Intelligent redirection: if user has pending signatures and hasn't been alerted this session.
+  // Explicit URL params (?tab= / ?lawyerTab=) take priority and suppress the auto-redirect.
+  const hasExplicitTabParam = !!(route.query.tab || route.query.lawyerTab);
+  if (shouldAlert.value && !hasExplicitTabParam) {
+    if (currentUser.value?.role === 'lawyer') {
+      activeLawyerTab.value = 'pending-signatures';
+    } else {
+      activeTab.value = 'pending-signatures';
+    }
+
+    markAlerted();
   }
 
   documentStore.selectedDocument = null;

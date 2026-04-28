@@ -129,17 +129,35 @@
                             'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                           ]"
                         >
-                          <component
-                            :is="item.icon"
-                            :class="[
-                              item.current
-                                ? 'text-secondary'
-                                : 'text-primary group-hover:text-secondary',
-                              'h-6 w-6 shrink-0',
-                            ]"
-                            aria-hidden="true"
-                          />
-                          {{ item.name }}
+                          <div class="relative">
+                            <component
+                              :is="item.icon"
+                              :class="[
+                                item.current
+                                  ? 'text-secondary'
+                                  : 'text-primary group-hover:text-secondary',
+                                'h-6 w-6 shrink-0',
+                              ]"
+                              aria-hidden="true"
+                            />
+                            <span
+                              v-if="item.name === 'Archivos Juridicos' && hasPending"
+                              data-testid="pending-signatures-indicator-mobile"
+                              class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                            >
+                              <span class="sr-only">Documentos pendientes de firma</span>
+                            </span>
+                          </div>
+                          <span class="flex items-center gap-2">
+                            {{ item.name }}
+                            <span
+                              v-if="item.name === 'Archivos Juridicos' && hasPending"
+                              data-testid="pending-signatures-count-mobile"
+                              class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                            >
+                              {{ pendingCount > 99 ? '99+' : pendingCount }}
+                            </span>
+                          </span>
                         </a>
                       </li>
                     </ul>
@@ -291,17 +309,37 @@
                     'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                   ]"
                 >
-                  <component
-                    :is="item.icon"
-                    :class="[
-                      item.current
-                        ? 'text-secondary'
-                        : 'text-primary group-hover:text-secondary',
-                      'h-6 w-6 shrink-0',
-                    ]"
-                    aria-hidden="true"
-                  />
-                  {{ item.name }}
+                  <div class="relative">
+                    <component
+                      :is="item.icon"
+                      :class="[
+                        item.current
+                          ? 'text-secondary'
+                          : 'text-primary group-hover:text-secondary',
+                        'h-6 w-6 shrink-0',
+                      ]"
+                      aria-hidden="true"
+                    />
+                    <!-- Pulsing indicator for Archivos Juridicos when there are pending signatures -->
+                    <span
+                      v-if="item.name === 'Archivos Juridicos' && hasPending"
+                      class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                      data-testid="pending-signatures-indicator"
+                    >
+                      <span class="sr-only">Documentos pendientes de firma</span>
+                    </span>
+                  </div>
+                  <span class="flex items-center gap-2">
+                    {{ item.name }}
+                    <!-- Badge showing pending count for Archivos Juridicos -->
+                    <span
+                      v-if="item.name === 'Archivos Juridicos' && hasPending"
+                      class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                      data-testid="pending-signatures-count"
+                    >
+                      {{ pendingCount > 99 ? '99+' : pendingCount }}
+                    </span>
+                  </span>
                 </a>
               </li>
             </ul>
@@ -367,6 +405,7 @@
   </div>
 
   <div class="lg:pl-72 w-full h-screen flex-1 flex flex-col">
+    <NotificationBell />
     <main class="h-full">
       <!-- Content -->
       <router-view v-slot="{ Component }">
@@ -421,15 +460,18 @@ import {
   EnvelopeIcon,
   BuildingOfficeIcon,
   BuildingLibraryIcon,
-  BookOpenIcon
+  BookOpenIcon,
+  BellAlertIcon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
+import { usePendingSignatures } from "@/composables/usePendingSignatures";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import RegisteredIcon from "@/components/icons/RegisteredIcon.vue";
+import NotificationBell from "@/components/notifications/NotificationBell.vue";
 import WhatsappIcon from "@/assets/icons/social_network/whatsapp.svg";
 import FacebookIcon from "@/assets/icons/social_network/facebook.svg";
 import InstagramIcon from "@/assets/icons/social_network/instagram.svg";
@@ -444,12 +486,18 @@ const currentUser = computed(() => {
   return userStore.userById(authStore.userAuth?.id) || {};
 });
 
+// Initialize pending signatures composable
+const { pendingCount, hasPending, fetchPendingCount } = usePendingSignatures();
+
 const showProfile = ref(false); // Show modal with profile information
 const slidebarOpen = ref(false); // Show modal with navigation
 
 onMounted(async () => {
   await userStore.init();
   showProfile.value = !!!currentUser.value.is_profile_completed;
+  
+  // Fetch pending signatures count
+  await fetchPendingCount();
 
   // Hide legacy legal-request menu entries now replaced by Services module navigation.
   navigation.value = navigation.value.filter(
@@ -539,6 +587,16 @@ const navigation = ref([
     icon: HomeIcon,
     current: false,
     routes: ['/dashboard']
+  },
+  {
+    name: "Notificaciones",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "notifications" });
+    },
+    icon: BellAlertIcon,
+    current: false,
+    routes: ['/notifications']
   },
   {
     name: "Directorio",

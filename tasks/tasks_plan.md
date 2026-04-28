@@ -33,9 +33,9 @@
 | 2 | Minutas (Meeting Minutes) | `Plan_02_minutas.md` / `Requirement_02_minutas.md` | 📋 Planned |
 | 3 | Document Preview | `Plan_03_preview.md` / `Requirement_03_preview.md` | 📋 Planned |
 | 4 | Guided Tour | `Plan_04_guided_tour.md` / `Requirement_04_guided_tour.md` | 📋 Planned |
-| 5 | Notification Center | `Plan_05_notification_center.md` / `Requirement_05_notification_center.md` | 📋 Planned |
-| 6 | Legal Files Alerts | `Plan_06_legal_files_alerts.md` / `Requirement_06_legal_files_alerts.md` | 📋 Planned |
-| 7 | Process Alerts | `Plan_07_process_alerts.md` / `Requirement_07_process_alerts.md` | 📋 Planned |
+| 5 | Notification Center | `Plan_05_notification_center.md` / `Requirement_05_notification_center.md` | ✅ Complete | `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), categories with `process_alert`/`signature_*`, snooze + archive |
+| 6 | Legal Files Alerts | `Plan_06_legal_files_alerts.md` / `Requirement_06_legal_files_alerts.md` | ✅ Complete (audited 2026-04-28) | `signature_reminder_task.py` (Huey periodic, 14:00 UTC = 9 AM Colombia). Audit closed 7 spec gaps: removed email from `notify_signature_reopened` (in-app only per matrix), added 24h-cutoff exclusion to daily reminder queries, fixed N+1 in user fetch loop, added 8s pulse timeout in `SignaturesListTable`, added `sessionStorage` cleanup on logout, exported `PENDING_SIGNATURES_ALERTED_KEY` constant, **respected explicit `?tab=`/`?lawyerTab=` URL params over auto-redirect in `Dashboard.vue` (bug surfaced by E2E spec)**. 12 backend tests + 6 composable tests + 1 logout test + 3 E2E specs (5 tests) added. Flows registered: `legal-files-menu-pulse` (P1), `legal-files-auto-redirect` (P2), `legal-files-table-pulse` (P2). |
+| 7 | Process Alerts | `Plan_07_process_alerts.md` / `Requirement_07_process_alerts.md` | ✅ Complete (audited 2026-04-28) | `StageAlert` (OneToOne with `Stage`), `process_alert_tasks.py` Huey task at 14:00 UTC, 3-day & 1-day reminders, configurable recipients (`notify_clients`); 25 backend tests + 3 E2E specs |
 | 8 | Outlook Auth Integration | `Plan_08_outlook_auth.md` / `Requirement_08_outlook_auth.md` | 📋 Planned |
 | 9 | Marketplace | `Plan_09_marketplace.md` / `Requirement_09_marketplace.md` | 📋 Planned |
 | 10 | Optional Signature | `Plan_10_firma_opcional.md` / `Requirement_10_firma_opcional.md` | 📋 Planned |
@@ -51,24 +51,34 @@
 | 1 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
 | 2 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
 | 3 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
+| 4 | E2E gap: `process-alert-configure` — registered flow (P2) without spec. The `notify_clients` toggle in `ProcessForm.vue:676` has no `data-testid` and no E2E coverage of the actual user interaction (toggle + save). Existing `process-alert-recipients.spec.js` only tests display read-only. Needs `data-testid` attributes + heavy ProcessForm mocking (case types, lawyers, clients). | Low | Testing / Process Alerts |
+| 5 | Pre-registered flow `minutas-columns` (P2, documents) corresponds to planned feature #2 Minutas — not yet implemented. Will get its spec when feature lands. | Low | Testing / Planned features |
 
 ---
 
 ## 4. Testing Status
 
-### Backend Tests (76 files)
+### Backend Tests (86 files — verified 2026-04-28)
 
-| Directory | File Count | Purpose |
-|-----------|------------|--------|
-| `tests/models/` | 18 | Model unit tests |
-| `tests/serializers/` | 10 | Serializer tests |
-| `tests/views/` | 32 | API view tests (incl. formalize + correct endpoint tests) |
-| `tests/utils/` | 7 | Utility function tests |
-| `tests/tasks/` | 3 | Huey task tests |
-| `tests/services/` | 3 | Service layer tests |
-| `tests/commands/` | 3 | Management command tests |
+Latest additions (2026-04-28):
+- `tests/models/test_stage_alert.py` (9 tests)
+- `tests/tasks/test_process_alert_tasks.py` (11 tests)
+- `tests/views/test_process_alerts.py` (5 tests)
+- `tests/services/test_notification_service.py`, `test_signature_notification_service.py`
+- `tests/tasks/test_notification_tasks.py`
+- `tests/views/test_notification_views.py`
 
-### Frontend Unit Tests (167 files)
+| Directory | Purpose |
+|-----------|---------|
+| `tests/models/` | Model unit tests |
+| `tests/serializers/` | Serializer tests |
+| `tests/views/` | API view tests (incl. formalize + correct endpoint tests, process alerts, notifications) |
+| `tests/utils/` | Utility function tests |
+| `tests/tasks/` | Huey task tests (incl. `test_process_alert_tasks.py`) |
+| `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
+| `tests/commands/` | Management command tests |
+
+### Frontend Unit Tests (170 files — verified 2026-04-28)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -84,7 +94,14 @@
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (179 spec files) — **138/138 flow coverage**
+### Frontend E2E Tests (192 spec files — verified 2026-04-28) — **148 flows registered**
+
+Latest additions (2026-04-28):
+- `e2e/process/process-alert-recipients.spec.js` (3 tests)
+- `e2e/notifications/notification-center.spec.js` (4 tests — bell+badge, empty state, list+tabs, service request pulse + URL cleanup)
+- `e2e/signatures/legal-files-menu-pulse.spec.js` (2 tests — Req #6 menu pulse + sessionStorage flag)
+- `e2e/signatures/legal-files-auto-redirect.spec.js` (2 tests — Req #6 auto-redirect + URL param override)
+- `e2e/signatures/legal-files-table-pulse.spec.js` (1 test — Req #6 8-second pulse on pending rows)
 
 | Directory | Specs | Flows Covered |
 |-----------|-------|---------------|
@@ -92,13 +109,14 @@
 | `e2e/dashboard/` | 11 | Dashboard interactions |
 | `e2e/documents/` | 38 | Document CRUD, editor, permissions, tags, folders, relationships, letterhead, formalize-in-place, correct |
 | `e2e/organizations/` | 50 | Organization CRUD, invitations, memberships, posts, corporate requests, cross-role flows |
-| `e2e/process/` | 11 | Process CRUD, case files, search, history |
+| `e2e/process/` | 12 | Process CRUD, case files, search, history, process-alert-recipients |
 | `e2e/legal-requests/` | 10 | Legal request creation, management, responses |
 | `e2e/secop/` | 12 | SECOP browse, classify, alerts, saved views (create/edit/delete/favorites), export, sync, UNSPSC multi-select |
-| `e2e/signatures/` | 7 | Signature flows, pending/archived documents |
+| `e2e/signatures/` | 10 | Signature flows, pending/archived documents, legal-files alerts (menu pulse, auto-redirect, table pulse) |
 | `e2e/subscriptions/` | 7 | Checkout, cancellation, payment updates |
 | `e2e/intranet/` | 3 | Intranet page interactions |
 | `e2e/profile/` | 2 | Profile completion, updates |
+| `e2e/notifications/` | 1 | Notification Center (bell+badge, empty state, list+tabs, service-request pulse) |
 | `e2e/basic-user/` | 1 | Basic user restrictions |
 | `e2e/checkout/` | 1 | Checkout flow |
 | `e2e/directory/` | 1 | Directory listing |

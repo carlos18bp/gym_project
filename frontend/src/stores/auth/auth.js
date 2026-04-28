@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { useUserStore } from "./user";
 import { useProcessStore } from "../process";
 import { get_request } from "../services/request_http";
+import { PENDING_SIGNATURES_ALERTED_KEY } from "@/composables/usePendingSignatures";
 
 // Define the authentication store
 export const useAuthStore = defineStore("auth", {
@@ -83,6 +84,8 @@ export const useAuthStore = defineStore("auth", {
       const userStore = useUserStore();
       processStore.$reset();
       userStore.$reset();
+
+      sessionStorage.removeItem(PENDING_SIGNATURES_ALERTED_KEY);
     },
     /**
      * Saves the token and user authentication details to localStorage.

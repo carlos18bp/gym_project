@@ -1,6 +1,6 @@
 {
-  "version": "1.8.0",
-  "lastUpdated": "2026-04-15",
+  "version": "1.9.1",
+  "lastUpdated": "2026-04-28",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -333,6 +333,16 @@
       "priority": "P2",
       "description": "Modal de línea de tiempo con etapas ordenadas",
       "expectedSpecs": 2
+    },
+    "process-alerts": {
+      "name": "Alertas de proceso por estado procesal",
+      "module": "processes",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Indicador de alerta activa con destinatarios (abogado o abogado y clientes) en detalle e historial; recordatorios automáticos 3d/1d antes de la fecha del último estado.",
+      "expectedSpecs": 3
     },
     "process-form-validation": {
       "name": "Validación de formulario de proceso",
@@ -765,6 +775,45 @@
       "priority": "P2",
       "description": "Modal con estado de cada firmante, incluyendo labels por signature_type y rechazos",
       "expectedSpecs": 2
+    },
+    "legal-files-menu-pulse": {
+      "name": "Pulso visual en menú \"Archivos Jurídicos\" con firmas pendientes",
+      "module": "signatures",
+      "roles": [
+        "lawyer",
+        "client",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P1",
+      "description": "Tras login con firmas pendientes, el ítem del SlideBar \"Archivos Jurídicos\" muestra un indicador pulsante (badge + dot animado). Al visitar el módulo, el flag se persiste en sessionStorage (`pendingSignaturesAlerted`) y el pulso desaparece para el resto de la sesión. Al cerrar sesión el flag se limpia para que el siguiente login reactive el alerta.",
+      "expectedSpecs": 1
+    },
+    "legal-files-auto-redirect": {
+      "name": "Auto-redirect a tab \"Documentos Por Firmar\" en primer ingreso",
+      "module": "signatures",
+      "roles": [
+        "lawyer",
+        "client",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P2",
+      "description": "Primera visita post-login a `/dynamic_document_dashboard`: si el usuario tiene firmas pendientes (consultadas vía `GET /api/dynamic-documents/pending-signatures-count/`), el Dashboard selecciona automáticamente la pestaña \"Dcs. Por Firmar\" y marca la sesión como visitada. Si la URL incluye `?tab=` o `?lawyerTab=` explícito, ese parámetro tiene prioridad sobre la auto-redirección.",
+      "expectedSpecs": 1
+    },
+    "legal-files-table-pulse": {
+      "name": "Pulso de 8s en filas pendientes de la tabla de firmas",
+      "module": "signatures",
+      "roles": [
+        "lawyer",
+        "client",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P2",
+      "description": "Al cargar la tabla `SignaturesListTable` en estado `PendingSignatures`, las filas donde el usuario actual es firmante con la firma pendiente muestran clase `animate-pulse` durante ~8 segundos (`PULSE_DURATION_MS`). Pasado el timeout, la animación se detiene; al desmontar el componente el `setTimeout` se limpia.",
+      "expectedSpecs": 1
     },
     "legal-create-request": {
       "name": "Crear solicitud legal",
@@ -1450,6 +1499,26 @@
       ],
       "priority": "P3",
       "description": "Admin intenta guardar servicio sin datos requeridos (nombre vacio, sin etapas) y ve los mensajes de error de validateEditor()",
+      "expectedSpecs": 1
+    },
+    "notification-center": {
+      "name": "Centro de Notificaciones",
+      "module": "notifications",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P2",
+      "description": "Usuario ve campana flotante con badge de no leídas, navega al centro de notificaciones, alterna entre tabs (todas/no leídas/archivadas), y al hacer clic en una notificación es redirigido al recurso con efecto pulse de 5s (process / document / service_request)",
+      "expectedSpecs": 1
+    },
+    "process-alert-configure": {
+      "name": "Configurar destinatarios de alerta de proceso",
+      "module": "processes",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "Abogado activa la alerta del último estado procesal en ProcessForm (al crear o editar) y alterna el toggle 'Notificar también a los clientes' (notify_clients), opcionalmente añade descripción personalizada. Persiste en StageAlert y se refleja en el indicador del detalle del proceso.",
       "expectedSpecs": 1
     }
   }
