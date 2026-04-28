@@ -13,6 +13,7 @@ describe("Auth Store", () => {
     setActivePinia(createPinia());
     mock.reset();
     localStorage.clear();
+    sessionStorage.clear();
     delete axios.defaults.headers.common["Authorization"];
     jest.clearAllMocks();
   });
@@ -94,6 +95,14 @@ describe("Auth Store", () => {
     const { resetProcessSpy, resetUserSpy } = runLogout();
 
     expect([resetProcessSpy.mock.calls.length, resetUserSpy.mock.calls.length]).toEqual([1, 1]);
+  });
+
+  test("logout clears the pendingSignaturesAlerted sessionStorage flag", () => {
+    sessionStorage.setItem("pendingSignaturesAlerted", "true");
+
+    runLogout();
+
+    expect(sessionStorage.getItem("pendingSignaturesAlerted")).toBeNull();
   });
 
   test("removeFromLocalStorage clears running sign-in interval", () => {
