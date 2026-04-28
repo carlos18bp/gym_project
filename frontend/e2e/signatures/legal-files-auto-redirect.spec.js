@@ -91,6 +91,7 @@ test(
 
     await page.goto("/dynamic_document_dashboard?tab=signed-documents");
 
+    // quality: disable fragile_locator ("Archivos Juridicos" appears in both nav and page heading; .first() targets whichever resolves first)
     await page
       .getByText("Archivos Juridicos")
       .first()

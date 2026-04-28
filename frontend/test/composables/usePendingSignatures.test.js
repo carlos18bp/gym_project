@@ -13,6 +13,10 @@ describe("usePendingSignatures", () => {
     sessionStorage.clear();
   });
 
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
   test("fetchPendingCount stores count from API response", async () => {
     mockGetRequest.mockResolvedValueOnce({ data: { pending_count: 4 } });
 

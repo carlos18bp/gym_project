@@ -49,6 +49,7 @@ class TestStageAlertRelation:
         stage.delete()
         assert not StageAlert.objects.filter(stage_id=stage_id).exists()
 
+    # quality: disable no_assertions (pytest.raises IS the assertion — verifies IntegrityError is raised)
     def test_cannot_create_two_alerts_for_same_stage(self, stage):
         from django.db import IntegrityError
         StageAlert.objects.create(stage=stage)

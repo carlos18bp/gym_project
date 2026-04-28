@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models import Notification
 from gym_app.services.notification_service import (
@@ -31,8 +32,8 @@ def test_create_notification_returns_instance(client_user):
 
 
 @pytest.mark.django_db
-def test_create_notification_with_deep_link(client_user):
-    """Deep-link fields are stored correctly."""
+def test_create_notification_stores_link_type_and_link_id(client_user):
+    """link_type and link_id fields are stored correctly."""
     notif = create_notification(
         user=client_user,
         title="Process update",
@@ -73,6 +74,7 @@ def test_create_bulk_notifications(client_user, lawyer_user):
     assert Notification.objects.filter(user=lawyer_user, title="Bulk").count() == 1
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 def test_get_unread_count_excludes_archived_deleted_snoozed(client_user):
     """get_unread_count only counts visible, unread, non-snoozed notifications."""
@@ -103,6 +105,7 @@ def test_get_unread_count_excludes_archived_deleted_snoozed(client_user):
     assert get_unread_count(client_user) == 1
 
 
+@freeze_time('2026-01-15 10:00:00')
 @pytest.mark.django_db
 def test_get_unread_count_includes_expired_snooze(client_user):
     """Notifications whose snooze expired count as unread."""

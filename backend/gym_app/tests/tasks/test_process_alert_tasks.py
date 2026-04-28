@@ -90,7 +90,7 @@ class TestProcessAlertTaskReminders:
         alert.refresh_from_db()
         assert alert.notified_3_days is True
         assert alert.notified_1_day is False
-        assert mock_email.called
+        mock_email.assert_called_once()
 
     def test_sends_1_day_reminder_for_stage_in_1_day(
         self, lawyer, process_client, case_type
@@ -107,7 +107,7 @@ class TestProcessAlertTaskReminders:
         alert.refresh_from_db()
         assert alert.notified_1_day is True
         assert alert.notified_3_days is False
-        assert mock_email.called
+        mock_email.assert_called_once()
 
     def test_does_not_send_when_no_matching_day(
         self, lawyer, process_client, case_type

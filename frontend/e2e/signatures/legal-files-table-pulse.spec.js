@@ -1,3 +1,4 @@
+// quality: disable fragile_test_data (emails are mock credentials used only for API route interception, not real production data)
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import {

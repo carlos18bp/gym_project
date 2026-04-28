@@ -187,13 +187,13 @@ test(
 
     await page.goto(`/service_requests/${requestId}?highlight=${requestId}`);
 
+    // quality: allow-fragile-selector (animate-pulse is the semantic class for the highlight feature being tested)
     const card = page.locator(".animate-pulse").first();
     await expect(card).toBeVisible({ timeout: 15_000 });
     await expect(card).toHaveClass(/animate-pulse/);
 
-    await page.waitForTimeout(5500);
-
-    await expect(page.locator(".animate-pulse")).toHaveCount(0);
+    // quality: allow-fragile-selector (animate-pulse is the semantic class for the highlight feature being tested)
+    await expect(page.locator(".animate-pulse")).toHaveCount(0, { timeout: 8000 });
     await expect(page).toHaveURL(/\/service_requests\/4242($|\?)(?!.*highlight=)/);
   }
 );
