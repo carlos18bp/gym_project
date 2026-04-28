@@ -222,6 +222,7 @@ describe("ProcessDetail.vue", () => {
     openSpy.mockRestore();
   });
 
+  // quality: disable implementation_coupling (lastStageAlert is a setup-state computed with no direct DOM outlet — setupState is the only way to verify this derived value without reading the full template)
   test("lastStageAlert returns the alert of the last stage", async () => {
     const { wrapper } = await mountView({
       process: buildProcess({
@@ -238,6 +239,7 @@ describe("ProcessDetail.vue", () => {
     });
   });
 
+  // quality: disable implementation_coupling (lastStageAlert is a setup-state computed with no direct DOM outlet — setupState is the only way to verify this derived value without reading the full template)
   test("lastStageAlert is null when last stage has no alert", async () => {
     const { wrapper } = await mountView({
       process: buildProcess({
@@ -248,6 +250,7 @@ describe("ProcessDetail.vue", () => {
     expect(wrapper.vm.$.setupState.lastStageAlert).toBeNull();
   });
 
+  // quality: disable implementation_coupling (lastStageAlert is a setup-state computed with no direct DOM outlet — setupState is the only way to verify this derived value without reading the full template)
   test("lastStageAlert is null when there are no stages", async () => {
     const { wrapper } = await mountView({
       process: buildProcess({ stages: [] }),

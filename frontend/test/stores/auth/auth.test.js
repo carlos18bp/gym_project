@@ -18,6 +18,11 @@ describe("Auth Store", () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   const runLogout = () => {
     const authStore = useAuthStore();
     const processStore = useProcessStore();

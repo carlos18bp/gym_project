@@ -4,6 +4,8 @@ import { setActivePinia, createPinia } from "pinia";
 import { useNotificationStore } from "@/stores/notification";
 import NotificationSummaryCard from "@/components/dashboard/NotificationSummaryCard.vue";
 
+const TEST_DATE = "2026-01-15T10:00:00.000Z";
+
 jest.mock("@heroicons/vue/24/solid", () => ({
   __esModule: true,
   BellAlertIcon: { name: "BellAlertIcon", template: "<svg />" },
@@ -93,10 +95,10 @@ describe("NotificationSummaryCard.vue", () => {
   test("renders only the latest 3 notifications", async () => {
     buildStore({
       notifications: [
-        { id: 1, title: "One", message: "m", is_read: false, created_at: new Date().toISOString() },
-        { id: 2, title: "Two", message: "m", is_read: true, created_at: new Date().toISOString() },
-        { id: 3, title: "Three", message: "m", is_read: true, created_at: new Date().toISOString() },
-        { id: 4, title: "Four", message: "m", is_read: true, created_at: new Date().toISOString() },
+        { id: 1, title: "One", message: "m", is_read: false, created_at: TEST_DATE },
+        { id: 2, title: "Two", message: "m", is_read: true, created_at: TEST_DATE },
+        { id: 3, title: "Three", message: "m", is_read: true, created_at: TEST_DATE },
+        { id: 4, title: "Four", message: "m", is_read: true, created_at: TEST_DATE },
       ],
     });
 
@@ -109,10 +111,10 @@ describe("NotificationSummaryCard.vue", () => {
     expect(wrapper.text()).not.toContain("Four");
   });
 
-  test("clicking a process notification deep-links with highlight query", async () => {
+  test("clicking a process notification navigates with highlight query param", async () => {
     buildStore({
       notifications: [
-        { id: 21, title: "P", message: "m", is_read: true, link_type: "process", link_id: 9, created_at: new Date().toISOString() },
+        { id: 21, title: "P", message: "m", is_read: true, link_type: "process", link_id: 9, created_at: TEST_DATE },
       ],
     });
 
@@ -128,10 +130,10 @@ describe("NotificationSummaryCard.vue", () => {
     });
   });
 
-  test("clicking a document notification deep-links with highlight query", async () => {
+  test("clicking a document notification navigates with highlight query param", async () => {
     buildStore({
       notifications: [
-        { id: 22, title: "D", message: "m", is_read: true, link_type: "document", link_id: 8, created_at: new Date().toISOString() },
+        { id: 22, title: "D", message: "m", is_read: true, link_type: "document", link_id: 8, created_at: TEST_DATE },
       ],
     });
 
@@ -146,10 +148,10 @@ describe("NotificationSummaryCard.vue", () => {
     });
   });
 
-  test("clicking a service_request notification deep-links with highlight query", async () => {
+  test("clicking a service_request notification navigates with highlight query param", async () => {
     buildStore({
       notifications: [
-        { id: 23, title: "S", message: "m", is_read: true, link_type: "service_request", link_id: 7, created_at: new Date().toISOString() },
+        { id: 23, title: "S", message: "m", is_read: true, link_type: "service_request", link_id: 7, created_at: TEST_DATE },
       ],
     });
 
@@ -168,7 +170,7 @@ describe("NotificationSummaryCard.vue", () => {
   test("clicking a notification without link_type falls back to notifications route", async () => {
     buildStore({
       notifications: [
-        { id: 24, title: "X", message: "m", is_read: true, link_type: "", link_id: null, created_at: new Date().toISOString() },
+        { id: 24, title: "X", message: "m", is_read: true, link_type: "", link_id: null, created_at: TEST_DATE },
       ],
     });
 

@@ -176,6 +176,7 @@ test(
       page.getByRole("heading", { name: "Histórico Procesal" })
     ).toBeVisible({ timeout: 10_000 });
 
+    // quality: disable fragile_locator (span[title] is a semantic attribute selector; .first() guards against duplicate badge renders during async load)
     const alertBadge = page
       .locator('span[title="Notifica al abogado y clientes"]')
       .first();
