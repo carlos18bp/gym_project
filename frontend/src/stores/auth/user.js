@@ -106,11 +106,19 @@ export const useUserStore = defineStore("user", {
      * Set the current user based on authenticated user's ID.
      */
     setCurrentUser() {
-      if (!this.currentUser) {
-        const authStore = useAuthStore();
-        this.currentUser = authStore.userAuth;
-      } else {
-        return null;
+      const authStore = useAuthStore();
+      const id = authStore.userAuth?.id;
+      if (!id) return;
+
+      // Prefer fresh data from the backend list over the cached userAuth blob,
+      // so role/permission changes propagate without forcing a re-login.
+      const fresh = this.users.find((u) => u.id === id);
+      this.currentUser = fresh || authStore.userAuth;
+
+      // Keep localStorage userAuth in sync when we detected a drift.
+      if (fresh && JSON.stringify(fresh) !== JSON.stringify(authStore.userAuth)) {
+        authStore.userAuth = fresh;
+        authStore.saveToLocalStorageAuth();
       }
     },
 

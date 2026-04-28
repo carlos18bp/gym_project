@@ -481,10 +481,15 @@ export function installRouterGuards(authStore) {
         const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
         await userStore.init();
         
-        // Check if the user is a client, basic user, or corporate_client trying to access a lawyer-only route
-        if (userStore.currentUser?.role === 'client' || 
-            userStore.currentUser?.role === 'basic' || 
-            userStore.currentUser?.role === 'corporate_client') {
+        // Allow lawyers, admins and any staff/superuser (mirrors Dashboard.vue isLawyerLike).
+        const u = userStore.currentUser;
+        const isLawyerLike =
+          u?.role === 'lawyer' ||
+          u?.role === 'admin' ||
+          u?.is_staff ||
+          u?.is_superuser;
+
+        if (!isLawyerLike) {
           console.warn("Non-lawyer user attempting to access lawyer-only route. Redirecting to dashboard.");
           return next({ name: 'dashboard' });
         }
