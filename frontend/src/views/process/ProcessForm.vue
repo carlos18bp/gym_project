@@ -641,6 +641,61 @@
             </div>
           </div>
         </div>
+
+        <!-- Alert configuration section -->
+        <div v-if="lastStageHasDate" class="mt-6 border border-blue-200 bg-blue-50/50 rounded-xl p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <BellAlertIconSolid class="h-5 w-5 text-blue-600" />
+            <h3 class="text-base font-semibold text-gray-900">Configuración de Alerta</h3>
+          </div>
+          <p class="text-sm text-gray-600 mb-4">
+            Se enviarán recordatorios <strong>3 días</strong> y <strong>1 día</strong> antes de la fecha del último estado procesal.
+          </p>
+
+          <!-- Toggle active -->
+          <div class="flex items-center justify-between mb-4">
+            <label class="text-sm font-medium text-gray-700">Alerta activa</label>
+            <button
+              type="button"
+              @click="formData.alertIsActive = !formData.alertIsActive"
+              :class="formData.alertIsActive ? 'bg-blue-600' : 'bg-gray-200'"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            >
+              <span
+                :class="formData.alertIsActive ? 'translate-x-5' : 'translate-x-0'"
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+              />
+            </button>
+          </div>
+
+          <!-- Recipients -->
+          <div class="flex items-center justify-between mb-4">
+            <label class="text-sm font-medium text-gray-700">Notificar también a los clientes</label>
+            <button
+              type="button"
+              @click="formData.alertNotifyClients = !formData.alertNotifyClients"
+              :class="formData.alertNotifyClients ? 'bg-blue-600' : 'bg-gray-200'"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+            >
+              <span
+                :class="formData.alertNotifyClients ? 'translate-x-5' : 'translate-x-0'"
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+              />
+            </button>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descripción personalizada (opcional)</label>
+            <textarea
+              v-model="formData.alertDescription"
+              rows="2"
+              class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+              placeholder="Ej: Recordar presentar memorial ante el juzgado"
+            ></textarea>
+          </div>
+        </div>
+
         <!-- Action buttons -->
         <div class="flex flex-col md:flex-row md:flex-wrap gap-3 md:gap-4 pt-6 border-t border-gray-200">
           <!-- Save button -->
@@ -698,6 +753,7 @@ import { submitHandler } from "@/shared/submit_handler";
 import { computed, onMounted, ref, reactive, watch } from "vue";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@heroicons/vue/20/solid";
 import { TrashIcon, EyeIcon } from "@heroicons/vue/24/outline";
+import { BellAlertIcon as BellAlertIconSolid } from "@heroicons/vue/24/solid";
 import { showNotification } from "@/shared/notification_message.js";
 import {
   Combobox,
@@ -750,6 +806,16 @@ const formData = reactive({
       file: null,
     },
   ],
+  alertIsActive: true,
+  alertDescription: '',
+  alertNotifyClients: true,
+});
+
+const lastStageHasDate = computed(() => {
+  const stages = formData.stages;
+  if (!stages || stages.length === 0) return false;
+  const last = stages[stages.length - 1];
+  return !!(last && last.date);
 });
 
 // Variable to track if the form is modified
@@ -855,6 +921,14 @@ function assignProcessToFormData(process) {
     status: stage.status || "",
     date: stage.date || "",
   }));
+
+  // Load alert config from the last stage if available
+  const lastStage = process.stages[process.stages.length - 1];
+  if (lastStage && lastStage.alert) {
+    formData.alertIsActive = lastStage.alert.is_active;
+    formData.alertDescription = lastStage.alert.description || '';
+    formData.alertNotifyClients = lastStage.alert.notify_clients;
+  }
 
   // Assign case files
   formData.caseFiles = process.case_files.map((casefile) => ({

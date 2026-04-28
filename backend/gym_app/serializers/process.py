@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from gym_app.models import Case, CaseFile, Stage, Process, RecentProcess
+from gym_app.models import Case, CaseFile, Stage, StageAlert, Process, RecentProcess
 from gym_app.serializers import UserSerializer
 
 class CaseSerializer(serializers.ModelSerializer):
@@ -20,11 +20,26 @@ class CaseFileSerializer(serializers.ModelSerializer):
         model = CaseFile
         fields = '__all__'
 
+class StageAlertSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the StageAlert model.
+    Exposes alert configuration fields for the frontend.
+    """
+    class Meta:
+        model = StageAlert
+        fields = ['id', 'description', 'is_active', 'notify_clients',
+                  'notified_3_days', 'notified_1_day']
+        read_only_fields = ['id', 'notified_3_days', 'notified_1_day']
+
+
 class StageSerializer(serializers.ModelSerializer):
     """
     Serializer for the Stage model.
     Serializes all fields of the Stage model.
+    Includes nested alert data when present.
     """
+    alert = StageAlertSerializer(read_only=True)
+
     class Meta:
         model = Stage
         fields = '__all__'

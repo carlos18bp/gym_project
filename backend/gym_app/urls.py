@@ -13,7 +13,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -170,6 +170,7 @@ dynamic_document_urls = [
     # Signature management
     path('dynamic-documents/<int:document_id>/signatures/', signature_views.get_document_signatures, name='get-document-signatures'),
     path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
+    path('dynamic-documents/pending-signatures-count/', signature_views.get_pending_signatures_count, name='get-pending-signatures-count'),
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
     path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
     path('dynamic-documents/<int:document_id>/reopen-signatures/', signature_views.reopen_document_signatures, name='reopen-document-signatures'),
@@ -302,6 +303,17 @@ secop_urls = [
     path('secop/export/', secop.secop_export_excel, name='secop-export-excel'),
 ]
 
+# Notification center URLs
+notification_urls = [
+    path('notifications/', notification.notification_list, name='notification-list'),
+    path('notifications/unread-count/', notification.notification_unread_count, name='notification-unread-count'),
+    path('notifications/mark-all-read/', notification.notification_mark_all_read, name='notification-mark-all-read'),
+    path('notifications/<int:pk>/read/', notification.notification_mark_read, name='notification-mark-read'),
+    path('notifications/<int:pk>/archive/', notification.notification_archive, name='notification-archive'),
+    path('notifications/<int:pk>/snooze/', notification.notification_snooze, name='notification-snooze'),
+    path('notifications/<int:pk>/delete/', notification.notification_delete, name='notification-delete'),
+]
+
 # Services and procedures module URLs
 service_tramite_urls = [
     # Catalog visibility
@@ -347,5 +359,6 @@ urlpatterns = (
     reports_urls +
     subscription_urls +
     secop_urls +
-    service_tramite_urls
+    service_tramite_urls +
+    notification_urls
 )

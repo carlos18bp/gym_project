@@ -3,6 +3,7 @@ import os
 from django.db.models import Q
 
 from gym_app.models import User
+from gym_app.services.notification_service import create_notification, create_bulk_notifications
 from gym_app.views.layouts.sendEmail import send_template_email
 
 
@@ -41,6 +42,16 @@ def _get_manager_emails():
         is_active=True,
     ).exclude(email__isnull=True).exclude(email="")
     return sorted(set(queryset.values_list("email", flat=True)))
+
+
+def _get_manager_users():
+    """Return User instances for lawyers/admins (for in-app notifications)."""
+    return list(
+        User.objects.filter(
+            Q(role="lawyer") | Q(role="admin") | Q(is_staff=True) | Q(is_superuser=True),
+            is_active=True,
+        ).exclude(email__isnull=True).exclude(email="")
+    )
 
 
 
@@ -83,6 +94,24 @@ def notify_service_request_submission(service_request):
             exc_info=True,
         )
 
+    # In-app notification for the requester
+    try:
+        create_notification(
+            user=service_request.requester,
+            title=f"Solicitud radicada: {service_request.tracking_number}",
+            message=f"Tu solicitud para el servicio '{service_request.service.name}' ha sido radicada exitosamente",
+            category='general',
+            priority='medium',
+            link_type='service_request',
+            link_id=service_request.id,
+        )
+    except Exception:
+        logger.error(
+            "Error creating in-app notification for requester on service request %s",
+            service_request.id,
+            exc_info=True,
+        )
+
     manager_emails = _get_manager_emails()
     if manager_emails:
         try:
@@ -95,6 +124,26 @@ def notify_service_request_submission(service_request):
         except Exception:
             logger.error(
                 "Error notifying managers for service request %s",
+                service_request.id,
+                exc_info=True,
+            )
+
+    # In-app notifications for lawyers/admins
+    manager_users = _get_manager_users()
+    if manager_users:
+        try:
+            create_bulk_notifications(
+                users=manager_users,
+                title=f"Nueva solicitud: {service_request.tracking_number}",
+                message=f"Solicitud de '{service_request.service.name}' por {requester_name}",
+                category='general',
+                priority='medium',
+                link_type='service_request',
+                link_id=service_request.id,
+            )
+        except Exception:
+            logger.error(
+                "Error creating in-app notifications for managers on service request %s",
                 service_request.id,
                 exc_info=True,
             )
@@ -137,6 +186,24 @@ def notify_service_request_status_change(service_request, message=""):
     except Exception:
         logger.error(
             "Error notifying requester status change for service request %s",
+            service_request.id,
+            exc_info=True,
+        )
+
+    # In-app notification for the requester
+    try:
+        create_notification(
+            user=service_request.requester,
+            title=f"Actualización: {service_request.tracking_number}",
+            message=f"El estado de tu solicitud ahora es: {status_label}",
+            category='general',
+            priority='medium',
+            link_type='service_request',
+            link_id=service_request.id,
+        )
+    except Exception:
+        logger.error(
+            "Error creating in-app notification for status change on service request %s",
             service_request.id,
             exc_info=True,
         )

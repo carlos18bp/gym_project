@@ -101,7 +101,10 @@
       class="space-y-6"
     >
       <!-- Card: process header and information -->
-      <div class="p-4 sm:p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div
+        class="p-4 sm:p-6 rounded-lg border bg-white shadow-sm transition-all duration-500"
+        :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 animate-pulse' : 'border-gray-200'"
+      >
         <!-- Header with case type and users button -->
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
           <div class="flex items-center gap-3">
@@ -197,6 +200,20 @@
             :progress="process.progress"
             @open-history="showHistoryModal = true"
           />
+          <!-- Alert indicator -->
+          <div
+            v-if="lastStageAlert && lastStageAlert.is_active"
+            class="mt-3 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg"
+          >
+            <BellAlertIcon class="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <span class="text-xs text-blue-700 font-medium">
+              Alerta activa — {{
+                lastStageAlert.notify_clients
+                  ? 'Notifica al abogado y clientes'
+                  : 'Notifica solo al abogado'
+              }}
+            </span>
+          </div>
         </div>
       </div>
       </div>
@@ -380,7 +397,8 @@ import {
   ChevronDownIcon,
 } from "@heroicons/vue/20/solid";
 import { EyeIcon } from "@heroicons/vue/24/outline";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { BellAlertIcon } from "@heroicons/vue/24/solid";
+import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 import { useUserStore } from "@/stores/auth/user";
@@ -397,6 +415,12 @@ const currentUser = computed(() => userStore.currentUser);
 // Get process ID from route and fetch process data
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
+
+const lastStageAlert = computed(() => {
+  if (!process.value?.stages?.length) return null;
+  const lastStage = process.value.stages[process.value.stages.length - 1];
+  return lastStage?.alert || null;
+});
 
 /**
  * Initializes process and user data before the component is mounted.
@@ -415,6 +439,19 @@ onBeforeMount(async () => {
     }
   } catch (error) {
     console.error('Error initializing process detail:', error);
+  }
+});
+
+// Highlight pulse effect from notification deep-link
+const isHighlighted = ref(false);
+
+onMounted(() => {
+  if (route.query.highlight) {
+    isHighlighted.value = true;
+    setTimeout(() => {
+      isHighlighted.value = false;
+      router.replace({ ...route, query: { ...route.query, highlight: undefined } });
+    }, 5000);
   }
 });
 

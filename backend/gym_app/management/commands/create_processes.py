@@ -3,7 +3,7 @@ import random
 from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
-from gym_app.models import Process, Stage, CaseFile, User, Case
+from gym_app.models import Process, Stage, StageAlert, CaseFile, User, Case
 
 class Command(BaseCommand):
     help = 'Create processes with random stages, files, and cases'
@@ -201,6 +201,11 @@ class Command(BaseCommand):
 
             # Add all created stages to the process
             process.stages.add(*stages)
+
+            # Auto-create StageAlert for every stage (matches the runtime
+            # contract enforced by `_create_stage_alerts` in views/process.py).
+            for stage in stages:
+                StageAlert.objects.create(stage=stage)
 
             # Create a random number of case files - more variation in number
             num_files = random.randint(2, 10)

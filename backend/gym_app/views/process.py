@@ -4,10 +4,27 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-from gym_app.models import Process, Stage, CaseFile, Case, User, RecentProcess
+from gym_app.models import Process, Stage, StageAlert, CaseFile, Case, User, RecentProcess
 from gym_app.serializers.process import ProcessSerializer, RecentProcessSerializer
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+
+def _create_stage_alerts(created_stages, main_data):
+    """Create a StageAlert for every stage. Only the last receives the
+    user-provided configuration (the daily reminder task only evaluates
+    the alert of the last stage of each process)."""
+    if not created_stages:
+        return
+    for stage in created_stages[:-1]:
+        StageAlert.objects.create(stage=stage)
+    StageAlert.objects.create(
+        stage=created_stages[-1],
+        description=main_data.get('alertDescription', ''),
+        is_active=main_data.get('alertIsActive', True),
+        notify_clients=main_data.get('alertNotifyClients', True),
+    )
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -25,19 +42,19 @@ def process_list(request):
         if user.role == 'Client':
             processes = Process.objects.filter(clients=user) \
                 .select_related('lawyer') \
-                .prefetch_related('clients', 'stages', 'case_files') \
+                .prefetch_related('clients', 'stages__alert', 'case_files') \
                 .order_by('-created_at')
-        
+
         elif user.role == 'Lawyer':
             processes = Process.objects.filter(lawyer=user) \
                 .select_related('lawyer') \
-                .prefetch_related('clients', 'stages', 'case_files') \
+                .prefetch_related('clients', 'stages__alert', 'case_files') \
                 .order_by('-created_at')
         else:
             # If the user has any other role, return all processes
             processes = Process.objects.all() \
                 .select_related('lawyer') \
-                .prefetch_related('clients', 'stages', 'case_files') \
+                .prefetch_related('clients', 'stages__alert', 'case_files') \
                 .order_by('-created_at')
 
         serializer = ProcessSerializer(processes, many=True, context={'request': request})
@@ -89,53 +106,43 @@ def create_process(request):
             progress_value = 0
         progress_value = max(0, min(progress_value, 100))
 
-        # Create the Process instance
-        process = Process.objects.create(
-            authority=main_data.get('authority'),
-            authority_email=main_data.get('authorityEmail'),
-            plaintiff=main_data.get('plaintiff'),
-            defendant=main_data.get('defendant'),
-            ref=main_data.get('ref'),
-            lawyer=lawyer,
-            case=case_type,
-            subcase=main_data.get('subcase'),
-            progress=progress_value,
-        )
-
-        # Associate clients with the process
-        process.clients.set(clients_qs)
-
-        # Handle Stage instances
-        stages_data = main_data.get('stages', [])
-
-        # Create and add stages to process
-        for stage_data in stages_data:
-            stage_status = stage_data.get('status')
-            if not stage_status:
-                continue
-
-            # Parse optional date for the stage; default to today if not provided
-            date_value = stage_data.get('date')
-            if date_value:
-                try:
-                    # Expecting ISO format YYYY-MM-DD from frontend
-                    from datetime import date as _date_cls
-                    stage_date = _date_cls.fromisoformat(date_value)
-                except Exception:
-                    stage_date = timezone.now().date()
-            else:
-                stage_date = timezone.now().date()
-
-            stage = Stage.objects.create(
-                status=stage_status,
-                date=stage_date,
+        with transaction.atomic():
+            process = Process.objects.create(
+                authority=main_data.get('authority'),
+                authority_email=main_data.get('authorityEmail'),
+                plaintiff=main_data.get('plaintiff'),
+                defendant=main_data.get('defendant'),
+                ref=main_data.get('ref'),
+                lawyer=lawyer,
+                case=case_type,
+                subcase=main_data.get('subcase'),
+                progress=progress_value,
             )
-            process.stages.add(stage)
+            process.clients.set(clients_qs)
 
-        # Save process with associated stages
-        process.save()
+            stages_data = main_data.get('stages', [])
+            created_stages = []
+            for stage_data in stages_data:
+                stage_status = stage_data.get('status')
+                if not stage_status:
+                    continue
 
-        # Serialize and return the created process
+                date_value = stage_data.get('date')
+                if date_value:
+                    try:
+                        from datetime import date as _date_cls
+                        stage_date = _date_cls.fromisoformat(date_value)
+                    except Exception:
+                        stage_date = timezone.now().date()
+                else:
+                    stage_date = timezone.now().date()
+
+                stage = Stage.objects.create(status=stage_status, date=stage_date)
+                process.stages.add(stage)
+                created_stages.append(stage)
+
+            _create_stage_alerts(created_stages, main_data)
+
         serializer = ProcessSerializer(process, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -225,41 +232,44 @@ def update_process(request, pk):
         except Case.DoesNotExist:
             pass
     
-    # First save to apply the basic field updates
     process.save()
-    
-    # SIMPLIFIED STAGE HANDLING: Replace all existing stages with new ones
+
     stages_data = main_data.get('stages', [])
-    
-    # Remove all existing stages
-    process.stages.clear()
-    
-    # Create and add new stages from frontend data
-    for stage_data in stages_data:
-        stage_status = stage_data.get('status')
-        if not stage_status:
-            continue
 
-        # Parse optional date from frontend; default to today if missing/invalid
-        date_value = stage_data.get('date')
-        if date_value:
-            try:
-                from datetime import date as _date_cls
-                stage_date = _date_cls.fromisoformat(date_value)
-            except Exception:
+    # Process.stages is M2M, so .clear() only unlinks. Hard-delete the rows
+    # to avoid orphan Stage / StageAlert rows piling up in the database.
+    with transaction.atomic():
+        old_stage_ids = list(process.stages.values_list('id', flat=True))
+        process.stages.clear()
+        if old_stage_ids:
+            Stage.objects.filter(id__in=old_stage_ids).delete()
+
+        created_stages = []
+        for stage_data in stages_data:
+            stage_status = stage_data.get('status')
+            if not stage_status:
+                continue
+
+            date_value = stage_data.get('date')
+            if date_value:
+                try:
+                    from datetime import date as _date_cls
+                    stage_date = _date_cls.fromisoformat(date_value)
+                except Exception:
+                    stage_date = timezone.now().date()
+            else:
                 stage_date = timezone.now().date()
-        else:
-            stage_date = timezone.now().date()
 
-        new_stage = Stage.objects.create(status=stage_status, date=stage_date)
-        process.stages.add(new_stage)
-    
-    # Handle case files
+            new_stage = Stage.objects.create(status=stage_status, date=stage_date)
+            process.stages.add(new_stage)
+            created_stages.append(new_stage)
+
+        _create_stage_alerts(created_stages, main_data)
+
     case_file_ids = main_data.get('caseFileIds', None)
     if case_file_ids is not None:
         process.case_files.set(CaseFile.objects.filter(id__in=case_file_ids))
-    
-    # Final save with all updates
+
     process.save()
     
     # Return the updated process
