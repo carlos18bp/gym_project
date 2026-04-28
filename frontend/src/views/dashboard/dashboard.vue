@@ -31,6 +31,9 @@
             <!-- Quick action buttons always full width -->
             <QuickActionButtons :user="currentUser" class="w-full"></QuickActionButtons>
 
+            <!-- Notification summary -->
+            <NotificationSummaryCard class="w-full" />
+
             <!-- Featured services -->
             <FeaturedServicesGrid class="w-full" />
             
@@ -96,6 +99,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
 import QuickActionButtons from '@/components/dashboard/QuickActionButtons.vue';
 import FeaturedServicesGrid from '@/components/dashboard/FeaturedServicesGrid.vue';
+import NotificationSummaryCard from '@/components/dashboard/NotificationSummaryCard.vue';
 import RecentProcessList from '@/components/dashboard/RecentProcessList.vue';
 import RecentDocumentsList from '@/components/dashboard/RecentDocumentsList.vue';
 import { useUserStore } from '@/stores/auth/user';

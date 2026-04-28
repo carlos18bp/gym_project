@@ -5,6 +5,7 @@ from gym_app.models import (
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
     RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
     SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
+    Notification,
 )
 from ._seeder_constants import PROTECTED_EMAILS
 
@@ -149,5 +150,8 @@ class Command(BaseCommand):
 
         deleted = SECOPProcess.objects.all().delete()[0]
         self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} SECOPProcess(es)'))
+
+        deleted = Notification.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} Notification(s)'))
 
         self.stdout.write(self.style.SUCCESS('All fake data deleted successfully'))
