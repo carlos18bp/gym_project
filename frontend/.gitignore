@@ -15,6 +15,7 @@ dist-ssr
 coverage/
 .nyc_output/
 coverage-e2e/
+jest-results.json
 
 playwright-report/
 e2e-results/
