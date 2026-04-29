@@ -37,15 +37,13 @@ const isClientEditorRoute = computed(() => {
 // we want the same protected-variable behavior for any non-basic role (cliente, corporativo, abogado).
 // For template creation/edition (lawyer/editor/*), lawyers see raw {{variables}} as antes.
 const isClient = computed(() => {
+  // Lawyer-like users are never treated as client, even with stale role data —
+  // mirrors the lawyer route guard so an is_staff user with role='client'
+  // doesn't lose the "Continuar" button after passing the guard.
+  if (userStore.isLawyerLike) return false;
   const role = userStore.currentUser?.role;
-  const isBasic = role === 'basic';
-
-  // In the client editor route, treat all non-basic roles as "client" for variable protection
-  if (isClientEditorRoute.value && !isBasic) {
-    return true;
-  }
-
-  // Outside the client editor route, only actual clients/corporate act as "client" here
+  if (role === 'basic') return false;
+  if (isClientEditorRoute.value) return true;
   return role === 'client' || role === 'corporate_client';
 });
 
@@ -507,12 +505,12 @@ const editorConfig = computed(() => ({
   plugins: "lists link image table code wordcount autolink searchreplace",
   menubar: isLawyer.value ? "edit insert format table" : "",
   toolbar_mode: 'wrap',
+  // Single-string toolbar: passing an array combined with toolbar_mode 'wrap'
+  // and custom buttons registered in setup() caused the registered slots
+  // (save/continue/return) to drop silently in TinyMCE 7 cloud.
   toolbar: isLawyer.value
-    ? [
-        (isClient.value ? "save return" : "save continue return") +
-          " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
-        "table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells",
-      ]
+    ? (isClient.value ? "save return" : "save continue return") +
+      " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells"
     : "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
   contextmenu: isLawyer.value ? "table" : "",
   height: "100vh",

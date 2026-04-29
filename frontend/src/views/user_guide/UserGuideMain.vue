@@ -114,6 +114,9 @@ const showMobileNav = ref(false);
 // Computed
 const currentUserRole = computed(() => {
   const user = userStore.userById(authStore.userAuth?.id);
+  // is_staff/is_superuser users (with any persisted role) browse the manual
+  // as "admin" — same content set the router treats as lawyer-like.
+  if (user?.role === 'admin' || user?.is_staff || user?.is_superuser) return 'admin';
   return user?.role || 'client';
 });
 

@@ -28,6 +28,55 @@ export const documentsContent = {
   `,
   sections: [
     {
+      id: 'editor-toolbar-by-role',
+      name: 'Botones del Editor según tu Rol',
+      description: 'Qué ves en el editor TinyMCE y por qué',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>El editor TinyMCE de minutas y documentos muestra distintos botones según tu rol y la ruta en la que estés. Esta es la referencia rápida:</p>
+        <table class="mt-3 w-full text-left border-collapse text-sm">
+          <thead><tr class="border-b">
+            <th class="py-2 pr-4">Rol</th>
+            <th class="py-2 pr-4">Ruta</th>
+            <th class="py-2">Botones de la barra principal</th>
+          </tr></thead>
+          <tbody>
+            <tr class="border-b"><td class="py-2 pr-4">Lawyer / Admin / Staff / Superuser</td><td class="py-2 pr-4"><code>/lawyer/editor/...</code></td><td class="py-2"><strong>Guardar como borrador · Continuar · Regresar</strong></td></tr>
+            <tr class="border-b"><td class="py-2 pr-4">Cliente / Corporativo</td><td class="py-2 pr-4"><code>/client/editor/edit/...</code></td><td class="py-2">Guardar · Regresar (variables protegidas en amarillo)</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4">Básico</td><td class="py-2 pr-4">—</td><td class="py-2">Bloqueado: el route guard no permite el acceso</td></tr>
+          </tbody>
+        </table>
+      `,
+      features: [
+        '"Continuar" es el paso central del flujo de creación: lleva a la configuración de variables',
+        'Los clientes y corporativos ven sus variables como cápsulas amarillas no editables (sólo escriben los valores alrededor)',
+        'Si tu cuenta tiene is_staff=true o is_superuser=true, ves los botones de abogado aunque tu role persistido sea distinto'
+      ],
+      tips: [
+        'Si esperabas el botón Continuar y no aparece, recarga la página: el editor se sincroniza con tu rol al montar',
+        'La pestaña "Mis Documentos" del abogado usa el mismo editor pero con el flujo de cliente para completar variables'
+      ]
+    },
+    {
+      id: 'document-form-modes',
+      name: 'Modos del DocumentForm',
+      description: 'Los 4 contextos en los que se abre el formulario de variables',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>El formulario para diligenciar variables (<code>DocumentForm.vue</code>) opera en cuatro modos según la ruta. Saber en qué modo estás ayuda a entender qué pasa al "Continuar":</p>
+      `,
+      features: [
+        '<strong>Creator</strong> — el abogado crea desde una plantilla; al guardar nace un documento nuevo',
+        '<strong>Editor</strong> — se reanuda el diligenciamiento de un documento existente; al guardar se actualiza el mismo registro',
+        '<strong>Formalize</strong> — el documento ya está completo y entra al flujo de firmas; cambia de estado a PendingSignatures',
+        '<strong>Correction</strong> — un documento Rejected/Expired regresa para corrección; al reenviar entra de nuevo al flujo de firmas'
+      ],
+      tips: [
+        'En modo Creator y Editor verás el editor TinyMCE primero; pulsar "Continuar" lleva a la configuración de variables',
+        'En modo Formalize y Correction el flujo arranca directamente sobre la solicitud de firmas — no requiere reabrir el editor'
+      ]
+    },
+    {
       id: 'lawyer-tabs',
       name: 'Pestañas para Abogados',
       description: 'Organización de documentos por estado',
@@ -94,12 +143,18 @@ export const documentsContent = {
           },
           {
             title: 'Guardar como Borrador',
-            description: 'Click en "Guardar" - el documento queda en estado Draft'
+            description: 'Click en "Guardar como borrador" - el documento queda en estado Draft',
+            note: 'Útil si vas a volver más tarde antes de configurar variables'
+          },
+          {
+            title: 'Continuar',
+            description: 'Click en el botón "Continuar" del editor para pasar a la configuración de variables',
+            note: 'Es el flujo natural: el editor te lleva al paso siguiente sin tener que volver al dashboard'
           },
           {
             title: 'Configurar Variables',
-            description: 'Click en ⚙️ Configurar Variables para definir tipo de campo',
-            note: 'Define si es texto, fecha, número, email, etc.'
+            description: 'En la vista de configuración define el tipo de cada variable {{...}}',
+            note: 'Tipos disponibles: texto, número, fecha, email, selector, etc.; añade tooltip para guiar al cliente'
           },
           {
             title: 'Asignar a Cliente',

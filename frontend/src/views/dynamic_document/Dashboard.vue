@@ -624,11 +624,7 @@ const userRole = computed(() => {
   return currentUser.value.role;
 });
 
-const isLawyerLike = computed(() => {
-  const user = currentUser.value;
-  if (!user) return false;
-  return user.role === 'lawyer' || user.role === 'admin' || user.is_staff || user.is_superuser;
-});
+const isLawyerLike = computed(() => userStore.isLawyerLike);
 
 /**
  * Handles section updates from the navigation.

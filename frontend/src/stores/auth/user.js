@@ -62,6 +62,16 @@ export const useUserStore = defineStore("user", {
      * @returns {object|null} - Current user object or null.
      */
     getCurrentUser: (state) => state.currentUser,
+
+    /**
+     * Whether the current user can act as a lawyer (lawyer, admin, staff, or superuser).
+     * Single source of truth for the lawyer route guard and any UI that gates
+     * lawyer-only actions — keeps router and components from drifting.
+     */
+    isLawyerLike: (state) => {
+      const u = state.currentUser;
+      return !!u && (u.role === 'lawyer' || u.role === 'admin' || u.is_staff || u.is_superuser);
+    },
   },
 
   actions: {

@@ -481,15 +481,7 @@ export function installRouterGuards(authStore) {
         const userStore = await import('@/stores/auth/user').then(m => m.useUserStore());
         await userStore.init();
         
-        // Allow lawyers, admins and any staff/superuser (mirrors Dashboard.vue isLawyerLike).
-        const u = userStore.currentUser;
-        const isLawyerLike =
-          u?.role === 'lawyer' ||
-          u?.role === 'admin' ||
-          u?.is_staff ||
-          u?.is_superuser;
-
-        if (!isLawyerLike) {
+        if (!userStore.isLawyerLike) {
           console.warn("Non-lawyer user attempting to access lawyer-only route. Redirecting to dashboard.");
           return next({ name: 'dashboard' });
         }

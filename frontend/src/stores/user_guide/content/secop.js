@@ -85,6 +85,7 @@ export const secopContent = {
       features: [
         'Nombre de la alerta',
         'Criterios combinables: palabras clave, departamento, modalidad, rango de presupuesto, UNSPSC',
+        'Frecuencia configurable: <strong>Inmediata</strong> (al detectar coincidencia), <strong>Diaria</strong> (resumen al final del día), <strong>Semanal</strong> (resumen al cierre de la semana)',
         'Activar/Desactivar sin eliminar',
         'Contador de coincidencias en la pestaña "Alertas"',
         'Notificación por email cuando aparecen coincidencias nuevas',
@@ -140,8 +141,11 @@ export const secopContent = {
       features: [
         'Exportar a Excel el resultado actual (respeta los filtros aplicados)',
         'Indicador de estado de sincronización (última actualización)',
-        'Botón para forzar un sync manual',
+        'Botón para forzar un sync manual (sólo lawyer / admin / staff)',
         'Limpieza automática post-sync de procesos "Abierto" con fecha de cierre vencida'
+      ],
+      restrictions: [
+        'El sync manual está reservado a usuarios lawyer-like (lawyer, admin, is_staff, is_superuser); el resto ve el indicador pero no el botón de disparo'
       ],
       tips: [
         'Exporta antes de cerrar el navegador si vas a trabajar el listado offline',

@@ -113,6 +113,59 @@ export const servicesTramitesContent = {
       ]
     },
     {
+      id: 'services-status-lifecycle',
+      name: 'Estados del Ciclo de Vida',
+      description: 'Qué significa cada estado de una solicitud',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>Cada solicitud avanza por un ciclo de estados desde que se crea como borrador hasta que se cierra. Esta es la secuencia y el significado de cada estado:</p>
+        <table class="mt-3 w-full text-left border-collapse text-sm">
+          <thead><tr class="border-b">
+            <th class="py-2 pr-4">Estado</th>
+            <th class="py-2 pr-4">Significado para el cliente</th>
+            <th class="py-2">Significado para el abogado</th>
+          </tr></thead>
+          <tbody>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>DRAFT</strong></td><td class="py-2 pr-4">Borrador en curso, no enviado</td><td class="py-2">Aún no aparece en la bandeja</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>OPEN</strong></td><td class="py-2 pr-4">Recién radicado, en cola</td><td class="py-2">Nuevo en la bandeja, pendiente de revisar</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>IN_STUDY</strong></td><td class="py-2 pr-4">Tu solicitud está siendo revisada</td><td class="py-2">Bajo análisis del abogado</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>IN_PROGRESS</strong></td><td class="py-2 pr-4">El trámite avanza</td><td class="py-2">Acciones en curso (gestiones, llamadas, documentos)</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>ANSWERED</strong></td><td class="py-2 pr-4">Recibiste respuesta del abogado</td><td class="py-2">Entregada respuesta al cliente, pendiente cierre o réplica</td></tr>
+            <tr class="border-b"><td class="py-2 pr-4"><strong>FINALIZED</strong></td><td class="py-2 pr-4">El trámite quedó cerrado</td><td class="py-2">Caso cerrado, archivado</td></tr>
+          </tbody>
+        </table>
+      `,
+      features: [
+        'Cada cambio de estado dispara una notificación por email al cliente',
+        'El abogado ajusta el estado desde el detalle en la bandeja',
+        'Las transiciones siguen una secuencia lógica — el sistema valida que no se salten estados clave'
+      ],
+      tips: [
+        'Cliente: usa el estado como termómetro del avance; si llevas mucho en IN_STUDY, puedes responder en el hilo para pedir actualización',
+        'Abogado: aunque no tengas avance grande, mover de OPEN a IN_STUDY le señala al cliente que su solicitud fue vista'
+      ]
+    },
+    {
+      id: 'services-tracking-format',
+      name: 'Formato del Número de Radicado',
+      description: 'Cómo se compone el número AÑO-CONSECUTIVO',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>Cada solicitud enviada recibe un número único con formato <code>YYYY-NNNNN</code>:</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><code>YYYY</code> — año en el que se radicó (ej: <code>2026</code>)</li>
+          <li><code>NNNNN</code> — consecutivo de cinco dígitos, comienza en <code>00001</code> cada año</li>
+        </ul>
+        <p class="mt-2">Ejemplos: <code>2026-00001</code>, <code>2026-00123</code>, <code>2026-01580</code>.</p>
+      `,
+      features: [
+        'El consecutivo es global por año — no es por servicio ni por cliente',
+        'Se genera automáticamente al pulsar "Enviar solicitud"; el borrador no consume número',
+        'Aparece en el PDF corporativo, en los correos y en todas las pantallas de detalle',
+        'Es la referencia oficial — úsala en cualquier comunicación'
+      ]
+    },
+    {
       id: 'services-my-requests',
       name: 'Mis Solicitudes',
       description: 'Seguimiento de tus trámites en curso',
@@ -147,10 +200,10 @@ export const servicesTramitesContent = {
       `,
       features: [
         'Listado de solicitudes con radicado, servicio, solicitante y estado',
-        'Filtrar por estado y por servicio',
+        'Filtros: estado, servicio, número de radicado, rango de fechas, búsqueda libre',
         'Detalle con todo el formulario llenado por el cliente y archivos adjuntos',
-        'Cambiar estado de la solicitud (En Revisión, Respondida, Cerrada, etc.)',
-        'Responder al cliente con texto y archivos adjuntos',
+        'Transición de estado siguiendo el ciclo OPEN → IN_STUDY → IN_PROGRESS → ANSWERED → FINALIZED',
+        'Responder al cliente con texto y archivos adjuntos por respuesta',
         'Los adjuntos de la respuesta más reciente se envían al cliente por email'
       ],
       steps: [

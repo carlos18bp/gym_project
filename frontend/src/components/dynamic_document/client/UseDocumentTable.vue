@@ -300,7 +300,7 @@
       v-if="showActionsModal"
       :is-visible="showActionsModal"
       :document="selectedDocumentForActions"
-      :card-type="userStore.currentUser?.role === 'lawyer' ? 'lawyer' : 'client'"
+      :card-type="userStore.isLawyerLike ? 'lawyer' : 'client'"
       context="use-template"
       :user-store="userStore"
       @close="showActionsModal = false"

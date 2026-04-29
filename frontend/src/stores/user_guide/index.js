@@ -5,6 +5,7 @@ import { processesContent } from './content/processes.js';
 import { documentsContent } from './content/documents.js';
 import { secopContent } from './content/secop.js';
 import { servicesTramitesContent } from './content/services_tramites.js';
+import { adminStaffContent } from './content/admin_staff.js';
 import {
   requestsContent,
   appointmentsContent,
@@ -53,6 +54,7 @@ export const useUserGuideStore = defineStore('userGuide', {
         intranet: intranetContent,
         authentication: authenticationContent,
         subscriptions: subscriptionsContent,
+        admin_staff: adminStaffContent,
       };
 
       this.initialized = true;

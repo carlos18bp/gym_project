@@ -1,12 +1,22 @@
 import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { allModules } from './modules.js';
 
+// "admin" inherits everything a lawyer sees plus admin-only modules/sections.
+// Mirrors the lawyer-like predicate centralized in stores/auth/user.js so the
+// router guard, the editor, and this manual stay in lock-step.
+const roleMatches = (allowedRoles, role) => {
+  if (!allowedRoles) return true;
+  if (allowedRoles.includes(role)) return true;
+  if (role === 'admin' && allowedRoles.includes('lawyer')) return true;
+  return false;
+};
+
 export const guideGetters = {
   /**
    * Get modules available for a specific role
    */
   getModulesForRole: () => (role) => {
-    return allModules.filter(module => module.roles.includes(role));
+    return allModules.filter(module => roleMatches(module.roles, role));
   },
 
   /**
@@ -22,10 +32,7 @@ export const guideGetters = {
 
     // Filter sections based on role if needed
     if (contentCopy.sections) {
-      contentCopy.sections = contentCopy.sections.filter(section => {
-        if (!section.roles) return true;
-        return section.roles.includes(role);
-      });
+      contentCopy.sections = contentCopy.sections.filter(section => roleMatches(section.roles, role));
     }
 
     return contentCopy;

@@ -10,7 +10,8 @@ import {
   UserCircleIcon,
   CreditCardIcon,
   BriefcaseIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  ShieldCheckIcon
 } from '@heroicons/vue/24/outline';
 
 export const allModules = [
@@ -97,5 +98,12 @@ export const allModules = [
     icon: CreditCardIcon,
     roles: ['lawyer', 'client', 'corporate_client', 'basic'],
     description: 'Gestiona tu plan de suscripción y métodos de pago'
+  },
+  {
+    id: 'admin_staff',
+    name: 'Administración del Sistema',
+    icon: ShieldCheckIcon,
+    roles: ['admin'],
+    description: 'Capacidades transversales para usuarios admin / staff / superuser'
   }
 ];

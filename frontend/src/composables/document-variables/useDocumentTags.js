@@ -19,10 +19,8 @@ export function useDocumentTags() {
     color_id: 1
   });
 
-  // Check if current user is a lawyer
-  const isLawyer = computed(() => {
-    return userStore.getCurrentUser?.role === 'lawyer';
-  });
+  // Check if current user can act as a lawyer (lawyer/admin/staff/superuser)
+  const isLawyer = computed(() => userStore.isLawyerLike);
 
   // Get available colors for tag creation
   const availableColors = computed(() => getAllColors());

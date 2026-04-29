@@ -52,10 +52,9 @@ function canEditAndResendSignatureDocument(document, userStore) {
   }
 
   const currentUser = userStore?.currentUser;
-  const isLawyer = currentUser?.role === 'lawyer';
   const isCreator = document.created_by === currentUser?.id;
 
-  return isLawyer || isCreator;
+  return userStore?.isLawyerLike || isCreator;
 }
 
 /**
@@ -287,7 +286,7 @@ const cardConfigs = {
       const isBasicUser = userStore?.currentUser?.role === 'basic';
       const isCorporateOrClient = userStore?.currentUser?.role === 'corporate_client' || 
                                    userStore?.currentUser?.role === 'client';
-      const isLawyer = userStore?.currentUser?.role === 'lawyer';
+      const isLawyer = userStore?.isLawyerLike;
       const isProgress = document.state === 'Progress';
       const isMyDocuments = context === 'my-documents';
       const signatureStates = ['PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];

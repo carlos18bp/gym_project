@@ -20,8 +20,15 @@
 
 ### Four User Roles
 - The system defines four user roles: `client`, `lawyer`, `basic`, `corporate_client`
+- A fifth role `admin` exists in `ROLE_CHOICES` for elevated users
 - Permissions and views are scoped based on these roles
-- Role guard in Vue Router: `requiresLawyer: true` redirects client/basic/corporate to dashboard
+- Role guard in Vue Router: `requiresLawyer: true` redirects non-lawyer-like users to dashboard
+
+### `isLawyerLike` Predicate — Single Source of Truth
+- Defined as a getter on `frontend/src/stores/auth/user.js`: returns true for `role === 'lawyer'`, `role === 'admin'`, `is_staff`, or `is_superuser`
+- **Always consume the getter**, never inline the predicate. Inlining caused the editor to drop the "Continuar" button for `is_staff` users with `role='client'` (the route guard accepted them, but the editor checked role-only)
+- Callsites that consume it (lock-step): `router/index.js` (route guard `requiresLawyer`), `views/dynamic_document/DocumentEditor.vue` (`isClient`), `views/dynamic_document/Dashboard.vue`, `client/UseDocumentTable.vue`, `composables/document-variables/useDocumentPermissions.js`, `composables/document-variables/useDocumentTags.js`, `cards/menuOptionsHelper.js`
+- The user manual (`stores/user_guide/`) maps these users to a synthetic `'admin'` role via `roleMatches` so they see lawyer modules + an admin-only module
 
 ---
 

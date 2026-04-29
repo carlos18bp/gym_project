@@ -26,9 +26,23 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 | Role | Description | Key Capabilities |
 |------|-------------|------------------|
 | **Lawyer** | Law firm staff who manage cases and documents | Create/edit processes, manage dynamic documents, respond to requests, publish legal updates, generate reports, manage organizations |
+| **Admin** | Operations / system administrators (`role='admin'` or `is_staff=true` or `is_superuser=true`) | All lawyer capabilities plus: services catalog admin (`/services_admin`), Django admin panel, user role assignment, override permissions |
 | **Client** | End users who track their legal cases | View processes, submit legal requests, fill/sign documents, view legal updates, join organizations |
 | **Basic** | Registered users without active subscription | Limited access, can upgrade via subscription |
 | **Corporate Client** | Organization administrators | Create organizations, manage members/invitations, handle corporate requests, publish posts |
+
+### Role Hierarchy — `lawyer-like` Predicate
+
+Users that satisfy any of `role === 'lawyer'`, `role === 'admin'`, `is_staff === true`, or `is_superuser === true` are treated as **lawyer-like**. This single predicate (encoded in the `isLawyerLike` getter on `frontend/src/stores/auth/user.js`) drives:
+
+- The Vue Router `requiresLawyer` guard
+- The TinyMCE editor toolbar (lawyer-like users see "Continuar"; clients see only "Guardar"/"Regresar")
+- Document menu options, variable permissions and tag editing
+- Access to the SECOP manual sync trigger
+- Access to the Services inbox (lawyer view)
+- The synthetic `admin` role used by the in-app User Guide to show admin-only documentation
+
+Any new feature that gates by lawyer privileges **must consume `userStore.isLawyerLike`** rather than checking `role === 'lawyer'` directly — otherwise admin/staff users will lose access silently.
 
 ---
 
