@@ -506,11 +506,8 @@ const editorConfig = computed(() => ({
   menubar: isLawyer.value ? "edit insert format table" : "",
   toolbar_mode: 'wrap',
   toolbar: isLawyer.value
-    ? [
-        (isClient.value ? "save return" : "save continue return") +
-          " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
-        "table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells",
-      ]
+    ? (isClient.value ? "save return" : "save continue return") +
+      " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells"
     : "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
   contextmenu: isLawyer.value ? "table" : "",
   height: "100vh",
