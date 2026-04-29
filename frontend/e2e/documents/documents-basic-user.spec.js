@@ -9,7 +9,7 @@ import {
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 async function installBasicUserDocsMocks(page, { userId, lawyerId }) {
-  const basic = { ...buildMockUser({ id: userId, role: "client" }), role: "basic" };
+  const basic = { ...buildMockUser({ id: userId, role: "client", hasSignature: false }), role: "basic" };
   const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", hasSignature: true });
   const nowIso = new Date().toISOString();
 

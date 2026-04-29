@@ -55,8 +55,8 @@ async function installSignatureClientMocks(page, { userId, lawyerId, hasSignatur
     createdBy: lawyerId,
     assignedTo: userId,
     signatures: [
-      { user: lawyerId, status: "signed", signed_at: nowIso },
-      { user: userId, status: "pending", signed_at: null },
+      { id: 1, user: lawyerId, signer_email: lawyer.email, signer_name: `${lawyer.first_name} ${lawyer.last_name}`, signed: true, status: "signed", signed_at: nowIso },
+      { id: 2, user: userId, signer_email: client.email, signer_name: `${client.first_name} ${client.last_name}`, signed: false, status: "pending", signed_at: null },
     ],
   });
 
