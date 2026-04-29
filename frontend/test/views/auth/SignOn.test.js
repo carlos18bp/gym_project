@@ -172,7 +172,6 @@ describe("SignOn.vue", () => {
       first_name: "Ana",
       last_name: "Lopez",
       passcode: "123",
-      captcha_token: "token",
     });
     expect(authStore.login).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith("¡Registro exitoso!", "success");
