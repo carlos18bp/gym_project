@@ -502,8 +502,8 @@ function enforceCarlito(content) {
 const editorConfig = computed(() => ({
   promotion: false,
   branding: false,
-  plugins: "lists link image table code wordcount autolink searchreplace",
-  menubar: isLawyer.value ? "edit insert format table" : "",
+  plugins: "lists link image table code wordcount autolink searchreplace noneditable",
+  menubar: isLawyer.value ? "edit insert format table" : false,
   toolbar_mode: 'wrap',
   // Single-string toolbar: passing an array combined with toolbar_mode 'wrap'
   // and custom buttons registered in setup() caused the registered slots
