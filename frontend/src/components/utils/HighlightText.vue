@@ -1,10 +1,11 @@
 <template>
     <span v-html="highlightedText"></span>
   </template>
-  
+
   <script setup>
   import { computed } from 'vue';
-  
+  import { sanitizeHtml } from '@/composables/useSafeHtml.js';
+
   const props = defineProps({
     text: {
       type: String,
@@ -19,7 +20,21 @@
       default: 'underline', // You can change the default class here
     },
   });
-  
+
+  /**
+   * Escapes HTML special characters so backend-supplied text cannot inject markup.
+   * Applied before the highlight regex so the only HTML in the output is the
+   * <span> we add ourselves (then re-validated by DOMPurify).
+   */
+  function escapeHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /**
    * Escapes special regex characters in a string.
    *
@@ -29,21 +44,25 @@
   function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-  
+
   const highlightedText = computed(() => {
-    // If there is no query, return the original text
+    const safeText = escapeHtml(props.text);
+
+    // If there is no query, return the escaped text directly.
     if (!props.query.trim()) {
-      return props.text;
+      return safeText;
     }
-    
-    // Escape the query
-    const escapedQuery = escapeRegExp(props.query.trim());
-    
-    // Create a regex for global, case-insensitive matching
+
+    // Escape the query for regex AND HTML so the highlight wrapper is the only markup.
+    const escapedQuery = escapeRegExp(escapeHtml(props.query.trim()));
+
+    // Create a regex for global, case-insensitive matching.
     const regex = new RegExp(`(${escapedQuery})`, 'gi');
-    
-    // Replace matches with a span wrapping the match using the provided class
-    return props.text.replace(regex, `<span class="${props.highlightClass} rounded-lg">$1</span>`);
+
+    // Replace matches with a span wrapping the match using the provided class.
+    const wrapped = safeText.replace(regex, `<span class="${props.highlightClass} rounded-lg">$1</span>`);
+
+    // Defense in depth: DOMPurify strips anything we missed.
+    return sanitizeHtml(wrapped);
   });
   </script>
-  

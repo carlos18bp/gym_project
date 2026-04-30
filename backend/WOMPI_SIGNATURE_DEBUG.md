@@ -47,13 +47,13 @@ python manage.py runserver
 
 ### 3. Usar el Endpoint de Debug
 
-**Endpoint:** `POST /api/subscriptions/debug-signature/`
+**Endpoint:** `POST /api/subscriptions/generate-signature/`
 
 Este endpoint muestra todos los detalles de la generación de la firma.
 
 **Ejemplo con cURL:**
 ```bash
-curl -X POST http://localhost:8000/api/subscriptions/debug-signature/ \
+curl -X POST http://localhost:8000/api/subscriptions/generate-signature/ \
   -H "Content-Type: application/json" \
   -d '{
     "amount_in_cents": 2290000,
@@ -166,7 +166,7 @@ INFO Generated signature: abc123def456...
 Wompi proporciona ejemplos en su documentación. Prueba con estos valores:
 
 ```bash
-curl -X POST http://localhost:8000/api/subscriptions/debug-signature/ \
+curl -X POST http://localhost:8000/api/subscriptions/generate-signature/ \
   -H "Content-Type: application/json" \
   -d '{
     "amount_in_cents": 5000000,
@@ -244,7 +244,7 @@ concatenated = f"{reference}{amount_in_cents}{currency}{integrity_key}"
 
 4. **Prueba el endpoint de debug:**
    ```bash
-   curl -X POST http://localhost:8000/api/subscriptions/debug-signature/ \
+   curl -X POST http://localhost:8000/api/subscriptions/generate-signature/ \
      -H "Content-Type: application/json" \
      -d '{"amount_in_cents": 2290000, "currency": "COP", "reference": "test_123"}'
    ```
@@ -279,7 +279,7 @@ Si después de todos estos pasos el error persiste:
 
 ## 🔒 Seguridad
 
-**⚠️ IMPORTANTE:** El endpoint `/api/subscriptions/debug-signature/` expone el Integrity Secret.
+**⚠️ IMPORTANTE:** El endpoint `/api/subscriptions/generate-signature/` expone el Integrity Secret.
 
 **Antes de ir a producción:**
 
