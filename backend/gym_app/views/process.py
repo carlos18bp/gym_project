@@ -6,9 +6,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from gym_app.models import Process, Stage, StageAlert, CaseFile, Case, User, RecentProcess
 from gym_app.serializers.process import ProcessSerializer, RecentProcessSerializer
+from gym_app.utils.auth_utils import is_gym_staff
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+
+def _user_can_access_process(user, process):
+    """A user can access a process if they are gym staff, the assigned lawyer, or one of the clients."""
+    if is_gym_staff(user):
+        return True
+    if process.lawyer_id == user.id:
+        return True
+    return process.clients.filter(pk=user.id).exists()
 
 
 def _create_stage_alerts(created_stages, main_data):
@@ -38,24 +48,18 @@ def process_list(request):
     user = request.user  # Get the authenticated user
 
     try:
-        # Check the role of the authenticated user
-        if user.role == 'Client':
-            processes = Process.objects.filter(clients=user) \
-                .select_related('lawyer') \
-                .prefetch_related('clients', 'stages__alert', 'case_files') \
-                .order_by('-created_at')
+        base_qs = Process.objects.select_related('lawyer') \
+            .prefetch_related('clients', 'stages__alert', 'case_files') \
+            .order_by('-created_at')
 
-        elif user.role == 'Lawyer':
-            processes = Process.objects.filter(lawyer=user) \
-                .select_related('lawyer') \
-                .prefetch_related('clients', 'stages__alert', 'case_files') \
-                .order_by('-created_at')
+        role = (getattr(user, 'role', '') or '').lower()
+        if is_gym_staff(user):
+            processes = base_qs
+        elif role == 'client':
+            processes = base_qs.filter(clients=user)
         else:
-            # If the user has any other role, return all processes
-            processes = Process.objects.all() \
-                .select_related('lawyer') \
-                .prefetch_related('clients', 'stages__alert', 'case_files') \
-                .order_by('-created_at')
+            # corporate_client / basic / unknown roles cannot list processes directly.
+            processes = base_qs.none()
 
         serializer = ProcessSerializer(processes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -162,6 +166,14 @@ def update_process(request, pk):
     - REPLACE ALL existing stages with the ones from frontend.
     """
     process = get_object_or_404(Process, pk=pk)
+
+    # Only gym staff (lawyers/admin) can edit a process. Clients listed on a
+    # process do NOT get edit rights — they read via process_list / detail.
+    if not is_gym_staff(request.user):
+        return Response(
+            {'detail': 'No tienes permisos para modificar este proceso.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     # Check if the request data is already a dict or if it's a string
     if isinstance(request.data, dict) and 'mainData' not in request.data:
@@ -317,6 +329,12 @@ def update_case_file(request):
     try:
         # Ensure the process exists
         process = get_object_or_404(Process, pk=process_id)
+
+        if not _user_can_access_process(request.user, process):
+            return Response(
+                {'detail': 'No tienes permisos para subir archivos a este proceso.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Create a new CaseFile instance and associate it with the process
         case_file = CaseFile.objects.create(file=file)

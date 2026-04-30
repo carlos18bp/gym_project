@@ -1,6 +1,22 @@
 from gym_app.serializers.user import UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
+def is_gym_staff(user):
+    """Return True for users with unrestricted internal access (gym lawyers, admin, staff).
+
+    Role comparison is case-insensitive because legacy data uses both
+    'lawyer' and 'Lawyer' interchangeably; the same applies to 'admin'.
+    """
+    role = (getattr(user, 'role', '') or '').lower()
+    return (
+        getattr(user, 'is_gym_lawyer', False)
+        or user.is_staff
+        or user.is_superuser
+        or role in ('lawyer', 'admin')
+    )
+
+
 def generate_auth_tokens(user):
     """
     Generate JWT authentication tokens for the given user.

@@ -35,7 +35,7 @@
 
       <!-- Section Content -->
       <div class="prose prose-indigo max-w-none">
-        <div v-html="sectionData.content"></div>
+        <div v-html="sanitizeHtml(sectionData.content)"></div>
       </div>
 
       <!-- Features List -->
@@ -137,7 +137,7 @@
     <!-- Module Overview (when no section is selected) -->
     <div v-else>
       <div class="prose prose-indigo max-w-none">
-        <div v-html="moduleData?.overview"></div>
+        <div v-html="sanitizeHtml(moduleData?.overview)"></div>
       </div>
 
       <!-- Available Sections -->
@@ -168,6 +168,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/vue/24/outline';
 import { useUserGuideStore } from '@/stores/user_guide';
+import { sanitizeHtml } from '@/composables/useSafeHtml.js';
 import ExampleModal from './ExampleModal.vue';
 
 const props = defineProps({
