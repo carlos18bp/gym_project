@@ -487,7 +487,8 @@ onMounted(async () => {
   if (isAdmin) {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Agendar Cita"
+        navItem.name !== "Agendar Cita" &&
+        navItem.name !== "Organizaciones"
     );
   } else {
     navigation.value = navigation.value.filter(

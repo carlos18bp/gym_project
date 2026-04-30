@@ -136,7 +136,8 @@ export const servicesTramitesContent = {
         </table>
       `,
       features: [
-        'Cada cambio de estado dispara una notificación por email al cliente',
+        'Al <strong>radicar</strong> la solicitud: email al solicitante con el radicado y el PDF adjunto + email a los abogados / admin encargados',
+        'Al <strong>cambiar de estado</strong> o <strong>recibir respuesta</strong>: email al solicitante con el nuevo estado y, si aplica, los archivos de la última respuesta',
         'El abogado ajusta el estado desde el detalle en la bandeja',
         'Las transiciones siguen una secuencia lógica — el sistema valida que no se salten estados clave'
       ],
@@ -175,19 +176,24 @@ export const servicesTramitesContent = {
       `,
       features: [
         'Listado con radicado, servicio, fecha y estado',
+        'Filtros disponibles: <strong>estado</strong>, <strong>servicio</strong>, <strong>número de radicado</strong> y <strong>rango de fechas</strong> (desde / hasta)',
         'Detalle completo con todas las respuestas del abogado',
+        'Botón <strong>"Descargar PDF"</strong> en el detalle — recupera el resumen oficial generado al radicar',
         'Archivos adjuntos (tanto tuyos como del abogado) descargables',
         'Historial cronológico de cambios de estado',
         'Notificación por email cuando cambia el estado'
       ],
       steps: [
         { title: 'Abre "Mis Solicitudes"', description: 'Pestaña dentro de Servicios' },
+        { title: 'Filtra si lo necesitas', description: 'Usa estado, servicio, radicado o fechas para acotar el listado' },
         { title: 'Click en una solicitud', description: 'Abre el detalle con todas las respuestas' },
+        { title: 'Descarga el PDF', description: 'Click en "Descargar PDF" para guardar el resumen oficial — útil para anexarlo en comunicaciones' },
         { title: 'Descarga archivos', description: 'Cada respuesta puede traer archivos del abogado' }
       ],
       tips: [
         'Revisa el email que te enviamos con el radicado — es la forma más rápida de referenciar la solicitud',
-        'Si el abogado solicita información adicional, responde desde el hilo de la solicitud'
+        'Si el abogado solicita información adicional, responde desde el hilo de la solicitud',
+        'El PDF se genera una sola vez al radicar; siempre quedará disponible para descargar desde el detalle'
       ]
     },
     {

@@ -214,13 +214,13 @@ export const organizationsContent = {
       `,
       features: [
         'Crear organización con nombre y descripción',
-        'Subir imagen de perfil y portada',
+        'Subir <strong>logo</strong> (avatar circular en cards) y <strong>portada</strong> (banner del header) — formatos JPG/PNG',
         'Gestionar miembros del equipo',
         'Enviar invitaciones por email',
         'Ver invitaciones pendientes',
         'Crear solicitudes corporativas',
         'Publicar anuncios internos',
-        'Ver estadísticas de la organización'
+        'Ver estadísticas de la organización (organizaciones, miembros, invitaciones, solicitudes)'
       ],
       steps: [
         {
@@ -246,34 +246,107 @@ export const organizationsContent = {
       ]
     },
     {
+      id: 'org-corporate-stats',
+      name: 'Estadísticas del Dashboard',
+      description: 'Indicadores clave en el header del dashboard corporativo',
+      roles: ['corporate_client'],
+      content: `
+        <p>El header del dashboard muestra cuatro tarjetas con el estado actual del ecosistema corporativo. Sirven como termómetro semanal para detectar invitaciones sin responder o solicitudes acumuladas.</p>
+      `,
+      features: [
+        '<strong>Organizaciones</strong>: total de organizaciones que administras',
+        '<strong>Miembros</strong>: agregado de miembros entre todas tus organizaciones',
+        '<strong>Invitaciones pendientes</strong>: invitaciones enviadas que aún no han sido aceptadas o rechazadas',
+        '<strong>Solicitudes recibidas</strong>: solicitudes corporativas creadas por miembros'
+      ],
+      tips: [
+        'Si "Invitaciones pendientes" crece sin parar, revisa si los emails están llegando o si necesitas reenviarlas',
+        'Un alto número de "Solicitudes recibidas" sin abrir indica que conviene priorizar la bandeja corporativa'
+      ]
+    },
+    {
+      id: 'org-edit-organization',
+      name: 'Editar y Desactivar Organización',
+      description: 'Actualizar datos o pausar temporalmente una organización',
+      roles: ['corporate_client'],
+      content: `
+        <p>Una vez creada, la organización se puede editar en cualquier momento: cambiar título, descripción, logo y portada, o desactivarla temporalmente sin perder los datos.</p>
+      `,
+      features: [
+        'Editar título y descripción',
+        'Reemplazar logo o imagen de portada',
+        'Toggle <strong>activa / inactiva</strong> — al desactivarla, deja de mostrarse a los miembros y no acepta nuevas solicitudes',
+        'Confirmación explícita antes de desactivar',
+        'Los datos (miembros, publicaciones, solicitudes) se conservan al desactivar'
+      ],
+      steps: [
+        { title: 'Abre la organización', description: 'Click en la tarjeta dentro del dashboard corporativo' },
+        { title: 'Click en "Editar"', description: 'Botón en la cabecera de la organización' },
+        { title: 'Actualiza los campos', description: 'Modifica los datos o cambia las imágenes' },
+        { title: 'Guarda los cambios', description: 'Click en "Guardar" — los miembros verán los cambios al recargar' },
+        { title: 'Desactivar (opcional)', description: 'Para pausar la organización, usa el toggle "Activa" y confirma' }
+      ],
+      tips: [
+        'Si la organización va a estar inactiva mucho tiempo, avisa a los miembros con una publicación antes de desactivarla',
+        'Reactivar es inmediato — solo vuelve a mover el toggle'
+      ]
+    },
+    {
+      id: 'org-all-members',
+      name: 'Vista Global de Miembros',
+      description: 'Ver miembros de todas tus organizaciones en una sola vista',
+      roles: ['corporate_client'],
+      content: `
+        <p>Cuando administras varias organizaciones, la vista <strong>"Todos los miembros"</strong> agrupa los miembros de todas tus organizaciones en un único modal, útil para encontrar a alguien rápido sin recordar a cuál pertenece.</p>
+      `,
+      features: [
+        'Listado agregado de miembros de todas las organizaciones',
+        'Agrupación visible por organización con el conteo total al inicio',
+        'Detalle por miembro: nombre, email y organización a la que pertenece',
+        'Acceso rápido al modal de detalle de cada miembro'
+      ],
+      steps: [
+        { title: 'Abre el dashboard corporativo', description: 'Sección "Organizaciones" en el menú' },
+        { title: 'Click en "Ver todos los miembros"', description: 'Botón en la cabecera del dashboard' },
+        { title: 'Explora', description: 'Modal con todos los miembros agrupados por organización' }
+      ],
+      tips: [
+        'Útil cuando recibes una solicitud y no recuerdas en qué organización está esa persona'
+      ]
+    },
+    {
       id: 'client-view',
       name: 'Vista de Cliente',
       description: 'Organizaciones donde eres miembro',
       roles: ['client', 'basic'],
       content: `
-        <p>Los clientes pueden ver organizaciones donde son miembros y participar en ellas.</p>
+        <p>Los clientes ven la dashboard organizada en pestañas para separar sus organizaciones, las invitaciones pendientes y las solicitudes que han creado.</p>
       `,
       features: [
-        'Ver mis organizaciones',
+        'Pestaña <strong>Mis Organizaciones</strong>: organizaciones donde eres miembro activo',
+        'Pestaña <strong>Invitaciones</strong>: invitaciones pendientes de respuesta',
+        'Pestaña <strong>Mis Solicitudes</strong>: solicitudes corporativas que has creado',
         'Aceptar o rechazar invitaciones',
         'Ver publicaciones de la organización',
-        'Consultar solicitudes corporativas',
         'Ver otros miembros',
-        'Acceder a recursos compartidos'
+        'Salir de una organización'
       ],
       steps: [
         {
           title: 'Revisa Invitaciones',
-          description: 'Sección de invitaciones pendientes'
+          description: 'Pestaña "Invitaciones" muestra las pendientes'
         },
         {
           title: 'Acepta Invitación',
-          description: 'Click en "Aceptar" para unirte'
+          description: 'Click en "Aceptar" para unirte a la organización'
         },
         {
           title: 'Explora la Organización',
-          description: 'Ve publicaciones, miembros y solicitudes'
+          description: 'Cambia a "Mis Organizaciones" para ver publicaciones, miembros y crear solicitudes'
         }
+      ],
+      restrictions: [
+        'El rol <strong>basic</strong> ve la dashboard de organizaciones pero algunas acciones (crear solicitud corporativa, descargar adjuntos pesados) están limitadas con un overlay que invita a mejorar el plan'
       ]
     },
     {

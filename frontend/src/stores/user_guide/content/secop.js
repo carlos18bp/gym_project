@@ -50,6 +50,31 @@ export const secopContent = {
       ]
     },
     {
+      id: 'secop-process-detail',
+      name: 'Detalle del Proceso',
+      description: 'Toda la información de un proceso en una sola vista',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>Al hacer click en un proceso del listado, se abre la vista de detalle con tarjetas que resumen entidad, presupuesto, fechas y descripción del objeto contractual, además del enlace al expediente original en SECOP II.</p>
+      `,
+      features: [
+        '<strong>Entidad contratante</strong>: nombre, NIT, departamento, ciudad y nivel territorial (Nacional / Departamental / Municipal)',
+        '<strong>Tarjeta de presupuesto</strong>: valor formateado en moneda colombiana',
+        '<strong>Tarjeta de fechas</strong>: publicación, última actualización y cierre con cuenta-regresiva — la tarjeta se torna <strong>roja</strong> cuando faltan menos de 3 días para el cierre',
+        'Fase actual del proceso y duración estimada',
+        'Descripción / objeto contractual completo',
+        'Botón <strong>"Ver en SECOP II"</strong> que abre el expediente original en datos.gov.co',
+        'Acciones disponibles desde el detalle: clasificar el proceso y ajustar la nota de clasificación'
+      ],
+      tips: [
+        'La tarjeta roja de cierre es el indicador más rápido de urgencia — priorízala si manejas pipeline',
+        'Antes de aplicar a un proceso, verifica el enlace a SECOP II para revisar pliegos y anexos oficiales'
+      ],
+      restrictions: [
+        'El rol <strong>basic</strong> ve la tarjeta de detalle pero algunas acciones (clasificar, crear alerta desde aquí) están limitadas con un overlay que invita a mejorar el plan'
+      ]
+    },
+    {
       id: 'secop-classifications',
       name: 'Clasificar Procesos',
       description: 'Organizar procesos de interés por estado propio',
