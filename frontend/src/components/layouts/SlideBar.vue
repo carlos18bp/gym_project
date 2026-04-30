@@ -466,8 +466,7 @@ onMounted(async () => {
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M" &&
         navItem.name !== "Bandeja de Solicitudes" &&
-        navItem.name !== "Administrar Servicios" &&
-        navItem.name !== "Organizaciones"
+        navItem.name !== "Administrar Servicios"
     );
   }
 
@@ -488,8 +487,7 @@ onMounted(async () => {
   if (isAdmin) {
     navigation.value = navigation.value.filter(
       (navItem) =>
-        navItem.name !== "Agendar Cita" &&
-        navItem.name !== "Organizaciones"
+        navItem.name !== "Agendar Cita"
     );
   } else {
     navigation.value = navigation.value.filter(
