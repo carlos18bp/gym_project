@@ -11,6 +11,7 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument
+from gym_app.utils.auth_utils import is_gym_staff
 
 
 def apply_visibility_filter(queryset, user):
@@ -35,7 +36,7 @@ def apply_visibility_filter(queryset, user):
     Returns:
         Filtered (and possibly ``.distinct()``) queryset.
     """
-    if user.role == 'lawyer' or user.is_gym_lawyer or user.role == 'admin' or user.is_staff or user.is_superuser:
+    if is_gym_staff(user):
         return queryset
 
     visibility_q = (
@@ -254,10 +255,10 @@ def require_lawyer_only(view_func):
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        # Check if user is a lawyer
-        if not (request.user.role == 'lawyer' or request.user.is_gym_lawyer or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser):
+        # Only gym staff (lawyers/admin/superusers) may perform this action.
+        if not is_gym_staff(request.user):
             return Response(
-                {'detail': 'Only lawyers can perform this action.'}, 
+                {'detail': 'Only lawyers can perform this action.'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -283,8 +284,8 @@ def filter_documents_by_visibility(view_func):
         # Call the original view
         response = view_func(request, *args, **kwargs)
         
-        # If user is a lawyer, return all documents
-        if request.user.role == 'lawyer' or request.user.is_gym_lawyer or request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser:
+        # Gym staff see everything.
+        if is_gym_staff(request.user):
             return response
         
         # For non-lawyers, we need to filter the response data

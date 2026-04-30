@@ -264,7 +264,6 @@ google_captcha_urls = [
 # Subscription URLs
 subscription_urls = [
     path('subscriptions/wompi-config/', subscription.get_wompi_config, name='subscription-wompi-config'),
-    path('subscriptions/debug-signature/', subscription.debug_signature, name='subscription-debug-signature'),
     path('subscriptions/generate-signature/', subscription.generate_signature, name='subscription-generate-signature'),
     path('subscriptions/create/', subscription.create_subscription, name='subscription-create'),
     path('subscriptions/current/', subscription.get_current_subscription, name='subscription-current'),

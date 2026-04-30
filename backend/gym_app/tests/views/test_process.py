@@ -119,21 +119,17 @@ class TestProcessViews:
         assert len(response.data) == 1
         assert response.data[0]['ref'] == 'CASE-123'
     
-    def test_process_list_lawyer(self, api_client, lawyer_user, process):
-        """Test that a lawyer can only see processes they are assigned to."""
-        # Authenticate as lawyer
+    def test_process_list_lawyer_sees_all(self, api_client, lawyer_user, process):
+        """Lawyers are gym staff and see every process (single-firm cooperative model,
+        consistent with dynamic_documents.permissions.apply_visibility_filter)."""
         api_client.force_authenticate(user=lawyer_user)
-        
-        # Make the request
         url = reverse('process-list')
+
         response = api_client.get(url)
-        
-        # Assert the response
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
         assert response.data[0]['ref'] == 'CASE-123'
-        
-        # Create another process with a different lawyer
+
         other_lawyer = User.objects.create_user(
             email='other.lawyer@example.com',
             password='testpassword',
@@ -147,15 +143,11 @@ class TestProcessViews:
             lawyer=other_lawyer,
             case=process.case
         )
-        # Share the same clients as the original process
         other_process.clients.set(process.clients.all())
-        
-        # Make the request again
+
         response = api_client.get(url)
-        
-        # Lawyer should still only see their process
-        assert len(response.data) == 1
-        assert response.data[0]['ref'] == 'CASE-123'
+        refs = {p['ref'] for p in response.data}
+        assert refs == {'CASE-123', 'CASE-456'}
     
     def test_process_list_admin(self, api_client, admin_user, process):
         """Test that an admin can see all processes."""
@@ -703,11 +695,13 @@ class TestProcessListEdges:
     """Tests for Process List Edges."""
 
     def test_process_list_exception_returns_500(self, api_client, _edge_client):  # noqa: PT019
-        """Cover the except block in process_list (lines 46-47)."""
+        """Cover the except block in process_list."""
         api_client.force_authenticate(user=_edge_client)
         url = reverse("process-list")
-        with patch("gym_app.views.process.Process.objects") as mock_qs:
-            mock_qs.filter.side_effect = Exception("DB error")
+        with patch(
+            "gym_app.views.process.ProcessSerializer",
+            side_effect=Exception("DB error"),
+        ):
             response = api_client.get(url)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "DB error" in response.data["detail"]
