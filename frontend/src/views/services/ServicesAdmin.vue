@@ -483,6 +483,26 @@ const buildPayload = () => ({
   }),
 });
 
+const flattenErrors = (data, prefix = "") => {
+  if (data === null || data === undefined) return [];
+  if (typeof data === "string") {
+    return [prefix ? `${prefix}: ${data}` : data];
+  }
+  if (Array.isArray(data)) {
+    return data.flatMap((item, i) =>
+      typeof item === "string"
+        ? [prefix ? `${prefix}: ${item}` : item]
+        : flattenErrors(item, prefix ? `${prefix}[${i}]` : `[${i}]`)
+    );
+  }
+  if (typeof data === "object") {
+    return Object.entries(data).flatMap(([key, value]) =>
+      flattenErrors(value, prefix ? `${prefix}.${key}` : key)
+    );
+  }
+  return [prefix ? `${prefix}: ${data}` : String(data)];
+};
+
 const saveService = async () => {
   try {
     const validationErrors = validateEditor();
@@ -513,21 +533,18 @@ const saveService = async () => {
     }
   } catch (error) {
     console.error("Error saving service:", error);
-    
-    let errorMessage = "No fue posible guardar el servicio";
-    if (error.response?.data) {
-      const data = error.response.data;
-      if (typeof data === 'string') {
-        errorMessage += `: ${data}`;
-      } else if (data.detail) {
-        errorMessage += `: ${data.detail}`;
-      } else if (data.non_field_errors) {
-        errorMessage += `: ${data.non_field_errors.join(', ')}`;
-      } else if (data.stages) {
-        errorMessage += ": Error en las etapas o campos";
-      }
+
+    const messages = flattenErrors(error.response?.data);
+    let errorMessage;
+    if (messages.length) {
+      errorMessage = `No fue posible guardar el servicio: ${messages.slice(0, 3).join(" | ")}`;
+    } else {
+      const status = error.response?.status;
+      errorMessage = status
+        ? `No fue posible guardar el servicio (HTTP ${status})`
+        : `No fue posible guardar el servicio: ${error.message || "error desconocido"}`;
     }
-    
+
     showNotification(errorMessage, "warning");
   }
 };

@@ -218,6 +218,99 @@ def test_admin_can_create_service_with_nested_stages(api_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_admin_create_service_auto_generates_slug_when_omitted(api_client, admin_user):
+    """Slug is optional in the API; the model's save() auto-derives it from short_title."""
+    api_client.force_authenticate(user=admin_user)
+
+    payload = {
+        "name": "Servicio Sin Slug",
+        "short_title": "SinSlug",
+        "stages": [],
+    }
+
+    response = api_client.post(
+        reverse("services-admin-create"),
+        {"payload": json.dumps(payload)},
+        format="multipart",
+    )
+
+    assert response.status_code == 201
+    assert response.data["slug"] == "sinslug"
+
+
+@pytest.mark.django_db
+def test_admin_create_service_returns_400_with_field_errors_on_invalid_payload(api_client, admin_user):
+    """Missing required field surfaces a 400 with the field name in the body."""
+    api_client.force_authenticate(user=admin_user)
+
+    payload = {
+        "short_title": "Sin nombre",
+        "stages": [],
+    }
+
+    response = api_client.post(
+        reverse("services-admin-create"),
+        {"payload": json.dumps(payload)},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    assert "name" in response.data
+
+
+@pytest.mark.django_db
+def test_admin_create_service_returns_400_when_select_field_missing_options(api_client, admin_user):
+    """select_single field without options must yield a 400, never a silent 500."""
+    api_client.force_authenticate(user=admin_user)
+
+    payload = {
+        "name": "Servicio Select",
+        "short_title": "Select",
+        "stages": [
+            {
+                "title": "Etapa",
+                "order": 1,
+                "is_active": True,
+                "fields": [
+                    {
+                        "key": "tipo",
+                        "label": "Tipo",
+                        "field_type": "select_single",
+                        "is_required": True,
+                        "order": 1,
+                        # options intentionally omitted
+                    }
+                ],
+            }
+        ],
+    }
+
+    response = api_client.post(
+        reverse("services-admin-create"),
+        {"payload": json.dumps(payload)},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    assert "errors" in response.data or "detail" in response.data
+
+
+@pytest.mark.django_db
+def test_admin_create_service_returns_400_on_malformed_json_payload(api_client, admin_user):
+    """Malformed JSON in the payload field returns a 400 with `payload` key."""
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.post(
+        reverse("services-admin-create"),
+        {"payload": "not-json"},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    assert "payload" in response.data
+
+
+@pytest.mark.django_db
 def test_client_can_list_active_services_only(api_client, client_user, sample_service):
     """Client listing only returns active services."""
     Service.objects.create(

@@ -11,6 +11,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -81,11 +82,11 @@ def _parse_json_payload(request):
         try:
             payload = json.loads(payload)
         except json.JSONDecodeError:
-            raise ValidationError("payload invalido")
+            raise DRFValidationError({"payload": "JSON invalido"})
     if hasattr(payload, "dict"):
         payload = payload.dict()
     if not isinstance(payload, dict):
-        raise ValidationError("payload invalido")
+        raise DRFValidationError({"payload": "payload invalido"})
     return payload
 
 
@@ -445,7 +446,16 @@ def admin_create_service(request):
 
     serializer = ServiceSerializer(data=payload, context={"request": request})
     serializer.is_valid(raise_exception=True)
-    service = serializer.save()
+    try:
+        service = serializer.save()
+    except ValidationError as exc:
+        return Response(
+            {
+                "detail": "Error de validacion al guardar las etapas o campos.",
+                "errors": exc.message_dict if hasattr(exc, "message_dict") else exc.messages,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response(ServiceSerializer(service, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
@@ -464,7 +474,16 @@ def admin_update_service(request, service_id):
 
     serializer = ServiceSerializer(service, data=payload, context={"request": request})
     serializer.is_valid(raise_exception=True)
-    service = serializer.save()
+    try:
+        service = serializer.save()
+    except ValidationError as exc:
+        return Response(
+            {
+                "detail": "Error de validacion al guardar las etapas o campos.",
+                "errors": exc.message_dict if hasattr(exc, "message_dict") else exc.messages,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response(ServiceSerializer(service, context={"request": request}).data, status=status.HTTP_200_OK)
 

@@ -60,6 +60,9 @@ class ServiceStageSerializer(serializers.ModelSerializer):
 class ServiceSerializer(_ServiceIconMixin, serializers.ModelSerializer):
     stages = ServiceStageSerializer(many=True, required=False)
     icon_image_url = serializers.SerializerMethodField()
+    # Model.save() auto-generates slug from short_title/name when missing,
+    # so the API mirrors that contract instead of forcing the client to send it.
+    slug = serializers.SlugField(max_length=160, required=False, allow_blank=True)
 
     class Meta:
         model = Service
