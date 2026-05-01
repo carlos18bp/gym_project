@@ -384,7 +384,7 @@ describe("menuOptionsHelper.js", () => {
           signatures: [],
         },
         "list",
-        { currentUser: { id: 7, role: "lawyer" } }
+        { currentUser: { id: 7, role: "lawyer" }, isLawyerLike: true }
       );
 
       expect(options.some((o) => o.action === "editAndResend")).toBe(true);
@@ -418,7 +418,7 @@ describe("menuOptionsHelper.js", () => {
           signatures: [],
         },
         "list",
-        { currentUser: { id: 7, role: "lawyer" } }
+        { currentUser: { id: 7, role: "lawyer" }, isLawyerLike: true }
       );
 
       expect(options.some((o) => o.action === "editAndResend")).toBe(true);
