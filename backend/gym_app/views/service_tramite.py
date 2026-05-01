@@ -49,7 +49,7 @@ from gym_app.services.service_tramite_pdf import (
 
 logger = logging.getLogger(__name__)
 
-MAX_UPLOAD_SIZE = 30 * 1024 * 1024
+MAX_UPLOAD_SIZE = 200 * 1024 * 1024
 DEFAULT_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"}
 ALLOWED_STATUS_TRANSITIONS = {
     "OPEN": {"IN_STUDY", "IN_PROGRESS", "ANSWERED", "FINALIZED"},
@@ -134,7 +134,7 @@ def _normalize_extensions(extensions):
 
 def _validate_field_file(uploaded_file, field):
     if uploaded_file.size > MAX_UPLOAD_SIZE:
-        raise ValidationError(f"El archivo {uploaded_file.name} excede 30MB")
+        raise ValidationError(f"El archivo {uploaded_file.name} excede {MAX_UPLOAD_SIZE // 1024 // 1024}MB")
 
     file_ext = os.path.splitext(uploaded_file.name)[1].lower()
     allowed = _normalize_extensions(field.allowed_extensions)
@@ -743,7 +743,7 @@ def manage_service_request(request, request_id):
 
     response_file = request.FILES.get("response_file")
     if response_file and response_file.size > MAX_UPLOAD_SIZE:
-        return Response({"detail": "Archivo excede 30MB"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": f"Archivo excede {MAX_UPLOAD_SIZE // 1024 // 1024}MB"}, status=status.HTTP_400_BAD_REQUEST)
 
     with transaction.atomic():
         response_obj = ServiceRequestLawyerResponse.objects.create(

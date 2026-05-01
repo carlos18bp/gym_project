@@ -1160,7 +1160,7 @@ const deleteStage = (index) => {
  * @returns {void}
  */
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // Maximum file size of 50 MB
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // Maximum file size of 200 MB
 const ALLOWED_FILE_TYPES = ["png", "jpg", "jpeg", "pdf", "docx"]; // Allowed file extensions
 
 const handleFileUpload = (event, index) => {
@@ -1171,7 +1171,7 @@ const handleFileUpload = (event, index) => {
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     showNotification(
-      `El archivo "${file.name}" excede el límite de 50 MB. Por favor, selecciona un archivo más pequeño.`,
+      `El archivo "${file.name}" excede el límite de 200 MB. Por favor, selecciona un archivo más pequeño.`,
       "warning"
     );
     return; // Skip further processing if the file is too large

@@ -36,7 +36,7 @@ ALLOWED_FILE_TYPES = {
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png']
 }
-MAX_FILE_SIZE = 30 * 1024 * 1024  # 30MB
+MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB
 
 def validate_file_security(file):
     """Comprehensive file validation for security"""

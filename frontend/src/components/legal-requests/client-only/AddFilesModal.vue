@@ -46,7 +46,7 @@
               />
             </label>
             <p class="mt-1 text-xs text-gray-500">
-              PDF, DOC, DOCX, JPG, PNG hasta 10MB cada uno
+              PDF, DOC, DOCX, JPG, PNG hasta 200MB cada uno
             </p>
           </div>
         </div>
@@ -133,7 +133,7 @@ const handleDrop = (event) => {
 const addFiles = (files) => {
   // Filter for allowed file types and size
   const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png']
-  const maxSize = 10 * 1024 * 1024 // 10MB
+  const maxSize = 200 * 1024 * 1024 // 200MB
 
   files.forEach(file => {
     if (!allowedTypes.includes(file.type)) {
@@ -142,7 +142,7 @@ const addFiles = (files) => {
     }
     
     if (file.size > maxSize) {
-      alert(`El archivo "${file.name}" es demasiado grande. Máximo 10MB.`)
+      alert(`El archivo "${file.name}" es demasiado grande. Máximo 200MB.`)
       return
     }
 

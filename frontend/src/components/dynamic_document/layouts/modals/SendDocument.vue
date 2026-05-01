@@ -65,7 +65,7 @@
               <p class="pl-1">o arrastra y suelta</p>
             </div>
             <p class="text-xs/5 text-gray-600">
-              PNG, JPG, PDF, DOCX de hasta 20MB
+              PNG, JPG, PDF, DOCX de hasta 200MB
             </p>
           </div>
           <!-- List of files -->
@@ -163,8 +163,8 @@ const formData = reactive({
 });
 const files = ref([]);
 
-// Maximum file size (20 MB)
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
+// Maximum file size (200 MB)
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 /**
  * Handles file selection from the input.
@@ -196,7 +196,7 @@ const processFiles = (fileList) => {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       showNotification(
-        `The file "${file.name}" exceeds the 20 MB limit.`,
+        `The file "${file.name}" exceeds the 200 MB limit.`,
         "warning"
       );
       return;

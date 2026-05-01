@@ -169,7 +169,7 @@
                     <p class="pl-1">o arrastra y suelta</p>
                   </div>
                   <p class="text-xs/5 text-gray-600">
-                    PNG, JPG, PDF, DOCX de hasta 20MB
+                    PNG, JPG, PDF, DOCX de hasta 200MB
                   </p>
                 </div>
                 <!-- list of files -->
@@ -307,14 +307,14 @@ const handleDrop = (event) => {
 };
 
 /**
- * Maximum allowed file size in bytes (20 MB).
+ * Maximum allowed file size in bytes (200 MB).
  */
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 /**
- * Maximum allowed total file size in bytes (20 MB).
+ * Maximum allowed total file size in bytes (200 MB).
  */
-const MAX_TOTAL_SIZE = 20 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 200 * 1024 * 1024;
 
 /**
  * Processes the uploaded files by validating their size and extension,
@@ -327,7 +327,7 @@ const processFiles = (fileList) => {
     // Validate individual file size
     if (file.size > MAX_FILE_SIZE) {
       showNotification(
-        `El archivo "${file.name}" excede el límite de 20 MB. Por favor, selecciona un archivo más pequeño.`,
+        `El archivo "${file.name}" excede el límite de 200 MB. Por favor, selecciona un archivo más pequeño.`,
         "warning"
       );
       return; // Skip processing if the file is too large
@@ -336,7 +336,7 @@ const processFiles = (fileList) => {
     // Validate total file size
     if (totalSize + file.size > MAX_TOTAL_SIZE) {
       showNotification(
-        `No se pueden agregar más archivos porque el tamaño total excede el límite de 20 MB.`,
+        `No se pueden agregar más archivos porque el tamaño total excede el límite de 200 MB.`,
         "warning"
       );
       return; // Skip processing if adding this file would exceed the total size limit

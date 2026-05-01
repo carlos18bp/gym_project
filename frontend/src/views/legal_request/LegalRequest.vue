@@ -223,7 +223,7 @@
                     <p class="pl-1">o arrastra y suelta</p>
                   </div>
                   <p class="text-xs/5 text-gray-600">
-                    PNG, JPG, PDF, DOCX de hasta 30MB
+                    PNG, JPG, PDF, DOCX de hasta 200MB
                   </p>
                 </div>
                 <!-- list of files -->
@@ -273,7 +273,7 @@
                       />
                     </label>
                     <p class="text-xs text-gray-500 mt-2">
-                      PNG, JPG, PDF, DOCX de hasta 30MB cada uno<br/>
+                      PNG, JPG, PDF, DOCX de hasta 200MB cada uno<br/>
                       Puedes seleccionar múltiples archivos
                     </p>
                   </div>
@@ -390,9 +390,9 @@ const handleDrop = (event) => {
 };
 
 /**
- * Maximum allowed file size in bytes (30 MB).
+ * Maximum allowed file size in bytes (200 MB).
  */
-const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024 * 1024;
 
 /**
  * Processes the uploaded files by validating their size and extension,
@@ -403,7 +403,7 @@ const processFiles = (fileList) => {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       showNotification(
-        `El archivo "${file.name}" excede el límite de 30 MB. Por favor, selecciona un archivo más pequeño.`,
+        `El archivo "${file.name}" excede el límite de 200 MB. Por favor, selecciona un archivo más pequeño.`,
         "warning"
       );
       return; // Skip processing if the file is too large

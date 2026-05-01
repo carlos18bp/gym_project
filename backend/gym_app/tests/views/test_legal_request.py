@@ -1706,8 +1706,9 @@ class TestLegalRequestRegressionScenarios:
         """Line 47: file exceeding MAX_FILE_SIZE is rejected."""
         api_client.force_authenticate(user=client_u)
         big_file = SimpleUploadedFile(
-            "big.pdf", b"x" * (30 * 1024 * 1024 + 1),
+            "big.pdf", b"%PDF-1.4\n",
             content_type="application/pdf")
+        big_file.size = 201 * 1024 * 1024
         r = api_client.post(
             reverse('upload-legal-request-file'),
             {'legalRequestId': lrc_legal_req.id, 'file': big_file},
@@ -2010,9 +2011,9 @@ class TestValidateFileSecurityEdges:
     def test_file_exceeds_max_size(self, api_client, lre_client_user, lre_legal_request):
         """Cover line 47: file size > MAX_FILE_SIZE."""
         api_client.force_authenticate(user=lre_client_user)
-        # Create a file that claims to be > 30MB
+        # Create a file that claims to be > 200MB
         big_file = SimpleUploadedFile("big.pdf", b"%PDF-1.4\n", content_type="application/pdf")
-        big_file.size = 31 * 1024 * 1024  # 31MB
+        big_file.size = 201 * 1024 * 1024  # 201MB
 
         url = reverse("upload-legal-request-file")
         response = api_client.post(
