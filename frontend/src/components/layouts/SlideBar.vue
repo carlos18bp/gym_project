@@ -514,7 +514,8 @@ onMounted(async () => {
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M" &&
         navItem.name !== "Bandeja de Solicitudes" &&
-        navItem.name !== "Administrar Servicios"
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Organizaciones"
     );
   }
 
