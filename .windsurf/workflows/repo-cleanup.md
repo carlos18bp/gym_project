@@ -11,10 +11,9 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 ## What To Search For
 
 ### 1. Build & Test Artifacts Tracked in Git
-- Coverage reports (`coverage*.json`, `*.xml`, `*.lcov`, `htmlcov/`, `.coverage`)
-- Test result logs, Playwright screenshots, traces, or videos (`test-results/`, `*.webm`)
-- Jest snapshots committed by mistake (`__snapshots__/`)
-- Compiled/transpiled output (`.pyc`, `__pycache__/`, `dist/`, `frontend/dist/`)
+- Coverage reports (`*.json`, `*.xml`, `*.lcov`, `htmlcov/`)
+- Test result logs, screenshots, or trace files
+- Compiled/transpiled output (`.pyc`, `__pycache__/`, `.nuxt/`, `.output/`, `dist/`)
 - Lock files or `node_modules/` committed by mistake
 - Database dumps, `.sqlite3` files, or SQL scripts that were one-time use
 
@@ -53,8 +52,8 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 4. Identify files by age: `git log --diff-filter=A --format='%ai' -- <file>` for files that haven't changed since creation.
 
 ### Phase 2 — Dead Code Detection
-5. For each composable, store, utility, and component in `frontend/src/`:
-   - `grep -r "<name>" frontend/src/` excluding the file itself and its test.
+5. For each composable, store, utility, and component in `frontend/`:
+   - `grep -r "<name>" frontend/` excluding the file itself and its test.
    - If zero external references, flag as potentially unused.
 6. For each non-standard Python module in `backend/` (exclude models, views, serializers, migrations, admin, urls, apps, conftest, tests):
    - `grep -r "<module_name>" backend/` excluding the file itself.
@@ -73,7 +72,6 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 9. Look for coverage/test artifacts in unexpected locations:
    ```bash
    git ls-files | grep -iE '(coverage|cov_|test-results|test-reports)\.'
-   git ls-files | grep -E '^test-results/'
    ```
 
 ### Phase 4 — Report

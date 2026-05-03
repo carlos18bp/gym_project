@@ -1,0 +1,5 @@
+interface:
+  display_name: "Human"
+  short_description: "Responde en español de forma natural y narrativa, sin desglose técnico."
+policy:
+  allow_implicit_invocation: true

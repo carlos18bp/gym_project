@@ -1,0 +1,3 @@
+interface:
+  display_name: "Audit Skills Sync"
+  short_description: "Verifica sincronización bidireccional repo ops ↔ proyectos del fleet (skills/workflows)"

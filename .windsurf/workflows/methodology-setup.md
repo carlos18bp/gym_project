@@ -26,18 +26,17 @@ mkdir -p .windsurf/rules/methodology
 
 ## Step 2: Verify Methodology Rules Exist
 
-Check that these 8 files exist in `.windsurf/rules/methodology/`:
+Check that these 7 files exist in `.windsurf/rules/methodology/`:
 
 | File | Trigger | Purpose |
 |------|---------|---------|
 | `rules.md` | always_on | General rules |
 | `memory.md` | always_on | Memory file system definition |
 | `directory-structure.md` | always_on | Project directory map |
+| `architecture-understanding.md` | model_decision | Architecture parsing rules |
 | `plan.md` | model_decision | Planning workflow |
 | `implement.md` | model_decision | Implementation workflow |
 | `debug.md` | model_decision | Debugging workflow |
-| `error-documentation.md` | model_decision | Known issues and error tracking |
-| `lessons-learned.md` | model_decision | Project intelligence and patterns |
 
 If missing, fetch from [rules_template](https://github.com/Bhartendu-Kumar/rules_template) `.cursor/rules/` and adapt:
 - Rename `.mdc` → `.md`
@@ -52,47 +51,42 @@ If missing, fetch from [rules_template](https://github.com/Bhartendu-Kumar/rules
 Run verification commands to get exact counts:
 
 ```bash
-# Model files
-find backend/gym_app/models/ -name "*.py" ! -name "__init__.py" | wc -l
-
-# Model classes
-grep -r "^class " backend/gym_app/models/ --include="*.py" | wc -l
-
-# View files
-find backend/gym_app/views/ -name "*.py" ! -name "__init__.py" | wc -l
-
-# Backend tests
-find backend/gym_app/tests/ -name "test_*.py" | wc -l
-
-# URL patterns
-grep -c "path(" backend/gym_app/urls.py
-
-# Email/PDF templates
-find backend/gym_app/templates/ -type f | wc -l
-
-# Management commands
-find backend/gym_app/management/commands/ -name "*.py" ! -name "__init__.py" | wc -l
-
-# Service files
-ls -la backend/gym_app/services/
+# Models
+find backend/ -name "*.py" -path "*/models*" ! -name "__init__.py" -not -path "*/venv/*" | wc -l
 
 # Components
-find frontend/src/components/ -name "*.vue" | wc -l
+find frontend/components/ -name "*.vue" | wc -l
 
-# Views (pages)
-find frontend/src/views/ -name "*.vue" | wc -l
+# Pages
+find frontend/pages/ -name "*.vue" | wc -l
 
 # Stores
-find frontend/src/stores/ -name "*.js" ! -path "*/services/*" | wc -l
+find frontend/stores/ -name "*.js" ! -path "*/services/*" | wc -l
 
 # Composables
-find frontend/src/composables/ -name "*.js" | wc -l
+find frontend/composables/ -name "*.js" | wc -l
+
+# Backend tests (exclude venv)
+find backend/ -name "test_*.py" -not -path "*/venv/*" | wc -l
 
 # Frontend unit tests
-find frontend/test/ -name "*.test.*" | wc -l
+find frontend/test/ -name "*.spec.*" -o -name "*.test.*" | wc -l
 
 # E2E tests
 find frontend/e2e/ -name "*.spec.*" | wc -l
+
+# URL patterns
+grep -c "path(" backend/content/urls.py
+grep -c "path(" backend/accounts/urls.py 2>/dev/null
+
+# Email templates
+find backend/content/templates/emails/ -type f | wc -l
+
+# Management commands
+find backend/ -path "*/management/commands/*.py" ! -name "__init__.py" -not -path "*/venv/*" | wc -l
+
+# Service file sizes
+ls -la backend/content/services/
 ```
 
 ## Step 4: Create / Refresh Memory Files
@@ -129,6 +123,7 @@ Go to **Windsurf → Settings → Cascade → Rules** and verify triggers match:
 | `methodology/rules.md` | Always On |
 | `methodology/memory.md` | Always On |
 | `methodology/directory-structure.md` | Always On |
+| `methodology/architecture-understanding.md` | Model Decision |
 | `methodology/plan.md` | Model Decision |
 | `methodology/implement.md` | Model Decision |
 | `methodology/debug.md` | Model Decision |

@@ -1,3 +1,6 @@
 interface:
-  display_name: "Deploy Production"
-  short_description: "Deploy to production and run post-deploy checks"
+  display_name: "Deploy and Check"
+  short_description: "Help with Deploy and Check tasks"
+
+policy:
+  allow_implicit_invocation: false

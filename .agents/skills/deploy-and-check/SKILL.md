@@ -5,132 +5,82 @@ disable-model-invocation: true
 allowed-tools: Bash
 ---
 
-# Deploy to Production
+> Ejecutar estos pasos conectado al servidor de producción vía SSH.
+> Ruta base: `/home/ryzepeck/webapps/azurita`
+> NO ejecutar en local.
 
-## Reference Material
+# Deploy azurita to Production
 
-- Read `.agents/skills/deploy-and-check/references/source-material.md` for provenance and parity context.
-- Validate with `docs/deployment-guide.md` if any runtime command differs from this playbook.
+Run these steps on the production server at `/home/ryzepeck/webapps/azurita` to deploy the latest `main` branch.
 
-Run these steps on the production server at `/home/ryzepeck/webapps/gym_project` to deploy the latest `master` branch.
+## Pre-Deploy
 
-- **Domain**: https://www.gmconsultoresjuridicos.com
-- **Stack**: Django + Gunicorn + Nginx + MySQL 8 + Redis + Huey
-- **Services**: `gym_intranet` (Gunicorn), `gym-project-huey` (task queue)
-
----
-
-## Phase 1 — Pre-deploy checks
-
-1. Verify server health before deploying:
+1. Quick status snapshot before deploy:
 ```bash
-bash ~/scripts/quick-status.sh
-```
-If any service is down or disk >85%, **stop and fix before deploying**.
-
-2. Check current git status (ensure working directory is clean):
-```bash
-cd /home/ryzepeck/webapps/gym_project && git status
-```
-Expected: `nothing to commit, working tree clean`. If there are uncommitted changes, stash or commit them first.
-
----
-
-## Phase 2 — Pull & build
-
-3. Pull the latest code from master:
-```bash
-cd /home/ryzepeck/webapps/gym_project && git pull origin master
+bash /home/ryzepeck/webapps/ops/vps/scripts/diagnostics/quick-status.sh
 ```
 
-4. Install backend dependencies and run migrations:
+## Deploy Steps
+
+2. Pull the latest code from main:
 ```bash
-cd /home/ryzepeck/webapps/gym_project/backend && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate
+cd /home/ryzepeck/webapps/azurita && git pull origin main
 ```
 
-5. Build the frontend (requires nvm for Node 22.13.0) and remove node_modules afterwards:
+3. Install backend dependencies and run migrations:
 ```bash
-bash -c 'export NVM_DIR="$HOME/.nvm"; source "$NVM_DIR/nvm.sh"; nvm use; cd /home/ryzepeck/webapps/gym_project/frontend && npm ci && npm run build && rm -rf node_modules'
-```
-> `rm -rf node_modules` runs only if the build succeeds. Frees ~200–500 MB of disk space.
-
-5b. (Optional) Verify node_modules were removed:
-```bash
-ls /home/ryzepeck/webapps/gym_project/frontend/node_modules 2>/dev/null && echo "WARNING: node_modules still present" || echo "OK: node_modules removed"
+cd /home/ryzepeck/webapps/azurita && source venv/bin/activate && pip install -r requirements.txt && DJANGO_ENV=production python manage.py migrate
 ```
 
-6. Collect static files:
+4. Build the frontend (Vue 3 Vite SPA):
 ```bash
-cd /home/ryzepeck/webapps/gym_project/backend && source venv/bin/activate && python manage.py collectstatic --noinput
+npm --prefix /home/ryzepeck/webapps/azurita/advent-calendar ci && npm --prefix /home/ryzepeck/webapps/azurita/advent-calendar run build
 ```
 
----
-
-## Phase 3 — Restart services
-
-7. Restart Gunicorn and Huey:
+5. Collect static files:
 ```bash
-sudo systemctl restart gym_intranet && sudo systemctl restart gym-project-huey
+cd /home/ryzepeck/webapps/azurita && source venv/bin/activate && DJANGO_ENV=production python manage.py collectstatic --noinput
 ```
 
----
-
-## Phase 4 — Post-deploy verification
-
-8. Verify services are active:
+6. Restart services:
 ```bash
-sudo systemctl is-active gym_intranet && sudo systemctl is-active gym-project-huey
-```
-Expected: `active`, `active`.
-
-9. Run the post-deploy check script (services, health endpoint, SSL, migrations, static files, recent errors):
-```bash
-bash ~/scripts/post-deploy-check.sh
-```
-Expected: `DEPLOY VERIFICATION PASSED — All checks OK`. If it fails, go to Phase 5.
-
-10. Verify the health endpoint directly:
-```bash
-curl -s https://www.gmconsultoresjuridicos.com/api/health/ | python3 -m json.tool
-```
-Expected: `{"app": "ok", "database": "ok", "redis": "ok"}` with HTTP 200.
-
----
-
-## Phase 5 — Troubleshooting (only if something fails)
-
-11. Check Gunicorn logs:
-```bash
-sudo journalctl -u gym_intranet --no-pager -n 50
+sudo systemctl restart azurita && sudo systemctl restart azurita-huey
 ```
 
-12. Check Huey logs:
+## Post-Deploy Verification
+
+7. Run post-deploy check for azurita:
 ```bash
-sudo journalctl -u gym-project-huey --no-pager -n 50
+bash /home/ryzepeck/webapps/ops/vps/scripts/deployment/post-deploy-check.sh azurita
+```
+Expected: PASS on all checks, FAIL=0.
+
+8. If something fails, check the logs:
+```bash
+sudo journalctl -u azurita.service --no-pager -n 30
+sudo journalctl -u azurita-huey.service --no-pager -n 30
+sudo tail -20 /var/log/nginx/error.log
 ```
 
-13. Check Nginx error log:
+## Architecture Reference
+
+- **Domain**: `azurita.projectapp.co` / `www.azurita.projectapp.co`
+- **Backend**: Django (`azurita_project` module), `DJANGO_SETTINGS_MODULE=azurita_project.settings`; production mode activated by `DJANGO_ENV=production` in server `.env`
+- **Frontend**: Vue 3 Vite SPA (`advent-calendar/`) → `static/frontend/` + Django `index` catch-all view
+- **Services**: `azurita.service` (Gunicorn), `azurita-huey.service`
+- **Nginx**: `/etc/nginx/sites-available/azurita`
+- **Socket**: `/home/ryzepeck/webapps/azurita/azurita.sock`
+- **Static**: `/home/ryzepeck/webapps/azurita/staticfiles/`
+
+## Cleanup
+
+9. Remove `node_modules` to save disk space (frontend already compiled):
 ```bash
-sudo tail -30 /var/log/nginx/error.log
+rm -rf /home/ryzepeck/webapps/azurita/advent-calendar/node_modules
 ```
 
-14. Check Django debug log:
-```bash
-tail -50 /home/ryzepeck/webapps/gym_project/backend/debug.log
-```
+## Notes
 
-15. If services won't start, check systemd details:
-```bash
-sudo systemctl status gym_intranet --no-pager -l
-sudo systemctl status gym-project-huey --no-pager -l
-```
-
----
-
-## Phase 6 — Full diagnostic (optional, recommended weekly)
-
-16. Run the full 12-practice server diagnostic with scoring:
-```bash
-bash ~/scripts/full-diagnostic.sh
-```
-This checks: logs, RAM, disk, updates, limits, monitoring, backups, cron, scripts, max-requests, slow queries, security, and SSL.
+- VPS operations scripts live in `/home/ryzepeck/webapps/ops/vps/scripts/`.
+- Frontend uses `npm run build` (Vite) which emits assets to `static/frontend/`.
+- `manage.py` defaults to `DJANGO_SETTINGS_MODULE=azurita_project.settings`. Production settings are activated by `DJANGO_ENV=production` (read by python-decouple from the server `.env` file). Never pass `azurita_project.settings_prod` as the settings module — it is not a standalone module, it is auto-imported by `settings.py`.

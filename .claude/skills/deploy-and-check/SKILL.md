@@ -1,131 +1,201 @@
 ---
 name: deploy-and-check
-description: "Deploy latest master/main to the production server with pre-deploy checks, build, restart, and post-deploy verification."
+description: "Deploy a branch to production for the current project. Auto-discovers project metadata from projects.yml. Pass branch name as argument."
 disable-model-invocation: true
 allowed-tools: Bash
+argument-hint: "[branch-name, e.g. main, master, release/march-2026]"
 ---
 
-# Deploy to Production
+# Deploy & Check — Generic
 
-Run these steps on the production server at `/home/ryzepeck/webapps/gym_project` to deploy the latest `master` branch.
+Despliegue del proyecto actual a producción (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`).
 
-- **Domain**: https://www.gmconsultoresjuridicos.com
-- **Stack**: Django + Gunicorn + Nginx + MySQL 8 + Redis + Huey
-- **Services**: `gym_intranet` (Gunicorn), `gym-project-huey` (task queue)
+- **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
+- **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
+- **Restricción**: solo corre contra proyectos con `environment: production` (o sin campo `environment`, que defaultea a producción). Aborta en staging — para staging usar `/deploy-staging`.
+
+> **⚠️ How to invoke**: Pass the branch name as an argument.
+> Example: `/deploy-and-check main`
+> If no branch is specified, Claude Code will ask before proceeding.
+>
+> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name.
+
+---
+
+## Phase 0 — Discovery
+
+```bash
+PROJECT_DIR=$(pwd)
+PROJECT_NAME=$(basename "$PROJECT_DIR")
+OPS_YML="$HOME/webapps/ops/vps/projects.yml"
+[ -f "$OPS_YML" ] || { echo "❌ ERROR: $OPS_YML no encontrado"; exit 1; }
+
+yml_get() {
+    local proj="$1" field="$2"
+    awk -v p="$proj" -v f="$field" '
+        /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+        n==p && $0 ~ "^[[:space:]]+"f":" {
+            sub("^[[:space:]]+"f":[[:space:]]*", ""); gsub(/"/, ""); print; exit
+        }
+    ' "$OPS_YML"
+}
+
+GUNICORN_SVC=$(yml_get "$PROJECT_NAME" gunicorn_service)
+HUEY_SVC=$(yml_get "$PROJECT_NAME" huey_service)
+DOMAIN=$(yml_get "$PROJECT_NAME" domain)
+ENV=$(yml_get "$PROJECT_NAME" environment)
+HAS_FRONTEND=$(yml_get "$PROJECT_NAME" has_frontend)
+NODE_VERSION=$(yml_get "$PROJECT_NAME" node_version)
+DB_TYPE=$(yml_get "$PROJECT_NAME" db)
+FRONTEND_BUILD=$(yml_get "$PROJECT_NAME" frontend_build)
+COLLECTSTATIC=$(yml_get "$PROJECT_NAME" collectstatic)
+VENV_PATH=$(yml_get "$PROJECT_NAME" venv_path)
+DEFAULT_BRANCH=$(yml_get "$PROJECT_NAME" branch)
+
+# Guard: NO staging (este skill es para producción)
+[ "$ENV" != "staging" ] || { echo "❌ ERROR: $PROJECT_NAME es staging. Usar /deploy-staging en su lugar."; exit 1; }
+
+# Defaults
+[ -z "$VENV_PATH" ] && VENV_PATH="backend/venv/bin/python"
+[ -z "$FRONTEND_BUILD" ] && FRONTEND_BUILD="npm ci && npm run build"
+BRANCH="${ARGUMENTS:-$DEFAULT_BRANCH}"
+[ -n "$BRANCH" ] || { echo "❌ ERROR: no se proporcionó branch ni hay default en projects.yml"; exit 1; }
+
+cat <<EOF
+✅ Discovery OK:
+  PROJECT_NAME:    $PROJECT_NAME
+  PROJECT_DIR:     $PROJECT_DIR
+  ENVIRONMENT:     ${ENV:-production}
+  DOMAIN:          $DOMAIN
+  GUNICORN_SVC:    $GUNICORN_SVC
+  HUEY_SVC:        $HUEY_SVC
+  DB_TYPE:         $DB_TYPE
+  HAS_FRONTEND:    $HAS_FRONTEND
+  NODE_VERSION:    $NODE_VERSION
+  BRANCH:          $BRANCH
+EOF
+```
 
 ---
 
 ## Phase 1 — Pre-deploy checks
 
-1. Verify server health before deploying:
+1. Salud del servidor:
 ```bash
-bash ~/scripts/quick-status.sh
+bash $HOME/webapps/ops/vps/scripts/diagnostics/quick-status.sh
 ```
-If any service is down or disk >85%, **stop and fix before deploying**.
 
-2. Check current git status (ensure working directory is clean):
+2. Working tree limpio:
 ```bash
-cd /home/ryzepeck/webapps/gym_project && git status
+cd "$PROJECT_DIR" && git status
 ```
-Expected: `nothing to commit, working tree clean`. If there are uncommitted changes, stash or commit them first.
+
+3. Branch existe en remote:
+```bash
+cd "$PROJECT_DIR" && git fetch origin && git branch -r | grep -E " origin/$BRANCH\$"
+```
 
 ---
 
 ## Phase 2 — Pull & build
 
-3. Pull the latest code from master:
+4. Checkout y pull:
 ```bash
-cd /home/ryzepeck/webapps/gym_project && git pull origin master
+cd "$PROJECT_DIR" && git fetch origin && git checkout "$BRANCH" && git pull origin "$BRANCH"
 ```
 
-4. Install backend dependencies and run migrations:
+5. Backend deps + migrations:
 ```bash
-cd /home/ryzepeck/webapps/gym_project/backend && source venv/bin/activate && pip install -r requirements.txt && python manage.py migrate
+cd "$PROJECT_DIR/backend" && \
+    "$PROJECT_DIR/$VENV_PATH" -m pip install -r requirements.txt && \
+    "$PROJECT_DIR/$VENV_PATH" manage.py migrate
 ```
 
-5. Build the frontend (requires nvm for Node 22.13.0) and remove node_modules afterwards:
+6. Frontend build (si aplica):
 ```bash
-bash -c 'export NVM_DIR="$HOME/.nvm"; source "$NVM_DIR/nvm.sh"; nvm use; cd /home/ryzepeck/webapps/gym_project/frontend && npm ci && npm run build && rm -rf node_modules'
+if [ "$HAS_FRONTEND" = "true" ]; then
+    bash -c "
+        export NVM_DIR=\"\$HOME/.nvm\"
+        source \"\$NVM_DIR/nvm.sh\"
+        [ -n \"$NODE_VERSION\" ] && nvm use $NODE_VERSION
+        cd \"$PROJECT_DIR/frontend\" && $FRONTEND_BUILD
+        FRONTEND_SVC=\"${PROJECT_NAME%_project}-frontend\"
+        if ! systemctl list-units --all 2>/dev/null | grep -q \"\$FRONTEND_SVC.service\"; then
+            rm -rf node_modules
+            echo \"✅ node_modules removidos (build estático)\"
+        else
+            echo \"ℹ️ node_modules conservados (frontend service runtime)\"
+        fi
+    "
+fi
 ```
-> `rm -rf node_modules` runs only if the build succeeds. Frees ~200–500 MB of disk space.
 
-5b. (Optional) Verify node_modules were removed:
+7. Collectstatic (si aplica):
 ```bash
-ls /home/ryzepeck/webapps/gym_project/frontend/node_modules 2>/dev/null && echo "WARNING: node_modules still present" || echo "OK: node_modules removed"
-```
-
-6. Collect static files:
-```bash
-cd /home/ryzepeck/webapps/gym_project/backend && source venv/bin/activate && python manage.py collectstatic --noinput
+if [ "$COLLECTSTATIC" = "true" ]; then
+    cd "$PROJECT_DIR/backend" && "$PROJECT_DIR/$VENV_PATH" manage.py collectstatic --noinput
+fi
 ```
 
 ---
 
 ## Phase 3 — Restart services
 
-7. Restart Gunicorn and Huey:
+8. Reiniciar gunicorn + huey + frontend:
 ```bash
-sudo systemctl restart gym_intranet && sudo systemctl restart gym-project-huey
+sudo systemctl restart "$GUNICORN_SVC" && sudo systemctl restart "$HUEY_SVC"
+FRONTEND_SVC="${PROJECT_NAME%_project}-frontend"
+if systemctl list-units --all 2>/dev/null | grep -q "$FRONTEND_SVC.service"; then
+    sudo systemctl restart "$FRONTEND_SVC"
+fi
 ```
 
 ---
 
 ## Phase 4 — Post-deploy verification
 
-8. Verify services are active:
+9. Estado servicios:
 ```bash
-sudo systemctl is-active gym_intranet && sudo systemctl is-active gym-project-huey
+systemctl is-active "$GUNICORN_SVC" && systemctl is-active "$HUEY_SVC"
 ```
-Expected: `active`, `active`.
 
-9. Run the post-deploy check script (services, health endpoint, SSL, migrations, static files, recent errors):
+10. Health endpoint:
 ```bash
-bash ~/scripts/post-deploy-check.sh
+curl -s "https://$DOMAIN/api/health/" | python3 -m json.tool
 ```
-Expected: `DEPLOY VERIFICATION PASSED — All checks OK`. If it fails, go to Phase 5.
 
-10. Verify the health endpoint directly:
+11. Confirmar branch:
 ```bash
-curl -s https://www.gmconsultoresjuridicos.com/api/health/ | python3 -m json.tool
+cd "$PROJECT_DIR" && git log --oneline -1
 ```
-Expected: `{"app": "ok", "database": "ok", "redis": "ok"}` with HTTP 200.
+
+12. Post-deploy check del repo ops:
+```bash
+bash $HOME/webapps/ops/vps/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+```
 
 ---
 
-## Phase 5 — Troubleshooting (only if something fails)
+## Phase 5 — Troubleshooting
 
-11. Check Gunicorn logs:
+13. Logs:
 ```bash
-sudo journalctl -u gym_intranet --no-pager -n 50
-```
-
-12. Check Huey logs:
-```bash
-sudo journalctl -u gym-project-huey --no-pager -n 50
-```
-
-13. Check Nginx error log:
-```bash
+sudo journalctl -u "$GUNICORN_SVC" --no-pager -n 50
+sudo journalctl -u "$HUEY_SVC" --no-pager -n 50
 sudo tail -30 /var/log/nginx/error.log
+tail -50 "$PROJECT_DIR/backend/logs/django.log" 2>/dev/null || tail -50 "$PROJECT_DIR/backend/debug.log" 2>/dev/null
 ```
 
-14. Check Django debug log:
+14. Estado detallado:
 ```bash
-tail -50 /home/ryzepeck/webapps/gym_project/backend/debug.log
-```
-
-15. If services won't start, check systemd details:
-```bash
-sudo systemctl status gym_intranet --no-pager -l
-sudo systemctl status gym-project-huey --no-pager -l
+sudo systemctl status "$GUNICORN_SVC" --no-pager -l
+sudo systemctl status "$HUEY_SVC" --no-pager -l
 ```
 
 ---
 
-## Phase 6 — Full diagnostic (optional, recommended weekly)
+## Notas
 
-16. Run the full 12-practice server diagnostic with scoring:
-```bash
-bash ~/scripts/full-diagnostic.sh
-```
-This checks: logs, RAM, disk, updates, limits, monitoring, backups, cron, scripts, max-requests, slow queries, security, and SSL.
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`.
+- Para staging, usar `/deploy-staging` (skill paralelo con guard inverso).
+- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Versiones `.codex/` y `.windsurf/` son copias del mismo cuerpo (frontmatter adaptado por sistema).

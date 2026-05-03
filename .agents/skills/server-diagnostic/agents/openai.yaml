@@ -1,0 +1,6 @@
+interface:
+  display_name: "Server Diagnostic"
+  short_description: "Comprehensive server diagnostic report"
+
+policy:
+  allow_implicit_invocation: false

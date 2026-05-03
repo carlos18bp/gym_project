@@ -1,0 +1,3 @@
+interface:
+  display_name: "Plan Task"
+  short_description: "Wrapper parametrizado de /plan — recibe la tarea como argumento y produce un plan decision-complete"
