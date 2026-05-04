@@ -1,9 +1,9 @@
 ---
 name: deploy-and-check
-description: "Deploy a branch to production for the current project. Auto-discovers project metadata from projects.yml. Pass branch name as argument."
+description: "Deploy a branch (production or staging) for the current project. Auto-discovers project metadata from projects.yml. Defaults to current branch."
 disable-model-invocation: true
 allowed-tools: Bash
-argument-hint: "[branch-name, e.g. main, master, release/march-2026]"
+argument-hint: "[branch-name] — opcional, usa la rama actual si no se especifica"
 ---
 
 # Deploy & Check — Generic
@@ -12,13 +12,13 @@ Despliegue del proyecto actual a producción (auto-detectado desde `pwd` + `~/we
 
 - **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
 - **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
-- **Restricción**: solo corre contra proyectos con `environment: production` (o sin campo `environment`, que defaultea a producción). Aborta en staging — para staging usar `/deploy-staging`.
+- **Entornos**: producción y staging (detectado automáticamente desde projects.yml).
 
-> **⚠️ How to invoke**: Pass the branch name as an argument.
-> Example: `/deploy-and-check main`
-> If no branch is specified, Claude Code will ask before proceeding.
+> **⚠️ How to invoke**: Branch name is optional.
+> Example with branch: `/deploy-and-check release/june-2026`
+> Example without branch: `/deploy-and-check` (uses the currently checked-out branch)
 >
-> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name.
+> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name, or leave it empty to use the current branch.
 
 ---
 
@@ -50,16 +50,12 @@ DB_TYPE=$(yml_get "$PROJECT_NAME" db)
 FRONTEND_BUILD=$(yml_get "$PROJECT_NAME" frontend_build)
 COLLECTSTATIC=$(yml_get "$PROJECT_NAME" collectstatic)
 VENV_PATH=$(yml_get "$PROJECT_NAME" venv_path)
-DEFAULT_BRANCH=$(yml_get "$PROJECT_NAME" branch)
-
-# Guard: NO staging (este skill es para producción)
-[ "$ENV" != "staging" ] || { echo "❌ ERROR: $PROJECT_NAME es staging. Usar /deploy-staging en su lugar."; exit 1; }
 
 # Defaults
 [ -z "$VENV_PATH" ] && VENV_PATH="backend/venv/bin/python"
 [ -z "$FRONTEND_BUILD" ] && FRONTEND_BUILD="npm ci && npm run build"
-BRANCH="${ARGUMENTS:-$DEFAULT_BRANCH}"
-[ -n "$BRANCH" ] || { echo "❌ ERROR: no se proporcionó branch ni hay default en projects.yml"; exit 1; }
+CURRENT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD)
+BRANCH="${ARGUMENTS:-$CURRENT_BRANCH}"
 
 cat <<EOF
 ✅ Discovery OK:
@@ -197,5 +193,5 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 ## Notas
 
 - Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`.
-- Para staging, usar `/deploy-staging` (skill paralelo con guard inverso).
-- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Versiones `.codex/` y `.windsurf/` son copias del mismo cuerpo (frontmatter adaptado por sistema).
+- Funciona en cualquier environment (production o staging).
+- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Versiones `.agents/` y `.windsurf/` son copias del mismo cuerpo (frontmatter adaptado por sistema).

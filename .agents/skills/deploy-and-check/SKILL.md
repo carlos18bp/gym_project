@@ -1,86 +1,197 @@
 ---
 name: deploy-and-check
-description: "Deploy latest master/main to the production server with pre-deploy checks, build, restart, and post-deploy verification."
+description: "Deploy a branch (production or staging) for the current project. Auto-discovers project metadata from projects.yml. Defaults to current branch."
 disable-model-invocation: true
 allowed-tools: Bash
+argument-hint: "[branch-name] — opcional, usa la rama actual si no se especifica"
 ---
 
-> Ejecutar estos pasos conectado al servidor de producción vía SSH.
-> Ruta base: `/home/ryzepeck/webapps/azurita`
-> NO ejecutar en local.
+# Deploy & Check — Generic
 
-# Deploy azurita to Production
+Despliegue del proyecto actual a producción (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`).
 
-Run these steps on the production server at `/home/ryzepeck/webapps/azurita` to deploy the latest `main` branch.
+- **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
+- **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
+- **Entornos**: producción y staging (detectado automáticamente desde projects.yml).
 
-## Pre-Deploy
+> **⚠️ How to invoke**: Branch name is optional.
+> Example with branch: `/deploy-and-check release/june-2026`
+> Example without branch: `/deploy-and-check` (uses the currently checked-out branch)
+>
+> The tool will substitute `$ARGUMENTS` in all commands below with the provided branch name, or leave it empty to use the current branch.
 
-1. Quick status snapshot before deploy:
+---
+
+## Phase 0 — Discovery
+
 ```bash
-bash /home/ryzepeck/webapps/ops/vps/scripts/diagnostics/quick-status.sh
+PROJECT_DIR=$(pwd)
+PROJECT_NAME=$(basename "$PROJECT_DIR")
+OPS_YML="$HOME/webapps/ops/vps/projects.yml"
+[ -f "$OPS_YML" ] || { echo "❌ ERROR: $OPS_YML no encontrado"; exit 1; }
+
+yml_get() {
+    local proj="$1" field="$2"
+    awk -v p="$proj" -v f="$field" '
+        /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+        n==p && $0 ~ "^[[:space:]]+"f":" {
+            sub("^[[:space:]]+"f":[[:space:]]*", ""); gsub(/"/, ""); print; exit
+        }
+    ' "$OPS_YML"
+}
+
+GUNICORN_SVC=$(yml_get "$PROJECT_NAME" gunicorn_service)
+HUEY_SVC=$(yml_get "$PROJECT_NAME" huey_service)
+DOMAIN=$(yml_get "$PROJECT_NAME" domain)
+ENV=$(yml_get "$PROJECT_NAME" environment)
+HAS_FRONTEND=$(yml_get "$PROJECT_NAME" has_frontend)
+NODE_VERSION=$(yml_get "$PROJECT_NAME" node_version)
+DB_TYPE=$(yml_get "$PROJECT_NAME" db)
+FRONTEND_BUILD=$(yml_get "$PROJECT_NAME" frontend_build)
+COLLECTSTATIC=$(yml_get "$PROJECT_NAME" collectstatic)
+VENV_PATH=$(yml_get "$PROJECT_NAME" venv_path)
+
+# Defaults
+[ -z "$VENV_PATH" ] && VENV_PATH="backend/venv/bin/python"
+[ -z "$FRONTEND_BUILD" ] && FRONTEND_BUILD="npm ci && npm run build"
+CURRENT_BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD)
+BRANCH="${ARGUMENTS:-$CURRENT_BRANCH}"
+
+cat <<EOF
+✅ Discovery OK:
+  PROJECT_NAME:    $PROJECT_NAME
+  PROJECT_DIR:     $PROJECT_DIR
+  ENVIRONMENT:     ${ENV:-production}
+  DOMAIN:          $DOMAIN
+  GUNICORN_SVC:    $GUNICORN_SVC
+  HUEY_SVC:        $HUEY_SVC
+  DB_TYPE:         $DB_TYPE
+  HAS_FRONTEND:    $HAS_FRONTEND
+  NODE_VERSION:    $NODE_VERSION
+  BRANCH:          $BRANCH
+EOF
 ```
 
-## Deploy Steps
+---
 
-2. Pull the latest code from main:
+## Phase 1 — Pre-deploy checks
+
+1. Salud del servidor:
 ```bash
-cd /home/ryzepeck/webapps/azurita && git pull origin main
+bash $HOME/webapps/ops/vps/scripts/diagnostics/quick-status.sh
 ```
 
-3. Install backend dependencies and run migrations:
+2. Working tree limpio:
 ```bash
-cd /home/ryzepeck/webapps/azurita && source venv/bin/activate && pip install -r requirements.txt && DJANGO_ENV=production python manage.py migrate
+cd "$PROJECT_DIR" && git status
 ```
 
-4. Build the frontend (Vue 3 Vite SPA):
+3. Branch existe en remote:
 ```bash
-npm --prefix /home/ryzepeck/webapps/azurita/advent-calendar ci && npm --prefix /home/ryzepeck/webapps/azurita/advent-calendar run build
+cd "$PROJECT_DIR" && git fetch origin && git branch -r | grep -E " origin/$BRANCH\$"
 ```
 
-5. Collect static files:
+---
+
+## Phase 2 — Pull & build
+
+4. Checkout y pull:
 ```bash
-cd /home/ryzepeck/webapps/azurita && source venv/bin/activate && DJANGO_ENV=production python manage.py collectstatic --noinput
+cd "$PROJECT_DIR" && git fetch origin && git checkout "$BRANCH" && git pull origin "$BRANCH"
 ```
 
-6. Restart services:
+5. Backend deps + migrations:
 ```bash
-sudo systemctl restart azurita && sudo systemctl restart azurita-huey
+cd "$PROJECT_DIR/backend" && \
+    "$PROJECT_DIR/$VENV_PATH" -m pip install -r requirements.txt && \
+    "$PROJECT_DIR/$VENV_PATH" manage.py migrate
 ```
 
-## Post-Deploy Verification
-
-7. Run post-deploy check for azurita:
+6. Frontend build (si aplica):
 ```bash
-bash /home/ryzepeck/webapps/ops/vps/scripts/deployment/post-deploy-check.sh azurita
-```
-Expected: PASS on all checks, FAIL=0.
-
-8. If something fails, check the logs:
-```bash
-sudo journalctl -u azurita.service --no-pager -n 30
-sudo journalctl -u azurita-huey.service --no-pager -n 30
-sudo tail -20 /var/log/nginx/error.log
-```
-
-## Architecture Reference
-
-- **Domain**: `azurita.projectapp.co` / `www.azurita.projectapp.co`
-- **Backend**: Django (`azurita_project` module), `DJANGO_SETTINGS_MODULE=azurita_project.settings`; production mode activated by `DJANGO_ENV=production` in server `.env`
-- **Frontend**: Vue 3 Vite SPA (`advent-calendar/`) → `static/frontend/` + Django `index` catch-all view
-- **Services**: `azurita.service` (Gunicorn), `azurita-huey.service`
-- **Nginx**: `/etc/nginx/sites-available/azurita`
-- **Socket**: `/home/ryzepeck/webapps/azurita/azurita.sock`
-- **Static**: `/home/ryzepeck/webapps/azurita/staticfiles/`
-
-## Cleanup
-
-9. Remove `node_modules` to save disk space (frontend already compiled):
-```bash
-rm -rf /home/ryzepeck/webapps/azurita/advent-calendar/node_modules
+if [ "$HAS_FRONTEND" = "true" ]; then
+    bash -c "
+        export NVM_DIR=\"\$HOME/.nvm\"
+        source \"\$NVM_DIR/nvm.sh\"
+        [ -n \"$NODE_VERSION\" ] && nvm use $NODE_VERSION
+        cd \"$PROJECT_DIR/frontend\" && $FRONTEND_BUILD
+        FRONTEND_SVC=\"${PROJECT_NAME%_project}-frontend\"
+        if ! systemctl list-units --all 2>/dev/null | grep -q \"\$FRONTEND_SVC.service\"; then
+            rm -rf node_modules
+            echo \"✅ node_modules removidos (build estático)\"
+        else
+            echo \"ℹ️ node_modules conservados (frontend service runtime)\"
+        fi
+    "
+fi
 ```
 
-## Notes
+7. Collectstatic (si aplica):
+```bash
+if [ "$COLLECTSTATIC" = "true" ]; then
+    cd "$PROJECT_DIR/backend" && "$PROJECT_DIR/$VENV_PATH" manage.py collectstatic --noinput
+fi
+```
 
-- VPS operations scripts live in `/home/ryzepeck/webapps/ops/vps/scripts/`.
-- Frontend uses `npm run build` (Vite) which emits assets to `static/frontend/`.
-- `manage.py` defaults to `DJANGO_SETTINGS_MODULE=azurita_project.settings`. Production settings are activated by `DJANGO_ENV=production` (read by python-decouple from the server `.env` file). Never pass `azurita_project.settings_prod` as the settings module — it is not a standalone module, it is auto-imported by `settings.py`.
+---
+
+## Phase 3 — Restart services
+
+8. Reiniciar gunicorn + huey + frontend:
+```bash
+sudo systemctl restart "$GUNICORN_SVC" && sudo systemctl restart "$HUEY_SVC"
+FRONTEND_SVC="${PROJECT_NAME%_project}-frontend"
+if systemctl list-units --all 2>/dev/null | grep -q "$FRONTEND_SVC.service"; then
+    sudo systemctl restart "$FRONTEND_SVC"
+fi
+```
+
+---
+
+## Phase 4 — Post-deploy verification
+
+9. Estado servicios:
+```bash
+systemctl is-active "$GUNICORN_SVC" && systemctl is-active "$HUEY_SVC"
+```
+
+10. Health endpoint:
+```bash
+curl -s "https://$DOMAIN/api/health/" | python3 -m json.tool
+```
+
+11. Confirmar branch:
+```bash
+cd "$PROJECT_DIR" && git log --oneline -1
+```
+
+12. Post-deploy check del repo ops:
+```bash
+bash $HOME/webapps/ops/vps/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+```
+
+---
+
+## Phase 5 — Troubleshooting
+
+13. Logs:
+```bash
+sudo journalctl -u "$GUNICORN_SVC" --no-pager -n 50
+sudo journalctl -u "$HUEY_SVC" --no-pager -n 50
+sudo tail -30 /var/log/nginx/error.log
+tail -50 "$PROJECT_DIR/backend/logs/django.log" 2>/dev/null || tail -50 "$PROJECT_DIR/backend/debug.log" 2>/dev/null
+```
+
+14. Estado detallado:
+```bash
+sudo systemctl status "$GUNICORN_SVC" --no-pager -l
+sudo systemctl status "$HUEY_SVC" --no-pager -l
+```
+
+---
+
+## Notas
+
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`.
+- Funciona en cualquier environment (production o staging).
+- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Versiones `.agents/` y `.windsurf/` son copias del mismo cuerpo (frontmatter adaptado por sistema).
