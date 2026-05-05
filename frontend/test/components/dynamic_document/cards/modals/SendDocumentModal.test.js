@@ -173,7 +173,7 @@ describe("SendDocumentModal.vue", () => {
 
     const fileInput = wrapper.find("#file-upload"); // quality: allow-fragile-selector (stable DOM id)
     const bigFile = new File(["x"], "large.pdf", { type: "application/pdf" });
-    Object.defineProperty(bigFile, "size", { value: 21 * 1024 * 1024 });
+    Object.defineProperty(bigFile, "size", { value: 201 * 1024 * 1024 });
 
     Object.defineProperty(fileInput.element, "files", {
       value: [bigFile],
@@ -184,7 +184,7 @@ describe("SendDocumentModal.vue", () => {
     await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
-      expect.stringContaining("exceeds the 20 MB limit"),
+      expect.stringContaining("exceeds the 200 MB limit"),
       "warning"
     );
   });

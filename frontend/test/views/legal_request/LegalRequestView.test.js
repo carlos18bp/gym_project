@@ -142,7 +142,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
 
     const largeFile = createFile("large.pdf", "application/pdf");
     Object.defineProperty(largeFile, "size", {
-      value: 31 * 1024 * 1024,
+      value: 201 * 1024 * 1024,
     });
 
     const invalidFile = createFile("virus.exe", "application/octet-stream");
@@ -163,7 +163,7 @@ describe("views/legal_request/LegalRequest.vue", () => {
 
     expect(changeEvent.target.value).toBeNull();
     expect(mockShowNotification).toHaveBeenCalledWith(
-      expect.stringContaining("excede el límite de 30 MB"),
+      expect.stringContaining("excede el límite de 200 MB"),
       "warning"
     );
     expect(mockShowNotification).toHaveBeenCalledWith(
