@@ -69,7 +69,8 @@ describe("AddFilesModal.vue", () => {
     const alertSpy = jest.spyOn(window, "alert").mockImplementation(() => {});
 
     const invalidFile = createFile("malware.exe", 256, "application/x-msdownload");
-    const largeFile = createFile("large.pdf", 11 * 1024 * 1024, "application/pdf");
+    const largeFile = new File(["x"], "large.pdf", { type: "application/pdf" });
+    Object.defineProperty(largeFile, "size", { value: 201 * 1024 * 1024 });
     const validFile = createFile("ok.pdf", 1024, "application/pdf");
 
     const wrapper = mount(AddFilesModal, {

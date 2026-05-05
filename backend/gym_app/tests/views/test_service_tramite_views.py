@@ -2,6 +2,7 @@
 
 import json
 import re
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -436,19 +437,20 @@ def test_manage_request_rejects_oversized_file_without_creating_response(
     api_client.force_authenticate(user=lawyer_user)
     oversized = SimpleUploadedFile(
         "respuesta.pdf",
-        b"x" * (30 * 1024 * 1024 + 1),
+        b"x",
         content_type="application/pdf",
     )
 
-    response = api_client.post(
-        reverse("service-request-manage", kwargs={"request_id": request_obj.id}),
-        {
-            "status": "IN_STUDY",
-            "message": "Revisando soporte",
-            "response_file": oversized,
-        },
-        format="multipart",
-    )
+    with patch("gym_app.views.service_tramite.MAX_UPLOAD_SIZE", 0):
+        response = api_client.post(
+            reverse("service-request-manage", kwargs={"request_id": request_obj.id}),
+            {
+                "status": "IN_STUDY",
+                "message": "Revisando soporte",
+                "response_file": oversized,
+            },
+            format="multipart",
+        )
 
     assert response.status_code == 400
     request_obj.refresh_from_db()
