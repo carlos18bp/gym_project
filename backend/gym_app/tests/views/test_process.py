@@ -789,9 +789,11 @@ class TestCreateProcessEdges:
         """Cover lines 120-123: stage with valid ISO date."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
+        # alertIsActive=False — past stage date would otherwise be rejected.
         main_data = self._build_main_data(
             clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
             caseTypeId=_edge_ctype.id, stages=[{"status": "Filed", "date": "2025-06-15"}],
+            alertIsActive=False,
         )
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_201_CREATED
@@ -909,7 +911,9 @@ class TestUpdateProcessEdges:
         """Cover lines 239-255: stage replacement with valid/invalid dates."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        # alertIsActive=False — past dates in fixtures would trip the guard.
         data = {
+            "alertIsActive": False,
             "stages": [
                 {"status": "New stage", "date": "2025-03-01"},
                 {"status": ""},

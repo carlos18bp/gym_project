@@ -227,6 +227,14 @@
             <button v-if="selectedServiceId" type="button" class="px-3 py-2 rounded-md border border-gray-300 text-gray-700" @click="toggleFeatured">
               {{ editor.is_featured ? "Quitar destacado" : "Marcar destacado" }}
             </button>
+            <button
+              v-if="selectedServiceId"
+              type="button"
+              class="px-3 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
+              @click="deleteService"
+            >
+              Eliminar servicio
+            </button>
           </div>
         </div>
       </div>
@@ -236,6 +244,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from "vue";
+import Swal from "sweetalert2";
 import { showNotification } from "@/shared/notification_message";
 import { useServicesTramitesStore } from "@/stores/services_tramites";
 
@@ -572,6 +581,36 @@ const toggleFeatured = async () => {
   } catch (error) {
     console.error("Error toggling featured flag:", error);
     showNotification("No fue posible actualizar el destacado", "warning");
+  }
+};
+
+const deleteService = async () => {
+  if (!selectedServiceId.value) return;
+  const id = selectedServiceId.value;
+  const target = services.value.find((item) => item.id === id);
+  const name = target?.name || "este servicio";
+
+  const result = await Swal.fire({
+    title: "¿Eliminar servicio?",
+    text: `¿Deseas eliminar "${name}"? Las solicitudes ya enviadas se conservan, pero el servicio dejará de estar disponible en el catálogo.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    await store.deleteService(id);
+    services.value = services.value.filter((item) => item.id !== id);
+    resetEditor();
+    showNotification("Servicio eliminado", "success");
+  } catch (error) {
+    console.error("Error deleting service:", error);
+    showNotification("No fue posible eliminar el servicio", "warning");
   }
 };
 

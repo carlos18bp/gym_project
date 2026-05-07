@@ -653,13 +653,17 @@
           </p>
 
           <!-- Toggle active -->
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center justify-between mb-2">
             <label class="text-sm font-medium text-gray-700">Alerta activa</label>
             <button
               type="button"
-              @click="formData.alertIsActive = !formData.alertIsActive"
-              :class="formData.alertIsActive ? 'bg-blue-600' : 'bg-gray-200'"
-              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+              @click="lastStageDateIsPast ? null : (formData.alertIsActive = !formData.alertIsActive)"
+              :disabled="lastStageDateIsPast"
+              :class="[
+                formData.alertIsActive ? 'bg-blue-600' : 'bg-gray-200',
+                lastStageDateIsPast ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+              ]"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
             >
               <span
                 :class="formData.alertIsActive ? 'translate-x-5' : 'translate-x-0'"
@@ -667,6 +671,14 @@
               />
             </button>
           </div>
+          <p
+            v-if="lastStageDateIsPast"
+            class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-4"
+            data-testid="alert-past-date-warning"
+          >
+            No se puede activar una alerta cuando la fecha de la última actuación ya pasó.
+            Actualiza la fecha del último estado procesal antes de activar la alerta.
+          </p>
 
           <!-- Recipients -->
           <div class="flex items-center justify-between mb-4">
@@ -816,6 +828,28 @@ const lastStageHasDate = computed(() => {
   if (!stages || stages.length === 0) return false;
   const last = stages[stages.length - 1];
   return !!(last && last.date);
+});
+
+// True when the last stage's date is in the past — activating an alert on a
+// past date doesn't make sense (the reminder windows have already lapsed).
+const lastStageDateIsPast = computed(() => {
+  const stages = formData.stages;
+  if (!stages || stages.length === 0) return false;
+  const last = stages[stages.length - 1];
+  if (!last || !last.date) return false;
+  const stageDate = new Date(last.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  stageDate.setHours(0, 0, 0, 0);
+  return stageDate.getTime() < today.getTime();
+});
+
+// Force-disable the active-alert toggle when the date is past so the user
+// can't bypass the rule by toggling it before changing the date.
+watch(lastStageDateIsPast, (isPast) => {
+  if (isPast && formData.alertIsActive) {
+    formData.alertIsActive = false;
+  }
 });
 
 // Variable to track if the form is modified

@@ -25,9 +25,9 @@
         </div>
         <button
           @click="handleCreateFolder"
-          class="w-full flex items-center justify-center gap-3 px-4 py-4 bg-primary text-white rounded-xl hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-base"
+          class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-sm"
         >
-          <PlusIcon class="w-6 h-6" />
+          <PlusIcon class="w-5 h-5" />
           Nueva Carpeta
         </button>
       </div>

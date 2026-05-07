@@ -24,53 +24,114 @@ def _build_document_url(document_id):
     return f"{frontend_url}/dynamic_document_dashboard?highlight={document_id}"
 
 
-def notify_signature_requested(document, signers):
+# Per-signature_type copy used for both email and in-app notifications when a
+# document is formalized. Keeps the three modalities (normal/issuer_only/
+# informative) reflected verbatim in the Notification Center.
+_SIGNATURE_REQUESTED_COPY = {
+    'normal': {
+        'in_app_title': "Firma solicitada: {title}",
+        'in_app_message': "Se ha solicitado tu firma para el documento '{title}'",
+        'email_subject': "[Firmas] Solicitud de firma para: {title}",
+        'email_card_title': "Solicitud de Firma: {title}",
+        'email_badge': 'Firma Solicitada',
+        'email_notification_title': "Se ha solicitado tu firma para el documento '{title}'",
+        'email_message': (
+            "Se te ha solicitado que firmes el documento '{title}'. "
+            "Por favor accede a la plataforma para revisar y firmar lo antes posible."
+        ),
+    },
+    'issuer_only': {
+        'in_app_title': "Documento Emitido: {title}",
+        'in_app_message': (
+            "Se ha emitido un documento firmado solamente por el emisor: '{title}'"
+        ),
+        'email_subject': "[Documento Emitido] {title}",
+        'email_card_title': "Documento Emitido: {title}",
+        'email_badge': 'Documento Emitido',
+        'email_notification_title': (
+            "Se ha emitido el documento '{title}' firmado solamente por el emisor"
+        ),
+        'email_message': (
+            "Se te ha notificado el documento '{title}', firmado únicamente por el "
+            "emisor. Puedes consultarlo en la plataforma."
+        ),
+    },
+    'informative': {
+        'in_app_title': "Documento Informado: {title}",
+        'in_app_message': "Se ha emitido e informado el documento: '{title}'",
+        'email_subject': "[Documento Informado] {title}",
+        'email_card_title': "Documento Informado: {title}",
+        'email_badge': 'Documento Informado',
+        'email_notification_title': (
+            "Se ha emitido e informado el documento '{title}'"
+        ),
+        'email_message': (
+            "Se te ha enviado el documento informativo '{title}'. Este documento "
+            "no requiere firma. Puedes consultarlo en la plataforma."
+        ),
+    },
+}
+
+
+def notify_signature_requested(document, signers, signature_type='normal', send_email=True):
     """Send notifications when signatures are first requested on a document.
-    
+
+    The copy is tailored to the signature modality so the Notification Center
+    distinguishes between "Firma Solicitada" (normal), "Documento Emitido"
+    (issuer_only) and "Documento Informado" (informative).
+
     Args:
-        document: DynamicDocument instance
-        signers: List of User instances who need to sign
+        document: DynamicDocument instance.
+        signers: Iterable of User instances who receive the notification.
+        signature_type: 'normal', 'issuer_only' or 'informative'. Falls back to
+            'normal' copy if an unknown value is provided.
+        send_email: When False, skip the email branch and only create in-app
+            notifications. Used when the calling view already sent specific
+            emails (e.g. the informative formalize flow).
     """
     if not signers:
         return
-    
+
+    copy = _SIGNATURE_REQUESTED_COPY.get(signature_type, _SIGNATURE_REQUESTED_COPY['normal'])
+
     try:
-        # Email notifications
-        for signer in signers:
-            if not getattr(signer, 'email', None):
-                continue
-                
-            context = {
-                'title': f"Solicitud de Firma: {document.title}",
-                'badge_text': 'Firma Solicitada',
-                'notification_title': f"Se ha solicitado tu firma para el documento '{document.title}'",
-                'message': f"Se te ha solicitado que firmes el documento '{document.title}'. "
-                          f"Por favor accede a la plataforma para revisar y firmar lo antes posible.",
-                'additional_info': f"Creado por: {document.created_by.get_full_name() or document.created_by.email}",
-                'action_url': _build_document_url(document.id),
-                'action_text': 'Ver Documento',
-            }
-            
-            send_template_email(
-                template_name='notification',
-                subject=f"[Firmas] Solicitud de firma para: {document.title}",
-                to_emails=[signer.email],
-                context=context,
-            )
-        
-        # In-app notifications
+        if send_email:
+            for signer in signers:
+                if not getattr(signer, 'email', None):
+                    continue
+
+                context = {
+                    'title': copy['email_card_title'].format(title=document.title),
+                    'badge_text': copy['email_badge'],
+                    'notification_title': copy['email_notification_title'].format(title=document.title),
+                    'message': copy['email_message'].format(title=document.title),
+                    'additional_info': f"Creado por: {document.created_by.get_full_name() or document.created_by.email}",
+                    'action_url': _build_document_url(document.id),
+                    'action_text': 'Ver Documento',
+                }
+
+                send_template_email(
+                    template_name='notification',
+                    subject=copy['email_subject'].format(title=document.title),
+                    to_emails=[signer.email],
+                    context=context,
+                )
+
         create_bulk_notifications(
-            users=signers,
-            title=f"Firma solicitada: {document.title}",
-            message=f"Se ha solicitado tu firma para el documento '{document.title}'",
+            users=list(signers),
+            title=copy['in_app_title'].format(title=document.title),
+            message=copy['in_app_message'].format(title=document.title),
             category='signature_request',
             priority='high',
             link_type='document',
             link_id=document.id,
         )
-        
-        logger.info(f"Sent signature request notifications for document {document.id} to {len(signers)} signers")
-        
+
+        logger.info(
+            "Sent signature notifications (%s) for document %s to %s signers",
+            signature_type, document.id, len(list(signers)) if not hasattr(signers, '__len__') else len(signers),
+        )
+
     except Exception as e:
         logger.error(f"Failed to send signature request notifications for document {document.id}: {e}")
 

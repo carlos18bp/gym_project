@@ -4,6 +4,18 @@
   </div>
 
   <section class="pb-6 pt-4 px-4 sm:px-6 lg:px-8 lg:pt-10 lg:pb-10">
+    <!-- Back button (visible on every screen size, useful on mobile where the
+         sidebar is collapsed). -->
+    <button
+      type="button"
+      class="inline-flex items-center text-sm text-secondary hover:text-secondary/80 mb-3"
+      @click="goBack"
+      data-testid="back-button"
+    >
+      <ChevronLeftIcon class="h-4 w-4 mr-1" />
+      Volver a Inicio
+    </button>
+
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div>
@@ -27,7 +39,7 @@
     </div>
 
     <!-- Tabs -->
-    <div class="border-b border-gray-200 mb-6">
+    <div class="border-b border-gray-200 mb-4">
       <nav class="flex space-x-6" aria-label="Tabs">
         <button
           v-for="tab in tabs"
@@ -37,11 +49,17 @@
             currentTab === tab.key
               ? 'border-blue-500 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            'whitespace-nowrap border-b-2 pb-3 px-1 text-sm font-medium transition-colors'
+            'relative whitespace-nowrap border-b-2 pb-3 px-1 text-sm font-medium transition-colors'
           ]"
           :data-testid="`tab-${tab.key}`"
         >
           {{ tab.label }}
+          <span
+            v-if="tabBadgeCount(tab.key) > 0"
+            class="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full align-middle"
+          >
+            {{ tabBadgeCount(tab.key) > 99 ? '99+' : tabBadgeCount(tab.key) }}
+          </span>
         </button>
       </nav>
     </div>
@@ -55,63 +73,92 @@
       <BellSlashIcon class="mx-auto h-12 w-12 text-gray-300" />
       <h3 class="mt-3 text-sm font-semibold text-gray-900">Sin notificaciones</h3>
       <p class="mt-1 text-sm text-gray-500">
-        {{ currentTab === 'unread' ? 'No tienes notificaciones sin leer.' : currentTab === 'archived' ? 'No tienes notificaciones archivadas.' : 'No tienes notificaciones.' }}
+        {{ currentTab === 'archived' ? 'No tienes notificaciones archivadas.' : 'No tienes notificaciones.' }}
       </p>
     </div>
 
-    <!-- Notification list -->
-    <div v-else class="space-y-2">
-      <div
+    <!-- Notification table (Gmail-like rows) -->
+    <ul
+      v-else
+      class="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white"
+      data-testid="notifications-table"
+    >
+      <li
         v-for="notif in notifications"
         :key="notif.id"
-        class="group relative flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer"
-        :class="notif.is_read ? 'bg-white border-gray-200 hover:bg-gray-50' : 'bg-blue-50/50 border-blue-200 hover:bg-blue-50'"
+        class="group relative flex items-center gap-3 px-3 sm:px-4 py-2.5 cursor-pointer transition-colors"
+        :class="rowClasses(notif)"
         :data-testid="`notification-${notif.id}`"
         @click="handleNotificationClick(notif)"
       >
-        <!-- Category icon -->
-        <div
-          class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+        <!-- Unread dot (always rendered to keep alignment stable) -->
+        <span
+          class="flex-shrink-0 w-2 h-2 rounded-full"
+          :class="notif.is_read ? 'bg-transparent' : 'bg-blue-500'"
+        ></span>
+
+        <!-- Category icon (compact) -->
+        <span
+          class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
           :class="getCategoryIconClass(notif.category)"
         >
-          <component :is="getCategoryIcon(notif.category)" class="h-5 w-5" />
-        </div>
+          <component :is="getCategoryIcon(notif.category)" class="h-4 w-4" />
+        </span>
 
-        <!-- Content -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2">
-            <span
-              v-if="!notif.is_read"
-              class="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500"
-            ></span>
-            <h4 class="text-sm font-semibold text-gray-900 truncate">
-              {{ notif.title }}
-            </h4>
-            <span
-              v-if="notif.priority === 'high'"
-              class="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-bold uppercase bg-red-100 text-red-700 rounded"
-            >
-              Urgente
-            </span>
-          </div>
-          <p class="text-sm text-gray-600 mt-0.5 line-clamp-2">
-            {{ notif.message }}
-          </p>
-          <p class="text-xs text-gray-400 mt-1">
-            {{ formatRelativeDate(notif.created_at) }}
-          </p>
-        </div>
+        <!-- Title (column) -->
+        <span
+          class="flex-shrink-0 truncate text-sm w-40 sm:w-56 lg:w-64"
+          :class="notif.is_read ? 'font-normal text-gray-700' : 'font-semibold text-gray-900'"
+        >
+          {{ notif.title }}
+          <span
+            v-if="notif.priority === 'high'"
+            class="ml-1 px-1 py-0.5 text-[9px] font-bold uppercase bg-red-100 text-red-700 rounded align-middle"
+          >
+            Urgente
+          </span>
+        </span>
 
-        <!-- Actions -->
-        <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <!-- Message (flex grow) -->
+        <span
+          class="flex-1 min-w-0 truncate text-sm"
+          :class="notif.is_read ? 'text-gray-500' : 'text-gray-700'"
+        >
+          {{ notif.message }}
+        </span>
+
+        <!-- Date (visible by default, hidden on hover so the actions overlay) -->
+        <span
+          class="flex-shrink-0 ml-3 text-xs text-gray-400 whitespace-nowrap group-hover:opacity-0 transition-opacity"
+        >
+          {{ formatRelativeDate(notif.created_at) }}
+        </span>
+
+        <!-- Hover actions (overlay over the date column) -->
+        <div
+          class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <!-- Mark as read / unread toggle -->
           <button
             v-if="!notif.is_read"
             @click.stop="handleMarkRead(notif.id)"
             class="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500"
             title="Marcar como leída"
+            :data-testid="`mark-read-${notif.id}`"
           >
             <CheckIcon class="h-4 w-4" />
           </button>
+          <button
+            v-else
+            @click.stop="handleMarkUnread(notif.id)"
+            class="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500"
+            title="Marcar como no leída"
+            :data-testid="`mark-unread-${notif.id}`"
+          >
+            <EnvelopeIcon class="h-4 w-4" />
+          </button>
+
+          <!-- Snooze (dropdown) — only for non-archived rows -->
           <div class="relative" v-if="currentTab !== 'archived'">
             <button
               @click.stop="toggleSnoozeMenu(notif.id)"
@@ -120,7 +167,6 @@
             >
               <ClockIcon class="h-4 w-4" />
             </button>
-            <!-- Snooze dropdown -->
             <div
               v-if="openSnoozeId === notif.id"
               class="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg ring-1 ring-gray-200 py-1 z-10"
@@ -135,24 +181,41 @@
               </button>
             </div>
           </div>
+
+          <!-- Archive (active rows) -->
           <button
             v-if="currentTab !== 'archived'"
             @click.stop="handleArchive(notif.id)"
             class="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500"
             title="Archivar"
+            :data-testid="`archive-${notif.id}`"
           >
             <ArchiveBoxIcon class="h-4 w-4" />
           </button>
+
+          <!-- Unarchive (only on the archived tab) -->
+          <button
+            v-else
+            @click.stop="handleUnarchive(notif.id)"
+            class="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500"
+            title="Desarchivar"
+            :data-testid="`unarchive-${notif.id}`"
+          >
+            <ArchiveBoxXMarkIcon class="h-4 w-4" />
+          </button>
+
+          <!-- Delete -->
           <button
             @click.stop="handleDelete(notif.id)"
             class="p-1.5 rounded-lg hover:bg-red-100 text-gray-500 hover:text-red-600"
             title="Eliminar"
+            :data-testid="`delete-${notif.id}`"
           >
             <TrashIcon class="h-4 w-4" />
           </button>
         </div>
-      </div>
-    </div>
+      </li>
+    </ul>
 
     <!-- Pagination -->
     <div
@@ -187,7 +250,10 @@ import {
   CheckIcon,
   ClockIcon,
   ArchiveBoxIcon,
+  ArchiveBoxXMarkIcon,
   TrashIcon,
+  EnvelopeIcon,
+  ChevronLeftIcon,
 } from '@heroicons/vue/24/outline'
 import { BellIcon as BellSlashIcon } from '@heroicons/vue/24/outline'
 import {
@@ -203,9 +269,10 @@ const store = useNotificationStore()
 
 const openSnoozeId = ref(null)
 
+// "No leídas" tab removed — unread items already render with a stronger
+// background tint inside "Todas", which made the dedicated tab redundant.
 const tabs = [
   { key: 'all', label: 'Todas' },
-  { key: 'unread', label: 'No leídas' },
   { key: 'archived', label: 'Archivadas' },
 ]
 
@@ -224,9 +291,26 @@ const currentPage = computed(() => store.currentPage)
 const dataLoaded = computed(() => store.dataLoaded)
 const totalPages = computed(() => Math.ceil(totalCount.value / store.pageSize) || 1)
 
+// Archived rows are always read in the current data model, so only "all"
+// surfaces a count badge.
+const tabBadgeCount = (key) => (key === 'all' ? unreadCount.value : 0)
+
+const goBack = () => {
+  // Use router.back when there is history; fall back to dashboard otherwise.
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({ name: 'dashboard' })
+  }
+}
+
 onMounted(async () => {
-  await store.fetchNotifications('all', 1)
-  await store.fetchUnreadCount()
+  // If a previously-stored "unread" tab leaks in from session state, normalize.
+  const startTab = store.currentTab === 'unread' ? 'all' : (store.currentTab || 'all')
+  await Promise.all([
+    store.fetchNotifications(startTab, 1),
+    store.fetchUnreadCount(),
+  ])
 })
 
 const switchTab = async (tab) => {
@@ -244,6 +328,10 @@ const handleMarkRead = async (id) => {
   await store.markAsRead(id)
 }
 
+const handleMarkUnread = async (id) => {
+  await store.markAsUnread(id)
+}
+
 const handleMarkAllRead = async () => {
   await store.markAllRead()
   await store.fetchNotifications()
@@ -251,6 +339,10 @@ const handleMarkAllRead = async () => {
 
 const handleArchive = async (id) => {
   await store.archiveNotification(id)
+}
+
+const handleUnarchive = async (id) => {
+  await store.unarchiveNotification(id)
 }
 
 const toggleSnoozeMenu = (id) => {
@@ -273,7 +365,6 @@ const handleNotificationClick = async (notif) => {
   store.navigateToNotificationTarget(router, notif)
 }
 
-// Close snooze menu on outside click
 watch(openSnoozeId, (val) => {
   if (val !== null) {
     const handler = () => {
@@ -284,7 +375,19 @@ watch(openSnoozeId, (val) => {
   }
 })
 
+const rowClasses = (notif) => {
+  // Stronger contrast on unread rows so they stand out against read entries.
+  // Archived rows always show as muted regardless of read state.
+  if (currentTab.value === 'archived') {
+    return 'bg-white hover:bg-gray-50'
+  }
+  return notif.is_read
+    ? 'bg-white hover:bg-gray-50'
+    : 'bg-blue-100 hover:bg-blue-100/80'
+}
+
 const getCategoryIcon = (category) => {
+  if (!category) return RectangleStackIcon
   if (category.startsWith('signature')) return DocumentTextIcon
   if (category === 'process_alert') return BellAlertIcon
   if (category === 'general') return InboxIcon
@@ -292,6 +395,7 @@ const getCategoryIcon = (category) => {
 }
 
 const getCategoryIconClass = (category) => {
+  if (!category) return 'bg-gray-100 text-gray-600'
   if (category.startsWith('signature')) return 'bg-purple-100 text-purple-600'
   if (category === 'process_alert') return 'bg-orange-100 text-orange-600'
   return 'bg-gray-100 text-gray-600'

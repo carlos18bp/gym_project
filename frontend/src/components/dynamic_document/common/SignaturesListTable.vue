@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+    <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6">
       <!-- Search Bar -->
       <div class="mb-4">
         <div class="relative w-full">
@@ -649,11 +649,21 @@ const props = defineProps({
   highlightDocumentId: {
     type: [String, Number],
     default: null
+  },
+  openSignaturesFor: {
+    type: [String, Number],
+    default: null
   }
 });
 
 // Emits
-const emit = defineEmits(['refresh', 'document-fully-signed', 'document-rejected', 'open-electronic-signature']);
+const emit = defineEmits([
+  'refresh',
+  'document-fully-signed',
+  'document-rejected',
+  'open-electronic-signature',
+  'clear-open-signatures-for',
+]);
 
 // Store instances
 const userStore = useUserStore();
@@ -1296,6 +1306,22 @@ onMounted(async () => {
   }, PULSE_DURATION_MS);
   await fetchTabData(1);
 });
+
+// Auto-open the signatures modal for the document referenced by the
+// `openSignaturesFor` query param (set by DocumentForm after formalize). The
+// document may not be present on the first render, so we wait for it to
+// appear in `filteredAndSortedDocuments` before opening.
+watch(
+  [() => props.openSignaturesFor, filteredAndSortedDocuments],
+  ([targetId, docs]) => {
+    if (!targetId) return;
+    const match = docs.find((d) => String(d.id) === String(targetId));
+    if (!match) return;
+    openModal('signatures', match);
+    emit('clear-open-signatures-for');
+  },
+  { immediate: true },
+);
 
 onBeforeUnmount(() => {
   if (pulseTimeoutId) {

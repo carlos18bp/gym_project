@@ -53,6 +53,7 @@ user_urls = [
 process_urls = [
     path('case_types/', case_type.case_list, name='case-list'),
     path('processes/', process.process_list, name='process-list'),
+    path('processes/pending-alerts-count/', process.process_pending_alerts_count, name='process-pending-alerts-count'),
     path('create_process/', process.create_process, name='create-process'),
     path('update_process/<int:pk>/', process.update_process, name='update-process'),
     path('update_case_file/', process.update_case_file, name="update-file"),
@@ -308,7 +309,9 @@ notification_urls = [
     path('notifications/unread-count/', notification.notification_unread_count, name='notification-unread-count'),
     path('notifications/mark-all-read/', notification.notification_mark_all_read, name='notification-mark-all-read'),
     path('notifications/<int:pk>/read/', notification.notification_mark_read, name='notification-mark-read'),
+    path('notifications/<int:pk>/unread/', notification.notification_mark_unread, name='notification-mark-unread'),
     path('notifications/<int:pk>/archive/', notification.notification_archive, name='notification-archive'),
+    path('notifications/<int:pk>/unarchive/', notification.notification_unarchive, name='notification-unarchive'),
     path('notifications/<int:pk>/snooze/', notification.notification_snooze, name='notification-snooze'),
     path('notifications/<int:pk>/delete/', notification.notification_delete, name='notification-delete'),
 ]
@@ -326,6 +329,7 @@ service_tramite_urls = [
     path('services/admin/<int:service_id>/update/', service_tramite.admin_update_service, name='services-admin-update'),
     path('services/admin/<int:service_id>/toggle-active/', service_tramite.admin_toggle_service_active, name='services-admin-toggle-active'),
     path('services/admin/<int:service_id>/toggle-featured/', service_tramite.admin_toggle_service_featured, name='services-admin-toggle-featured'),
+    path('services/admin/<int:service_id>/delete/', service_tramite.admin_delete_service, name='services-admin-delete'),
 
     # Request lifecycle
     path('service-requests/save/', service_tramite.save_or_submit_service_request, name='service-request-save'),
