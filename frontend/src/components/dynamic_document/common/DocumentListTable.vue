@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+    <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6">
       <!-- Search Bar -->
       <div class="mb-4">
         <div class="relative w-full">

@@ -147,6 +147,13 @@
                             >
                               <span class="sr-only">Documentos pendientes de firma</span>
                             </span>
+                            <span
+                              v-if="item.name === 'Procesos' && hasProcessPending"
+                              data-testid="pending-process-indicator-mobile"
+                              class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                            >
+                              <span class="sr-only">Alertas de procesos pendientes</span>
+                            </span>
                           </div>
                           <span class="flex items-center gap-2">
                             {{ item.name }}
@@ -156,6 +163,13 @@
                               class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
                             >
                               {{ pendingCount > 99 ? '99+' : pendingCount }}
+                            </span>
+                            <span
+                              v-if="item.name === 'Procesos' && hasProcessPending"
+                              data-testid="pending-process-count-mobile"
+                              class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                            >
+                              {{ processPendingCount > 99 ? '99+' : processPendingCount }}
                             </span>
                           </span>
                         </a>
@@ -320,7 +334,6 @@
                       ]"
                       aria-hidden="true"
                     />
-                    <!-- Pulsing indicator for Archivos Juridicos when there are pending signatures -->
                     <span
                       v-if="item.name === 'Archivos Juridicos' && hasPending"
                       class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
@@ -328,16 +341,29 @@
                     >
                       <span class="sr-only">Documentos pendientes de firma</span>
                     </span>
+                    <span
+                      v-if="item.name === 'Procesos' && hasProcessPending"
+                      class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                      data-testid="pending-process-indicator"
+                    >
+                      <span class="sr-only">Alertas de procesos pendientes</span>
+                    </span>
                   </div>
                   <span class="flex items-center gap-2">
                     {{ item.name }}
-                    <!-- Badge showing pending count for Archivos Juridicos -->
                     <span
                       v-if="item.name === 'Archivos Juridicos' && hasPending"
                       class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
                       data-testid="pending-signatures-count"
                     >
                       {{ pendingCount > 99 ? '99+' : pendingCount }}
+                    </span>
+                    <span
+                      v-if="item.name === 'Procesos' && hasProcessPending"
+                      class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                      data-testid="pending-process-count"
+                    >
+                      {{ processPendingCount > 99 ? '99+' : processPendingCount }}
                     </span>
                   </span>
                 </a>
@@ -468,6 +494,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
 import { usePendingSignatures } from "@/composables/usePendingSignatures";
+import { usePendingProcessAlerts } from "@/composables/usePendingProcessAlerts";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import RegisteredIcon from "@/components/icons/RegisteredIcon.vue";
@@ -489,6 +516,13 @@ const currentUser = computed(() => {
 // Initialize pending signatures composable
 const { pendingCount, hasPending, fetchPendingCount } = usePendingSignatures();
 
+// Pending process alerts (badge on the "Procesos" item).
+const {
+  pendingCount: processPendingCount,
+  hasPending: hasProcessPending,
+  fetchPendingCount: fetchProcessPendingCount,
+} = usePendingProcessAlerts();
+
 const showProfile = ref(false); // Show modal with profile information
 const slidebarOpen = ref(false); // Show modal with navigation
 
@@ -496,8 +530,8 @@ onMounted(async () => {
   await userStore.init();
   showProfile.value = !!!currentUser.value.is_profile_completed;
   
-  // Fetch pending signatures count
-  await fetchPendingCount();
+  // Independent fetches — run in parallel to avoid serial round-trips.
+  await Promise.all([fetchPendingCount(), fetchProcessPendingCount()]);
 
   // Hide legacy legal-request menu entries now replaced by Services module navigation.
   navigation.value = navigation.value.filter(
@@ -588,16 +622,6 @@ const navigation = ref([
     icon: HomeIcon,
     current: false,
     routes: ['/dashboard']
-  },
-  {
-    name: "Notificaciones",
-    action: (item) => {
-      setCurrent(item);
-      router.push({ name: "notifications" });
-    },
-    icon: BellAlertIcon,
-    current: false,
-    routes: ['/notifications']
   },
   {
     name: "Directorio",
@@ -729,6 +753,16 @@ const navigation = ref([
 ]);
 
 const bottomNavigation = ref([
+  {
+    name: "Notificaciones",
+    action: (item) => {
+      setCurrentBottom(item);
+      router.push({ name: "notifications" });
+    },
+    icon: BellAlertIcon,
+    current: false,
+    routes: ['/notifications']
+  },
   {
     name: "Manual de Usuario",
     action: (item) => {

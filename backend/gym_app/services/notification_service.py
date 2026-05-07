@@ -100,3 +100,62 @@ def get_unread_count(user):
     ).exclude(
         snoozed_until__gt=now,
     ).count()
+
+
+def build_process_recipients(process, notify_clients=True, actor=None):
+    """Return the deduplicated list of users to notify about a process event.
+
+    Centralizes the lawyer + clients - actor logic so callers don't reinvent
+    it (and don't issue extra ``process.clients.all()`` queries when they
+    already need the recipients themselves).
+    """
+    recipients = []
+    seen_ids = set()
+
+    lawyer = getattr(process, 'lawyer', None)
+    if lawyer is not None and lawyer.id not in seen_ids:
+        recipients.append(lawyer)
+        seen_ids.add(lawyer.id)
+
+    if notify_clients:
+        for client in process.clients.all():
+            if client.id not in seen_ids:
+                recipients.append(client)
+                seen_ids.add(client.id)
+
+    if actor is not None:
+        recipients = [u for u in recipients if u.id != actor.id]
+
+    return recipients
+
+
+def notify_process_stakeholders(
+    process,
+    title,
+    message,
+    actor=None,
+    category='process_alert',
+    priority='medium',
+    recipients=None,
+):
+    """Notify lawyer and clients of *process* about an event, excluding *actor*.
+
+    Pass ``recipients`` explicitly to reuse a pre-resolved list and avoid an
+    extra ``process.clients.all()`` query when emitting several notifications
+    in a row (e.g. one per added stage).
+    """
+    if recipients is None:
+        recipients = build_process_recipients(process, actor=actor)
+
+    if not recipients:
+        return []
+
+    return create_bulk_notifications(
+        users=recipients,
+        title=title,
+        message=message,
+        category=category,
+        priority=priority,
+        link_type='process',
+        link_id=process.id,
+    )
