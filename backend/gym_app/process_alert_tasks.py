@@ -20,6 +20,28 @@ from gym_app.views.layouts.sendEmail import send_template_email
 logger = logging.getLogger(__name__)
 
 
+@periodic_task(crontab(hour='14', minute='5'))
+@lock_task('process-alert-deactivate-past-lock')
+def deactivate_past_alerts():
+    """Auto-deactivate StageAlerts whose target stage date is already in the past.
+
+    Runs once a day shortly after the reminder task. Keeps the database in a
+    consistent state so the UI tag "Alerta activa" never lingers on a stage
+    whose date has lapsed.
+    """
+    from gym_app.models import StageAlert
+
+    today = timezone.now().date()
+    updated = StageAlert.objects.filter(
+        is_active=True,
+        stage__date__isnull=False,
+        stage__date__lt=today,
+    ).update(is_active=False)
+
+    logger.info("Past-date alert deactivation: updated=%d", updated)
+    return f"deactivated={updated}"
+
+
 @periodic_task(crontab(hour='14', minute='0'))
 @lock_task('process-alert-daily-lock')
 def send_process_alerts():

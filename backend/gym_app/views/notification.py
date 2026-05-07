@@ -113,6 +113,22 @@ def notification_mark_all_read(request):
     return Response({'updated': updated})
 
 
+# ── Mark as unread ──────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def notification_mark_unread(request, pk):
+    """Mark a single notification as unread (revert is_read to False)."""
+    try:
+        notif = _visible_qs(request.user).get(pk=pk)
+    except Notification.DoesNotExist:
+        return Response({'detail': 'Notificación no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+    notif.is_read = False
+    notif.save(update_fields=['is_read', 'updated_at'])
+    return Response({'status': 'ok'})
+
+
 # ── Archive ─────────────────────────────────────────────────────────
 
 @api_view(['POST'])
@@ -127,6 +143,22 @@ def notification_archive(request, pk):
     notif.is_archived = True
     notif.is_read = True
     notif.save(update_fields=['is_archived', 'is_read', 'updated_at'])
+    return Response({'status': 'ok'})
+
+
+# ── Unarchive ───────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def notification_unarchive(request, pk):
+    """Restore an archived notification back to the active list."""
+    try:
+        notif = _visible_qs(request.user).get(pk=pk)
+    except Notification.DoesNotExist:
+        return Response({'detail': 'Notificación no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+    notif.is_archived = False
+    notif.save(update_fields=['is_archived', 'updated_at'])
     return Response({'status': 'ok'})
 
 

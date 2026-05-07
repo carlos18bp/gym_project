@@ -206,15 +206,17 @@
 
         <!-- Pending Signatures Tab -->
         <div v-if="activeLawyerTab === 'pending-signatures'">
-          <SignaturesListTable 
-            state="PendingSignatures" 
-            :searchQuery="searchQuery" 
+          <SignaturesListTable
+            state="PendingSignatures"
+            :searchQuery="searchQuery"
             :selectedTags="selectedTags"
             :highlightDocumentId="route.query.highlight"
+            :openSignaturesFor="openSignaturesFor"
             @refresh="handleRefresh"
             @document-fully-signed="handleDocumentFullySigned"
             @document-rejected="handleDocumentRejected"
             @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
+            @clear-open-signatures-for="handleClearOpenSignaturesFor"
           />
         </div>
 
@@ -277,30 +279,30 @@
           </button>
           </nav>
           
-          <!-- Action Buttons (Desktop) -->
-          <div class="flex flex-wrap items-center gap-2 mt-3 mb-4 md:justify-end">
-            <div class="relative">
-              <button
-                @click.stop="handleElectronicSignatureClick"
-                class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border text-purple-600 hover:bg-purple-50 border-purple-200"
-              >
-                <FingerPrintIcon class="h-4 w-4" />
-                Firma Electrónica
-              </button>
-            </div>
+          <!-- Action Buttons (Desktop) — unified styling across roles. -->
+          <div class="flex flex-wrap items-center gap-3 mt-3 mb-4 md:justify-end">
+            <button
+              @click.stop="handleElectronicSignatureClick"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+            >
+              <FingerPrintIcon class="size-5 text-purple-500" />
+              <span>Firma Electrónica</span>
+            </button>
             <div class="relative group">
               <button
                 @click.stop="handleGlobalLetterheadClick"
                 :disabled="isBasicUser"
                 :class="[
-                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                  isBasicUser 
-                    ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                    : 'text-green-600 hover:bg-green-50 border-green-200'
+                  'inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
+                  isBasicUser
+                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                    : 'border-green-200 bg-white text-gray-700 hover:bg-green-50 hover:border-green-300'
                 ]"
               >
-                <DocumentTextIcon class="h-4 w-4" />
-                Membrete Global
+                <DocumentTextIcon
+                  :class="['size-5', isBasicUser ? 'text-gray-400' : 'text-green-500']"
+                />
+                <span>Membrete Global</span>
               </button>
               <div
                 v-if="isBasicUser"
@@ -312,11 +314,11 @@
             </div>
             <button
               @click.stop="handleSection('useDocument')"
-              class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
               type="button"
             >
-              <PlusIcon class="h-4 w-4" />
-              Nuevo Documento
+              <PlusIcon class="size-5" />
+              <span>Nuevo Documento</span>
             </button>
           </div>
         </div>
@@ -359,30 +361,30 @@
           </div>
         </div>
         
-        <!-- Mobile Action Buttons -->
-        <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
-          <div class="relative">
-            <button
-              @click.stop="handleElectronicSignatureClick"
-              class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-purple-600 bg-purple-50 hover:bg-purple-100"
-            >
-              <FingerPrintIcon class="h-5 w-5" />
-              Firma Electrónica
-            </button>
-          </div>
+        <!-- Mobile Action Buttons — unified styling across roles. -->
+        <div class="md:hidden mt-4 mb-4 grid grid-cols-3 gap-2">
+          <button
+            @click.stop="handleElectronicSignatureClick"
+            class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
+          >
+            <FingerPrintIcon class="size-6 text-purple-500 mb-1" />
+            <span class="font-medium text-xs leading-tight">Firma</span>
+          </button>
           <div class="relative group">
             <button
               @click.stop="handleGlobalLetterheadClick"
               :disabled="isBasicUser"
               :class="[
-                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-                isBasicUser 
-                  ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                  : 'text-green-600 bg-green-50 hover:bg-green-100'
+                'w-full flex flex-col items-center justify-center py-3 px-2 rounded-lg border text-center transition-all duration-200',
+                isBasicUser
+                  ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                  : 'border-green-200 bg-white hover:bg-green-50'
               ]"
             >
-              <DocumentTextIcon class="h-5 w-5" />
-              Membrete Global
+              <DocumentTextIcon
+                :class="['size-6 mb-1', isBasicUser ? 'text-gray-400' : 'text-green-500']"
+              />
+              <span class="font-medium text-xs leading-tight">Membrete</span>
             </button>
             <div
               v-if="isBasicUser"
@@ -394,11 +396,11 @@
           </div>
           <button
             @click.stop="handleSection('useDocument')"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+            class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
             type="button"
           >
-            <PlusIcon class="h-5 w-5" />
-            Nuevo Documento
+            <PlusIcon class="size-6 mb-1" />
+            <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
           </button>
         </div>
       </div>
@@ -438,10 +440,12 @@
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
           :highlightDocumentId="route.query.highlight"
+          :openSignaturesFor="openSignaturesFor"
           @refresh="handleRefresh"
           @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           @document-fully-signed="handleClientDocumentFullySigned"
           @document-rejected="handleClientDocumentRejected"
+          @clear-open-signatures-for="handleClearOpenSignaturesFor"
         />
         <SignaturesListTable
           v-else-if="activeTab === 'signed-documents'"
@@ -585,6 +589,16 @@ const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
 const searchQuery = ref("");
 const currentSection = ref("default");
 const isNavigatingToUseDocument = ref(false);
+
+// Auto-open the signatures modal for the document referenced by the query
+// param (set by DocumentForm after formalize). Cleared via emit on success.
+const openSignaturesFor = computed(() => route.query.openSignaturesFor || null);
+
+const handleClearOpenSignaturesFor = () => {
+  if (!route.query.openSignaturesFor) return;
+  const { openSignaturesFor: _omit, ...rest } = route.query;
+  router.replace({ path: route.path, query: rest });
+};
 
 // Watcher for currentSection (kept for potential future use)
 watch(currentSection, (newVal, oldVal) => {

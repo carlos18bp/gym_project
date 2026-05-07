@@ -78,6 +78,22 @@ export const useNotificationStore = defineStore("notification", {
     },
 
     /**
+     * Mark a single notification as unread (toggle back from read).
+     */
+    async markAsUnread(notificationId) {
+      try {
+        await create_request(`notifications/${notificationId}/unread/`, {});
+        const notif = this.notifications.find((n) => n.id === notificationId);
+        if (notif && notif.is_read) {
+          notif.is_read = false;
+          this.unreadCount = this.unreadCount + 1;
+        }
+      } catch (error) {
+        console.error("Error marking notification as unread:", error.message);
+      }
+    },
+
+    /**
      * Mark all notifications as read.
      */
     async markAllRead() {
@@ -108,6 +124,26 @@ export const useNotificationStore = defineStore("notification", {
         await this.fetchUnreadCount();
       } catch (error) {
         console.error("Error archiving notification:", error.message);
+      }
+    },
+
+    /**
+     * Restore an archived notification back to the active list.
+     */
+    async unarchiveNotification(notificationId) {
+      try {
+        await create_request(
+          `notifications/${notificationId}/unarchive/`,
+          {}
+        );
+        // Remove from current view (the archived tab) — it now lives in "all".
+        this.notifications = this.notifications.filter(
+          (n) => n.id !== notificationId
+        );
+        this.totalCount = Math.max(0, this.totalCount - 1);
+        await this.fetchUnreadCount();
+      } catch (error) {
+        console.error("Error unarchiving notification:", error.message);
       }
     },
 

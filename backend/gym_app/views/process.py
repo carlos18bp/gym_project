@@ -4,8 +4,13 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-from gym_app.models import Process, Stage, StageAlert, CaseFile, Case, User, RecentProcess
+from gym_app.models import Process, Stage, StageAlert, CaseFile, Case, User, RecentProcess, Notification
 from gym_app.serializers.process import ProcessSerializer, RecentProcessSerializer
+from gym_app.services.notification_service import (
+    build_process_recipients,
+    create_bulk_notifications,
+    notify_process_stakeholders,
+)
 from gym_app.utils.auth_utils import is_gym_staff
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -21,20 +26,79 @@ def _user_can_access_process(user, process):
     return process.clients.filter(pk=user.id).exists()
 
 
-def _create_stage_alerts(created_stages, main_data):
+class _StageAlertValidationError(Exception):
+    """Raised when StageAlert configuration is rejected (e.g. past date)."""
+
+
+def _validate_alert_config(created_stages, main_data):
+    """Reject activating an alert whose target date already lapsed.
+
+    Mirrors the client-side guard so the API rejects past-date activations
+    even when the form is bypassed.
+    """
+    if not created_stages:
+        return
+    if not main_data.get('alertIsActive', True):
+        return
+    last_stage = created_stages[-1]
+    if not last_stage.date:
+        return
+    if last_stage.date < timezone.now().date():
+        raise _StageAlertValidationError(
+            'No se puede activar una alerta cuando la fecha de la última actuación '
+            'ya pasó. Actualiza la fecha o desactiva la alerta antes de guardar.'
+        )
+
+
+def _create_stage_alerts(created_stages, main_data, process=None, actor=None):
     """Create a StageAlert for every stage. Only the last receives the
     user-provided configuration (the daily reminder task only evaluates
-    the alert of the last stage of each process)."""
+    the alert of the last stage of each process).
+
+    When the last stage's alert is active, immediately notify the lawyer and
+    clients (if ``notify_clients=True``) so the activation is reflected in the
+    Notification Center without waiting for the daily Huey reminder.
+    """
     if not created_stages:
         return
     for stage in created_stages[:-1]:
         StageAlert.objects.create(stage=stage)
+
+    last_stage = created_stages[-1]
+    description = main_data.get('alertDescription', '')
+    is_active = main_data.get('alertIsActive', True)
+    notify_clients = main_data.get('alertNotifyClients', True)
+
     StageAlert.objects.create(
-        stage=created_stages[-1],
-        description=main_data.get('alertDescription', ''),
-        is_active=main_data.get('alertIsActive', True),
-        notify_clients=main_data.get('alertNotifyClients', True),
+        stage=last_stage,
+        description=description,
+        is_active=is_active,
+        notify_clients=notify_clients,
     )
+
+    if is_active and process is not None:
+        date_str = last_stage.date.strftime('%d/%m/%Y') if last_stage.date else 'sin fecha'
+        title = f"Alerta activada — {process.ref or 'Proceso'}"
+        message = (
+            f"Se activó una alerta para la etapa '{last_stage.status}' del proceso "
+            f"{process.ref or process.id}, programada para {date_str}."
+        )
+        if description:
+            message += f" Detalle: {description}"
+
+        recipients = build_process_recipients(
+            process, notify_clients=notify_clients, actor=actor,
+        )
+        if recipients:
+            create_bulk_notifications(
+                users=recipients,
+                title=title,
+                message=message,
+                category='process_alert',
+                priority='high',
+                link_type='process',
+                link_id=process.id,
+            )
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -145,7 +209,12 @@ def create_process(request):
                 process.stages.add(stage)
                 created_stages.append(stage)
 
-            _create_stage_alerts(created_stages, main_data)
+            try:
+                _validate_alert_config(created_stages, main_data)
+            except _StageAlertValidationError as exc:
+                return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+            _create_stage_alerts(created_stages, main_data, process=process, actor=request.user)
 
         serializer = ProcessSerializer(process, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -251,6 +320,13 @@ def update_process(request, pk):
     # Process.stages is M2M, so .clear() only unlinks. Hard-delete the rows
     # to avoid orphan Stage / StageAlert rows piling up in the database.
     with transaction.atomic():
+        # Snapshot stage signatures (status + date) BEFORE clearing so we can
+        # detect newly-added stages after re-creation.
+        old_stage_signatures = set(
+            (s.status, s.date.isoformat() if s.date else '')
+            for s in process.stages.all()
+        )
+
         old_stage_ids = list(process.stages.values_list('id', flat=True))
         process.stages.clear()
         if old_stage_ids:
@@ -276,14 +352,53 @@ def update_process(request, pk):
             process.stages.add(new_stage)
             created_stages.append(new_stage)
 
-        _create_stage_alerts(created_stages, main_data)
+        try:
+            _validate_alert_config(created_stages, main_data)
+        except _StageAlertValidationError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        _create_stage_alerts(created_stages, main_data, process=process, actor=request.user)
 
     case_file_ids = main_data.get('caseFileIds', None)
     if case_file_ids is not None:
         process.case_files.set(CaseFile.objects.filter(id__in=case_file_ids))
 
     process.save()
-    
+
+    added_stages = [
+        s for s in created_stages
+        if (s.status, s.date.isoformat() if s.date else '') not in old_stage_signatures
+    ]
+
+    # Resolve recipients once and reuse across the per-stage loop to avoid an
+    # N+1 on process.clients.all().
+    recipients = build_process_recipients(process, actor=request.user)
+
+    notify_process_stakeholders(
+        process=process,
+        title=f"Proceso actualizado: {process.ref or process.id}",
+        message=(
+            f"Se actualizó el proceso {process.ref or process.id}"
+            + (f" ({process.subcase})" if process.subcase else '')
+            + ". Revisa los cambios desde el detalle del proceso."
+        ),
+        priority='medium',
+        recipients=recipients,
+    )
+
+    for added in added_stages:
+        date_str = added.date.strftime('%d/%m/%Y') if added.date else 'sin fecha'
+        notify_process_stakeholders(
+            process=process,
+            title=f"Nueva etapa registrada — {process.ref or process.id}",
+            message=(
+                f"Se registró la etapa '{added.status}' (fecha: {date_str}) en el "
+                f"proceso {process.ref or process.id}."
+            ),
+            priority='medium',
+            recipients=recipients,
+        )
+
     # Return the updated process
     serializer = ProcessSerializer(process, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -340,6 +455,25 @@ def update_case_file(request):
         case_file = CaseFile.objects.create(file=file)
         process.case_files.add(case_file)
 
+        # Notify stakeholders that a new document was attached. The actor (the
+        # uploader) is excluded from the recipient list so they don't receive
+        # a notification about their own action.
+        try:
+            file_name = getattr(case_file.file, 'name', '') or ''
+            display_name = file_name.rsplit('/', 1)[-1] if file_name else 'documento'
+            notify_process_stakeholders(
+                process=process,
+                title=f"Documento agregado — {process.ref or process.id}",
+                message=(
+                    f"Se anexó el documento '{display_name}' al proceso "
+                    f"{process.ref or process.id}."
+                ),
+                actor=request.user,
+                priority='medium',
+            )
+        except Exception:  # pragma: no cover — never block the upload on notif failure
+            pass
+
         # Return success response with the ID of the uploaded file
         return Response({'detail': 'File uploaded successfully.', 'fileId': case_file.id}, status=status.HTTP_201_CREATED)
 
@@ -358,6 +492,29 @@ def get_recent_processes(request):
     recent_processes = RecentProcess.objects.filter(user=request.user).order_by('-last_viewed')[:10]
     serializer = RecentProcessSerializer(recent_processes, many=True)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def process_pending_alerts_count(request):
+    """Return the count of unread, non-archived process-related notifications
+    for the authenticated user.
+
+    Used by the SlideBar to render a red badge over the "Procesos" item.
+    Mirrors the contract of ``/notifications/unread-count/`` but scoped to
+    ``category='process_alert'`` so the badge only reflects process activity.
+    """
+    now = timezone.now()
+    count = Notification.objects.filter(
+        user=request.user,
+        category='process_alert',
+        is_read=False,
+        is_archived=False,
+        is_deleted=False,
+    ).exclude(
+        snoozed_until__gt=now,
+    ).count()
+    return Response({'pending_count': count})
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

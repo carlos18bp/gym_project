@@ -13,6 +13,7 @@ from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
+from gym_app.services.signature_notification_service import notify_signature_requested
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
@@ -652,6 +653,11 @@ def formalize_document(request, document_id):
                     recipient.email, document_id, exc_info=True,
                 )
 
+        # Email already sent above; suppress the email branch in the helper.
+        notify_signature_requested(
+            document, list(recipients), signature_type='informative', send_email=False,
+        )
+
         # Freeze letterhead at formalization so the contents stay inalterable.
         # The "emisor" whose letterhead gets frozen is request.user (the user
         # who clicked Formalize), persisted in document.formalized_by above.
@@ -714,9 +720,15 @@ def formalize_document(request, document_id):
                 defaults={'signed': True, 'signed_at': now_issuer},
             )
 
-        # Notify the creator that they need to sign
-        from gym_app.services.signature_notification_service import notify_signature_requested
-        notify_signature_requested(document, [request.user])
+        # Creator must sign — uses the standard "Firma Solicitada" copy.
+        notify_signature_requested(document, [request.user], signature_type='normal')
+
+        # Notify recipients with issuer_only specific copy ("Documento Emitido").
+        # In-app only to avoid duplicating the email already sent by the
+        # underlying signing/formalization flow upstream of this view.
+        notify_signature_requested(
+            document, list(recipients), signature_type='issuer_only', send_email=False,
+        )
 
         # Grant visibility to recipients
         _grant_visibility_to_recipients(document, recipients, request.user)
@@ -779,8 +791,6 @@ def formalize_document(request, document_id):
         ignore_conflicts=True,
     )
 
-    # Send signature request notifications to all signers
-    from gym_app.services.signature_notification_service import notify_signature_requested
     notify_signature_requested(document, list(signers))
 
     # Freeze letterhead at formalization so the contents stay inalterable.

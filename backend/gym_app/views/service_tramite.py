@@ -374,7 +374,7 @@ def _validate_request_access(user, service_request):
 @permission_classes([IsAuthenticated])
 def list_services(request):
     include_inactive = _to_bool(request.GET.get("include_inactive"))
-    queryset = Service.objects.all().order_by("-is_featured", "featured_order", "name")
+    queryset = Service.objects.filter(is_deleted=False).order_by("-is_featured", "featured_order", "name")
 
     if not include_inactive or not _is_manager(request.user):
         queryset = queryset.filter(is_active=True)
@@ -386,13 +386,17 @@ def list_services(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_featured_services(request):
-    queryset = Service.objects.filter(is_active=True, is_featured=True).order_by("featured_order", "name")
+    queryset = Service.objects.filter(
+        is_active=True, is_featured=True, is_deleted=False,
+    ).order_by("featured_order", "name")
     featured = list(queryset[:6])
 
     if len(featured) < 4:
         needed = 6 - len(featured)
         fallback = list(
-            Service.objects.filter(is_active=True).exclude(id__in=[srv.id for srv in featured]).order_by("name")[:needed]
+            Service.objects.filter(is_active=True, is_deleted=False)
+            .exclude(id__in=[srv.id for srv in featured])
+            .order_by("name")[:needed]
         )
         featured.extend(fallback)
 
@@ -403,7 +407,7 @@ def list_featured_services(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_service_detail(request, service_id):
-    queryset = Service.objects.prefetch_related("stages__fields")
+    queryset = Service.objects.filter(is_deleted=False).prefetch_related("stages__fields")
     service = get_object_or_404(queryset, id=service_id)
 
     if not service.is_active and not _is_manager(request.user):
@@ -430,7 +434,11 @@ def admin_list_services(request):
     if not _is_admin(request.user):
         return Response({"detail": "No autorizado"}, status=status.HTTP_403_FORBIDDEN)
 
-    queryset = Service.objects.prefetch_related("stages__fields").order_by("-is_featured", "featured_order", "name")
+    queryset = (
+        Service.objects.filter(is_deleted=False)
+        .prefetch_related("stages__fields")
+        .order_by("-is_featured", "featured_order", "name")
+    )
     serializer = ServiceSerializer(queryset, many=True, context={"request": request})
     return Response({"services": serializer.data}, status=status.HTTP_200_OK)
 
@@ -514,6 +522,24 @@ def admin_toggle_service_featured(request, service_id):
     service.save(update_fields=["is_featured", "updated_by", "updated_at"])
 
     return Response({"id": service.id, "is_featured": service.is_featured}, status=status.HTTP_200_OK)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def admin_delete_service(request, service_id):
+    """Soft-delete a service. Existing ServiceRequests stay intact via the
+    PROTECT FK; the service simply disappears from public/admin listings.
+    """
+    if not _is_admin(request.user):
+        return Response({"detail": "No autorizado"}, status=status.HTTP_403_FORBIDDEN)
+
+    service = get_object_or_404(Service, id=service_id, is_deleted=False)
+    service.is_deleted = True
+    service.is_active = False
+    service.updated_by = request.user
+    service.save(update_fields=["is_deleted", "is_active", "updated_by", "updated_at"])
+
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(["POST"])
