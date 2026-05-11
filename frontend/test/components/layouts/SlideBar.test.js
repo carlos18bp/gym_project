@@ -55,6 +55,18 @@ jest.mock("@/composables/usePendingSignatures", () => {
   };
 });
 
+jest.mock("@/composables/usePendingProcessAlerts", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    usePendingProcessAlerts: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+    }),
+  };
+});
+
 jest.mock("@headlessui/vue", () => ({
   __esModule: true,
   Dialog: { name: "Dialog", template: "<div><slot /></div>" },
