@@ -65,14 +65,13 @@ describe("NotificationsList.vue", () => {
     jest.clearAllMocks();
   });
 
-  test("renders three filter tabs", async () => {
+  test("renders two filter tabs", async () => {
     buildStore();
 
     const wrapper = mount(NotificationsList);
     await flushPromises();
 
     expect(wrapper.find("[data-testid='tab-all']").exists()).toBe(true);
-    expect(wrapper.find("[data-testid='tab-unread']").exists()).toBe(true);
     expect(wrapper.find("[data-testid='tab-archived']").exists()).toBe(true);
   });
 
@@ -109,9 +108,9 @@ describe("NotificationsList.vue", () => {
 
     store.fetchNotifications.mockClear();
 
-    await wrapper.find("[data-testid='tab-unread']").trigger("click");
+    await wrapper.find("[data-testid='tab-archived']").trigger("click");
 
-    expect(store.fetchNotifications).toHaveBeenCalledWith("unread", 1);
+    expect(store.fetchNotifications).toHaveBeenCalledWith("archived", 1);
   });
 
   test("clicking a process notification navigates with highlight query param", async () => {
