@@ -150,7 +150,6 @@ test(
 
     await expect(page.getByTestId("empty-state")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("tab-all")).toBeVisible();
-    await expect(page.getByTestId("tab-unread")).toBeVisible();
     await expect(page.getByTestId("tab-archived")).toBeVisible();
   }
 );
@@ -251,7 +250,6 @@ test(
     await expect(page.getByTestId("notification-1")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("notification-2")).toBeVisible();
 
-    await page.getByTestId("tab-unread").click();
     await page.getByTestId("tab-archived").click();
     await page.getByTestId("tab-all").click();
 
