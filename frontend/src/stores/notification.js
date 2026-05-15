@@ -20,6 +20,10 @@ export const useNotificationStore = defineStore("notification", {
   getters: {
     hasUnread: (state) => state.unreadCount > 0,
     latestNotifications: (state) => state.notifications.slice(0, 3),
+    // Larger slice used by the dashboard NotificationsWidget so the user can
+    // scroll through recent items without leaving the dashboard. The page
+    // size from the API (default 20) caps this naturally.
+    widgetNotifications: (state) => state.notifications.slice(0, 10),
   },
 
   actions: {

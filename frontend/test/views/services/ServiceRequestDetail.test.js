@@ -261,7 +261,14 @@ describe("ServiceRequestDetail.vue", () => {
       const wrapper = mountComponent();
       await flushPromises();
 
-      expect(wrapper.html()).toContain("animate-pulse");
+      // The deep-link highlight uses the scoped ``notification-highlight``
+      // keyframe (animates background only) instead of Tailwind's
+      // ``animate-pulse`` which faded the entire element including the text.
+      // ``wrapper.html()`` includes the scoped <style> block (which mentions
+      // the class name literally), so we assert on the highlighted card's
+      // class attribute instead of a string substring.
+      const highlightedCard = wrapper.find(".notification-highlight");
+      expect(highlightedCard.exists()).toBe(true);
     });
 
     test("does not apply pulse class when highlight query is absent", async () => {
@@ -270,7 +277,8 @@ describe("ServiceRequestDetail.vue", () => {
       const wrapper = mountComponent();
       await flushPromises();
 
-      expect(wrapper.html()).not.toContain("animate-pulse");
+      const highlightedCard = wrapper.find(".notification-highlight");
+      expect(highlightedCard.exists()).toBe(false);
       expect(mockRouterReplace).not.toHaveBeenCalled();
     });
 

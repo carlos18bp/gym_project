@@ -22,9 +22,12 @@
       </div>
 
       <div v-else class="space-y-4">
+        <!-- ``notification-highlight`` (defined in the scoped <style> below)
+             animates only the background and box-shadow, keeping the text
+             fully opaque while the card draws attention on a deep-link. -->
         <div
           class="bg-white border rounded-xl p-6 transition-all duration-500"
-          :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 animate-pulse' : 'border-gray-200'"
+          :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 notification-highlight' : 'border-gray-200'"
         >
           <div class="flex flex-wrap justify-between gap-3">
             <div>
@@ -340,3 +343,28 @@ onUnmounted(() => {
   }
 });
 </script>
+
+<style scoped>
+/*
+ * Background-only pulse for the deep-link highlight. Keeps the row text
+ * perfectly readable while the card draws attention — replaces Tailwind's
+ * ``animate-pulse`` which faded the entire element (text included).
+ */
+@keyframes notification-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.40);
+    background-color: rgba(59, 130, 246, 0.30);
+  }
+}
+
+.notification-highlight {
+  animation: notification-highlight 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  position: relative;
+  z-index: 10;
+}
+</style>

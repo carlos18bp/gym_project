@@ -1,12 +1,19 @@
 <template>
-  <div class="flex flex-col h-full">
-    <div v-if="latestNotifications.length === 0" class="text-center py-6">
+  <div class="flex flex-col h-full min-h-0">
+    <div v-if="widgetNotifications.length === 0" class="text-center py-6">
       <p class="text-sm text-gray-400">Sin notificaciones recientes</p>
     </div>
 
-    <ul v-else class="space-y-1">
+    <!-- Scrollable list: matches the FeedWidget / ContactsWidget behaviour so
+         the user can browse more than the first few items without leaving the
+         dashboard. ``max-h`` keeps the widget bounded inside the tab pane. -->
+    <ul
+      v-else
+      class="space-y-1 overflow-y-auto pr-1 -mr-1 max-h-[18rem] sm:max-h-[24rem]"
+      data-testid="notifications-widget-list"
+    >
       <li
-        v-for="notif in latestNotifications"
+        v-for="notif in widgetNotifications"
         :key="notif.id"
         class="flex items-start gap-3 cursor-pointer hover:bg-gray-50 px-2 py-2 rounded-lg transition-colors"
         @click="goToNotification(notif)"
@@ -57,7 +64,7 @@ const router = useRouter()
 const store = useNotificationStore()
 
 const unreadCount = computed(() => store.unreadCount)
-const latestNotifications = computed(() => store.latestNotifications)
+const widgetNotifications = computed(() => store.widgetNotifications)
 
 onMounted(() => {
   const tasks = [store.fetchUnreadCount()]

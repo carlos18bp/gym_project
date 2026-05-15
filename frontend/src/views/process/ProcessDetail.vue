@@ -100,10 +100,15 @@
       v-if="process"
       class="space-y-6"
     >
-      <!-- Card: process header and information -->
+      <!-- Card: process header and information.
+           ``notification-highlight`` animates ONLY the background colour and
+           the surrounding box-shadow, leaving the text fully readable while
+           the deep-linked card draws attention. Tailwind's ``animate-pulse``
+           would fade the entire element (including the text) which the user
+           explicitly flagged as confusing. -->
       <div
         class="p-4 sm:p-6 rounded-lg border bg-white shadow-sm transition-all duration-500"
-        :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 animate-pulse' : 'border-gray-200'"
+        :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 notification-highlight' : 'border-gray-200'"
       >
         <!-- Header with case type and users button -->
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
@@ -696,3 +701,29 @@ const getPrimaryClient = (p) => {
   return p.clients.length ? p.clients[0] : null;
 };
 </script>
+
+<style scoped>
+/*
+ * Background-only pulse for the deep-link highlight. Mirrors the
+ * ``pulse-highlight`` pattern in SignaturesList.vue but bumps the peak
+ * background opacity so the cue stays visible against the white card while
+ * the text never loses contrast.
+ */
+@keyframes notification-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.40);
+    background-color: rgba(59, 130, 246, 0.30);
+  }
+}
+
+.notification-highlight {
+  animation: notification-highlight 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  position: relative;
+  z-index: 10;
+}
+</style>
