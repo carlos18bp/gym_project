@@ -1,5 +1,10 @@
 import json
+import logging
 import traceback
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -12,9 +17,50 @@ from gym_app.services.notification_service import (
     notify_process_stakeholders,
 )
 from gym_app.utils.auth_utils import is_gym_staff
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
+from gym_app.views.layouts.sendEmail import send_template_email
+
+logger = logging.getLogger(__name__)
+
+
+def _send_process_update_email(process, recipients, summary):
+    """Send a notification email to *recipients* when a process is updated.
+
+    Mirrors ``_send_alert_email`` (process_alert_tasks): uses the shared
+    ``notification`` template so the visual style stays consistent with the
+    pre-existing alert reminder email. Failures are swallowed (logged) so the
+    update never fails because of an SMTP issue.
+    """
+    emails = sorted({u.email for u in recipients if getattr(u, 'email', None)})
+    if not emails:
+        return
+
+    frontend_url = getattr(settings, 'FRONTEND_BASE_URL', 'https://gmconsultoresjuridicos.com')
+    process_url = f'{frontend_url}/process_detail/{process.id}'
+    process_label = process.ref or process.id
+
+    try:
+        send_template_email(
+            template_name='notification',
+            subject=f'Proceso actualizado — {process_label}',
+            to_emails=emails,
+            context={
+                'title': 'Actualización de Proceso',
+                'badge_text': 'Cambios registrados',
+                'notification_title': f'Proceso: {process_label}',
+                'message': summary,
+                'additional_info': (
+                    'Ingresa al detalle del proceso para revisar los cambios '
+                    'registrados.'
+                ),
+                'action_url': process_url,
+                'action_text': 'Ver Proceso',
+            },
+        )
+    except Exception:
+        logger.error(
+            'Failed to send process update email for process %s', process.id,
+            exc_info=True,
+        )
 
 
 def _user_can_access_process(user, process):
@@ -86,8 +132,13 @@ def _create_stage_alerts(created_stages, main_data, process=None, actor=None):
         if description:
             message += f" Detalle: {description}"
 
+        # Include the actor (typically the lawyer who toggled the alert) so the
+        # confirmation lands in their notification center too. The user
+        # requirement explicitly asked for the lawyer to receive the activation
+        # notification — passing actor=None disables the actor-exclusion in
+        # ``build_process_recipients``.
         recipients = build_process_recipients(
-            process, notify_clients=notify_clients, actor=actor,
+            process, notify_clients=notify_clients, actor=None,
         )
         if recipients:
             create_bulk_notifications(
@@ -374,17 +425,23 @@ def update_process(request, pk):
     # N+1 on process.clients.all().
     recipients = build_process_recipients(process, actor=request.user)
 
+    update_message = (
+        f"Se actualizó el proceso {process.ref or process.id}"
+        + (f" ({process.subcase})" if process.subcase else '')
+        + ". Revisa los cambios desde el detalle del proceso."
+    )
     notify_process_stakeholders(
         process=process,
         title=f"Proceso actualizado: {process.ref or process.id}",
-        message=(
-            f"Se actualizó el proceso {process.ref or process.id}"
-            + (f" ({process.subcase})" if process.subcase else '')
-            + ". Revisa los cambios desde el detalle del proceso."
-        ),
+        message=update_message,
         priority='medium',
         recipients=recipients,
     )
+
+    # Build a single email summary covering the global update plus any newly
+    # added stages so stakeholders receive ONE consolidated email instead of
+    # one per stage. The in-app notifications above stay one-per-event.
+    email_lines = [update_message]
 
     for added in added_stages:
         date_str = added.date.strftime('%d/%m/%Y') if added.date else 'sin fecha'
@@ -398,6 +455,18 @@ def update_process(request, pk):
             priority='medium',
             recipients=recipients,
         )
+        email_lines.append(
+            f"Nueva etapa: <strong>{added.status}</strong> "
+            f"(fecha: <strong>{date_str}</strong>)."
+        )
+
+    # Email notification for stakeholders. Wrapped in a helper so transport
+    # failures never break the API response.
+    _send_process_update_email(
+        process=process,
+        recipients=recipients,
+        summary='<br/>'.join(email_lines),
+    )
 
     # Return the updated process
     serializer = ProcessSerializer(process, context={'request': request})

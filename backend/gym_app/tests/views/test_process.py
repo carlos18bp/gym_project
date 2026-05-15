@@ -938,3 +938,75 @@ class TestUpdateProcessEdges:
         assert response.status_code == status.HTTP_200_OK
         _edge_proc.refresh_from_db()
         assert _edge_proc.defendant == "Updated Defendant"
+
+
+# ======================================================================
+# B3 regression — update_process sends a stakeholder email
+# ======================================================================
+
+@pytest.mark.django_db
+class TestUpdateProcessEmailNotification:
+    """Verify that editing a process triggers the stakeholder email helper.
+
+    Before the fix, ``update_process`` only emitted in-app notifications.
+    The fix added ``_send_process_update_email`` which mirrors
+    ``_send_alert_email``. The view now calls the helper after the
+    Notification rows are created so stakeholders receive an email too.
+    """
+
+    def test_update_process_calls_email_helper_once(self, api_client, admin_user, process):
+        """Patch the email helper and assert it is invoked exactly once."""
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court', 'plaintiff': 'P', 'defendant': 'D'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            response = api_client.put(
+                url, {'mainData': json.dumps(payload)}, format='multipart'
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert mock_send.call_count == 1, (
+            'update_process should invoke _send_process_update_email exactly once'
+        )
+
+    def test_update_process_email_targets_stakeholder_addresses(
+        self, api_client, admin_user, process, lawyer_user, client_user,
+    ):
+        """The email goes to the stakeholder list returned by the recipients helper."""
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            api_client.put(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        assert mock_send.call_count == 1
+        _, kwargs = mock_send.call_args
+        recipients = kwargs.get('recipients') or (mock_send.call_args[0][1] if len(mock_send.call_args[0]) > 1 else [])
+        emails = {getattr(u, 'email', None) for u in recipients}
+        # At minimum the lawyer and the client should be notified.
+        assert lawyer_user.email in emails
+        assert client_user.email in emails
+
+    def test_update_process_email_failure_does_not_break_api(self, api_client, admin_user, process):
+        """If the underlying email transport raises, the helper logs it and the API still returns 200.
+
+        ``_send_process_update_email`` wraps ``send_template_email`` in a
+        try/except so transport failures never surface as HTTP 500. This
+        test patches the transport (not the helper) so the helper's own
+        error-handling path is exercised.
+        """
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court'}
+
+        target = 'gym_app.views.process.send_template_email'
+        with patch(target, side_effect=Exception('SMTP down')):
+            response = api_client.put(
+                url, {'mainData': json.dumps(payload)}, format='multipart'
+            )
+
+        assert response.status_code == status.HTTP_200_OK

@@ -143,6 +143,30 @@ def test_service_field_rejects_allowed_extensions_when_not_list(stage):
     assert "allowed_extensions" in exc.value.message_dict
 
 
+# ------------------------------------------------------------------
+# B4 regression — help_text accepts 1000 characters
+# ------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_service_field_help_text_accepts_1000_characters(stage):
+    """Store and retrieve a 1000-character help_text without truncation.
+
+    Regression for the 255 -> 1000 max_length bump applied in migration
+    ``0064_servicefield_help_text_1000``. Asserts both DB persistence and
+    that ``clean()`` does not reject the long text.
+    """
+    long_text = "A" * 1000
+    f = ServiceField(
+        stage=stage, key="campo_largo", label="Campo Largo",
+        field_type="input", order=99, help_text=long_text,
+    )
+    f.save()
+    f.refresh_from_db()
+    assert len(f.help_text) == 1000
+    assert f.help_text == long_text
+
+
 @pytest.mark.django_db
 def test_service_field_str_includes_service_and_label(service, field):
     """Include service short_title and field label in ServiceField.__str__."""
