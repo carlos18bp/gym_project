@@ -23,13 +23,15 @@
           <h2 class="text-xl font-semibold text-gray-900">Mis Carpetas</h2>
           <p class="text-sm text-gray-600 mt-1 px-2">Organiza tus documentos, firmas y formatos en carpetas personalizadas</p>
         </div>
-        <button
-          @click="handleCreateFolder"
-          class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-sm"
-        >
-          <PlusIcon class="w-5 h-5" />
-          Nueva Carpeta
-        </button>
+        <div class="flex justify-center">
+          <button
+            @click="handleCreateFolder"
+            class="inline-flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md text-sm"
+          >
+            <PlusIcon class="w-4 h-4" />
+            Nueva Carpeta
+          </button>
+        </div>
       </div>
     </div>
 

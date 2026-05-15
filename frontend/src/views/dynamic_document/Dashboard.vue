@@ -19,8 +19,9 @@
 
       <!-- Default lawyer view: navigation tabs + tables -->
       <div v-else>
-        <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
-        <div class="mb-6 border-b border-gray-200 pb-4">
+        <!-- Lawyer Navigation Tabs with Action Buttons — wrapped in the same
+             card container as SecopList / ServicesHub for visual consistency. -->
+        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6 pt-4 pb-4 border border-gray-200/0">
           <!-- Desktop Tabs -->
           <div class="hidden md:block">
             <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
@@ -258,8 +259,9 @@
 
     <!-- Documents for clients, basic users, and corporate clients -->
     <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'">
-      <!-- Navigation tabs with action buttons -->
-      <div class="mb-6 border-b border-gray-200">
+      <!-- Navigation tabs with action buttons — same card wrapper as the
+           lawyer variant for visual consistency. -->
+      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6 pt-4 pb-2">
         
         <!-- Desktop Layout: Tabs + Action Buttons -->
         <div class="hidden md:flex md:flex-col">
@@ -279,8 +281,10 @@
           </button>
           </nav>
           
-          <!-- Action Buttons (Desktop) — unified styling across roles. -->
-          <div class="flex flex-wrap items-center gap-3 mt-3 mb-4 md:justify-end">
+          <!-- Action Buttons (Desktop) — unified styling across roles.
+               Left-aligned so the white-background buttons live on the same
+               edge as the lawyer/admin variant (see lines 43-82). -->
+          <div class="flex flex-wrap items-center gap-3 mt-3 mb-4 md:justify-start">
             <button
               @click.stop="handleElectronicSignatureClick"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"

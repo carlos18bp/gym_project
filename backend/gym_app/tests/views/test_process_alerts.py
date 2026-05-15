@@ -199,3 +199,89 @@ class TestUpdateProcessAlerts:
         assert len(new_stages) == 3
         assert all(StageAlert.objects.filter(stage=s).exists() for s in new_stages)
         assert new_stages[-1].alert.description == 'Heads up'
+
+
+@pytest.mark.django_db
+class TestStageAlertNotifications:
+    """B2 regression: lawyer (actor) receives the process_alert notification.
+
+    Prior to the fix, ``_create_stage_alerts`` invoked
+    ``build_process_recipients(..., actor=actor)`` which stripped the actor
+    from the recipient list. When the lawyer toggled the alert themselves,
+    the in-app notification skipped them — only clients received it. The
+    fix passes ``actor=None`` so the activating lawyer also gets the cue
+    in their Notification Center.
+    """
+
+    def test_lawyer_receives_notification_when_activating_alert(
+        self, api_client, client_user, lawyer_user, case_type,
+    ):
+        from gym_app.models import Notification
+
+        api_client.force_authenticate(user=lawyer_user)
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2099-12-31'}],
+            ref='ALERT-LAWYER-1',
+            alertDescription='Trae los originales',
+            alertIsActive=True,
+            alertNotifyClients=True,
+        )
+        url = reverse('create-process')
+        response = api_client.post(
+            url, {'mainData': json.dumps(payload)}, format='multipart'
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+        lawyer_alerts = Notification.objects.filter(
+            user=lawyer_user, category='process_alert',
+        )
+        assert lawyer_alerts.exists(), (
+            'Lawyer (actor) should receive a process_alert notification '
+            'when they activate the stage alert themselves.'
+        )
+
+    def test_client_still_receives_notification_when_alert_is_active(
+        self, api_client, client_user, lawyer_user, case_type,
+    ):
+        """Companion to the lawyer test — confirm clients still get notified."""
+        from gym_app.models import Notification
+
+        api_client.force_authenticate(user=lawyer_user)
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2099-12-31'}],
+            ref='ALERT-CLIENT-1',
+            alertIsActive=True,
+            alertNotifyClients=True,
+        )
+        url = reverse('create-process')
+        api_client.post(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        client_alerts = Notification.objects.filter(
+            user=client_user, category='process_alert',
+        )
+        assert client_alerts.exists()
+
+    def test_no_notification_when_alert_inactive(
+        self, api_client, client_user, lawyer_user, case_type,
+    ):
+        """When the alert is inactive, no process_alert notification is emitted."""
+        from gym_app.models import Notification
+
+        api_client.force_authenticate(user=lawyer_user)
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2099-12-31'}],
+            ref='ALERT-INACTIVE-1',
+            alertIsActive=False,
+            alertNotifyClients=True,
+        )
+        url = reverse('create-process')
+        api_client.post(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        assert not Notification.objects.filter(
+            user__in=[lawyer_user, client_user],
+            category='process_alert',
+            link_id__in=Process.objects.filter(ref='ALERT-INACTIVE-1').values_list('id', flat=True),
+        ).exists()

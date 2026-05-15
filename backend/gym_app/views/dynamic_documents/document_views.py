@@ -515,10 +515,16 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             font-family: 'Carlito', sans-serif !important;
             font-size: 12pt;
             {body_extra_top_padding}
+            word-wrap: break-word;
+            -ms-word-break: break-word;
+            word-break: break-word;
         }}
 
-        p, span {{
+        p, span, li, div {{
             font-family: 'Carlito', sans-serif !important;
+            word-wrap: break-word;
+            -ms-word-break: break-word;
+            word-break: break-word;
         }}
 
         strong {{
