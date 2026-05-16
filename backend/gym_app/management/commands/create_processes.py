@@ -1,7 +1,9 @@
 import os
 import random
+from datetime import timedelta
 from django.core.files import File
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from faker import Faker
 from gym_app.models import Process, Stage, StageAlert, CaseFile, User, Case
 
@@ -204,8 +206,29 @@ class Command(BaseCommand):
 
             # Auto-create StageAlert for every stage (matches the runtime
             # contract enforced by `_create_stage_alerts` in views/process.py).
-            for stage in stages:
+            # Non-last stages always use defaults.
+            for stage in stages[:-1]:
                 StageAlert.objects.create(stage=stage)
+            # Last stage: vary configuration to exercise all UI states.
+            if stages:
+                last = stages[-1]
+                _is_active = random.choices([True, False], weights=[80, 20])[0]
+                _notify = random.choices([True, False], weights=[70, 30])[0]
+                _custom_descriptions = [
+                    'Llevar documentos originales',
+                    'Audiencia de conciliación — confirmar asistencia',
+                    'Revisar memorial antes de la audiencia',
+                    '',
+                    '',
+                    '',
+                ]
+                _desc = random.choice(_custom_descriptions)
+                StageAlert.objects.create(
+                    stage=last,
+                    is_active=_is_active,
+                    notify_clients=_notify,
+                    description=_desc,
+                )
 
             # Create a random number of case files - more variation in number
             num_files = random.randint(2, 10)
@@ -239,6 +262,14 @@ class Command(BaseCommand):
                 progress=random.randint(0, 100),
             )
             process.clients.add(client_user)
+            # Add one stage with a near-future date so the process has a
+            # visible alert indicator and is coherent with the runtime contract.
+            stage = Stage.objects.create(
+                status=random.choice(['Audiencia', 'Conciliación', 'Sentencia']),
+                date=(timezone.now().date() + timedelta(days=random.randint(5, 30))),
+            )
+            process.stages.add(stage)
+            StageAlert.objects.create(stage=stage)
             self.stdout.write(
                 self.style.SUCCESS(
                     f'Extra test process for {label}: {process.ref} (client={client_user.email}, lawyer={lawyer_user.email})'
@@ -265,5 +296,60 @@ class Command(BaseCommand):
                 lawyer = random.choice(lawyer_candidates)
                 create_simple_process(special_basic, lawyer, f'básico {special_basic.email}')
 
-        # Print success message
-        self.stdout.write(self.style.SUCCESS(f'{number_of_processes} processes created successfully'))
+        # ── Alert-ready processes ────────────────────────────────────────────
+        # Create a small set of processes whose last stage falls exactly 3 days
+        # or 1 day from today so that `send_process_alerts` can be triggered in
+        # local/staging environments without waiting for real dates.
+        today = timezone.now().date()
+        alert_scenarios = [
+            {'days': 3, 'notify_clients': True,  'desc': 'Audiencia — llevar expediente completo'},
+            {'days': 3, 'notify_clients': False, 'desc': 'Sentencia — preparar alegatos'},
+            {'days': 3, 'notify_clients': True,  'desc': ''},
+            {'days': 1, 'notify_clients': True,  'desc': 'Urgente: conciliación mañana'},
+            {'days': 1, 'notify_clients': False, 'desc': ''},
+            {'days': 1, 'notify_clients': True,  'desc': 'Revisión de memorial'},
+        ]
+        alert_stage_statuses = ['Audiencia', 'Conciliación', 'Sentencia', 'Notificación', 'Apelación', 'Resolución']
+        alert_ready_count = 0
+        for scenario in alert_scenarios:
+            if not client_candidates or not lawyer_candidates:
+                break
+            client_u = random.choice(client_candidates)
+            lawyer_u = random.choice(lawyer_candidates)
+            alert_process = Process.objects.create(
+                authority=fake.company(),
+                authority_email=fake.company_email(),
+                plaintiff=fake.name(),
+                defendant=fake.name(),
+                ref=f'ALERTA-{scenario["days"]}D-{fake.uuid4()[:8].upper()}',
+                lawyer=lawyer_u,
+                case=random.choice(cases),
+                subcase=fake.bs(),
+                progress=random.randint(10, 90),
+            )
+            alert_process.clients.add(client_u)
+            # Preceding stage in the past to simulate a realistic history
+            prev_stage = Stage.objects.create(
+                status='Apertura',
+                date=today - timedelta(days=random.randint(30, 90)),
+            )
+            alert_process.stages.add(prev_stage)
+            StageAlert.objects.create(stage=prev_stage)
+            # Last stage: upcoming date exactly N days from today
+            upcoming_stage = Stage.objects.create(
+                status=random.choice(alert_stage_statuses),
+                date=today + timedelta(days=scenario['days']),
+            )
+            alert_process.stages.add(upcoming_stage)
+            StageAlert.objects.create(
+                stage=upcoming_stage,
+                is_active=True,
+                notify_clients=scenario['notify_clients'],
+                description=scenario['desc'],
+            )
+            alert_ready_count += 1
+
+        self.stdout.write(self.style.SUCCESS(
+            f'{number_of_processes} processes created successfully '
+            f'(+{alert_ready_count} alert-ready with upcoming dates)'
+        ))
