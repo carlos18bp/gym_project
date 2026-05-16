@@ -154,6 +154,16 @@ fix: correct typo in deployment README
 refactor: extract user validation into service
 ```
 
+### 9. Reporte final: URL del PR
+
+Después de cada `git push` que cree una rama nueva en el remote, **siempre** termina tu respuesta dando al usuario la URL "Create a pull request" que GitHub imprime en el output del push.
+
+- Formato: `https://github.com/<owner>/<repo>/pull/new/<branch>`.
+- Inclúyela como una de las **últimas líneas** del cierre de turno, etiquetada como `PR URL: <url>`.
+- Si la rama ya existía y tiene un PR abierto, reporta la URL del PR existente (usa `gh pr view --json url -q .url` si la necesitas).
+- Si por excepción se commiteó directo a `main`/`master` (sólo posible en proyectos sin esta regla), declara explícitamente: "PR URL: n/a (push directo a `main`)".
+- Si hubo cambios en varios proyectos en el mismo turno, entrega una **lista** con un `PR URL:` por proyecto.
+
 ---
 
 ## Security Rules — OWASP / Secrets / Input Validation
