@@ -2,6 +2,7 @@ import random
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
+from django.db import OperationalError
 from django.utils import timezone
 
 from gym_app.models import (
@@ -94,11 +95,20 @@ class Command(BaseCommand):
             ))
             return
 
-        processes = list(Process.objects.values_list('id', 'case__type')[:50])
-        documents = list(DynamicDocument.objects.values_list('id', 'title')[:50])
-        service_requests = list(
-            ServiceRequest.objects.values_list('id', 'tracking_number')[:50]
-        )
+        try:
+            processes = list(Process.objects.values_list('id', 'case__type')[:50])
+        except OperationalError:
+            processes = []
+        try:
+            documents = list(DynamicDocument.objects.values_list('id', 'title')[:50])
+        except OperationalError:
+            documents = []
+        try:
+            service_requests = list(
+                ServiceRequest.objects.values_list('id', 'tracking_number')[:50]
+            )
+        except OperationalError:
+            service_requests = []
 
         deleted = Notification.objects.filter(user__in=users).delete()[0]
         if deleted:
