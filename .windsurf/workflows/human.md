@@ -1,40 +1,58 @@
 ---
-description: Respond to the user's topic or question in a natural, organized narrative — not a technical breakdown.
+description: Responde con estructura escaneable (tablas, listas, categorias) — concisa, precisa, con jerga tecnica cuando aporta. Siempre en espanol.
 ---
 
-## Rules
+## Que produce
 
-- **No numbered phases or step lists** — group ideas under short category headers instead
-- **Prose over bullets** — write each category as 2–4 sentences of flowing, readable text
-- **Natural transitions** between categories ("Más allá de eso…", "En cuanto a…", "Vale la pena mencionar…")
-- **No file/line citations** unless the user explicitly asked for them
-- **No jargon dumps** — if a technical term is necessary, explain it briefly in plain language
-- The response should read like an explanation you'd give a knowledgeable colleague, not a spec document
-- **Always respond in Spanish**, regardless of the language the user writes in
+Respuesta optimizada para escaneo visual. El operador lee la primera fila de cada tabla, el primer bullet de cada lista, y captura el 80% del contenido en 10 segundos. La profundidad esta en el detalle; la jerarquia, en la estructura.
 
----
+## Reglas de formato
 
-## Steps
+| Cuando usar           | Que usar              | Por que                              |
+|-----------------------|-----------------------|--------------------------------------|
+| Comparar 3+ items     | Tabla markdown        | Lectura cruzada en una vista         |
+| Pasos con orden       | Lista numerada        | Implica secuencia                    |
+| Items sin orden       | Bullets `-`           | Mas escaneable que prosa             |
+| Categorias tematicas  | Headers `### ` cortos | Permite saltar a la seccion          |
+| Codigo, path, comando | `code`                | Distinguir lo ejecutable             |
+| Estado por item       | Emoji ✅⚠️❌🚫        | Captura en 1 caracter                |
 
-1. Read the user's input and identify the 2–5 main themes or angles worth covering
-2. For each theme, write a short category header (plain noun phrase, not a step label)
-3. Under each header, write 2–4 sentences that explain that theme naturally and completely
-4. Review transitions between categories — add a bridging phrase where the jump feels abrupt
-5. Remove any leftover bullet points, numbered lists, or phase labels from the output
-6. Deliver the final response directly — no preamble like "Here is your answer:"
+## Anti-patrones (NO hacer)
 
----
+- ❌ Parrafos de 4+ lineas de prosa cuando una tabla los reemplaza.
+- ❌ Headers tipo "Phase 1:", "Step 2:". Categorizar por **tema**, no por orden.
+- ❌ Repetir el dato en prosa y luego en tabla. Solo tabla.
+- ❌ Evitar jerga tecnica si es el termino correcto (e.g. `kernel`, `rebase`, `merge`).
+- ❌ Cerrar con resumen que repita lo de arriba. Si la estructura es buena, sobra.
 
-## Output Format
+## Permisos explicitos
+
+- ✅ Citar rutas de archivo (`path/to/file.py:42`) si ayudan a localizar.
+- ✅ Comandos shell literales (`bash script.sh --apply`), sin parafrasear.
+- ✅ Fingerprints, hashes, IDs cuando son evidencia concreta.
+- ✅ Nombres tecnicos en ingles cuando son los oficiales (`staging`, `lifecycle`, `chmod 600`).
+- ✅ Explicar termino tecnico inline solo si no es trivial (e.g. "rebase (reescribir historia local)").
+
+## Estructura sugerida
 
 ```
-## [Category Name]
+[Una linea inicial con la conclusion / accion / estado.]
 
-[2–4 sentences of natural prose explaining this category.]
+## Categoria 1
+| col | col |
+|-----|-----|
+| ... | ... |
 
-## [Next Category]
+## Categoria 2
+- bullet con info densa
+- bullet con info densa
 
-[2–4 sentences, naturally connected to the previous category where relevant.]
+## Decisiones pendientes / next steps (si aplica)
+- accion concreta + responsable
 ```
 
-Aim for 3–5 categories per response. Avoid padding — if something doesn't add real value, cut it.
+No todas las respuestas necesitan las 3 secciones — escalar segun el contenido.
+
+## Idioma
+
+Espanol. Terminos tecnicos en ingles cuando son los nombres canonicos (`commit`, `rebase`, `lifecycle`, `staging`, `chmod`). Definicion inline solo si el termino no es obvio.

@@ -1,5 +1,5 @@
 interface:
   display_name: "Human"
-  short_description: "Responde en español de forma natural y narrativa, sin desglose técnico."
+  short_description: "Responde en espanol con estructura escaneable (tablas, listas, categorias)."
 policy:
   allow_implicit_invocation: true
