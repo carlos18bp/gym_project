@@ -81,7 +81,21 @@ git rev-parse --abbrev-ref HEAD
 
 ### 2. Si la rama actual es `main` o `master`
 
-**No pidas permiso, crea automáticamente una nueva rama** y comunícaselo al usuario con un mensaje corto del tipo: "Estás en `main`, voy a crear la rama `<nombre>` antes de commitear." Luego procede.
+Antes de crear una rama nueva, **busca si ya existe una rama feature activa** para este proyecto:
+
+```bash
+git fetch --quiet --prune
+# Lista ramas remotas que no son main/master/release-* ni HEAD
+git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
+```
+
+- **Si hay UNA rama feature activa** (con PR abierto o trabajo en curso): `git checkout <rama-existente>` y haz pull rebase si está atrás del remote. Commitea ahí. No crees rama nueva.
+- **Si hay VARIAS ramas feature activas**: pregunta al usuario en cuál commitear (no asumas).
+- **Si NO hay ninguna rama feature activa** (todas las que ves están mergeadas/cerradas o son ramas históricas abandonadas): crea rama nueva según el formato de la sección 3.
+
+**Por qué:** la convención del proyecto es **máximo 1 PR feature activo simultáneamente**. Todos los cambios en curso se acumulan como commits sucesivos sobre esa rama hasta que mergee. Crear ramas paralelas fragmenta el trabajo en múltiples PRs y hace difícil hacer code review unificado.
+
+**No pidas permiso para hacer el checkout** — sólo comunícalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
 
 ### 3. Formato obligatorio del nombre de rama
 
@@ -142,7 +156,7 @@ Si hay ambigüedad, pregunta al usuario una sola vez antes de crear la rama.
 
 - Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git pull`, `git fetch`) están permitidas en `main`/`master`.
 - Si el usuario explícitamente pide quedarse en `main` para revisar algo sin commitear, respeta esa intención.
-- Si ya estás en una rama feature válida (no `main`/`master`), no crees una nueva — continúa trabajando en ella.
+- Si ya estás en una rama feature válida (no `main`/`master`), no crees una nueva — continúa trabajando en ella. **Esta es la convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
 
 ### 8. Mensajes de commit
 
