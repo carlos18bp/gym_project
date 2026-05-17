@@ -1,0 +1,3 @@
+interface:
+  display_name: "Fake Data Refresh"
+  short_description: "Borra y recrea fake data en un proyecto Django; refusa en producción"

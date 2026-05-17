@@ -1,6 +1,7 @@
 ---
 name: git-sync
 description: "Sync the current branch with its parent branch (main/master): fetch, rebase onto parent, and resolve conflicts if any arise. Also pulls the current branch's own remote first."
+disable-model-invocation: true
 allowed-tools: Bash
 ---
 

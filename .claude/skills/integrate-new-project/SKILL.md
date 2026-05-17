@@ -5,6 +5,27 @@ argument-hint: "[project_name domain light|standard] [--frontend-kind=nextjs-run
 allowed-tools: Bash, Read, Edit, Write
 ---
 
+## Entorno requerido
+
+**Esta skill SOLO funciona desde un VPS** — necesita `mysql`, `systemctl`, `certbot`, `nginx`, y paths `/home/ryzepeck/webapps/...`. Si la invocás desde la dev machine, los primeros pasos van a fallar con "command not found" o pueden dejar archivos huérfanos en `/etc/...`.
+
+**Verificación obligatoria ANTES de cualquier otro paso**:
+
+```bash
+if [[ -d /home/dev-env/repos ]]; then
+  echo "❌ Esta skill no se puede ejecutar desde la dev machine."
+  echo "   SSH primero al VPS destino:"
+  echo "     ssh vps-projectapp   (o vps-gym)"
+  echo "     cd ~/webapps/ops/vps && claude → /integrate-new-project ..."
+  exit 2
+fi
+echo "✅ Entorno VPS detectado, procediendo."
+```
+
+Si el bloque aborta con ❌, **NO continuar** con los pasos siguientes — SSH al VPS destino y re-invocar la skill allí.
+
+---
+
 Argumentos recibidos: **$ARGUMENTS**
 
 Si `$ARGUMENTS` está vacío o incompleto, pedir al usuario antes de continuar:
