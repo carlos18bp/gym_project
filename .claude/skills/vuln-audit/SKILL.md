@@ -17,7 +17,8 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 - Cualquier otro valor: abortar con mensaje pidiendo uno de los tres.
 
 ## Constraints (no negociables)
-- **No cambiar de rama, no `git push`, no crear ramas.** Trabajar siempre sobre la rama actual.
+- **Branching:** sigue el `git-branch-protocol` del `CLAUDE.md` base del proyecto. Si la rama actual es `main`/`master`, busca rama feature activa y haz checkout; si no hay ninguna, crea `chore/<DDMMYYYY>-vuln-audit` (prefijo `chore` porque son dep bumps). Si ya estás en rama feature válida, continúa ahí. Detalle operativo en la Fase 0.
+- **No `git push`.** Los 1–3 commits quedan locales; el operador empuja cuando decida y reporta el `PR URL` siguiendo la sección 9 del `git-branch-protocol`.
 - **Working tree debe estar limpio** antes de empezar (`git status` sin cambios). Si no lo está, abortar.
 - **Solo patch + minor** dentro del major actual. **Nunca** `npm audit fix --force`, **nunca** un bump que cruce major (incluye `0.x → 0.y` con `y > x`).
 - **Respetar pins** del proyecto (`requirements.txt` con `<X.Y` o `>=A,<B`; constraints documentados en `CLAUDE.md`/`AGENTS.md`).
@@ -28,21 +29,34 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 
 ## Detección de entorno (Fase 0)
 1. `git status --porcelain` → si imprime cualquier línea, abortar con: "Working tree no está limpio. Commitea o stashea antes de correr vuln-audit."
-2. Detectar superficies:
+2. **Aplicar `git-branch-protocol` del `CLAUDE.md` base** (resolver rama de trabajo antes de cualquier commit):
+   - `CURRENT=$(git rev-parse --abbrev-ref HEAD)`.
+   - Guardar `WORK_BRANCH_CREATED=false` (se pondrá `true` si la skill crea rama nueva).
+   - Si `CURRENT` ∈ {`main`, `master`}:
+     - `git fetch --quiet --prune`.
+     - Listar feature branches remotas:
+       ```bash
+       git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
+       ```
+     - Si hay **una sola** → `git checkout <esa>` y `git pull --rebase origin <esa>`. Comunicar al usuario: "Hay rama feature activa `<X>`, voy a commitear ahí."
+     - Si hay **varias** → preguntar al usuario en cuál commitear; no asumir.
+     - Si hay **cero** → `TODAY=$(date +%d%m%Y); git checkout -b chore/${TODAY}-vuln-audit` y marcar `WORK_BRANCH_CREATED=true`.
+   - Si `CURRENT` ya es una rama feature válida (no `main`/`master`): continuar ahí sin tocar la rama.
+3. Detectar superficies:
    - Frontend: `[ -f frontend/package.json ]`.
    - Backend: `[ -f backend/requirements.txt ]`.
-3. Si `$ARGUMENTS == "backend"` y no hay backend → abortar. Idem para frontend.
-4. Detectar venv (en orden, usar el primero que exista):
+4. Si `$ARGUMENTS == "backend"` y no hay backend → abortar. Idem para frontend.
+5. Detectar venv (en orden, usar el primero que exista):
    - `backend/.venv/bin/activate`
    - `backend/venv/bin/activate`
    - Si ninguno existe y se va a auditar backend, abortar pidiendo crear el venv.
-5. Detectar rama base remota: `git remote show origin | grep "HEAD branch"` o probar `origin/main` y `origin/master`. Guardar como `BASE_BRANCH`.
-6. Capturar `BASE_SHA = git merge-base HEAD origin/$BASE_BRANCH` (short).
-7. Leer `CLAUDE.md` y `AGENTS.md` raíz si existen, para detectar:
+6. Detectar rama base remota: `git remote show origin | grep "HEAD branch"` o probar `origin/main` y `origin/master`. Guardar como `BASE_BRANCH`.
+7. Capturar `BASE_SHA = git merge-base HEAD origin/$BASE_BRANCH` (short).
+8. Leer `CLAUDE.md` y `AGENTS.md` raíz si existen, para detectar:
    - Pin policies adicionales (ej. "cryptography pinned <44.0").
    - Slice de test mínimo recomendado.
    - Cualquier comando custom (ej. `source .venv/bin/activate && cd backend && pytest …`).
-8. Definir `PROJ = $(basename $(pwd))` para nombrar archivos en `/tmp`.
+9. Definir `PROJ = $(basename $(pwd))` para nombrar archivos en `/tmp`.
 
 ## Fase 1 — Frontend
 Ejecutar solo si `$ARGUMENTS` ∈ {"", "frontend"} y `frontend/package.json` existe.
@@ -240,9 +254,10 @@ Siempre se ejecuta (incluso si una fase no produjo updates: el reporte lo reflej
    ```
 
 3. **Resultado final esperado:**
-   - 1 a 3 commits nuevos en la rama actual (depende de qué superficies tenían updates).
+   - 1 a 3 commits nuevos en la rama de trabajo (la actual si era feature, o `chore/<DDMMYYYY>-vuln-audit` recién creada en Fase 0).
    - Working tree limpio.
    - `audit-report.md` actualizado.
+   - **Sin `git push`** (queda al operador, según el `git-branch-protocol`).
 
 ## Idempotencia
 Si al correr el skill no hay vulns ni outdated relevantes:
@@ -257,6 +272,8 @@ vuln-audit completed
 - Frontend: <X commits>, <vulns before → after>
 - Backend:  <X commits>, <vulns before → after>
 - Report:   audit-report.md (commit <SHA>)
+- Branch:   <rama-actual>  (creada-por-skill | preexistente)
+- Next:     git push -u origin <rama> && abrir PR (operador). PR URL se reporta tras el push, según sección 9 del git-branch-protocol.
 ```
 Si hubo abort, imprimir el motivo y los archivos en `/tmp` que se generaron antes del abort.
 

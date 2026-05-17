@@ -13,7 +13,8 @@ Replicate the manual `audit-report.md` flow used across the repos: scan vulns + 
 - `frontend` → npm only
 
 ## Hard rules
-- Work on the current branch. Do **not** create branches, do **not** push.
+- **Branching:** follow the `git-branch-protocol` from the project's `CLAUDE.md` (operational detail in Step 0). If the current branch is `main`/`master`, look for an active feature branch and check it out; if none exists, create `chore/<DDMMYYYY>-vuln-audit` (prefix `chore` because these are dep bumps). If you're already on a valid feature branch, stay there.
+- **No `git push`.** The 1–3 commits stay local; the operator pushes when they decide and reports the `PR URL` per section 9 of `git-branch-protocol`.
 - Never run `npm audit fix --force`. Never bump across a major (including `0.x → 0.y` with `y > x`).
 - Never run the full test suite. Use `pytest --collect-only` + 1 slice.
 - Never `git reset --hard`. Never commit with `--no-verify`.
@@ -22,14 +23,27 @@ Replicate the manual `audit-report.md` flow used across the repos: scan vulns + 
 ## Step 0 — Pre-flight
 
 1. Run `git status --porcelain`. If output is non-empty, stop and tell the user the working tree must be clean.
-2. Detect surfaces:
+2. **Apply `git-branch-protocol` from the project's `CLAUDE.md`** (resolve the working branch before any commit):
+   - `CURRENT=$(git rev-parse --abbrev-ref HEAD)`.
+   - Track `WORK_BRANCH_CREATED=false` (flip to `true` if the skill creates a new branch).
+   - If `CURRENT` ∈ {`main`, `master`}:
+     - `git fetch --quiet --prune`.
+     - List remote feature branches:
+       ```bash
+       git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
+       ```
+     - If **exactly one** → `git checkout <that>` and `git pull --rebase origin <that>`. Tell the user: "Active feature branch `<X>` found, committing there."
+     - If **multiple** → ask the user which one; do not assume.
+     - If **none** → `TODAY=$(date +%d%m%Y); git checkout -b chore/${TODAY}-vuln-audit` and set `WORK_BRANCH_CREATED=true`.
+   - If `CURRENT` is already a valid feature branch (not `main`/`master`): stay there.
+3. Detect surfaces:
    - Frontend present iff `frontend/package.json` exists.
    - Backend present iff `backend/requirements.txt` exists.
-3. If `$ARGUMENTS` requests a surface that is not present, stop with a clear message.
-4. Detect venv (use the first that exists): `backend/.venv/bin/activate` or `backend/venv/bin/activate`. If neither exists and backend will be audited, stop.
-5. Detect base branch: try `origin/main`, then `origin/master`. Capture `BASE_SHA = git merge-base HEAD origin/<base>` (short).
-6. Read `CLAUDE.md` and `AGENTS.md` at repo root if present, to capture pin policies and recommended test slices.
-7. Set `PROJ = $(basename $(pwd))` for `/tmp` filenames.
+4. If `$ARGUMENTS` requests a surface that is not present, stop with a clear message.
+5. Detect venv (use the first that exists): `backend/.venv/bin/activate` or `backend/venv/bin/activate`. If neither exists and backend will be audited, stop.
+6. Detect base branch: try `origin/main`, then `origin/master`. Capture `BASE_SHA = git merge-base HEAD origin/<base>` (short).
+7. Read `CLAUDE.md` and `AGENTS.md` at repo root if present, to capture pin policies and recommended test slices.
+8. Set `PROJ = $(basename $(pwd))` for `/tmp` filenames.
 
 ## Step 1 — Frontend (skip if `$ARGUMENTS == "backend"` or no frontend)
 
@@ -194,6 +208,10 @@ vuln-audit completed
 - Frontend: <X commits>, <vulns before → after>
 - Backend:  <X commits>, <vulns before → after>
 - Report:   audit-report.md (commit <SHA>)
+- Branch:   <current-branch>  (created-by-skill | pre-existing)
+- Next:     git push -u origin <branch> && open PR (operator). PR URL is reported after the push, per section 9 of git-branch-protocol.
 ```
+
+Expected end state: 1–3 new commits on the working branch, clean working tree, **no `git push`** (left to the operator per `git-branch-protocol`).
 
 If aborted: print the reason and any `/tmp` files generated before the abort.
