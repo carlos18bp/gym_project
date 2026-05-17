@@ -1,6 +1,0 @@
-interface:
-  display_name: "Git Status Report"
-  short_description: "Git status of all server projects"
-
-policy:
-  allow_implicit_invocation: false
