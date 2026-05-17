@@ -7,6 +7,47 @@ allowed-tools: Bash
 ## Basado en las 15 Buenas Prácticas para Servidores Saludables
 ---
 
+## PROTOCOLO DE EJECUCIÓN POR DEFECTO
+
+**Antes de leer la guía manual de 15 prácticas que sigue**, invoca el orquestador. Detecta automáticamente si estás en la dev machine o dentro de un VPS y hace lo correcto.
+
+```bash
+bash scripts/diagnostics/run-fleet-diagnostic.sh
+```
+
+### Comportamiento automático
+
+- **Desde la dev machine** (detecta `/home/dev-env/repos`) → orquesta secuencialmente:
+  - `FASE 1/2 — vps-projectapp` (las 13 sub-fases del diagnóstico vía SSH).
+  - `FASE 2/2 — vps-gym` (idem).
+  - Si una FASE detecta fases críticas (🔴, score <7), pausa y pide aprobación antes de continuar con el siguiente VPS.
+  - Genera `reports/server-diagnostic-vps-projectapp-YYYY-MM-DD.md` y `reports/server-diagnostic-vps-gym-YYYY-MM-DD.md`.
+
+- **Desde un VPS** (cualquiera del fleet) → ejecuta el diagnóstico **solo en ese VPS**, genera `reports/Diagnostic-Report-<HOSTNAME>.md`.
+
+### Overrides en lenguaje natural del operador
+
+- "solo vps-gym" / "solo vps-projectapp" → invocar con `--target=<alias>`.
+- "solo este vps" / "diagnóstico local" → invocar con `--target=local` (solo válido desde un VPS).
+- "sin pausas" / "corré todo de un tirón" → agregar `--no-pause`.
+
+### Después de que el orquestador termina
+
+Lee los reportes `.md` generados (rutas que imprimió el RESUMEN FINAL del orquestador). Para CADA reporte:
+
+1. Extrae el score por fase (formato `## FASE N: NOMBRE — 🟢/🟡/🔴 X/10`) y los hallazgos rojos.
+2. Sintetiza en chat siguiendo la skill `human` (tablas, jerga técnica, español, sin verbosidad):
+   - **Veredicto por VPS** (1 línea): `✅ verde` | `⚠️ N warnings` | `🔴 N críticos`.
+   - **Tabla cross-VPS**: fase × VPS con score y emoji.
+   - **Top 3 acciones prioritarias** del fleet (cross-VPS).
+   - Path de cada reporte para que el operador pueda profundizar.
+
+### Cuándo usar la guía manual de abajo
+
+El orquestador ya cubre las 13 fases con scoring automático. La guía manual de las **15 prácticas** que sigue es para **profundizar** en un hallazgo específico — por ejemplo, si el reporte dice "Fase 7 score 3/10" y el operador pide "explicame qué pasó con backups en vps-projectapp", entonces se entra al detalle manual de Fase 7 abajo, ejecutando los comandos correspondientes vía `ssh vps-projectapp '<comando>'`.
+
+---
+
 ## CONTEXTO DE MI INFRAESTRUCTURA
 
 ### Stack Tecnológico

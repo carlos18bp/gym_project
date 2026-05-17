@@ -1,10 +1,11 @@
-# Project-scoped Codex defaults for this repository.
+# Project-scoped Codex defaults for G__PROJECT_LABEL__M Staging.
+# Sincronizado desde vps-ops-toolkit/workflows/.codex/base/config.toml.tmpl
+# Keep this file small and stable. Override locally con .codex/config.local.toml
+# (no versionado) si necesitas customizacion por proyecto.
 
-model                  = "gpt-5.4"
-model_reasoning_effort = "xhigh"
-
-approval_policy = "never"           # valid values: untrusted | on-request | never
-sandbox_mode    = "danger-full-access"
-web_search      = "live"
-
-file_opener = "windsurf"            # opens file citations in Windsurf IDE
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+project_doc_max_bytes = 65536
+web_search = "live"
