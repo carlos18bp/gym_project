@@ -284,10 +284,8 @@ python backend/manage.py runserver
 cd frontend && npm install && npm run dev
 cd frontend && npm run build
 cd backend && pytest gym_app/tests/views/test_health.py -v
-python backend/scripts/run-tests-blocks.py
 cd frontend && npm run test
 cd frontend && npm run e2e -- e2e/policies/policies-navigation.spec.js
-python scripts/run-tests-all-suites.py
 pre-commit run test-quality-gate --all-files
 ```
 
