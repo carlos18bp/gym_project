@@ -13,7 +13,7 @@ argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 **Verificación obligatoria ANTES de cualquier otro paso**:
 
 ```bash
-if [[ -d /home/dev-env/webapps || -d /home/dev_env/webapps ]]; then
+if [[ -d /home/dev-env/webapps ]]; then
   echo "❌ Esta skill no se puede ejecutar desde la dev machine."
   echo "   SSH primero al VPS destino:"
   echo "     ssh vps-projectapp   (o vps-gym)"
