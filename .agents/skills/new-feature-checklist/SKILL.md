@@ -15,6 +15,23 @@ Before creating test data, verify that fake data complies with:
 
 > Do not generate random data without context. Each factory/fixture must represent a valid system state.
 
+### Post-implementation refresh
+
+After completing this implementation or fix, the previously-created fake data may have become incoherent: new model fields default to null/empty in old records, new FK relationships have no backing data, business rules added in this change are not reflected. Re-validate and refresh.
+
+**Trigger refresh whenever this implementation/fix changed any of:**
+- Model fields (new field, new constraint, modified validator)
+- Foreign keys / relations (new FK, removed model, restructured M2M)
+- Business logic (new validation, new domain rule, status transitions)
+- Serializers/forms with required fields not previously enforced
+
+**Quality target — "many records that make sense":**
+- Multiple records per model (not 1–2 placeholders) so flows can be exercised with realistic permutations.
+- FK chains populated end-to-end (e.g. for an Order: User → Cart → Items → Payment → StatusHistory all coherent).
+- Edge cases represented: empty strings where allowed, max-length values, nullable fields exercised both filled and null, expected-error states.
+
+**To execute the refresh:** invoke the `fake-data-refresh` skill on this project. It runs the project's own `delete_fake_data` then `create_fake_data` management commands and refuses on production environments.
+
 ## 2. Test Coverage
 
 ### Create tests for the new functionality:

@@ -13,6 +13,27 @@ Before creating test data, verify that fake data complies with:
 
 > ⚠️ Do not generate random data without context. Each factory/fixture must represent a valid system state.
 
+#### Post-implementation refresh
+
+After completing this implementation or fix, previously-created fake data can drift out of sync with the new schema or rules. Re-validate and refresh before proceeding to test coverage.
+
+**Triggers — refresh whenever this change touched any of:**
+
+| Area | Examples |
+|------|----------|
+| Model fields | New field, new constraint, modified validator |
+| Relations | New FK, removed model, restructured M2M |
+| Business logic | New validation, domain rule, status transitions |
+| Serializers / forms | Required fields not previously enforced |
+
+**Quality target — "many records that make sense":**
+
+- ✅ Multiple records per model (not 1–2 placeholders) so flows can be exercised with realistic permutations
+- ✅ FK chains populated end-to-end (e.g. for an Order: User → Cart → Items → Payment → StatusHistory all coherent)
+- ✅ Edge cases represented: empty strings where allowed, max-length values, nullable fields exercised both filled and null, expected-error states
+
+**How to execute:** invoke the `fake-data-refresh` skill on this project. It runs the project's own `delete_fake_data` then `create_fake_data` management commands and **refuses on production environments** (detects `environment: production` in `projects.yml` and `DJANGO_ENV=production` / `DEBUG=False` in `.env`).
+
 ---
 
 ### 2. Test Coverage

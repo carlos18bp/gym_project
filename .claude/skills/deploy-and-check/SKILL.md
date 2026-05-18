@@ -1,24 +1,45 @@
 ---
 name: deploy-and-check
-description: "Deploy a branch to production for the current project. Auto-discovers project metadata from projects.yml. Pass branch name as argument."
+description: "Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
 disable-model-invocation: true
 allowed-tools: Bash
-argument-hint: "[branch-name, e.g. main, master, release/march-2026]"
+argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
+---
+
+## Entorno requerido
+
+**Esta skill SOLO funciona desde un VPS** — necesita `systemctl`, `nginx`, `journalctl`, y paths `/home/ryzepeck/webapps/...`. Si la invocás desde la dev machine, los restarts de servicio fallarán y los logs no estarán disponibles.
+
+**Verificación obligatoria ANTES de cualquier otro paso**:
+
+```bash
+if [[ -d /home/dev-env/webapps || -d /home/dev_env/webapps ]]; then
+  echo "❌ Esta skill no se puede ejecutar desde la dev machine."
+  echo "   SSH primero al VPS destino:"
+  echo "     ssh vps-projectapp   (o vps-gym)"
+  echo "     cd ~/webapps/<proyecto> && claude → /deploy-and-check"
+  exit 2
+fi
+echo "✅ Entorno VPS detectado, procediendo."
+```
+
+Si el bloque aborta con ❌, **NO continuar** con las fases siguientes — SSH al VPS destino y re-invocar la skill allí.
+
 ---
 
 # Deploy & Check — Generic
 
-Despliegue del proyecto actual a producción (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`).
+Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`). Funciona para staging y producción.
 
 - **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
 - **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
-- **Restricción**: solo corre contra proyectos con `environment: production` (o sin campo `environment`, que defaultea a producción). Aborta en staging — para staging usar `/deploy-staging`.
+- **Branch**: por defecto usa la rama en que está parado el repositorio. Pasar argumento para hacer checkout a otra rama.
 
-> **⚠️ How to invoke**: Pass the branch name as an argument.
-> Example: `/deploy-and-check main`
-> If no branch is specified, Claude Code will ask before proceeding.
+> **⚠️ How to invoke**:
+> - Sin argumento: `/deploy-and-check` → despliega en la rama actual del repo.
+> - Con argumento: `/deploy-and-check release/may-2026` → hace checkout a esa rama y despliega.
 >
-> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name.
+> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name (empty if omitted).
 
 ---
 
@@ -50,16 +71,13 @@ DB_TYPE=$(yml_get "$PROJECT_NAME" db)
 FRONTEND_BUILD=$(yml_get "$PROJECT_NAME" frontend_build)
 COLLECTSTATIC=$(yml_get "$PROJECT_NAME" collectstatic)
 VENV_PATH=$(yml_get "$PROJECT_NAME" venv_path)
-DEFAULT_BRANCH=$(yml_get "$PROJECT_NAME" branch)
-
-# Guard: NO staging (este skill es para producción)
-[ "$ENV" != "staging" ] || { echo "❌ ERROR: $PROJECT_NAME es staging. Usar /deploy-staging en su lugar."; exit 1; }
 
 # Defaults
 [ -z "$VENV_PATH" ] && VENV_PATH="backend/venv/bin/python"
 [ -z "$FRONTEND_BUILD" ] && FRONTEND_BUILD="npm ci && npm run build"
-BRANCH="${ARGUMENTS:-$DEFAULT_BRANCH}"
-[ -n "$BRANCH" ] || { echo "❌ ERROR: no se proporcionó branch ni hay default en projects.yml"; exit 1; }
+GIT_CURRENT_BRANCH=$(cd "$PROJECT_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+BRANCH="${ARGUMENTS:-$GIT_CURRENT_BRANCH}"
+[ -n "$BRANCH" ] || { echo "❌ ERROR: no se pudo determinar la rama actual y no se especificó argumento"; exit 1; }
 
 cat <<EOF
 ✅ Discovery OK:
@@ -196,6 +214,6 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 
 ## Notas
 
-- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`.
-- Para staging, usar `/deploy-staging` (skill paralelo con guard inverso).
-- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Versiones `.codex/` y `.windsurf/` son copias del mismo cuerpo (frontmatter adaptado por sistema).
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`. Funciona para staging y producción.
+- Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
+- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.

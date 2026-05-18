@@ -1,8 +1,11 @@
 ---
+description: Checklist for new features — ensures fake data follows business rules and test coverage is complete across backend, frontend unit, and E2E layers.
 auto_execution_mode: 2
-description: Checklist for new features, ensures fake data respects business rules and test coverage follows the correct execution order (new tests → regression only).
 ---
-### 1. Fake Data creation / Validation (Backend)
+
+# New Feature Checklist
+
+## 1. Fake Data Creation / Validation (Backend)
 
 Before creating test data, verify that fake data complies with:
 
@@ -15,17 +18,17 @@ Before creating test data, verify that fake data complies with:
 
 ---
 
-### 2. Test Coverage
+## 2. Test Coverage
 
-#### Create tests for the new functionality:
+### Create tests for the new functionality:
 
-| Layer    | Test Types
-|----------|----------------------------------------
-| Backend  | Unit, Integration, Contract, Edge Cases
-| Frontend | Unit
-| Frontend | E2E (user flows)
+| Layer    | Test Types                              |
+|----------|-----------------------------------------|
+| Backend  | Unit, Integration, Contract, Edge Cases |
+| Frontend | Unit                                    |
+| Frontend | E2E (user flows)                        |
 
-## Quality Standards Reference
+### Quality Standards Reference
 
 Before writing any test, you **must consult**:
 
@@ -33,23 +36,19 @@ Before writing any test, you **must consult**:
 docs/TESTING_QUALITY_STANDARDS.md
 ```
 
-This document defines the **mandatory quality criteria** for every test. Key sections to review:
-
-| When writing... | Consult section... |
-|-----------------|-------------------|
-| Any test | **Mandatory Rules** (naming, atomicity, assertions) |
-| Tests with time/random | **Deterministic Tests** (freezegun, random.seed) |
-| Tests with mocks | **Mock Configuration Rules**, **Verify Observable Effects** |
-| Tests with fixtures | **Fixture Best Practices**, **Use Factories for Complex Payloads** |
-| Integration tests | **Avoid Over-Mocking in Integration Tests** |
+| When writing...              | Consult section...                                          |
+|------------------------------|-------------------------------------------------------------|
+| Any test                     | **Mandatory Rules** (naming, atomicity, assertions)         |
+| Tests with time/random       | **Deterministic Tests** (freezegun, random.seed)            |
+| Tests with mocks             | **Mock Configuration Rules**, **Verify Observable Effects** |
+| Tests with fixtures          | **Fixture Best Practices**, **Use Factories for Complex Payloads** |
+| Integration tests            | **Avoid Over-Mocking in Integration Tests**                 |
 
 > ⚠️ Every test you write must comply with these standards. Do not invent patterns.
 
 ---
 
-## Backend tests
-
-## Test Implementation Requirements
+### Backend Tests
 
 For each file you test, cover:
 
@@ -57,7 +56,7 @@ For each file you test, cover:
 - ✅ **Edge cases** — boundary conditions, empty inputs, limits
 - ✅ **Error handling** — exceptions, invalid inputs, failure scenarios
 
-### Per-Test Checklist (from Testing Quality Standards)
+#### Per-Test Checklist
 
 ```
 □ Test name describes ONE specific behavior
@@ -69,9 +68,9 @@ For each file you test, cover:
 □ Follows AAA pattern (Arrange/Act/Assert)
 ```
 
-## Frontend unit tests
+---
 
-## Test Implementation Requirements
+### Frontend Unit Tests
 
 For each file you test, cover:
 
@@ -80,7 +79,7 @@ For each file you test, cover:
 - ✅ **Error handling** — rejected promises, thrown exceptions, invalid states
 - ✅ **All branches** — if/else, ternaries, switch cases, early returns
 
-### Per-Test Checklist (from Testing Quality Standards)
+#### Per-Test Checklist
 
 ```
 □ Test name describes ONE specific behavior
@@ -95,7 +94,7 @@ For each file you test, cover:
 □ Global mocks restored after each test
 ```
 
-### Selector Quick Reference
+#### Selector Quick Reference
 
 ```javascript
 // ✅ CORRECT — stable selectors
@@ -109,27 +108,7 @@ wrapper.find('#submit-button').trigger('click');
 wrapper.find('div.form-actions > button').trigger('click');
 ```
 
-### Component Testing Quick Reference
-
-```javascript
-// ✅ CORRECT — test observable behavior
-it('displays error message when validation fails', async () => {
-  const wrapper = mount(LoginForm);
-  
-  await wrapper.find('[data-testid="submit-btn"]').trigger('click');
-  
-  expect(wrapper.find('[data-testid="error-message"]').text()).toBe('Email is required');
-});
-
-// ❌ WRONG — testing implementation details
-it('sets hasError to true', () => {
-  const wrapper = mount(LoginForm);
-  wrapper.vm.validate();
-  expect(wrapper.vm.hasError).toBe(true);  // Internal state!
-});
-```
-
-### Mock Quick Reference
+#### Mock Quick Reference
 
 ```javascript
 // ✅ CORRECT — explicit mock configuration
@@ -146,7 +125,7 @@ jest.spyOn(api, 'fetchUser').mockResolvedValue({});
 // ... no assertion on what changed in UI
 ```
 
-### Determinism Quick Reference
+#### Determinism Quick Reference
 
 ```javascript
 // ✅ CORRECT — controlled time
@@ -167,9 +146,7 @@ mockRandom.mockRestore();
 
 ---
 
-## Fronend e2e (user flows) tests
-
-## Test Implementation Requirements
+### Frontend E2E Tests (User Flows)
 
 For each flow you test, cover:
 
@@ -178,7 +155,7 @@ For each flow you test, cover:
 - ✅ **Edge cases** — empty data, boundary conditions, timeouts
 - ✅ **Contract validation** — data integrity between frontend and backend
 
-### Test File Naming & Directory Convention
+#### Test File Naming & Directory Convention
 
 ```
 e2e/<module>/<action>-<context>.spec.ts
@@ -195,7 +172,7 @@ Examples:
 - Suffix branch/multi-path tests with `-branches`
 - Suffix consolidated flow tests with `-flow`
 
-### Per-Test Checklist (from Testing Quality Standards)
+#### Per-Test Checklist
 
 ```
 □ Test name describes ONE specific user flow
@@ -210,7 +187,7 @@ Examples:
 □ Assertions verify user-observable outcomes
 ```
 
-### @flow: Tag Convention
+#### @flow: Tag Convention
 
 ```javascript
 // The @flow: tag must appear in the describe or test title
@@ -226,7 +203,7 @@ describe('@flow: auth-register-branches — Registration branch scenarios', () =
 });
 ```
 
-### Selector Quick Reference
+#### Selector Quick Reference
 
 ```javascript
 // ✅ PREFERRED (in order)
@@ -239,7 +216,7 @@ await page.locator('#submit-button').click();
 await page.locator('div.actions > button').first().click();
 ```
 
-### Wait Quick Reference
+#### Wait Quick Reference
 
 ```javascript
 // ✅ CORRECT — condition-based waits
@@ -253,17 +230,19 @@ await page.waitForTimeout(3000);
 
 ---
 
-### 3. Update docs/USER_FLOW_MAP.md if new user flows are created.
+## 3. Update User Flow Map
 
-#### Execution order:
+Update `docs/USER_FLOW_MAP.md` if new user flows are created.
+
+---
+
+## Execution Order
 
 1. **First**: Run only the new tests → Must pass ✅
 2. **Then**: Run only regression tests
-3. **Never**: Run the full test suite for backend or frontend
+3. **Never**: Run the full test suite (backend or frontend)
 
-# Frontend e2e test - Maximum per execution:
-  - 20 tests per batch
-  - 3 commands per execution cycle
+### Limits
 
-# Backend - activate virtual environment (REQUIRED)
-source venv/bin/activate
+- Frontend E2E: max **20 tests per batch**, **3 commands per cycle**
+- Backend: activate venv first — `source venv/bin/activate`
