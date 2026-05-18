@@ -75,3 +75,21 @@ Optimize the implemented code after all changes are tested and verified.
 After every implementation, ALWAYS do 2 things:
 a. Update other possibly affected codes in `backend/` and `frontend/`
 b. Update the documentation in `docs/` and `tasks/`
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 implement — feature listo, tests pasando` / `🟡 listo con N warnings` / `🔴 incompleto / tests rotos`.
+2. **Tabla**:
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Archivos modificados | ✅ | N (`<paths>`) |
+| Tests añadidos | ✅ / ⚠️ | N (`<paths>`) |
+| Tests pasan | ✅ / ❌ | comando exacto + resultado |
+| Docs actualizados | ✅ / ⏭️ | `docs/<file>` |
+| Regresión módulo | ✅ / ⚠️ | comando + resultado |
+
+3. **Next steps** — solo si quedan tests rotos, docs por actualizar, o
+áreas relacionadas a revisar.

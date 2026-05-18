@@ -281,3 +281,21 @@ Si hubo abort, imprimir el motivo y los archivos en `/tmp` que se generaron ante
 - `/vuln-audit` — auditar y aplicar en backend + frontend.
 - `/vuln-audit frontend` — solo npm.
 - `/vuln-audit backend` — solo pip.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**:
+   - 🟢 `vuln-audit — 0 vulns críticas, N bumps aplicados, 3 commits`
+   - 🟡 `vuln-audit — N vulns medium/low, M bumps aplicados`
+   - 🔴 `vuln-audit — K vulns críticas sin patch disponible`
+
+2. **Tabla** (Top vulns + bumps):
+
+| Paquete | Severidad | Estado | Versión → |
+|---|---|---|---|
+| `<pkg>` | 🔴 critical / 🟠 high / 🟡 medium | ✅ bumped / ⚠️ no-patch | `X.Y.Z` → `X.Y.Z+1` |
+
+3. **Next steps** — commits creados (sha), vulns sin patch disponible
+(workaround o downgrade), comando para re-correr checks.

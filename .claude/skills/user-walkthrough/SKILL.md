@@ -43,3 +43,21 @@ Señales visibles de éxito: un mensaje de confirmación, un cambio en pantalla,
 - **Sin** preámbulos tipo "Aquí tienes la guía:". Empieza directo con el encabezado `### 1. ¿Qué es y para qué sirve?`.
 - Mantén cada bloque breve: el usuario debería poder leer toda la guía en menos de 2 minutos.
 - Si la funcionalidad aún no existe o no se puede identificar en el sistema, dilo con claridad y pide más contexto en lugar de inventar pasos.
+
+## Output final
+
+> **Excepción**: esta skill produce **contenido user-facing** para alguien no técnico. NO aplicar el formato técnico de [[_output-protocol]] (tablas con emojis ❌⚠️, comandos exactos) en la salida principal — eso violaría el contrato de "sin jerga técnica".
+>
+> Cuando termines de redactar la guía, agregar al final (como meta-reporte al operador, no parte del walkthrough):
+>
+> ```
+> ---
+> _Para el operador (no parte de la guía):_
+>
+> 🟢 user-walkthrough — guía generada (N bloques, lenguaje no técnico)
+> | Aspecto | Estado |
+> |---|---|
+> | Funcionalidad identificada | ✅ / ⚠️ (pidió clarificación) |
+> | Sin jerga técnica | ✅ |
+> | <2 min de lectura | ✅ / ⚠️ |
+> ```

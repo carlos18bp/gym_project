@@ -31,3 +31,24 @@ Output rules:
 4. Then execute all commands.
 5. If there is nothing to commit, clearly say so and do not run commit or push.
 6. If `git push` requires a specific remote or branch, detect it and use the correct command.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]] al cerrar:
+
+1. **Veredicto** (una línea):
+   - 🟢 `git-commit OK — <prefix>: pushed to <remote>/<branch>`
+   - 🟡 `git-commit OK — commit creado, push pendiente (sin remote)`
+   - ⏭️ `git-commit — nada que commitear`
+   - 🔴 `git-commit — falló <add|commit|push>, revisar arriba`
+
+2. **Tabla**:
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Files staged | ✅ | `<archivos exactos>` |
+| Commit message | ℹ️ | `<FEAT/FIX/DOCS: ...>` |
+| Commit | ✅ / ❌ | `<sha corto>` |
+| Push | ✅ / ⏭️ / ❌ | `<remote>/<branch>` o N/A |
+
+3. **Next steps** — solo si push falló o quedan changes sin stage.

@@ -71,3 +71,19 @@ Update `docs/USER_FLOW_MAP.md` if new user flows are created.
 ### Limits
 - Frontend E2E: max 20 tests per batch, 3 commands per cycle
 - Backend: activate venv first (`source venv/bin/activate`)
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 new-feature-checklist — feature cumple los 4 ejes` / `🟡 cumple con N gaps menores` / `🔴 gaps críticos`.
+2. **Tabla**:
+
+| Eje | Estado | Detalle |
+|---|---|---|
+| Fake data backend | ✅ / ⚠️ / ❌ | comply / gap |
+| Tests backend | ✅ / ⚠️ / ❌ | N tests + coverage |
+| Tests frontend unit | ✅ / ⚠️ / ❌ | N tests + coverage |
+| Tests E2E | ✅ / ⚠️ / ❌ | N specs |
+
+3. **Next steps** — comandos exactos para cubrir cada gap, en orden de prioridad.

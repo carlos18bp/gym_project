@@ -13,7 +13,7 @@ Ejecuta la auditoría completa del servidor, repo y proyectos usando el orquesta
 
 Orquesta en secuencia los validadores del repo y consolida el resultado en un reporte markdown con veredicto ejecutivo. **Read-only por defecto** — solo modifica estado con `--with-backup-test` (crea/dropea DBs `_restoretest`) o `--send-email` (envía ping real con cooldown).
 
-### 12 fases ejecutadas
+### 11 fases ejecutadas
 
 1. `ops-verify.sh` — integridad del toolkit
 2. `verify-state.sh` — drift SHA256 repo ↔ servidor
@@ -21,12 +21,15 @@ Orquesta en secuencia los validadores del repo y consolida el resultado en un re
 4. `validate-project-envs.sh` — `.env` por proyecto vs templates + secretos
 5. `verify-memorymax-sync.sh` — `MemoryMax` `projects.yml` ↔ systemd
 6. `verify-timers-inventory.sh` — timers/crons declarados ↔ activos
-7. `post-deploy-check.sh` — health endpoints
-8. `dependency-check.sh` — cadena nginx→socket→gunicorn→Django→MySQL→Redis
-9. `quick-status.sh` — snapshot de recursos
-10. `email-heartbeat.sh` — pipeline de notificaciones (dry-run si no se pasa `--send-email`)
-11. `email-live-test.sh` — TEST vivo del pipeline (solo con `--send-email`)
-12. `test-backup-restore.sh` — solo con `--with-backup-test` (lento, ~5-10 min)
+7. `dependency-check.sh` — cadena nginx→socket→gunicorn→Django→MySQL→Redis
+8. `quick-status.sh` — snapshot de recursos
+9. `email-heartbeat.sh` — pipeline de notificaciones (dry-run si no se pasa `--send-email`)
+10. `email-live-test.sh` — TEST vivo del pipeline (solo con `--send-email`)
+11. `test-backup-restore.sh` — solo con `--with-backup-test` (lento, ~5-10 min)
+
+> `post-deploy-check.sh` **NO** corre como parte del audit. La skill
+> `/deploy-and-check` es 100% manual; si tras la auditoría se hace un deploy,
+> el operador la invoca explícitamente.
 
 ## Ejecución
 
@@ -62,3 +65,28 @@ Después de ejecutar, revisar el reporte generado y comunicar al usuario:
 4. Próximos pasos si el veredicto no es 🟢
 
 Si hay 🔴 o 🟡, abrir el log crudo (`/tmp/full-audit-<ts>.log`) para el detalle y proponer remediaciones priorizadas.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto** (una línea): `🟢 / 🟡 / 🔴 full-audit <alias> — <N> fases, <exit>`.
+
+2. **Tabla** (una fase por fila, en orden):
+
+| Fase | Estado | Detalle |
+|---|---|---|
+| ops-verify | ✅ / ⚠️ / ❌ / ⏭️ | <1 línea con métrica clave> |
+| verify-state | ... | ... |
+| reconcile-projects-yml | ... | ... |
+| validate-project-envs | ... | ... |
+| verify-memorymax-sync | ... | ... |
+| verify-timers-inventory | ... | ... |
+| dependency-check | ... | ... |
+| quick-status | ... | ... |
+| email-heartbeat | ... | ... |
+| email-live-test | ... | ... |
+| test-backup-restore | ... | ... |
+
+3. **Next steps** — solo si hay ⚠️/❌; comando exacto para remediar cada
+fase fallida. Incluir path al log crudo para detalle.

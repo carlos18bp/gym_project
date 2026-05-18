@@ -97,9 +97,24 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 - Verify dead code claims: a file is only "unused" if it has zero imports AND is not referenced in URL configs, management commands, or template tags.
 - When recommending `.gitignore` updates, show the exact lines to add.
 
-## Output Contract
-Return a structured report with:
-1. **Summary** — total files audited, total findings, total reclaimable size.
-2. **Action items** — grouped by priority (HIGH → LOW), each with file path, reason, and recommended command.
-3. **`.gitignore` patch** — exact additions needed.
-4. **No action needed** — brief confirmation that the rest of the repo is clean.
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto** (una línea, deriva de las prioridades en la tabla):
+   - 🟢 `repo-cleanup OK — N findings, X MB reclaimable` (todo LOW / cero findings críticos)
+   - 🟡 `repo-cleanup — N findings (M HIGH, K MEDIUM)` (mixto, sin secretos)
+   - 🔴 `repo-cleanup — N findings críticos (secretos o tracked artifacts)` (HIGH con secretos)
+
+2. **Tabla** (action items priorizados; agregar fila "Total" al final con
+   files audited + reclaimable size para reemplazar el "Summary" tradicional):
+
+| Archivo | Prioridad | Categoría | Acción |
+|---|---|---|---|
+| `<path>` | ❌ HIGH / ⚠️ MEDIUM / ℹ️ LOW | <tipo> | `<comando exacto>` |
+| **Total** | ℹ️ | N audited / M findings | X MB reclaimable |
+
+3. **Next steps** — comandos exactos a copiar:
+   - `git rm <files>` (un comando consolidado por categoría)
+   - Patch literal de `.gitignore` (líneas a agregar tal cual)
+   - **Esperar aprobación del operador** antes de ejecutar (read-only hasta confirmación).

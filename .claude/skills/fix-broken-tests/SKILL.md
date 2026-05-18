@@ -68,7 +68,7 @@ Correr el archivo de tests completo (no la suite) donde vivían los tests rotos,
 ### Paso 6 — Reportar
 Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos exactos ejecutados.
 
-## Formato de Output
+## Formato de Output (per-test, durante el arreglo)
 
 ```
 ### Test: <nombre_del_test>
@@ -83,3 +83,26 @@ Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos 
 - Comando: <comando exacto>
 - Resultado: ✅ Sin regresiones / ⚠️ <detalle si hay problema>
 ```
+
+El bloque per-test arriba se repite una vez por cada test arreglado (detalle
+profundo). Al cerrar la sesión, consolidar TODOS los tests en una sola tabla
+siguiendo el **Output final** abajo (resumen escaneable).
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Tras detallar cada test (formato
+arriba), cerrar con:
+
+1. **Veredicto** (una línea):
+   - 🟢 `fix-broken-tests — N tests arreglados, sin regresiones`
+   - 🟡 `fix-broken-tests — N arreglados, M aún rotos, K regresiones`
+   - 🔴 `fix-broken-tests — no se pudo arreglar` (causa raíz fuera del scope)
+
+2. **Tabla resumen** (consolidada de los bloques por test):
+
+| Test | Estado | Causa raíz | Regresión |
+|---|---|---|---|
+| `<nombre>` | ✅ / ⚠️ / ❌ | <1 línea> | ✅ / ⚠️ |
+
+3. **Next steps** — solo si quedan tests aún rotos o regresiones; comando
+exacto para correr y archivo a inspeccionar.

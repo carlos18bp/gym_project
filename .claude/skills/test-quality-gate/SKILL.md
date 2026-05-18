@@ -79,3 +79,21 @@ python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semanti
 - Done conditions for each phase
 - Per-phase test-run commands (only changed tests)
 - Severity breakdown from initial gate run
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 test-quality-gate — score X → Y` / `🟡 score parcial, N tests refactored` / `🔴 falla en gate, requiere revisión`.
+2. **Tabla** (por phase):
+
+| Phase | Estado | Detalle |
+|---|---|---|
+| Phase 0 — baseline | ✅ | score X |
+| Phase 1 — critical | ✅ / ⚠️ | N tests refactored |
+| Phase 2 — high | ✅ / ⚠️ | ... |
+| Phase 3 — medium | ✅ / ⚠️ | ... |
+| Phase 4 — low | ✅ / ⏭️ | ... |
+| Phase 5 — verify | ✅ / ❌ | score Y |
+
+3. **Next steps** — solo si quedan phases pendientes; comando exacto + done condition.

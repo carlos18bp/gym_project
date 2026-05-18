@@ -103,3 +103,19 @@ If the user reports the recommended fix did not work:
 2. Return to **Phase 2** with additional context.
 3. Recommend **reverting** the failed fix before trying a different approach.
 4. After **2 failed recommendations**, pause and ask the user for runtime logs, exact code state, and any additional context.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 debug — root cause identificada` / `🟡 hipótesis con N% confianza` / `🔴 inconcluso, requiere más evidencia`.
+2. **Tabla**:
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Observations | ✅ / ⚠️ | <N piezas de evidencia> |
+| Root cause | ✅ / ⚠️ / ❌ | <1 línea> |
+| Recommended fix | ✅ / ⚠️ | <path:line + cambio> |
+| Verification steps | ✅ | <comando exacto> |
+
+3. **Next steps** — comando para validar el fix; recordar que esta skill **no modifica código**.
