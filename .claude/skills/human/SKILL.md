@@ -59,16 +59,6 @@ No todas las respuestas necesitan las 3 secciones — escalar segun el contenido
 
 Espanol. Terminos tecnicos en ingles cuando son los nombres canonicos (`commit`, `rebase`, `lifecycle`, `staging`, `chmod`). Definicion inline solo si el termino no es obvio.
 
-## Relacion con `_output-protocol`
-
-`human` es el contrato general de respuesta escaneable que el operador puede
-invocar via `/human` para reformatear cualquier respuesta. Para skills
-operacionales del fleet (init-fleet, full-audit, server-diagnostic, syncs,
-etc.) hay un protocolo MAS estricto en [[_output-protocol]]: veredicto en una
-linea + tabla de dimensiones con emojis canonicos + next steps con comando
-exacto. Toda skill operacional cierra siguiendo `_output-protocol`; `human`
-queda para respuestas one-off (preguntas, explicaciones, comparaciones).
-
 ## Input
 
 $ARGUMENTS

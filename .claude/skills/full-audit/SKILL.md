@@ -13,7 +13,7 @@ Ejecuta la auditoría completa del servidor, repo y proyectos usando el orquesta
 
 Orquesta en secuencia los validadores del repo y consolida el resultado en un reporte markdown con veredicto ejecutivo. **Read-only por defecto** — solo modifica estado con `--with-backup-test` (crea/dropea DBs `_restoretest`) o `--send-email` (envía ping real con cooldown).
 
-### 11 fases ejecutadas
+### 12 fases ejecutadas
 
 1. `ops-verify.sh` — integridad del toolkit
 2. `verify-state.sh` — drift SHA256 repo ↔ servidor
@@ -21,15 +21,12 @@ Orquesta en secuencia los validadores del repo y consolida el resultado en un re
 4. `validate-project-envs.sh` — `.env` por proyecto vs templates + secretos
 5. `verify-memorymax-sync.sh` — `MemoryMax` `projects.yml` ↔ systemd
 6. `verify-timers-inventory.sh` — timers/crons declarados ↔ activos
-7. `dependency-check.sh` — cadena nginx→socket→gunicorn→Django→MySQL→Redis
-8. `quick-status.sh` — snapshot de recursos
-9. `email-heartbeat.sh` — pipeline de notificaciones (dry-run si no se pasa `--send-email`)
-10. `email-live-test.sh` — TEST vivo del pipeline (solo con `--send-email`)
-11. `test-backup-restore.sh` — solo con `--with-backup-test` (lento, ~5-10 min)
-
-> `post-deploy-check.sh` **NO** corre como parte del audit. La skill
-> `/deploy-and-check` es 100% manual; si tras la auditoría se hace un deploy,
-> el operador la invoca explícitamente.
+7. `post-deploy-check.sh` — health endpoints
+8. `dependency-check.sh` — cadena nginx→socket→gunicorn→Django→MySQL→Redis
+9. `quick-status.sh` — snapshot de recursos
+10. `email-heartbeat.sh` — pipeline de notificaciones (dry-run si no se pasa `--send-email`)
+11. `email-live-test.sh` — TEST vivo del pipeline (solo con `--send-email`)
+12. `test-backup-restore.sh` — solo con `--with-backup-test` (lento, ~5-10 min)
 
 ## Ejecución
 
@@ -46,9 +43,12 @@ Flags útiles:
 
 ## Veredicto (exit code)
 
-- `0` → 🟢 TODO EN ORDEN (todas las fases OK)
-- `1` → 🟡 OPERATIVO con warnings (al menos una fase con warnings)
-- `2` → 🔴 CRÍTICO (al menos una fase con errores)
+Exit codes del script subyacente — el output final de la skill los mapea
+al veredicto canónico de [[_output-protocol]]:
+
+- `0` → 🟢 full-audit OK (todas las fases OK)
+- `1` → 🟡 full-audit OK con N warning(s) (al menos una fase con warnings)
+- `2` → 🔴 full-audit — N error(es), revisar arriba (al menos una con errores)
 
 ## Entregables
 
@@ -56,37 +56,47 @@ El script deja automáticamente:
 - **Log crudo:** `/tmp/full-audit-<timestamp>.log`
 - **Reporte markdown:** `docs/audits/YYYY-MM-DD-<alias>-full-audit.md` (se sobreescribe en cada corrida; el anterior se mueve a `.bak.md`)
 
-## Interpretación del resultado
-
-Después de ejecutar, revisar el reporte generado y comunicar al usuario:
-1. Veredicto global (🟢/🟡/🔴)
-2. Fases con estado distinto a OK, con exit code y resumen de la última línea relevante
-3. Línea base de recursos (hostname, uptime, memoria, swap, disco, servicios fallidos)
-4. Próximos pasos si el veredicto no es 🟢
-
-Si hay 🔴 o 🟡, abrir el log crudo (`/tmp/full-audit-<ts>.log`) para el detalle y proponer remediaciones priorizadas.
+---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/full-audit` — como la tabla supera 15 filas, **siempre** llevar el bloque
+`### Resumen ejecutivo` + `### Top 3 acciones prioritarias` entre el
+veredicto y la tabla.
 
-1. **Veredicto** (una línea): `🟢 / 🟡 / 🔴 full-audit <alias> — <N> fases, <exit>`.
+```markdown
+🟢 full-audit OK — <alias>
+✨ Todo en orden — no hay acciones pendientes.
 
-2. **Tabla** (una fase por fila, en orden):
+### Resumen ejecutivo
+- Conteo: ✅ N · ⚠️ M · ❌ K · ⏭️ J  (total: T fases)
+- Reporte: docs/audits/<YYYY-MM-DD>-<alias>-full-audit.md
+- Log:     /tmp/full-audit-<timestamp>.log
 
-| Fase | Estado | Detalle |
+| Dimensión | Estado | Detalle |
 |---|---|---|
-| ops-verify | ✅ / ⚠️ / ❌ / ⏭️ | <1 línea con métrica clave> |
-| verify-state | ... | ... |
-| reconcile-projects-yml | ... | ... |
-| validate-project-envs | ... | ... |
-| verify-memorymax-sync | ... | ... |
-| verify-timers-inventory | ... | ... |
-| dependency-check | ... | ... |
-| quick-status | ... | ... |
-| email-heartbeat | ... | ... |
-| email-live-test | ... | ... |
-| test-backup-restore | ... | ... |
+| 1 — ops-verify | ✅ | toolkit íntegro |
+| 2 — verify-state | ✅ | sin drift SHA256 repo↔servidor |
+| 3 — reconcile-projects-yml | ✅ | projects.yml ↔ systemd/MySQL coherente |
+| 4 — validate-project-envs | ✅ | .env vs templates OK |
+| 5 — verify-memorymax-sync | ✅ | MemoryMax sync projects.yml↔systemd |
+| 6 — verify-timers-inventory | ✅ | timers declarados ↔ activos |
+| 7 — post-deploy-check | ✅ | health endpoints todos 200 |
+| 8 — dependency-check | ✅ | cadena nginx→socket→gunicorn→DB→Redis |
+| 9 — quick-status | ✅ | recursos OK (mem/disco/servicios) |
+| 10 — email-heartbeat | ✅ | pipeline dry-run OK |
+| 11 — email-live-test | ⏭️ | requiere --send-email |
+| 12 — test-backup-restore | ⏭️ | requiere --with-backup-test |
+```
 
-3. **Next steps** — solo si hay ⚠️/❌; comando exacto para remediar cada
-fase fallida. Incluir path al log crudo para detalle.
+Si hay ⚠️/❌ en alguna fase:
+- Omitir la línea ✨.
+- `### Top 3 acciones prioritarias` arriba lista los 3 items más críticos
+  con su comando exacto (típicamente `bash scripts/maintenance/sync-X.sh
+  --apply` o `sudo systemctl restart <svc>`).
+- `## Next steps` al final con todos los items por fase con problema.
+
+**No duplicar el output del script bash:** `full-audit.sh` ya emite su propio
+`print_summary`. La skill imprime el reporte estandarizado **después**,
+referenciando el reporte markdown que el script deja en `docs/audits/`.

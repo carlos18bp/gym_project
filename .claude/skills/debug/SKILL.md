@@ -104,18 +104,28 @@ If the user reports the recommended fix did not work:
 3. Recommend **reverting** the failed fix before trying a different approach.
 4. After **2 failed recommendations**, pause and ask the user for runtime logs, exact code state, and any additional context.
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/debug`:
 
-1. **Veredicto**: `🟢 debug — root cause identificada` / `🟡 hipótesis con N% confianza` / `🔴 inconcluso, requiere más evidencia`.
-2. **Tabla**:
+```markdown
+🟢 debug OK — diagnóstico completo
+✨ Todo en orden — no hay acciones pendientes.
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Observations | ✅ / ⚠️ | <N piezas de evidencia> |
-| Root cause | ✅ / ⚠️ / ❌ | <1 línea> |
-| Recommended fix | ✅ / ⚠️ | <path:line + cambio> |
-| Verification steps | ✅ | <comando exacto> |
+| Phase 1 — Error capture & context | ✅ | error reproducido, contexto leído |
+| Phase 2 — Root cause analysis | ✅ | hipótesis con evidencia (archivo:línea) |
+| Phase 3 — Recommended fix | ✅ | before/after + riesgo + prevención |
+| Phase 4 — Verification plan | ✅ | comandos repro + validate + regresión |
+```
 
-3. **Next steps** — comando para validar el fix; recordar que esta skill **no modifica código**.
+Si el diagnóstico no alcanzó confianza alta (Phase 2 sin evidencia suficiente,
+hipótesis múltiples sin ranking, etc.), reemplazar el ✅ por ⚠️ y omitir la
+línea ✨; agregar `## Next steps` con el contexto adicional que necesita el
+operador (logs, repro exacto, estado del código).
+
+Cuando el operador autoriza aplicar el fix → invocar `/implement`. Esta skill
+**no** aplica cambios.

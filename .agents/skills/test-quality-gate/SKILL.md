@@ -29,3 +29,31 @@ Provide:
 - issue grouping by severity or pattern
 - the first recommended phase of work
 - exact targeted commands for the files you changed
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/test-quality-gate`:
+
+```markdown
+🟢 test-quality-gate OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Gate inicial leído | ✅ | severity breakdown errores/warnings/info |
+| Phase 0 — Unblock | ✅ | ESLint/jest-dom rules corregidas |
+| Phase 1 — Backend determinism | ✅ | timezone.now y nondet fuentes arregladas |
+| Phase 2 — E2E locators | ✅ | role/testid en specs P1/P2 |
+| Phase 3 — High-value units | ✅ | fragilidad/coupling resueltos |
+| Phase 4 — Warning sweep | ✅ | warnings eliminados |
+| Phase 5 — Info/style | ✅ | info-level findings resueltos |
+| Gate final | ✅ | score subió X → Y, errores=0 |
+```
+
+Si una fase quedó incompleta (Phase 5 opcional, batch consumió límite,
+warnings/info no cerrados todos), reemplazar el ✅ por ⚠️ o ⏭️, omitir la
+línea ✨ y agregar `## Next steps` con los archivos restantes y el comando
+del gate para reverificar.
