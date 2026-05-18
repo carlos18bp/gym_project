@@ -48,15 +48,29 @@ Register every missing flow in BOTH:
 4. Summary of flows added
 5. Open questions / unknowns
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/e2e-user-flows-check`:
 
-1. **Veredicto**: `🟢 e2e-user-flows-check — N flows, 100% cobertura` / `🟡 N flows, M sin cobertura` / `🔴 N flows críticos sin cobertura`.
-2. **Tabla** (un flow por fila):
+```markdown
+🟢 e2e-user-flows-check OK
+✨ Todo en orden — no hay acciones pendientes.
 
-| Flow ID | Estado | Prioridad | Test asociado |
-|---|---|---|---|
-| `<id>` | ✅ / ⚠️ / ❌ | 🔴 / 🟠 / 🟡 | `<path>` o `(missing)` |
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Phase 0 — Scope | ✅ | roles, módulos y boundaries identificados |
+| Phase 1 — Source inventory | ✅ | docs + routes + tests + endpoints leídos |
+| Phase 2 — Candidate flows | ✅ | N flows extraídos con traceability |
+| Phase 3 — Normalize | ✅ | duplicados merged, P1–P4 asignado |
+| Phase 4 — Coverage mapping | ✅ | candidatos vs flow-definitions.json |
+| Phase 5 — Gaps & risks | ✅ | missing/partial/synthetic identificados |
+| Phase 6 — Register missing | ✅ | USER_FLOW_MAP.md + flow-definitions.json |
+```
 
-3. **Next steps** — comandos exactos para crear los specs faltantes priorizados por 🔴 alta.
+Si hay flows sin registrar (Phase 6), open questions abiertas (Phase 7.5), o
+P1 sin cobertura, reemplazar el ✅ correspondiente por ⚠️ o ❌ y agregar
+`## Next steps` con los flow-ids pendientes y el `npx playwright codegen` que
+toca correr a continuación.

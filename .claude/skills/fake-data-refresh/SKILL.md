@@ -50,7 +50,7 @@ IN_FLEET=false
 # - En cualquier otro caso (production explícita, sin field environment, etc.) → Signal A.
 # Esto cubre el caso de proyectos production sin field `environment:` (ej. kore_project),
 # donde el helper devuelve default=production por convención.
-OPS_ROOT=/home/ryzepeck/webapps/vps-ops-toolkit
+OPS_ROOT=/home/ryzepeck/webapps/ops/vps
 if [ -f "${OPS_ROOT}/projects.yml" ]; then
   MODE=check
   # shellcheck source=/dev/null
@@ -279,23 +279,38 @@ Si la invocación incluye `--dry-run`:
 - **Idempotente:** correr la skill dos veces es seguro (delete + create da el mismo estado final).
 - **Reportable:** siempre imprime counts y warnings; el operador sabe qué pasó.
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/fake-data-refresh`:
 
-1. **Veredicto**:
-   - 🟢 `fake-data-refresh <proj> — N registros recreados`
-   - 🟡 `fake-data-refresh <proj> — recreados con warnings`
-   - 🚫 `fake-data-refresh <proj> — REFUSED (señal de producción)`
-
-2. **Tabla**:
+```markdown
+🟢 fake-data-refresh OK — <proyecto>
+✨ Todo en orden — no hay acciones pendientes.
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Gate producción | ✅ / 🚫 | <projects.yml: env=staging, .env: DEBUG=True> |
-| delete_fake_data detectado | ✅ / ⚠️ | `<management command>` |
-| create_fake_data detectado | ✅ / ⚠️ | `<management command>` |
-| Delete ejecutado | ✅ / ⏭️ | N registros / saltado |
-| Create ejecutado | ✅ / ❌ | N registros / falló |
+| Gate inverso de producción | ✅ | staging (fleet) o dev local, no es prod |
+| Detección manage.py + venv | ✅ | <CMD_DIR>/manage.py + <venv>/bin/python |
+| Comandos detectados | ✅ | create=<HAS_CREATE>, delete=<HAS_DELETE or n/a> |
+| Delete ejecutado | ✅ | <HAS_DELETE> --confirm OK |
+| Create ejecutado | ✅ | <HAS_CREATE> records=<RECORDS> OK |
+| Counts post-refresh | ✅ | top 10 modelos poblados, sin 0 inesperados |
+```
 
-3. **Next steps** — solo si hubo warning o refuse; comando exacto para diagnosticar.
+Casos de veredicto distinto a 🟢:
+
+- 🚫 **REFUSED** — gate disparó (Signal A: projects.yml prod, Signal B:
+  `.env` prod). Tabla muestra `🚫` en el gate con la razón. No hay
+  `## Next steps` ejecutables — solo `(operador) revisar projects.yml o
+  .env` si cree que es falso positivo.
+- ⚠️ — delete corrió sin `--confirm`, o algún modelo principal quedó en 0
+  tras create, o `.env` sin `DEBUG`/`DJANGO_ENV` declarados. Agregar
+  `## Next steps` con el patch sugerido al management command del proyecto.
+- ❌ — `FATAL: no manage.py` / `no .venv` / `no create_fake_data` / create
+  falló con las 3 signatures. Agregar `## Next steps` con el setup pendiente.
+
+En modo `--dry-run`, todas las filas que serían ejecutadas van con ⏭️ y la
+sección Next steps lista los comandos que correría en una invocación real.

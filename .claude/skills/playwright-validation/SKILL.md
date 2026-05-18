@@ -38,7 +38,7 @@ Si la solicitud encaja en cualquiera de estos, ejecutar el flujo de pre-flight c
 
 ```bash
 # Cargar helpers del fleet (idéntico al patrón que usan server-alerts.sh, backup-mysql-and-media.sh)
-OPS_ROOT=/home/ryzepeck/webapps/vps-ops-toolkit
+OPS_ROOT=/home/ryzepeck/webapps/ops/vps
 MODE=check
 source "${OPS_ROOT}/scripts/lib/bootstrap-common.sh"
 source "${OPS_ROOT}/scripts/lib/project-definitions.sh"
@@ -388,25 +388,3 @@ Flujo:
 - **Cleanup automático** de screenshots/traces/downloads en `/tmp/playwright-mcp-${PROJ}/`.
 - **Verificación de integridad** post-run en production (diff de counts).
 - **Sub-agentes oficiales** (Planner/Generator/Healer) bootstrapeados on-demand cuando el operador pide tests persistentes.
-
-## Output final
-
-Reportar siguiendo [[_output-protocol]]:
-
-1. **Veredicto**:
-   - 🟢 `playwright-validation <proj>@<env> — N validations OK`
-   - 🟡 `playwright-validation <proj>@<env> — N OK, M warnings`
-   - 🚫 `playwright-validation <proj>@prod — REFUSED (mutation intent detectada)`
-
-2. **Tabla**:
-
-| Dimensión | Estado | Detalle |
-|---|---|---|
-| Entorno detectado | ℹ️ | staging / production |
-| Gate read-only (prod) | ✅ / 🚫 | comply / refused |
-| Sesión auth reusada | ✅ / ⏭️ | sí / no |
-| Validations | ✅ / ⚠️ / ❌ | N pasaron / M fallaron |
-| Cleanup artefactos | ✅ | `/tmp/playwright-mcp-<proj>/` clean |
-| Integrity diff (prod) | ✅ / ⚠️ | counts iguales / drift |
-
-3. **Next steps** — solo si hay fail/refuse; ruta exacta a traces/screenshots.

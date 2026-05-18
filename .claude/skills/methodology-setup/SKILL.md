@@ -79,18 +79,3 @@ Verify every claim matches the codebase:
 - URL pattern counts match
 
 Fix any discrepancies found.
-
-## Output final
-
-Reportar siguiendo [[_output-protocol]]:
-
-1. **Veredicto**: `🟢 methodology-setup — 7 memory files coherentes` / `🟡 N discrepancias resueltas` / `🔴 inconsistencias bloqueantes`.
-2. **Tabla** (un memory file por fila):
-
-| Archivo | Estado | Detalle |
-|---|---|---|
-| `docs/methodology/architecture.md` | ✅ / ⚠️ | <coherente / actualizado> |
-| `docs/methodology/product_requirement_docs.md` | ✅ / ⚠️ | ... |
-| ... | | |
-
-3. **Next steps** — solo si quedan inconsistencias.

@@ -11,7 +11,7 @@ Run these steps on the production server at `/home/ryzepeck/webapps/azurita` to 
 // turbo
 1. Quick status snapshot before deploy:
 ```bash
-bash /home/ryzepeck/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
+bash /home/ryzepeck/webapps/ops/vps/scripts/diagnostics/quick-status.sh
 ```
 
 ## Deploy Steps
@@ -55,7 +55,7 @@ sudo systemctl restart azurita && sudo systemctl restart azurita-huey
 
 ## Notes
 
-- VPS operations scripts live in `/home/ryzepeck/webapps/vps-ops-toolkit/scripts/`.
+- VPS operations scripts live in `/home/ryzepeck/webapps/ops/vps/scripts/`.
 - azurita uses SQLite (lightweight project).
 - `manage.py` is at the repo root; `venv/` is at the repo root too.
 - WorkingDirectory for gunicorn is `/home/ryzepeck/webapps/azurita`.

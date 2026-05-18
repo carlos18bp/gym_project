@@ -68,7 +68,7 @@ Correr el archivo de tests completo (no la suite) donde vivían los tests rotos,
 ### Paso 6 — Reportar
 Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos exactos ejecutados.
 
-## Formato de Output (per-test, durante el arreglo)
+## Formato de Output
 
 ```
 ### Test: <nombre_del_test>
@@ -84,25 +84,32 @@ Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos 
 - Resultado: ✅ Sin regresiones / ⚠️ <detalle si hay problema>
 ```
 
-El bloque per-test arriba se repite una vez por cada test arreglado (detalle
-profundo). Al cerrar la sesión, consolidar TODOS los tests en una sola tabla
-siguiendo el **Output final** abajo (resumen escaneable).
+---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Tras detallar cada test (formato
-arriba), cerrar con:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/fix-broken-tests`:
 
-1. **Veredicto** (una línea):
-   - 🟢 `fix-broken-tests — N tests arreglados, sin regresiones`
-   - 🟡 `fix-broken-tests — N arreglados, M aún rotos, K regresiones`
-   - 🔴 `fix-broken-tests — no se pudo arreglar` (causa raíz fuera del scope)
+```markdown
+🟢 fix-broken-tests OK
+✨ Todo en orden — no hay acciones pendientes.
 
-2. **Tabla resumen** (consolidada de los bloques por test):
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Tests rotos capturados | ✅ | N tests con error + traceback |
+| Causa raíz identificada | ✅ | API drift / mock / selector / determinism |
+| Quality standards | ✅ | docs/TESTING_QUALITY_STANDARDS.md respetados |
+| Tests arreglados | ✅ | N/N pasan tras el fix |
+| Regresión del módulo | ✅ | archivo completo del test pasa, sin vecinos rotos |
+| Suite no completa | ✅ | solo tests indicados + regresión, no full suite |
+```
 
-| Test | Estado | Causa raíz | Regresión |
-|---|---|---|---|
-| `<nombre>` | ✅ / ⚠️ / ❌ | <1 línea> | ✅ / ⚠️ |
+Si algún test sigue fallando tras el fix, o la regresión del módulo rompe
+vecinos, reemplazar el ✅ correspondiente por ❌, omitir la línea ✨ y agregar
+`## Next steps` con el test pendiente, la hipótesis para el siguiente
+intento, y el comando exacto a correr.
 
-3. **Next steps** — solo si quedan tests aún rotos o regresiones; comando
-exacto para correr y archivo a inspeccionar.
+Si para arreglar el test fue necesario modificar código de producción,
+reportarlo explícitamente en una fila adicional con ⚠️ — esa modificación
+necesita aprobación del operador antes de commitear.

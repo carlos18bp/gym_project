@@ -12,5 +12,4 @@ Use the same workflow as `$debug`:
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Misma estructura que `/debug`
-(veredicto + tabla observations/root cause/fix/verification + next steps).
+Reportar siguiendo [[_output-protocol]]. Misma plantilla que `/debug`.

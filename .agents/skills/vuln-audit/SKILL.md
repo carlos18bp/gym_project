@@ -281,3 +281,33 @@ Si hubo abort, imprimir el motivo y los archivos en `/tmp` que se generaron ante
 - `/vuln-audit` — auditar y aplicar en backend + frontend.
 - `/vuln-audit frontend` — solo npm.
 - `/vuln-audit backend` — solo pip.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/vuln-audit`:
+
+```markdown
+🟢 vuln-audit OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Working tree limpio | ✅ | git status sin cambios al iniciar |
+| Branch resuelta | ✅ | git-branch-protocol aplicado |
+| Frontend — npm audit | ✅ | C/H/M/L: <antes> → <después>, build OK |
+| Frontend — patch+minor | ✅ | N bumps aplicados, sin --force, sin ERESOLVE |
+| Backend — pip-audit | ✅ | N vulns: <antes> → <después>, pins respetados |
+| Backend — patch+minor | ✅ | N bumps aplicados, check + collect-only OK |
+| audit-report.md | ✅ | reporte generado, 1–3 commits locales |
+```
+
+Si una superficie no aplicó (sin `package.json` o sin `requirements.txt`,
+sin updates aplicables, o `$ARGUMENTS` excluyó la superficie), usar ⏭️.
+
+Si ERESOLVE forzó rollback, build falló, pip-audit deja vulns remaining por
+majors saltados, o algún verify (`manage.py check`, `pytest --collect-only`,
+slice mínimo) falló → reemplazar ✅ por ⚠️/❌, omitir la línea ✨ y agregar
+`## Next steps` con los paquetes pendientes (mayors a evaluar, ERESOLVE
+manual, etc.) y el `git push -u origin <rama>` + PR.

@@ -38,6 +38,20 @@ Un solo emoji + frase corta. Umbrales **derivados de la tabla** (sección 2):
 | `🚫 <skill> — REFUSED (<razón>)` | Safety gate intencional rechazó la operación (prod detectada, intent peligroso) — **no es error**, es decisión segura |
 | `⏭️ <skill> — N/A o saltado` | No aplica al contexto (skip-flag pasado, ya en estado correcto) |
 
+**Línea cálida tras 🟢 (obligatoria en caso verde):**
+
+Cuando el veredicto es `🟢 <skill> OK` (todas las celdas ✅, sin warnings ni
+errores), agregar inmediatamente debajo, una línea adicional:
+
+```
+✨ Todo en orden — no hay acciones pendientes.
+```
+
+Esta línea **reemplaza** la sección `## Next steps` en el caso verde (ver
+regla en sección 3). Es la confirmación explícita de "todo pasó" — el
+operador la lee y sabe que no hay tareas residuales sin tener que escanear la
+tabla entera.
+
 ### 2. Tabla de dimensiones
 
 ```markdown
@@ -65,12 +79,35 @@ tener N filas mientras cada celda cumpla la regla.
 Si la skill corrió en múltiples hosts/proyectos, agregar columna `host` o
 `proyecto` ANTES de `Dimensión`.
 
-**Si la tabla supera 15 filas**, agregar sección `### Top 3 acciones prioritarias`
-ENTRE el veredicto y la tabla — listando los 3 items más críticos con su
-comando exacto. El operador lee el Top 3 primero; la tabla queda como detalle
-profundizable.
+**Si la tabla supera 15 filas**, agregar un bloque `### Resumen ejecutivo`
+seguido de `### Top 3 acciones prioritarias` ENTRE el veredicto y la tabla:
 
-### 3. Pendientes / next steps (omitir si no aplica)
+```markdown
+### Resumen ejecutivo
+- Conteo: ✅ N · ⚠️ M · ❌ K · ⏭️ J  (total: T filas)
+
+### Top 3 acciones prioritarias
+1. `<comando exacto>` — qué hace
+2. ...
+3. ...
+```
+
+El conteo permite captar de un vistazo qué tan lejos está el reporte del
+verde. El Top 3 lista los items críticos con su comando exacto. El operador
+lee Resumen → Top 3 → tabla detallada, en ese orden de prioridad.
+
+### 3. Pendientes / next steps (condicional)
+
+Regla **condicional** según el estado de la tabla:
+
+- Si la tabla tiene **≥1 celda en ⚠️ / ❌ / ⏸️**, la sección `## Next steps`
+  es **obligatoria**, con al menos un bullet por cada celda no-✅ (comando
+  exacto, instrucción manual, o referencia al actor que la ejecuta).
+- Si **todas las celdas son ✅** (caso 🟢), **omitir** `## Next steps` y usar
+  la línea cálida `✨ Todo en orden — no hay acciones pendientes.` (definida
+  en la sección 1).
+- Si todas las celdas son ⏭️ / ℹ️ / 🚫 (skip o refused sin error), agregar
+  `## Next steps` solo si hay seguimiento accionable; si no, omitirla.
 
 ```markdown
 ## Next steps
@@ -97,7 +134,24 @@ correrlo + qué actor lo hace.
 - **No repetir info** que ya está en la tabla. Next steps son acciones, no
   resúmenes.
 
-## Ejemplo (skill /init-fleet, modo apply, dev)
+## Ejemplos
+
+### Ejemplo A — caso verde (todo OK)
+
+```markdown
+🟢 git-status-report OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Proyecto | Estado | Detalle |
+|---|---|---|
+| mimittos_project | ✅ | clean, en sync con origin/master |
+| kore_project | ✅ | clean, en sync con origin/master |
+| projectapp | ✅ | clean, en sync con origin/master |
+```
+
+(Sin `## Next steps` — la línea cálida la reemplaza.)
+
+### Ejemplo B — caso con warnings (operacional, requiere acción)
 
 ```markdown
 🟡 init-fleet OK con 2 warning(s)
@@ -115,6 +169,27 @@ correrlo + qué actor lo hace.
 - `sudo tailscale up --ssh` — completar OAuth en browser de la dev
 - `bash scripts/bootstrap/init-fleet.sh --apply` — re-correr tras auth
 - (admin console) Disable key expiry para esta dev en https://login.tailscale.com/admin/machines
+```
+
+### Ejemplo C — caso con tabla grande (>15 filas)
+
+```markdown
+🟡 full-audit OK con 4 warning(s)
+
+### Resumen ejecutivo
+- Conteo: ✅ 14 · ⚠️ 4 · ❌ 0 · ⏭️ 2  (total: 20 filas)
+
+### Top 3 acciones prioritarias
+1. `bash scripts/maintenance/sync-credentials.sh deploy --apply --env=staging` — sync .env mimittos
+2. `sudo systemctl restart fernando-aragon-huey` — huey en failed state
+3. (manual, operador) renovar SSL kore.cloud — vence en 12 días
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| ... | | (tabla completa de 20 filas) |
+
+## Next steps
+- (lista completa de las 4 acciones por warning)
 ```
 
 ## Cómo referenciar este protocolo desde una skill

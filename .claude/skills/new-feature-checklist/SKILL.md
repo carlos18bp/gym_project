@@ -72,18 +72,30 @@ Update `docs/USER_FLOW_MAP.md` if new user flows are created.
 - Frontend E2E: max 20 tests per batch, 3 commands per cycle
 - Backend: activate venv first (`source venv/bin/activate`)
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/new-feature-checklist`:
 
-1. **Veredicto**: `🟢 new-feature-checklist — feature cumple los 4 ejes` / `🟡 cumple con N gaps menores` / `🔴 gaps críticos`.
-2. **Tabla**:
+```markdown
+🟢 new-feature-checklist OK — <feature-name>
+✨ Todo en orden — no hay acciones pendientes.
 
-| Eje | Estado | Detalle |
+| Dimensión | Estado | Detalle |
 |---|---|---|
-| Fake data backend | ✅ / ⚠️ / ❌ | comply / gap |
-| Tests backend | ✅ / ⚠️ / ❌ | N tests + coverage |
-| Tests frontend unit | ✅ / ⚠️ / ❌ | N tests + coverage |
-| Tests E2E | ✅ / ⚠️ / ❌ | N specs |
+| 1.a Fake data — business rules | ✅ | factories respetan validators + edge cases |
+| 1.b Fake data — refresh post-impl | ✅ | fake-data-refresh corrido si tocó modelos/FK |
+| 2.a Backend tests | ✅ | unit + integration + contract + edge |
+| 2.b Frontend unit tests | ✅ | happy + edge + branches, selectores estables |
+| 2.c Frontend E2E tests | ✅ | @flow:<id>, real-user interactions, sin shortcuts |
+| 3 USER_FLOW_MAP.md | ✅ | nuevos flows registrados (si aplica) |
+| Suite no completa | ✅ | solo nuevos + regresión, batch ≤20, ciclos ≤3 |
+```
 
-3. **Next steps** — comandos exactos para cubrir cada gap, en orden de prioridad.
+Si la skill detecta que el feature tocó modelos/FK pero no se corrió
+`fake-data-refresh`, o algún layer de tests no fue cubierto, reemplazar el ✅
+correspondiente por ⚠️/❌, omitir la línea ✨ y agregar `## Next steps` con la
+skill o el comando exacto a invocar (ej. `/fake-data-refresh <proyecto>`,
+`pytest <path>`, etc.).

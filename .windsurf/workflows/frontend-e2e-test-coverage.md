@@ -1,48 +1,47 @@
 ---
-name: frontend-e2e-test-coverage
-description: "E2E test coverage strategy — analyze Playwright flow coverage and implement tests for untested user flows, focusing on the contract between frontend and backend."
+description: E2E test coverage strategy — identify all untested user flows and implement Playwright tests, focusing on the contract between Frontend and Backend
+auto_execution_mode: 2
 ---
 
 # E2E Test Coverage Strategy
 
-## Goal
-
 Review E2E coverage and identify all untested user flows. Reach **100% flow coverage** focusing on the **contract between Frontend and Backend**.
 
-## Core Principle: Real User Interactions
+## Core principle: real user interactions
 
 Every test must exercise the full UI flow — from the user's perspective — without shortcuts.
 
 | Real user interaction | NOT a real user interaction |
-|----------------------|---------------------------|
+|---|---|
 | Clicking buttons, links, menus | Calling backend API directly |
 | Filling and submitting forms | Setting store values programmatically |
 | Navigating between pages via UI | Using `page.goto()` to skip steps |
 | Uploading files through inputs | Injecting data into DB directly |
 
-## Quality Standards Reference
+## Reference docs
 
-Before writing any E2E test, consult:
-- `docs/USER_FLOW_MAP.md`
-- `docs/TESTING_QUALITY_STANDARDS.md`
+- `docs/USER_FLOW_MAP.md` — flow inventory
+- `docs/TESTING_QUALITY_STANDARDS.md` — quality rules
+- `e2e/flow-definitions.json` — canonical flow registry
+- `e2e-results/flow-coverage.json` — current coverage state
 
-## Execution Rules
+## Execution rules
 
-1. **Run only modified test files**: `npx playwright test e2e/path/to/spec.spec.ts`
-2. Use `E2E_REUSE_SERVER=1` when dev server is running
-3. **Maximum per execution**: 20 tests per batch, 3 commands per cycle
+- Run only modified test files: `npx playwright test e2e/path/to/spec.spec.ts`
+- Use `E2E_REUSE_SERVER=1` when dev server is running
+- **Max 20 tests per batch, 3 commands per cycle**
 
-## Coverage Prioritization
+## Coverage prioritization
 
 | Priority | Criteria |
-|----------|----------|
+|---|---|
 | 1 | Core user journeys (auth, checkout) |
 | 2 | Critical CRUD flows (documents, dashboard) |
 | 3 | Integration points (API contracts) |
 | 4 | Error states |
 | 5 | Edge cases |
 
-## Per-Test Checklist
+## Per-test checklist
 
 - Test has `@flow:<flow-id>` tag matching `flow-definitions.json`
 - Selectors: `getByRole` > `getByTestId` > `locator`
@@ -56,18 +55,16 @@ Before writing any E2E test, consult:
 1. Read `e2e/flow-definitions.json` and `e2e-results/flow-coverage.json`
 2. Identify untested/partial flows by priority
 3. Look up target flow in `docs/USER_FLOW_MAP.md`
-4. Consult quality standards
-5. Implement tests
-6. Run only new/modified tests
-7. Validate quality: `python scripts/test_quality_gate.py --files e2e/path/to/spec.spec.ts`
-8. Regenerate coverage: `node frontend/scripts/generate-coverage.js`
+4. Implement tests respecting quality standards
+5. Run only new/modified tests
+6. Validate quality: `python scripts/test_quality_gate.py --files e2e/path/to/spec.spec.ts`
+7. Regenerate coverage: `node frontend/scripts/generate-coverage.js`
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/frontend-e2e-test-coverage`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/frontend-e2e-test-coverage`:
 
 ```markdown
 🟢 frontend-e2e-test-coverage OK
@@ -83,6 +80,4 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 | Coverage delta | ✅ | flow-coverage.json regenerado, gaps cerrados |
 ```
 
-Si quedan flows sin cobertura tras el batch o algún test falla con el quality
-gate, reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar
-`## Next steps` con el flow-id pendiente y el spec a crear.
+Si quedan flows sin cobertura o algún test falla con el quality gate, reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar `## Next steps` con el flow-id pendiente y el spec a crear.

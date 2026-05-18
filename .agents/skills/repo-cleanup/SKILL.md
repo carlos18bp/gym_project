@@ -103,3 +103,32 @@ Return a structured report with:
 2. **Action items** — grouped by priority (HIGH → LOW), each with file path, reason, and recommended command.
 3. **`.gitignore` patch** — exact additions needed.
 4. **No action needed** — brief confirmation that the rest of the repo is clean.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/repo-cleanup`:
+
+```markdown
+🟢 repo-cleanup OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Phase 1 — Inventory | ✅ | git ls-files + .gitignore cross-check |
+| Phase 2 — Dead code | ✅ | composables/stores/utils/modules sin referencias |
+| Phase 3 — Artifacts | ✅ | coverage, builds, dumps, backups detectados |
+| Phase 4 — Report | ✅ | findings clasificados HIGH/MEDIUM/LOW |
+| .gitignore patch | ✅ | patrones exactos propuestos (si aplica) |
+```
+
+Si hay findings HIGH/MEDIUM (artifacts trackeados, secretos, código muerto),
+reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar
+`## Next steps` con los `git rm <path>` exactos y los patrones .gitignore a
+añadir. **Read-only hasta aprobación del operador**: la skill nunca borra.
+
+Si el reporte tiene >15 findings, agregar `### Resumen ejecutivo` con el
+conteo (✅ N · ⚠️ M · ❌ K · ⏭️ J) y `### Top 3 acciones prioritarias` antes
+de la tabla.

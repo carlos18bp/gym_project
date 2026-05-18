@@ -97,24 +97,38 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 - Verify dead code claims: a file is only "unused" if it has zero imports AND is not referenced in URL configs, management commands, or template tags.
 - When recommending `.gitignore` updates, show the exact lines to add.
 
+## Output Contract
+Return a structured report with:
+1. **Summary** — total files audited, total findings, total reclaimable size.
+2. **Action items** — grouped by priority (HIGH → LOW), each with file path, reason, and recommended command.
+3. **`.gitignore` patch** — exact additions needed.
+4. **No action needed** — brief confirmation that the rest of the repo is clean.
+
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/repo-cleanup`:
 
-1. **Veredicto** (una línea, deriva de las prioridades en la tabla):
-   - 🟢 `repo-cleanup OK — N findings, X MB reclaimable` (todo LOW / cero findings críticos)
-   - 🟡 `repo-cleanup — N findings (M HIGH, K MEDIUM)` (mixto, sin secretos)
-   - 🔴 `repo-cleanup — N findings críticos (secretos o tracked artifacts)` (HIGH con secretos)
+```markdown
+🟢 repo-cleanup OK
+✨ Todo en orden — no hay acciones pendientes.
 
-2. **Tabla** (action items priorizados; agregar fila "Total" al final con
-   files audited + reclaimable size para reemplazar el "Summary" tradicional):
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Phase 1 — Inventory | ✅ | git ls-files + .gitignore cross-check |
+| Phase 2 — Dead code | ✅ | composables/stores/utils/modules sin referencias |
+| Phase 3 — Artifacts | ✅ | coverage, builds, dumps, backups detectados |
+| Phase 4 — Report | ✅ | findings clasificados HIGH/MEDIUM/LOW |
+| .gitignore patch | ✅ | patrones exactos propuestos (si aplica) |
+```
 
-| Archivo | Prioridad | Categoría | Acción |
-|---|---|---|---|
-| `<path>` | ❌ HIGH / ⚠️ MEDIUM / ℹ️ LOW | <tipo> | `<comando exacto>` |
-| **Total** | ℹ️ | N audited / M findings | X MB reclaimable |
+Si hay findings HIGH/MEDIUM (artifacts trackeados, secretos, código muerto),
+reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar
+`## Next steps` con los `git rm <path>` exactos y los patrones .gitignore a
+añadir. **Read-only hasta aprobación del operador**: la skill nunca borra.
 
-3. **Next steps** — comandos exactos a copiar:
-   - `git rm <files>` (un comando consolidado por categoría)
-   - Patch literal de `.gitignore` (líneas a agregar tal cual)
-   - **Esperar aprobación del operador** antes de ejecutar (read-only hasta confirmación).
+Si el reporte tiene >15 findings, agregar `### Resumen ejecutivo` con el
+conteo (✅ N · ⚠️ M · ❌ K · ⏭️ J) y `### Top 3 acciones prioritarias` antes
+de la tabla.

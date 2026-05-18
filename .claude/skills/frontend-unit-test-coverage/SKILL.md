@@ -62,15 +62,26 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 **Result:** Pass / Fail
 ```
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/frontend-unit-test-coverage`:
 
-1. **Veredicto**: `🟢 frontend-unit-coverage — X% → Y%` / `🟡 con tests skipped` / `🔴 tests fallando`.
-2. **Tabla**:
+```markdown
+🟢 frontend-unit-test-coverage OK
+✨ Todo en orden — no hay acciones pendientes.
 
-| Archivo | Tests añadidos | Cobertura | Estado |
-|---|---|---|---|
-| `<path>` | +N | X%→Y% | ✅ / ⚠️ / ❌ |
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Coverage report leído | ✅ | jest/vitest --coverage parseado |
+| Layers priorizadas | ✅ | Stores → Composables/Utils → UI components |
+| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
+| Quality standards | ✅ | data-testid, no wrapper.vm.*, timers restored |
+| Coverage delta | ✅ | X% → Y% statements/branches |
+```
 
-3. **Next steps** — comando exacto `npm test -- <path>` + archivos pendientes <100%.
+Si hay regresión en otros archivos o coverage no llegó al objetivo, reemplazar
+el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar `## Next steps`
+con el archivo concreto y el comando para correrlo.

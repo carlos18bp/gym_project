@@ -57,15 +57,26 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 - Command executed: pytest <path> -v
 ```
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/backend-test-coverage`:
 
-1. **Veredicto**: `🟢 backend-test-coverage — X% → Y% (+Z pp)` / `🟡 con tests skipped` / `🔴 tests fallando`.
-2. **Tabla**:
+```markdown
+🟢 backend-test-coverage OK
+✨ Todo en orden — no hay acciones pendientes.
 
-| Archivo | Tests antes | Tests añadidos | Cobertura | Estado |
-|---|---|---|---|---|
-| `<path>` | N | +K | X%→Y% | ✅ / ⚠️ / ❌ |
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Coverage report leído | ✅ | pytest --cov ejecutado, JSON parseado |
+| Files priorizados | ✅ | N archivos lowest-coverage × highest-impact |
+| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
+| Quality standards | ✅ | docs/TESTING_QUALITY_STANDARDS.md respetados |
+| Coverage delta | ✅ | X% → Y% en los archivos tocados |
+```
 
-3. **Next steps** — comando exacto para correr los nuevos tests + path de los archivos aún <100%.
+Si quedan archivos sin alcanzar 100% pero el batch consumió su límite (20
+tests / 3 ciclos), reemplazar el ✅ de "Coverage delta" por ⚠️ y agregar
+`## Next steps` con los archivos pendientes y el siguiente lote.

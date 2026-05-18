@@ -282,20 +282,32 @@ Si hubo abort, imprimir el motivo y los archivos en `/tmp` que se generaron ante
 - `/vuln-audit frontend` — solo npm.
 - `/vuln-audit backend` — solo pip.
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/vuln-audit`:
 
-1. **Veredicto**:
-   - 🟢 `vuln-audit — 0 vulns críticas, N bumps aplicados, 3 commits`
-   - 🟡 `vuln-audit — N vulns medium/low, M bumps aplicados`
-   - 🔴 `vuln-audit — K vulns críticas sin patch disponible`
+```markdown
+🟢 vuln-audit OK
+✨ Todo en orden — no hay acciones pendientes.
 
-2. **Tabla** (Top vulns + bumps):
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Working tree limpio | ✅ | git status sin cambios al iniciar |
+| Branch resuelta | ✅ | git-branch-protocol aplicado |
+| Frontend — npm audit | ✅ | C/H/M/L: <antes> → <después>, build OK |
+| Frontend — patch+minor | ✅ | N bumps aplicados, sin --force, sin ERESOLVE |
+| Backend — pip-audit | ✅ | N vulns: <antes> → <después>, pins respetados |
+| Backend — patch+minor | ✅ | N bumps aplicados, check + collect-only OK |
+| audit-report.md | ✅ | reporte generado, 1–3 commits locales |
+```
 
-| Paquete | Severidad | Estado | Versión → |
-|---|---|---|---|
-| `<pkg>` | 🔴 critical / 🟠 high / 🟡 medium | ✅ bumped / ⚠️ no-patch | `X.Y.Z` → `X.Y.Z+1` |
+Si una superficie no aplicó (sin `package.json` o sin `requirements.txt`,
+sin updates aplicables, o `$ARGUMENTS` excluyó la superficie), usar ⏭️.
 
-3. **Next steps** — commits creados (sha), vulns sin patch disponible
-(workaround o downgrade), comando para re-correr checks.
+Si ERESOLVE forzó rollback, build falló, pip-audit deja vulns remaining por
+majors saltados, o algún verify (`manage.py check`, `pytest --collect-only`,
+slice mínimo) falló → reemplazar ✅ por ⚠️/❌, omitir la línea ✨ y agregar
+`## Next steps` con los paquetes pendientes (mayors a evaluar, ERESOLVE
+manual, etc.) y el `git push -u origin <rama>` + PR.

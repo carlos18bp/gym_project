@@ -6,21 +6,6 @@ allowed-tools: Bash
 argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 ---
 
-> **Política — manual-only**
->
-> Esta skill se invoca **únicamente** de forma manual por el operador (typing
-> `/deploy-and-check` en una sesión Claude Code, dentro del directorio del
-> proyecto en el VPS destino). Ninguna skill, hook, cron, ni script del repo
-> la auto-invoca. `disable-model-invocation: true` previene auto-inferencia
-> del modelo.
->
-> Si encuentras una auto-invocación (en bash, en otra skill .md, en hooks),
-> es un bug — reportar. Auditar con:
->
-> ```bash
-> grep -RIn 'post-deploy-check\|deploy-and-check' scripts/bootstrap/ scripts/maintenance/ scripts/audits/
-> ```
-
 ## Entorno requerido
 
 **Esta skill SOLO funciona desde un VPS** — necesita `systemctl`, `nginx`, `journalctl`, y paths `/home/ryzepeck/webapps/...`. Si la invocás desde la dev machine, los restarts de servicio fallarán y los logs no estarán disponibles.
@@ -44,7 +29,7 @@ Si el bloque aborta con ❌, **NO continuar** con las fases siguientes — SSH a
 
 # Deploy & Check — Generic
 
-Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-toolkit/projects.yml`). Funciona para staging y producción.
+Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`). Funciona para staging y producción.
 
 - **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
 - **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
@@ -63,7 +48,7 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-
 ```bash
 PROJECT_DIR=$(pwd)
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-OPS_YML="$HOME/webapps/vps-ops-toolkit/projects.yml"
+OPS_YML="$HOME/webapps/ops/vps/projects.yml"
 [ -f "$OPS_YML" ] || { echo "❌ ERROR: $OPS_YML no encontrado"; exit 1; }
 
 yml_get() {
@@ -115,7 +100,7 @@ EOF
 
 1. Salud del servidor:
 ```bash
-bash $HOME/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
+bash $HOME/webapps/ops/vps/scripts/diagnostics/quick-status.sh
 ```
 
 2. Working tree limpio:
@@ -204,7 +189,7 @@ cd "$PROJECT_DIR" && git log --oneline -1
 
 12. Post-deploy check del repo ops:
 ```bash
-bash $HOME/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+bash $HOME/webapps/ops/vps/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
 ```
 
 ---
@@ -229,34 +214,40 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 
 ## Notas
 
-- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/vps-ops-toolkit/projects.yml`. Funciona para staging y producción.
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
 - Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
 
+---
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/deploy-and-check`:
 
-1. **Veredicto** (una línea):
-   - 🟢 `deploy-and-check <proj>@<branch> — deploy OK, health ✅`
-   - 🟡 `deploy-and-check <proj>@<branch> — deploy OK, N warnings`
-   - 🔴 `deploy-and-check <proj>@<branch> — falló en <fase>, rollback necesario`
+```markdown
+🟢 deploy-and-check OK — <proyecto> @ <rama>
+✨ Todo en orden — no hay acciones pendientes.
 
-2. **Tabla** (una fase por fila):
-
-| Fase | Estado | Detalle |
+| Dimensión | Estado | Detalle |
 |---|---|---|
-| git checkout + pull | ✅ / ❌ | `<branch>` → `<sha>` |
-| backend deps | ✅ / ⏭️ | pip install / cached |
-| frontend build | ✅ / ⏭️ | npm run build / N/A |
-| migrations | ✅ / ⏭️ | N applied / no-op |
-| collectstatic | ✅ / ⏭️ | N files |
-| systemctl restart gunicorn | ✅ / ❌ | active |
-| systemctl restart huey | ✅ / ❌ | active |
-| systemctl restart frontend | ✅ / ⏭️ | si aplica |
-| /api/health/ | ✅ / ❌ | `{"status":"ok"}` |
-| HTTPS root | ✅ / ❌ | 200/301 |
-| post-deploy-check | ✅ / ❌ | PASS=N FAIL=0 WARN=K |
+| Entorno VPS | ✅ | hostname <srv>, no es dev-machine |
+| Phase 0 — Discovery | ✅ | projects.yml leído: <svc>, <dominio>, <env> |
+| Phase 1 — Pre-deploy | ✅ | quick-status OK, working tree clean, rama existe |
+| Phase 2 — Pull & build | ✅ | git pull, pip install, migrate, frontend build |
+| Phase 3 — Restart services | ✅ | gunicorn + huey + (frontend) reiniciados |
+| Phase 4 — Health endpoint | ✅ | curl /api/health/ → 200 OK |
+| Phase 4 — post-deploy-check | ✅ | post-deploy-check.sh PASS para <proyecto> |
+```
 
-3. **Next steps** — solo si hay ❌; comandos exactos para rollback,
-journalctl, o re-deploy. Logs relevantes ya listados en la sección Logs.
+Si la verificación de entorno falla (corriendo en dev-machine), reportar
+🚫 con `## Next steps` indicando el SSH al VPS destino — **no es error**,
+es safety gate.
+
+Si gunicorn/huey no levanta, health 5xx, o post-deploy-check FAIL, reemplazar
+✅ por ❌, omitir la línea ✨ y agregar `## Next steps` con los `journalctl
+-u <svc> -n 50` y los logs específicos (`backend/logs/django.log`,
+`/var/log/nginx/error.log`).
+
+**No duplicar contadores con el output del script bash:** el reporte de la
+skill va DESPUÉS de cualquier `print_summary` que emita post-deploy-check.sh.
