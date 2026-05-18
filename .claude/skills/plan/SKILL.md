@@ -53,3 +53,20 @@ c. Get required solution context from the code files in `backend/` and `frontend
 After every planning task, ALWAYS do 2 things:
 a. Document the plan in `docs/methodology/`: `architecture.md`, `product_requirement_docs.md`, `technical.md`
 b. Update planning context in `tasks/`: `active_context.md`, `tasks_plan.md`
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 plan — decision-complete` / `🟡 con N decisiones pendientes` / `🔴 plan no implementable, requiere clarificación`.
+2. **Tabla**:
+
+| Sección | Estado | Detalle |
+|---|---|---|
+| Contexto | ✅ | <1 línea con el problema/objetivo> |
+| Approach | ✅ / ⚠️ | <enfoque principal> |
+| Archivos críticos | ✅ | N rutas |
+| Decisiones pendientes | ✅ / ⚠️ | 0 / N (listar) |
+| Verificación | ✅ | comando exacto |
+
+3. **Next steps** — solo si hay decisiones pendientes (qué falta para que el plan sea ejecutable).

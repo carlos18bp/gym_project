@@ -147,3 +147,26 @@ Report:
 - **Never** commit during this workflow — this skill only syncs, not commits.
 - If the parent branch cannot be detected, stop and ask the user.
 - If in doubt about a conflict, stop and ask the user.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto** (una línea):
+   - 🟢 `git-sync OK — branch al día con <parent>`
+   - 🟡 `git-sync OK — N conflictos resueltos, working tree clean`
+   - 🔴 `git-sync — conflictos pendientes, requiere intervención`
+
+2. **Tabla**:
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Branch / Parent | ℹ️ | `<current>` ↔ `<parent>` |
+| Pulled from own remote | ✅ / ⏭️ | N commits / N/A |
+| Rebased onto parent | ✅ / ⚠️ | N commits / con conflictos |
+| Conflictos resueltos | ✅ / ⚠️ | N (✅ si 0) |
+| Stash restaurado | ✅ / ⏭️ | sí / no se usó stash |
+| Working tree | ✅ / ❌ | clean / dirty |
+
+3. **Next steps** — solo si quedan conflictos o working tree dirty; comando
+exacto.

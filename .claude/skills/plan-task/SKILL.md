@@ -44,3 +44,10 @@ Devolver un plan compacto pero decision-complete con:
 - `/plan-task agregar paginación server-side al listado principal (20 por página, mantener filtros actuales)`
 - `/plan-task refactor: extraer la lógica de cálculo de totales a un módulo reutilizable, sin cambiar la UI`
 - `/plan-task bug: cuando el usuario edita un diagnóstico y no toca el campo X, el backend lo está sobrescribiendo a null. Investigar y planear el fix.`
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Misma plantilla que `/plan`:
+veredicto decision-complete + tabla por sección (Contexto, Approach,
+Archivos críticos, Decisiones pendientes, Verificación) + next steps si
+quedan decisiones por tomar.

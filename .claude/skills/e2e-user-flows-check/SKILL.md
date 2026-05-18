@@ -47,3 +47,16 @@ Register every missing flow in BOTH:
 3. Proposed updates to flow definitions
 4. Summary of flows added
 5. Open questions / unknowns
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 e2e-user-flows-check — N flows, 100% cobertura` / `🟡 N flows, M sin cobertura` / `🔴 N flows críticos sin cobertura`.
+2. **Tabla** (un flow por fila):
+
+| Flow ID | Estado | Prioridad | Test asociado |
+|---|---|---|---|
+| `<id>` | ✅ / ⚠️ / ❌ | 🔴 / 🟠 / 🟡 | `<path>` o `(missing)` |
+
+3. **Next steps** — comandos exactos para crear los specs faltantes priorizados por 🔴 alta.

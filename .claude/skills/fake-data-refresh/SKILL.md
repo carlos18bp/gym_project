@@ -50,7 +50,7 @@ IN_FLEET=false
 # - En cualquier otro caso (production explícita, sin field environment, etc.) → Signal A.
 # Esto cubre el caso de proyectos production sin field `environment:` (ej. kore_project),
 # donde el helper devuelve default=production por convención.
-OPS_ROOT=/home/ryzepeck/webapps/ops/vps
+OPS_ROOT=/home/ryzepeck/webapps/vps-ops-toolkit
 if [ -f "${OPS_ROOT}/projects.yml" ]; then
   MODE=check
   # shellcheck source=/dev/null
@@ -278,3 +278,24 @@ Si la invocación incluye `--dry-run`:
 - **Adaptativo:** detecta los comandos del proyecto (no asume nombres fijos).
 - **Idempotente:** correr la skill dos veces es seguro (delete + create da el mismo estado final).
 - **Reportable:** siempre imprime counts y warnings; el operador sabe qué pasó.
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**:
+   - 🟢 `fake-data-refresh <proj> — N registros recreados`
+   - 🟡 `fake-data-refresh <proj> — recreados con warnings`
+   - 🚫 `fake-data-refresh <proj> — REFUSED (señal de producción)`
+
+2. **Tabla**:
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Gate producción | ✅ / 🚫 | <projects.yml: env=staging, .env: DEBUG=True> |
+| delete_fake_data detectado | ✅ / ⚠️ | `<management command>` |
+| create_fake_data detectado | ✅ / ⚠️ | `<management command>` |
+| Delete ejecutado | ✅ / ⏭️ | N registros / saltado |
+| Create ejecutado | ✅ / ❌ | N registros / falló |
+
+3. **Next steps** — solo si hubo warning o refuse; comando exacto para diagnosticar.

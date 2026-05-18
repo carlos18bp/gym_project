@@ -56,3 +56,16 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 - Coverage after: <Y%>
 - Command executed: pytest <path> -v
 ```
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 backend-test-coverage — X% → Y% (+Z pp)` / `🟡 con tests skipped` / `🔴 tests fallando`.
+2. **Tabla**:
+
+| Archivo | Tests antes | Tests añadidos | Cobertura | Estado |
+|---|---|---|---|---|
+| `<path>` | N | +K | X%→Y% | ✅ / ⚠️ / ❌ |
+
+3. **Next steps** — comando exacto para correr los nuevos tests + path de los archivos aún <100%.

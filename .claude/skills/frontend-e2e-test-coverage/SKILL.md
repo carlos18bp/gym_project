@@ -61,3 +61,16 @@ Before writing any E2E test, consult:
 6. Run only new/modified tests
 7. Validate quality: `python scripts/test_quality_gate.py --files e2e/path/to/spec.spec.ts`
 8. Regenerate coverage: `node frontend/scripts/generate-coverage.js`
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 frontend-e2e-coverage — N flows OK` / `🟡 N OK, M tests fragile` / `🔴 N flows críticos sin cobertura`.
+2. **Tabla**:
+
+| Flow | Estado | Test | Quality gate |
+|---|---|---|---|
+| `<flow>` | ✅ / ⚠️ / ❌ | `<spec.ts>` | ✅ / ⚠️ |
+
+3. **Next steps** — comando exacto para correr los specs nuevos + regenerar coverage.

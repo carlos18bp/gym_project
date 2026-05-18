@@ -61,3 +61,16 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 **Command executed:** npm test -- <path>
 **Result:** Pass / Fail
 ```
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]:
+
+1. **Veredicto**: `🟢 frontend-unit-coverage — X% → Y%` / `🟡 con tests skipped` / `🔴 tests fallando`.
+2. **Tabla**:
+
+| Archivo | Tests añadidos | Cobertura | Estado |
+|---|---|---|---|
+| `<path>` | +N | X%→Y% | ✅ / ⚠️ / ❌ |
+
+3. **Next steps** — comando exacto `npm test -- <path>` + archivos pendientes <100%.
