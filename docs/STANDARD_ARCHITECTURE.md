@@ -69,7 +69,6 @@ This section reflects the architecture currently implemented in this repository 
 ### 0.3 Testing and quality snapshot
 
 - Backend tests: `backend/gym_app/tests/**` with pytest config in `backend/pytest.ini`
-- Segmented backend execution: `backend/scripts/run-tests-blocks.py`
 - Frontend unit tests: Jest (`frontend/jest.config.cjs`, `frontend/test/**`)
 - Frontend E2E: Playwright (`frontend/playwright.config.mjs`, `frontend/e2e/**`)
 - Test quality gate orchestrator: `scripts/test_quality_gate.py`
@@ -136,8 +135,6 @@ backend/
 │   │   ├── tasks/
 │   │   └── utils/
 │   └── utils/
-├── scripts/
-│   └── run-tests-blocks.py
 ├── pytest.ini
 └── requirements*.txt
 ```
@@ -517,9 +514,6 @@ pytest gym_app/tests/models/test_<entity>.py -v
 
 # Targeted + related regression file
 pytest gym_app/tests/views/test_<endpoint>.py gym_app/tests/serializers/test_<serializer>.py -v
-
-# Optional segmented backend run (broader regression without one huge run)
-python scripts/run-tests-blocks.py --markers edge,contract --groups models,serializers
 ```
 
 ---
@@ -1002,9 +996,6 @@ python manage.py delete_fake_data
 # 8. Tests (targeted)
 pytest gym_app/tests/models/test_<entity>.py -v
 pytest gym_app/tests/views/test_<endpoint>.py gym_app/tests/views/test_<endpoint>_regression.py -v
-
-# 8.1 Optional: segmented backend run for broader regression
-python scripts/run-tests-blocks.py --markers edge,contract,integration,rest --chunk-size 22 --sleep 2
 
 # 9. Development server
 python manage.py runserver        # http://localhost:8000

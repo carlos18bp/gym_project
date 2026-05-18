@@ -190,7 +190,6 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 - Backend: `pytest backend/gym_app/tests/<domain>/test_<feature>.py -v`
 - Frontend unit: `npm run test -- test/stores/<store>.test.js`
 - Frontend E2E: `npm run e2e -- e2e/<flow>.spec.js`
-- Block runner for RAM-constrained environments: `python backend/scripts/run-tests-blocks.py`
 
 ### Quality Gate
 
@@ -236,7 +235,6 @@ gym_project/
 │   │   ├── signature_reminder_task.py # Huey periodic — daily signature reminders
 │   │   ├── urls.py           # 189 URL patterns
 │   │   └── admin.py          # Django admin configuration
-│   ├── scripts/              # run-tests-blocks.py (block-based test runner)
 │   ├── requirements.txt      # production dependencies
 │   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
 │
@@ -256,7 +254,6 @@ gym_project/
 │
 ├── scripts/                  # Repository-level scripts
 │   ├── test_quality_gate.py  # Test quality gate analyzer
-│   ├── run-tests-all-suites.py # Parallel test suite runner
 │   └── quality/              # Quality gate analyzers per suite
 │
 ├── docs/                     # Project documentation

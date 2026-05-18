@@ -146,7 +146,6 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Previous E2E audit (2026-03-18)**: 4-phase audit that deepened P1 gaps, added missing P2 specs, split `router_guards` test, removed all 9 `knownGaps`
 - **Memory Bank Windsurf adaptation**: Adapted methodology rules from Cursor format to Windsurf-compatible paths
 - **Test quality gate**: Custom analyzer integrated with pre-commit and GitHub Actions CI
-- **Block-based test runner**: RAM-safe backend test execution via `scripts/run-tests-blocks.py`
 - **E2E flow coverage**: Playwright E2E tests with flow definitions and coverage reporting
 
 ---
