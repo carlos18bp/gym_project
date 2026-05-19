@@ -155,22 +155,22 @@ def sample_activities(sample_users, sample_processes):
     # Create activities for lawyer
     activities.append(ActivityFeed.objects.create(
         user=sample_users['lawyer'],
-        action_type='create_process',
+        action_type='create',
         description=f"Created process {sample_processes['process1'].ref}",
         created_at=FIXED_NOW - datetime.timedelta(days=30)
     ))
-    
+
     activities.append(ActivityFeed.objects.create(
         user=sample_users['lawyer'],
-        action_type='update_process',
+        action_type='update',
         description=f"Updated process {sample_processes['process1'].ref}",
         created_at=FIXED_NOW - datetime.timedelta(days=25)
     ))
-    
+
     # Create activities for client
     activities.append(ActivityFeed.objects.create(
         user=sample_users['client'],
-        action_type='view_process',
+        action_type='other',
         description=f"Viewed process {sample_processes['process1'].ref}",
         created_at=FIXED_NOW - datetime.timedelta(days=20)
     ))
@@ -602,10 +602,10 @@ class TestReportViews:
         assert sample_users['lawyer'].email in df['Usuario'].values
         assert sample_users['client'].email in df['Usuario'].values
         
-        # Verify action types are present
-        assert 'create_process' in df['Tipo de Acción'].values
-        assert 'update_process' in df['Tipo de Acción'].values
-        assert 'view_process' in df['Tipo de Acción'].values
+        # Verify action types are present (display labels from ACTION_TYPE_CHOICES)
+        assert 'Create' in df['Tipo de Acción'].values
+        assert 'Update' in df['Tipo de Acción'].values
+        assert 'Other' in df['Tipo de Acción'].values
     
     @mock.patch('gym_app.views.reports.user_id', None)
     def test_lawyers_workload_report(self, api_client, sample_users, sample_processes):
@@ -1810,12 +1810,12 @@ class TestReportsEdges:
         """Cover lines 806-811: delete and other action type formatting."""
         ActivityFeed.objects.create(
             user=admin_user,
-            action_type="delete_process",
+            action_type="delete",
             description="Deleted process",
         )
         ActivityFeed.objects.create(
             user=admin_user,
-            action_type="view_process",
+            action_type="other",
             description="Viewed process",
         )
         api_client.force_authenticate(user=admin_user)

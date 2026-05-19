@@ -54,12 +54,14 @@ def generate_excel_report(request):
     # Process dates if provided
     if start_date and end_date:
         try:
-            # Convert string dates to datetime objects
-            start_datetime = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_datetime = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
-
-            # Set end_date to end of day for inclusive filtering
-            end_datetime = datetime.datetime.combine(end_datetime, datetime.time.max)
+            start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
+            start_datetime = timezone.make_aware(
+                datetime.datetime.combine(start_date_obj, datetime.time.min)
+            )
+            end_datetime = timezone.make_aware(
+                datetime.datetime.combine(end_date_obj, datetime.time.max)
+            )
         except ValueError:
             return Response(
                 {'error': 'Invalid date format. Use YYYY-MM-DD'},
@@ -73,8 +75,10 @@ def generate_excel_report(request):
         )
     # If no dates, use earliest possible date and today's end date
     else:
-        start_datetime = datetime.datetime(1900, 1, 1)
-        end_datetime = datetime.datetime.combine(timezone.now().date(), datetime.time.max)
+        start_datetime = timezone.make_aware(datetime.datetime(1900, 1, 1))
+        end_datetime = timezone.make_aware(
+            datetime.datetime.combine(timezone.now().date(), datetime.time.max)
+        )
 
     # Initialize response
     response = HttpResponse(
