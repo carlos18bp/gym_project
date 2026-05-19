@@ -13,7 +13,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -53,6 +53,7 @@ user_urls = [
 process_urls = [
     path('case_types/', case_type.case_list, name='case-list'),
     path('processes/', process.process_list, name='process-list'),
+    path('processes/pending-alerts-count/', process.process_pending_alerts_count, name='process-pending-alerts-count'),
     path('create_process/', process.create_process, name='create-process'),
     path('update_process/<int:pk>/', process.update_process, name='update-process'),
     path('update_case_file/', process.update_case_file, name="update-file"),
@@ -170,6 +171,7 @@ dynamic_document_urls = [
     # Signature management
     path('dynamic-documents/<int:document_id>/signatures/', signature_views.get_document_signatures, name='get-document-signatures'),
     path('dynamic-documents/pending-signatures/', signature_views.get_pending_signatures, name='get-pending-signatures'),
+    path('dynamic-documents/pending-signatures-count/', signature_views.get_pending_signatures_count, name='get-pending-signatures-count'),
     path('dynamic-documents/<int:document_id>/sign/<int:user_id>/', signature_views.sign_document, name='sign-document'),
     path('dynamic-documents/<int:document_id>/reject/<int:user_id>/', signature_views.reject_document, name='reject-document'),
     path('dynamic-documents/<int:document_id>/reopen-signatures/', signature_views.reopen_document_signatures, name='reopen-document-signatures'),
@@ -263,7 +265,6 @@ google_captcha_urls = [
 # Subscription URLs
 subscription_urls = [
     path('subscriptions/wompi-config/', subscription.get_wompi_config, name='subscription-wompi-config'),
-    path('subscriptions/debug-signature/', subscription.debug_signature, name='subscription-debug-signature'),
     path('subscriptions/generate-signature/', subscription.generate_signature, name='subscription-generate-signature'),
     path('subscriptions/create/', subscription.create_subscription, name='subscription-create'),
     path('subscriptions/current/', subscription.get_current_subscription, name='subscription-current'),
@@ -302,6 +303,19 @@ secop_urls = [
     path('secop/export/', secop.secop_export_excel, name='secop-export-excel'),
 ]
 
+# Notification center URLs
+notification_urls = [
+    path('notifications/', notification.notification_list, name='notification-list'),
+    path('notifications/unread-count/', notification.notification_unread_count, name='notification-unread-count'),
+    path('notifications/mark-all-read/', notification.notification_mark_all_read, name='notification-mark-all-read'),
+    path('notifications/<int:pk>/read/', notification.notification_mark_read, name='notification-mark-read'),
+    path('notifications/<int:pk>/unread/', notification.notification_mark_unread, name='notification-mark-unread'),
+    path('notifications/<int:pk>/archive/', notification.notification_archive, name='notification-archive'),
+    path('notifications/<int:pk>/unarchive/', notification.notification_unarchive, name='notification-unarchive'),
+    path('notifications/<int:pk>/snooze/', notification.notification_snooze, name='notification-snooze'),
+    path('notifications/<int:pk>/delete/', notification.notification_delete, name='notification-delete'),
+]
+
 # Services and procedures module URLs
 service_tramite_urls = [
     # Catalog visibility
@@ -315,6 +329,7 @@ service_tramite_urls = [
     path('services/admin/<int:service_id>/update/', service_tramite.admin_update_service, name='services-admin-update'),
     path('services/admin/<int:service_id>/toggle-active/', service_tramite.admin_toggle_service_active, name='services-admin-toggle-active'),
     path('services/admin/<int:service_id>/toggle-featured/', service_tramite.admin_toggle_service_featured, name='services-admin-toggle-featured'),
+    path('services/admin/<int:service_id>/delete/', service_tramite.admin_delete_service, name='services-admin-delete'),
 
     # Request lifecycle
     path('service-requests/save/', service_tramite.save_or_submit_service_request, name='service-request-save'),
@@ -347,5 +362,6 @@ urlpatterns = (
     reports_urls +
     subscription_urls +
     secop_urls +
-    service_tramite_urls
+    service_tramite_urls +
+    notification_urls
 )

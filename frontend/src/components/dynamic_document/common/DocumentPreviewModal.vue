@@ -16,7 +16,7 @@
       <div
         class="px-6 pb-6 overflow-y-auto flex-1 prose max-w-none"
         data-testid="document-preview-content"
-        v-html="documentData.content"
+        v-html="sanitizedContent"
       ></div>
     </div>
     </div>
@@ -24,8 +24,10 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import ModalTransition from "@/components/layouts/animations/ModalTransition.vue";
 import { XMarkIcon } from "@heroicons/vue/24/outline";
+import { sanitizeHtml } from "@/composables/useSafeHtml.js";
 
 // Define props for the component
 const props = defineProps({
@@ -35,6 +37,8 @@ const props = defineProps({
     default: () => ({ title: "", content: "" }),
   },
 });
+
+const sanitizedContent = computed(() => sanitizeHtml(props.documentData?.content));
 
 // Emit event when closing modal
 const emit = defineEmits(["close"]);

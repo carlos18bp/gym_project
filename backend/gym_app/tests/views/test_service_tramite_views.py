@@ -2,6 +2,7 @@
 
 import json
 import re
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -436,19 +437,20 @@ def test_manage_request_rejects_oversized_file_without_creating_response(
     api_client.force_authenticate(user=lawyer_user)
     oversized = SimpleUploadedFile(
         "respuesta.pdf",
-        b"x" * (30 * 1024 * 1024 + 1),
+        b"x",
         content_type="application/pdf",
     )
 
-    response = api_client.post(
-        reverse("service-request-manage", kwargs={"request_id": request_obj.id}),
-        {
-            "status": "IN_STUDY",
-            "message": "Revisando soporte",
-            "response_file": oversized,
-        },
-        format="multipart",
-    )
+    with patch("gym_app.views.service_tramite.MAX_UPLOAD_SIZE", 0):
+        response = api_client.post(
+            reverse("service-request-manage", kwargs={"request_id": request_obj.id}),
+            {
+                "status": "IN_STUDY",
+                "message": "Revisando soporte",
+                "response_file": oversized,
+            },
+            format="multipart",
+        )
 
     assert response.status_code == 400
     request_obj.refresh_from_db()
@@ -1671,3 +1673,80 @@ def test_submit_accepts_valid_select_multiple_options(
     )
 
     assert response.status_code == 200
+
+
+# ── Soft-delete service ────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_admin_delete_service_marks_is_deleted_true(api_client, admin_user, sample_service):
+    api_client.force_authenticate(user=admin_user)
+    url = reverse("services-admin-delete", kwargs={"service_id": sample_service.id})
+
+    response = api_client.delete(url)
+
+    assert response.status_code == 204
+    sample_service.refresh_from_db()
+    assert sample_service.is_deleted is True
+    assert sample_service.is_active is False
+
+
+@pytest.mark.django_db
+def test_admin_delete_service_requires_admin(api_client, client_user, sample_service):
+    api_client.force_authenticate(user=client_user)
+    url = reverse("services-admin-delete", kwargs={"service_id": sample_service.id})
+
+    response = api_client.delete(url)
+
+    assert response.status_code == 403
+    sample_service.refresh_from_db()
+    assert sample_service.is_deleted is False
+
+
+@pytest.mark.django_db
+def test_admin_delete_service_already_deleted_returns_404(api_client, admin_user, sample_service):
+    sample_service.is_deleted = True
+    sample_service.save(update_fields=["is_deleted"])
+    api_client.force_authenticate(user=admin_user)
+    url = reverse("services-admin-delete", kwargs={"service_id": sample_service.id})
+
+    response = api_client.delete(url)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_deleted_service_excluded_from_list_services(api_client, client_user, sample_service):
+    sample_service.is_deleted = True
+    sample_service.save(update_fields=["is_deleted"])
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("services-list"))
+
+    assert response.status_code == 200
+    ids = [s["id"] for s in response.data["services"]]
+    assert sample_service.id not in ids
+
+
+@pytest.mark.django_db
+def test_deleted_service_excluded_from_admin_list(api_client, admin_user, sample_service):
+    sample_service.is_deleted = True
+    sample_service.save(update_fields=["is_deleted"])
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.get(reverse("services-admin-list"))
+
+    assert response.status_code == 200
+    ids = [s["id"] for s in response.data["services"]]
+    assert sample_service.id not in ids
+
+
+@pytest.mark.django_db
+def test_deleted_service_returns_404_on_detail(api_client, client_user, sample_service):
+    sample_service.is_deleted = True
+    sample_service.save(update_fields=["is_deleted"])
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("services-detail", kwargs={"service_id": sample_service.id}))
+
+    assert response.status_code == 404

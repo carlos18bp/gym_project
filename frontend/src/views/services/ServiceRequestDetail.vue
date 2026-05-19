@@ -22,7 +22,13 @@
       </div>
 
       <div v-else class="space-y-4">
-        <div class="bg-white border border-gray-200 rounded-xl p-6">
+        <!-- ``notification-highlight`` (defined in the scoped <style> below)
+             animates only the background and box-shadow, keeping the text
+             fully opaque while the card draws attention on a deep-link. -->
+        <div
+          class="bg-white border rounded-xl p-6 transition-all duration-500"
+          :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 notification-highlight' : 'border-gray-200'"
+        >
           <div class="flex flex-wrap justify-between gap-3">
             <div>
               <p class="text-sm text-gray-500">{{ requestDetail.service?.name }}</p>
@@ -169,7 +175,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { showConfirmationAlert } from "@/shared/confirmation_alert";
 import { showNotification } from "@/shared/notification_message";
@@ -185,6 +191,8 @@ const userStore = useUserStore();
 const loading = ref(false);
 const requestDetail = ref(null);
 const responseFile = ref(null);
+const isHighlighted = ref(false);
+let highlightTimer = null;
 const manageForm = reactive({
   status: "OPEN",
   message: "",
@@ -316,5 +324,47 @@ const goBack = () => {
   }
 };
 
-onMounted(loadDetail);
+onMounted(async () => {
+  await loadDetail();
+  if (route.query.highlight) {
+    isHighlighted.value = true;
+    highlightTimer = setTimeout(() => {
+      isHighlighted.value = false;
+      router.replace({ ...route, query: { ...route.query, highlight: undefined } });
+      highlightTimer = null;
+    }, 5000);
+  }
+});
+
+onUnmounted(() => {
+  if (highlightTimer) {
+    clearTimeout(highlightTimer);
+    highlightTimer = null;
+  }
+});
 </script>
+
+<style scoped>
+/*
+ * Background-only pulse for the deep-link highlight. Keeps the row text
+ * perfectly readable while the card draws attention — replaces Tailwind's
+ * ``animate-pulse`` which faded the entire element (text included).
+ */
+@keyframes notification-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.40);
+    background-color: rgba(59, 130, 246, 0.30);
+  }
+}
+
+.notification-highlight {
+  animation: notification-highlight 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  position: relative;
+  z-index: 10;
+}
+</style>

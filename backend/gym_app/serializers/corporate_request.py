@@ -2,24 +2,20 @@ from rest_framework import serializers
 from gym_app.models import CorporateRequestType, CorporateRequestFiles, CorporateRequest, CorporateRequestResponse, User, Organization, OrganizationMembership
 
 class CorporateRequestTypeSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the CorporateRequestType model.
-    """
+    """Serializer for the CorporateRequestType model."""
     class Meta:
         model = CorporateRequestType
-        fields = '__all__'
+        fields = ['id', 'name']
 
 class CorporateRequestFilesSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the CorporateRequestFiles model.
-    """
+    """Serializer for the CorporateRequestFiles model."""
     file_url = serializers.SerializerMethodField()
     file_name = serializers.SerializerMethodField()
     file_size = serializers.SerializerMethodField()
 
     class Meta:
         model = CorporateRequestFiles
-        fields = '__all__'
+        fields = ['id', 'file', 'created_at', 'file_url', 'file_name', 'file_size']
 
     def get_file_url(self, obj):
         """Get the full URL for the file"""
@@ -55,7 +51,11 @@ class CorporateRequestResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CorporateRequestResponse
-        fields = '__all__'
+        fields = [
+            'id', 'corporate_request', 'response_text', 'user', 'user_email',
+            'user_name', 'user_type', 'is_internal_note', 'created_at',
+            'response_files',
+        ]
         read_only_fields = ['user', 'user_type']  # These fields are set automatically
 
     def get_user_name(self, obj):
@@ -146,7 +146,21 @@ class CorporateRequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CorporateRequest
-        fields = '__all__'
+        fields = [
+            'id', 'request_number', 'title', 'description', 'priority',
+            'priority_display', 'status', 'status_display', 'created_at',
+            'status_updated_at', 'estimated_completion_date',
+            'actual_completion_date',
+            # Foreign keys (write) + nested *_info reads
+            'client', 'organization', 'corporate_client', 'assigned_to',
+            'request_type',
+            'client_info', 'corporate_client_info', 'assigned_to_info',
+            'organization_info', 'request_type_name',
+            # Relations
+            'files', 'responses',
+            # Computed
+            'days_since_created', 'response_count',
+        ]
         read_only_fields = ['client']
 
     def get_days_since_created(self, obj):

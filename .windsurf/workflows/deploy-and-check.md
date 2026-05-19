@@ -196,3 +196,37 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 - Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
 - Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/deploy-and-check`:
+
+```markdown
+🟢 deploy-and-check OK — <proyecto> @ <rama>
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Entorno VPS | ✅ | hostname <srv>, no es dev-machine |
+| Phase 0 — Discovery | ✅ | projects.yml leído: <svc>, <dominio>, <env> |
+| Phase 1 — Pre-deploy | ✅ | quick-status OK, working tree clean, rama existe |
+| Phase 2 — Pull & build | ✅ | git pull, pip install, migrate, frontend build |
+| Phase 3 — Restart services | ✅ | gunicorn + huey + (frontend) reiniciados |
+| Phase 4 — Health endpoint | ✅ | curl /api/health/ → 200 OK |
+| Phase 4 — post-deploy-check | ✅ | post-deploy-check.sh PASS para <proyecto> |
+```
+
+Si la verificación de entorno falla (corriendo en dev-machine), reportar
+🚫 con `## Next steps` indicando el SSH al VPS destino — **no es error**,
+es safety gate.
+
+Si gunicorn/huey no levanta, health 5xx, o post-deploy-check FAIL, reemplazar
+✅ por ❌, omitir la línea ✨ y agregar `## Next steps` con los `journalctl
+-u <svc> -n 50` y los logs específicos (`backend/logs/django.log`,
+`/var/log/nginx/error.log`).
+
+**No duplicar contadores con el output del script bash:** el reporte de la
+skill va DESPUÉS de cualquier `print_summary` que emita post-deploy-check.sh.

@@ -597,7 +597,7 @@ def test_admin_update_replaces_icon_image(api_client, admin_user, sample_service
 
 def test_parse_json_payload_raises_for_non_dict_after_parse():
     """Raise ValidationError when the parsed JSON payload is not a dict."""
-    from django.core.exceptions import ValidationError
+    from rest_framework.exceptions import ValidationError
 
     from gym_app.views.service_tramite import _parse_json_payload
 
@@ -611,7 +611,7 @@ def test_parse_json_payload_raises_for_non_dict_after_parse():
 
 def test_parse_json_payload_raises_on_invalid_json_string(rf):
     """Raise ValidationError when the payload string is not valid JSON."""
-    from django.core.exceptions import ValidationError
+    from rest_framework.exceptions import ValidationError
 
     from gym_app.views.service_tramite import _parse_json_payload
 

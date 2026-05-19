@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { get_request, create_request, update_request } from "@/stores/services/request_http";
+import { get_request, create_request, update_request, delete_request } from "@/stores/services/request_http";
 
 export const useServicesTramitesStore = defineStore("servicesTramites", {
   state: () => ({
@@ -169,6 +169,14 @@ export const useServicesTramitesStore = defineStore("servicesTramites", {
     async toggleServiceFeatured(serviceId) {
       const response = await create_request(`services/admin/${serviceId}/toggle-featured/`, {});
       return response.data;
+    },
+
+    async deleteService(serviceId) {
+      await delete_request(`services/admin/${serviceId}/delete/`);
+      const without = (arr) => arr.filter((s) => s.id !== serviceId);
+      this.adminServices = without(this.adminServices);
+      this.services = without(this.services);
+      this.featuredServices = without(this.featuredServices);
     },
   },
 });

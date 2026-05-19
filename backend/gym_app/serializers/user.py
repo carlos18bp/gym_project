@@ -12,7 +12,20 @@ class UserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User  # The model that is being serialized
-        fields = '__all__'
+        # Explicit field list to avoid leaking new sensitive fields if the
+        # User model grows. Mirrors the previous '__all__' output minus the
+        # password (which was already write-only via extra_kwargs).
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'contact', 'birthday',
+            'identification', 'document_type', 'role', 'photo_profile',
+            'letterhead_image', 'letterhead_word_template', 'created_at',
+            'is_gym_lawyer', 'is_profile_completed',
+            # Auth/admin flags kept for backward-compatibility with the SPA.
+            # Server-side authorization MUST NOT trust these fields from the
+            # client; they are exposed read-only here for UI rendering only.
+            'is_staff', 'is_superuser', 'is_active', 'last_login', 'date_joined',
+            'password',
+        ]
         read_only_fields = ('is_staff', 'is_superuser', 'is_active', 'last_login', 'date_joined')
         extra_kwargs = {'password': {'write_only': True}}  # Additional kwargs, setting 'password' as write-only
 

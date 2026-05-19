@@ -3,11 +3,13 @@ import { createPinia, setActivePinia } from "pinia";
 import { useServicesTramitesStore } from "@/stores/services_tramites";
 
 const mockRouterPush = jest.fn();
+const mockRouterReplace = jest.fn();
+const mockRoute = { params: { id: "42" }, query: {}, name: "service_request_detail" };
 
 jest.mock("vue-router", () => ({
   __esModule: true,
-  useRouter: () => ({ push: mockRouterPush }),
-  useRoute: () => ({ params: { id: "42" } }),
+  useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
+  useRoute: () => mockRoute,
 }));
 
 jest.mock("@/composables/useServiceRequestHelpers", () => ({
@@ -85,6 +87,7 @@ describe("ServiceRequestDetail.vue", () => {
     jest.clearAllMocks();
     mockCurrentUser.role = "client";
     mockCurrentUser.is_staff = false;
+    mockRoute.query = {};
     setActivePinia(createPinia());
     store = useServicesTramitesStore();
   });
@@ -249,5 +252,55 @@ describe("ServiceRequestDetail.vue", () => {
       expect.stringContaining("actualizada"),
       "success"
     );
+  });
+
+  describe("highlight pulse effect", () => {
+    test("applies pulse class when highlight query is set", async () => {
+      mockRoute.query = { highlight: "42" };
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      // The deep-link highlight uses the scoped ``notification-highlight``
+      // keyframe (animates background only) instead of Tailwind's
+      // ``animate-pulse`` which faded the entire element including the text.
+      // ``wrapper.html()`` includes the scoped <style> block (which mentions
+      // the class name literally), so we assert on the highlighted card's
+      // class attribute instead of a string substring.
+      const highlightedCard = wrapper.find(".notification-highlight");
+      expect(highlightedCard.exists()).toBe(true);
+    });
+
+    test("does not apply pulse class when highlight query is absent", async () => {
+      mockRoute.query = {};
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      const highlightedCard = wrapper.find(".notification-highlight");
+      expect(highlightedCard.exists()).toBe(false);
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+    });
+
+    test("clears the pending highlight timeout on unmount", async () => {
+      mockRoute.query = { highlight: "42" };
+      const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+      const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      const highlightCall = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 5000);
+      expect(highlightCall).toBeDefined();
+      const timerId = setTimeoutSpy.mock.results[setTimeoutSpy.mock.calls.indexOf(highlightCall)].value;
+
+      clearTimeoutSpy.mockClear();
+      wrapper.unmount();
+
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(timerId);
+
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    });
   });
 });

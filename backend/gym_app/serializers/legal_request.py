@@ -2,34 +2,22 @@ from rest_framework import serializers
 from gym_app.models import LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequest, LegalRequestResponse
 
 class LegalRequestTypeSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the LegalRequestType model.
-    
-    Handles serialization and deserialization of legal request types.
-    """
+    """Serializer for the LegalRequestType model."""
     class Meta:
         model = LegalRequestType
-        fields = '__all__'
+        fields = ['id', 'name']
 
 class LegalDisciplineSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the LegalDiscipline model.
-    
-    Handles serialization and deserialization of legal disciplines.
-    """
+    """Serializer for the LegalDiscipline model."""
     class Meta:
         model = LegalDiscipline
-        fields = '__all__'
+        fields = ['id', 'name']
 
 class LegalRequestFilesSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the LegalRequestFiles model.
-    
-    Handles serialization and deserialization of legal request files.
-    """
+    """Serializer for the LegalRequestFiles model."""
     class Meta:
         model = LegalRequestFiles
-        fields = '__all__'
+        fields = ['id', 'file', 'created_at']
 
 class LegalRequestResponseSerializer(serializers.ModelSerializer):
     """

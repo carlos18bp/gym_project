@@ -42,9 +42,7 @@ This file captures important patterns, preferences, and project intelligence tha
 
 - **Virtual environment**: Always activate before backend commands: `source backend/venv/bin/activate`.
 - **Fake data**: `python backend/manage.py create_fake_data` seeds realistic test data. `delete_fake_data --confirm` cleans up. Individual commands exist for specific domains (create_clients_lawyers, create_processes, create_dynamic_documents, create_legal_requests, create_organizations, create_activity_logs).
-- **Test execution**: Never run entire suite. Target specific files. Max 20 tests or 3 commands per cycle. Use block runner for full backend coverage in low-RAM environments.
-- **Block runner**: `python backend/scripts/run-tests-blocks.py` splits tests by marker (edge, contract, integration, rest) × group (models, serializers, views, etc.) with configurable chunk sizes and resume capability.
-- **All-suites runner**: `python scripts/run-tests-all-suites.py` runs backend blocks + frontend unit + frontend E2E in parallel with live progress and coverage report.
+- **Test execution**: Never run entire suite. Target specific files. Max 20 tests or 3 commands per cycle.
 - **Quality gate**: `python3 scripts/test_quality_gate.py --repo-root .` runs before commit (pre-commit hook) and in CI (GitHub Actions).
 - **E2E modules**: Tests are organized by flow and tagged with `@module:<name>`. Run by module: `npm run e2e:module -- auth`.
 - **Git workflow**: Pre-commit hooks enforce quality gate on staged test files. CI runs on PR to main/master.

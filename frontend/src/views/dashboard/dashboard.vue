@@ -31,6 +31,8 @@
             <!-- Quick action buttons always full width -->
             <QuickActionButtons :user="currentUser" class="w-full"></QuickActionButtons>
 
+            <!-- Notification summary moved into ActivityFeed as the first tab. -->
+
             <!-- Featured services -->
             <FeaturedServicesGrid class="w-full" />
             

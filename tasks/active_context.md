@@ -16,26 +16,28 @@ The application is **feature-complete** with all 18 major features implemented, 
 - Automated backups, query profiling (django-silk), and test quality gate
 - **SECOP Public Procurement** ✅: Socrata API integration, process listing/detail, classifications, alerts, saved views, Excel export, professional UI/UX
 - **Servicios y Trámites** ✅: catálogo de servicios, formularios dinámicos por etapas, guardado en borrador, radicado `AÑO-CONSECUTIVO`, PDF automático, notificaciones por correo, bandeja de solicitudes para abogados/admin y seguimiento para clientes
+- **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
+- **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-04-15)
+### Codebase Metrics (verified 2026-04-28)
 
 | Metric | Count |
 |--------|-------|
-| Backend model files | 13 |
-| Backend model classes | 53 (+ User via AbstractUser + UserManager) |
-| Backend view files | 28 |
-| Backend serializer files | 11 |
-| Backend URL patterns | 181 |
-| Backend test files | 76 (18 models + 10 serializers + 3 services + 3 tasks + 7 utils + 32 views + 3 commands) |
-| Backend templates | 21 |
-| Backend management commands | 12 |
-| Frontend Vue components | 111 |
-| Frontend view pages | 43 |
-| Frontend Pinia store files | 37 |
-| Frontend composables | 10 |
-| Frontend unit test files | 167 |
-| Frontend E2E spec files | 179 |
-| Frontend routes | 63 |
+| Backend model files | 14 |
+| Backend model classes | 55 (+ User via AbstractUser + UserManager) |
+| Backend view files | 29 |
+| Backend serializer files | 12 |
+| Backend URL patterns | 189 |
+| Backend test files | 86 |
+| Backend migrations | 61 (latest: `0062_notification_and_stage_alert.py` — numbering has a gap) |
+| Backend Huey periodic tasks | 11 |
+| Frontend Vue components | 113 |
+| Frontend view pages | 44 |
+| Frontend Pinia store files | 43 |
+| Frontend composables | 11 |
+| Frontend unit test files | 170 |
+| Frontend E2E spec files | 192 |
+| Frontend routes | 66 |
 
 ---
 
@@ -46,6 +48,31 @@ The application is **feature-complete** with all 18 major features implemented, 
   - **`isLawyerLike` getter**: Centralized in `frontend/src/stores/auth/user.js` as the single source of truth (lawyer / admin / is_staff / is_superuser). Five inlined callsites refactored to consume it: `router/index.js` (route guard), `views/dynamic_document/DocumentEditor.vue`, `views/dynamic_document/Dashboard.vue`, `client/UseDocumentTable.vue`, `composables/document-variables/useDocumentPermissions.js`, `composables/document-variables/useDocumentTags.js`, `cards/menuOptionsHelper.js`.
   - **User Guide audit + refresh**: New module `admin_staff` covering admin/staff/superuser capabilities with `isLawyerLike` explanation. Existing modules updated: `documents.js` (new sections "Botones del Editor según tu Rol" + "Modos del DocumentForm" + explicit "Continuar" step), `secop.js` (alert frequency options + lawyer-only sync trigger), `services_tramites.js` (status lifecycle table DRAFT→OPEN→IN_STUDY→IN_PROGRESS→ANSWERED→FINALIZED + tracking format `YYYY-NNNNN` + inbox filter coverage). Manual infrastructure: `getters.js` `roleMatches` helper aliases `admin` → lawyer modules + admin-only modules; `UserGuideMain.vue` maps `is_staff/is_superuser/role==='admin'` to synthetic `admin` role.
   - **Methodology docs**: `lessons-learned.md` adds "`isLawyerLike` Predicate — Single Source of Truth" subsection. `product_requirement_docs.md` adds Admin role row + "Role Hierarchy — `lawyer-like` Predicate" subsection. Future role gating must consume the getter.
+
+- **Legal Files Alerts (Req #6) audit + remediation + simplify + E2E coverage (2026-04-28)**:
+  - **Audit verdict**: implementation was ~75% complete — endpoint, model, hooks, Huey daily task, composable, SlideBar pulse, Dashboard auto-redirect were correct. **7 spec gaps closed**:
+    - **B5** `notify_signature_reopened` was sending email; matrix says in-app only → email block removed.
+    - **B6** Daily reminder did not exclude documents created in the last 24h → `cutoff = now - 24h` filter added to both queries (outer `signer_id` distinct + per-user pending fetch).
+    - **F5** Pulse on `SignaturesListTable.vue` was infinite (`animate-pulse` with no timeout) → added `PULSE_DURATION_MS = 8000` with `setTimeout` in `onMounted` and cleanup in `onBeforeUnmount`.
+    - **F6** `auth.logout()` did not clear `sessionStorage.pendingSignaturesAlerted` → flag now removed on logout.
+    - **F8 (surfaced by E2E spec)** `Dashboard.vue` auto-redirect was overriding explicit `?tab=`/`?lawyerTab=` URL params, contradicting the spec section "Respeto a Parámetros Explícitos" → guard `hasExplicitTabParam` added at `views/dynamic_document/Dashboard.vue:1066-1080` so the auto-redirect is suppressed when the URL has a tab param.
+  - **Simplify pass on the patch**: fixed N+1 in `notify_daily_pending_reminders` (was looping `User.objects.get(id=user_id)` per user — replaced with `User.objects.filter(id__in=user_ids).exclude(email__isnull=True).exclude(email='')`); exported `PENDING_SIGNATURES_ALERTED_KEY` constant from `composables/usePendingSignatures.js` and reused in `auth.js` to remove stringly-typed duplication; removed redundant `isPulseActive.value = true` in `onMounted` (ref already initializes to `true`).
+  - **Tests added (all green)**: 6 backend tests in `test_signature_notification_service.py` (progress, expired, reopened-no-email, daily reminder excludes/skips/aggregates) + new `test/composables/usePendingSignatures.test.js` (6 tests) + 1 sessionStorage-cleanup test in `test/stores/auth/auth.test.js`. **3 new E2E specs (5 tests, all passing in Desktop Chrome)**: `legal-files-menu-pulse.spec.js`, `legal-files-auto-redirect.spec.js`, `legal-files-table-pulse.spec.js`. Total: 12/12 backend + 28/28 frontend unit + 5/5 E2E.
+  - **Flows registered** in `frontend/e2e/flow-definitions.json`, `frontend/e2e/helpers/flow-tags.js`, and `docs/USER_FLOW_MAP.md`: `legal-files-menu-pulse` (P1), `legal-files-auto-redirect` (P2), `legal-files-table-pulse` (P2). Total flows: 145 → 148. Signatures module: 9 → 12 flows.
+  - **Test infrastructure**: extended `frontend/e2e/helpers/dynamicDocumentMocks.js` with `pendingSignaturesCount` parameter and mock for `dynamic-documents/pending-signatures-count/`. Added `data-testid="signatures-list-row-{id}"` to `SignaturesListTable.vue` rows and `pending-signatures-indicator-mobile`/`pending-signatures-count-mobile` to `SlideBar.vue` mobile spans (desktop testids already existed).
+
+- **Notification Center audit + simplify pass (2026-04-28)**:
+  - **Audit context**: a prior plan claimed 2 bugs and 4 missing backend test files in the Notification Center. Line-by-line verification refuted **all 5 claims** — the deep-link param mismatch did not exist (`NotificationsList.vue:280` already used `id`), `NotificationSummaryCard.vue` already handled `service_request`, `service_tramite_notifications.py` already created in-app notifications, and the 4 backend test files already existed (332 + 116 + 76 + 141 LOC, plus an extra `test_service_tramite_notifications.py` of 363 LOC).
+  - **Real gap discovered**: `ServiceRequestDetail.vue` had no pulse/highlight effect for deep-link from notifications (Process and Document had it; service_request was the only one missing).
+  - **Implemented**: 5s `animate-pulse` highlight on `ServiceRequestDetail.vue` with `clearTimeout` cleanup on `onUnmounted` to avoid stale `router.replace` after the user navigates away. Both `NotificationsList.vue:280` and `NotificationSummaryCard.vue:78` now pass `query: { highlight: notif.link_id }` for service_request (parity with process/document).
+  - **Simplify pass**: extracted duplicated `link_type` if/else-if chain from `NotificationsList.vue` and `NotificationSummaryCard.vue` into a single `navigateToNotificationTarget(router, notif)` action on `stores/notification.js`. Parallelized `NotificationSummaryCard` mount fetches with `Promise.all`. Added change-detection guard in `fetchUnreadCount` to skip wasted reactive re-renders during 60s polling when the count hasn't changed.
+  - **New tests**: 4 frontend unit suites (47 tests across `notification.js` store, `NotificationBell.vue`, `NotificationsList.vue`, `NotificationSummaryCard.vue`) + 14 tests for `ServiceRequestDetail.vue` (incl. 3 highlight pulse tests with spy on `setTimeout`/`clearTimeout` to verify timer cleanup) + 4 E2E (bell+badge, empty state, list+tabs, **service request pulse + URL cleanup verification**). All green. Backend tests already existed and were verified as passing.
+  - Implements planned feature **#5 Notification Center**.
+
+- **Process Alerts audit + fixes (2026-04-28)**:
+  - **Audit verified 6 issues** in the StageAlert implementation: (1) StageAlert was created only for the LAST stage instead of ALL stages, (2) `process.stages.clear()` left orphan `Stage` rows because `Process.stages` is a `ManyToManyField`, (3) N+1 in `process_list` due to missing `'stages__alert'` in `prefetch_related`, (4) UI did not show recipient info (`notify_clients`), (5) duplicate `send_template_email` import, (6) zero backend test coverage.
+  - **Fixes applied** (`backend/gym_app/views/process.py`, `process_alert_tasks.py`, `frontend/src/views/process/ProcessDetail.vue`, `frontend/src/components/process/ProcessHistoryModal.vue`): extracted `_create_stage_alerts(created_stages, main_data)` helper, wrapped stage replacement in `transaction.atomic()`, used `Prefetch('stages', queryset=Stage.objects.order_by('id').select_related('alert'))` to keep prefetch effective, added recipient text to alert indicator + tooltip computed (`alertTitle`).
+  - **Tests added**: `tests/models/test_stage_alert.py` (9), `tests/tasks/test_process_alert_tasks.py` (11), `tests/views/test_process_alerts.py` (5), plus `e2e/process/process-alert-recipients.spec.js` (3) — total 28 new tests, all green; 41/41 existing process tests still pass (no regressions).
 
 - **User Guide gap audit (2026-04-22)**: Systematic comparison of `frontend/src/stores/user_guide/` content (10 modules, 65 sections, ~2.8k lines) against real system (63 routes, 181 backend endpoints). Critical gaps: **SECOP** and **Servicios y Trámites** are entire modules missing from `modules.js` despite being full features in production. Also: outdated tab labels (`Firmados` vs real `Dcs. Formalizados` post commit d60eeb4), missing sections (variables-config, document-permissions, user-signature, payment-method-update, payment-history, featured-services), and inaccurate `appointments` content describing features that don't exist (Calendly iframe only). Full plan in `tasks/user_guide_gap_audit.md`.
 
@@ -119,7 +146,6 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Previous E2E audit (2026-03-18)**: 4-phase audit that deepened P1 gaps, added missing P2 specs, split `router_guards` test, removed all 9 `knownGaps`
 - **Memory Bank Windsurf adaptation**: Adapted methodology rules from Cursor format to Windsurf-compatible paths
 - **Test quality gate**: Custom analyzer integrated with pre-commit and GitHub Actions CI
-- **Block-based test runner**: RAM-safe backend test execution via `scripts/run-tests-blocks.py`
 - **E2E flow coverage**: Playwright E2E tests with flow definitions and coverage reporting
 
 ---
@@ -128,7 +154,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Decision | Status | Context |
 |----------|--------|---------|
-| 12 planned features in `docs/next_requirements/` | Awaiting prioritization | Reassignment, minutas, preview, guided tour, notifications, alerts, Outlook auth, marketplace, optional signature, contract execution, in-place formalize |
+| 12 planned features in `docs/next_requirements/` | 4 complete (#5 Notification Center, #6 Legal Files Alerts via signature_notification_service, #7 Process Alerts via process_alert_tasks + StageAlert, #12 In-Place Formalize); 8 awaiting prioritization | Remaining: Reassignment, minutas, preview, guided tour, Outlook auth, marketplace, optional signature, contract execution |
 | Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up and adapted for Windsurf |
 | Large file modularization | Under consideration | `user_guide.js` (143KB), `reports.py` (74KB) could be split |
 

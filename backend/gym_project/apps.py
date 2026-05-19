@@ -9,3 +9,4 @@ class GymProjectConfig(AppConfig):
 
     def ready(self):
         import gym_project.tasks  # noqa: F401
+        import gym_app.signature_reminder_task  # noqa: F401

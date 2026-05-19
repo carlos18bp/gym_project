@@ -12,5 +12,10 @@
     "defaultMode": "auto"
   },
   "effortLevel": "high",
-  "model": "sonnet"
+  "model": "sonnet",
+  "_meta": {
+    "_comment": "Template sincronizado desde workflows/.claude/base/settings.json.tmpl. El merge mantiene las keys del proyecto que no estan aqui (e.g. settings.local.json overrides, permisos ad-hoc). Sync se hace en Fase 3a.",
+    "_source": "vps-ops-toolkit/workflows/.claude/base/settings.json.tmpl",
+    "_fleet_base_version": 1
+  }
 }

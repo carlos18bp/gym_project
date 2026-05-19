@@ -909,66 +909,47 @@ const canSignDocument = (document) => {
 </script>
 
 <style scoped>
+/*
+ * Pulse keyframes animate ONLY the background color (and a subtle box-shadow
+ * for the colored ring). The text color and transform stay fixed so the
+ * content never appears to fade or shift while the highlight cycles.
+ *
+ * Peak background opacity is raised compared to the previous version so the
+ * highlight remains visually obvious without dragging the text along.
+ */
 @keyframes pulse-highlight-green {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-    border-color: rgb(74, 222, 128);
-    background-color: rgba(34, 197, 94, 0.03);
-    transform: scale(1);
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    background-color: rgba(34, 197, 94, 0.05);
   }
   50% {
-    box-shadow: 0 0 10px 5px rgba(34, 197, 94, 0.4);
-    border-color: rgb(74, 222, 128);
-    background-color: rgba(34, 197, 94, 0.1);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-    border-color: rgb(74, 222, 128);
-    background-color: rgba(34, 197, 94, 0.03);
-    transform: scale(1);
+    box-shadow: 0 0 10px 4px rgba(34, 197, 94, 0.35);
+    background-color: rgba(34, 197, 94, 0.22);
   }
 }
 
 @keyframes pulse-highlight-blue {
-  0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-    border-color: rgb(147, 197, 253);
-    background-color: rgba(59, 130, 246, 0.019);
-    transform: scale(1);
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
   }
   50% {
-    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
-    border-color: rgb(147, 197, 253);
-    background-color: rgba(59, 130, 246, 0.1);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-    border-color: rgb(147, 197, 253);
-    background-color: rgba(59, 130, 246, 0.019);
-    transform: scale(1);
+    box-shadow: 0 0 10px 4px rgba(59, 130, 246, 0.35);
+    background-color: rgba(59, 130, 246, 0.22);
   }
 }
 
 @keyframes pulse-highlight-yellow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6);
-    border-color: rgb(253, 224, 71);
-    background-color: rgba(234, 179, 8, 0.019);
-    transform: scale(1);
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+    background-color: rgba(234, 179, 8, 0.05);
   }
   50% {
-    box-shadow: 0 0 10px 5px rgba(234, 179, 8, 0.4);
-    border-color: rgb(253, 224, 71);
-    background-color: rgba(234, 179, 8, 0.1);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6);
-    border-color: rgb(253, 224, 71);
-    background-color: rgba(234, 179, 8, 0.019);
-    transform: scale(1);
+    box-shadow: 0 0 10px 4px rgba(234, 179, 8, 0.35);
+    background-color: rgba(234, 179, 8, 0.22);
   }
 }
 

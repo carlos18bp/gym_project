@@ -128,7 +128,7 @@ class Command(BaseCommand):
         if not lawyer:
             lawyer = User.objects.create_user(
                 email='secop_lawyer@test.com',
-                password='testpassword',
+                password='password',
                 first_name='SECOP',
                 last_name='Lawyer',
                 role='lawyer',
@@ -145,7 +145,7 @@ class Command(BaseCommand):
             return lawyers.first()
         return User.objects.create_user(
             email='secop_lawyer2@test.com',
-            password='testpassword',
+            password='password',
             first_name='Second',
             last_name='Lawyer',
             role='lawyer',

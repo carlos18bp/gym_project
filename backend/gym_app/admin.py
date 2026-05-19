@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from gym_app.utils.auth_utils import generate_auth_tokens
-from gym_app.models import User, Process, Stage, CaseFile, Case, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence
+from gym_app.models import User, Process, Stage, CaseFile, Case, StageAlert, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence, Notification
 from gym_app.models.user import UserSignature, ActivityFeed
 from gym_app.models.password_code import PasswordCode
 from gym_app.models.email_verification_code import EmailVerificationCode
@@ -837,6 +837,21 @@ class SyncLogAdmin(admin.ModelAdmin):
     list_filter = ('status', 'started_at')
     readonly_fields = ('started_at',)
 
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'category', 'priority', 'is_read', 'is_archived', 'is_deleted', 'created_at')
+    search_fields = ('user__email', 'title', 'message')
+    list_filter = ('category', 'priority', 'is_read', 'is_archived', 'is_deleted', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('user',)
+
+
+class StageAlertAdmin(admin.ModelAdmin):
+    list_display = ('stage', 'is_active', 'notify_clients', 'notified_3_days', 'notified_1_day', 'created_at')
+    list_filter = ('is_active', 'notify_clients', 'notified_3_days', 'notified_1_day')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('stage',)
+
+
 class SavedViewAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the SavedView model.
@@ -954,6 +969,14 @@ class GyMAdminSite(admin.AdminSite):
                 ]
             },
             {
+                'name': _('Notifications'),
+                'app_label': 'notifications',
+                'models': [
+                    model for model in app_dict.get('gym_app', {}).get('models', [])
+                    if model['object_name'] in ['Notification', 'StageAlert']
+                ]
+            },
+            {
                 'name': _('Authentication Codes'),
                 'app_label': 'authentication_codes',
                 'models': [
@@ -1019,3 +1042,5 @@ admin_site.register(SECOPAlert, SECOPAlertAdmin)
 admin_site.register(AlertNotification, AlertNotificationAdmin)
 admin_site.register(SyncLog, SyncLogAdmin)
 admin_site.register(SavedView, SavedViewAdmin)
+admin_site.register(Notification, NotificationAdmin)
+admin_site.register(StageAlert, StageAlertAdmin)

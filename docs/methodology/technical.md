@@ -176,12 +176,12 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 76 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 167 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 167) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 167) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 167) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 179 spec files | `frontend/e2e/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 86 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 170 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 170) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 170) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 170) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 189 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -190,7 +190,6 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 - Backend: `pytest backend/gym_app/tests/<domain>/test_<feature>.py -v`
 - Frontend unit: `npm run test -- test/stores/<store>.test.js`
 - Frontend E2E: `npm run e2e -- e2e/<flow>.spec.js`
-- Block runner for RAM-constrained environments: `python backend/scripts/run-tests-blocks.py`
 
 ### Quality Gate
 
@@ -221,39 +220,40 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 13 files → 53 model classes (+ User via AbstractUser + UserManager)
-│   │   ├── views/            # 28 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/)
-│   │   ├── serializers/      # 11 files
-│   │   ├── services/         # 5 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf)
+│   │   ├── models/           # 14 files → 55 model classes (+ Notification, StageAlert; + User via AbstractUser + UserManager)
+│   │   ├── views/            # 29 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/, notification)
+│   │   ├── serializers/      # 12 files (incl. notification)
+│   │   ├── services/         # 7 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf, notification_service, signature_notification_service)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
 │   │   ├── management/commands/ # 12 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
 │   │   ├── templates/        # 21 email/PDF templates
-│   │   ├── tests/            # 76 test files (models, serializers, tasks, utils, views, services, commands)
+│   │   ├── tests/            # 86 test files (models, serializers, tasks, utils, views, services, commands) — verified 2026-04-28
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
-│   │   ├── urls.py           # 181 URL patterns
+│   │   ├── notification_tasks.py    # Huey periodic — reactivate snoozed notifications every 15 min
+│   │   ├── process_alert_tasks.py   # Huey periodic — daily 14:00 UTC stage-alert reminders (email + in-app)
+│   │   ├── signature_reminder_task.py # Huey periodic — daily signature reminders
+│   │   ├── urls.py           # 189 URL patterns
 │   │   └── admin.py          # Django admin configuration
-│   ├── scripts/              # run-tests-blocks.py (block-based test runner)
 │   ├── requirements.txt      # production dependencies
 │   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # 111 Vue components
-│   │   ├── views/            # 43 page-level components
-│   │   ├── stores/           # 37 store files (domain directories + root files)
-│   │   ├── composables/      # 10 composable files
-│   │   ├── router/           # 1 file, 63 route definitions
+│   │   ├── components/       # 113 Vue components
+│   │   ├── views/            # 44 page-level components
+│   │   ├── stores/           # 43 store files (domain directories + root files)
+│   │   ├── composables/      # 11 composable files (incl. usePendingSignatures)
+│   │   ├── router/           # 1 file, 66 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 167 unit test files (11 subdirectories)
-│   ├── e2e/                  # 179 E2E spec files
+│   ├── test/                 # 170 unit test files (11 subdirectories)
+│   ├── e2e/                  # 189 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │
 ├── scripts/                  # Repository-level scripts
 │   ├── test_quality_gate.py  # Test quality gate analyzer
-│   ├── run-tests-all-suites.py # Parallel test suite runner
 │   └── quality/              # Quality gate analyzers per suite
 │
 ├── docs/                     # Project documentation

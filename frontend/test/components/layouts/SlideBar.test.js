@@ -36,6 +36,37 @@ jest.mock("vue3-google-login", () => ({
   googleLogout: () => mockGoogleLogout(),
 }));
 
+jest.mock("@/composables/usePendingSignatures", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    PENDING_SIGNATURES_ALERTED_KEY: "pendingSignaturesAlerted",
+    usePendingSignatures: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      shouldAlert: ref(false),
+      isLoading: ref(false),
+      error: ref(null),
+      hasAlertedThisSession: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+      markAlerted: jest.fn(),
+      resetAlertFlag: jest.fn(),
+    }),
+  };
+});
+
+jest.mock("@/composables/usePendingProcessAlerts", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    usePendingProcessAlerts: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+    }),
+  };
+});
+
 jest.mock("@headlessui/vue", () => ({
   __esModule: true,
   Dialog: { name: "Dialog", template: "<div><slot /></div>" },

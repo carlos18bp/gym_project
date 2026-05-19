@@ -56,6 +56,10 @@ jest.mock("@/composables/useRecentViews", () => ({
 const mockUserStore = {
   init: jest.fn(),
   currentUser: { role: "lawyer" },
+  get isLawyerLike() {
+    const role = this.currentUser?.role;
+    return role === "lawyer" || role === "admin";
+  },
 };
 
 jest.mock("@/stores/auth/user", () => ({

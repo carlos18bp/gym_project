@@ -61,3 +61,27 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 **Command executed:** npm test -- <path>
 **Result:** Pass / Fail
 ```
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/frontend-unit-test-coverage`:
+
+```markdown
+🟢 frontend-unit-test-coverage OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Coverage report leído | ✅ | jest/vitest --coverage parseado |
+| Layers priorizadas | ✅ | Stores → Composables/Utils → UI components |
+| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
+| Quality standards | ✅ | data-testid, no wrapper.vm.*, timers restored |
+| Coverage delta | ✅ | X% → Y% statements/branches |
+```
+
+Si hay regresión en otros archivos o coverage no llegó al objetivo, reemplazar
+el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar `## Next steps`
+con el archivo concreto y el comando para correrlo.

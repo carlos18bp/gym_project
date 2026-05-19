@@ -5,19 +5,19 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n63 routes"]
-        Views["43 View Pages"]
-        Components["111 Components"]
-        Stores["37 Pinia Stores"]
-        Composables["10 Composables"]
+        Router["Vue Router\n66 routes"]
+        Views["44 View Pages"]
+        Components["113 Components"]
+        Stores["44 Pinia Stores"]
+        Composables["11 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.0.6)"]
-        DRF["Django REST Framework\n181 API endpoints"]
-        Models["53 Models\n(13 model files)"]
-        Serializers["11 Serializer files"]
-        Views_BE["28 View files"]
+        DRF["Django REST Framework\n189 API endpoints"]
+        Models["55 Models\n(14 model files)"]
+        Serializers["12 Serializer files"]
+        Views_BE["29 View files"]
         Utils["3 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n76 test files"]
-        Jest["Jest\n167 test files"]
-        PW["Playwright\n179 E2E specs"]
+        Pytest["pytest\n86 test files"]
+        Jest["Jest\n169 test files"]
+        PW["Playwright\n189 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -296,7 +296,16 @@ erDiagram
 | `ServiceRequestLawyerResponse` | response_text, new_status, created_at | FK → ServiceRequest, FK → User (responder) |
 | `ServiceRequestLawyerResponseFile` | file, original_filename | FK → ServiceRequestLawyerResponse |
 
-### 5.11 Other Models (3 models)
+### 5.11 Notifications & Alerts Domain (2 models)
+
+| Model | Key Fields | Relationships |
+|-------|-----------|---------------|
+| `Notification` | title, message, category (`signature_request`/`signature_completed`/`signature_rejected`/`signature_expired`/`signature_reopened`/`signature_reminder`/`process_alert`/`general`), priority (low/medium/high), is_read, is_archived, is_deleted (soft-delete), snoozed_until, link_type (`process`/`document`/`service_request`/`""`), link_id, created_at | FK → User |
+| `StageAlert` | days_before, notify_clients, last_3_day_sent_at, last_1_day_sent_at | OneToOne → Stage (CASCADE) |
+
+Created by `services/notification_service.py` (`create_notification`, `create_bulk_notifications`, `get_unread_count`); consumed by 7 REST endpoints in `views/notification.py`. Snooze reactivation runs every 15 min via `notification_tasks.reactivate_snoozed_notifications`. Stage alerts evaluated daily at 14:00 UTC by `process_alert_tasks.send_process_alerts` (creates email + in-app notifications). Signature lifecycle via `services/signature_notification_service.py` (request/progress/completed/rejected/expired/reopened/daily reminders, all dual-channel).
+
+### 5.12 Other Models (3 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|

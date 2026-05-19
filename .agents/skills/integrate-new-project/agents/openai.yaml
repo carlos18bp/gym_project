@@ -1,6 +1,0 @@
-interface:
-  display_name: "Integrate New Project"
-  short_description: "12-step Django project integration to server"
-
-policy:
-  allow_implicit_invocation: false

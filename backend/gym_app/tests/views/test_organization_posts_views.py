@@ -568,7 +568,7 @@ class TestFileValidation:
         """Verify too large."""
         from gym_app.views.legal_request import validate_file_security
         with pytest.raises(ValidationError, match="exceeds") as exc_info:
-            validate_file_security(self._mk("big.pdf", size=31*1024*1024))
+            validate_file_security(self._mk("big.pdf", size=201*1024*1024))
         assert exc_info.value is not None
 
     def test_bad_ext(self):

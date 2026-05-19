@@ -103,6 +103,7 @@ export async function installDynamicDocumentApiMocks(
     hasSignature = false,
     documents = null,
     folders = null,
+    pendingSignaturesCount = 0,
   }
 ) {
   const user = buildMockUser({ id: userId, role, hasSignature });
@@ -165,6 +166,14 @@ export async function installDynamicDocumentApiMocks(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ has_signature: hasSignature }),
+      };
+    }
+
+    if (apiPath === "dynamic-documents/pending-signatures-count/") {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ pending_count: pendingSignaturesCount }),
       };
     }
 

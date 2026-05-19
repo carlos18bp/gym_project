@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from gym_app.models import (
@@ -137,35 +139,80 @@ class ServiceSerializer(_ServiceIconMixin, serializers.ModelSerializer):
         service.stages.exclude(id__in=incoming_stage_ids).delete()
 
     def _upsert_fields(self, stage, fields_data):
-        """Upsert fields by ID within a stage, preserving FK references."""
+        """Upsert fields by ID within a stage, preserving FK references.
+
+        Two production-safety measures vs. the previous implementation:
+
+        1. Fields not present in the payload are deleted **before** the
+           remaining ones are saved, so re-ordering or re-keying within the
+           same request never collides with the existing
+           ``unique_service_field_order_per_stage`` /
+           ``unique_service_field_key_per_stage`` constraints mid-upsert.
+        2. ``IntegrityError`` (which DRF/Django do not auto-translate and
+           therefore previously surfaced as an HTTP 500) is converted to a
+           Django ``ValidationError`` so the calling view's existing
+           ``except ValidationError`` block returns a 400 with a clear
+           message. ``ValidationError`` raised by ``ServiceField.clean()``
+           keeps propagating as-is.
+        """
+        # Drop fields that are no longer in the payload BEFORE recreating the
+        # remaining ones (see docstring point #1).
+        incoming_persisted_ids = {
+            f["id"] for f in fields_data if isinstance(f.get("id"), int)
+        }
+        stage.fields.exclude(id__in=incoming_persisted_ids).delete()
+
         incoming_field_ids = set()
         for field_data in fields_data:
             field_id = field_data.pop("id", None)
+            label = field_data.get("label") or field_data.get("key") or "campo"
 
-            if field_id:
-                try:
-                    field = ServiceField.objects.get(id=field_id, stage=stage)
-                    for attr, value in field_data.items():
-                        setattr(field, attr, value)
-                    field.save()
-                except ServiceField.DoesNotExist:
-                    field = ServiceField.objects.create(stage=stage, **field_data)
-            else:
-                field = ServiceField.objects.create(stage=stage, **field_data)
+            try:
+                with transaction.atomic():
+                    if field_id:
+                        try:
+                            field = ServiceField.objects.get(id=field_id, stage=stage)
+                            for attr, value in field_data.items():
+                                setattr(field, attr, value)
+                            field.save()
+                        except ServiceField.DoesNotExist:
+                            field = ServiceField.objects.create(stage=stage, **field_data)
+                    else:
+                        field = ServiceField.objects.create(stage=stage, **field_data)
+            except IntegrityError as exc:
+                raise DjangoValidationError({
+                    label: (
+                        "Conflicto al guardar el campo (clave u orden duplicado "
+                        "dentro de la etapa). Detalle: " + str(exc)
+                    )
+                })
 
             incoming_field_ids.add(field.id)
 
-        # Delete fields that are no longer in the payload
-        stage.fields.exclude(id__in=incoming_field_ids).delete()
-
     def _upsert_stages(self, service, stages_data):
-        """Create stages and fields for a new service."""
+        """Create stages and fields for a new service.
+
+        Same ``IntegrityError`` translation as ``_upsert_fields`` so a fresh
+        service whose fields fail unique-constraint checks returns a 400
+        instead of a 500.
+        """
         for stage_data in stages_data:
             fields_data = stage_data.pop("fields", [])
             stage = ServiceStage.objects.create(service=service, **stage_data)
 
             for field_data in fields_data:
-                ServiceField.objects.create(stage=stage, **field_data)
+                field_data.pop("id", None)
+                label = field_data.get("label") or field_data.get("key") or "campo"
+                try:
+                    with transaction.atomic():
+                        ServiceField.objects.create(stage=stage, **field_data)
+                except IntegrityError as exc:
+                    raise DjangoValidationError({
+                        label: (
+                            "Conflicto al guardar el campo (clave u orden duplicado "
+                            "dentro de la etapa). Detalle: " + str(exc)
+                        )
+                    })
 
 
 class ServiceListSerializer(_ServiceIconMixin, serializers.ModelSerializer):

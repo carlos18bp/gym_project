@@ -6,8 +6,9 @@
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
-      <!-- Tabs Navigation -->
-      <div class="border-b border-gray-200 mb-6">
+      <!-- Tabs Navigation — wrapped in the same card style used by SECOP and
+           Servicios y Solicitudes for a unified visual language across modules. -->
+      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6">
         <div class="flex items-center justify-between">
           <!-- Desktop Tabs -->
           <nav class="-mb-px hidden sm:flex space-x-8">
@@ -107,7 +108,7 @@
       </div>
 
       <!-- Filters and Search Bar -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6">
         <!-- Search Bar - Always on top -->
         <div class="mb-4">
           <div class="relative w-full">
@@ -282,8 +283,8 @@
         </div>
       </div>
 
-      <!-- Table -->
-      <div v-if="filteredAndSortedProcesses.length" class="bg-white rounded-lg shadow-sm border border-gray-200">
+      <!-- Table — unified card style (matches SecopList / ServicesHub). -->
+      <div v-if="filteredAndSortedProcesses.length" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
         <div class="overflow-x-auto" :style="{ minHeight: isAnyMenuOpen ? '200px' : 'auto' }">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
@@ -514,7 +515,7 @@
       <!-- Empty State -->
       <div
         v-else
-        class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center"
+        class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-12 text-center"
       >
         <CubeTransparentIcon class="mx-auto h-24 w-24 text-gray-400" />
         <h3 class="mt-4 text-lg font-medium text-gray-900">No hay procesos disponibles</h3>

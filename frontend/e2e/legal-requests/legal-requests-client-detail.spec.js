@@ -77,7 +77,7 @@ test("client sees request detail with empty files and can open AddFilesModal", {
   await expect(page.getByRole("heading", { name: "Agregar Archivos" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Selecciona archivos adicionales")).toBeVisible();
   await expect(page.getByText("Arrastra archivos aquí o")).toBeVisible();
-  await expect(page.getByText("PDF, DOC, DOCX, JPG, PNG hasta 10MB cada uno")).toBeVisible();
+  await expect(page.getByText("PDF, DOC, DOCX, JPG, PNG hasta 200MB cada uno")).toBeVisible();
 
   // Upload button should be disabled without files
   const uploadBtn = page.getByRole("button", { name: /Subir/i });

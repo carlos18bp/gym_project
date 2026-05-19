@@ -88,7 +88,7 @@ const buildProcess = (overrides = {}) => ({
   clients: [{ id: 1, first_name: "Ana", last_name: "Lopez", role: "client" }],
   lawyer: { id: 99 },
   progress: 20,
-  stages: [{ status: "Admisión", date: "2024-01-01" }],
+  stages: [{ status: "Admisión", date: "2099-12-31" }],
   case_files: [{ id: 5, file: "http://files.test/file.pdf" }],
   ...overrides,
 });

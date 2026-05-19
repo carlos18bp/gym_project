@@ -5,6 +5,12 @@ from django.db.models import Q
 from gym_app.models import User
 from gym_app.views.layouts.sendEmail import send_template_email
 
+# NOTE: In-app notifications for the Services & Solicitudes module are out of
+# scope for the June/July 2026 deliverable. Email notifications stay as before;
+# the Notification Center only surfaces Procesos and Archivos Jurídicos events.
+# To re-enable in-app service notifications later, restore the
+# create_notification / create_bulk_notifications imports and call sites.
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +47,16 @@ def _get_manager_emails():
         is_active=True,
     ).exclude(email__isnull=True).exclude(email="")
     return sorted(set(queryset.values_list("email", flat=True)))
+
+
+def _get_manager_users():
+    """Return User instances for lawyers/admins (for in-app notifications)."""
+    return list(
+        User.objects.filter(
+            Q(role="lawyer") | Q(role="admin") | Q(is_staff=True) | Q(is_superuser=True),
+            is_active=True,
+        ).exclude(email__isnull=True).exclude(email="")
+    )
 
 
 
@@ -83,6 +99,9 @@ def notify_service_request_submission(service_request):
             exc_info=True,
         )
 
+    # In-app notification for the requester intentionally omitted — see module
+    # docstring for rationale.
+
     manager_emails = _get_manager_emails()
     if manager_emails:
         try:
@@ -98,6 +117,9 @@ def notify_service_request_submission(service_request):
                 service_request.id,
                 exc_info=True,
             )
+
+    # In-app notifications for lawyers/admins intentionally omitted — see
+    # module docstring for rationale.
 
 
 
@@ -140,3 +162,6 @@ def notify_service_request_status_change(service_request, message=""):
             service_request.id,
             exc_info=True,
         )
+
+    # In-app notification for the requester intentionally omitted — see
+    # module docstring for rationale.

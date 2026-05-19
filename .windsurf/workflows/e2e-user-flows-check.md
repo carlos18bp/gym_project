@@ -68,3 +68,29 @@ Deliver:
 3) Proposed updates to flow definitions
 4) Summary of flows added to `docs/USER_FLOW_MAP.md` and `frontend/e2e/flow-definitions.json`
 5) Open questions / unknowns
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/e2e-user-flows-check`:
+
+```markdown
+🟢 e2e-user-flows-check OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Phase 0 — Scope | ✅ | roles, módulos y boundaries identificados |
+| Phase 1 — Source inventory | ✅ | docs + routes + tests + endpoints leídos |
+| Phase 2 — Candidate flows | ✅ | N flows extraídos con traceability |
+| Phase 3 — Normalize | ✅ | duplicados merged, P1–P4 asignado |
+| Phase 4 — Coverage mapping | ✅ | candidatos vs flow-definitions.json |
+| Phase 5 — Gaps & risks | ✅ | missing/partial/synthetic identificados |
+| Phase 6 — Register missing | ✅ | USER_FLOW_MAP.md + flow-definitions.json |
+```
+
+Si hay flows sin registrar (Phase 6), open questions abiertas (Phase 7.5), o
+P1 sin cobertura, reemplazar el ✅ correspondiente por ⚠️ o ❌ y agregar
+`## Next steps` con los flow-ids pendientes y el `npx playwright codegen` que
+toca correr a continuación.

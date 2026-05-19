@@ -1,6 +1,42 @@
 ---
 auto_execution_mode: 2
-description: Create git commit and push
+description: "Create git commit and push (default: vps-ops-toolkit; pass --all to iterate over LOCAL_PROJECTS + toolkit on this host)"
+---
+
+> **⚠️ How to invoke**:
+> - Sin argumento: `/git-commit` → opera SOLO en `~/webapps/vps-ops-toolkit/`.
+> - Con `--all`: `/git-commit --all` → itera sobre `LOCAL_PROJECTS` del
+>   host + `vps-ops-toolkit`. Repos clean → SKIP; con cambios → mensaje
+>   propio + commit + push independiente.
+
+Phase 0 — Resolución de la lista de repos:
+
+```bash
+ARGS_RAW="${ARGUMENTS:-}"
+OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
+case "$ARGS_RAW" in
+    "")
+        REPOS=("vps-ops-toolkit"); MODE_LABEL="default (toolkit only)" ;;
+    "--all")
+        source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
+        PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
+        REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
+        MODE_LABEL="--all (${#REPOS[@]} repos)" ;;
+    *) echo "❌ ERROR: argumento desconocido '$ARGS_RAW'. Válido: (vacío) o --all"; exit 2 ;;
+esac
+VALID_REPOS=()
+for r in "${REPOS[@]}"; do
+    [ -d "$HOME/webapps/$r/.git" ] && VALID_REPOS+=("$r") || echo "⏭️  $r — skip"
+done
+echo "🔧 Modo: $MODE_LABEL — repos: ${#VALID_REPOS[@]}"; printf '   - %s\n' "${VALID_REPOS[@]}"
+```
+
+**Iteración**: las instrucciones (inspect → analyze → message → add +
+commit + push) se ejecutan una vez por cada repo en `VALID_REPOS`. Si un
+repo está clean (`git status --porcelain` vacío) → SKIP silencioso. Si
+`git push` falla → marcar "commit OK, push pendiente" y continuar con el
+siguiente. En modo default no hay loop real.
+
 ---
 
 Run the following commands to inspect the current Git changes:

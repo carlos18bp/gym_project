@@ -7,3 +7,5 @@ class LogInAppConfig(AppConfig):
 
     def ready(self):
         import gym_app.secop_tasks  # noqa: F401
+        import gym_app.notification_tasks  # noqa: F401
+        import gym_app.process_alert_tasks  # noqa: F401

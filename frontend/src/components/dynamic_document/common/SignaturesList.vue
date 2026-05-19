@@ -289,17 +289,19 @@ watch(
 </script>
 
 <style scoped>
+/*
+ * Background-only pulse: avoids transform/scale and lets the text stay
+ * perfectly readable while the row "blinks". Peak background opacity raised
+ * so the visual cue remains obvious without the previous shaky feel.
+ */
 @keyframes pulse-highlight {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-    border-color: rgba(59, 130, 246, 0.8);
-    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
   }
   50% {
-    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
-    border-color: rgba(59, 130, 246, 0.8);
-    background-color: rgba(59, 130, 246, 0.1);
-    transform: scale(1.02);
+    box-shadow: 0 0 10px 4px rgba(59, 130, 246, 0.35);
+    background-color: rgba(59, 130, 246, 0.22);
   }
 }
 

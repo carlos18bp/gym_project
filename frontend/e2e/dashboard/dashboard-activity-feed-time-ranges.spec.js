@@ -37,6 +37,8 @@ async function installDashboardDeepMocks(page, { userId, role, activities = [], 
     if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
     if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
     if (apiPath === "subscriptions/current/") return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "not_found" }) };
+    if (apiPath === "notifications/unread-count/") return { status: 200, contentType: "application/json", body: JSON.stringify({ unread_count: 0 }) };
+    if (apiPath.startsWith("notifications/")) return { status: 200, contentType: "application/json", body: JSON.stringify({ results: [], count: 0, page_size: 20 }) };
     return null;
   });
 }
@@ -63,7 +65,7 @@ test("activity feed renders entries with varied time ranges and formatTimeAgo br
 
   await page.goto("/dashboard");
 
-  // Verify activity descriptions render
+  await page.getByRole('button', { name: 'Feed' }).click();
   await expect(page.getByText("Acción hace segundos")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Acción hace minutos")).toBeVisible();
   await expect(page.getByText("Acción hace horas")).toBeVisible();

@@ -11,13 +11,15 @@
           <XMarkIcon class="size-6 text-gray-500 hover:text-gray-700" />
         </button>
       </div>
-      <div class="px-6 pb-6 overflow-y-auto flex-1 prose max-w-none" v-html="documentData.content"></div>
+      <div class="px-6 pb-6 overflow-y-auto flex-1 prose max-w-none" v-html="sanitizedContent"></div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from "vue";
 import { XMarkIcon } from "@heroicons/vue/24/outline";
+import { sanitizeHtml } from "@/composables/useSafeHtml.js";
 
 // Define props for the component
 const props = defineProps({
@@ -26,6 +28,8 @@ const props = defineProps({
     default: () => ({ title: "", content: "" }),
   },
 });
+
+const sanitizedContent = computed(() => sanitizeHtml(props.documentData?.content));
 
 // Emit event when closing modal
 const emit = defineEmits(["close"]);

@@ -180,21 +180,25 @@ export const useUserStore = defineStore("user", {
       }
 
       try {
+        // Capture pre-update flag — fetchUsersData refreshes currentUser from
+        // the backend list, which would mask the original profile completion state.
+        const wasProfileCompleted = !!this.currentUser?.is_profile_completed;
+
         let response = await update_request(
           `update_profile/${formData.id}/`,
           formDataObject
         );
-        
+
         this.dataLoaded = false; // Reload the data after update
         await this.fetchUsersData();
-        
+
         // Get the current user after update
         const updatedUser = this.userById(formData.id);
-        
+
         // Check if this is the first profile completion or just an update
         if (updatedUser && updatedUser.is_profile_completed) {
           // If this is the first time completing the profile
-          if (!this.currentUser.is_profile_completed) {
+          if (!wasProfileCompleted) {
             await registerUserActivity(
               ACTION_TYPES.CREATE,
               `¡Bienvenido a GYM! Has completado tu perfil exitosamente.`

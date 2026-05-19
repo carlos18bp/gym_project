@@ -1,33 +1,42 @@
 from rest_framework import serializers
-from gym_app.models import Case, CaseFile, Stage, Process, RecentProcess
+from gym_app.models import Case, CaseFile, Stage, StageAlert, Process, RecentProcess
 from gym_app.serializers import UserSerializer
 
 class CaseSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Case model.
-    Serializes all fields of the Case model.
-    """
+    """Serializer for the Case model."""
     class Meta:
         model = Case
-        fields = '__all__'
+        fields = ['id', 'type']
 
 class CaseFileSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the CaseFile model.
-    Serializes all fields of the CaseFile model.
-    """
+    """Serializer for the CaseFile model."""
     class Meta:
         model = CaseFile
-        fields = '__all__'
+        fields = ['id', 'file', 'created_at']
+
+class StageAlertSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the StageAlert model.
+    Exposes alert configuration fields for the frontend.
+    """
+    class Meta:
+        model = StageAlert
+        fields = ['id', 'description', 'is_active', 'notify_clients',
+                  'notified_3_days', 'notified_1_day']
+        read_only_fields = ['id', 'notified_3_days', 'notified_1_day']
+
 
 class StageSerializer(serializers.ModelSerializer):
     """
     Serializer for the Stage model.
     Serializes all fields of the Stage model.
+    Includes nested alert data when present.
     """
+    alert = StageAlertSerializer(read_only=True)
+
     class Meta:
         model = Stage
-        fields = '__all__'
+        fields = ['id', 'status', 'date', 'created_at', 'alert']
 
 class ProcessSerializer(serializers.ModelSerializer):
     """
@@ -47,7 +56,11 @@ class ProcessSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Process
-        fields = '__all__'
+        fields = [
+            'id', 'authority', 'authority_email', 'plaintiff', 'defendant', 'ref',
+            'case', 'subcase', 'lawyer', 'progress', 'created_at',
+            'stages', 'case_files', 'clients',
+        ]
 
     def update(self, instance, validated_data):
         """

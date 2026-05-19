@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_wompi_config(request):
     """
     Get Wompi public configuration.
@@ -28,39 +29,6 @@ def get_wompi_config(request):
     """
     return Response({
         'public_key': settings.WOMPI_PUBLIC_KEY,
-        'environment': settings.WOMPI_ENVIRONMENT
-    }, status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-def debug_signature(request):
-    """
-    Debug endpoint to test signature generation.
-    Shows the concatenated string and signature for verification.
-    
-    IMPORTANT: Remove or disable this endpoint in production!
-    """
-    amount_in_cents = request.data.get('amount_in_cents')
-    currency = request.data.get('currency', 'COP')
-    reference = request.data.get('reference')
-    
-    if not amount_in_cents or not reference:
-        return Response(
-            {'error': 'amount_in_cents and reference are required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Generate signature
-    concatenated_string = f"{reference}{amount_in_cents}{currency}{settings.WOMPI_INTEGRITY_KEY}"
-    signature = hashlib.sha256(concatenated_string.encode()).hexdigest()
-    
-    return Response({
-        'reference': reference,
-        'amount_in_cents': amount_in_cents,
-        'currency': currency,
-        'integrity_key': settings.WOMPI_INTEGRITY_KEY,
-        'concatenated_string': concatenated_string,
-        'signature': signature,
         'environment': settings.WOMPI_ENVIRONMENT
     }, status=status.HTTP_200_OK)
 
@@ -470,6 +438,7 @@ def get_payment_history(request):
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def wompi_webhook(request):
     """
     Webhook endpoint to receive payment notifications from Wompi.
