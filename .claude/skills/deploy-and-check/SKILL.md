@@ -29,7 +29,7 @@ Si el bloque aborta con ❌, **NO continuar** con las fases siguientes — SSH a
 
 # Deploy & Check — Generic
 
-Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`). Funciona para staging y producción.
+Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-toolkit/projects.yml`). Funciona para staging y producción.
 
 - **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
 - **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
@@ -48,7 +48,7 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/
 ```bash
 PROJECT_DIR=$(pwd)
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-OPS_YML="$HOME/webapps/ops/vps/projects.yml"
+OPS_YML="$HOME/webapps/vps-ops-toolkit/projects.yml"
 [ -f "$OPS_YML" ] || { echo "❌ ERROR: $OPS_YML no encontrado"; exit 1; }
 
 yml_get() {
@@ -100,7 +100,7 @@ EOF
 
 1. Salud del servidor:
 ```bash
-bash $HOME/webapps/ops/vps/scripts/diagnostics/quick-status.sh
+bash $HOME/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
 ```
 
 2. Working tree limpio:
@@ -189,7 +189,7 @@ cd "$PROJECT_DIR" && git log --oneline -1
 
 12. Post-deploy check del repo ops:
 ```bash
-bash $HOME/webapps/ops/vps/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+bash $HOME/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
 ```
 
 ---
@@ -214,9 +214,9 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 
 ## Notas
 
-- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`. Funciona para staging y producción.
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/vps-ops-toolkit/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
-- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
 
 ---
 
