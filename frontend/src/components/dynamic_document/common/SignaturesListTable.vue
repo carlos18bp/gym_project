@@ -217,7 +217,7 @@
               :data-testid="`signatures-list-row-${document.id}`"
               :class="[
                 'hover:bg-gray-50 cursor-pointer transition-colors',
-                shouldPulsate(document) ? 'animate-pulse bg-blue-50' : '',
+                shouldPulsate(document) ? 'animate-row-highlight' : '',
                 isHighlighted(document) ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
               ]"
               @click="handleDocumentClick(document)"
@@ -1380,3 +1380,29 @@ watch(currentPage, (newPage) => {
   fetchTabData(newPage);
 });
 </script>
+
+<style scoped>
+/*
+ * Row-level highlight pulse — animates ONLY background-color so the row text
+ * stays at full opacity and remains legible. Replaces Tailwind's
+ * ``animate-pulse`` which faded the entire row (text included). Mirrors the
+ * cue used by ``BaseDocumentCard`` / ``SignaturesList`` for a consistent
+ * "needs your attention" indicator across Archivos Jurídicos (client R3 —
+ * "que solo se desvanezca el background y se vea más llamativo").
+ */
+@keyframes pulse-row-highlight {
+  0%,
+  100% {
+    background-color: rgba(59, 130, 246, 0.10);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.45);
+  }
+}
+
+.animate-row-highlight {
+  animation: pulse-row-highlight 1.6s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+</style>

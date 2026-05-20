@@ -132,6 +132,70 @@ class TestSanitizeSoupForPdf:
         result = sanitize_soup_for_pdf(soup)
         assert result is soup
 
+    def test_collapses_run_of_three_nbsp_paragraphs_to_one(self):
+        from bs4 import BeautifulSoup
+        html = (
+            '<p>Texto 1</p>'
+            '<p>&nbsp;</p>'
+            '<p>&nbsp;</p>'
+            '<p>&nbsp;</p>'
+            '<p>Texto 2</p>'
+        )
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraphs = result.find_all('p')
+        assert len(paragraphs) == 3
+        assert paragraphs[0].get_text(strip=True) == 'Texto 1'
+        assert paragraphs[1].get_text(strip=True) == ''
+        assert paragraphs[2].get_text(strip=True) == 'Texto 2'
+
+    def test_collapses_run_of_br_only_paragraphs(self):
+        from bs4 import BeautifulSoup
+        html = (
+            '<p>Antes</p>'
+            '<p><br></p>'
+            '<p><br></p>'
+            '<p><br></p>'
+            '<p>Despues</p>'
+        )
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraphs = result.find_all('p')
+        assert len(paragraphs) == 3
+
+    def test_keeps_single_empty_paragraph_between_content(self):
+        from bs4 import BeautifulSoup
+        html = '<p>Uno</p><p>&nbsp;</p><p>Dos</p>'
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraphs = result.find_all('p')
+        assert len(paragraphs) == 3
+
+    def test_preserves_paragraph_with_image(self):
+        from bs4 import BeautifulSoup
+        html = (
+            '<p>Texto</p>'
+            '<p><img src="logo.png" alt="logo"/></p>'
+            '<p><br></p>'
+            '<p>Mas texto</p>'
+        )
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraphs = result.find_all('p')
+        assert len(paragraphs) == 4
+        assert paragraphs[1].find('img') is not None
+
+    def test_preserves_paragraphs_with_real_text(self):
+        from bs4 import BeautifulSoup
+        html = '<p>Linea 1</p><p>Linea 2</p><p>Linea 3</p>'
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraphs = result.find_all('p')
+        assert len(paragraphs) == 3
+        assert [p.get_text(strip=True) for p in paragraphs] == [
+            'Linea 1', 'Linea 2', 'Linea 3',
+        ]
+
 
 class TestSanitizeHtmlForPdf:
     """Tests for string-in/string-out wrapper."""

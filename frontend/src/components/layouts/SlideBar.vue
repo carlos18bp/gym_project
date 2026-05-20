@@ -593,9 +593,12 @@ onMounted(async () => {
   const isAdmin = role === "admin" || currentUser.value.is_staff || currentUser.value.is_superuser;
 
   if (role === "client" || role === "corporate_client" || role === "basic") {
-    // R3: "Organizaciones" was previously hidden for these roles. The client
-    // requirement is that client / corporate_client / basic users CAN access
-    // the Organizaciones module, so it is no longer filtered out here.
+    // The "Organizaciones" module is intentionally EXCLUSIVE to these three
+    // roles — confirmed by the product owner (R3 follow-up, May 2026): it is
+    // a feature designed for clients/corporate/basic users only, so it stays
+    // hidden for `lawyer` (filtered below) and admin/staff (filtered further
+    // down). Keeping the access list narrow here also avoids surfacing the
+    // module to roles that don't need it.
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Directorio" &&

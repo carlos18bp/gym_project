@@ -79,10 +79,21 @@
                   activeLawyerTab === tab.name
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
+                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer inline-flex items-center gap-2'
                 ]"
+                :data-testid="`lawyer-tab-${tab.name}`"
               >
                 {{ tab.label }}
+                <!-- Pending-count badge over "Dcs. Por Firmar" so the lawyer
+                     knows how many documents still need their signature
+                     without opening the tab (R3 — badges sobre tabs). -->
+                <span
+                  v-if="tab.name === 'pending-signatures' && pendingCount > 0"
+                  :data-testid="`lawyer-tab-${tab.name}-badge`"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                >
+                  {{ pendingCount > 99 ? '99+' : pendingCount }}
+                </span>
               </button>
             </nav>
           </div>
@@ -114,13 +125,23 @@
                 :key="tab.name"
                 @click.stop="selectLawyerTab(tab.name)"
                 :class="[
-                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150 flex items-center justify-between gap-2',
                   activeLawyerTab === tab.name
                     ? 'bg-primary text-white'
                     : 'text-gray-700 hover:bg-gray-50'
                 ]"
+                :data-testid="`lawyer-tab-mobile-${tab.name}`"
               >
-                {{ tab.label }}
+                <span>{{ tab.label }}</span>
+                <!-- Same badge surfaced inside the mobile dropdown so the
+                     hint is visible regardless of viewport. -->
+                <span
+                  v-if="tab.name === 'pending-signatures' && pendingCount > 0"
+                  :data-testid="`lawyer-tab-mobile-${tab.name}-badge`"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                >
+                  {{ pendingCount > 99 ? '99+' : pendingCount }}
+                </span>
               </button>
             </div>
           </div>
@@ -591,8 +612,11 @@ const folderStore = useDocumentFolderStore();
 const router = useRouter();
 const route = useRoute();
 
-// Initialize pending signatures composable
-const { hasPending, shouldAlert, fetchPendingCount, markAlerted } = usePendingSignatures();
+// Initialize pending signatures composable. ``pendingCount`` is consumed by
+// the badge over the "Dcs. Por Firmar" tab inside this dashboard so the
+// lawyer can see at a glance how many documents await their signature
+// without leaving the active tab (R3 — badges sobre tabs internos).
+const { pendingCount, hasPending, shouldAlert, fetchPendingCount, markAlerted } = usePendingSignatures();
 
 // Basic user restrictions
 const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();

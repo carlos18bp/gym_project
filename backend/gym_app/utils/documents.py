@@ -38,6 +38,47 @@ def normalize_fragmented_variables(html_content):
     return _VARIABLE_PATTERN.sub(_clean_match, html_content)
 
 
+def _is_empty_paragraph(paragraph):
+    """Return ``True`` when ``<p>`` carries no real content for the reader.
+
+    "Real content" means visible text or embedded media (image, table,
+    iframe, svg, video). ``<br>`` tags and ``&nbsp;`` / whitespace are
+    considered empty filler that TinyMCE and Word insert when the user
+    presses Enter on a blank line — they are responsible for the huge
+    vertical gaps the client reported in downloaded PDFs.
+    """
+    if paragraph.get_text(strip=True):
+        return False
+    if paragraph.find(['img', 'table', 'iframe', 'video', 'svg', 'object', 'embed']):
+        return False
+    return True
+
+
+def _collapse_empty_paragraphs(soup):
+    """Collapse runs of consecutive empty ``<p>`` siblings down to one.
+
+    TinyMCE / Word paste output frequently contains long runs of
+    ``<p>&nbsp;</p>`` or ``<p><br></p>`` blocks — each one rendered as a
+    full line in xhtml2pdf, which produces the multi-line gaps between
+    paragraphs reported by the client (R3 — espaciado gigante entre
+    párrafos en PDFs descargables).
+
+    We keep AT MOST one empty paragraph per gap so the visual spacing
+    matches what the editor shows (one blank line between paragraphs is
+    intentional separation; two or more is paste-induced noise).
+    """
+    for paragraph in list(soup.find_all('p')):
+        if not _is_empty_paragraph(paragraph):
+            continue
+        previous = paragraph.find_previous_sibling()
+        if (
+            previous is not None
+            and previous.name == 'p'
+            and _is_empty_paragraph(previous)
+        ):
+            paragraph.decompose()
+
+
 def sanitize_soup_for_pdf(soup):
     """Mutate ``soup`` in place so xhtml2pdf renders tables with correct format.
 
@@ -50,6 +91,8 @@ def sanitize_soup_for_pdf(soup):
     * promotes ``text-align`` from ``<td>/<th>`` inline styles to the legacy
       ``align`` attribute, which xhtml2pdf honours reliably
     * ensures ``<table>`` has sensible defaults (full width, collapsed borders)
+    * collapses runs of consecutive empty ``<p>`` blocks to a single one so
+      paste-from-Word artefacts don't blow up the PDF's vertical rhythm
 
     Returns the same ``soup`` so callers can chain.
     """
@@ -100,6 +143,11 @@ def sanitize_soup_for_pdf(soup):
             match = re.search(r'text-align\s*:\s*([a-zA-Z]+)', style)
             if match:
                 block['align'] = match.group(1).lower()
+
+    # Collapse consecutive empty <p> runs LAST so any cleanup performed
+    # above (e.g. stripping MsoNormal classes that left a paragraph with
+    # only &nbsp; inside) is taken into account before the decision.
+    _collapse_empty_paragraphs(soup)
 
     return soup
 
