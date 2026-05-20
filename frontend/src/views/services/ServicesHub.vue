@@ -11,7 +11,7 @@
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
       <!-- Tabs Navigation -->
-      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6">
+      <TabsCard>
         <div class="border-b border-gray-200">
           <div class="flex items-center justify-between px-4 sm:px-6">
             <!-- Desktop Tabs -->
@@ -48,7 +48,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </TabsCard>
 
       <!-- Tab Content -->
       <div v-if="activeTab === 'services'">
@@ -66,6 +66,7 @@
 import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ModuleHeader from '@/components/layouts/ModuleHeader.vue';
+import TabsCard from '@/components/layouts/TabsCard.vue';
 import ServicesList from './ServicesList.vue';
 import MyServiceRequests from './MyServiceRequests.vue';
 

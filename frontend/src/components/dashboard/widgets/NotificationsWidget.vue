@@ -4,15 +4,15 @@
       <p class="text-sm text-gray-400">Sin notificaciones recientes</p>
     </div>
 
-    <!-- Scrollable list: matches the FeedWidget / ContactsWidget behaviour so
-         the user can browse more than the first few items without leaving the
-         dashboard. ``max-h`` keeps the widget bounded inside the tab pane.
-         Heights tightened in R3 — the client reported the panel was growing
-         too tall and making the dashboard feel unbalanced. The list still
-         scrolls when there are more items than the visible height allows. -->
+    <!-- Scrollable list: aligned 1:1 with FeedWidget / ContactsWidget
+         (``max-h-[170px]``) so the three tabs share the same visual height.
+         The R3 first pass tightened the limit but still left the panel
+         ~2x taller than its siblings — the client reported that mismatch in
+         the second feedback pass. The list keeps scrolling internally when
+         there are more notifications than the visible height allows. -->
     <ul
       v-else
-      class="space-y-1 overflow-y-auto pr-1 -mr-1 max-h-[16rem] sm:max-h-[19rem] lg:max-h-[20rem]"
+      class="space-y-1 overflow-y-auto pr-1 -mr-1 max-h-[170px] scrollbar-thin"
       data-testid="notifications-widget-list"
     >
       <li
@@ -95,3 +95,27 @@ const formatTime = (dateStr) => {
   return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
 }
 </script>
+
+<style scoped>
+/* ``scrollbar-thin`` is not a Tailwind utility — each dashboard widget that
+   uses it ships its own scoped definition (FeedWidget / ContactsWidget). The
+   scoped class only applies inside this component, so it must be declared
+   here too for the notifications list to match its sibling widgets. */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+</style>

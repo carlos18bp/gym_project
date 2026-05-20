@@ -196,7 +196,8 @@
       "name": "Generar reportes Excel",
       "module": "dashboard",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "admin"
       ],
       "priority": "P2",
       "description": "Exportar datos a Excel desde el dashboard",
@@ -216,7 +217,8 @@
       "name": "Filtros avanzados de reportes",
       "module": "dashboard",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "admin"
       ],
       "priority": "P2",
       "description": "Filtrar reporte de Usuarios Registrados por rol, estado de perfil y tipo de documento antes de generar Excel",
@@ -307,7 +309,8 @@
       "name": "Editar proceso existente",
       "module": "processes",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "admin"
       ],
       "priority": "P2",
       "description": "Actualizar info y etapas de proceso existente",

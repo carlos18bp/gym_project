@@ -6,10 +6,10 @@
 
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
-      <!-- Tabs Navigation — wrapped in the same card style used by SECOP and
-           Servicios y Solicitudes for a unified visual language across modules. -->
-      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6">
-        <div class="flex items-center justify-between">
+      <!-- Tabs Navigation — uses the shared TabsCard wrapper for a unified
+           visual language across modules (Procesos, SECOP, Servicios). -->
+      <TabsCard>
+        <div class="flex items-center justify-between px-4 sm:px-6">
           <!-- Desktop Tabs -->
           <nav class="-mb-px hidden sm:flex space-x-8">
             <button
@@ -105,7 +105,7 @@
           Solicitar Información
           </button>
         </div>
-      </div>
+      </TabsCard>
 
       <!-- Filters and Search Bar -->
       <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6">
@@ -409,7 +409,12 @@
                             Ver detalles
                           </router-link>
                         </MenuItem>
-                        <MenuItem v-if="currentUser?.role === 'lawyer'" v-slot="{ active }">
+                        <!-- Edit option — visible to lawyer / admin / staff /
+                             superuser (mirrors ProcessDetail.vue and the
+                             ``isLawyerLike`` getter in the user store).
+                             Admin users were missing this entry in the first
+                             R3 pass (R3 follow-up). -->
+                        <MenuItem v-if="userStore.isLawyerLike" v-slot="{ active }">
                           <router-link
                             :to="{ name: 'process_form', params: { action: 'edit', process_id: process.id } }"
                             :class="[active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700']"
@@ -553,6 +558,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@/stores/auth/user";
 import { useProcessStore } from "@/stores/process";
 import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
+import TabsCard from "@/components/layouts/TabsCard.vue";
 import ProcessUsersModal from "@/components/process/ProcessUsersModal.vue";
 
 const route = useRoute();

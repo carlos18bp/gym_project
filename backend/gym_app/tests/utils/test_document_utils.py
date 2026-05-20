@@ -196,6 +196,66 @@ class TestSanitizeSoupForPdf:
             'Linea 1', 'Linea 2', 'Linea 3',
         ]
 
+    def test_collapses_run_of_empty_divs_to_one(self):
+        from bs4 import BeautifulSoup
+        html = (
+            '<div>Texto 1</div>'
+            '<div></div>'
+            '<div></div>'
+            '<div></div>'
+            '<div>Texto 2</div>'
+        )
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        divs = result.find_all('div')
+        assert len(divs) == 3
+        assert divs[0].get_text(strip=True) == 'Texto 1'
+        assert divs[1].get_text(strip=True) == ''
+        assert divs[2].get_text(strip=True) == 'Texto 2'
+
+    def test_removes_office_op_tags(self):
+        from bs4 import BeautifulSoup
+        html = '<p>Texto</p><o:p></o:p><o:p></o:p><p>Mas texto</p>'
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        assert len(result.find_all('o:p')) == 0
+        assert len(result.find_all('p')) == 2
+
+    def test_strips_excessive_inline_margin_from_p(self):
+        from bs4 import BeautifulSoup
+        html = '<p style="margin-top: 60pt;">Texto</p>'
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraph = result.find('p')
+        assert 'margin' not in (paragraph.get('style') or '')
+
+    def test_keeps_normal_inline_margin_from_p(self):
+        from bs4 import BeautifulSoup
+        html = '<p style="margin-bottom: 6pt;">Texto</p>'
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        paragraph = result.find('p')
+        assert 'margin-bottom' in paragraph.get('style', '')
+        assert '6pt' in paragraph.get('style', '')
+
+    def test_collapses_mixed_p_and_div_empty_blocks(self):
+        from bs4 import BeautifulSoup
+        html = (
+            '<p>Uno</p>'
+            '<p>&nbsp;</p>'
+            '<p>&nbsp;</p>'
+            '<div>Dos</div>'
+            '<div></div>'
+            '<div></div>'
+            '<p>Tres</p>'
+        )
+        soup = BeautifulSoup(html, 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        # Each run collapses on its own — <p> siblings only merge with <p>,
+        # <div> siblings only with <div>.
+        assert len(result.find_all('p')) == 3
+        assert len(result.find_all('div')) == 2
+
 
 class TestSanitizeHtmlForPdf:
     """Tests for string-in/string-out wrapper."""

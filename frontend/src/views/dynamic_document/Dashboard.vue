@@ -64,12 +64,13 @@
           </button>
         </div>
 
-        <!-- Lawyer Navigation Tabs — wrapped in the same card container as
-             SecopList / ServicesHub for visual consistency, but NO longer
-             contains the action buttons (those moved above). -->
-        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6 pt-4 pb-4 border border-gray-200/0">
+        <!-- Lawyer Navigation Tabs — uses the shared TabsCard wrapper for
+             visual consistency with SecopList / ServicesHub. Action buttons
+             live above; the extra pt/pb padding was dropped (R3 — el card de
+             Archivos Jurídicos se veía más alto que el resto de módulos). -->
+        <TabsCard>
           <!-- Desktop Tabs -->
-          <div class="hidden md:block">
+          <div class="hidden md:block px-4 sm:px-6">
             <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
               <button
                 v-for="tab in lawyerNavigationTabs"
@@ -99,7 +100,7 @@
           </div>
 
           <!-- Mobile Dropdown -->
-          <div class="md:hidden space-y-3 relative">
+          <div class="md:hidden space-y-3 relative px-4 sm:px-6 py-3">
             <button
               @click.stop="showLawyerDropdown = !showLawyerDropdown"
               class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
@@ -145,7 +146,7 @@
               </button>
             </div>
           </div>
-        </div>
+        </TabsCard>
 
         <!-- Action Buttons (Mobile) — placed OUTSIDE the tabs card so the
              action bar is visually separated from the tab navigation
@@ -288,12 +289,13 @@
 
     <!-- Documents for clients, basic users, and corporate clients -->
     <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'">
-      <!-- Navigation tabs with action buttons — same card wrapper as the
-           lawyer variant for visual consistency. -->
-      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6 px-4 sm:px-6 pt-4 pb-2">
-        
+      <!-- Navigation tabs with action buttons — uses the shared TabsCard
+           wrapper for visual consistency; the extra pt/pb padding was dropped
+           to match the other modules' card height (R3 — Archivos Jurídicos). -->
+      <TabsCard>
+
         <!-- Desktop Layout: Tabs + Action Buttons -->
-        <div class="hidden md:flex md:flex-col">
+        <div class="hidden md:flex md:flex-col px-4 sm:px-6">
           <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
@@ -357,7 +359,7 @@
         </div>
 
         <!-- Mobile Dropdown -->
-        <div class="md:hidden relative">
+        <div class="md:hidden relative px-4 sm:px-6 pt-3">
           <button
             @click.stop="showClientDropdown = !showClientDropdown"
             class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
@@ -395,7 +397,7 @@
         </div>
         
         <!-- Mobile Action Buttons — unified styling across roles. -->
-        <div class="md:hidden mt-4 mb-4 grid grid-cols-3 gap-2">
+        <div class="md:hidden mt-4 mb-4 grid grid-cols-3 gap-2 px-4 sm:px-6">
           <button
             @click.stop="handleElectronicSignatureClick"
             class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
@@ -436,7 +438,7 @@
             <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
           </button>
         </div>
-      </div>
+      </TabsCard>
 
       <!-- Tab content -->
       <div v-if="currentSection === 'useDocument'">
@@ -571,6 +573,7 @@
 <script setup>
 import { onMounted, computed, ref, watch, onUnmounted } from "vue";
 import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
+import TabsCard from "@/components/layouts/TabsCard.vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";

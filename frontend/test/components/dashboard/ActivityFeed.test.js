@@ -105,4 +105,31 @@ describe("ActivityFeed.vue", () => {
     expect(wrapper.find("[data-test='notifications-widget']").exists()).toBe(true);
     expect(wrapper.find("[data-test='reports-widget']").exists()).toBe(false);
   });
+
+  test.each([
+    ["admin role", { role: "admin" }],
+    ["is_staff", { role: "client", is_staff: true }],
+    ["is_superuser", { role: "client", is_superuser: true }],
+  ])("shows Reports tab for %s users", async (_label, userOverrides) => {
+    const wrapper = mount(ActivityFeed, {
+      props: {
+        user: { id: 1, ...userOverrides },
+      },
+      global: {
+        stubs: {
+          NotificationsWidget: { template: "<div data-test='notifications-widget' />" },
+          FeedWidget: { template: "<div data-test='feed-widget' />" },
+          ContactsWidget: { template: "<div data-test='contacts-widget' />" },
+          ReportsWidget: { template: "<div data-test='reports-widget' />" },
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("Reportes");
+
+    await findButtonByText(wrapper, "Reportes").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find("[data-test='reports-widget']").exists()).toBe(true);
+  });
 });

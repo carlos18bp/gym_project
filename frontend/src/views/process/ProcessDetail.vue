@@ -367,11 +367,11 @@
             </div>
           </div>
         </div>
-        <!-- Edit Button — only lawyers and admin/staff can edit a process.
-             Other roles (client, basic, corporate_client) only read. -->
-        <div
-          v-if="currentUser?.role === 'lawyer' || currentUser?.is_staff || currentUser?.is_superuser"
-        >
+        <!-- Edit Button — only lawyer-like users (lawyer / admin / staff /
+             superuser) can edit a process. Other roles (client, basic,
+             corporate_client) only read. Uses the ``isLawyerLike`` getter so
+             every consumer shares the same access rule. -->
+        <div v-if="userStore.isLawyerLike">
           <button
             @click="navigateToEdit"
             type="button"

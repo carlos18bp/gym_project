@@ -45,6 +45,23 @@ describe("User Store (Auth)", () => {
     expect(store.getCurrentUser).toEqual({ id: 1, role: "client" });
   });
 
+  // ``isLawyerLike`` is the single source of truth for lawyer-only UI
+  // (Reports tab, process Edit actions). It must also grant access to admin
+  // staff/superuser accounts — the R3 client feedback was that Admin users
+  // could not see those lawyer-scoped controls.
+  test.each([
+    ["lawyer role", { id: 1, role: "lawyer" }, true],
+    ["admin role", { id: 1, role: "admin" }, true],
+    ["is_staff flag", { id: 1, role: "client", is_staff: true }, true],
+    ["is_superuser flag", { id: 1, role: "client", is_superuser: true }, true],
+    ["plain client", { id: 1, role: "client" }, false],
+    ["no current user", null, false],
+  ])("getter isLawyerLike handles %s", (_label, currentUser, expected) => {
+    const store = useUserStore();
+    store.$patch({ currentUser });
+    expect(store.isLawyerLike).toBe(expected);
+  });
+
   test("setCurrentUser takes userAuth from auth store when currentUser is null", () => {
     const authStore = useAuthStore();
     authStore.userAuth = { id: 1, role: "lawyer" };

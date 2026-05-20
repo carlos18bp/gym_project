@@ -70,7 +70,7 @@ export const useUserStore = defineStore("user", {
      */
     isLawyerLike: (state) => {
       const u = state.currentUser;
-      return !!u && (u.role === 'lawyer' || u.role === 'admin' || u.is_staff || u.is_superuser);
+      return !!(u && (u.role === 'lawyer' || u.role === 'admin' || u.is_staff || u.is_superuser));
     },
   },
 

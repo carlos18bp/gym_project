@@ -17,6 +17,24 @@ _VARIABLE_PATTERN = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
 _INLINE_TAG_PATTERN = re.compile(r'<[^>]*>')
 _MSO_STYLE_PATTERN = re.compile(r'mso-[^:;"\']*:[^;"\']*;?', re.IGNORECASE)
 
+# Block-level tags that may show up empty (``<p>&nbsp;</p>``, ``<div></div>``)
+# in TinyMCE output. ``<o:p>`` is the Office XML namespace tag that survives
+# Word paste; it is always purely decorative and is dropped unconditionally.
+_EMPTY_COLLAPSIBLE_BLOCK_TAGS = ('p', 'div')
+_OFFICE_NAMESPACED_TAGS = ('o:p',)
+
+# Threshold above which an inline ``margin-*: Xpt`` declaration is considered
+# paste-from-Word noise and stripped. Word frequently injects margins of
+# 30–100 pt that override the global PDF stylesheet and produce huge gaps
+# between paragraphs even after empty <p> blocks are collapsed. Values at or
+# below this threshold are preserved (intentional spacing such as 6–12 pt
+# between sections is honoured).
+_EXCESSIVE_MARGIN_PT_THRESHOLD = 15.0
+_INLINE_MARGIN_PT_PATTERN = re.compile(
+    r'^\s*margin(?:-top|-bottom|-block-start|-block-end)?\s*:\s*([\d.]+)\s*pt\s*$',
+    re.IGNORECASE,
+)
+
 
 def normalize_fragmented_variables(html_content):
     """Reassemble ``{{variable}}`` markers that TinyMCE may have split across
@@ -38,45 +56,95 @@ def normalize_fragmented_variables(html_content):
     return _VARIABLE_PATTERN.sub(_clean_match, html_content)
 
 
-def _is_empty_paragraph(paragraph):
-    """Return ``True`` when ``<p>`` carries no real content for the reader.
+def _is_empty_block(node):
+    """Return ``True`` when a block-level node carries no real reader content.
 
     "Real content" means visible text or embedded media (image, table,
     iframe, svg, video). ``<br>`` tags and ``&nbsp;`` / whitespace are
     considered empty filler that TinyMCE and Word insert when the user
     presses Enter on a blank line — they are responsible for the huge
     vertical gaps the client reported in downloaded PDFs.
+
+    Used for ``<p>`` and ``<div>``; both are emitted by TinyMCE / Word as
+    spacing artifacts, so the same predicate applies to both.
     """
-    if paragraph.get_text(strip=True):
+    if node.get_text(strip=True):
         return False
-    if paragraph.find(['img', 'table', 'iframe', 'video', 'svg', 'object', 'embed']):
+    if node.find(['img', 'table', 'iframe', 'video', 'svg', 'object', 'embed']):
         return False
     return True
 
 
-def _collapse_empty_paragraphs(soup):
-    """Collapse runs of consecutive empty ``<p>`` siblings down to one.
+def _drop_office_namespace_tags(soup):
+    """Remove ``<o:p>`` and friends — pure paste-from-Word artifacts.
+
+    These Office XML namespace tags survive when content is pasted from Word
+    into TinyMCE and have no rendering meaning. Each one becomes a blank
+    line in xhtml2pdf, so we drop them unconditionally before collapse.
+    """
+    for tag_name in _OFFICE_NAMESPACED_TAGS:
+        for element in list(soup.find_all(tag_name)):
+            element.decompose()
+
+
+def _collapse_empty_blocks(soup):
+    """Collapse runs of consecutive empty ``<p>`` / ``<div>`` siblings to one.
 
     TinyMCE / Word paste output frequently contains long runs of
-    ``<p>&nbsp;</p>`` or ``<p><br></p>`` blocks — each one rendered as a
-    full line in xhtml2pdf, which produces the multi-line gaps between
-    paragraphs reported by the client (R3 — espaciado gigante entre
-    párrafos en PDFs descargables).
+    ``<p>&nbsp;</p>``, ``<p><br></p>`` or ``<div></div>`` blocks — each one
+    rendered as a full line in xhtml2pdf, which produces the multi-line
+    gaps between paragraphs reported by the client (R3 — espaciado gigante
+    entre párrafos en PDFs descargables).
 
-    We keep AT MOST one empty paragraph per gap so the visual spacing
-    matches what the editor shows (one blank line between paragraphs is
-    intentional separation; two or more is paste-induced noise).
+    We keep AT MOST one empty block per gap so the visual spacing matches
+    what the editor shows (one blank line between paragraphs is intentional
+    separation; two or more is paste-induced noise). The previous sibling
+    check uses the same tag (``<p>`` followed by ``<p>``, ``<div>`` followed
+    by ``<div>``) to avoid mixing semantics across tag types.
     """
-    for paragraph in list(soup.find_all('p')):
-        if not _is_empty_paragraph(paragraph):
+    for node in list(soup.find_all(_EMPTY_COLLAPSIBLE_BLOCK_TAGS)):
+        if not _is_empty_block(node):
             continue
-        previous = paragraph.find_previous_sibling()
+        previous = node.find_previous_sibling()
         if (
             previous is not None
-            and previous.name == 'p'
-            and _is_empty_paragraph(previous)
+            and previous.name == node.name
+            and _is_empty_block(previous)
         ):
-            paragraph.decompose()
+            node.decompose()
+
+
+def _strip_excessive_inline_margins(soup):
+    """Strip ``margin-*: Xpt`` declarations above the threshold from blocks.
+
+    Word inline-styles paragraphs with margins of 30–100 pt that override
+    the global PDF stylesheet (``p { margin: 0 0 6pt 0 }``). xhtml2pdf
+    honours inline ``style=`` over ``<style>`` rules, so the global rule
+    alone cannot fix the visible gap. This helper walks every ``<p>`` and
+    ``<div>`` that has a ``style`` attribute, splits it into its individual
+    declarations, and drops any ``margin*`` rule expressed in points whose
+    value exceeds :data:`_EXCESSIVE_MARGIN_PT_THRESHOLD`. Values at or below
+    the threshold are preserved so deliberate spacing stays intact.
+    """
+    for node in soup.find_all(_EMPTY_COLLAPSIBLE_BLOCK_TAGS, style=True):
+        declarations = [d for d in node['style'].split(';') if d.strip()]
+        kept = []
+        for declaration in declarations:
+            match = _INLINE_MARGIN_PT_PATTERN.match(declaration)
+            if match:
+                try:
+                    value = float(match.group(1))
+                except ValueError:
+                    kept.append(declaration)
+                    continue
+                if value > _EXCESSIVE_MARGIN_PT_THRESHOLD:
+                    # Drop this declaration — paste-from-Word noise.
+                    continue
+            kept.append(declaration)
+        if kept:
+            node['style'] = ';'.join(d.strip() for d in kept)
+        else:
+            del node['style']
 
 
 def sanitize_soup_for_pdf(soup):
@@ -91,8 +159,13 @@ def sanitize_soup_for_pdf(soup):
     * promotes ``text-align`` from ``<td>/<th>`` inline styles to the legacy
       ``align`` attribute, which xhtml2pdf honours reliably
     * ensures ``<table>`` has sensible defaults (full width, collapsed borders)
-    * collapses runs of consecutive empty ``<p>`` blocks to a single one so
-      paste-from-Word artefacts don't blow up the PDF's vertical rhythm
+    * drops ``<o:p>`` Office-namespace artefacts (always paste-from-Word)
+    * strips inline ``margin-*: Xpt`` declarations above
+      :data:`_EXCESSIVE_MARGIN_PT_THRESHOLD` so paste-from-Word margins
+      don't override the global PDF stylesheet
+    * collapses runs of consecutive empty ``<p>`` / ``<div>`` blocks to a
+      single one so paste-from-Word artefacts don't blow up the PDF's
+      vertical rhythm
 
     Returns the same ``soup`` so callers can chain.
     """
@@ -144,10 +217,20 @@ def sanitize_soup_for_pdf(soup):
             if match:
                 block['align'] = match.group(1).lower()
 
-    # Collapse consecutive empty <p> runs LAST so any cleanup performed
-    # above (e.g. stripping MsoNormal classes that left a paragraph with
-    # only &nbsp; inside) is taken into account before the decision.
-    _collapse_empty_paragraphs(soup)
+    # Drop pure Word artefacts FIRST so the collapse step doesn't have to
+    # reason about <o:p> blocks (each one would otherwise be treated as an
+    # extra empty paragraph).
+    _drop_office_namespace_tags(soup)
+
+    # Strip excessive inline margin-* declarations BEFORE collapse so the
+    # global PDF stylesheet can reclaim control of the vertical rhythm. We
+    # only strip values above the threshold; deliberate spacing survives.
+    _strip_excessive_inline_margins(soup)
+
+    # Collapse consecutive empty <p> / <div> runs LAST so any cleanup
+    # performed above (Mso classes, margin strip, <o:p> removal) is taken
+    # into account before the empty-block decision.
+    _collapse_empty_blocks(soup)
 
     return soup
 

@@ -1260,9 +1260,16 @@ def generate_original_document_pdf(document, fallback_user=None):
      * the editor shows them with normal line spacing. Tighten those margins
      * so the signed PDF matches the editor (issue: client R3 — PDFs con
      * espaciado gigante entre párrafos).
+     *
+     * ``!important`` and the inclusion of ``div`` mirror the rule in
+     * ``document_views.py``: it is defence-in-depth alongside the
+     * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``,
+     * so any inline ``margin-*: Xpt`` that slips past the helper still loses
+     * to the global rule for normal blocks.
      */
-    p {{
-        margin: 0 0 6pt 0;
+    p, div {{
+        margin-top: 0 !important;
+        margin-bottom: 6pt !important;
         line-height: 1.35;
     }}
 

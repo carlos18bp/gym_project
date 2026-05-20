@@ -65,8 +65,8 @@
           <div v-if="activeTab === 'contacts'" class="h-0.5 bg-blue-500 w-full mx-auto mt-2"></div>
         </div>
 
-        <!-- Reports tab - only visible to lawyers -->
-        <div v-if="isLawyer" class="text-center flex-shrink-0">
+        <!-- Reports tab - visible to lawyer / admin / staff / superuser. -->
+        <div v-if="isLawyerLike" class="text-center flex-shrink-0">
           <button
             class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm"
             :class="activeTab === 'reports' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'"
@@ -86,7 +86,7 @@
       <NotificationsWidget v-if="activeTab === 'notifications'" :user="user" />
       <FeedWidget v-if="activeTab === 'feed'" :user="user" />
       <ContactsWidget v-if="activeTab === 'contacts'" :user="user" />
-      <ReportsWidget v-if="activeTab === 'reports' && isLawyer" :user="user" />
+      <ReportsWidget v-if="activeTab === 'reports' && isLawyerLike" :user="user" />
     </div>
   </div>
 </template>
@@ -111,14 +111,37 @@ const props = defineProps({
 // items immediately when entering the dashboard.
 const activeTab = ref('notifications')
 
+// ``isLawyer`` controls UI text (Contactos vs Abogados) which is semantic to
+// the lawyer role only. ``isLawyerLike`` controls access to the Reports tab
+// and includes admin / is_staff / is_superuser, mirroring the
+// ``isLawyerLike`` getter in ``stores/auth/user.js`` so admin users see the
+// same lawyer-only widgets across the app (R3 follow-up: Reportes invisible
+// para Admin).
 const isLawyer = computed(() => props.user?.role === 'lawyer')
+const isLawyerLike = computed(() => {
+  const u = props.user
+  return !!u && (
+    u.role === 'lawyer' ||
+    u.role === 'admin' ||
+    u.is_staff ||
+    u.is_superuser
+  )
+})
 
 const notificationStore = useNotificationStore()
 const unreadCount = computed(() => notificationStore.unreadCount)
 
-// Reset to notifications tab if reports is active but user is no longer a lawyer.
+// Reset to notifications tab if reports is active but the user is no longer
+// allowed to see it (lost lawyer/admin/staff privileges).
 watch(() => props.user, (newUser) => {
-  if (activeTab.value === 'reports' && newUser?.role !== 'lawyer') {
+  if (activeTab.value !== 'reports') return
+  const stillAllowed = !!newUser && (
+    newUser.role === 'lawyer' ||
+    newUser.role === 'admin' ||
+    newUser.is_staff ||
+    newUser.is_superuser
+  )
+  if (!stillAllowed) {
     activeTab.value = 'notifications'
   }
 }, { deep: true })
