@@ -910,68 +910,62 @@ const canSignDocument = (document) => {
 
 <style scoped>
 /*
- * Pulse keyframes animate ONLY the background color (and a subtle box-shadow
- * for the colored ring). The text color and transform stay fixed so the
- * content never appears to fade or shift while the highlight cycles.
+ * Pulse keyframes animate ONLY the background color so the card text never
+ * appears to fade. Peak opacity raised (0.22 → 0.45) so the highlight is
+ * unmistakable while the inner text stays at full opacity. The box-shadow
+ * glow was dropped to keep the cue purely "background fill" as requested
+ * (client R3 — "que solo se desvanezca el background y se vea más llamativo").
  *
- * Peak background opacity is raised compared to the previous version so the
- * highlight remains visually obvious without dragging the text along.
+ * The animation now also loops infinitely instead of running 3 times: the
+ * client reported the previous 3-iteration burst was too short to notice
+ * when scrolling through the list.
  */
 @keyframes pulse-highlight-green {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-    background-color: rgba(34, 197, 94, 0.05);
+    background-color: rgba(34, 197, 94, 0.10);
   }
   50% {
-    box-shadow: 0 0 10px 4px rgba(34, 197, 94, 0.35);
-    background-color: rgba(34, 197, 94, 0.22);
+    background-color: rgba(34, 197, 94, 0.45);
   }
 }
 
 @keyframes pulse-highlight-blue {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-    background-color: rgba(59, 130, 246, 0.05);
+    background-color: rgba(59, 130, 246, 0.10);
   }
   50% {
-    box-shadow: 0 0 10px 4px rgba(59, 130, 246, 0.35);
-    background-color: rgba(59, 130, 246, 0.22);
+    background-color: rgba(59, 130, 246, 0.45);
   }
 }
 
 @keyframes pulse-highlight-yellow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
-    background-color: rgba(234, 179, 8, 0.05);
+    background-color: rgba(234, 179, 8, 0.12);
   }
   50% {
-    box-shadow: 0 0 10px 4px rgba(234, 179, 8, 0.35);
-    background-color: rgba(234, 179, 8, 0.22);
+    background-color: rgba(234, 179, 8, 0.50);
   }
 }
 
 .animate-pulse-highlight-green {
-  animation: pulse-highlight-green 1s ease-in-out 3;
-  animation-fill-mode: forwards;
+  animation: pulse-highlight-green 1.6s ease-in-out infinite;
   border-width: 1px !important;
   position: relative;
   z-index: 10;
 }
 
 .animate-pulse-highlight-blue {
-  animation: pulse-highlight-blue 1s ease-in-out 3;
-  animation-fill-mode: forwards;
+  animation: pulse-highlight-blue 1.6s ease-in-out infinite;
   border-width: 1px !important;
   position: relative;
   z-index: 10;
 }
 
 .animate-pulse-highlight-yellow {
-  animation: pulse-highlight-yellow 1s ease-in-out 3;
-  animation-fill-mode: forwards;
+  animation: pulse-highlight-yellow 1.6s ease-in-out infinite;
   border-width: 1px !important;
   position: relative;
   z-index: 10;

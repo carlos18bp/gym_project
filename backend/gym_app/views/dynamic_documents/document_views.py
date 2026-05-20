@@ -527,6 +527,32 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             word-break: break-word;
         }}
 
+        /*
+         * xhtml2pdf applies an oversized default margin to <p> blocks, which
+         * causes paragraphs to render with huge empty gaps between them even
+         * when the editor shows them with normal line spacing. Tighten those
+         * margins and the inter-line height so the PDF matches what the user
+         * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
+         */
+        p {{
+            margin: 0 0 6pt 0;
+            line-height: 1.35;
+        }}
+
+        br {{
+            line-height: 1.35;
+        }}
+
+        ul, ol {{
+            margin: 0 0 6pt 18pt;
+            padding: 0;
+        }}
+
+        li {{
+            margin: 0 0 2pt 0;
+            line-height: 1.35;
+        }}
+
         strong {{
             font-weight: bold !important;
             font-family: 'Carlito', sans-serif !important;

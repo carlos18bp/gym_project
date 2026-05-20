@@ -191,17 +191,35 @@
                             'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                           ]"
                         >
-                          <component
-                            :is="item.icon"
-                            :class="[
-                              item.current
-                                ? 'text-secondary'
-                                : 'text-primary group-hover:text-secondary',
-                              'h-6 w-6 shrink-0',
-                            ]"
-                            aria-hidden="true"
-                          />
-                          {{ item.name }}
+                          <div class="relative">
+                            <component
+                              :is="item.icon"
+                              :class="[
+                                item.current
+                                  ? 'text-secondary'
+                                  : 'text-primary group-hover:text-secondary',
+                                'h-6 w-6 shrink-0',
+                              ]"
+                              aria-hidden="true"
+                            />
+                            <span
+                              v-if="item.name === 'Notificaciones' && hasNotificationsUnread"
+                              data-testid="pending-notifications-indicator-mobile"
+                              class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                            >
+                              <span class="sr-only">Notificaciones sin leer</span>
+                            </span>
+                          </div>
+                          <span class="flex items-center gap-2">
+                            {{ item.name }}
+                            <span
+                              v-if="item.name === 'Notificaciones' && hasNotificationsUnread"
+                              data-testid="pending-notifications-count-mobile"
+                              class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                            >
+                              {{ notificationsUnreadCount > 99 ? '99+' : notificationsUnreadCount }}
+                            </span>
+                          </span>
                         </a>
                       </li>
                       <PWAInstallButton></PWAInstallButton>
@@ -385,17 +403,35 @@
                     'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
                   ]"
                 >
-                  <component
-                    :is="item.icon"
-                    :class="[
-                      item.current
-                        ? 'text-secondary'
-                        : 'text-primary group-hover:text-secondary',
-                      'h-6 w-6 shrink-0',
-                    ]"
-                    aria-hidden="true"
-                  />
-                  {{ item.name }}
+                  <div class="relative">
+                    <component
+                      :is="item.icon"
+                      :class="[
+                        item.current
+                          ? 'text-secondary'
+                          : 'text-primary group-hover:text-secondary',
+                        'h-6 w-6 shrink-0',
+                      ]"
+                      aria-hidden="true"
+                    />
+                    <span
+                      v-if="item.name === 'Notificaciones' && hasNotificationsUnread"
+                      data-testid="pending-notifications-indicator"
+                      class="absolute -top-1 -right-1 flex items-center justify-center w-3 h-3 bg-red-500 rounded-full animate-pulse"
+                    >
+                      <span class="sr-only">Notificaciones sin leer</span>
+                    </span>
+                  </div>
+                  <span class="flex items-center gap-2">
+                    {{ item.name }}
+                    <span
+                      v-if="item.name === 'Notificaciones' && hasNotificationsUnread"
+                      data-testid="pending-notifications-count"
+                      class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                    >
+                      {{ notificationsUnreadCount > 99 ? '99+' : notificationsUnreadCount }}
+                    </span>
+                  </span>
                 </a>
               </li>
               <PWAInstallButton></PWAInstallButton>
@@ -495,6 +531,7 @@ import { useAuthStore } from "@/stores/auth/auth";
 import { useUserStore } from "@/stores/auth/user";
 import { usePendingSignatures } from "@/composables/usePendingSignatures";
 import { usePendingProcessAlerts } from "@/composables/usePendingProcessAlerts";
+import { useNotificationStore } from "@/stores/notification";
 import { googleLogout } from "vue3-google-login";
 import userAvatar from "@/assets/images/user_avatar.jpg";
 import RegisteredIcon from "@/components/icons/RegisteredIcon.vue";
@@ -523,6 +560,15 @@ const {
   fetchPendingCount: fetchProcessPendingCount,
 } = usePendingProcessAlerts();
 
+// Notification Center unread count (badge on the bottom-nav "Notificaciones"
+// entry). Reuses the existing store so the count stays in sync with the
+// bell icon and the dashboard widget — no extra API calls beyond what the
+// rest of the app already issues. Requested in R3 — "los badge no aparecen
+// en el módulo de notificaciones".
+const notificationStore = useNotificationStore();
+const notificationsUnreadCount = computed(() => notificationStore.unreadCount || 0);
+const hasNotificationsUnread = computed(() => notificationsUnreadCount.value > 0);
+
 const showProfile = ref(false); // Show modal with profile information
 const slidebarOpen = ref(false); // Show modal with navigation
 
@@ -531,7 +577,11 @@ onMounted(async () => {
   showProfile.value = !!!currentUser.value.is_profile_completed;
   
   // Independent fetches — run in parallel to avoid serial round-trips.
-  await Promise.all([fetchPendingCount(), fetchProcessPendingCount()]);
+  await Promise.all([
+    fetchPendingCount(),
+    fetchProcessPendingCount(),
+    notificationStore.fetchUnreadCount(),
+  ]);
 
   // Hide legacy legal-request menu entries now replaced by Services module navigation.
   navigation.value = navigation.value.filter(
@@ -543,13 +593,15 @@ onMounted(async () => {
   const isAdmin = role === "admin" || currentUser.value.is_staff || currentUser.value.is_superuser;
 
   if (role === "client" || role === "corporate_client" || role === "basic") {
+    // R3: "Organizaciones" was previously hidden for these roles. The client
+    // requirement is that client / corporate_client / basic users CAN access
+    // the Organizaciones module, so it is no longer filtered out here.
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M" &&
         navItem.name !== "Bandeja de Solicitudes" &&
-        navItem.name !== "Administrar Servicios" &&
-        navItem.name !== "Organizaciones"
+        navItem.name !== "Administrar Servicios"
     );
   }
 

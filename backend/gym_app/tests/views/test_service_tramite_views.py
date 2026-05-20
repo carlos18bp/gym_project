@@ -297,6 +297,54 @@ def test_admin_create_service_returns_400_when_select_field_missing_options(api_
 
 
 @pytest.mark.django_db
+def test_admin_create_service_returns_400_with_friendly_message_on_duplicate_field_order(api_client, admin_user):
+    """Two fields with the same ``order`` in a stage must surface a friendly
+    400 that names the conflicting field labels (R3 — error 500 antes opaco).
+    """
+    api_client.force_authenticate(user=admin_user)
+
+    payload = {
+        "name": "Servicio Duplicado",
+        "short_title": "Dup",
+        "stages": [
+            {
+                "title": "Etapa Única",
+                "order": 1,
+                "is_active": True,
+                "fields": [
+                    {
+                        "key": "campo_a",
+                        "label": "Campo A",
+                        "field_type": "input",
+                        "is_required": True,
+                        "order": 1,
+                    },
+                    {
+                        "key": "campo_b",
+                        "label": "Campo B",
+                        "field_type": "input",
+                        "is_required": True,
+                        "order": 1,
+                    },
+                ],
+            }
+        ],
+    }
+
+    response = api_client.post(
+        reverse("services-admin-create"),
+        {"payload": json.dumps(payload)},
+        format="multipart",
+    )
+
+    assert response.status_code == 400
+    body = json.dumps(response.data)
+    assert "Campo A" in body
+    assert "Campo B" in body
+    assert "orden" in body.lower()
+
+
+@pytest.mark.django_db
 def test_admin_create_service_returns_400_on_malformed_json_payload(api_client, admin_user):
     """Malformed JSON in the payload field returns a 400 with `payload` key."""
     api_client.force_authenticate(user=admin_user)

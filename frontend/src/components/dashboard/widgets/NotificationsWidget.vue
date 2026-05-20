@@ -6,10 +6,13 @@
 
     <!-- Scrollable list: matches the FeedWidget / ContactsWidget behaviour so
          the user can browse more than the first few items without leaving the
-         dashboard. ``max-h`` keeps the widget bounded inside the tab pane. -->
+         dashboard. ``max-h`` keeps the widget bounded inside the tab pane.
+         Heights tightened in R3 — the client reported the panel was growing
+         too tall and making the dashboard feel unbalanced. The list still
+         scrolls when there are more items than the visible height allows. -->
     <ul
       v-else
-      class="space-y-1 overflow-y-auto pr-1 -mr-1 max-h-[18rem] sm:max-h-[24rem]"
+      class="space-y-1 overflow-y-auto pr-1 -mr-1 max-h-[16rem] sm:max-h-[19rem] lg:max-h-[20rem]"
       data-testid="notifications-widget-list"
     >
       <li

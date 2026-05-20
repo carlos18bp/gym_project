@@ -6,7 +6,7 @@ from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -464,6 +464,20 @@ def admin_create_service(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+    except IntegrityError as exc:
+        # Catches any DB-level uniqueness/constraint violation that slipped
+        # past the serializer guards (e.g. legacy data, race conditions) so
+        # the user gets a readable 400 instead of an opaque 500.
+        return Response(
+            {
+                "detail": (
+                    "No fue posible guardar el servicio por un conflicto de "
+                    "datos (probablemente orden o clave duplicada en un campo)."
+                ),
+                "errors": {"non_field_errors": [str(exc)]},
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response(ServiceSerializer(service, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
@@ -489,6 +503,20 @@ def admin_update_service(request, service_id):
             {
                 "detail": "Error de validacion al guardar las etapas o campos.",
                 "errors": exc.message_dict if hasattr(exc, "message_dict") else exc.messages,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except IntegrityError as exc:
+        # Catches any DB-level uniqueness/constraint violation that slipped
+        # past the serializer guards (e.g. legacy data, race conditions) so
+        # the user gets a readable 400 instead of an opaque 500.
+        return Response(
+            {
+                "detail": (
+                    "No fue posible guardar el servicio por un conflicto de "
+                    "datos (probablemente orden o clave duplicada en un campo)."
+                ),
+                "errors": {"non_field_errors": [str(exc)]},
             },
             status=status.HTTP_400_BAD_REQUEST,
         )

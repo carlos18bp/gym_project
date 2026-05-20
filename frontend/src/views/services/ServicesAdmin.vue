@@ -543,15 +543,37 @@ const saveService = async () => {
   } catch (error) {
     console.error("Error saving service:", error);
 
-    const messages = flattenErrors(error.response?.data);
+    // Surface backend-provided messages first (DRF validation errors come as
+    // {detail, errors: {...}}). When the server returns 5xx with no parseable
+    // body we still hint at the most common cause so the user knows where to
+    // look (R3 — "el toast solo dice HTTP 500 sin explicar la causa").
+    const responseData = error.response?.data;
+    const responseStatus = error.response?.status;
+
+    // Prefer the explicit ``errors`` map (per-field) and fall back to the
+    // ``detail`` field so the user always sees the most specific text.
+    const fieldMessages = flattenErrors(responseData?.errors);
+    const detailMessages = flattenErrors(responseData?.detail);
+    const fallbackMessages = flattenErrors(responseData);
+    const messages = [
+      ...fieldMessages,
+      ...detailMessages,
+      ...(fieldMessages.length || detailMessages.length ? [] : fallbackMessages),
+    ];
+
     let errorMessage;
     if (messages.length) {
       errorMessage = `No fue posible guardar el servicio: ${messages.slice(0, 3).join(" | ")}`;
+    } else if (responseStatus && responseStatus >= 500) {
+      errorMessage =
+        "No fue posible guardar el servicio. Verifica que el orden de los " +
+        "campos no esté repetido y que los campos de selección tengan al " +
+        "menos una opción definida. Si el problema persiste, contacta al " +
+        `soporte (HTTP ${responseStatus}).`;
+    } else if (responseStatus) {
+      errorMessage = `No fue posible guardar el servicio (HTTP ${responseStatus})`;
     } else {
-      const status = error.response?.status;
-      errorMessage = status
-        ? `No fue posible guardar el servicio (HTTP ${status})`
-        : `No fue posible guardar el servicio: ${error.message || "error desconocido"}`;
+      errorMessage = `No fue posible guardar el servicio: ${error.message || "error desconocido"}`;
     }
 
     showNotification(errorMessage, "warning");

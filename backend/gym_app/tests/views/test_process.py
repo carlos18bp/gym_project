@@ -991,6 +991,31 @@ class TestUpdateProcessEmailNotification:
         assert lawyer_user.email in emails
         assert client_user.email in emails
 
+    def test_update_process_email_includes_lawyer_when_lawyer_is_actor(
+        self, api_client, process, lawyer_user, client_user,
+    ):
+        """R3 fix: when the assigned LAWYER triggers the update they must
+        still receive the notification email (and in-app notification).
+        Previously the actor was excluded so the lawyer never saw their own
+        edits in the notification center / inbox.
+        """
+        api_client.force_authenticate(user=lawyer_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Lawyer Triggered Update'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            api_client.put(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        assert mock_send.call_count == 1
+        _, kwargs = mock_send.call_args
+        recipients = kwargs.get('recipients') or []
+        emails = {getattr(u, 'email', None) for u in recipients}
+        assert lawyer_user.email in emails, (
+            'lawyer must receive the email even when they are the actor'
+        )
+        assert client_user.email in emails, 'clients must still be included'
+
     def test_update_process_email_failure_does_not_break_api(self, api_client, admin_user, process):
         """If the underlying email transport raises, the helper logs it and the API still returns 200.
 

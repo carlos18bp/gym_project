@@ -115,6 +115,7 @@ class ServiceSerializer(_ServiceIconMixin, serializers.ModelSerializer):
 
     def _replace_stages(self, service, stages_data):
         """Upsert stages and fields by ID, preserving FK references."""
+        self._check_duplicate_stage_orders(stages_data)
         incoming_stage_ids = set()
         for stage_data in stages_data:
             fields_data = stage_data.pop("fields", [])
@@ -138,23 +139,85 @@ class ServiceSerializer(_ServiceIconMixin, serializers.ModelSerializer):
         # Delete stages that are no longer in the payload
         service.stages.exclude(id__in=incoming_stage_ids).delete()
 
+    @staticmethod
+    def _check_duplicate_field_orders(fields_data, stage_label="etapa"):
+        """Surface a friendly, pre-save error when two fields share ``order``.
+
+        The DB-level constraint would still catch this, but the resulting
+        ``IntegrityError`` produces an opaque message. Naming the duplicated
+        order and the colliding field labels makes the error self-explanatory
+        so the admin can correct it without guesswork (client R3 — error 500
+        en Administrar Servicios).
+        """
+        seen = {}
+        duplicates = {}
+        for field in fields_data:
+            order = field.get("order")
+            if order is None:
+                continue
+            label = field.get("label") or field.get("key") or f"orden {order}"
+            if order in seen:
+                duplicates.setdefault(order, [seen[order]]).append(label)
+            else:
+                seen[order] = label
+
+        if duplicates:
+            messages = []
+            for order, labels in duplicates.items():
+                joined = ", ".join(f"'{lbl}'" for lbl in labels)
+                messages.append(
+                    f"El orden {order} está asignado a varios campos en la "
+                    f"{stage_label} ({joined}). Asigna un número de orden "
+                    f"único a cada campo."
+                )
+            raise DjangoValidationError({"order": messages})
+
+    @staticmethod
+    def _check_duplicate_stage_orders(stages_data):
+        """Surface a friendly error when two stages share ``order``."""
+        seen = {}
+        duplicates = {}
+        for stage in stages_data:
+            order = stage.get("order")
+            if order is None:
+                continue
+            title = stage.get("title") or f"etapa orden {order}"
+            if order in seen:
+                duplicates.setdefault(order, [seen[order]]).append(title)
+            else:
+                seen[order] = title
+
+        if duplicates:
+            messages = []
+            for order, titles in duplicates.items():
+                joined = ", ".join(f"'{t}'" for t in titles)
+                messages.append(
+                    f"El orden {order} está asignado a varias etapas "
+                    f"({joined}). Asigna un número de orden único a cada etapa."
+                )
+            raise DjangoValidationError({"order": messages})
+
     def _upsert_fields(self, stage, fields_data):
         """Upsert fields by ID within a stage, preserving FK references.
 
-        Two production-safety measures vs. the previous implementation:
+        Three production-safety measures vs. the original implementation:
 
-        1. Fields not present in the payload are deleted **before** the
+        1. Duplicate ``order`` values within the same stage are surfaced
+           with a friendly error message before any DB write happens.
+        2. Fields not present in the payload are deleted **before** the
            remaining ones are saved, so re-ordering or re-keying within the
            same request never collides with the existing
            ``unique_service_field_order_per_stage`` /
            ``unique_service_field_key_per_stage`` constraints mid-upsert.
-        2. ``IntegrityError`` (which DRF/Django do not auto-translate and
+        3. ``IntegrityError`` (which DRF/Django do not auto-translate and
            therefore previously surfaced as an HTTP 500) is converted to a
            Django ``ValidationError`` so the calling view's existing
            ``except ValidationError`` block returns a 400 with a clear
            message. ``ValidationError`` raised by ``ServiceField.clean()``
            keeps propagating as-is.
         """
+        stage_label = stage.title or f"etapa {stage.order}"
+        self._check_duplicate_field_orders(fields_data, stage_label=stage_label)
         # Drop fields that are no longer in the payload BEFORE recreating the
         # remaining ones (see docstring point #1).
         incoming_persisted_ids = {
@@ -196,9 +259,12 @@ class ServiceSerializer(_ServiceIconMixin, serializers.ModelSerializer):
         service whose fields fail unique-constraint checks returns a 400
         instead of a 500.
         """
+        self._check_duplicate_stage_orders(stages_data)
         for stage_data in stages_data:
             fields_data = stage_data.pop("fields", [])
             stage = ServiceStage.objects.create(service=service, **stage_data)
+            stage_label = stage.title or f"etapa {stage.order}"
+            self._check_duplicate_field_orders(fields_data, stage_label=stage_label)
 
             for field_data in fields_data:
                 field_data.pop("id", None)

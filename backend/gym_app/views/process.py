@@ -151,6 +151,42 @@ def _create_stage_alerts(created_stages, main_data, process=None, actor=None):
                 link_id=process.id,
             )
 
+            # Send an immediate activation email so BOTH lawyer and clients
+            # are informed without waiting for the daily reminder task. The
+            # daily Huey task keeps handling the 3-day / 1-day reminders.
+            try:
+                emails = sorted({u.email for u in recipients if getattr(u, 'email', None)})
+                if emails:
+                    frontend_url = getattr(
+                        settings,
+                        'FRONTEND_BASE_URL',
+                        'https://gmconsultoresjuridicos.com',
+                    )
+                    process_url = f'{frontend_url}/process_detail/{process.id}'
+                    send_template_email(
+                        template_name='notification',
+                        subject=f'Alerta activada — {process.ref or process.id}',
+                        to_emails=emails,
+                        context={
+                            'title': 'Alerta de Proceso Activada',
+                            'badge_text': 'Alerta activa',
+                            'notification_title': f'Proceso: {process.ref or process.id}',
+                            'message': message,
+                            'additional_info': (
+                                'Recibirás recordatorios automáticos 3 días y '
+                                '1 día antes de la fecha programada.'
+                            ),
+                            'action_url': process_url,
+                            'action_text': 'Ver Proceso',
+                        },
+                    )
+            except Exception:
+                logger.error(
+                    'Failed to send alert activation email for process %s',
+                    process.id,
+                    exc_info=True,
+                )
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def process_list(request):
@@ -423,7 +459,13 @@ def update_process(request, pk):
 
     # Resolve recipients once and reuse across the per-stage loop to avoid an
     # N+1 on process.clients.all().
-    recipients = build_process_recipients(process, actor=request.user)
+    #
+    # The lawyer who triggers the edit is intentionally NOT excluded: the
+    # business requirement is that BOTH the lawyer and the clients receive
+    # the in-app notification + email when a process is updated (so the
+    # lawyer also has a record of the action in their notification center
+    # and inbox).
+    recipients = build_process_recipients(process, actor=None)
 
     update_message = (
         f"Se actualizó el proceso {process.ref or process.id}"
