@@ -419,7 +419,7 @@ class TestServiceSerializerUpdate:
         with pytest.raises(DjangoValidationError) as exc:
             serializer.save()
         message = str(exc.value)
-        assert "Conflicto" in message or "duplicado" in message
+        assert "duplicado" in message or "varios campos" in message
 
     def test_update_translates_select_without_options_to_validation_error(
         self, service_with_stages, ser_admin,

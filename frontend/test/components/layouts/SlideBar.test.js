@@ -257,7 +257,7 @@ describe("SlideBar.vue", () => {
     expect(texts).not.toContain("Directorio");
     expect(texts).not.toContain("Intranet G&M");
     expect(texts).not.toContain("Gestión de Solicitudes");
-    expect(texts).not.toContain("Organizaciones");
+    expect(texts).toContain("Organizaciones");
   });
 
   test("filters navigation for non-gym lawyer role", async () => {
@@ -586,6 +586,6 @@ describe("SlideBar.vue", () => {
     expect(texts).not.toContain("Solicitudes");
     expect(texts).not.toContain("Gestión de Solicitudes");
     expect(texts).not.toContain("Intranet G&M");
-    expect(texts).not.toContain("Organizaciones");
+    expect(texts).toContain("Organizaciones");
   });
 });

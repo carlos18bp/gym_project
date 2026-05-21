@@ -575,13 +575,6 @@ const slidebarOpen = ref(false); // Show modal with navigation
 onMounted(async () => {
   await userStore.init();
   showProfile.value = !!!currentUser.value.is_profile_completed;
-  
-  // Independent fetches — run in parallel to avoid serial round-trips.
-  await Promise.all([
-    fetchPendingCount(),
-    fetchProcessPendingCount(),
-    notificationStore.fetchUnreadCount(),
-  ]);
 
   // Hide legacy legal-request menu entries now replaced by Services module navigation.
   navigation.value = navigation.value.filter(
@@ -635,6 +628,15 @@ onMounted(async () => {
   }
 
   updateActiveNavItem();
+
+  // Best-effort badge fetches — run AFTER navigation filtering so a failing
+  // request can never block the role-based nav filtering above. allSettled
+  // keeps a single failed fetch from rejecting the whole hook.
+  await Promise.allSettled([
+    fetchPendingCount(),
+    fetchProcessPendingCount(),
+    notificationStore.fetchUnreadCount(),
+  ]);
 });
 
 /**

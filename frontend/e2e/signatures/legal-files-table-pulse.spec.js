@@ -11,7 +11,7 @@ import { LEGAL_FILES_TABLE_PULSE } from "../helpers/flow-tags.js";
  * E2E for legal-files-table-pulse (Req #6).
  *
  * Verifies that pending-signature rows in SignaturesListTable show
- * the animate-pulse class for ~8 seconds after mount, then stop.
+ * the animate-row-highlight class for ~8 seconds after mount, then stop.
  */
 
 test(
@@ -75,8 +75,8 @@ test(
 
     const row = page.getByTestId("signatures-list-row-6001");
     await expect(row).toBeVisible({ timeout: 15_000 });
-    await expect(row).toHaveClass(/animate-pulse/);
+    await expect(row).toHaveClass(/animate-row-highlight/);
 
-    await expect(row).not.toHaveClass(/animate-pulse/, { timeout: 12_000 });
+    await expect(row).not.toHaveClass(/animate-row-highlight/, { timeout: 12_000 });
   }
 );
