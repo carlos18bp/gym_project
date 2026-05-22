@@ -92,6 +92,19 @@ jest.mock("@/composables/usePendingSignatures", () => {
   };
 });
 
+jest.mock("@/composables/useDocumentTabBadges", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    useDocumentTabBadges: () => ({
+      tabUnreadCounts: ref({}),
+      isLoading: ref(false),
+      error: ref(null),
+      fetchTabUnreadCounts: jest.fn().mockResolvedValue(),
+    }),
+  };
+});
+
 const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const buildDocumentStore = (overrides = {}) => ({

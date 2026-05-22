@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
+from gym_app.models import Notification
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
 from gym_app.services.signature_notification_service import notify_signature_requested
@@ -232,6 +233,54 @@ def get_pending_signatures_count(request):
     ).values_list('document_id', flat=True).distinct().count()
 
     return Response({'pending_count': pending_count}, status=status.HTTP_200_OK)
+
+
+# Document state → "Archivos Jurídicos" dashboard tab. Drives the per-tab
+# unread badges so a "novedad" surfaces on whichever tab its document
+# currently lives in, not only "Dcs. Por Firmar".
+_DOCUMENT_STATE_TO_TAB = {
+    'PendingSignatures': 'pending-signatures',
+    'FullySigned': 'signed-documents',
+    'Rejected': 'archived-documents',
+    'Expired': 'archived-documents',
+    'Progress': 'my-documents',
+    'Completed': 'my-documents',
+    'Draft': 'legal-documents',
+    'Published': 'legal-documents',
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_document_notification_counts(request):
+    """Return unread document-notification counts grouped by dashboard tab.
+
+    Each unread notification linked to a document is bucketed by the
+    document's current state, so the dashboard badge follows the document as
+    it moves between tabs. The frontend ignores the ``pending-signatures``
+    bucket — that tab uses the dedicated pending-signatures-count endpoint.
+    """
+    now = timezone.now()
+    link_ids = Notification.objects.filter(
+        user=request.user,
+        link_type='document',
+        is_read=False,
+        is_archived=False,
+        is_deleted=False,
+    ).exclude(snoozed_until__gt=now).values_list('link_id', flat=True)
+
+    link_ids = [lid for lid in link_ids if lid is not None]
+    doc_states = dict(
+        DynamicDocument.objects.filter(id__in=set(link_ids)).values_list('id', 'state')
+    )
+
+    counts = {}
+    for link_id in link_ids:
+        tab = _DOCUMENT_STATE_TO_TAB.get(doc_states.get(link_id))
+        if tab:
+            counts[tab] = counts.get(tab, 0) + 1
+
+    return Response({'counts': counts}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
