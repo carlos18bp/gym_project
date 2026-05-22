@@ -53,8 +53,6 @@ const mountView = async ({
         ActivityFeed: { template: "<div />" },
         LegalUpdatesCard: { template: "<div />" },
         QuickActionButtons: { template: "<div />" },
-        RecentProcessList: { template: "<div />" },
-        RecentDocumentsList: { template: "<div />" },
       },
     },
   });
@@ -69,39 +67,22 @@ describe("Dashboard view", () => {
     jest.clearAllMocks();
   });
 
-  test("loads recent processes and reveals secondary sections", async () => {
-    jest.useFakeTimers();
-
+  test("loads the recent-process count for the welcome card on mount", async () => {
     const { wrapper } = await mountView();
 
-    await nextTick();
-    jest.advanceTimersByTime(200);
     await nextTick();
 
     expect(mockRecentProcessStore.init).toHaveBeenCalled();
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.activeProcesses).toBe(2);
-    expect(wrapper.vm.$.setupState.showRecentProcesses).toBe(true);
-    expect(wrapper.vm.$.setupState.showRecentDocuments).toBe(true);
     expect(wrapper.vm.$.setupState.currentUser.first_name).toBe("Ana");
-
-    jest.useRealTimers();
   });
 
-  test("does not load secondary sections without authenticated user", async () => {
-    jest.useFakeTimers();
+  test("does not load recent processes without an authenticated user", async () => {
+    await mountView({ authUser: {} });
 
-    const { wrapper } = await mountView({ authUser: {} });
-
-    await nextTick();
-    jest.advanceTimersByTime(300);
     await nextTick();
 
     expect(mockRecentProcessStore.init).not.toHaveBeenCalled();
-    // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
-    expect(wrapper.vm.$.setupState.showRecentProcesses).toBe(false);
-    expect(wrapper.vm.$.setupState.showRecentDocuments).toBe(false);
-
-    jest.useRealTimers();
   });
 });
