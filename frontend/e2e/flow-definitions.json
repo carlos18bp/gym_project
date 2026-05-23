@@ -162,16 +162,6 @@
       "description": "Accesos directos contextuales por rol",
       "expectedSpecs": 1
     },
-    "dashboard-recent-documents": {
-      "name": "Dashboard documentos recientes",
-      "module": "dashboard",
-      "roles": [
-        "shared"
-      ],
-      "priority": "P3",
-      "description": "Lista de documentos recientes en dashboard",
-      "expectedSpecs": 1
-    },
     "dashboard-navigation": {
       "name": "Dashboard navegación sidebar",
       "module": "dashboard",

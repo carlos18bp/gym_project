@@ -444,12 +444,6 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 ---
 
-### dashboard-recent-documents: Documentos recientes
-- **Módulo:** dashboard | **Prioridad:** P3 | **Ruta:** `/dashboard` | **E2E:** ✅
-- **Descripción:** Últimos 5 procesos y documentos visitados
-
----
-
 ### dashboard-quick-actions: Acciones rápidas del dashboard
 - **Módulo:** dashboard | **Prioridad:** P3 | **Ruta:** `/dashboard` | **E2E:** ✅
 - **Descripción:** Accesos directos contextuales filtrados por rol

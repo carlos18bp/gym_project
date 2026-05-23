@@ -33,7 +33,6 @@ export const PROCESS_ALERT_CONFIGURE = ['@flow:process-alert-configure', '@modul
 export const DASHBOARD_WELCOME_CARD = ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_ACTIVITY_FEED = ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_QUICK_ACTIONS = ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3'];
-export const DASHBOARD_RECENT_DOCUMENTS = ['@flow:dashboard-recent-documents', '@module:dashboard', '@priority:P3'];
 export const DASHBOARD_NAVIGATION = ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_LEGAL_UPDATES = ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3'];
 export const DASHBOARD_REPORTS = ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2'];
