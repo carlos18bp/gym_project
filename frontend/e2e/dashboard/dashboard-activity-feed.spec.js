@@ -64,6 +64,12 @@ async function installDashboardWithActivitiesMocks(page, { userId, role, activit
     if (apiPath === "legal-updates/active/") {
       return { status: 200, contentType: "application/json", body: "[]" };
     }
+    if (apiPath === "notifications/unread-count/") {
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ unread_count: 0 }) };
+    }
+    if (apiPath.startsWith("notifications/")) {
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ results: [], count: 0, page_size: 20 }) };
+    }
     return null;
   });
 }
@@ -106,7 +112,7 @@ test("dashboard renders activity feed with entries", { tag: ['@flow:dashboard-ac
 
   await page.goto("/dashboard");
 
-  // Dashboard should load and show the activity feed
+  await page.getByRole('button', { name: 'Feed' }).click();
   await expect(page.getByText("Creaste el proceso Laboral")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Editaste tu perfil")).toBeVisible();
   await expect(page.getByText("Finalizaste el proceso Civil")).toBeVisible();

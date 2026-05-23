@@ -11,8 +11,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from gym_app.models.dynamic_document import DynamicDocument, DocumentSignature, DocumentVariable, DocumentVisibilityPermission
+from gym_app.models import Notification
 from gym_app.serializers.dynamic_document import DocumentSignatureSerializer, DynamicDocumentSerializer, DynamicDocumentListSerializer
 from gym_app.serializers.user import UserSignatureSerializer
+from gym_app.services.signature_notification_service import notify_signature_requested
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
@@ -153,23 +155,8 @@ def expire_overdue_documents():
             continue
 
         # Notify creator that the document has expired
-        try:
-            subject = f"[Firmas] El documento '{document.title}' ha expirado"
-            body = (
-                f"El documento '{document.title}' tenía una fecha límite de firma "
-                f"establecida para {document.signature_due_date} y ha expirado sin ser firmado completamente.\n\n"
-                f"Ahora puedes revisarlo, editarlo o eliminarlo desde tu bandeja."
-            )
-            email_message = EmailMessage(
-                subject=subject,
-                body=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[creator.email],
-            )
-            email_message.send()
-        except Exception:
-            # No bloquear el flujo por errores de correo
-            pass
+        from gym_app.services.signature_notification_service import notify_signature_expired
+        notify_signature_expired(document)
 
 
 @api_view(['GET'])
@@ -225,6 +212,75 @@ def get_pending_signatures(request):
 
     serializer = DynamicDocumentListSerializer(queryset, many=True, context={'request': request})
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_pending_signatures_count(request):
+    """Return count of documents pending signature for the authenticated user.
+
+    Lightweight endpoint for badge polling - returns only the count, not full documents.
+    """
+    # First, expire any overdue documents
+    expire_overdue_documents()
+
+    # Count pending signatures for the user
+    pending_count = DocumentSignature.objects.filter(
+        signer=request.user,
+        signed=False,
+        rejected=False,
+        document__state='PendingSignatures',
+    ).values_list('document_id', flat=True).distinct().count()
+
+    return Response({'pending_count': pending_count}, status=status.HTTP_200_OK)
+
+
+# Document state → "Archivos Jurídicos" dashboard tab. Drives the per-tab
+# unread badges so a "novedad" surfaces on whichever tab its document
+# currently lives in, not only "Dcs. Por Firmar".
+_DOCUMENT_STATE_TO_TAB = {
+    'PendingSignatures': 'pending-signatures',
+    'FullySigned': 'signed-documents',
+    'Rejected': 'archived-documents',
+    'Expired': 'archived-documents',
+    'Progress': 'my-documents',
+    'Completed': 'my-documents',
+    'Draft': 'legal-documents',
+    'Published': 'legal-documents',
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_document_notification_counts(request):
+    """Return unread document-notification counts grouped by dashboard tab.
+
+    Each unread notification linked to a document is bucketed by the
+    document's current state, so the dashboard badge follows the document as
+    it moves between tabs. The frontend ignores the ``pending-signatures``
+    bucket — that tab uses the dedicated pending-signatures-count endpoint.
+    """
+    now = timezone.now()
+    link_ids = Notification.objects.filter(
+        user=request.user,
+        link_type='document',
+        is_read=False,
+        is_archived=False,
+        is_deleted=False,
+    ).exclude(snoozed_until__gt=now).values_list('link_id', flat=True)
+
+    link_ids = [lid for lid in link_ids if lid is not None]
+    doc_states = dict(
+        DynamicDocument.objects.filter(id__in=set(link_ids)).values_list('id', 'state')
+    )
+
+    counts = {}
+    for link_id in link_ids:
+        tab = _DOCUMENT_STATE_TO_TAB.get(doc_states.get(link_id))
+        if tab:
+            counts[tab] = counts.get(tab, 0) + 1
+
+    return Response({'counts': counts}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -317,39 +373,11 @@ def sign_document(request, document_id, user_id):
             if not saved_signature.signed:  # pragma: no cover – defensive check after save
                 raise Exception("Signature was not saved correctly")
             
-            # === Enviar correo a todos los firmantes ===
-            all_signatures = document.signatures.all()
-            signed_signatures = all_signatures.filter(signed=True)
-            unsigned_signatures = all_signatures.filter(signed=False)
+            # === Send signature progress notifications ===
+            from gym_app.services.signature_notification_service import notify_signature_progress, notify_signature_completed
             
-            # Correos de todos los firmantes
-            all_emails = [sig.signer.email for sig in all_signatures]
-            
-            # Nombres de firmantes
-            nombre_firmante = signing_user.get_full_name() or signing_user.email
-            nombres_ya_firmaron = [sig.signer.get_full_name() or sig.signer.email for sig in signed_signatures]
-            nombres_faltan = [sig.signer.get_full_name() or sig.signer.email for sig in unsigned_signatures]
-            
-            subject = f"[Firmas] Progreso en la firma del documento '{document.title}'"
-            body = (
-                f"El usuario {nombre_firmante} ha firmado el documento '{document.title}'.\n\n"
-                f"Firmantes que ya han firmado:\n- " + "\n- ".join(nombres_ya_firmaron) + "\n\n"
-                f"Firmantes que faltan por firmar:\n- " + ("\n- ".join(nombres_faltan) if nombres_faltan else "Ninguno. El documento está completamente firmado.")
-            )
-            
-            # Enviar correo a cada firmante
-            for email in all_emails:
-                try:
-                    email_message = EmailMessage(
-                        subject=subject,
-                        body=body,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[email]
-                    )
-                    email_message.send()
-                except Exception as e:
-                    pass
-            # === Fin envío de correo ===
+            # Send progress notification to all signers
+            notify_signature_progress(document, signing_user)
             
         except Exception as e:
             return Response(
@@ -372,6 +400,9 @@ def sign_document(request, document_id, user_id):
             # reason (legacy data, transient failure), backfill it now using
             # whatever issuer the document already knows about.
             ensure_letterhead_snapshot(document)
+
+            # Send completion notification
+            notify_signature_completed(document, signing_user)
 
             # For issuer_only documents, notify recipients when fully signed
             if document.signature_type == 'issuer_only':
@@ -458,29 +489,8 @@ def reject_document(request, document_id, user_id):
         document.save(update_fields=['state', 'fully_signed', 'updated_at'])
 
         # Notify the document creator
-        creator = document.created_by
-        if creator and getattr(creator, 'email', None):
-            try:
-                subject = f"[Firmas] El documento '{document.title}' fue rechazado"
-                nombre_rechazante = rejecting_user.get_full_name() or rejecting_user.email
-                body_lines = [
-                    f"El usuario {nombre_rechazante} ha rechazado el documento '{document.title}'.",
-                ]
-                if comment:
-                    body_lines.append("\nMotivo del rechazo:")
-                    body_lines.append(comment)
-                body = "\n".join(body_lines)
-
-                email_message = EmailMessage(
-                    subject=subject,
-                    body=body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[creator.email],
-                )
-                email_message.send()
-            except Exception:
-                # No bloquear el flujo por fallo de correo
-                pass
+        from gym_app.services.signature_notification_service import notify_signature_rejected
+        notify_signature_rejected(document, rejecting_user, comment)
 
         serializer = DocumentSignatureSerializer(signature_record)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -544,6 +554,10 @@ def reopen_document_signatures(request, document_id):
         document.fully_signed = False
         document.updated_at = timezone.now()
         document.save(update_fields=['state', 'fully_signed', 'updated_at'])
+
+        # Send reopening notifications to all signers
+        from gym_app.services.signature_notification_service import notify_signature_reopened
+        notify_signature_reopened(document)
 
         serializer = DynamicDocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -688,6 +702,11 @@ def formalize_document(request, document_id):
                     recipient.email, document_id, exc_info=True,
                 )
 
+        # Email already sent above; suppress the email branch in the helper.
+        notify_signature_requested(
+            document, list(recipients), signature_type='informative', send_email=False,
+        )
+
         # Freeze letterhead at formalization so the contents stay inalterable.
         # The "emisor" whose letterhead gets frozen is request.user (the user
         # who clicked Formalize), persisted in document.formalized_by above.
@@ -750,6 +769,16 @@ def formalize_document(request, document_id):
                 defaults={'signed': True, 'signed_at': now_issuer},
             )
 
+        # Creator must sign — uses the standard "Firma Solicitada" copy.
+        notify_signature_requested(document, [request.user], signature_type='normal')
+
+        # Notify recipients with issuer_only specific copy ("Documento Emitido").
+        # In-app only to avoid duplicating the email already sent by the
+        # underlying signing/formalization flow upstream of this view.
+        notify_signature_requested(
+            document, list(recipients), signature_type='issuer_only', send_email=False,
+        )
+
         # Grant visibility to recipients
         _grant_visibility_to_recipients(document, recipients, request.user)
 
@@ -810,6 +839,8 @@ def formalize_document(request, document_id):
         [DocumentSignature(document=document, signer=signer) for signer in signers],
         ignore_conflicts=True,
     )
+
+    notify_signature_requested(document, list(signers))
 
     # Freeze letterhead at formalization so the contents stay inalterable.
     # The "emisor" whose letterhead gets frozen is request.user, persisted in
@@ -963,6 +994,10 @@ def correct_document(request, document_id):
         rejected_at=None,
         rejection_comment=None,
     )
+
+    # Send reopening notifications to all signers
+    from gym_app.services.signature_notification_service import notify_signature_reopened
+    notify_signature_reopened(document)
 
     # Return the fully serialized document
     document = get_optimized_document_queryset().get(pk=document_id)
@@ -1266,6 +1301,39 @@ def generate_original_document_pdf(document, fallback_user=None):
 
     p, span {{
         font-family: 'Carlito', sans-serif !important;
+    }}
+
+    /*
+     * xhtml2pdf applies an oversized default margin to <p> blocks, which
+     * causes paragraphs to render with huge empty gaps between them even when
+     * the editor shows them with normal line spacing. Tighten those margins
+     * so the signed PDF matches the editor (issue: client R3 — PDFs con
+     * espaciado gigante entre párrafos).
+     *
+     * ``!important`` and the inclusion of ``div`` mirror the rule in
+     * ``document_views.py``: it is defence-in-depth alongside the
+     * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``,
+     * so any inline ``margin-*: Xpt`` that slips past the helper still loses
+     * to the global rule for normal blocks.
+     */
+    p, div {{
+        margin-top: 0 !important;
+        margin-bottom: 6pt !important;
+        line-height: 1.35;
+    }}
+
+    br {{
+        line-height: 1.35;
+    }}
+
+    ul, ol {{
+        margin: 0 0 6pt 18pt;
+        padding: 0;
+    }}
+
+    li {{
+        margin: 0 0 2pt 0;
+        line-height: 1.35;
     }}
 
     strong {{

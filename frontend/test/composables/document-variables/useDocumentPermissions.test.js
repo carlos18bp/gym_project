@@ -85,6 +85,10 @@ describe("useDocumentPermissions", () => {
 
     mockUserStore = {
       getCurrentUser: { role: "lawyer" },
+      get isLawyerLike() {
+        const role = this.getCurrentUser?.role;
+        return role === "lawyer" || role === "admin";
+      },
     };
 
     jest.spyOn(console, "error").mockImplementation(() => {});
@@ -867,7 +871,13 @@ describe("useDocumentPermissions", () => {
   });
 
   test("initializePermissions skips loading roles when user changes to non-lawyer", async () => {
-    mockUserStore = reactive({ getCurrentUser: { role: "lawyer" } });
+    mockUserStore = reactive({
+      getCurrentUser: { role: "lawyer" },
+      get isLawyerLike() {
+        const role = this.getCurrentUser?.role;
+        return role === "lawyer" || role === "admin";
+      },
+    });
     const permissions = useDocumentPermissions();
 
     mockDynamicDocumentStore.fetchAvailableClients.mockImplementation(() => {

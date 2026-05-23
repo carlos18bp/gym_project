@@ -51,9 +51,23 @@
 
             <!-- Stage info -->
             <div class="flex-1 min-w-0">
-              <h4 class="text-base font-medium text-gray-900">
-                {{ stage.status }}
-              </h4>
+              <div class="flex items-center gap-2">
+                <h4 class="text-base font-medium text-gray-900">
+                  {{ stage.status }}
+                </h4>
+                <span
+                  v-if="stage.alert"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full"
+                  :class="stage.alert.is_active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
+                  :title="alertTitle(stage.alert)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z" />
+                    <path d="M10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                  </svg>
+                  {{ stage.alert.is_active ? 'Alerta' : 'Inactiva' }}
+                </span>
+              </div>
               <p class="text-sm text-gray-500 mt-1">
                 {{ formatDate(stage.date || stage.created_at) }}
               </p>
@@ -104,6 +118,13 @@ const emit = defineEmits(['close'])
 
 const closeModal = () => {
   emit('close')
+}
+
+const alertTitle = (alert) => {
+  if (!alert?.is_active) return 'Alerta desactivada'
+  return alert.notify_clients
+    ? 'Notifica al abogado y clientes'
+    : 'Notifica solo al abogado'
 }
 
 // Preserve the original array order to match the edit form (ProcessForm.vue)

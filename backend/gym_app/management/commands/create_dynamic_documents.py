@@ -809,11 +809,18 @@ class Command(BaseCommand):
                     if doc and 4 <= cycle < 7:
                         _mark_fully_signed(doc)
 
+                    # Backdate PendingSignatures docs so the daily reminder task
+                    # can detect them (it excludes documents created within 24h).
+                    if doc and state == 'PendingSignatures' and not (4 <= cycle < 7):
+                        DynamicDocument.objects.filter(pk=doc.pk).update(
+                            created_at=timezone.now() - timedelta(days=2)
+                        )
+
             # Bloque explícito para el abogado especial: 5 PendingSignatures + 5 FullySigned
             # (los 10 docs que recibe vía create_full_document_for no tienen requires_signature=True)
             if special_lawyer:
                 for i in range(5):
-                    create_document_from_template(
+                    doc = create_document_from_template(
                         template_doc=random.choice(templates),
                         assigned_to_user=special_lawyer,
                         state='PendingSignatures',
@@ -821,6 +828,11 @@ class Command(BaseCommand):
                         label_suffix=f"Pendiente de firma #{i+1} para {special_lawyer.email}",
                         create_signature_for_client=True,
                     )
+                    # Backdate so the daily reminder task can detect these docs.
+                    if doc:
+                        DynamicDocument.objects.filter(pk=doc.pk).update(
+                            created_at=timezone.now() - timedelta(days=2)
+                        )
                 for i in range(5):
                     doc = create_document_from_template(
                         template_doc=random.choice(templates),

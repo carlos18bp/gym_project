@@ -289,22 +289,27 @@ watch(
 </script>
 
 <style scoped>
+/*
+ * Background-only pulse — the previous version still applied a glowing
+ * ``box-shadow`` and a low peak opacity (0.22) that the client perceived as
+ * "fading text" because the surrounding halo competed visually with the
+ * card content. Aligned with ``BaseDocumentCard`` / ``SignaturesListTable``:
+ * only ``background-color`` animates, peak opacity raised to 0.45, and the
+ * animation loops infinitely so the cue remains visible while the user
+ * scrolls (client R3 — "que solo se desvanezca el background y se vea más
+ * llamativo").
+ */
 @keyframes pulse-highlight {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
-    border-color: rgba(59, 130, 246, 0.8);
-    transform: scale(1);
+    background-color: rgba(59, 130, 246, 0.10);
   }
   50% {
-    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.4);
-    border-color: rgba(59, 130, 246, 0.8);
-    background-color: rgba(59, 130, 246, 0.1);
-    transform: scale(1.02);
+    background-color: rgba(59, 130, 246, 0.45);
   }
 }
 
 .animate-pulse-highlight {
-  animation: pulse-highlight 1s ease-in-out 3;
+  animation: pulse-highlight 1.6s ease-in-out infinite;
   border-width: 2px !important;
   position: relative;
   z-index: 10;

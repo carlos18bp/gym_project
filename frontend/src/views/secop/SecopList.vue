@@ -10,7 +10,7 @@
     <!-- Main content -->
     <div class="py-6 px-4 sm:px-6 lg:px-8">
       <!-- Tabs Navigation -->
-      <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 mb-6" data-testid="secop-tabs">
+      <TabsCard testid="secop-tabs">
         <div class="border-b border-gray-200">
           <div class="flex items-center justify-between px-4 sm:px-6">
             <!-- Desktop Tabs -->
@@ -61,7 +61,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </TabsCard>
 
       <!-- ALL PROCESSES TAB -->
       <template v-if="activeTab === 'all' || activeTab === 'classified'">
@@ -645,6 +645,7 @@ import { useRouter } from "vue-router";
 import { useSecopStore } from "@/stores/secop/index";
 import { useUserStore } from "@/stores/auth/user";
 import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
+import TabsCard from "@/components/layouts/TabsCard.vue";
 import MultiSelectDropdown from "@/components/secop/MultiSelectDropdown.vue";
 import SyncStatus from "@/components/secop/SyncStatus.vue";
 import ClassificationBadge from "@/components/secop/ClassificationBadge.vue";

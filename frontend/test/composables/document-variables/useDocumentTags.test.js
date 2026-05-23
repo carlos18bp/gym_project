@@ -52,6 +52,10 @@ describe("useDocumentTags", () => {
 
     mockUserStore = {
       getCurrentUser: { role: "lawyer" },
+      get isLawyerLike() {
+        const role = this.getCurrentUser?.role;
+        return role === "lawyer" || role === "admin";
+      },
     };
 
     mockGetAllColors.mockReset();

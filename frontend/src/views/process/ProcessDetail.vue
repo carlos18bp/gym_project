@@ -100,8 +100,16 @@
       v-if="process"
       class="space-y-6"
     >
-      <!-- Card: process header and information -->
-      <div class="p-4 sm:p-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <!-- Card: process header and information.
+           ``notification-highlight`` animates ONLY the background colour and
+           the surrounding box-shadow, leaving the text fully readable while
+           the deep-linked card draws attention. Tailwind's ``animate-pulse``
+           would fade the entire element (including the text) which the user
+           explicitly flagged as confusing. -->
+      <div
+        class="p-4 sm:p-6 rounded-lg border bg-white shadow-sm transition-all duration-500"
+        :class="isHighlighted ? 'border-blue-400 ring-2 ring-blue-200 notification-highlight' : 'border-gray-200'"
+      >
         <!-- Header with case type and users button -->
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
           <div class="flex items-center gap-3">
@@ -197,6 +205,28 @@
             :progress="process.progress"
             @open-history="showHistoryModal = true"
           />
+          <!-- Alert indicator (yellow tone for higher visual emphasis) -->
+          <div
+            v-if="lastStageAlert && lastStageAlert.is_active"
+            class="mt-3 flex items-start gap-2 px-3 py-2 bg-yellow-50 border border-yellow-300 rounded-lg"
+          >
+            <BellAlertIcon class="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-yellow-800 font-semibold">
+                Alerta activa — {{
+                  lastStageAlert.notify_clients
+                    ? 'Notifica al abogado y clientes'
+                    : 'Notifica solo al abogado'
+                }}
+              </p>
+              <p
+                v-if="lastStageAlert.description"
+                class="text-xs text-yellow-700 mt-0.5 break-words"
+              >
+                {{ lastStageAlert.description }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       </div>
@@ -337,8 +367,11 @@
             </div>
           </div>
         </div>
-        <!-- Edit Button (It's gonna redirect to /process_form view) -->
-        <div v-if="currentUser.role !== 'client'">
+        <!-- Edit Button — only lawyer-like users (lawyer / admin / staff /
+             superuser) can edit a process. Other roles (client, basic,
+             corporate_client) only read. Uses the ``isLawyerLike`` getter so
+             every consumer shares the same access rule. -->
+        <div v-if="userStore.isLawyerLike">
           <button
             @click="navigateToEdit"
             type="button"
@@ -380,7 +413,8 @@ import {
   ChevronDownIcon,
 } from "@heroicons/vue/20/solid";
 import { EyeIcon } from "@heroicons/vue/24/outline";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { BellAlertIcon } from "@heroicons/vue/24/solid";
+import { computed, onBeforeMount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProcessStore } from "@/stores/process";
 import { useUserStore } from "@/stores/auth/user";
@@ -397,6 +431,12 @@ const currentUser = computed(() => userStore.currentUser);
 // Get process ID from route and fetch process data
 const processId = route.params.process_id;
 const process = computed(() => processStore.processById(processId));
+
+const lastStageAlert = computed(() => {
+  if (!process.value?.stages?.length) return null;
+  const lastStage = process.value.stages[process.value.stages.length - 1];
+  return lastStage?.alert || null;
+});
 
 /**
  * Initializes process and user data before the component is mounted.
@@ -415,6 +455,19 @@ onBeforeMount(async () => {
     }
   } catch (error) {
     console.error('Error initializing process detail:', error);
+  }
+});
+
+// Highlight pulse effect from notification deep-link
+const isHighlighted = ref(false);
+
+onMounted(() => {
+  if (route.query.highlight) {
+    isHighlighted.value = true;
+    setTimeout(() => {
+      isHighlighted.value = false;
+      router.replace({ ...route, query: { ...route.query, highlight: undefined } });
+    }, 5000);
   }
 });
 
@@ -648,3 +701,29 @@ const getPrimaryClient = (p) => {
   return p.clients.length ? p.clients[0] : null;
 };
 </script>
+
+<style scoped>
+/*
+ * Background-only pulse for the deep-link highlight. Mirrors the
+ * ``pulse-highlight`` pattern in SignaturesList.vue but bumps the peak
+ * background opacity so the cue stays visible against the white card while
+ * the text never loses contrast.
+ */
+@keyframes notification-highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.40);
+    background-color: rgba(59, 130, 246, 0.30);
+  }
+}
+
+.notification-highlight {
+  animation: notification-highlight 1s ease-in-out 3;
+  animation-fill-mode: forwards;
+  position: relative;
+  z-index: 10;
+}
+</style>

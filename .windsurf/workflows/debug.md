@@ -128,3 +128,29 @@ If the user reports the recommended fix did not work or introduced a new error:
    - Runtime logs or terminal output.
    - The exact state of the code after their changes.
    - Any additional context they haven't shared yet.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/debug`:
+
+```markdown
+🟢 debug OK — diagnóstico completo
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Phase 1 — Error capture & context | ✅ | error reproducido, contexto leído |
+| Phase 2 — Root cause analysis | ✅ | hipótesis con evidencia (archivo:línea) |
+| Phase 3 — Recommended fix | ✅ | before/after + riesgo + prevención |
+| Phase 4 — Verification plan | ✅ | comandos repro + validate + regresión |
+```
+
+Si el diagnóstico no alcanzó confianza alta (Phase 2 sin evidencia suficiente,
+hipótesis múltiples sin ranking, etc.), reemplazar el ✅ por ⚠️ y omitir la
+línea ✨; agregar `## Next steps` con el contexto adicional que necesita el
+operador (logs, repro exacto, estado del código).
+
+Cuando el operador autoriza aplicar el fix → invocar `/implement`. Esta skill
+**no** aplica cambios.

@@ -1,3 +1,3 @@
 interface:
-  display_name: "E2E Flow Audit"
-  short_description: "Map product flows against Playwright E2E coverage"
+  display_name: "E2e User Flows Check"
+  short_description: "Help with E2e User Flows Check tasks"

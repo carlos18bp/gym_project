@@ -23,11 +23,16 @@ export const AUTH_ROUTER_GUARDS = ['@flow:auth-router-guards', '@module:auth', '
 export const PROFILE_VIEW_EDIT = ['@flow:profile-view-edit', '@module:profile', '@priority:P2'];
 export const PROFILE_COMPLETE = ['@flow:profile-complete', '@module:profile', '@priority:P2'];
 
+// ── Notifications ───────────────────────────────────────────────────────────
+export const NOTIFICATION_CENTER = ['@flow:notification-center', '@module:notifications', '@priority:P2'];
+
+// ── Process Alerts ──────────────────────────────────────────────────────────
+export const PROCESS_ALERT_CONFIGURE = ['@flow:process-alert-configure', '@module:processes', '@priority:P2'];
+
 // ── Dashboard ───────────────────────────────────────────────────────────────
 export const DASHBOARD_WELCOME_CARD = ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_ACTIVITY_FEED = ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_QUICK_ACTIONS = ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3'];
-export const DASHBOARD_RECENT_DOCUMENTS = ['@flow:dashboard-recent-documents', '@module:dashboard', '@priority:P3'];
 export const DASHBOARD_NAVIGATION = ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2'];
 export const DASHBOARD_LEGAL_UPDATES = ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3'];
 export const DASHBOARD_REPORTS = ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2'];
@@ -92,6 +97,9 @@ export const SIGN_SIGNED_DOCUMENTS = ['@flow:sign-signed-documents', '@module:si
 export const SIGN_PENDING_DOCUMENTS = ['@flow:sign-pending-documents', '@module:signatures', '@priority:P2'];
 export const SIGN_ARCHIVED_DOCUMENTS = ['@flow:sign-archived-documents', '@module:signatures', '@priority:P3'];
 export const SIGN_STATUS_MODAL = ['@flow:sign-status-modal', '@module:signatures', '@priority:P2'];
+export const LEGAL_FILES_MENU_PULSE = ['@flow:legal-files-menu-pulse', '@module:signatures', '@priority:P1'];
+export const LEGAL_FILES_AUTO_REDIRECT = ['@flow:legal-files-auto-redirect', '@module:signatures', '@priority:P2'];
+export const LEGAL_FILES_TABLE_PULSE = ['@flow:legal-files-table-pulse', '@module:signatures', '@priority:P2'];
 
 // ── Legal Requests ──────────────────────────────────────────────────────────
 export const LEGAL_CREATE_REQUEST = ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1'];

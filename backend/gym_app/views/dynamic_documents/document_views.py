@@ -515,10 +515,49 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             font-family: 'Carlito', sans-serif !important;
             font-size: 12pt;
             {body_extra_top_padding}
+            word-wrap: break-word;
+            -ms-word-break: break-word;
+            word-break: break-word;
         }}
 
-        p, span {{
+        p, span, li, div {{
             font-family: 'Carlito', sans-serif !important;
+            word-wrap: break-word;
+            -ms-word-break: break-word;
+            word-break: break-word;
+        }}
+
+        /*
+         * xhtml2pdf applies an oversized default margin to <p> blocks, which
+         * causes paragraphs to render with huge empty gaps between them even
+         * when the editor shows them with normal line spacing. Tighten those
+         * margins and the inter-line height so the PDF matches what the user
+         * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
+         *
+         * ``!important`` is used as a defence-in-depth alongside the
+         * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``:
+         * if any ``margin-*: Xpt`` slips past the helper (e.g. value below
+         * the strip threshold but still aggregated by Word into oversized
+         * spacing), the global rule still wins for normal paragraphs.
+         */
+        p, div {{
+            margin-top: 0 !important;
+            margin-bottom: 6pt !important;
+            line-height: 1.35;
+        }}
+
+        br {{
+            line-height: 1.35;
+        }}
+
+        ul, ol {{
+            margin: 0 0 6pt 18pt;
+            padding: 0;
+        }}
+
+        li {{
+            margin: 0 0 2pt 0;
+            line-height: 1.35;
         }}
 
         strong {{

@@ -1023,17 +1023,17 @@ class TestExpireOverdue:
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
-    @patch("gym_app.views.dynamic_documents.signature_views.EmailMessage")
+    @patch("gym_app.services.signature_notification_service.send_template_email")
     @freeze_time("2025-01-15 12:00:00")
-    def test_expire_overdue_sends_email(self, mock_email, law):
-        """Verify expire overdue sends email."""
+    def test_expire_overdue_sends_email(self, mock_send_email, law):
+        """Verify expire overdue sends email via notification service."""
         doc = DynamicDocument.objects.create(
             title="Overdue2", content="<p>x</p>", state="PendingSignatures",
             created_by=law, requires_signature=True,
             signature_due_date=timezone.now().date() - datetime.timedelta(days=1),
         )
         expire_overdue_documents()
-        mock_email.assert_called_once()
+        mock_send_email.assert_called_once()
         doc.refresh_from_db()
         assert doc.state == "Expired"
 
@@ -3314,6 +3314,7 @@ class TestDocumentDetailSignersExposed:
             first_name="Cli", last_name="Ent",
         )
 
+    @freeze_time('2026-01-15 10:00:00')
     def test_detail_response_includes_signers_array_for_issuer_only(self, api, lawyer, client_user):
         """GET detail returns a ``signers`` list with one entry per DocumentSignature."""
         doc = DynamicDocument.objects.create(
@@ -3337,6 +3338,7 @@ class TestDocumentDetailSignersExposed:
         assert isinstance(resp.data["signers"], list)
         assert len(resp.data["signers"]) == 2
 
+    @freeze_time('2026-01-15 10:00:00')
     def test_emisor_signer_entry_has_signed_true_after_signing(self, api, lawyer, client_user):
         """After the emisor signs an issuer_only doc, the signers entry reflects signed=True."""
         doc = DynamicDocument.objects.create(
@@ -3512,7 +3514,6 @@ class TestLetterheadSnapshot:
         snapshot_letterhead_on_formalize(doc, signer_user)
         doc.refresh_from_db()
 
-        assert doc.letterhead_image_snapshot
         assert doc.letterhead_image_snapshot.name.startswith('letterheads_snapshot/')
 
     def test_snapshot_is_idempotent_and_does_not_overwrite(self, lawyer_user):
@@ -3571,7 +3572,6 @@ class TestLetterheadSnapshot:
         ensure_letterhead_snapshot(doc)
         doc.refresh_from_db()
 
-        assert doc.letterhead_image_snapshot
         assert doc.letterhead_image_snapshot.name.startswith('letterheads_snapshot/')
 
 
@@ -3586,6 +3586,7 @@ class TestSignersIsCreatorFlag:
         assert response.status_code == status.HTTP_200_OK, response.data
         return response.data["signers"]
 
+    @freeze_time('2026-01-15 10:00:00')
     def test_creator_signer_is_marked_is_creator_true(self, api_client, lawyer_user, signer_user):
         doc = DynamicDocument.objects.create(
             title="Issuer-only",
@@ -3603,6 +3604,7 @@ class TestSignersIsCreatorFlag:
         creator_row = next(s for s in signers if s["signer_id"] == lawyer_user.id)
         assert creator_row["is_creator"] is True
 
+    @freeze_time('2026-01-15 10:00:00')
     def test_recipient_signer_is_marked_is_creator_false(self, api_client, lawyer_user, signer_user):
         doc = DynamicDocument.objects.create(
             title="Issuer-only",
@@ -3620,6 +3622,7 @@ class TestSignersIsCreatorFlag:
         recipient_row = next(s for s in signers if s["signer_id"] == signer_user.id)
         assert recipient_row["is_creator"] is False
 
+    @freeze_time('2026-01-15 10:00:00')
     def test_is_creator_persists_after_creator_signs(self, api_client, lawyer_user, signer_user):
         doc = DynamicDocument.objects.create(
             title="Issuer-only signed",

@@ -23,6 +23,20 @@ def disable_ssl_redirect(settings):
     settings.SECURE_SSL_REDIRECT = False
 
 
+@pytest.fixture(autouse=True)
+def reset_throttle_cache():
+    """Clear DRF throttle cache between tests so rate limits don't bleed across.
+
+    Throttling is enforced in production but disabled here to keep tests fast and
+    independent. Specific tests that need to verify throttling can re-enable it
+    locally and call this fixture to reset.
+    """
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def api_client():
     """Pre-configured DRF APIClient."""

@@ -459,6 +459,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             variables.append(variable)
 
         # Create signature records if required
+        all_signers = []
         if requires_signature:
             # Create signature for the lawyer (document creator)
             if creator and creator.role == 'lawyer':
@@ -467,6 +468,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                         document=document,
                         signer=creator
                     )
+                    all_signers.append(creator)
                 except Exception as e:
                     pass  # Handle error silently
             
@@ -477,8 +479,14 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                         document=document,
                         signer=signer
                     )
+                    all_signers.append(signer)
                 except Exception as e:
                     pass  # Handle error silently
+            
+            # Send signature request notifications
+            if all_signers:
+                from gym_app.services.signature_notification_service import notify_signature_requested
+                notify_signature_requested(document, all_signers)
 
         # Create visibility permissions if provided and document is not public
         if visibility_user_ids and not document.is_public:
@@ -592,6 +600,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             
             # Add new signers
             request = self.context.get('request')
+            new_signers = []
             for signer in signers:
                 if signer.id not in existing_signer_ids:
                     try:
@@ -599,8 +608,14 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
                             document=instance,
                             signer=signer
                         )
+                        new_signers.append(signer)
                     except Exception as e:
                         pass  # Handle error silently
+            
+            # Send signature request notifications to new signers only
+            if new_signers:
+                from gym_app.services.signature_notification_service import notify_signature_requested
+                notify_signature_requested(instance, new_signers)
 
         # Update permissions if provided
         request = self.context.get('request')

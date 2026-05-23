@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
+    <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 p-4 sm:p-5 mb-6">
       <!-- Search Bar -->
       <div class="mb-4">
         <div class="relative w-full">
@@ -214,7 +214,12 @@
             <tr
               v-for="(document, index) in paginatedDocuments"
               :key="document.id"
-              class="hover:bg-gray-50 cursor-pointer transition-colors"
+              :data-testid="`signatures-list-row-${document.id}`"
+              :class="[
+                'hover:bg-gray-50 cursor-pointer transition-colors',
+                shouldPulsate(document) ? 'animate-row-highlight' : '',
+                isHighlighted(document) ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+              ]"
               @click="handleDocumentClick(document)"
             >
               <td class="px-6 py-4 whitespace-nowrap" @click.stop>
@@ -596,7 +601,7 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
-import { computed, ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   MagnifyingGlassIcon,
@@ -640,11 +645,25 @@ const props = defineProps({
   selectedTags: {
     type: Array,
     default: () => []
+  },
+  highlightDocumentId: {
+    type: [String, Number],
+    default: null
+  },
+  openSignaturesFor: {
+    type: [String, Number],
+    default: null
   }
 });
 
 // Emits
-const emit = defineEmits(['refresh', 'document-fully-signed', 'document-rejected', 'open-electronic-signature']);
+const emit = defineEmits([
+  'refresh',
+  'document-fully-signed',
+  'document-rejected',
+  'open-electronic-signature',
+  'clear-open-signatures-for',
+]);
 
 // Store instances
 const userStore = useUserStore();
@@ -671,6 +690,33 @@ const sortBy = ref('recent');
 const selectedDocuments = ref([]);
 const showSummaryModal = ref(false);
 const summaryDocument = ref(null);
+
+const PULSE_DURATION_MS = 8000;
+const isPulseActive = ref(true);
+let pulseTimeoutId = null;
+
+const shouldPulsate = (document) => {
+  if (!isPulseActive.value) {
+    return false;
+  }
+  if (props.state !== 'PendingSignatures') {
+    return false;
+  }
+
+  const currentUser = userStore.currentUser;
+  if (!currentUser) {
+    return false;
+  }
+
+  return document.signatures?.some(
+    sig => sig.signer_id === currentUser.id && !sig.signed && !sig.rejected
+  );
+};
+
+// Computed property to determine if document is highlighted
+const isHighlighted = (document) => {
+  return props.highlightDocumentId && document.id.toString() === props.highlightDocumentId.toString();
+};
 
 // Per-tab pagination state (independent of shared store)
 const tabDocuments = ref([]);
@@ -1255,7 +1301,33 @@ const handleRefresh = async () => {
 };
 
 onMounted(async () => {
+  pulseTimeoutId = setTimeout(() => {
+    isPulseActive.value = false;
+  }, PULSE_DURATION_MS);
   await fetchTabData(1);
+});
+
+// Auto-open the signatures modal for the document referenced by the
+// `openSignaturesFor` query param (set by DocumentForm after formalize). The
+// document may not be present on the first render, so we wait for it to
+// appear in `filteredAndSortedDocuments` before opening.
+watch(
+  [() => props.openSignaturesFor, filteredAndSortedDocuments],
+  ([targetId, docs]) => {
+    if (!targetId) return;
+    const match = docs.find((d) => String(d.id) === String(targetId));
+    if (!match) return;
+    openModal('signatures', match);
+    emit('clear-open-signatures-for');
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (pulseTimeoutId) {
+    clearTimeout(pulseTimeoutId);
+    pulseTimeoutId = null;
+  }
 });
 
 // Expose refresh function
@@ -1308,3 +1380,29 @@ watch(currentPage, (newPage) => {
   fetchTabData(newPage);
 });
 </script>
+
+<style scoped>
+/*
+ * Row-level highlight pulse — animates ONLY background-color so the row text
+ * stays at full opacity and remains legible. Replaces Tailwind's
+ * ``animate-pulse`` which faded the entire row (text included). Mirrors the
+ * cue used by ``BaseDocumentCard`` / ``SignaturesList`` for a consistent
+ * "needs your attention" indicator across Archivos Jurídicos (client R3 —
+ * "que solo se desvanezca el background y se vea más llamativo").
+ */
+@keyframes pulse-row-highlight {
+  0%,
+  100% {
+    background-color: rgba(59, 130, 246, 0.10);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.45);
+  }
+}
+
+.animate-row-highlight {
+  animation: pulse-row-highlight 1.6s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+</style>

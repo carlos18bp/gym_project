@@ -1022,12 +1022,18 @@ const saveDocument = async (state = 'Draft') => {
         if (signatureType.value === 'informative') {
           router.push({ path: '/dynamic_document_dashboard', query: { tab: 'my-documents' } });
         } else {
+          // openSignaturesFor query param triggers auto-open of the signatures
+          // modal in the dashboard so the creator can sign without hunting.
           const currentUser = userStore.currentUser;
-          if (currentUser?.role === 'lawyer') {
-            router.push({ path: '/dynamic_document_dashboard', query: { lawyerTab: 'pending-signatures' } });
-          } else {
-            router.push({ path: '/dynamic_document_dashboard', query: { tab: 'pending-signatures' } });
-          }
+          const tabKey = currentUser?.role === 'lawyer' ? 'lawyerTab' : 'tab';
+          const targetId = documentId || document.value.id;
+          router.push({
+            path: '/dynamic_document_dashboard',
+            query: {
+              [tabKey]: 'pending-signatures',
+              openSignaturesFor: targetId ? String(targetId) : undefined,
+            },
+          });
         }
       } else {
         // For client/basic/corporate flows, always return to "Mis Documentos" tab

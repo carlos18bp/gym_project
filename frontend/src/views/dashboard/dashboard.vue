@@ -31,6 +31,8 @@
             <!-- Quick action buttons always full width -->
             <QuickActionButtons :user="currentUser" class="w-full"></QuickActionButtons>
 
+            <!-- Notification summary moved into ActivityFeed as the first tab. -->
+
             <!-- Featured services -->
             <FeaturedServicesGrid class="w-full" />
             
@@ -50,54 +52,17 @@
                     </div>
                 </template>
             </Suspense>
-            
-            <!-- Recent lists with skeleton loading while data loads -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <Suspense>
-                    <template #default>
-                        <RecentProcessList class="h-full" v-if="showRecentProcesses" />
-                    </template>
-                    <template #fallback>
-                        <div class="h-full bg-gray-50 animate-pulse rounded-lg p-4">
-                            <div class="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-                            <div class="space-y-3">
-                                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-                                <div class="h-4 bg-gray-200 rounded w-full"></div>
-                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
-                            </div>
-                        </div>
-                    </template>
-                </Suspense>
-                
-                <Suspense>
-                    <template #default>
-                        <RecentDocumentsList class="h-full" v-if="showRecentDocuments" />
-                    </template>
-                    <template #fallback>
-                        <div class="h-full bg-gray-50 animate-pulse rounded-lg p-4">
-                            <div class="h-8 bg-gray-200 rounded w-1/2 mb-4"></div>
-                            <div class="space-y-3">
-                                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-                                <div class="h-4 bg-gray-200 rounded w-full"></div>
-                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
-                            </div>
-                        </div>
-                    </template>
-                </Suspense>
-            </div>
         </div>
     </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import UserWelcomeCard from '@/components/dashboard/UserWelcomeCard.vue';
 import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
 import QuickActionButtons from '@/components/dashboard/QuickActionButtons.vue';
 import FeaturedServicesGrid from '@/components/dashboard/FeaturedServicesGrid.vue';
-import RecentProcessList from '@/components/dashboard/RecentProcessList.vue';
-import RecentDocumentsList from '@/components/dashboard/RecentDocumentsList.vue';
 import { useUserStore } from '@/stores/auth/user';
 import { useAuthStore } from '@/stores/auth/auth';
 
@@ -110,22 +75,6 @@ const currentUser = computed(() => {
   return userStore.userById(authStore.userAuth?.id) || {};
 });
 const activeProcesses = ref(0);
-const showRecentProcesses = ref(false);
-const showRecentDocuments = ref(false);
-
-// Delayed loading of non-critical components to improve initial render time
-function loadSecondaryComponents() {
-  // Use nextTick to ensure they load after the first render
-  nextTick(() => {
-    setTimeout(() => {
-      showRecentProcesses.value = true;
-    }, 100);
-    
-    setTimeout(() => {
-      showRecentDocuments.value = true;
-    }, 200);
-  });
-}
 
 // Load current user data
 onMounted(async () => {
@@ -134,10 +83,7 @@ onMounted(async () => {
     await userStore.init();
     if (authStore.userAuth?.id) {
       // currentUser is now computed, so it updates automatically
-      
-      // Load secondary components after
-      loadSecondaryComponents();
-      
+
       // Get approximate number of active processes without loading the full processes list
       // Use the recentProcess store, which already has a lightweight endpoint
       const recentProcessStore = await import('@/stores/dashboard/recentProcess').then(m => m.useRecentProcessStore());

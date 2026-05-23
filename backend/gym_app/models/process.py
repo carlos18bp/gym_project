@@ -117,6 +117,38 @@ class Process(models.Model):
     def __str__(self):
         return self.ref
 
+class StageAlert(models.Model):
+    """Alert configuration for a legal process stage.
+
+    Created automatically when a Stage is added to a Process.
+    Only the alert of the *last* stage of each process is evaluated
+    by the daily reminder task.
+    """
+
+    stage = models.OneToOneField(
+        Stage,
+        on_delete=models.CASCADE,
+        related_name='alert',
+    )
+    description = models.TextField(
+        blank=True,
+        default='',
+        help_text="Custom description for the alert email/notification.",
+    )
+    is_active = models.BooleanField(default=True)
+    notify_clients = models.BooleanField(
+        default=True,
+        help_text="If False, only the assigned lawyer is notified.",
+    )
+    notified_3_days = models.BooleanField(default=False)
+    notified_1_day = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Alert for Stage {self.stage_id} (active={self.is_active})"
+
+
 class RecentProcess(models.Model):
     """
     Model representing the recently viewed processes by a user.

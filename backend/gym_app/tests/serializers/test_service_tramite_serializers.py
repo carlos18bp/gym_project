@@ -372,6 +372,90 @@ class TestServiceSerializerUpdate:
 
         assert service_with_stages.stages.count() == original_stage_count
 
+    def test_update_translates_field_order_collision_to_validation_error(
+        self, service_with_stages, ser_admin,
+    ):
+        """B5 regression: duplicate ``order`` within a stage raises ValidationError.
+
+        Before the fix, a payload that sent two NEW fields with the same
+        ``order`` value triggered an ``IntegrityError`` from the
+        ``unique_service_field_order_per_stage`` constraint, which DRF
+        surfaced as HTTP 500. The serializer now wraps the IntegrityError
+        in ``DjangoValidationError`` so the calling view returns 400.
+        """
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        request = _make_request("put", user=ser_admin)
+        stage1 = service_with_stages.stages.order_by("order").first()
+        existing_field = stage1.fields.first()
+        stage2 = service_with_stages.stages.order_by("order").last()
+
+        payload = self._update_payload(service_with_stages, [
+            {
+                "id": stage1.id,
+                "title": stage1.title,
+                "order": stage1.order,
+                "is_active": True,
+                "fields": [
+                    # Keep the existing field (with its persisted ID/order=1)
+                    {
+                        "id": existing_field.id,
+                        "key": existing_field.key,
+                        "label": existing_field.label,
+                        "field_type": "input",
+                        "order": existing_field.order,
+                    },
+                    # Two NEW fields colliding on order=5 → IntegrityError
+                    {"key": "nuevo_a", "label": "A", "field_type": "input", "order": 5},
+                    {"key": "nuevo_b", "label": "B", "field_type": "input", "order": 5},
+                ],
+            },
+            {"id": stage2.id, "title": stage2.title, "order": stage2.order, "is_active": True, "fields": []},
+        ])
+
+        serializer = ServiceSerializer(service_with_stages, data=payload, context={"request": request})
+        assert serializer.is_valid(), serializer.errors
+
+        with pytest.raises(DjangoValidationError) as exc:
+            serializer.save()
+        message = str(exc.value)
+        assert "duplicado" in message or "varios campos" in message
+
+    def test_update_translates_select_without_options_to_validation_error(
+        self, service_with_stages, ser_admin,
+    ):
+        """B5 regression: select_single field without ``options`` returns a 400-style error.
+
+        ``ServiceField.clean()`` raises Django's ``ValidationError`` for this
+        case; the serializer must let it propagate so DRF returns 400.
+        """
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        request = _make_request("put", user=ser_admin)
+        stage1 = service_with_stages.stages.order_by("order").first()
+        stage2 = service_with_stages.stages.order_by("order").last()
+
+        payload = self._update_payload(service_with_stages, [
+            {
+                "id": stage1.id,
+                "title": stage1.title,
+                "order": stage1.order,
+                "is_active": True,
+                "fields": [
+                    {"key": "tipo", "label": "Tipo",
+                     "field_type": "select_single", "order": 7},
+                ],
+            },
+            {"id": stage2.id, "title": stage2.title, "order": stage2.order, "is_active": True, "fields": []},
+        ])
+
+        serializer = ServiceSerializer(service_with_stages, data=payload, context={"request": request})
+        assert serializer.is_valid(), serializer.errors
+
+        with pytest.raises(DjangoValidationError) as exc:
+            serializer.save()
+        assert "options" in exc.value.message_dict
+
 
 # ============================================================
 # TestServiceRequestFieldFileSerializer

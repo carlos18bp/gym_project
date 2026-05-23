@@ -73,9 +73,39 @@ jest.mock("@heroicons/vue/24/outline", () => ({
   ChevronDownIcon: { template: "<span />" },
 }));
 
-const flushPromises = async () => {
-  await Promise.resolve();
-};
+jest.mock("@/composables/usePendingSignatures", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    PENDING_SIGNATURES_ALERTED_KEY: "pendingSignaturesAlerted",
+    usePendingSignatures: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      shouldAlert: ref(false),
+      isLoading: ref(false),
+      error: ref(null),
+      hasAlertedThisSession: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+      markAlerted: jest.fn(),
+      resetAlertFlag: jest.fn(),
+    }),
+  };
+});
+
+jest.mock("@/composables/useDocumentTabBadges", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    useDocumentTabBadges: () => ({
+      tabUnreadCounts: ref({}),
+      isLoading: ref(false),
+      error: ref(null),
+      fetchTabUnreadCounts: jest.fn().mockResolvedValue(),
+    }),
+  };
+});
+
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const buildDocumentStore = (overrides = {}) => ({
   draftAndPublishedDocumentsUnassigned: [],

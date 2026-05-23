@@ -58,3 +58,48 @@ Flags disponibles: `--with-backup-test`, `--send-email`, `--quiet`, `--skip-env-
 2. Ejecutar el orquestador con los flags deseados.
 3. Una vez termine, abrir el reporte generado en `docs/audits/` y reportar al usuario: veredicto global, fases fallidas/warn con sus resúmenes, y próximos pasos si el veredicto no es 🟢.
 4. Si hay 🔴 o 🟡, abrir el log crudo y proponer remediaciones priorizadas.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/full-audit` — como la tabla supera 15 filas, **siempre** llevar el bloque
+`### Resumen ejecutivo` + `### Top 3 acciones prioritarias` entre el
+veredicto y la tabla.
+
+```markdown
+🟢 full-audit OK — <alias>
+✨ Todo en orden — no hay acciones pendientes.
+
+### Resumen ejecutivo
+- Conteo: ✅ N · ⚠️ M · ❌ K · ⏭️ J  (total: T fases)
+- Reporte: docs/audits/<YYYY-MM-DD>-<alias>-full-audit.md
+- Log:     /tmp/full-audit-<timestamp>.log
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| 1 — ops-verify | ✅ | toolkit íntegro |
+| 2 — verify-state | ✅ | sin drift SHA256 repo↔servidor |
+| 3 — reconcile-projects-yml | ✅ | projects.yml ↔ systemd/MySQL coherente |
+| 4 — validate-project-envs | ✅ | .env vs templates OK |
+| 5 — verify-memorymax-sync | ✅ | MemoryMax sync projects.yml↔systemd |
+| 6 — verify-timers-inventory | ✅ | timers declarados ↔ activos |
+| 7 — post-deploy-check | ✅ | health endpoints todos 200 |
+| 8 — dependency-check | ✅ | cadena nginx→socket→gunicorn→DB→Redis |
+| 9 — quick-status | ✅ | recursos OK (mem/disco/servicios) |
+| 10 — email-heartbeat | ✅ | pipeline dry-run OK |
+| 11 — email-live-test | ⏭️ | requiere --send-email |
+| 12 — test-backup-restore | ⏭️ | requiere --with-backup-test |
+```
+
+Si hay ⚠️/❌ en alguna fase:
+- Omitir la línea ✨.
+- `### Top 3 acciones prioritarias` arriba lista los 3 items más críticos
+  con su comando exacto (típicamente `bash scripts/maintenance/sync-X.sh
+  --apply` o `sudo systemctl restart <svc>`).
+- `## Next steps` al final con todos los items por fase con problema.
+
+**No duplicar el output del script bash:** `full-audit.sh` ya emite su propio
+`print_summary`. La skill imprime el reporte estandarizado **después**,
+referenciando el reporte markdown que el script deja en `docs/audits/`.

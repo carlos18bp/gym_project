@@ -9,8 +9,21 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from gym_app.serializers.user import UserSerializer
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.throttling import AnonRateThrottle
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'auth_login'
+
+
+class PasscodeRateThrottle(AnonRateThrottle):
+    scope = 'auth_passcode'
+
+
+class SignupRateThrottle(AnonRateThrottle):
+    scope = 'auth_signup'
 from rest_framework_simplejwt.tokens import RefreshToken
 from gym_app.views.layouts.sendEmail import send_template_email
 from django.conf import settings
@@ -18,6 +31,8 @@ from django.utils import timezone
 from datetime import timedelta
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([SignupRateThrottle])
 def sign_on(request):
     """
     Handle user registration by creating a new user account.
@@ -104,6 +119,8 @@ def sign_on(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([SignupRateThrottle])
 def send_verification_code(request):
     """
     Handle sending a sign-on passcode to the user's email.
@@ -159,6 +176,8 @@ def send_verification_code(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def sign_in(request):
     """
     Handle user sign-in by validating credentials and generating authentication tokens.
@@ -219,6 +238,8 @@ from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
 def google_login(request):
     """
     Handle user login via Google ID token verification.
@@ -366,6 +387,8 @@ def update_password(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasscodeRateThrottle])
 def send_passcode(request):
     """
     Handle sending a password reset passcode to the user's email.
@@ -424,6 +447,8 @@ def send_passcode(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([PasscodeRateThrottle])
 def verify_passcode_and_reset_password(request):
     """
     Verify the passcode and reset the user's password.

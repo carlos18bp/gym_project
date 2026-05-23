@@ -217,6 +217,9 @@ export const useProcessStore = defineStore("process", {
         lawyerId: formData.lawyerId,
         progress: formData.progress,
         stages: formData.stages,
+        alertIsActive: formData.alertIsActive !== undefined ? formData.alertIsActive : true,
+        alertDescription: formData.alertDescription || '',
+        alertNotifyClients: formData.alertNotifyClients !== undefined ? formData.alertNotifyClients : true,
       };
 
       const formDataObject = new FormData();
@@ -295,6 +298,9 @@ export const useProcessStore = defineStore("process", {
         caseFileIds: (formData.caseFiles || [])
           .filter((cf) => cf.id)
           .map((cf) => cf.id),
+        alertIsActive: formData.alertIsActive !== undefined ? formData.alertIsActive : true,
+        alertDescription: formData.alertDescription || '',
+        alertNotifyClients: formData.alertNotifyClients !== undefined ? formData.alertNotifyClients : true,
       };
 
       try {

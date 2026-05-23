@@ -321,6 +321,34 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 ---
 
+### process-alert-configure: Configurar destinatarios de alerta de proceso
+- **Módulo:** processes | **Prioridad:** P2 | **Ruta:** `/process_form`, `/process_form/:process_id` | **E2E:** ⏳ Pendiente — toggle interactivo `notify_clients` en ProcessForm; coverage actual (`process-alert-recipients.spec.js`) sólo prueba display read-only.
+- **Descripción:** Abogado activa la alerta del último estado procesal y alterna el toggle "Notificar también a los clientes" (`alertNotifyClients`); opcionalmente añade descripción. Al guardar, persiste en `StageAlert.notify_clients`.
+
+**Ramificaciones:**
+- ├── **`alertIsActive=false`**: la alerta no se crea / queda desactivada; toggle de recipients oculto.
+- ├── **`notify_clients=true`**: emails + notificaciones in-app llegan a abogado y clientes del proceso (3 días y 1 día antes de la fecha).
+- └── **`notify_clients=false`**: solo abogado recibe alertas.
+
+**Conocido como gap:** el test E2E del toggle requiere mocking pesado de ProcessForm (case types, lawyers, clients) y `data-testid` en el botón aún no añadidos — registrado como deuda en `tasks/tasks_plan.md`.
+
+---
+
+### notification-center: Centro de Notificaciones
+- **Módulo:** notifications | **Prioridad:** P2 | **Ruta:** `/notifications` | **E2E:** ✅
+- **Descripción:** Campana flotante con badge de no leídas, vista tipo bandeja con tabs (todas/no leídas/archivadas), gestión (marcar leída, archivar, snooze 1h/3h/1d/3d, eliminar) y deep-link al recurso con efecto pulse de 5s.
+
+**Ramificaciones (deep-link según `link_type`):**
+- ├── **`process`** → `/process_detail/:process_id?highlight=:id` → card con `animate-pulse` 5s, luego `router.replace` limpia el query param.
+- ├── **`document`** → `/dynamic_document_dashboard?highlight=:id` → tab "Por firmar" + 3-color pulse en BaseDocumentCard.
+- ├── **`service_request`** → `/service_requests/:id?highlight=:id` → card del detalle parpadea 5s con cleanup.
+- └── **`link_id` ausente o `link_type` desconocido** → fallback a `/notifications`.
+
+**Polling:** la campana llama `fetchUnreadCount` cada 60s (con guard de cambio para evitar re-renders no-op).
+**Snooze reactivation:** Huey `notification_tasks.reactivate_snoozed_notifications` corre cada 15 min.
+
+---
+
 ### auth-edge-cases: Casos borde de autenticación
 - **Módulo:** auth | **Prioridad:** P2 | **Ruta:** N/A | **E2E:** ✅
 - **Descripción:** Token expirado, OAuth callback, credenciales inválidas, captcha
@@ -413,12 +441,6 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 - ├── **Filtrar por tipo de documento** → generar reporte filtrado
 - ├── **Cambiar tipo de reporte** → filtros avanzados desaparecen y se resetean
 - └── **Sin filtros** (todos en "Todos") → reporte sin filtro adicional
-
----
-
-### dashboard-recent-documents: Documentos recientes
-- **Módulo:** dashboard | **Prioridad:** P3 | **Ruta:** `/dashboard` | **E2E:** ✅
-- **Descripción:** Últimos 5 procesos y documentos visitados
 
 ---
 
@@ -568,6 +590,28 @@ Mismas ramificaciones que process-create, con datos precargados.
 ### process-history: Histórico procesal
 - **Módulo:** processes | **Prioridad:** P2 | **Ruta:** N/A (modal) | **E2E:** ✅
 - **Descripción:** Modal con timeline de etapas procesales ordenadas cronológicamente
+
+---
+
+### process-alerts: Alertas de proceso por estado procesal
+- **Módulo:** processes | **Prioridad:** P2 | **Ruta:** `/process_detail/{id}` (indicador) y modal de historial | **E2E:** ✅
+- **Descripción:** Sistema de recordatorios automáticos para fechas de estados procesales.
+
+**Configuración (al crear/editar proceso):**
+- Toggle activar/desactivar alerta del último estado
+- Toggle destinatarios: solo abogado o abogado + clientes (default: ambos)
+- Descripción personalizable (default: auto-generada por estado y fecha)
+
+**Visualización:**
+- En `ProcessDetail`: indicador con `BellAlertIcon` que muestra "Notifica al abogado" o "Notifica al abogado y clientes" cuando `is_active=true`
+- En `ProcessHistoryModal`: badge "Alerta" / "Inactiva" por etapa, con tooltip (`title`) que indica destinatarios
+
+**Backend automático:**
+- `StageAlert` se crea automáticamente para CADA etapa al crear/editar el proceso
+- Solo el último estado se evalúa por la tarea Huey diaria (14:00 UTC = 9:00 AM Colombia)
+- Se envían recordatorios en `T-3 días` y `T-1 día` (fijos, no configurables)
+- Doble canal: email (`send_template_email`) + notificación in-app (`category='process_alert'`)
+- Anti-duplicación: flags `notified_3_days` / `notified_1_day` en `StageAlert`
 
 ---
 
@@ -993,6 +1037,30 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### sign-status-modal: Modal de estado de firmantes
 - **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** N/A (modal) | **E2E:** ✅
 - **Descripción:** Modal con estado de cada firmante (Pendiente, Firmado, Rechazado)
+
+---
+
+### legal-files-menu-pulse: Pulso visual en menú "Archivos Jurídicos" con firmas pendientes
+- **Módulo:** signatures | **Prioridad:** P1 | **Ruta:** SlideBar (cualquier ruta autenticada) | **E2E:** ❌ (Req #6)
+- **Descripción:** Tras login, el SlideBar consulta `GET /api/dynamic-documents/pending-signatures-count/` y, si hay firmas pendientes, muestra un indicador pulsante (badge con conteo + dot animado) sobre el ítem "Archivos Jurídicos". Al visitar el módulo, el flag `pendingSignaturesAlerted` se persiste en `sessionStorage` y el pulso desaparece para el resto de la sesión. Al cerrar sesión (`auth.logout()`) el flag se limpia para que el siguiente login reactive el alerta.
+- **Componentes:** `SlideBar.vue`, `composables/usePendingSignatures.js` (constante exportada `PENDING_SIGNATURES_ALERTED_KEY`), `stores/auth/auth.js`.
+- **Roles:** lawyer, client, corporate_client, basic.
+
+---
+
+### legal-files-auto-redirect: Auto-selección de tab "Documentos Por Firmar" en primer ingreso
+- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ❌ (Req #6)
+- **Descripción:** En la primera visita post-login al Dashboard de documentos, si `usePendingSignatures.shouldAlert` es `true` (hay pendientes y no se ha marcado la sesión), se selecciona automáticamente la pestaña "Dcs. Por Firmar" y se llama `markAlerted()`. Si la URL incluye `?tab=` o `?lawyerTab=` explícitos, esos parámetros tienen prioridad sobre la auto-redirección. Visitas posteriores en la misma sesión respetan la navegación normal.
+- **Componentes:** `views/dynamic_document/Dashboard.vue` (lógica en `onMounted` + watch sobre `route.query`).
+- **Roles:** lawyer, client, corporate_client, basic.
+
+---
+
+### legal-files-table-pulse: Pulso de ~8s en filas pendientes de la tabla de firmas
+- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Por Firmar) | **E2E:** ❌ (Req #6)
+- **Descripción:** Al montar `SignaturesListTable` con `state="PendingSignatures"`, las filas donde el usuario actual figura como firmante con firma pendiente reciben la clase `animate-pulse bg-blue-50` durante `PULSE_DURATION_MS = 8000` (8 segundos). El `setTimeout` se cancela en `onBeforeUnmount` para evitar fugas. Pasado el timeout, el pulso se detiene y `shouldPulsate(document)` retorna `false`.
+- **Componentes:** `components/dynamic_document/common/SignaturesListTable.vue` (`isPulseActive` ref + `shouldPulsate`).
+- **Roles:** lawyer, client, corporate_client, basic.
 
 ---
 

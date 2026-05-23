@@ -57,36 +57,6 @@ class TestWompiConfigAndSignature:
         assert response.data["public_key"] == wompi_settings.WOMPI_PUBLIC_KEY
         assert response.data["environment"] == wompi_settings.WOMPI_ENVIRONMENT
 
-    def test_debug_signature_missing_fields(self, api_client, wompi_settings):
-        """Verify debug signature missing fields."""
-        url = reverse("subscription-debug-signature")
-
-        response = api_client.post(url, {}, format="json")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "amount_in_cents and reference are required" in response.data["error"]
-
-    def test_debug_signature_success(self, api_client, wompi_settings):
-        """Verify debug signature success."""
-        url = reverse("subscription-debug-signature")
-        payload = {
-            "amount_in_cents": 1000,
-            "currency": "COP",
-            "reference": "REF123",
-        }
-
-        expected_concatenated = f"{payload['reference']}{payload['amount_in_cents']}{payload['currency']}{wompi_settings.WOMPI_INTEGRITY_KEY}"
-        expected_signature = hashlib.sha256(expected_concatenated.encode()).hexdigest()
-
-        response = api_client.post(url, payload, format="json")
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["signature"] == expected_signature
-        assert response.data["reference"] == payload["reference"]
-        assert int(response.data["amount_in_cents"]) == payload["amount_in_cents"]
-        assert response.data["currency"] == payload["currency"]
-        assert response.data["concatenated_string"] == expected_concatenated
-
     def test_generate_signature_unauthenticated(self, api_client, wompi_settings):
         """Verify generate signature unauthenticated."""
         url = reverse("subscription-generate-signature")

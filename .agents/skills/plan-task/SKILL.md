@@ -44,3 +44,34 @@ Devolver un plan compacto pero decision-complete con:
 - `/plan-task agregar paginación server-side al listado principal (20 por página, mantener filtros actuales)`
 - `/plan-task refactor: extraer la lógica de cálculo de totales a un módulo reutilizable, sin cambiar la UI`
 - `/plan-task bug: cuando el usuario edita un diagnóstico y no toca el campo X, el backend lo está sobrescribiendo a null. Investigar y planear el fix.`
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/plan-task`:
+
+```markdown
+🟢 plan-task OK — <título corto del plan>
+✨ Todo en orden — no hay acciones pendientes (plan listo para `/implement`).
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Input ($ARGUMENTS) | ✅ | parseado: objetivo + archivos + criterios |
+| Inspección del repo | ✅ | archivos referenciados leídos + patrones existentes |
+| Mapeo del cambio | ✅ | data flow, APIs, estado, tests, migraciones |
+| Decisiones implícitas | ✅ | tradeoffs resueltos por convenciones del repo |
+| Plan decision-complete | ✅ | Summary + cambios + interface + tests + assumptions |
+| Open questions | ✅ | ninguna pendiente (o listadas si las hay) |
+```
+
+Casos de veredicto distinto a 🟢:
+
+- ⏸️ — quedan open questions de **producto** (no derivables del repo) que el
+  operador debe responder antes de implementar. Agregar `## Next steps` con
+  cada pregunta concreta.
+- ❌ — `$ARGUMENTS` vacío o la inspección del repo no encontró los archivos
+  referenciados. Agregar `## Next steps` con la reinvocación correcta.
+
+**Recordatorio:** este skill no implementa ni commitea. Tras aprobación del
+plan, el operador invoca `/implement` por separado.

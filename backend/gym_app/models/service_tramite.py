@@ -87,6 +87,7 @@ class Service(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ["-is_featured", "featured_order", "name"]
@@ -127,7 +128,7 @@ class ServiceField(models.Model):
     label = models.CharField(max_length=160)
     field_type = models.CharField(max_length=20, choices=ALLOWED_SERVICE_FIELD_TYPES, default="input")
     placeholder = models.CharField(max_length=200, blank=True, null=True)
-    help_text = models.CharField(max_length=255, blank=True, null=True)
+    help_text = models.CharField(max_length=1000, blank=True, null=True)
     is_required = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=1)
     options = models.JSONField(blank=True, null=True)

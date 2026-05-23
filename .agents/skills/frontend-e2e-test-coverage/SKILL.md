@@ -61,3 +61,28 @@ Before writing any E2E test, consult:
 6. Run only new/modified tests
 7. Validate quality: `python scripts/test_quality_gate.py --files e2e/path/to/spec.spec.ts`
 8. Regenerate coverage: `node frontend/scripts/generate-coverage.js`
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/frontend-e2e-test-coverage`:
+
+```markdown
+🟢 frontend-e2e-test-coverage OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Flow inventory leído | ✅ | flow-definitions.json + flow-coverage.json |
+| Flows priorizados | ✅ | P1/P2 first, contract FE↔BE, errores, edge |
+| Tests agregados | ✅ | N specs con @flow:<id>, batch ≤20, ciclos ≤3 |
+| Real-user only | ✅ | getByRole, sin page.goto shortcut, sin API direct |
+| Quality gate | ✅ | test_quality_gate.py pasa en archivos tocados |
+| Coverage delta | ✅ | flow-coverage.json regenerado, gaps cerrados |
+```
+
+Si quedan flows sin cobertura tras el batch o algún test falla con el quality
+gate, reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar
+`## Next steps` con el flow-id pendiente y el spec a crear.

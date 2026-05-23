@@ -19,11 +19,59 @@
 
       <!-- Default lawyer view: navigation tabs + tables -->
       <div v-else>
-        <!-- Lawyer Navigation Tabs with Action Buttons - Responsive -->
-        <div class="mb-6 border-b border-gray-200 pb-4">
+        <!-- Action Buttons (Desktop) — placed ABOVE and OUTSIDE the tabs card
+             so the action bar is visually separated from the tab navigation,
+             matching the layout the client requested (R3 — "sacar los botones
+             del container de las tabs en Archivos Jurídicos"). -->
+        <div class="hidden md:flex gap-3 mb-4">
+          <button
+            @click.stop="handleLawyerSignatureClick"
+            :disabled="!currentUser"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-sm font-medium transition-all duration-200',
+              currentUser
+                ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
+                : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+            ]"
+          >
+            <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
+            <span>Firma Electrónica</span>
+          </button>
+          <button
+            @click.stop="showGlobalLetterheadModal = true"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+          >
+            <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
+            <span>Membrete Global</span>
+          </button>
+          <!-- Nueva Minuta button - only in legal-documents tab -->
+          <button
+            v-if="activeLawyerTab === 'legal-documents'"
+            @click.stop="handleCreateMinuta"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+          >
+            <PlusIcon class="size-5"></PlusIcon>
+            <span>Nueva Minuta</span>
+          </button>
+          <!-- Nuevo Documento button - only in my-documents tab -->
+          <button
+            v-if="activeLawyerTab === 'my-documents'"
+            @click.stop="handleCreateDocument"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+          >
+            <PlusIcon class="size-5"></PlusIcon>
+            <span>Nuevo Documento</span>
+          </button>
+        </div>
+
+        <!-- Lawyer Navigation Tabs — uses the shared TabsCard wrapper for
+             visual consistency with SecopList / ServicesHub. Action buttons
+             live above; the extra pt/pb padding was dropped (R3 — el card de
+             Archivos Jurídicos se veía más alto que el resto de módulos). -->
+        <TabsCard>
           <!-- Desktop Tabs -->
-          <div class="hidden md:block">
-            <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8 mb-4" aria-label="Tabs">
+          <div class="hidden md:block px-4 sm:px-6">
+            <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
               <button
                 v-for="tab in lawyerNavigationTabs"
                 :key="tab.name"
@@ -32,58 +80,28 @@
                   activeLawyerTab === tab.name
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer'
+                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer inline-flex items-center gap-2'
                 ]"
+                :data-testid="`lawyer-tab-${tab.name}`"
               >
                 {{ tab.label }}
+                <!-- Per-tab badge: "Dcs. Por Firmar" shows the pending-signature
+                     to-do count; every other tab shows its unread-notification
+                     count so a "novedad" is visible on whichever tab it lives
+                     in (R3 — badges sobre tabs). -->
+                <span
+                  v-if="tabBadgeCount(tab.name) > 0"
+                  :data-testid="`lawyer-tab-${tab.name}-badge`"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                >
+                  {{ tabBadgeCount(tab.name) > 99 ? '99+' : tabBadgeCount(tab.name) }}
+                </span>
               </button>
             </nav>
-
-            <!-- Action Buttons -->
-            <div class="flex gap-3">
-              <button
-                @click.stop="handleLawyerSignatureClick"
-                :disabled="!currentUser"
-                :class="[
-                  'inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 text-sm font-medium transition-all duration-200',
-                  currentUser
-                    ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
-                    : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
-                ]"
-              >
-                <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
-                <span>Firma Electrónica</span>
-              </button>
-              <button
-                @click.stop="showGlobalLetterheadModal = true"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
-              >
-                <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
-                <span>Membrete Global</span>
-              </button>
-              <!-- Nueva Minuta button - only in legal-documents tab -->
-              <button
-                v-if="activeLawyerTab === 'legal-documents'"
-                @click.stop="handleCreateMinuta"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
-              >
-                <PlusIcon class="size-5"></PlusIcon>
-                <span>Nueva Minuta</span>
-              </button>
-              <!-- Nuevo Documento button - only in my-documents tab -->
-              <button
-                v-if="activeLawyerTab === 'my-documents'"
-                @click.stop="handleCreateDocument"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
-              >
-                <PlusIcon class="size-5"></PlusIcon>
-                <span>Nuevo Documento</span>
-              </button>
-            </div>
           </div>
 
           <!-- Mobile Dropdown -->
-          <div class="md:hidden space-y-3 relative">
+          <div class="md:hidden space-y-3 relative px-4 sm:px-6 py-3">
             <button
               @click.stop="showLawyerDropdown = !showLawyerDropdown"
               class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
@@ -109,57 +127,71 @@
                 :key="tab.name"
                 @click.stop="selectLawyerTab(tab.name)"
                 :class="[
-                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                  'w-full text-left px-4 py-3 text-sm transition-colors duration-150 flex items-center justify-between gap-2',
                   activeLawyerTab === tab.name
                     ? 'bg-primary text-white'
                     : 'text-gray-700 hover:bg-gray-50'
                 ]"
+                :data-testid="`lawyer-tab-mobile-${tab.name}`"
               >
-                {{ tab.label }}
+                <span>{{ tab.label }}</span>
+                <!-- Same per-tab badge surfaced inside the mobile dropdown so
+                     the hint is visible regardless of viewport. -->
+                <span
+                  v-if="tabBadgeCount(tab.name) > 0"
+                  :data-testid="`lawyer-tab-mobile-${tab.name}-badge`"
+                  class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                >
+                  {{ tabBadgeCount(tab.name) > 99 ? '99+' : tabBadgeCount(tab.name) }}
+                </span>
               </button>
             </div>
-            
-            <!-- Action Buttons for Mobile -->
-            <div class="grid gap-2" :class="activeLawyerTab === 'legal-documents' || activeLawyerTab === 'my-documents' ? 'grid-cols-3' : 'grid-cols-2'">
-              <button
-                @click.stop="handleLawyerSignatureClick"
-                :disabled="!currentUser"
-                :class="[
-                  'flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 text-center transition-all duration-200',
-                  currentUser
-                    ? 'bg-white hover:bg-purple-50'
-                    : 'bg-gray-50 cursor-not-allowed opacity-60'
-                ]"
-              >
-                <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
-                <span class="font-medium text-xs leading-tight">Firma</span>
-              </button>
-              <button
-                @click.stop="showGlobalLetterheadModal = true"
-                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
-              >
-                <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
-                <span class="font-medium text-xs leading-tight">Membrete</span>
-              </button>
-              <!-- Nueva Minuta button - only in legal-documents tab -->
-              <button
-                v-if="activeLawyerTab === 'legal-documents'"
-                @click.stop="handleCreateMinuta"
-                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
-              >
-                <PlusIcon class="size-6 mb-1"></PlusIcon>
-                <span class="font-medium text-xs leading-tight">Nueva Minuta</span>
-              </button>
-              <!-- Nuevo Documento button - only in my-documents tab -->
-              <button
-                v-if="activeLawyerTab === 'my-documents'"
-                @click.stop="handleCreateDocument"
-                class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
-              >
-                <PlusIcon class="size-6 mb-1"></PlusIcon>
-                <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
-              </button>
-            </div>
+          </div>
+        </TabsCard>
+
+        <!-- Action Buttons (Mobile) — placed OUTSIDE the tabs card so the
+             action bar is visually separated from the tab navigation
+             (R3 — sacar los botones del container de las tabs). -->
+        <div class="md:hidden mb-6">
+          <div class="grid gap-2" :class="activeLawyerTab === 'legal-documents' || activeLawyerTab === 'my-documents' ? 'grid-cols-3' : 'grid-cols-2'">
+            <button
+              @click.stop="handleLawyerSignatureClick"
+              :disabled="!currentUser"
+              :class="[
+                'flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 text-center transition-all duration-200',
+                currentUser
+                  ? 'bg-white hover:bg-purple-50'
+                  : 'bg-gray-50 cursor-not-allowed opacity-60'
+              ]"
+            >
+              <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
+              <span class="font-medium text-xs leading-tight">Firma</span>
+            </button>
+            <button
+              @click.stop="showGlobalLetterheadModal = true"
+              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
+            >
+              <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
+              <span class="font-medium text-xs leading-tight">Membrete</span>
+            </button>
+            <!-- Nueva Minuta button - only in legal-documents tab -->
+            <button
+              v-if="activeLawyerTab === 'legal-documents'"
+              @click.stop="handleCreateMinuta"
+              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+            >
+              <PlusIcon class="size-6 mb-1"></PlusIcon>
+              <span class="font-medium text-xs leading-tight">Nueva Minuta</span>
+            </button>
+            <!-- Nuevo Documento button - only in my-documents tab -->
+            <button
+              v-if="activeLawyerTab === 'my-documents'"
+              @click.stop="handleCreateDocument"
+              class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+            >
+              <PlusIcon class="size-6 mb-1"></PlusIcon>
+              <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
+            </button>
           </div>
         </div>
 
@@ -206,14 +238,17 @@
 
         <!-- Pending Signatures Tab -->
         <div v-if="activeLawyerTab === 'pending-signatures'">
-          <SignaturesListTable 
-            state="PendingSignatures" 
-            :searchQuery="searchQuery" 
+          <SignaturesListTable
+            state="PendingSignatures"
+            :searchQuery="searchQuery"
             :selectedTags="selectedTags"
+            :highlightDocumentId="route.query.highlight"
+            :openSignaturesFor="openSignaturesFor"
             @refresh="handleRefresh"
-            @open-electronic-signature="handleLawyerSignatureClick"
             @document-fully-signed="handleDocumentFullySigned"
             @document-rejected="handleDocumentRejected"
+            @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
+            @clear-open-signatures-for="handleClearOpenSignaturesFor"
           />
         </div>
 
@@ -255,11 +290,57 @@
 
     <!-- Documents for clients, basic users, and corporate clients -->
     <div v-if="userRole === 'client' || userRole === 'basic' || userRole === 'corporate_client'">
-      <!-- Navigation tabs with action buttons -->
-      <div class="mb-6 border-b border-gray-200">
-        
-        <!-- Desktop Layout: Tabs + Action Buttons -->
-        <div class="hidden md:flex md:flex-col">
+      <!-- Action Buttons (Desktop) — placed ABOVE and OUTSIDE the tabs card,
+           mirroring the lawyer/admin layout so the action bar is visually
+           separated from the tab navigation for every role (R3 3.2 — barra
+           de acciones unificada en Archivos Jurídicos). -->
+      <div class="hidden md:flex gap-3 mb-4">
+        <button
+          @click.stop="handleElectronicSignatureClick"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+        >
+          <FingerPrintIcon class="size-5 text-purple-500" />
+          <span>Firma Electrónica</span>
+        </button>
+        <div class="relative group">
+          <button
+            @click.stop="handleGlobalLetterheadClick"
+            :disabled="isBasicUser"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all duration-200',
+              isBasicUser
+                ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
+                : 'border-green-200 bg-white text-gray-700 hover:bg-green-50 hover:border-green-300'
+            ]"
+          >
+            <DocumentTextIcon
+              :class="['size-5', isBasicUser ? 'text-gray-400' : 'text-green-500']"
+            />
+            <span>Membrete Global</span>
+          </button>
+          <div
+            v-if="isBasicUser"
+            class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
+          >
+            Actualiza tu suscripción para usar esta funcionalidad
+            <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+          </div>
+        </div>
+        <button
+          @click.stop="handleSection('useDocument')"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+          type="button"
+        >
+          <PlusIcon class="size-5" />
+          <span>Nuevo Documento</span>
+        </button>
+      </div>
+
+      <!-- Navigation tabs — shared TabsCard wrapper for visual consistency.
+           Action buttons live above (desktop) / below (mobile) the card. -->
+      <TabsCard>
+        <!-- Desktop Tabs -->
+        <div class="hidden md:block px-4 sm:px-6">
           <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
           <button
             v-for="tab in navigationTabs"
@@ -269,59 +350,27 @@
               activeTab === tab.name
                 ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm inline-flex items-center gap-2'
             ]"
+            :data-testid="`client-tab-${tab.name}`"
           >
             {{ tab.label }}
+            <!-- Per-tab badge: "Dcs. Por Firmar" shows the pending-signature
+                 to-do count; every other tab shows its unread-notification
+                 count so a "novedad" is visible on whichever tab it lives in. -->
+            <span
+              v-if="tabBadgeCount(tab.name) > 0"
+              :data-testid="`client-tab-${tab.name}-badge`"
+              class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+            >
+              {{ tabBadgeCount(tab.name) > 99 ? '99+' : tabBadgeCount(tab.name) }}
+            </span>
           </button>
           </nav>
-          
-          <!-- Action Buttons (Desktop) -->
-          <div class="flex flex-wrap items-center gap-2 mt-3 mb-4 md:justify-end">
-            <div class="relative">
-              <button
-                @click.stop="handleElectronicSignatureClick"
-                class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border text-purple-600 hover:bg-purple-50 border-purple-200"
-              >
-                <FingerPrintIcon class="h-4 w-4" />
-                Firma Electrónica
-              </button>
-            </div>
-            <div class="relative group">
-              <button
-                @click.stop="handleGlobalLetterheadClick"
-                :disabled="isBasicUser"
-                :class="[
-                  'inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border',
-                  isBasicUser 
-                    ? 'text-green-400 bg-gray-50 border-gray-200 cursor-not-allowed opacity-60' 
-                    : 'text-green-600 hover:bg-green-50 border-green-200'
-                ]"
-              >
-                <DocumentTextIcon class="h-4 w-4" />
-                Membrete Global
-              </button>
-              <div
-                v-if="isBasicUser"
-                class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
-              >
-                Actualiza tu suscripción para usar esta funcionalidad
-                <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-              </div>
-            </div>
-            <button
-              @click.stop="handleSection('useDocument')"
-              class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
-              type="button"
-            >
-              <PlusIcon class="h-4 w-4" />
-              Nuevo Documento
-            </button>
-          </div>
         </div>
 
         <!-- Mobile Dropdown -->
-        <div class="md:hidden relative">
+        <div class="md:hidden relative px-4 sm:px-6 py-3">
           <button
             @click.stop="showClientDropdown = !showClientDropdown"
             class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
@@ -336,7 +385,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
-          
+
           <!-- Dropdown Menu -->
           <div
             v-if="showClientDropdown"
@@ -347,41 +396,53 @@
               :key="tab.name"
               @click.stop="selectClientTab(tab.name)"
               :class="[
-                'w-full text-left px-4 py-3 text-sm transition-colors duration-150',
+                'w-full text-left px-4 py-3 text-sm transition-colors duration-150 flex items-center justify-between gap-2',
                 activeTab === tab.name
                   ? 'bg-primary text-white'
                   : 'text-gray-700 hover:bg-gray-50'
               ]"
+              :data-testid="`client-tab-mobile-${tab.name}`"
             >
-              {{ tab.label }}
+              <span>{{ tab.label }}</span>
+              <!-- Same per-tab badge surfaced inside the mobile dropdown. -->
+              <span
+                v-if="tabBadgeCount(tab.name) > 0"
+                :data-testid="`client-tab-mobile-${tab.name}-badge`"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+              >
+                {{ tabBadgeCount(tab.name) > 99 ? '99+' : tabBadgeCount(tab.name) }}
+              </span>
             </button>
           </div>
         </div>
-        
-        <!-- Mobile Action Buttons -->
-        <div class="md:hidden mt-4 mb-4 flex flex-col gap-2">
-          <div class="relative">
-            <button
-              @click.stop="handleElectronicSignatureClick"
-              class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-purple-600 bg-purple-50 hover:bg-purple-100"
-            >
-              <FingerPrintIcon class="h-5 w-5" />
-              Firma Electrónica
-            </button>
-          </div>
+      </TabsCard>
+
+      <!-- Action Buttons (Mobile) — placed OUTSIDE the tabs card, mirroring
+           the lawyer/admin layout (R3 3.2). -->
+      <div class="md:hidden mb-6">
+        <div class="grid grid-cols-3 gap-2">
+          <button
+            @click.stop="handleElectronicSignatureClick"
+            class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
+          >
+            <FingerPrintIcon class="size-6 text-purple-500 mb-1" />
+            <span class="font-medium text-xs leading-tight">Firma</span>
+          </button>
           <div class="relative group">
             <button
               @click.stop="handleGlobalLetterheadClick"
               :disabled="isBasicUser"
               :class="[
-                'w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-                isBasicUser 
-                  ? 'text-green-400 bg-gray-50 cursor-not-allowed opacity-60' 
-                  : 'text-green-600 bg-green-50 hover:bg-green-100'
+                'w-full flex flex-col items-center justify-center py-3 px-2 rounded-lg border text-center transition-all duration-200',
+                isBasicUser
+                  ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                  : 'border-green-200 bg-white hover:bg-green-50'
               ]"
             >
-              <DocumentTextIcon class="h-5 w-5" />
-              Membrete Global
+              <DocumentTextIcon
+                :class="['size-6 mb-1', isBasicUser ? 'text-gray-400' : 'text-green-500']"
+              />
+              <span class="font-medium text-xs leading-tight">Membrete</span>
             </button>
             <div
               v-if="isBasicUser"
@@ -393,11 +454,11 @@
           </div>
           <button
             @click.stop="handleSection('useDocument')"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-secondary hover:bg-blue-700 rounded-lg transition-colors"
+            class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
             type="button"
           >
-            <PlusIcon class="h-5 w-5" />
-            Nuevo Documento
+            <PlusIcon class="size-6 mb-1" />
+            <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
           </button>
         </div>
       </div>
@@ -436,10 +497,13 @@
           state="PendingSignatures"
           :searchQuery="searchQuery"
           :selectedTags="selectedTags"
+          :highlightDocumentId="route.query.highlight"
+          :openSignaturesFor="openSignaturesFor"
           @refresh="handleRefresh"
           @open-electronic-signature="handleElectronicSignatureFromSigningFlow"
           @document-fully-signed="handleClientDocumentFullySigned"
           @document-rejected="handleClientDocumentRejected"
+          @clear-open-signatures-for="handleClearOpenSignaturesFor"
         />
         <SignaturesListTable
           v-else-if="activeTab === 'signed-documents'"
@@ -532,9 +596,12 @@
 <script setup>
 import { onMounted, computed, ref, watch, onUnmounted } from "vue";
 import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
+import TabsCard from "@/components/layouts/TabsCard.vue";
 import { useUserStore } from "@/stores/auth/user";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
+import { usePendingSignatures } from "@/composables/usePendingSignatures";
+import { useDocumentTabBadges } from "@/composables/useDocumentTabBadges";
 import { useRouter, useRoute } from "vue-router";
 import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
@@ -572,6 +639,30 @@ const folderStore = useDocumentFolderStore();
 const router = useRouter();
 const route = useRoute();
 
+// Initialize pending signatures composable. ``pendingCount`` is consumed by
+// the badge over the "Dcs. Por Firmar" tab inside this dashboard so the
+// lawyer can see at a glance how many documents await their signature
+// without leaving the active tab (R3 — badges sobre tabs internos).
+const { pendingCount, hasPending, shouldAlert, fetchPendingCount, markAlerted } = usePendingSignatures();
+
+// Per-tab unread badges. Counts unread document notifications bucketed by the
+// tab their document currently belongs to, so a "novedad" surfaces on whatever
+// tab it lives in — not only "Dcs. Por Firmar" (R3 — badges sobre tabs).
+const { tabUnreadCounts, fetchTabUnreadCounts } = useDocumentTabBadges();
+
+/**
+ * Badge number for a dashboard tab. Hybrid model: "Dcs. Por Firmar" keeps the
+ * actionable to-do count (documents awaiting the user's signature); every
+ * other tab shows its unread-notification count.
+ *
+ * @param {string} name - Tab name.
+ * @returns {number} Count to render in the red badge (0 hides it).
+ */
+const tabBadgeCount = (name) =>
+  name === 'pending-signatures'
+    ? pendingCount.value
+    : (tabUnreadCounts.value[name] || 0);
+
 // Basic user restrictions
 const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
 
@@ -579,6 +670,16 @@ const { isBasicUser, handleFeatureAccess } = useBasicUserRestrictions();
 const searchQuery = ref("");
 const currentSection = ref("default");
 const isNavigatingToUseDocument = ref(false);
+
+// Auto-open the signatures modal for the document referenced by the query
+// param (set by DocumentForm after formalize). Cleared via emit on success.
+const openSignaturesFor = computed(() => route.query.openSignaturesFor || null);
+
+const handleClearOpenSignaturesFor = () => {
+  if (!route.query.openSignaturesFor) return;
+  const { openSignaturesFor: _omit, ...rest } = route.query;
+  router.replace({ path: route.path, query: rest });
+};
 
 // Watcher for currentSection (kept for potential future use)
 watch(currentSection, (newVal, oldVal) => {
@@ -671,6 +772,8 @@ const closeModal = () => {
  */
 const handleRefresh = async () => {
   await documentStore.init(true);
+  // Keep the per-tab badges in sync after a document action changes state.
+  fetchTabUnreadCounts();
 };
 
 /**
@@ -954,6 +1057,18 @@ watch(() => route.query, (query) => {
   }
 }, { immediate: true });
 
+// Watch for highlight query parameter from notifications
+watch(() => route.query.highlight, (highlightId) => {
+  if (highlightId) {
+    // Switch to pending signatures tab to show the highlighted document
+    if (currentUser.value?.role === 'lawyer') {
+      activeLawyerTab.value = 'pending-signatures';
+    } else {
+      activeTab.value = 'pending-signatures';
+    }
+  }
+}, { immediate: true });
+
 // Navigation tabs for client users
 const navigationTabs = [
   { name: 'folders', label: 'Carpetas' },
@@ -1039,6 +1154,26 @@ onMounted(async () => {
     ]);
   } catch (error) {
     console.error('Error initializing dynamic document dashboard:', error);
+  }
+
+  // Fetch pending signatures count and handle intelligent redirection
+  await fetchPendingCount();
+
+  // Fetch the per-tab unread badge counts (non-blocking — the redirection
+  // logic below only depends on the pending-signatures count).
+  fetchTabUnreadCounts();
+
+  // Intelligent redirection: if user has pending signatures and hasn't been alerted this session.
+  // Explicit URL params (?tab= / ?lawyerTab=) take priority and suppress the auto-redirect.
+  const hasExplicitTabParam = !!(route.query.tab || route.query.lawyerTab);
+  if (shouldAlert.value && !hasExplicitTabParam) {
+    if (currentUser.value?.role === 'lawyer') {
+      activeLawyerTab.value = 'pending-signatures';
+    } else {
+      activeTab.value = 'pending-signatures';
+    }
+
+    markAlerted();
   }
 
   documentStore.selectedDocument = null;

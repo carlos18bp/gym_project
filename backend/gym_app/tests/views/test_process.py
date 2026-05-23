@@ -119,21 +119,17 @@ class TestProcessViews:
         assert len(response.data) == 1
         assert response.data[0]['ref'] == 'CASE-123'
     
-    def test_process_list_lawyer(self, api_client, lawyer_user, process):
-        """Test that a lawyer can only see processes they are assigned to."""
-        # Authenticate as lawyer
+    def test_process_list_lawyer_sees_all(self, api_client, lawyer_user, process):
+        """Lawyers are gym staff and see every process (single-firm cooperative model,
+        consistent with dynamic_documents.permissions.apply_visibility_filter)."""
         api_client.force_authenticate(user=lawyer_user)
-        
-        # Make the request
         url = reverse('process-list')
+
         response = api_client.get(url)
-        
-        # Assert the response
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
         assert response.data[0]['ref'] == 'CASE-123'
-        
-        # Create another process with a different lawyer
+
         other_lawyer = User.objects.create_user(
             email='other.lawyer@example.com',
             password='testpassword',
@@ -147,15 +143,11 @@ class TestProcessViews:
             lawyer=other_lawyer,
             case=process.case
         )
-        # Share the same clients as the original process
         other_process.clients.set(process.clients.all())
-        
-        # Make the request again
+
         response = api_client.get(url)
-        
-        # Lawyer should still only see their process
-        assert len(response.data) == 1
-        assert response.data[0]['ref'] == 'CASE-123'
+        refs = {p['ref'] for p in response.data}
+        assert refs == {'CASE-123', 'CASE-456'}
     
     def test_process_list_admin(self, api_client, admin_user, process):
         """Test that an admin can see all processes."""
@@ -703,11 +695,13 @@ class TestProcessListEdges:
     """Tests for Process List Edges."""
 
     def test_process_list_exception_returns_500(self, api_client, _edge_client):  # noqa: PT019
-        """Cover the except block in process_list (lines 46-47)."""
+        """Cover the except block in process_list."""
         api_client.force_authenticate(user=_edge_client)
         url = reverse("process-list")
-        with patch("gym_app.views.process.Process.objects") as mock_qs:
-            mock_qs.filter.side_effect = Exception("DB error")
+        with patch(
+            "gym_app.views.process.ProcessSerializer",
+            side_effect=Exception("DB error"),
+        ):
             response = api_client.get(url)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "DB error" in response.data["detail"]
@@ -795,9 +789,11 @@ class TestCreateProcessEdges:
         """Cover lines 120-123: stage with valid ISO date."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("create-process")
+        # alertIsActive=False — past stage date would otherwise be rejected.
         main_data = self._build_main_data(
             clientIds=[_edge_client.id], lawyerId=_edge_lawyer.id,
             caseTypeId=_edge_ctype.id, stages=[{"status": "Filed", "date": "2025-06-15"}],
+            alertIsActive=False,
         )
         response = api_client.post(url, {"mainData": json.dumps(main_data)}, format="multipart")
         assert response.status_code == status.HTTP_201_CREATED
@@ -915,7 +911,9 @@ class TestUpdateProcessEdges:
         """Cover lines 239-255: stage replacement with valid/invalid dates."""
         api_client.force_authenticate(user=_edge_lawyer)
         url = reverse("update-process", kwargs={"pk": _edge_proc.pk})
+        # alertIsActive=False — past dates in fixtures would trip the guard.
         data = {
+            "alertIsActive": False,
             "stages": [
                 {"status": "New stage", "date": "2025-03-01"},
                 {"status": ""},
@@ -940,3 +938,100 @@ class TestUpdateProcessEdges:
         assert response.status_code == status.HTTP_200_OK
         _edge_proc.refresh_from_db()
         assert _edge_proc.defendant == "Updated Defendant"
+
+
+# ======================================================================
+# B3 regression — update_process sends a stakeholder email
+# ======================================================================
+
+@pytest.mark.django_db
+class TestUpdateProcessEmailNotification:
+    """Verify that editing a process triggers the stakeholder email helper.
+
+    Before the fix, ``update_process`` only emitted in-app notifications.
+    The fix added ``_send_process_update_email`` which mirrors
+    ``_send_alert_email``. The view now calls the helper after the
+    Notification rows are created so stakeholders receive an email too.
+    """
+
+    def test_update_process_calls_email_helper_once(self, api_client, admin_user, process):
+        """Patch the email helper and assert it is invoked exactly once."""
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court', 'plaintiff': 'P', 'defendant': 'D'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            response = api_client.put(
+                url, {'mainData': json.dumps(payload)}, format='multipart'
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert mock_send.call_count == 1, (
+            'update_process should invoke _send_process_update_email exactly once'
+        )
+
+    def test_update_process_email_targets_stakeholder_addresses(
+        self, api_client, admin_user, process, lawyer_user, client_user,
+    ):
+        """The email goes to the stakeholder list returned by the recipients helper."""
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            api_client.put(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        assert mock_send.call_count == 1
+        _, kwargs = mock_send.call_args
+        recipients = kwargs.get('recipients') or (mock_send.call_args[0][1] if len(mock_send.call_args[0]) > 1 else [])
+        emails = {getattr(u, 'email', None) for u in recipients}
+        # At minimum the lawyer and the client should be notified.
+        assert lawyer_user.email in emails
+        assert client_user.email in emails
+
+    def test_update_process_email_includes_lawyer_when_lawyer_is_actor(
+        self, api_client, process, lawyer_user, client_user,
+    ):
+        """R3 fix: when the assigned LAWYER triggers the update they must
+        still receive the notification email (and in-app notification).
+        Previously the actor was excluded so the lawyer never saw their own
+        edits in the notification center / inbox.
+        """
+        api_client.force_authenticate(user=lawyer_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Lawyer Triggered Update'}
+
+        target = 'gym_app.views.process._send_process_update_email'
+        with patch(target) as mock_send:
+            api_client.put(url, {'mainData': json.dumps(payload)}, format='multipart')
+
+        assert mock_send.call_count == 1
+        _, kwargs = mock_send.call_args
+        recipients = kwargs.get('recipients') or []
+        emails = {getattr(u, 'email', None) for u in recipients}
+        assert lawyer_user.email in emails, (
+            'lawyer must receive the email even when they are the actor'
+        )
+        assert client_user.email in emails, 'clients must still be included'
+
+    def test_update_process_email_failure_does_not_break_api(self, api_client, admin_user, process):
+        """If the underlying email transport raises, the helper logs it and the API still returns 200.
+
+        ``_send_process_update_email`` wraps ``send_template_email`` in a
+        try/except so transport failures never surface as HTTP 500. This
+        test patches the transport (not the helper) so the helper's own
+        error-handling path is exercised.
+        """
+        api_client.force_authenticate(user=admin_user)
+        url = reverse('update-process', kwargs={'pk': process.id})
+        payload = {'authority': 'Email Court'}
+
+        target = 'gym_app.views.process.send_template_email'
+        with patch(target, side_effect=Exception('SMTP down')):
+            response = api_client.put(
+                url, {'mainData': json.dumps(payload)}, format='multipart'
+            )
+
+        assert response.status_code == status.HTTP_200_OK

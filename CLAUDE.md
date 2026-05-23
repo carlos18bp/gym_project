@@ -1,3 +1,172 @@
+<!-- fleet-base:begin v=1 -->
+# CLAUDE.md — G&M Staging (`gym_project_staging`)
+
+Esta seccion es la **base comun del fleet** y se sincroniza desde
+`vps-ops-toolkit/workflows/.claude/base/CLAUDE.md.tmpl`. No editar manualmente:
+los cambios se pierden en el proximo sync. Para customizar este proyecto, usar
+la seccion `project-specific` mas abajo.
+
+## Convencion de lenguaje
+
+- Documentacion, comentarios y mensajes de commit en **espanol**.
+- Codigo, identificadores y nombres de variable en **ingles**.
+- Mensajes de error visibles al usuario final en el idioma del proyecto.
+
+<!-- session-start-protocol:begin -->
+## Session Start Protocol
+
+Al inicio de **cada sesión y antes de editar archivos**, debes invocar la skill `git-sync` para este repo. Razón: el operador trabaja desde múltiples máquinas y procesos automatizados (cron, CI) pueden haber commiteado cambios que tu copia local no tiene; editar sobre una versión desactualizada genera conflictos o trabajo duplicado.
+
+**Flujo:**
+1. Un hook `SessionStart` (definido en `.claude/settings.json`) ejecuta `git fetch + git status` read-only y te inyecta el estado de este repo como contexto.
+2. Si el reporte indica `behind > 0` o `dirty > 0`, **invoca la skill `git-sync`** antes de hacer cualquier cambio. `git-sync` hace rebase contra el parent branch y, si hay conflictos, te guía interactivamente por la resolución.
+3. Si el reporte indica `behind=0 ahead=0 dirty=0`, el repo ya está sincronizado y puedes proceder.
+
+**Importante:** Nunca uses `git pull --force`, `git reset --hard` ni stash automático para "resolver" el sync — usa siempre la skill `git-sync`, que es segura y reproducible.
+<!-- session-start-protocol:end -->
+
+<!-- git-branch-protocol:begin -->
+## Reglas de trabajo con Git: ramas y commits
+
+**Nunca hagas commits directamente sobre `main` o `master`.** Estas ramas están protegidas y los pushes serán rechazados por GitHub. Antes de cualquier `git commit`, sigue este protocolo:
+
+### 1. Verificar la rama actual
+
+Antes de cualquier operación de escritura (add, commit, etc.), ejecuta:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+### 2. Si la rama actual es `main` o `master`
+
+Antes de crear una rama nueva, **busca si ya existe una rama feature activa** para este proyecto:
+
+```bash
+git fetch --quiet --prune
+# Lista ramas remotas que no son main/master/release-* ni HEAD
+git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
+```
+
+- **Si hay UNA rama feature activa** (con PR abierto o trabajo en curso): `git checkout <rama-existente>` y haz pull rebase si está atrás del remote. Commitea ahí. No crees rama nueva.
+- **Si hay VARIAS ramas feature activas**: pregunta al usuario en cuál commitear (no asumas).
+- **Si NO hay ninguna rama feature activa** (todas las que ves están mergeadas/cerradas o son ramas históricas abandonadas): crea rama nueva según el formato de la sección 3.
+
+**Por qué:** la convención del fleet es **máximo 1 PR feature activo simultáneamente** por proyecto. Todos los cambios en curso se acumulan como commits sucesivos sobre esa rama hasta que mergee. Crear ramas paralelas fragmenta el trabajo en múltiples PRs y hace difícil hacer code review unificado.
+
+**No pidas permiso para hacer el checkout** — sólo comunícalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
+
+### 3. Formato obligatorio del nombre de rama
+
+`<prefijo>/<DDMMYYYY>-<descripcion-corta>`
+
+- **`<prefijo>`** según el tipo de cambio:
+  - `feat` — nueva funcionalidad
+  - `fix` — corrección de bug
+  - `docs` — cambios en documentación
+  - `refactor` — refactorización sin cambio funcional
+  - `test` — añadir o modificar tests
+  - `chore` — mantenimiento (dependencias, configs)
+  - `style` — formato/estilo, sin cambio de lógica
+  - `perf` — mejoras de rendimiento
+  - `ci` — cambios en workflows o pipelines
+  - `hotfix` — corrección urgente en producción
+
+- **`<DDMMYYYY>`** debe ser la fecha actual del sistema obtenida con `date +%d%m%Y`. Nunca la asumas ni la inventes.
+
+- **`<descripcion-corta>`** en kebab-case, máximo 5 palabras, en inglés o español según el idioma del proyecto.
+
+### 4. Ejemplos de nombres válidos
+
+- `feat/15052026-login-google-oauth`
+- `fix/15052026-typo-readme`
+- `refactor/15052026-extract-user-service`
+- `docs/15052026-update-deploy-guide`
+- `chore/15052026-bump-django-version`
+
+### 5. Comandos exactos a ejecutar
+
+```bash
+# 1. Obtener la fecha del día (no asumirla)
+TODAY=$(date +%d%m%Y)
+
+# 2. Crear y moverse a la nueva rama
+git checkout -b <prefijo>/${TODAY}-<descripcion-corta>
+
+# 3. Recién entonces hacer add y commit
+git add <archivos>
+git commit -m "<mensaje siguiendo conventional commits>"
+```
+
+### 6. Inferencia del prefijo
+
+Determina el prefijo a partir del contenido de los cambios:
+- Archivos nuevos que añaden features → `feat`
+- Cambios que arreglan comportamiento roto → `fix`
+- Solo cambios en `*.md`, comentarios o JSDoc → `docs`
+- Cambios en `package.json`, `requirements.txt`, configs → `chore`
+- Cambios en `.github/workflows/*` → `ci`
+- Archivos `*test*` / `*spec*` modificados o añadidos → `test`
+- Reorganización sin alterar comportamiento → `refactor`
+
+Si hay ambigüedad, pregunta al usuario una sola vez antes de crear la rama.
+
+### 7. Excepciones
+
+- Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git pull`, `git fetch`) están permitidas en `main`/`master`.
+- Si el usuario explícitamente pide quedarse en `main` para revisar algo sin commitear, respeta esa intención.
+- Si ya estás en una rama feature válida (no `main`/`master`), no crees una nueva — continúa trabajando en ella. **Esta es la convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
+
+### 8. Mensajes de commit
+
+Sigue Conventional Commits, con el mismo prefijo de la rama cuando aplique:
+
+```
+feat: add Google OAuth login flow
+fix: correct typo in deployment README
+refactor: extract user validation into service
+```
+
+### 9. Reporte final: URL del PR
+
+Después de cada `git push` que cree una rama nueva en el remote, **siempre** termina tu respuesta dando al usuario la URL "Create a pull request" que GitHub imprime en el output del push.
+
+- Formato: `https://github.com/<owner>/<repo>/pull/new/<branch>`.
+- Inclúyela como una de las **últimas líneas** del cierre de turno, etiquetada como `PR URL: <url>`.
+- Si la rama ya existía y tiene un PR abierto, reporta la URL del PR existente (usa `gh pr view --json url -q .url` si la necesitas).
+- Si por excepción se commiteó directo a `main`/`master` (sólo posible en proyectos sin esta regla), declara explícitamente: "PR URL: n/a (push directo a `main`)".
+- Si hubo cambios en varios proyectos en el mismo turno, entrega una **lista** con un `PR URL:` por proyecto.
+<!-- git-branch-protocol:end -->
+
+<!-- e2e-user-flows-protocol:begin -->
+## E2E User Flows Check
+
+Cuando termines de implementar un cambio que afecte un **flujo de usuario en el frontend** — por ejemplo:
+- Crear o editar un formulario (agregar/quitar campos)
+- Nueva ruta, página o vista accesible al usuario
+- Cambios en flujos de autenticación, checkout, onboarding, búsqueda, perfil
+- Modificaciones a `docs/USER_FLOW_MAP.md` o `frontend/e2e/flow-definitions.json`
+
+…debes invocar la skill `e2e-user-flows-check` como **paso final** antes de reportar la implementación como completa. Esa skill audita la cobertura E2E del flujo modificado y reporta brechas/riesgos.
+
+**Por qué:** los flujos de usuario en frontend cambian las assumptions de los tests E2E. Sin auditoría, un campo eliminado deja tests "verdes" pero inválidos, y un form nuevo queda sin cobertura.
+
+**No aplica para:** correcciones aisladas que no cambian el flujo (typos, refactors internos, estilos puros, dependency bumps), ni cambios solo en backend que no alteren UX.
+
+**Recordatorio automático:** un hook `Stop` revisa al cierre del turno si hay cambios uncommitted bajo `frontend/src/`, `frontend/app/`, etc., y te lo inyecta como contexto. El hook es un recordatorio, no bloqueante — la regla aplica igual aunque el hook no dispare.
+<!-- e2e-user-flows-protocol:end -->
+
+## Ecosistemas IA paralelos
+
+Este proyecto tiene tres ecosistemas activos en paralelo: Claude Code (este
+archivo + `.claude/`), Codex (`AGENTS.md` + `.agents/skills/` + `.codex/config.toml`)
+y Windsurf (`.windsurf/rules/` + `.windsurf/workflows/`). Los tres comparten el
+mismo cuerpo de instrucciones general; el frontmatter y la estructura cambian
+por ecosistema. La fuente de verdad es `vps-ops-toolkit/workflows/`.
+
+<!-- fleet-base:end -->
+
+<!-- project-specific:begin -->
 # CLAUDE.md
 # GM Consultores Juridicos — Claude Code Configuration
 
@@ -22,6 +191,161 @@ These should be respected ALWAYS:
 - S2: Offer strategies to enhance performance or security.
 - S3: Recommend methods for improving readability or maintainability.
 - Recommend areas for further investigation
+
+---
+
+## Skills obligatorias por flujo de trabajo
+
+### Skill `git-sync` — antes de cada tarea con cambios
+
+**Antes de procesar cualquier instrucción del usuario que implique modificar
+archivos** (implement, fix, refactor, test, docs, chore, etc.), **invoca la
+skill `git-sync`** para sincronizar la rama actual con su rama padre
+(`main`/`master`) y con su propio remote.
+
+- Invócala vía el tool `Skill` con `skill: "git-sync"`.
+- Hazlo **en cada nueva tarea/instrucción** que vaya a modificar archivos —
+  no basta con una sola vez por sesión: el remoto puede haber cambiado entre
+  tarea y tarea.
+- Si la skill detecta cambios sin commitear, sigue su propio protocolo
+  (stash + pop, con confirmación del usuario).
+- Si la rama actual es `main`/`master`, la skill hace pull simple del remote
+  en vez de rebase.
+- Operaciones puramente de solo lectura (responder preguntas, leer archivos,
+  `git status`, `git log`, `git diff`) **no requieren** ejecutar `git-sync`.
+
+### Skill `e2e-user-flows-check` — al final de cualquier cambio en flujos de usuario
+
+Si la implementación que acabas de realizar **añade, modifica o elimina un
+flujo de navegación de usuario** (nueva ruta, nuevo formulario multi-paso,
+cambio de redirecciones, nuevos roles con vistas distintas, cambios en
+wizards, login, checkout, dashboards, etc.), **invoca la skill
+`e2e-user-flows-check`** al cerrar el trabajo, antes de dar la tarea por
+completa.
+
+- Invócala vía el tool `Skill` con `skill: "e2e-user-flows-check"`.
+- Permite detectar gaps de cobertura E2E y registrar los flujos nuevos en
+  `docs/USER_FLOW_MAP.md` y `frontend/e2e/flow-definitions.json`.
+- **No es necesaria** para cambios que no afectan el flujo del usuario
+  (refactors internos, optimizaciones de queries, cambios de estilos
+  puramente visuales sin nueva interacción, fixes que no cambian la ruta
+  del usuario, cambios sólo en backend que no exponen nuevas pantallas).
+- Si dudas si un cambio cuenta como "flujo de usuario", invócala — el costo
+  de ejecutar la auditoría es menor que el riesgo de dejar un flujo sin
+  cobertura.
+
+---
+
+## Reglas de trabajo con Git: ramas y commits
+
+**Nunca hagas commits directamente sobre `main` o `master`.** Estas ramas están protegidas y los pushes serán rechazados por GitHub. Antes de cualquier `git commit`, sigue este protocolo:
+
+### 1. Verificar la rama actual
+
+Antes de cualquier operación de escritura (add, commit, etc.), ejecuta:
+
+```bash
+git rev-parse --abbrev-ref HEAD
+```
+
+### 2. Si la rama actual es `main` o `master`
+
+Antes de crear una rama nueva, **busca si ya existe una rama feature activa** para este proyecto:
+
+```bash
+git fetch --quiet --prune
+# Lista ramas remotas que no son main/master/release-* ni HEAD
+git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
+```
+
+- **Si hay UNA rama feature activa** (con PR abierto o trabajo en curso): `git checkout <rama-existente>` y haz pull rebase si está atrás del remote. Commitea ahí. No crees rama nueva.
+- **Si hay VARIAS ramas feature activas**: pregunta al usuario en cuál commitear (no asumas).
+- **Si NO hay ninguna rama feature activa** (todas las que ves están mergeadas/cerradas o son ramas históricas abandonadas): crea rama nueva según el formato de la sección 3.
+
+**Por qué:** la convención del proyecto es **máximo 1 PR feature activo simultáneamente**. Todos los cambios en curso se acumulan como commits sucesivos sobre esa rama hasta que mergee. Crear ramas paralelas fragmenta el trabajo en múltiples PRs y hace difícil hacer code review unificado.
+
+**No pidas permiso para hacer el checkout** — sólo comunícalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
+
+### 3. Formato obligatorio del nombre de rama
+
+`<prefijo>/<DDMMYYYY>-<descripcion-corta>`
+
+- **`<prefijo>`** según el tipo de cambio:
+  - `feat` — nueva funcionalidad
+  - `fix` — corrección de bug
+  - `docs` — cambios en documentación
+  - `refactor` — refactorización sin cambio funcional
+  - `test` — añadir o modificar tests
+  - `chore` — mantenimiento (dependencias, configs)
+  - `style` — formato/estilo, sin cambio de lógica
+  - `perf` — mejoras de rendimiento
+  - `ci` — cambios en workflows o pipelines
+  - `hotfix` — corrección urgente en producción
+
+- **`<DDMMYYYY>`** debe ser la fecha actual del sistema obtenida con `date +%d%m%Y`. Nunca la asumas ni la inventes.
+
+- **`<descripcion-corta>`** en kebab-case, máximo 5 palabras, en inglés o español según el idioma del proyecto.
+
+### 4. Ejemplos de nombres válidos
+
+- `feat/15052026-login-google-oauth`
+- `fix/15052026-typo-readme`
+- `refactor/15052026-extract-user-service`
+- `docs/15052026-update-deploy-guide`
+- `chore/15052026-bump-django-version`
+
+### 5. Comandos exactos a ejecutar
+
+```bash
+# 1. Obtener la fecha del día (no asumirla)
+TODAY=$(date +%d%m%Y)
+
+# 2. Crear y moverse a la nueva rama
+git checkout -b <prefijo>/${TODAY}-<descripcion-corta>
+
+# 3. Recién entonces hacer add y commit
+git add <archivos>
+git commit -m "<mensaje siguiendo conventional commits>"
+```
+
+### 6. Inferencia del prefijo
+
+Determina el prefijo a partir del contenido de los cambios:
+- Archivos nuevos que añaden features → `feat`
+- Cambios que arreglan comportamiento roto → `fix`
+- Solo cambios en `*.md`, comentarios o JSDoc → `docs`
+- Cambios en `package.json`, `requirements.txt`, configs → `chore`
+- Cambios en `.github/workflows/*` → `ci`
+- Archivos `*test*` / `*spec*` modificados o añadidos → `test`
+- Reorganización sin alterar comportamiento → `refactor`
+
+Si hay ambigüedad, pregunta al usuario una sola vez antes de crear la rama.
+
+### 7. Excepciones
+
+- Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git pull`, `git fetch`) están permitidas en `main`/`master`.
+- Si el usuario explícitamente pide quedarse en `main` para revisar algo sin commitear, respeta esa intención.
+- Si ya estás en una rama feature válida (no `main`/`master`), no crees una nueva — continúa trabajando en ella. **Esta es la convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
+
+### 8. Mensajes de commit
+
+Sigue Conventional Commits, con el mismo prefijo de la rama cuando aplique:
+
+```
+feat: add Google OAuth login flow
+fix: correct typo in deployment README
+refactor: extract user validation into service
+```
+
+### 9. Reporte final: URL del PR
+
+Después de cada `git push` que cree una rama nueva en el remote, **siempre** termina tu respuesta dando al usuario la URL "Create a pull request" que GitHub imprime en el output del push.
+
+- Formato: `https://github.com/<owner>/<repo>/pull/new/<branch>`.
+- Inclúyela como una de las **últimas líneas** del cierre de turno, etiquetada como `PR URL: <url>`.
+- Si la rama ya existía y tiene un PR abierto, reporta la URL del PR existente (usa `gh pr view --json url -q .url` si la necesitas).
+- Si por excepción se commiteó directo a `main`/`master` (sólo posible en proyectos sin esta regla), declara explícitamente: "PR URL: n/a (push directo a `main`)".
+- Si hubo cambios en varios proyectos en el mismo turno, entrega una **lista** con un `PR URL:` por proyecto.
 
 ---
 
@@ -468,3 +792,4 @@ Full reference: `docs/TESTING_QUALITY_STANDARDS.md`
 #### [RESOLVED-001] E2E bypassCaptcha relies on `window.__e2eCaptchaVerified` flag
 - **Context**: E2E tests needed to bypass Google reCAPTCHA during automated testing
 - **Resolution**: The `bypassCaptcha` helper sets `window.__e2eCaptchaVerified` flag via a `grecaptcha` stub; relying on Vue internals for captcha state was unreliable across versions
+<!-- project-specific:end -->

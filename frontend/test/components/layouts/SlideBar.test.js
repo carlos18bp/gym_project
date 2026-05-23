@@ -36,6 +36,37 @@ jest.mock("vue3-google-login", () => ({
   googleLogout: () => mockGoogleLogout(),
 }));
 
+jest.mock("@/composables/usePendingSignatures", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    PENDING_SIGNATURES_ALERTED_KEY: "pendingSignaturesAlerted",
+    usePendingSignatures: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      shouldAlert: ref(false),
+      isLoading: ref(false),
+      error: ref(null),
+      hasAlertedThisSession: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+      markAlerted: jest.fn(),
+      resetAlertFlag: jest.fn(),
+    }),
+  };
+});
+
+jest.mock("@/composables/usePendingProcessAlerts", () => {
+  const { ref } = require("vue");
+  return {
+    __esModule: true,
+    usePendingProcessAlerts: () => ({
+      pendingCount: ref(0),
+      hasPending: ref(false),
+      fetchPendingCount: jest.fn().mockResolvedValue(),
+    }),
+  };
+});
+
 jest.mock("@headlessui/vue", () => ({
   __esModule: true,
   Dialog: { name: "Dialog", template: "<div><slot /></div>" },
@@ -226,7 +257,7 @@ describe("SlideBar.vue", () => {
     expect(texts).not.toContain("Directorio");
     expect(texts).not.toContain("Intranet G&M");
     expect(texts).not.toContain("Gestión de Solicitudes");
-    expect(texts).not.toContain("Organizaciones");
+    expect(texts).toContain("Organizaciones");
   });
 
   test("filters navigation for non-gym lawyer role", async () => {
@@ -555,6 +586,6 @@ describe("SlideBar.vue", () => {
     expect(texts).not.toContain("Solicitudes");
     expect(texts).not.toContain("Gestión de Solicitudes");
     expect(texts).not.toContain("Intranet G&M");
-    expect(texts).not.toContain("Organizaciones");
+    expect(texts).toContain("Organizaciones");
   });
 });
