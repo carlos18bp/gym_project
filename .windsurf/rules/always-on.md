@@ -8,7 +8,7 @@ trigger: always_on
 
 ## Convencion de lenguaje
 
-- Documentacion, comentarios y mensajes de commit en **espanol**.
+- Documentacion, comentarios y mensajes de commit en **ingles**.
 - Codigo, identificadores y nombres de variable en **ingles**.
 - Mensajes de error visibles al usuario en el idioma del proyecto.
 

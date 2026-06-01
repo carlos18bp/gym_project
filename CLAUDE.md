@@ -8,7 +8,7 @@ la seccion `project-specific` mas abajo.
 
 ## Convencion de lenguaje
 
-- Documentacion, comentarios y mensajes de commit en **espanol**.
+- Documentacion, comentarios y mensajes de commit en **ingles**.
 - Codigo, identificadores y nombres de variable en **ingles**.
 - Mensajes de error visibles al usuario final en el idioma del proyecto.
 
