@@ -27,6 +27,78 @@ export const normalizeFragmentedVariables = (html) => {
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
+ * Builds the non-editable highlighted span used to protect a variable inside
+ * the client document editor (TinyMCE noneditable plugin keys off the
+ * `variable-protected` class; `data-variable` preserves the token so the
+ * content can be converted back to `{{name}}` on save).
+ * @param {string} name - Variable token name (goes into data-variable).
+ * @param {string} displayValue - Text shown inside the span.
+ * @param {string} titleLabel - Human label used in the tooltip.
+ * @returns {string} HTML for the protected span.
+ */
+export const buildProtectedVariableSpan = (name, displayValue, titleLabel) => `<span
+      class="variable-protected mceNonEditable"
+      data-variable="${name}"
+      data-mce-contenteditable="false"
+      contenteditable="false"
+      unselectable="on"
+      style="background-color: #ffeb3b !important; color: #d32f2f !important; padding: 2px 4px !important; border-radius: 3px !important; font-weight: bold !important; cursor: not-allowed !important; user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; display: inline-block !important;"
+      title="Variable protegida: ${titleLabel} - No se puede editar"
+      onmousedown="return false;"
+      onselectstart="return false;"
+      ondragstart="return false;"
+    >${displayValue}</span>`;
+
+/**
+ * Replaces every `{{token}}` in the content with a protected span for the
+ * client editor view. Known variables show their value (or `[name]` when
+ * empty). Tokens with no matching variable — e.g. a typo inherited from an
+ * older template version — are protected too, showing `[token]`: leaving
+ * them as plain text made the editor's integrity guard see fewer protected
+ * spans than tokens and revert every keystroke, blocking text editing.
+ * @param {string} content - HTML content with `{{token}}` markers.
+ * @param {Array<Object>} variables - The document's variables.
+ * @returns {string} Processed HTML content.
+ */
+export const replaceVariablesWithProtectedSpans = (content, variables) => {
+  if (!content) return content;
+
+  // Reassemble {{var}} markers TinyMCE may have fragmented across inline tags
+  // (typical when the template has tables pasted from Word) before substitution.
+  let processedContent = normalizeFragmentedVariables(content);
+
+  const vars = Array.isArray(variables) ? variables : [];
+  vars.forEach((variable) => {
+    if (!variable || !variable.name_en) return;
+    const variablePattern = new RegExp(`{{\\s*${escapeRegExp(variable.name_en)}\\s*}}`, 'g');
+    const value = variable.value || `[${variable.name_es || variable.name_en}]`;
+    processedContent = processedContent.replace(
+      variablePattern,
+      buildProtectedVariableSpan(variable.name_en, value, variable.name_es || variable.name_en)
+    );
+  });
+
+  // Orphan tokens: anything still in {{...}} form has no matching variable.
+  processedContent = processedContent.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (match, rawName) => {
+    const name = rawName.trim();
+    if (!name) return match;
+    return buildProtectedVariableSpan(name, `[${name}]`, name);
+  });
+
+  return processedContent;
+};
+
+/**
+ * Counts the protected variable spans present in an HTML string. Used by the
+ * client editor integrity guard to compare the current editor content against
+ * the span count produced at load time.
+ * @param {string} content - HTML content.
+ * @returns {number} Number of protected spans.
+ */
+export const countProtectedVariableSpans = (content) =>
+  ((content || '').match(/variable-protected/g) || []).length;
+
+/**
  * Returns the document content with variables replaced by their values
  * for final states (Completed, PendingSignatures, FullySigned).
  * For other states, returns the raw content.

@@ -18,7 +18,10 @@ import { useRouter, useRoute } from "vue-router";
 import { useDynamicDocumentStore } from "@/stores/dynamic_document";
 import { useUserStore } from "@/stores/auth/user";
 import { showNotification } from "@/shared/notification_message";
-import { normalizeFragmentedVariables } from "@/shared/document_utils";
+import {
+  replaceVariablesWithProtectedSpans,
+  countProtectedVariableSpans,
+} from "@/shared/document_utils";
 
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY;
 const editorContent = ref(""); // Content of the editor
@@ -63,6 +66,12 @@ const isLawyer = computed(() => true);
 // Store the original content with variables
 const originalContent = ref("");
 const processedContent = ref("");
+// Protected-span count produced at load time — baseline for the integrity
+// guard in the input handler. Counting raw {{...}} tokens in the original
+// content instead caused a permanent mismatch (and a revert on every
+// keystroke) for documents whose content contains a token without a
+// matching variable, e.g. a typo inherited from an older template version.
+const initialProtectedCount = ref(0);
 
 onMounted(async () => {
   const documentId = route.params.id;
@@ -94,6 +103,10 @@ onMounted(async () => {
         editorContent.value = originalContent.value;
       }
     }
+
+    if (isClient.value) {
+      initialProtectedCount.value = countProtectedVariableSpans(editorContent.value);
+    }
   }
 });
 
@@ -118,38 +131,14 @@ const extractVariables = (content = null) => {
 };
 
 /**
- * Replaces variables in content with their actual values for client view
+ * Replaces variables in content with their actual values for client view.
+ * Delegates to the shared helper, which also protects orphan tokens
+ * (content {{tokens}} with no matching variable) so they cannot be edited
+ * and the integrity guard's span count stays consistent.
  */
 const replaceVariablesWithValues = (content) => {
-  if (!content || !store.selectedDocument?.variables) return content;
-
-  // Reassemble {{var}} markers TinyMCE may have fragmented across inline tags
-  // (typical when the template has tables pasted from Word) before substitution.
-  let processedContent = normalizeFragmentedVariables(content);
-
-  store.selectedDocument.variables.forEach(variable => {
-    const escapedName = variable.name_en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const variablePattern = new RegExp(`{{\\s*${escapedName}\\s*}}`, 'g');
-    const value = variable.value || `[${variable.name_es || variable.name_en}]`;
-    
-    // Create a highly protected span with multiple protection layers
-    const protectedSpan = `<span 
-      class="variable-protected mceNonEditable" 
-      data-variable="${variable.name_en}" 
-      data-mce-contenteditable="false"
-      contenteditable="false" 
-      unselectable="on"
-      style="background-color: #ffeb3b !important; color: #d32f2f !important; padding: 2px 4px !important; border-radius: 3px !important; font-weight: bold !important; cursor: not-allowed !important; user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; display: inline-block !important;"
-      title="Variable protegida: ${variable.name_es || variable.name_en} - No se puede editar"
-      onmousedown="return false;"
-      onselectstart="return false;"
-      ondragstart="return false;"
-    >${value}</span>`;
-    
-    processedContent = processedContent.replace(variablePattern, protectedSpan);
-  });
-  
-  return processedContent;
+  if (!content) return content;
+  return replaceVariablesWithProtectedSpans(content, store.selectedDocument?.variables || []);
 };
 
 /**
@@ -813,12 +802,12 @@ const editorConfig = computed(() => ({
         if (isProcessingContent) return;
         
         const currentContent = editor.getContent();
-        
-        // Check if any variables were removed
-        const originalVariableCount = (originalContent.value.match(/{{.*?}}/g) || []).length;
-        const currentVariableSpans = (currentContent.match(/variable-protected/g) || []).length;
-        
-        if (currentVariableSpans < originalVariableCount) {
+
+        // Check if any protected variables were removed, comparing against
+        // the span count produced at load time (see initialProtectedCount).
+        const currentVariableSpans = countProtectedVariableSpans(currentContent);
+
+        if (currentVariableSpans < initialProtectedCount.value) {
           // Variables were compromised, restore and re-protect
           isProcessingContent = true;
           const restoredContent = replaceVariablesWithValues(originalContent.value);
