@@ -47,7 +47,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from bs4 import BeautifulSoup
 from xhtml2pdf import pisa
 from reportlab.pdfgen import canvas
-from gym_app.views.layouts.sendEmail import EmailMessage
+from django.core.mail import EmailMessage
 import hashlib
 import base64
 from cryptography.hazmat.primitives.asymmetric import rsa, padding

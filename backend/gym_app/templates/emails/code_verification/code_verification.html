@@ -35,7 +35,7 @@
                         <tr>
                           <td align="left" style="font-size:0px;padding:0 0 15px;word-break:break-word;">
                             <div style="font-family:Inter, Arial, sans-serif;font-size:15px;font-weight:400;line-height:1.5;text-align:left;color:#374151;">
-                              Has solicitado un código de verificación para acceder a los servicios de <strong>G&M Consultores Jurídicos</strong>. Por favor, utiliza el siguiente código para completar tu proceso de registro:
+                              Has solicitado un código de verificación para acceder a los servicios de <strong>G&M Consultores Jurídicos</strong>. Por favor, utiliza el siguiente código para completar tu proceso de registro: <strong style="color:#374151;">{{passcode}}</strong>
                             </div>
                           </td>
                         </tr>
@@ -43,10 +43,12 @@
                         <!-- Verification Code Box -->
                         <tr>
                           <td style="padding:10px 20px;">
-                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#1e40af" style="background-color:#1e40af;background:#1e40af;background-image:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);border-radius:12px;margin:20px auto;">
+                            <!-- Dark text on light background survives dark-mode color inversion;
+                                 white-on-dark-blue rendered invisible in inverted clients -->
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#eff6ff" style="background-color:#eff6ff;background:#eff6ff;border:2px solid #1e40af;border-radius:12px;margin:20px auto;">
                               <tr>
-                                <td align="center" bgcolor="#1e40af" style="background-color:#1e40af;padding:20px 15px;border-radius:12px;">
-                                  <div style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:4px;font-family:'Courier New',monospace;text-shadow:0 0 2px #1e3a8a,0 1px 2px rgba(0,0,0,0.5);word-break:break-all;line-height:1.2;">{{passcode}}</div>
+                                <td align="center" bgcolor="#eff6ff" style="background-color:#eff6ff;padding:20px 15px;border-radius:12px;">
+                                  <div style="font-size:28px;font-weight:700;color:#1e40af;letter-spacing:4px;font-family:'Courier New',monospace;word-break:break-all;line-height:1.2;">{{passcode}}</div>
                                 </td>
                               </tr>
                             </table>

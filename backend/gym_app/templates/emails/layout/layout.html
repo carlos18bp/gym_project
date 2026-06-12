@@ -111,10 +111,11 @@
       color: #1e40af;
       line-height: 1.4;
     }
+    /* Dark text on light background survives dark-mode color inversion */
     .verification-code {
-      background-color: #1e40af;
-      background: #1e40af;
-      background-image: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      background-color: #eff6ff;
+      background: #eff6ff;
+      border: 2px solid #1e40af;
       border-radius: 12px;
       padding: 20px 15px;
       text-align: center;
@@ -125,10 +126,9 @@
     .code-text {
       font-size: 28px;
       font-weight: 700;
-      color: #ffffff;
+      color: #1e40af;
       letter-spacing: 4px;
       font-family: 'Courier New', monospace;
-      text-shadow: 0 0 2px #1e3a8a, 0 1px 2px rgba(0,0,0,0.5);
       word-break: break-all;
       line-height: 1.2;
     }

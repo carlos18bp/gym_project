@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.template.loader import get_template
 from django.utils.html import strip_tags
@@ -79,15 +79,17 @@ def send_template_email(template_name: str,
     html_content = layout_template.render(layout_context)
     plain_content = strip_tags(html_content)
 
-    email_message = EmailMessage(
+    # Plain-text body + HTML alternative so clients that strip or skip HTML
+    # still show the message content (e.g. verification codes)
+    email_message = EmailMultiAlternatives(
         subject=subject,
-        body=html_content,
+        body=plain_content,
         from_email=from_email or settings.DEFAULT_FROM_EMAIL,
         to=to_emails,
         cc=cc,
         bcc=bcc,
     )
-    email_message.content_subtype = "html"  # Indicate HTML body
+    email_message.attach_alternative(html_content, "text/html")
 
     # Attach files if provided
     for file_path in attachments:

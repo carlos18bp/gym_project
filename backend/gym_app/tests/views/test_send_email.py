@@ -62,7 +62,7 @@ def test_send_template_email_skips_missing_attachments():
     email_instance.attach_file.side_effect = [FileNotFoundError(), None]
 
     with patch('gym_app.views.layouts.sendEmail.get_template', side_effect=[layout_template, content_template]), patch(
-        'gym_app.views.layouts.sendEmail.EmailMessage', return_value=email_instance
+        'gym_app.views.layouts.sendEmail.EmailMultiAlternatives', return_value=email_instance
     ):
         send_template_email(
             template_name='send_files',
