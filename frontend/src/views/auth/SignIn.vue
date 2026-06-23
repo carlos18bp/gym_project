@@ -98,20 +98,11 @@
       </div>
 
       <div class="flex flex-col items-center justify-center text-center">
-        <div class="flex items-center w-full mx-4">
-          <div class="flex-grow border-t border-gray-300"></div>
-          <span class="mx-4 text-gray-500">O continuar con</span>
-          <div class="flex-grow border-t border-gray-300"></div>
-        </div>
-
-        <GoogleLogin 
-          class="mt-6" 
-          :callback="handleLoginWithGoogle" 
-          select-account
-          :auto-login="false"
+        <SocialLoginButtons
+          show-divider
+          @google="handleLoginWithGoogle"
+          @outlook="handleLoginWithOutlook"
         />
-
-        <OutlookLoginButton class="mt-4" @click="handleLoginWithOutlook" />
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
@@ -145,7 +136,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { loginWithOutlook } from "@/shared/login_with_outlook";
-import OutlookLoginButton from "@/components/auth/OutlookLoginButton.vue";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";

@@ -169,14 +169,11 @@
             </div>
           </div>
 
-          <div class="mt-6 flex flex-col items-center gap-4">
-            <GoogleLogin 
-              :callback="handleLoginWithGoogle" 
-              select-account
-              :auto-login="false"
-            />
-            <OutlookLoginButton @click="handleLoginWithOutlook" />
-          </div>
+          <SocialLoginButtons
+            class="mt-6"
+            @google="handleLoginWithGoogle"
+            @outlook="handleLoginWithOutlook"
+          />
         </div>
       </div>
 
@@ -202,7 +199,7 @@ import { onMounted, reactive, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth/auth";
 import { loginWithOutlook } from "@/shared/login_with_outlook";
-import OutlookLoginButton from "@/components/auth/OutlookLoginButton.vue";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";

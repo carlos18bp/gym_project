@@ -159,17 +159,11 @@
           <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
-        <div class="flex justify-center">
-          <GoogleLogin 
-            class="mt-6" 
-            :callback="handleLoginWithGoogle" 
-            select-account
-            :auto-login="false"
-          />
-        </div>
-        <div class="flex justify-center mt-4">
-          <OutlookLoginButton @click="handleLoginWithOutlook" />
-        </div>
+        <SocialLoginButtons
+          class="mt-6"
+          @google="handleLoginWithGoogle"
+          @outlook="handleLoginWithOutlook"
+        />
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
@@ -203,7 +197,7 @@ import { onMounted, reactive, ref } from "vue";
 import { useAuthStore } from "@/stores/auth/auth";
 import { loginWithGoogle } from "@/shared/login_with_google";
 import { loginWithOutlook } from "@/shared/login_with_outlook";
-import OutlookLoginButton from "@/components/auth/OutlookLoginButton.vue";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
