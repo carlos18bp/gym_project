@@ -35,6 +35,13 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SignIn.vue"),
       meta: { requiresAuth: false, title: "Autenticación con Google", isCallback: true },
     },
+    // Special route for Microsoft (Outlook) OAuth callback
+    {
+      path: "/auth/outlook/callback",
+      name: "outlook_oauth_callback",
+      component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SignIn.vue"),
+      meta: { requiresAuth: false, title: "Autenticación con Microsoft", isCallback: true },
+    },
     {
       path: "/home",
       name: "home",

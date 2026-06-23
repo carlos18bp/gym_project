@@ -81,6 +81,24 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 ---
 
+### auth-login-outlook: Iniciar sesión con Microsoft/Outlook
+- **Módulo:** auth | **Prioridad:** P1 | **Ruta:** `/sign_in`, `/sign_on`, suscripción | **E2E:** ✅
+- **Descripción:** Usuario accede o se registra mediante MSAL con cuenta de Microsoft (personal o corporativa). El ID token se verifica server-side; el correo se acepta solo si está verificado (xms_edov / tenant de consumidores / allowlist) para prevenir nOAuth.
+
+**Pasos:**
+1. Navega a `/sign_in` (o `/sign_on`, o el flujo de suscripción)
+2. Click "Continuar con Microsoft"
+3. Autentica en el popup de Microsoft
+4. El backend verifica el ID token y el correo
+
+**Ramificaciones:**
+- ├── **Usuario existente:** Redirect a `/dashboard` (o checkout en suscripción)
+- ├── **Usuario nuevo:** Se crea cuenta `basic` automáticamente → redirect
+- ├── **Correo no verificado (tenant no confiable):** 401, no se crea/enlaza cuenta
+- └── **Popup cancelado / error:** Notificación, permanece en la vista
+
+---
+
 ### auth-register: Registrar nueva cuenta
 - **Módulo:** auth | **Prioridad:** P1 | **Ruta:** `/sign_on` | **E2E:** ✅
 - **Descripción:** Crear cuenta nueva con verificación de email por passcode

@@ -215,6 +215,18 @@ RECAPTCHA_SECRET_KEY = config('RECAPTCHA_SECRET_KEY', default='')
 # Google OAuth Client ID (used to verify Google ID tokens server-side)
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
+# Microsoft Entra (Azure AD) Application (Client) ID, used to verify
+# Microsoft ID tokens server-side against Microsoft's public JWKS endpoint.
+MICROSOFT_CLIENT_ID = config('MICROSOFT_CLIENT_ID', default='')
+
+# Allowlist of trusted Microsoft tenant ids (comma-separated) whose email claim
+# is trusted even without the `xms_edov` verified-email claim. Personal Microsoft
+# (consumers) accounts are always trusted. Leave empty to rely solely on
+# `xms_edov`. Prevents nOAuth cross-tenant account takeover.
+MICROSOFT_TRUSTED_TENANTS = {
+    t.strip() for t in config('MICROSOFT_TRUSTED_TENANTS', default='').split(',') if t.strip()
+}
+
 # ---------------------------------------------------------------------------
 # Wompi Payment Gateway Configuration
 # ---------------------------------------------------------------------------

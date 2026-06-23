@@ -22,6 +22,16 @@
       "description": "Usuario inicia sesión con cuenta de Google",
       "expectedSpecs": 1
     },
+    "auth-login-outlook": {
+      "name": "Login con Microsoft/Outlook",
+      "module": "auth",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P1",
+      "description": "Usuario inicia sesión o se registra con cuenta de Microsoft (Outlook) vía MSAL + verificación de ID token server-side",
+      "expectedSpecs": 1
+    },
     "auth-register": {
       "name": "Registro de usuario",
       "module": "auth",

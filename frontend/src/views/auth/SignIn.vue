@@ -110,6 +110,8 @@
           select-account
           :auto-login="false"
         />
+
+        <OutlookLoginButton class="mt-4" @click="handleLoginWithOutlook" />
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
@@ -142,6 +144,8 @@ import { useAuthStore } from "@/stores/auth/auth";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { loginWithGoogle } from "@/shared/login_with_google";
+import { loginWithOutlook } from "@/shared/login_with_outlook";
+import OutlookLoginButton from "@/components/auth/OutlookLoginButton.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
@@ -247,5 +251,12 @@ const signInUser = async () => {
  */
 const handleLoginWithGoogle = (response) => {
   loginWithGoogle(response, router, authStore);
+};
+
+/**
+ * Handles login with Microsoft (Outlook)
+ */
+const handleLoginWithOutlook = () => {
+  loginWithOutlook(router, authStore);
 };
 </script>

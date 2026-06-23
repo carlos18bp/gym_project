@@ -25,6 +25,7 @@ sign_in_sign_on_urls = [
     path('sign_in/', userAuth.sign_in, name='sign_in'),
     path('send_passcode/', userAuth.send_passcode, name='send_passcode'),
     path('google_login/', userAuth.google_login, name='google_login'),
+    path('outlook_login/', userAuth.outlook_login, name='outlook_login'),
     path('update_password/', userAuth.update_password, name='update_password'),    
     path('verify_passcode_and_reset_password/', userAuth.verify_passcode_and_reset_password, name='verify_passcode_and_reset_password'),
     path('validate_token/', userAuth.validate_token, name='validate_token'),
