@@ -1017,7 +1017,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### minutas-shared-visibility: Visibilidad y control compartidos de minutas
-- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ❌ (pendiente)
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅ (`minutas-shared-visibility.spec.js`)
 - **Descripción:** Todos los abogados ven y gestionan todas las minutas (Draft/Published) sin importar quién las creó. La tabla muestra una columna informativa "Creado por" y un filtro "Todas / Solo mías" que reusa el param backend `lawyer_id`.
 
 **Pasos:**

@@ -216,6 +216,14 @@ export async function installDynamicDocumentApiMocks(
         );
       }
 
+      // Server-side creator filter (mirrors backend `created_by_id=lawyer_id`),
+      // used by the minutas "Solo mías" toggle.
+      const lawyerIdParam = params.get("lawyer_id");
+      if (lawyerIdParam) {
+        const lid = Number(lawyerIdParam);
+        filtered = filtered.filter((d) => d.created_by === lid);
+      }
+
       // Server-side sort
       const sortByParam = params.get("sort_by") || "recent";
       if (sortByParam === "name-asc") {
