@@ -161,7 +161,8 @@ def list_dynamic_documents(request):
     if unassigned:
         queryset = queryset.filter(assigned_to__isnull=True)
 
-    # Full-text search across title, variable values, and assigned user name
+    # Full-text search across title, variable values, assigned user name,
+    # and the creator's name (so lawyers can search shared minutas by author).
     search = request.query_params.get('search', '').strip()
     if search:
         queryset = queryset.filter(
@@ -169,6 +170,8 @@ def list_dynamic_documents(request):
             | Q(variables__value__icontains=search)
             | Q(assigned_to__first_name__icontains=search)
             | Q(assigned_to__last_name__icontains=search)
+            | Q(created_by__first_name__icontains=search)
+            | Q(created_by__last_name__icontains=search)
         ).distinct()
 
     # Filter by tag

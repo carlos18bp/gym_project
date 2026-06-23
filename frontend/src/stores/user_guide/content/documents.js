@@ -8,7 +8,7 @@ export const documentsContent = {
     <p>El módulo de Archivos Jurídicos permite crear, gestionar y firmar documentos legales de manera digital.</p>
     <p class="mt-2"><strong>Para Abogados:</strong> 8 pestañas principales</p>
     <ul class="list-disc list-inside mt-2 space-y-1">
-      <li><strong>Minutas:</strong> Plantillas de documentos creadas (Published, Draft)</li>
+      <li><strong>Minutas:</strong> Plantillas de todos los abogados (Published, Draft) — visibilidad y control compartidos</li>
       <li><strong>Mis Documentos:</strong> Documentos propios completados y en progreso</li>
       <li><strong>Carpetas:</strong> Organización de documentos en carpetas personalizadas</li>
       <li><strong>Documentos por Firmar:</strong> Pendientes de firma (PendingSignatures)</li>
@@ -88,9 +88,13 @@ export const documentsContent = {
           <li><strong>Mis Documentos:</strong> Similar a la vista de clientes, permite al abogado usar minutas para crear documentos propios y formalizarlos con firmas.</li>
           <li><strong>Carpetas:</strong> Organizar documentos en carpetas personalizadas para mejor gestión.</li>
         </ul>
+        <p class="mt-2"><strong>Visibilidad compartida de Minutas:</strong> Todos los abogados ven y gestionan todas las minutas, sin importar quién las creó. La columna "Creado por" es solo informativa (no determina permisos). Usa el filtro "Todas / Solo mías" para alternar entre todas las minutas del equipo y únicamente las que tú creaste.</p>
       `,
       features: [
-        'Minutas: Crear y gestionar plantillas de documentos (solo plantillas)',
+        'Minutas: Crear y gestionar plantillas de todos los abogados (visibilidad y control compartidos)',
+        'Columna "Creado por": indica el abogado que creó cada minuta (informativa)',
+        'Control total: cualquier abogado puede editar, eliminar, publicar o copiar cualquier minuta',
+        'Filtro "Todas / Solo mías": ver todas las minutas del equipo o solo las propias',
         'Mis Documentos: Usar minutas para crear documentos propios y formalizarlos',
         'Carpetas: Organizar documentos en carpetas personalizadas',
         'Dcs. Por Firmar: Documentos pendientes de firma',

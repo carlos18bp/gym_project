@@ -814,6 +814,55 @@ class TestDynamicDocumentSerializerExtras:
 
         assert data["relationships_count"] == 1
 
+    def test_created_by_name_returns_full_name(self):
+        """created_by_name returns the creator's full name."""
+        creator = User.objects.create_user(
+            email="creator-name@example.com",
+            password="testpassword",
+            first_name="Ada",
+            last_name="Lovelace",
+        )
+        document = DynamicDocument.objects.create(
+            title="Minuta",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=creator,
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["created_by_name"] == "Ada Lovelace"
+
+    def test_created_by_name_falls_back_to_email_without_names(self):
+        """created_by_name falls back to email when names are empty."""
+        creator = User.objects.create_user(
+            email="noname@example.com",
+            password="testpassword",
+        )
+        document = DynamicDocument.objects.create(
+            title="Minuta",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=creator,
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["created_by_name"] == "noname@example.com"
+
+    def test_created_by_name_is_none_without_creator(self):
+        """created_by_name is None when the document has no creator."""
+        document = DynamicDocument.objects.create(
+            title="Minuta",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=None,
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["created_by_name"] is None
+
     def test_dynamic_document_serializer_summary_counterparty_from_variable(self):
         """Verify dynamic document serializer summary counterparty from variable."""
         creator = User.objects.create_user(

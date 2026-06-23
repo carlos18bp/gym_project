@@ -161,6 +161,35 @@
           </MenuItems>
         </Menu>
 
+        <!-- Minutas ownership toggle: shared view (all) vs. only the lawyer's own -->
+        <div
+          v-if="isLawyerMinutasContext"
+          class="inline-flex w-full sm:w-auto rounded-md border border-gray-300 overflow-hidden"
+          role="group"
+          aria-label="Filtrar minutas por autor"
+        >
+          <button
+            type="button"
+            @click="onlyMine = false"
+            :class="[
+              'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium',
+              !onlyMine ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
+            ]"
+          >
+            Todas
+          </button>
+          <button
+            type="button"
+            @click="onlyMine = true"
+            :class="[
+              'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium border-l border-gray-300',
+              onlyMine ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
+            ]"
+          >
+            Solo mías
+          </button>
+        </div>
+
         <div class="flex gap-2 w-full sm:w-auto">
           <button
             v-if="selectedDocuments.length > 0"
@@ -216,6 +245,9 @@
               <!-- Columna Cliente eliminada para mantener estructura original -->
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
+              </th>
+              <th v-if="isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Creado por
               </th>
               <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contraparte
@@ -283,6 +315,11 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="getStatusBadgeClass(document)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                   {{ getStatusText(document) }}
+                </span>
+              </td>
+              <td v-if="isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ document.created_by_name || '-' }}
                 </span>
               </td>
               <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
@@ -708,6 +745,9 @@ const filterByClient = ref(null);
 const dateFrom = ref("");
 const dateTo = ref("");
 const sortBy = ref('recent');
+// Minutas only: when true, restrict the shared-minutas list to those the
+// current lawyer created. Default false = shared visibility (all minutas).
+const onlyMine = ref(false);
 const selectedDocuments = ref([]);
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
@@ -743,9 +783,15 @@ const fetchWithFilters = async (page = 1) => {
     sortBy: sortBy.value || 'recent',
   };
 
-  if (isLawyerMinutasContext.value && currentUser?.id) {
-    options.lawyerId = currentUser.id;
+  if (isLawyerMinutasContext.value) {
+    // Shared visibility: lawyers see all minutas, not only their own.
+    // Only the Draft/Published state scope is sent by default.
     options.states = ['Draft', 'Published'];
+    // Optional "Solo mías" filter: scope the list to the current lawyer's own
+    // minutas by reusing the backend lawyer_id filter.
+    if (onlyMine.value && currentUser?.id) {
+      options.lawyerId = currentUser.id;
+    }
   }
 
   if (isClientMyDocumentsContext.value && currentUser?.id) {
@@ -780,12 +826,10 @@ const documentsToDisplay = computed(() => {
 
   const currentUser = userStore.currentUser;
 
-  // Lawyer main legal documents view
+  // Lawyer main legal documents view (minutas)
+  // Shared visibility: show all minutas regardless of which lawyer created them.
   if (props.cardType === 'lawyer' && props.context === 'legal-documents') {
-    if (!currentUser?.id || typeof documentStore.getDocumentsByLawyerId !== 'function') {
-      return [];
-    }
-    return documentStore.getDocumentsByLawyerId(currentUser.id) || [];
+    return documentStore.allMinutas || [];
   }
 
   // "My Documents" view (client-style list) for the current user
@@ -959,6 +1003,7 @@ const clearAllFilters = () => {
   filterByClient.value = null;
   dateFrom.value = "";
   dateTo.value = "";
+  onlyMine.value = false;
 };
 
 // Computed: determine if current view is "Minutas" (Draft/Published only for lawyer legal-documents)
@@ -1474,7 +1519,7 @@ watch(() => props.searchQuery, (newValue) => {
 }, { immediate: true });
 
 // Watch filter changes: reset to page 1 and re-fetch from backend
-watch([filterByTag, dateFrom, dateTo, sortBy], () => {
+watch([filterByTag, dateFrom, dateTo, sortBy, onlyMine], () => {
   if (!isServerPaginated.value) return;
   if (currentPage.value !== 1) {
     skipNextPageWatch = true;

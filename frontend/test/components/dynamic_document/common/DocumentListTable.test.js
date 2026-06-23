@@ -136,7 +136,7 @@ describe("DocumentListTable.vue", () => {
     };
     mockDocumentStore = {
       fetchDocuments: (...args) => mockFetchDocuments(...args),
-      getDocumentsByLawyerId: jest.fn(() => []),
+      allMinutas: [],
       progressAndCompletedDocumentsByClient: jest.fn(() => []),
       documents: [],
       pagination: { totalPages: 1 },
@@ -145,7 +145,7 @@ describe("DocumentListTable.vue", () => {
     mockFetchDocuments.mockResolvedValue();
   });
 
-  test("fetches lawyer documents on mount with expected filters", async () => {
+  test("fetches all minutas on mount without a per-creator filter", async () => {
     const wrapper = mountView();
 
     await flushPromises();
@@ -155,7 +155,6 @@ describe("DocumentListTable.vue", () => {
       page: 1,
       limit: 10,
       forceRefresh: true,
-      lawyerId: 7,
       states: ["Draft", "Published"],
       search: "",
       tagId: null,
@@ -163,7 +162,61 @@ describe("DocumentListTable.vue", () => {
       dateTo: "",
       sortBy: "recent",
     });
+    expect(mockFetchDocuments.mock.calls[0][0]).not.toHaveProperty("lawyerId");
     expect(wrapper.exists()).toBe(true);
+  });
+
+  test("renders informational 'Creado por' column in minutas context", async () => {
+    const wrapper = mountView({
+      promptDocuments: [
+        { id: 50, title: "Minuta Compartida", state: "Published", created_by_name: "Ada Lovelace", tags: [] },
+      ],
+    });
+
+    await flushPromises();
+
+    const thTexts = wrapper.findAll("th").map((th) => th.text().trim());
+    expect(thTexts).toContain("Creado por");
+    expect(wrapper.text()).toContain("Ada Lovelace");
+  });
+
+  test("'Solo mías' toggle re-fetches minutas scoped to the current lawyer", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+    mockFetchDocuments.mockClear();
+
+    const onlyMineBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().trim() === "Solo mías");
+    expect(onlyMineBtn).toBeTruthy();
+
+    await onlyMineBtn.trigger("click");
+    await flushPromises();
+
+    const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
+    expect(lastCall.lawyerId).toBe(7);
+    expect(lastCall.states).toEqual(["Draft", "Published"]);
+  });
+
+  test("'Todas' toggle re-fetches minutas without a per-creator filter", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    const buttons = wrapper.findAll("button");
+    const onlyMineBtn = buttons.find((btn) => btn.text().trim() === "Solo mías");
+    const allBtn = buttons.find((btn) => btn.text().trim() === "Todas");
+
+    await onlyMineBtn.trigger("click");
+    await flushPromises();
+    mockFetchDocuments.mockClear();
+
+    await allBtn.trigger("click");
+    await flushPromises();
+
+    const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
+    expect(lastCall).not.toHaveProperty("lawyerId");
   });
 
   test("updates search query and emits update", async () => {

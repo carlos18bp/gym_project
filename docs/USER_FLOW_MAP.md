@@ -1016,6 +1016,20 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### minutas-shared-visibility: Visibilidad y control compartidos de minutas
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ❌ (pendiente)
+- **Descripción:** Todos los abogados ven y gestionan todas las minutas (Draft/Published) sin importar quién las creó. La tabla muestra una columna informativa "Creado por" y un filtro "Todas / Solo mías" que reusa el param backend `lawyer_id`.
+
+**Pasos:**
+1. Lawyer A navega a `/dynamic_document_dashboard` → tab "Minutas"
+2. La tabla lista minutas creadas por cualquier abogado (no solo las propias)
+3. La columna "Creado por" muestra el nombre del abogado creador (informativa)
+4. Click en "Solo mías" → la tabla se reduce a las minutas creadas por el abogado actual
+5. Click en "Todas" → vuelve a mostrar todas las minutas del equipo
+6. (Control total) El abogado puede editar/eliminar/publicar/copiar cualquier minuta, sea propia o de un colega
+
+---
+
 ### docs-empty-states: Estados vacíos
 - **Módulo:** documents | **Prioridad:** P4 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅
 - **Descripción:** UI cuando no hay documentos, carpetas, tags u otros elementos

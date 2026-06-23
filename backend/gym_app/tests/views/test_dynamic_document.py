@@ -199,6 +199,68 @@ class TestDynamicDocumentViews:
         returned_ids = {item['id'] for item in response.data['items']}
         assert returned_ids == {doc1.id, doc2.id}
 
+    def test_list_minutas_shows_all_creators_for_lawyer(self, api_client):
+        """A lawyer sees minutas created by any lawyer (shared visibility)."""
+        lawyer_1 = User.objects.create_user(email='shared1@example.com', password='pwd', role='lawyer')
+        lawyer_2 = User.objects.create_user(email='shared2@example.com', password='pwd', role='lawyer')
+        api_client.force_authenticate(user=lawyer_1)
+
+        own = DynamicDocument.objects.create(
+            title="Own Minuta", content="<p>x</p>", state="Draft", created_by=lawyer_1,
+        )
+        colleague = DynamicDocument.objects.create(
+            title="Colleague Minuta", content="<p>x</p>", state="Published", created_by=lawyer_2,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'states': 'Draft,Published'})
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {item['id'] for item in response.data['items']}
+        assert {own.id, colleague.id}.issubset(returned_ids)
+
+    def test_list_minutas_exposes_created_by_name(self, api_client):
+        """The minutas list exposes the informational created_by_name field."""
+        lawyer = User.objects.create_user(
+            email='named@example.com', password='pwd', role='lawyer',
+            first_name='Grace', last_name='Hopper',
+        )
+        api_client.force_authenticate(user=lawyer)
+        doc = DynamicDocument.objects.create(
+            title="Named Minuta", content="<p>x</p>", state="Draft", created_by=lawyer,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'states': 'Draft,Published'})
+
+        assert response.status_code == status.HTTP_200_OK
+        item = next(d for d in response.data['items'] if d['id'] == doc.id)
+        assert item['created_by_name'] == 'Grace Hopper'
+
+    def test_list_dynamic_documents_search_by_creator_name(self, api_client):
+        """Search matches minutas by the creator's name."""
+        author = User.objects.create_user(
+            email='author@example.com', password='pwd', role='lawyer',
+            first_name='Margaret', last_name='Hamilton',
+        )
+        other = User.objects.create_user(email='other@example.com', password='pwd', role='lawyer')
+        api_client.force_authenticate(user=other)
+
+        match = DynamicDocument.objects.create(
+            title="Apollo Guidance", content="<p>x</p>", state="Draft", created_by=author,
+        )
+        _no_match = DynamicDocument.objects.create(
+            title="Unrelated", content="<p>x</p>", state="Draft", created_by=other,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'search': 'Hamilton'})
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {item['id'] for item in response.data['items']}
+        assert match.id in returned_ids
+        assert _no_match.id not in returned_ids
+
     def test_list_dynamic_documents_filter_by_client_and_states(self, api_client):
         """list_dynamic_documents debe filtrar por client_id y estados (caso Mis Documentos)."""
         # Creamos un cliente y otro usuario cualquiera
