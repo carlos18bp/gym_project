@@ -36,7 +36,8 @@
 | 5 | Notification Center | `Plan_05_notification_center.md` / `Requirement_05_notification_center.md` | ✅ Complete | `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), categories with `process_alert`/`signature_*`, snooze + archive |
 | 6 | Legal Files Alerts | `Plan_06_legal_files_alerts.md` / `Requirement_06_legal_files_alerts.md` | ✅ Complete (audited 2026-04-28) | `signature_reminder_task.py` (Huey periodic, 14:00 UTC = 9 AM Colombia). Audit closed 7 spec gaps: removed email from `notify_signature_reopened` (in-app only per matrix), added 24h-cutoff exclusion to daily reminder queries, fixed N+1 in user fetch loop, added 8s pulse timeout in `SignaturesListTable`, added `sessionStorage` cleanup on logout, exported `PENDING_SIGNATURES_ALERTED_KEY` constant, **respected explicit `?tab=`/`?lawyerTab=` URL params over auto-redirect in `Dashboard.vue` (bug surfaced by E2E spec)**. 12 backend tests + 6 composable tests + 1 logout test + 3 E2E specs (5 tests) added. Flows registered: `legal-files-menu-pulse` (P1), `legal-files-auto-redirect` (P2), `legal-files-table-pulse` (P2). |
 | 7 | Process Alerts | `Plan_07_process_alerts.md` / `Requirement_07_process_alerts.md` | ✅ Complete (audited 2026-04-28) | `StageAlert` (OneToOne with `Stage`), `process_alert_tasks.py` Huey task at 14:00 UTC, 3-day & 1-day reminders, configurable recipients (`notify_clients`); 25 backend tests + 3 E2E specs |
-| 8 | Outlook Auth Integration | `Plan_08_outlook_auth.md` / `Requirement_08_outlook_auth.md` | 📋 Planned |
+| 8 | Outlook Auth Integration | `Plan_08_outlook_auth.md` / `Requirement_08_outlook_auth.md` | ✅ Complete (Release Agosto 2026, commit `0494ec5`) | `outlook_login` endpoint mirroring `google_login` with server-side ID token verification (`_verify_microsoft_id_token`, cached `PyJWKClient`, multi-tenant `common`). **nOAuth hardening**: email trusted only via `xms_edov` / consumers tenant / `MICROSOFT_TRUSTED_TENANTS`; `preferred_username` never used as identity. Frontend `@azure/msal-browser` (`msal_config.js`, `login_with_outlook.js`, `OutlookLoginButton.vue` "Continuar con Microsoft", 4 auth views, `/auth/outlook/callback`). Tests: `TestOutlookLogin` + `TestVerifyMicrosoftIdToken` (backend), `login_with_outlook.test.js` (unit), `outlook-login-flow.spec.js` (E2E). Flow `auth-login-outlook` (P1). Pending operator: set `MICROSOFT_CLIENT_ID`/`VITE_MICROSOFT_CLIENT_ID` + enable `xms_edov` claim in Azure. |
+| 8b | Minutas — Visibilidad compartida entre abogados (enhancement) | `Requirement_minutas_shared_visibility` | ✅ Complete (Release Agosto 2026, commit `d595ae0`) | Removed per-creator filter so all lawyers see/manage every minuta (Draft/Published). Serializer `created_by_name` (`select_related`, no N+1), "Creado por" column, "Todas / Solo mías" toggle (reuses backend `lawyer_id`), creator-name search; `allMinutas` getter replaces orphaned `getDocumentsByLawyerId`. Backend serializer/view tests + store/component unit tests. Flow `minutas-shared-visibility` (P2). |
 | 9 | Marketplace | `Plan_09_marketplace.md` / `Requirement_09_marketplace.md` | 📋 Planned |
 | 10 | Optional Signature | `Plan_10_firma_opcional.md` / `Requirement_10_firma_opcional.md` | 📋 Planned |
 | 11 | Contract Execution | `Plan_11_contract_execution.md` / `Requirement_11_contract_execution.md` | 📋 Planned |
@@ -94,7 +95,7 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (192 spec files — verified 2026-04-28) — **148 flows registered**
+### Frontend E2E Tests (193 spec files — verified 2026-06-23) — **150 flows registered**
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)
@@ -128,7 +129,7 @@ Latest additions (2026-04-28):
 | `e2e/schedule/` | 1 | Appointment scheduling |
 | `e2e/user-guide/` | 1 | User guide navigation |
 
-> **E2E Flow Coverage (2026-04-08):** `flow-definitions.json` has 138 flows, `USER_FLOW_MAP.md` has 138 unique flows. All 138 flows covered (0 missing). Fixed: 2 specs using imported flow-tags (invisible to scanner), 1 naming mismatch (service-my-requests → service-view-my-requests), 4 missing service flow tags added.
+> **E2E Flow Coverage (2026-06-23):** `flow-definitions.json` has 150 flows. August release added `auth-login-outlook` (P1) and `minutas-shared-visibility` (P2), both registered in `flow-definitions.json` + `USER_FLOW_MAP.md`. Earlier baseline (2026-04-08): 138 flows, all covered (0 missing).
 
 ---
 

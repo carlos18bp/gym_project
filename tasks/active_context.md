@@ -19,7 +19,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-04-28)
+### Codebase Metrics (verified 2026-06-23)
 
 | Metric | Count |
 |--------|-------|
@@ -27,21 +27,24 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend model classes | 55 (+ User via AbstractUser + UserManager) |
 | Backend view files | 29 |
 | Backend serializer files | 12 |
-| Backend URL patterns | 189 |
-| Backend test files | 86 |
-| Backend migrations | 61 (latest: `0062_notification_and_stage_alert.py` — numbering has a gap) |
+| Backend URL patterns | 194 |
+| Backend test files | 89 |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 113 |
+| Frontend Vue components | 116 |
 | Frontend view pages | 44 |
-| Frontend Pinia store files | 43 |
-| Frontend composables | 11 |
-| Frontend unit test files | 170 |
-| Frontend E2E spec files | 192 |
-| Frontend routes | 66 |
+| Frontend Pinia store files | 44 |
+| Frontend composables | 14 |
+| Frontend unit test files | 175 |
+| Frontend E2E spec files | 193 |
+| Frontend E2E flows (flow-definitions.json) | 150 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Release Agosto 2026 (worked in June) — two requirements, on branch `release-august-2026-c`, deployed to staging**:
+  - **Minutas shared visibility** ✅ (commit `d595ae0`): removed the per-creator restriction so every lawyer sees/manages all minutas (Draft/Published). Added serializer field `created_by_name` (informational, `select_related('created_by')` → no N+1), a "Creado por" column gated by `isLawyerMinutasContext`, a "Todas / Solo mías" toggle (`onlyMine` reuses the backend `lawyer_id` param), and creator-name search. Replaced the orphaned `getDocumentsByLawyerId` getter with `allMinutas`. Tests: backend serializer/view, store + component unit. Flow `minutas-shared-visibility` (P2) registered.
+  - **Microsoft/Outlook login** ✅ (commit `0494ec5`): `outlook_login` endpoint mirroring `google_login`, server-side ID token verification (`_verify_microsoft_id_token` via cached `PyJWKClient`, multi-tenant `common` authority). **nOAuth hardening**: email trusted only when verified (`xms_edov` true, the personal-accounts tenant, or `MICROSOFT_TRUSTED_TENANTS` allowlist); `preferred_username` never used as identity. Frontend uses `@azure/msal-browser` (`msal_config.js`, `login_with_outlook.js`, `OutlookLoginButton.vue`, 4 auth views, `/auth/outlook/callback`). Tests: backend (`TestOutlookLogin` + `TestVerifyMicrosoftIdToken`), frontend unit, E2E (`outlook-login-flow.spec.js`). Flow `auth-login-outlook` (P1) registered. **Pending operator step**: set `MICROSOFT_CLIENT_ID`/`VITE_MICROSOFT_CLIENT_ID` and enable the `xms_edov` optional claim in Azure (or `MICROSOFT_TRUSTED_TENANTS`).
 
 - **Hotfix 2026-06-11 — client editor blocked on documents with orphan `{{tokens}}` (RESOLVED-016)**:
   - **Bug**: 53 documents of coordinacion@estrategiaypoder.com could not be text-edited by the client — the `DocumentEditor.vue` integrity guard counted raw `{{...}}` tokens in saved content vs rendered `variable-protected` spans and reverted every keystroke when an orphan token (content `{{Numero_ contrato}}` vs variable `Numero_contrato`, typo inherited from an old version of template 580) never produced a span.
