@@ -714,8 +714,9 @@ class TestVerifyMicrosoftIdToken:
     def test_rejects_bad_issuer(self, monkeypatch):
         """An issuer outside Microsoft's host is rejected."""
         self._patch_decode(monkeypatch, {"iss": "https://evil.example.com/tid/v2.0"})
-        with pytest.raises(jwt.InvalidIssuerError):
+        with pytest.raises(jwt.InvalidIssuerError) as exc_info:
             _verify_microsoft_id_token("tok")
+        assert "issuer" in str(exc_info.value).lower()
 
 
 # =========================================================================
