@@ -20,7 +20,11 @@ from huey.contrib.djhuey import periodic_task, task
 logger = logging.getLogger('backups')
 
 
-@periodic_task(crontab(hour='3', minute='0'))
+# Retired 2026-06-25: daily backups moved to systemd gym-dbbackup.timer
+# (vps-ops-toolkit/config/systemd/) to homogenize gym with the fleet and drop
+# the dependency on the Huey worker being up. Still callable on demand via
+# manual_backup(); re-enable by uncommenting the decorator below.
+# @periodic_task(crontab(hour='3', minute='0'))
 def scheduled_backup():
     """
     Daily automated backup of database and media files at 3 AM.
