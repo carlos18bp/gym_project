@@ -30,6 +30,7 @@ export function buildMockDocument({
   state,
   createdBy,
   assignedTo = null,
+  allowSharedEdit = false,
   tags = [],
   code,
   createdAt,
@@ -56,6 +57,7 @@ export function buildMockDocument({
     state,
     created_by: createdBy,
     assigned_to: assignedTo,
+    allow_shared_edit: allowSharedEdit,
     code: code || `DOC-${id}`,
     tags,
     created_at: createdAt || nowIso,
@@ -217,11 +219,18 @@ export async function installDynamicDocumentApiMocks(
       }
 
       // Server-side creator filter (mirrors backend `created_by_id=lawyer_id`),
-      // used by the minutas "Solo mías" toggle.
+      // used by the minutas "Mías" scope.
       const lawyerIdParam = params.get("lawyer_id");
       if (lawyerIdParam) {
         const lid = Number(lawyerIdParam);
         filtered = filtered.filter((d) => d.created_by === lid);
+      }
+
+      // Server-side shared-edit filter (mirrors backend `allow_shared_edit=True`),
+      // used by the minutas "Compartidas" scope.
+      const sharedParam = (params.get("shared") || "").toLowerCase();
+      if (sharedParam === "true" || sharedParam === "1") {
+        filtered = filtered.filter((d) => d.allow_shared_edit === true);
       }
 
       // Server-side sort

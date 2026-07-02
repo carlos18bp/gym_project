@@ -8,6 +8,9 @@ const mockFetchDocuments = jest.fn();
 const mockHandlePreviewDocument = jest.fn();
 const mockOpenModal = jest.fn();
 const mockCloseModal = jest.fn();
+// Captures the emit proxy DocumentListTable hands to useDocumentActions so
+// tests can simulate a document action requesting a refresh.
+const mockCapturedActionEmit = { fn: null };
 
 let mockUserStore;
 let mockDocumentStore;
@@ -48,18 +51,22 @@ jest.mock("@/components/dynamic_document/cards", () => ({
     openModal: (...args) => mockOpenModal(...args),
     closeModal: (...args) => mockCloseModal(...args),
   }),
-  useDocumentActions: () => ({
-    handlePreviewDocument: (...args) => mockHandlePreviewDocument(...args),
-    deleteDocument: jest.fn(),
-    downloadPDFDocument: jest.fn(),
-    downloadWordDocument: jest.fn(),
-    copyDocument: jest.fn(),
-    publishDocument: jest.fn(),
-    moveToDraft: jest.fn(),
-    formalizeDocument: jest.fn(),
-    signDocument: jest.fn(),
-    downloadSignedDocument: jest.fn(),
-  }),
+  useDocumentActions: (documentStore, userStore, emit) => {
+    mockCapturedActionEmit.fn = emit;
+    return {
+      handlePreviewDocument: (...args) => mockHandlePreviewDocument(...args),
+      deleteDocument: jest.fn(),
+      downloadPDFDocument: jest.fn(),
+      downloadWordDocument: jest.fn(),
+      copyDocument: jest.fn(),
+      publishDocument: jest.fn(),
+      moveToDraft: jest.fn(),
+      toggleSharedEdit: jest.fn(),
+      formalizeDocument: jest.fn(),
+      signDocument: jest.fn(),
+      downloadSignedDocument: jest.fn(),
+    };
+  },
   EditDocumentModal: { template: "<div />" },
   SendDocumentModal: { template: "<div />" },
   DocumentSignaturesModal: { template: "<div />" },
@@ -180,18 +187,18 @@ describe("DocumentListTable.vue", () => {
     expect(wrapper.text()).toContain("Ada Lovelace");
   });
 
-  test("'Solo mías' toggle re-fetches minutas scoped to the current lawyer", async () => {
+  test("'Mías' scope re-fetches minutas scoped to the current lawyer", async () => {
     const wrapper = mountView();
 
     await flushPromises();
     mockFetchDocuments.mockClear();
 
-    const onlyMineBtn = wrapper
+    const mineBtn = wrapper
       .findAll("button")
-      .find((btn) => btn.text().trim() === "Solo mías");
-    expect(onlyMineBtn).toBeTruthy();
+      .find((btn) => btn.text().trim() === "Mías");
+    expect(mineBtn).toBeTruthy();
 
-    await onlyMineBtn.trigger("click");
+    await mineBtn.trigger("click");
     await flushPromises();
 
     const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
@@ -199,16 +206,36 @@ describe("DocumentListTable.vue", () => {
     expect(lastCall.states).toEqual(["Draft", "Published"]);
   });
 
-  test("'Todas' toggle re-fetches minutas without a per-creator filter", async () => {
+  test("'Compartidas' scope re-fetches minutas flagged for shared edit", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+    mockFetchDocuments.mockClear();
+
+    const sharedBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().trim() === "Compartidas");
+    expect(sharedBtn).toBeTruthy();
+
+    await sharedBtn.trigger("click");
+    await flushPromises();
+
+    const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
+    expect(lastCall.shared).toBe(true);
+    expect(lastCall).not.toHaveProperty("lawyerId");
+    expect(lastCall.states).toEqual(["Draft", "Published"]);
+  });
+
+  test("'Todas' scope re-fetches minutas without per-creator or shared filters", async () => {
     const wrapper = mountView();
 
     await flushPromises();
 
     const buttons = wrapper.findAll("button");
-    const onlyMineBtn = buttons.find((btn) => btn.text().trim() === "Solo mías");
+    const mineBtn = buttons.find((btn) => btn.text().trim() === "Mías");
     const allBtn = buttons.find((btn) => btn.text().trim() === "Todas");
 
-    await onlyMineBtn.trigger("click");
+    await mineBtn.trigger("click");
     await flushPromises();
     mockFetchDocuments.mockClear();
 
@@ -217,6 +244,50 @@ describe("DocumentListTable.vue", () => {
 
     const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
     expect(lastCall).not.toHaveProperty("lawyerId");
+    expect(lastCall).not.toHaveProperty("shared");
+  });
+
+  test("action-driven refresh re-fetches preserving the active minutas scope", async () => {
+    const wrapper = mountView();
+
+    await flushPromises();
+
+    // Activate the "Mías" scope, then simulate a document action (publish,
+    // copy, delete…) emitting 'refresh' through the actionEmit proxy.
+    const mineBtn = wrapper
+      .findAll("button")
+      .find((btn) => btn.text().trim() === "Mías");
+    await mineBtn.trigger("click");
+    await flushPromises();
+    mockFetchDocuments.mockClear();
+
+    mockCapturedActionEmit.fn("refresh");
+    await flushPromises();
+
+    const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
+    expect(lastCall.lawyerId).toBe(7);
+    expect(lastCall.states).toEqual(["Draft", "Published"]);
+    // The parent is still notified so tab badges stay in sync.
+    expect(wrapper.emitted("refresh")).toBeTruthy();
+  });
+
+  test("shows 'Compartida' badge for minutas flagged for shared edit", async () => {
+    const wrapper = mountView({
+      promptDocuments: [
+        {
+          id: 51,
+          title: "Minuta Colaborativa",
+          state: "Published",
+          created_by_name: "Grace Hopper",
+          allow_shared_edit: true,
+          tags: [],
+        },
+      ],
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Compartida");
   });
 
   test("updates search query and emits update", async () => {

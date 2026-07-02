@@ -16,8 +16,9 @@ const CURRENT_LAWYER = 8001;
 const COLLEAGUE_LAWYER = 8002;
 
 /**
- * Build the two minutas used across the tests: one created by the current
- * lawyer and one by a colleague, both with an informational created_by_name.
+ * Build the three minutas used across the tests: one created by the current
+ * lawyer, one by a colleague (not shared), and one by a colleague with
+ * shared editing enabled. All carry an informational created_by_name.
  */
 function minutas() {
   return [
@@ -36,6 +37,16 @@ function minutas() {
         title: "Minuta De Colega",
         state: "Published",
         createdBy: COLLEAGUE_LAWYER,
+      }),
+      created_by_name: "Grace Hopper",
+    },
+    {
+      ...buildMockDocument({
+        id: 9103,
+        title: "Minuta Colaborativa",
+        state: "Published",
+        createdBy: COLLEAGUE_LAWYER,
+        allowSharedEdit: true,
       }),
       created_by_name: "Grace Hopper",
     },
@@ -71,21 +82,83 @@ test("a lawyer sees colleague minutas with the informational 'Creado por' column
   // Informational "Creado por" column header + the creator names.
   const table = page.getByRole("table");
   await expect(table.getByRole("columnheader", { name: "Creado por" })).toBeVisible();
-  await expect(page.getByText("Grace Hopper")).toBeVisible();
+  await expect(page.getByText("Grace Hopper").first()).toBeVisible();
+
+  // The shared-edit minuta is highlighted with a "Compartida" badge.
+  await expect(table.getByText("Compartida", { exact: true })).toBeVisible();
 });
 
-test("the 'Solo mías' filter scopes minutas to the current lawyer", { tag: TAGS }, async ({ page }) => {
+test("the 'Mías' filter scopes minutas to the current lawyer", { tag: TAGS }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta Propia")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Minuta De Colega")).toBeVisible();
 
-  // "Solo mías" re-fetches with lawyer_id → only the current lawyer's minuta remains.
-  await page.getByRole("button", { name: "Solo mías" }).click();
+  // "Mías" re-fetches with lawyer_id → only the current lawyer's minuta remains.
+  await page.getByRole("button", { name: "Mías", exact: true }).click();
   await expect(page.getByText("Minuta De Colega")).toHaveCount(0, { timeout: 10_000 });
   await expect(page.getByText("Minuta Propia")).toBeVisible();
 
-  // "Todas" brings the colleague's minuta back.
-  await page.getByRole("button", { name: "Todas" }).click();
+  // "Todas" brings the colleague's minutas back.
+  await page.getByRole("button", { name: "Todas", exact: true }).click();
   await expect(page.getByText("Minuta De Colega")).toBeVisible({ timeout: 10_000 });
+});
+
+test("the 'Compartidas' filter scopes minutas to shared-edit ones", { tag: TAGS }, async ({ page }) => {
+  await openMinutasTab(page);
+
+  await expect(page.getByText("Minuta Colaborativa")).toBeVisible({ timeout: 10_000 });
+
+  // "Compartidas" re-fetches with shared=true → only the flagged minuta remains.
+  await page.getByRole("button", { name: "Compartidas", exact: true }).click();
+  await expect(page.getByText("Minuta De Colega")).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.getByText("Minuta Propia")).toHaveCount(0);
+  await expect(page.getByText("Minuta Colaborativa")).toBeVisible();
+});
+
+test("a colleague's non-shared minuta only offers use actions", { tag: TAGS }, async ({ page }) => {
+  await openMinutasTab(page);
+
+  await expect(page.getByText("Minuta De Colega")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Minuta De Colega").first().click();
+
+  const modal = page.getByTestId("document-actions-modal");
+  await expect(modal).toBeVisible({ timeout: 10_000 });
+
+  await expect(modal.getByTestId("document-action-preview")).toBeVisible();
+  await expect(modal.getByTestId("document-action-copy")).toBeVisible();
+  await expect(modal.getByTestId("document-action-editDocument")).toHaveCount(0);
+  await expect(modal.getByTestId("document-action-delete")).toHaveCount(0);
+  await expect(modal.getByTestId("document-action-draft")).toHaveCount(0);
+  await expect(modal.getByTestId("document-action-toggleSharedEdit")).toHaveCount(0);
+});
+
+test("a colleague's shared minuta allows editing but not delete or state change", { tag: TAGS }, async ({ page }) => {
+  await openMinutasTab(page);
+
+  await expect(page.getByText("Minuta Colaborativa")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Minuta Colaborativa").first().click();
+
+  const modal = page.getByTestId("document-actions-modal");
+  await expect(modal).toBeVisible({ timeout: 10_000 });
+
+  await expect(modal.getByTestId("document-action-editDocument")).toBeVisible();
+  await expect(modal.getByTestId("document-action-copy")).toBeVisible();
+  await expect(modal.getByTestId("document-action-delete")).toHaveCount(0);
+  await expect(modal.getByTestId("document-action-draft")).toHaveCount(0);
+  await expect(modal.getByTestId("document-action-toggleSharedEdit")).toHaveCount(0);
+});
+
+test("an own minuta keeps full management actions including the share toggle", { tag: TAGS }, async ({ page }) => {
+  await openMinutasTab(page);
+
+  await expect(page.getByText("Minuta Propia")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Minuta Propia").first().click();
+
+  const modal = page.getByTestId("document-actions-modal");
+  await expect(modal).toBeVisible({ timeout: 10_000 });
+
+  await expect(modal.getByTestId("document-action-editDocument")).toBeVisible();
+  await expect(modal.getByTestId("document-action-delete")).toBeVisible();
+  await expect(modal.getByTestId("document-action-toggleSharedEdit")).toBeVisible();
 });

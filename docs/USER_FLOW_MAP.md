@@ -1017,17 +1017,21 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
-### minutas-shared-visibility: Visibilidad y control compartidos de minutas
+### minutas-shared-visibility: Visibilidad compartida y edición colaborativa de minutas
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅ (`minutas-shared-visibility.spec.js`)
-- **Descripción:** Todos los abogados ven y gestionan todas las minutas (Draft/Published) sin importar quién las creó. La tabla muestra una columna informativa "Creado por" y un filtro "Todas / Solo mías" que reusa el param backend `lawyer_id`.
+- **Descripción:** Todos los abogados ven todas las minutas (Draft/Published) sin importar quién las creó, con columna informativa "Creado por" y filtro de tres alcances "Todas / Compartidas / Mías" (params backend `shared` y `lawyer_id`). Solo el creador modifica/elimina/publica su minuta, salvo que active el flag `allow_shared_edit` ("Compartir edición"), que habilita a los demás abogados a editar contenido/nombre/variables (nunca eliminar ni cambiar estado). Los no creadores siempre pueden previsualizar y crear una copia.
 
 **Pasos:**
 1. Lawyer A navega a `/dynamic_document_dashboard` → tab "Minutas"
 2. La tabla lista minutas creadas por cualquier abogado (no solo las propias)
-3. La columna "Creado por" muestra el nombre del abogado creador (informativa)
-4. Click en "Solo mías" → la tabla se reduce a las minutas creadas por el abogado actual
-5. Click en "Todas" → vuelve a mostrar todas las minutas del equipo
-6. (Control total) El abogado puede editar/eliminar/publicar/copiar cualquier minuta, sea propia o de un colega
+3. La columna "Creado por" muestra el nombre del abogado creador; las minutas con edición compartida llevan badge "Compartida"
+4. Click en "Mías" → la tabla se reduce a las minutas creadas por el abogado actual
+5. Click en "Compartidas" → la tabla se reduce a las minutas con `allow_shared_edit=true`
+6. Click en "Todas" → vuelve a mostrar todas las minutas del equipo
+7. Minuta propia: menú de acciones completo (editar, permisos, eliminar, publicar/borrador, membrete, copiar, "Compartir edición"/"Dejar de compartir")
+8. Minuta ajena NO compartida: solo previsualizar, crear copia y agregar a carpeta (+ descargas si está publicada)
+9. Minuta ajena compartida: además puede editar (nombre/documento/variables), pero no eliminar, cambiar estado, permisos ni membrete
+10. El backend rechaza con 403 cualquier update/delete que viole estas reglas (incl. intento de cambiar `state` o `allow_shared_edit` por un no creador)
 
 ---
 

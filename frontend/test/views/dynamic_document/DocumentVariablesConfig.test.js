@@ -123,6 +123,32 @@ describe("DocumentVariablesConfig.vue", () => {
     jest.restoreAllMocks();
   });
 
+  test("preserves locally synced variables when unsaved content differs from backend", async () => {
+    const { store } = setupStore(pinia, {
+      content: "<p>Content with {{ClientName}} and {{NewVar}}</p>",
+      variables: [
+        ...buildVariables(),
+        { name_en: "NewVar", name_es: "NewVar", field_type: "input", value: "", tooltip: "", summary_field: "none" },
+      ],
+    });
+
+    // Backend still returns the stale document: old content, old variables.
+    store.fetchDocumentById.mockResolvedValue({
+      id: 1,
+      title: "Test Template",
+      content: "<p>Content with {{ClientName}}</p>",
+      variables: buildVariables(),
+      tags: [],
+    });
+
+    const wrapper = await mountComponent(pinia);
+
+    // The variable just added in the editor must survive the refetch.
+    const names = store.selectedDocument.variables.map((v) => v.name_en);
+    expect(names).toContain("NewVar");
+    expect(wrapper.text()).toContain("NewVar");
+  });
+
   test("renders document title and all variable sections", async () => {
     setupStore(pinia);
     const wrapper = await mountComponent(pinia);

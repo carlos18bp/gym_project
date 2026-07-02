@@ -203,7 +203,7 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
             'signature_type', 'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
-            'is_public', 'visibility_user_ids', 'usability_user_ids',
+            'is_public', 'allow_shared_edit', 'visibility_user_ids', 'usability_user_ids',
             'user_permission_level', 'can_view', 'can_edit', 'can_delete',
             'summary_counterparty', 'summary_object', 'summary_value',
             'summary_value_currency', 'summary_term',
@@ -730,6 +730,10 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         instance.requires_signature = requires_signature
         instance.signature_type = signature_type
         instance.save()
+        # Invalidate stale prefetched relations (variables/tags were replaced
+        # above); otherwise re-serializing this instance returns the old rows.
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
         return instance
 
 

@@ -222,32 +222,38 @@ export function useDocumentActions(documentStore, userStore, emit) {
       
       // Create new title with date suffix
       const newTitle = `${document.title} ${dateString}`;
-      
+
+      // Show confirmation
+      const confirmed = await showConfirmationAlert(
+        `¿Deseas crear una copia del documento '${document.title}'?`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      // List rows omit `content` (lightweight list serializer), so fetch the
+      // full document before building the copy payload.
+      const fullDocument = await documentStore.fetchDocumentById(document.id, true);
+
       // Prepare document data for copy
       const copyData = {
         title: newTitle,
-        content: document.content,
+        content: fullDocument.content,
         state: "Draft", // Always create copy as draft
-        variables: document.variables?.map(variable => ({
+        variables: fullDocument.variables?.map(variable => ({
           name_en: variable.name_en,
           name_es: variable.name_es,
           tooltip: variable.tooltip,
           field_type: variable.field_type,
           select_options: variable.select_options,
+          summary_field: variable.summary_field || 'none',
+          currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
           value: "", // Reset values in copy
         })) || [],
         requires_signature: false, // Reset signature requirement
       };
-      
-      // Show confirmation
-      const confirmed = await showConfirmationAlert(
-        `¿Deseas crear una copia del documento '${document.title}'?`
-      );
-      
-      if (!confirmed) {
-        return;
-      }
-      
+
       // Create the copy using the document store
       await documentStore.createDocument(copyData);
       await showNotification(`Copia creada exitosamente: "${newTitle}"`, "success");
@@ -294,6 +300,36 @@ export function useDocumentActions(documentStore, userStore, emit) {
       emit('refresh');
     } catch (error) {
       await showNotification('Error al mover el documento a borrador', 'error');
+      throw error;
+    }
+  };
+
+  /**
+   * Toggle collaborative editing (allow_shared_edit) on a minuta.
+   * Creator-only action: when enabled, other lawyers may edit the minuta.
+   */
+  const toggleSharedEdit = async (document) => {
+    if (!documentStore) return;
+
+    const enabling = !document.allow_shared_edit;
+    const confirmed = await showConfirmationAlert(
+      enabling
+        ? `¿Deseas compartir la edición de '${document.title}' con los demás abogados?`
+        : `¿Deseas dejar de compartir la edición de '${document.title}'?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await documentStore.updateDocument(document.id, { allow_shared_edit: enabling });
+      await showNotification(
+        enabling
+          ? 'Edición compartida activada exitosamente'
+          : 'Edición compartida desactivada exitosamente',
+        'success'
+      );
+      emit('refresh');
+    } catch (error) {
+      await showNotification('Error al actualizar la edición compartida', 'error');
       throw error;
     }
   };
@@ -453,6 +489,7 @@ export function useDocumentActions(documentStore, userStore, emit) {
     copyDocument,
     publishDocument,
     moveToDraft,
+    toggleSharedEdit,
     formalizeDocument,
     signDocument,
     downloadSignedDocument

@@ -58,6 +58,14 @@ function canEditAndResendSignatureDocument(document, userStore) {
 }
 
 /**
+ * Check if the current user created the document (minuta ownership).
+ */
+function isDocumentCreator(document, userStore) {
+  const currentUserId = userStore?.currentUser?.id;
+  return currentUserId != null && document.created_by === currentUserId;
+}
+
+/**
  * Card configurations - same as BaseDocumentCard
  */
 const cardConfigs = {
@@ -93,33 +101,53 @@ const cardConfigs = {
       // For Minutas (archivos jurídicos) in lawyer view, provide a submenu
       // with three distinct edit actions: update name, document editor, and variables configuration.
       if (context === 'legal-documents' && (document.state === 'Draft' || document.state === 'Published')) {
-        baseOptions = [
-          {
-            label: "Editar",
-            action: "edit-submenu",
-            isGroup: true,
-            children: [
-              {
-                label: "Actualizar nombre",
-                action: "edit"
-              },
-              {
-                label: "Editar documento",
-                action: "editDocument"
-              },
-              {
-                label: "Editar configuración de variables",
-                action: "editForm"
-              }
-            ]
-          },
-          { label: "Permisos", action: "permissions" },
-          { label: "Eliminar", action: "delete" },
-          { label: "Previsualización", action: "preview" },
-          { label: "Crear una Copia", action: "copy" },
-          { label: "Gestionar Membrete", action: "letterhead" },
-          { label: "Agregar a Carpeta", action: "addToFolder" },
-        ];
+        const isOwner = isDocumentCreator(document, userStore);
+        // Non-owners may edit only when the creator enabled shared editing.
+        const canEdit = isOwner || document.allow_shared_edit === true;
+
+        const editSubmenu = {
+          label: "Editar",
+          action: "edit-submenu",
+          isGroup: true,
+          children: [
+            {
+              label: "Actualizar nombre",
+              action: "edit"
+            },
+            {
+              label: "Editar documento",
+              action: "editDocument"
+            },
+            {
+              label: "Editar configuración de variables",
+              action: "editForm"
+            }
+          ]
+        };
+
+        if (isOwner) {
+          baseOptions = [
+            editSubmenu,
+            { label: "Permisos", action: "permissions" },
+            { label: "Eliminar", action: "delete" },
+            { label: "Previsualización", action: "preview" },
+            { label: "Crear una Copia", action: "copy" },
+            { label: "Gestionar Membrete", action: "letterhead" },
+            { label: "Agregar a Carpeta", action: "addToFolder" },
+            {
+              label: document.allow_shared_edit ? "Dejar de compartir" : "Compartir edición",
+              action: "toggleSharedEdit"
+            },
+          ];
+        } else {
+          // Non-owners can always use/copy a minuta; editing requires the shared flag.
+          baseOptions = [
+            ...(canEdit ? [editSubmenu] : []),
+            { label: "Previsualización", action: "preview" },
+            { label: "Crear una Copia", action: "copy" },
+            { label: "Agregar a Carpeta", action: "addToFolder" },
+          ];
+        }
       } else {
         // Default behavior for other contexts/states
         baseOptions = [
@@ -139,14 +167,16 @@ const cardConfigs = {
         baseOptions.splice(2, 0, { label: "Administrar Asociaciones", action: "relationships" });
       }
       
-      // Add state-based options
-      if (document.state === "Draft") {
+      // Add state-based options (creator-only for minutas: state changes on
+      // legal-documents are reserved to the document creator)
+      const canChangeState = context !== 'legal-documents' || isDocumentCreator(document, userStore);
+      if (document.state === "Draft" && canChangeState) {
         baseOptions.push({
           label: "Publicar",
           action: "publish",
           disabled: !canPublishDocument(document),
         });
-      } else if (document.state === "Published") {
+      } else if (document.state === "Published" && canChangeState) {
         baseOptions.push({
           label: "Mover a Borrador",
           action: "draft",

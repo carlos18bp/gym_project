@@ -35,6 +35,7 @@ from gym_app.utils.documents import (
 from django.utils import timezone
 from .permissions import (
     apply_visibility_filter,
+    can_modify_minuta,
     require_document_visibility,
     require_document_visibility_by_id,
     require_document_usability,
@@ -142,6 +143,11 @@ def list_dynamic_documents(request):
 
     if lawyer_id:
         queryset = queryset.filter(created_by_id=lawyer_id)
+
+    # Filter minutas flagged as collaboratively editable ("Compartidas" scope)
+    shared = request.query_params.get('shared', '')
+    if shared.lower() in ('1', 'true'):
+        queryset = queryset.filter(allow_shared_edit=True)
 
     # When true, restrict results to documents where the requesting user is
     # the creator (created_by) OR a signer (has a DocumentSignature row).
@@ -333,6 +339,12 @@ def update_dynamic_document(request, pk):
             status=status.HTTP_403_FORBIDDEN
         )
 
+    if not can_modify_minuta(document, request.user, request.data):
+        return Response(
+            {'detail': 'Solo el creador de la minuta puede realizar esta acción.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Prevent modifying the `created_by` field
     if 'created_by' in request.data:
         request.data.pop('created_by')
@@ -357,6 +369,12 @@ def delete_dynamic_document(request, pk):
         document = DynamicDocument.objects.get(pk=pk)
     except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not can_modify_minuta(document, request.user):
+        return Response(
+            {'detail': 'Solo el creador de la minuta puede eliminarla.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     document.delete()
     return Response({'detail': 'Dynamic document deleted successfully.'}, status=status.HTTP_200_OK)

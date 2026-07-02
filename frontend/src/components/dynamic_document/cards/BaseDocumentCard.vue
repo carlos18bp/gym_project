@@ -463,28 +463,44 @@ const cardConfigs = {
   
   lawyer: {
     getMenuOptions: (document, context) => {
+      // Minuta ownership rule (Draft/Published templates): only the creator
+      // manages the minuta; other lawyers may edit it only when the creator
+      // enabled allow_shared_edit, and can always preview/copy it.
+      const isMinuta = document.state === 'Draft' || document.state === 'Published';
+      const currentUserId = props.userStore?.currentUser?.id;
+      const isOwner = currentUserId != null && document.created_by === currentUserId;
+      const canManageMinuta = !isMinuta || isOwner;
+      const canEditMinuta = canManageMinuta || document.allow_shared_edit === true;
+
       const baseOptions = [
-        { label: "Editar", action: "edit" },
-        { label: "Permisos", action: "permissions" },
-        { label: "Eliminar", action: "delete" },
+        ...(canEditMinuta ? [{ label: "Editar", action: "edit" }] : []),
+        ...(canManageMinuta ? [
+          { label: "Permisos", action: "permissions" },
+          { label: "Eliminar", action: "delete" },
+        ] : []),
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
-        { label: "Gestionar Membrete", action: "letterhead" },
+        ...(canManageMinuta ? [{ label: "Gestionar Membrete", action: "letterhead" }] : []),
       ];
-      
+
       // Add state-based options
-      if (document.state === "Draft") {
+      if (document.state === "Draft" && canManageMinuta) {
         baseOptions.push({
           label: "Publicar",
           action: "publish",
           disabled: !canPublishDocument(document),
         });
       } else if (document.state === "Published") {
-        baseOptions.push({
-          label: "Mover a Borrador",
-          action: "draft",
-        });
-        
+        if (canManageMinuta) {
+          baseOptions.push({
+            label: "Mover a Borrador",
+            action: "draft",
+          });
+        }
+
+        // Formalization is open to any lawyer: formalized_by may legitimately
+        // differ from created_by (a lawyer builds the template, another user
+        // formalizes it).
         baseOptions.push({
           label: "Formalizar y Agregar Firmas",
           action: "formalize",

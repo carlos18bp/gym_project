@@ -136,8 +136,12 @@ class DynamicDocument(models.Model):
         help_text="Optional deadline date for collecting all required signatures."
     )
     is_public = models.BooleanField(
-        default=False, 
+        default=False,
         help_text="If True, all users can view and use this document without explicit permissions."
+    )
+    allow_shared_edit = models.BooleanField(
+        default=False,
+        help_text="If True, lawyers other than the creator may edit this minuta (title, content, variables)."
     )
     letterhead_image = models.ImageField(
         upload_to=letterhead_image_path,
