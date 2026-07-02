@@ -18,7 +18,7 @@ from gym_app.services.signature_notification_service import notify_signature_req
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
-    sanitize_soup_for_pdf,
+    sanitize_soup_for_export,
     get_letterhead_for_document,
     snapshot_letterhead_on_formalize,
     ensure_letterhead_snapshot,
@@ -1225,7 +1225,7 @@ def generate_original_document_pdf(document, fallback_user=None):
 
     # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
     # preserves table formatting and alignment.
-    soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
+    soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
     # Create temporary buffer for initial PDF
     temp_buffer = BytesIO()
@@ -1359,7 +1359,7 @@ def generate_original_document_pdf(document, fallback_user=None):
     table {{
         width: 100%;
         border-collapse: collapse;
-        margin: 8pt 0;
+        margin: 0 0 6pt 0;
         table-layout: fixed;
         font-family: 'Carlito', sans-serif !important;
     }}

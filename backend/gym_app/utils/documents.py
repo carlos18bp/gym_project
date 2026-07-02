@@ -147,12 +147,13 @@ def _strip_excessive_inline_margins(soup):
             del node['style']
 
 
-def sanitize_soup_for_pdf(soup):
-    """Mutate ``soup`` in place so xhtml2pdf renders tables with correct format.
+def sanitize_soup_for_export(soup):
+    """Mutate ``soup`` in place so exports (PDF and Word) render consistently.
 
     xhtml2pdf ignores ``mso-*`` styles, stumbles on Word-inserted class names,
     and loses cell alignment when it is only expressed via inline ``style``.
-    This pass:
+    The Word (python-docx) path suffers from the same paste-from-Word noise
+    (empty blocks, ``<o:p>`` tags, huge inline margins). This pass:
 
     * removes ``mso-*`` CSS declarations from inline ``style`` attributes
     * drops ``class`` attributes that start with ``Mso`` (MsoNormal, etc.)
@@ -235,15 +236,20 @@ def sanitize_soup_for_pdf(soup):
     return soup
 
 
-def sanitize_html_for_pdf(html_content):
-    """String-in/string-out wrapper around :func:`sanitize_soup_for_pdf`.
+# Backwards-compatible alias — the sanitizer was PDF-only before the Word
+# export started reusing it.
+sanitize_soup_for_pdf = sanitize_soup_for_export
 
-    Prefer :func:`sanitize_soup_for_pdf` when the caller will also parse the
-    HTML, so the document is only parsed once.
+
+def sanitize_html_for_pdf(html_content):
+    """String-in/string-out wrapper around :func:`sanitize_soup_for_export`.
+
+    Prefer :func:`sanitize_soup_for_export` when the caller will also parse
+    the HTML, so the document is only parsed once.
     """
     if not html_content:
         return html_content
-    return str(sanitize_soup_for_pdf(BeautifulSoup(html_content, 'html.parser')))
+    return str(sanitize_soup_for_export(BeautifulSoup(html_content, 'html.parser')))
 
 
 LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')

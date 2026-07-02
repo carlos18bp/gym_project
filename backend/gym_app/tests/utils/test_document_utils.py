@@ -257,6 +257,14 @@ class TestSanitizeSoupForPdf:
         assert len(result.find_all('div')) == 2
 
 
+class TestSanitizeSoupForExportAlias:
+    """The sanitizer is shared by the PDF and Word export paths."""
+
+    def test_pdf_name_is_alias_of_export_name(self):
+        from gym_app.utils.documents import sanitize_soup_for_export, sanitize_soup_for_pdf
+        assert sanitize_soup_for_pdf is sanitize_soup_for_export
+
+
 class TestSanitizeHtmlForPdf:
     """Tests for string-in/string-out wrapper."""
 

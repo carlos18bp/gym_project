@@ -935,6 +935,75 @@ class TestDownloadWord:
         assert resp.status_code == 200
         assert "wordprocessing" in resp.get("Content-Type", "")
 
+    @staticmethod
+    def _download_docx(api, lawyer, content):
+        import io
+        from docx import Document as DocxDocument
+
+        doc = DynamicDocument.objects.create(
+            title="WordSpacingDoc", content=content, state="Draft", created_by=lawyer,
+        )
+        api.force_authenticate(user=lawyer)
+        url = reverse("download_dynamic_document_word", kwargs={"pk": doc.pk})
+        resp = api.get(url)
+        assert resp.status_code == 200
+        return DocxDocument(io.BytesIO(b"".join(resp.streaming_content)))
+
+    def test_word_body_does_not_duplicate_table_cell_text(self, api, lawyer):
+        """The template wrapper <div> and <p> inside <td> must not re-emit
+        their text as body paragraphs (find_all is recursive)."""
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<p>Intro</p><table><tr><td><p>Cell A</p></td></tr></table><p>Fin</p>",
+        )
+        body_texts = [p.text for p in docx_doc.paragraphs]
+        assert all("Cell A" not in text for text in body_texts)
+
+    # quality: disable too_many_assertions (single export verified from several angles)
+    def test_word_keeps_paragraphs_and_tables_in_structure(self, api, lawyer):
+        """Non-empty paragraphs stay as body paragraphs and tables keep their cells."""
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<p>Intro</p><table><tr><td><p>Cell A</p></td></tr></table>"
+            "<p>&nbsp;</p><table><tr><td>B</td></tr></table><p>Fin</p>",
+        )
+        body_texts = [p.text for p in docx_doc.paragraphs]
+        assert "Intro" in body_texts
+        assert "Fin" in body_texts
+        assert len(docx_doc.tables) == 2
+        assert docx_doc.tables[0].rows[0].cells[0].text == "Cell A"
+        assert docx_doc.tables[1].rows[0].cells[0].text == "B"
+
+    def test_word_div_wrapped_paragraph_emitted_once(self, api, lawyer):
+        """A <div> that only wraps a <p> must produce exactly one paragraph."""
+        docx_doc = self._download_docx(api, lawyer, "<div><p>X</p></div>")
+        assert [p.text for p in docx_doc.paragraphs if p.text.strip()] == ["X"]
+
+    def test_word_paragraphs_use_unified_spacing(self, api, lawyer):
+        """Body paragraphs mirror the PDF stylesheet: 0pt before / 6pt after."""
+        from docx.shared import Pt
+
+        docx_doc = self._download_docx(api, lawyer, "<p>Uno</p><p>Dos</p>")
+        spacing = [
+            (p.paragraph_format.space_before, p.paragraph_format.space_after)
+            for p in docx_doc.paragraphs if p.text.strip()
+        ]
+        assert spacing == [(Pt(0), Pt(6)), (Pt(0), Pt(6))]
+
+    def test_word_preserves_single_blank_line_between_blocks(self, api, lawyer):
+        """One empty <p> survives as an empty body paragraph (it used to be dropped)."""
+        docx_doc = self._download_docx(api, lawyer, "<p>Uno</p><p>&nbsp;</p><p>Dos</p>")
+        assert [p.text.strip() for p in docx_doc.paragraphs] == ["Uno", "", "Dos"]
+
+    def test_word_adjacent_tables_are_separated(self, api, lawyer):
+        """Directly adjacent tables get a spacer so Word does not auto-merge them."""
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<table><tr><td>A</td></tr></table><table><tr><td>B</td></tr></table>",
+        )
+        assert len(docx_doc.tables) == 2
+        assert len(docx_doc.paragraphs) >= 1
+
 
 # ======================================================================
 # Tests migrated from test_views_batch19.py

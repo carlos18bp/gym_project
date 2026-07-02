@@ -27,7 +27,7 @@ from gym_app.models.dynamic_document import (
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, DynamicDocumentListSerializer, RecentDocumentSerializer
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
-    sanitize_soup_for_pdf,
+    sanitize_soup_for_export,
     get_letterhead_for_document,
     get_letterhead_word_template,
     ensure_letterhead_snapshot,
@@ -412,7 +412,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
         # preserves table formatting and alignment.
-        soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
+        soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
         # Create the PDF buffer
         pdf_buffer = io.BytesIO()
@@ -585,7 +585,7 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         table {{
             border-collapse: collapse;
-            margin: 8pt 0;
+            margin: 0 0 6pt 0;
             font-family: 'Carlito', sans-serif !important;
         }}
 
@@ -698,8 +698,10 @@ def download_dynamic_document_word(request, pk):
         template = get_template("pdf_template.html")
         html_content = template.render({"content": processed_content})
 
-        # Parse HTML with BeautifulSoup
-        soup = BeautifulSoup(html_content, "html.parser")
+        # Parse HTML with BeautifulSoup and clean paste-from-Word artifacts
+        # (empty block runs, <o:p> tags, excessive inline margins) so the
+        # docx output keeps the same vertical rhythm as the editor and PDF.
+        soup = sanitize_soup_for_export(BeautifulSoup(html_content, "html.parser"))
 
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -749,21 +751,45 @@ def download_dynamic_document_word(request, pk):
         # Track whether we've already placed the first body paragraph
         first_body_paragraph_used = False
 
+        # Mirrors the PDF stylesheet (p { margin: 0 0 6pt 0; line-height: 1.35 })
+        # and the editor content_style so all three renderers agree on spacing.
+        def apply_body_paragraph_spacing(paragraph):
+            pf = paragraph.paragraph_format
+            pf.space_before = Pt(0)
+            pf.space_after = Pt(6)
+            if pf.line_spacing is None:
+                pf.line_spacing = 1.35
+
+        # Track table adjacency: two docx tables with nothing between them
+        # auto-merge when opened in Word, so a spacer paragraph is required.
+        last_block_was_table = False
+
         # Process HTML content
         # Include both <p> and <div> tags as paragraph blocks so that
         # templates that wrap content in <div> elements are still rendered.
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr", "table"]):
+        block_tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr", "table"]
+        for tag in soup.find_all(block_tags):
+            # find_all is recursive: skip blocks whose content is emitted by
+            # another branch, otherwise text gets duplicated in the output.
+            if tag.find_parent("table"):
+                # Cell content is handled by the <table> branch below.
+                continue
+            if tag.name in ("p", "div") and tag.find(block_tags):
+                # Container block (e.g. the template wrapper <div>): its block
+                # children are matched by find_all on their own iteration.
+                continue
+
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 heading = doc.add_heading(tag.get_text().strip(), level=level)
-                
+                last_block_was_table = False
+
                 # Ensure heading uses Calibri
                 for run in heading.runs:
                     run.font.name = font_name
 
             elif tag.name in ["p", "div"]:
-                if tag.get_text().strip() == "":
-                    continue
+                last_block_was_table = False
 
                 # For the very first body paragraph when using a template that has
                 # only the default empty paragraph, reuse that paragraph instead
@@ -780,7 +806,14 @@ def download_dynamic_document_word(request, pk):
                     paragraph = doc.add_paragraph()
 
                 first_body_paragraph_used = True
-                
+                apply_body_paragraph_spacing(paragraph)
+
+                if tag.get_text().strip() == "":
+                    # Keep the (single, post-sanitize) intentional blank line as
+                    # an empty paragraph — it also prevents adjacent docx tables
+                    # from auto-merging in Word.
+                    continue
+
                 # Apply paragraph style attributes
                 style = tag.get("style", "")
 
@@ -961,6 +994,8 @@ def download_dynamic_document_word(request, pk):
 
             elif tag.name == "hr":
                 hr_paragraph = doc.add_paragraph("_" * 71)
+                apply_body_paragraph_spacing(hr_paragraph)
+                last_block_was_table = False
                 # Ensure Calibri is applied to the horizontal rule
                 for run in hr_paragraph.runs:
                     run.font.name = font_name
@@ -970,6 +1005,13 @@ def download_dynamic_document_word(request, pk):
                 rows = tag.find_all("tr")
                 if not rows:
                     continue
+
+                # Two directly adjacent docx tables auto-merge when the file is
+                # opened in Word — separate them with a zero-spacing paragraph.
+                if last_block_was_table:
+                    spacer = doc.add_paragraph()
+                    spacer.paragraph_format.space_before = Pt(0)
+                    spacer.paragraph_format.space_after = Pt(0)
 
                 # Determine number of columns from the first row
                 first_row_cells = rows[0].find_all(["td", "th"])
@@ -989,8 +1031,11 @@ def download_dynamic_document_word(request, pk):
                         cell = docx_row.cells[idx]
                         cell_text = cell_tag.get_text(strip=True)
                         cell.text = cell_text
-                        # Apply font to cell paragraphs
+                        # Cell paragraphs must not inherit body spacing — the
+                        # editor and PDF render cells with padding only.
                         for para in cell.paragraphs:
+                            para.paragraph_format.space_before = Pt(0)
+                            para.paragraph_format.space_after = Pt(0)
                             for run in para.runs:
                                 run.font.name = font_name
                         # Bold for <th> header cells
@@ -998,6 +1043,8 @@ def download_dynamic_document_word(request, pk):
                             for para in cell.paragraphs:
                                 for run in para.runs:
                                     run.bold = True
+
+                last_block_was_table = True
 
         # Save the document to a buffer
         docx_buffer = io.BytesIO()
