@@ -7,7 +7,12 @@
 - 💡 = requerimiento / mejora de UX
 - ✅ Atendido | ⏭️ Fuera de alcance | ⚠️ Parcial | 🔄 En curso
 
-**Para todas las pruebas:** ingresa al ambiente de **staging** con una cuenta de **abogado** (los puntos 1, 2 y 3 son del módulo Archivos Jurídicos; el punto 4 se ve con cualquier rol).
+**Ambiente de pruebas:** `https://gmconsultoresjuridicos.projectapp.co` (es el ambiente de **pruebas/staging**, separado del sitio real; podés probar con confianza sin afectar producción).
+
+**Cómo iniciar sesión (una sola vez, sirve para los 4 puntos):**
+1. Abre en el navegador `https://gmconsultoresjuridicos.projectapp.co/sign_in`.
+2. Ingresa con una cuenta de **abogado** (correo y contraseña de abogado que te compartimos). Los puntos 1, 2 y 3 son del módulo Archivos Jurídicos y requieren rol abogado; el punto 4 se ve con cualquier rol.
+3. Al entrar, quedarás en el **Panel Principal (Dashboard)**. Desde ahí seguís las URLs de cada punto (si abrís una URL sin haber iniciado sesión, el sistema te llevará primero al login y luego a la página).
 
 ---
 
@@ -37,15 +42,19 @@ Durante la revisión encontramos, además, un problema más profundo en la gener
 
 **Nota sobre este cambio:** los documentos Word que se descarguen de ahora en adelante se verán un poco **más compactos** que los anteriores (la separación entre párrafos ahora es la del editor). Es el comportamiento solicitado: el exportado respeta lo que muestra el editor.
 
+**Dónde se ve / URL:** `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=legal-documents` — módulo **Archivos Jurídicos** → pestaña **Minutas** (o **Mis Documentos**, según dónde tengas el contrato con cuadros) → menú de acciones del documento → **Editar** / **Descargar PDF** / **Descargar Word**.
+
 **Antes de probar necesitas:**
-- Ingresar como **abogado**.
-- Un documento de tipo contrato que combine párrafos y cuadros (tablas), como el contrato de compraventa del ejemplo del reporte.
-- Estar en el módulo **Archivos Jurídicos**.
+- Iniciar sesión como **abogado** (ver "Cómo iniciar sesión" arriba).
+- Un documento de tipo contrato que combine párrafos y cuadros (tablas), como el contrato de compraventa del ejemplo del reporte. Si no tenés uno a mano, avísanos y lo dejamos cargado.
+- Empezar desde la URL de arriba (módulo **Archivos Jurídicos** → pestaña **Minutas**).
 
 **Cómo validar que funciona:**
-1. Abre el documento en el **editor de texto** y observa la separación entre el primer cuadro, el párrafo de la cláusula y el segundo cuadro.
-2. Descarga el documento en **PDF** y compáralo con el editor: la separación entre párrafos y cuadros debe verse igual, sin espacios en blanco amplios.
-3. Descarga el documento en **Word** y ábrelo: mismo espaciado que el editor, sin texto duplicado después de los cuadros y sin cuadros pegados entre sí.
+1. Abre `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=legal-documents` (si no iniciaste sesión, primero te llevará al login). La página abre en la pestaña **Minutas**.
+2. Ubica el contrato con cuadros y abre su **menú de acciones** (el botón de opciones de la fila, con forma de tres puntos; se abre una ventana con las acciones disponibles). Elige **Editar** para verlo en el **editor de texto** y observa la separación entre el primer cuadro, el párrafo de la cláusula y el segundo cuadro: esa es la referencia "correcta".
+3. Vuelve a abrir el **menú de acciones** del mismo documento y elige **Descargar PDF**; abre el archivo descargado: la separación entre párrafos y cuadros debe verse **igual que en el editor**, sin espacios en blanco amplios.
+4. Otra vez en el **menú de acciones**, elige **Descargar Word**; abre el archivo: mismo espaciado que el editor, **sin texto duplicado** después de los cuadros y sin cuadros pegados entre sí.
+5. Resultado esperado: los tres (editor, PDF y Word) muestran la misma separación; el Word ya no repite el texto de las celdas ni deja huecos grandes.
 
 ---
 
@@ -57,14 +66,17 @@ Durante la revisión encontramos, además, un problema más profundo en la gener
 
 **Observación adicional del reporte:** la diferencia detectada entre `{{ Numero_porroga }}` (con typo) y `{{ Numero_prorroga }}` es un error de escritura **dentro de la plantilla de ese documento específico**, no un problema de la plataforma. Si en algún documento esa variable no se reemplaza, es porque el nombre escrito en la plantilla no coincide con la variable definida; contamos con una herramienta interna para corregir esos casos — si lo ven en algún documento, indíquennos cuál y lo corregimos.
 
+**Dónde se ve / URL:** `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=archived-documents` — módulo **Archivos Jurídicos** → pestaña **Dcs. Archivados** → acción **Previsualizar** de un documento.
+
 **Antes de probar necesitas:**
-- Ingresar como **abogado**.
-- Tener al menos un documento en el tab de **Documentos archivados** (un documento rechazado o expirado), por ejemplo la prórroga del ejemplo del reporte.
+- Iniciar sesión como **abogado**.
+- Tener al menos un documento en la pestaña **Dcs. Archivados** (un documento rechazado o expirado), por ejemplo la prórroga del ejemplo del reporte.
+- Empezar desde la URL de arriba (te deja directo en la pestaña de archivados).
 
 **Cómo validar que funciona:**
-1. Ve a **Archivos Jurídicos** → tab **Dcs. Archivados**.
-2. Abre las **acciones** del documento y presiona **Previsualizar**.
-3. El documento debe verse con los **valores reales** (nombres, cédulas, fechas, números de contrato) en lugar de los marcadores `{{ ... }}`.
+1. Abre `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=archived-documents` (si no iniciaste sesión, primero te llevará al login). La página abre en la pestaña **Dcs. Archivados**.
+2. Sobre el documento archivado, abre su **menú de acciones** (el botón de opciones de la fila, con forma de tres puntos; se abrirá una ventana con las acciones disponibles) y elige **Previsualizar**.
+3. Resultado esperado: el documento se ve **diligenciado**, con los **valores reales** (nombres, cédulas, fechas, números de contrato) en lugar de los marcadores `{{ ... }}`. No debe quedar ningún texto entre llaves visible.
 
 ---
 
@@ -76,16 +88,19 @@ Durante la revisión encontramos, además, un problema más profundo en la gener
 
 Además corregimos un problema relacionado que detectamos durante la revisión: si el documento se había **expirado** con una fecha límite ya vencida, al reenviarlo el sistema conservaba esa fecha vieja por dentro y el documento podía volver a expirar de inmediato. Ahora la fecha vencida se descarta: el campo aparece vacío (o con la fecha anterior solo si todavía es futura), y si se deja vacío el documento se reenvía **sin** fecha límite.
 
+**Dónde se ve / URL:** `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=archived-documents` — módulo **Archivos Jurídicos** → pestaña **Dcs. Archivados** → acción **Editar y reenviar para firma** de un documento.
+
 **Antes de probar necesitas:**
-- Ingresar como **abogado**.
-- Un documento en el tab de **Documentos archivados** (rechazado o expirado).
+- Iniciar sesión como **abogado**.
+- Un documento en la pestaña **Dcs. Archivados** (rechazado o expirado).
+- Empezar desde la URL de arriba (pestaña de archivados).
 
 **Cómo validar que funciona:**
-1. Ve a **Archivos Jurídicos** → tab **Dcs. Archivados**.
-2. Abre las acciones del documento y elige **Editar y reenviar para firma**.
-3. En el formulario de corrección verás el campo **"Fecha límite para firmar (opcional)"**: selecciona una fecha futura.
-4. Presiona **Guardar y reenviar para firma**: el documento pasa a **Dcs. Por Firmar** con la fecha límite elegida (visible en la columna de fecha límite).
-5. Repite el reenvío dejando la fecha vacía: el documento se reenvía sin fecha límite y **no** vuelve a expirar solo.
+1. Abre `https://gmconsultoresjuridicos.projectapp.co/dynamic_document_dashboard?lawyerTab=archived-documents` (si no iniciaste sesión, primero te llevará al login). Abre en la pestaña **Dcs. Archivados**.
+2. Abre el **menú de acciones** del documento (el botón de opciones de la fila, con forma de tres puntos) y, en la ventana de acciones, elige **Editar y reenviar para firma**.
+3. En el formulario de corrección, ubica el campo **"Fecha límite para firmar (opcional)"** (justo debajo aparece la nota: *"Después de esta fecha, el documento pasará automáticamente al estado 'Expirado' si no ha sido firmado completamente. Déjala vacía para reenviar sin fecha límite."*) y selecciona una **fecha futura**.
+4. Presiona **Guardar y reenviar para firma**. Resultado esperado: el documento pasa a la pestaña **Dcs. Por Firmar** (`...?lawyerTab=pending-signatures`) y muestra la fecha límite elegida en la columna de fecha límite.
+5. Repite el reenvío de otro documento archivado, esta vez **dejando el campo de fecha vacío**. Resultado esperado: el documento se reenvía **sin** fecha límite y **no** vuelve a expirar solo.
 
 ---
 
@@ -95,14 +110,17 @@ Además corregimos un problema relacionado que detectamos durante la revisión: 
 
 **Qué se hizo:** Se corrigió la alineación de las pestañas del contenedor de notificaciones del **dashboard** (inicio). El texto del tab seleccionado ya no se desplaza hacia arriba: mantiene exactamente la misma altura que los demás tabs. El cambio de **color** del tab activo y la línea azul indicadora se conservan tal como estaban — solo se eliminó el salto de posición.
 
+**Dónde se ve / URL:** `https://gmconsultoresjuridicos.projectapp.co/dashboard` — **Panel Principal (Dashboard)**, en la tarjeta de notificaciones con sus pestañas (los nombres varían según el rol; con cuenta de **abogado** son **Notificaciones / Feed / Contactos / Reportes**).
+
 **Antes de probar necesitas:**
-- Cualquier rol.
-- Estar en el **Panel Principal (Dashboard)**, en la tarjeta con las pestañas Notificaciones / Feed / Contactos / Reportes.
+- Iniciar sesión con **cualquier rol** (cliente, abogado, cliente corporativo o básico).
+- Empezar desde la URL de arriba (el Panel Principal).
 
 **Cómo validar que funciona:**
-1. Inicia sesión y ve al **Panel Principal**.
-2. Haz clic en cada pestaña (Notificaciones, Feed, Contactos, Reportes) alternando entre ellas.
-3. Observa que el texto de la pestaña seleccionada **no sube ni baja**: todos los títulos permanecen alineados a la misma altura, cambiando solo el color y la línea azul inferior.
+1. Abre `https://gmconsultoresjuridicos.projectapp.co/dashboard` (si no iniciaste sesión, primero te llevará al login). Es la página de inicio tras entrar.
+2. Ubica la tarjeta de notificaciones con sus pestañas. Con cuenta de **abogado** son **Notificaciones**, **Feed**, **Contactos** y **Reportes**; con otros roles la tercera se llama **Abogados** y la de **Reportes** no aparece. El defecto se ve igual en cualquiera de ellas.
+3. Haz clic en cada pestaña alternando entre ellas y observa el texto de la pestaña seleccionada.
+4. Resultado esperado: el texto de la pestaña activa **no sube ni baja**; todos los títulos permanecen alineados a la misma altura, cambiando solo el **color** y la **línea azul inferior**.
 
 ---
 
