@@ -38,7 +38,7 @@ Si la solicitud encaja en cualquiera de estos, ejecutar el flujo de pre-flight c
 
 ```bash
 # Cargar helpers del fleet (idéntico al patrón que usan server-alerts.sh, backup-mysql-and-media.sh)
-OPS_ROOT=/home/ryzepeck/webapps/ops/vps
+OPS_ROOT=/home/ryzepeck/webapps/vps-ops-toolkit
 MODE=check
 source "${OPS_ROOT}/scripts/lib/bootstrap-common.sh"
 source "${OPS_ROOT}/scripts/lib/project-definitions.sh"

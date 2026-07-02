@@ -1,6 +1,6 @@
 ---
 name: migrate-project
-description: "Migra un proyecto Django entre VPS del fleet (per-project, no whole-VPS). 18 pasos con tres gates: --check (preflight), --apply (clone + setup + snapshot + transfer, sin downtime), --cutover --confirm-downtime (DNS flip y cierre). v1.1 con git clone como primer acto de modificación."
+description: "Migra un proyecto Django entre VPS del fleet (per-project, no whole-VPS). 20 pasos con tres gates: --check (preflight), --apply (clone + setup + snapshot + transfer + systemd + nginx + SSL emit, sin downtime), --cutover --confirm-downtime (DNS flip + projects.yml flip + auto-cleanup mysql-users.env). v1.3 con deploy automático de systemd units, nginx site y SSL cert via emit-project-ssl-cert.sh helper."
 argument-hint: "<project_name> <target_vps_alias> [--check|--apply|--cutover --confirm-downtime|--rollback]"
 allowed-tools: Bash, Read, Edit
 ---

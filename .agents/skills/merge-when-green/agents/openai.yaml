@@ -1,0 +1,6 @@
+interface:
+  display_name: "Merge When Green"
+  short_description: "Commit, push and merge a PR once CI checks pass"
+
+policy:
+  allow_implicit_invocation: false

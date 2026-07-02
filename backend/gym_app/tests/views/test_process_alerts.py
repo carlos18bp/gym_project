@@ -67,9 +67,9 @@ class TestCreateProcessAlerts:
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
             stages=[
-                {'status': 'Apertura', 'date': '2026-06-01'},
-                {'status': 'Audiencia', 'date': '2026-06-15'},
-                {'status': 'Sentencia', 'date': '2026-06-30'},
+                {'status': 'Apertura', 'date': '2099-06-01'},
+                {'status': 'Audiencia', 'date': '2099-06-15'},
+                {'status': 'Sentencia', 'date': '2099-06-30'},
             ],
         )
         url = reverse('create-process')
@@ -156,7 +156,7 @@ class TestUpdateProcessAlerts:
         url = reverse('update-process', args=[process.id])
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
-            stages=[{'status': 'New', 'date': '2026-07-01'}],
+            stages=[{'status': 'New', 'date': '2099-07-01'}],
             ref='UPD-1',
         )
         response = api_client.put(
@@ -181,9 +181,9 @@ class TestUpdateProcessAlerts:
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
             stages=[
-                {'status': 'A', 'date': '2026-07-01'},
-                {'status': 'B', 'date': '2026-07-15'},
-                {'status': 'C', 'date': '2026-08-01'},
+                {'status': 'A', 'date': '2099-07-01'},
+                {'status': 'B', 'date': '2099-07-15'},
+                {'status': 'C', 'date': '2099-08-01'},
             ],
             ref='UPD-2',
             alertDescription='Heads up',

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Skills Help"
+  short_description: "List available skills with a brief scope"
+
+policy:
+  allow_implicit_invocation: true

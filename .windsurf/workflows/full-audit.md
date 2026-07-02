@@ -54,7 +54,7 @@ Flags disponibles: `--with-backup-test`, `--send-email`, `--quiet`, `--skip-env-
 
 ## Pasos
 
-1. Verificar que estás parado en el root del repo (`/home/ryzepeck/webapps/ops/vps`).
+1. Verificar que estás parado en el root del repo (`/home/ryzepeck/webapps/vps-ops-toolkit`).
 2. Ejecutar el orquestador con los flags deseados.
 3. Una vez termine, abrir el reporte generado en `docs/audits/` y reportar al usuario: veredicto global, fases fallidas/warn con sus resúmenes, y próximos pasos si el veredicto no es 🟢.
 4. Si hay 🔴 o 🟡, abrir el log crudo y proponer remediaciones priorizadas.

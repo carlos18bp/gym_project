@@ -8,7 +8,7 @@ argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 
 # Deploy & Check — Generic
 
-Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/projects.yml`). Funciona para staging y producción.
+Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-toolkit/projects.yml`). Funciona para staging y producción.
 
 - **Stack**: Django + Gunicorn + Nginx + (MySQL 8 | SQLite) + Redis + Huey
 - **Frontends soportados**: Vite (build estático), Next.js export (estático), Next.js SSR
@@ -27,7 +27,7 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/ops/vps/
 ```bash
 PROJECT_DIR=$(pwd)
 PROJECT_NAME=$(basename "$PROJECT_DIR")
-OPS_YML="$HOME/webapps/ops/vps/projects.yml"
+OPS_YML="$HOME/webapps/vps-ops-toolkit/projects.yml"
 [ -f "$OPS_YML" ] || { echo "❌ ERROR: $OPS_YML no encontrado"; exit 1; }
 
 yml_get() {
@@ -58,6 +58,20 @@ GIT_CURRENT_BRANCH=$(cd "$PROJECT_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev
 BRANCH="${ARGUMENTS:-$GIT_CURRENT_BRANCH}"
 [ -n "$BRANCH" ] || { echo "❌ ERROR: no se pudo determinar la rama actual y no se especificó argumento"; exit 1; }
 
+# Resolve DJANGO_SETTINGS_MODULE EXACTAMENTE como lo corre el servicio de prod.
+# manage.py defaultea a *_dev (SQLite) en varios proyectos del fleet, así que
+# migrate/collectstatic DEBEN usar el módulo de prod o pegan a la base equivocada.
+# Fuente primaria: el Environment= del unit systemd de gunicorn. Fallback: backend/.env.
+# Los pasos 5 (migrate) y 7 (collectstatic) heredan este export.
+DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2>/dev/null \
+        | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
+[ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
+        "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
+export DJANGO_SETTINGS_MODULE
+if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
+    echo "⚠️  DJANGO_SETTINGS_MODULE no resuelto (ni systemd ni .env) — manage.py usará su setdefault (¡puede apuntar a dev/SQLite!)"
+fi
+
 cat <<EOF
 ✅ Discovery OK:
   PROJECT_NAME:    $PROJECT_NAME
@@ -67,6 +81,7 @@ cat <<EOF
   GUNICORN_SVC:    $GUNICORN_SVC
   HUEY_SVC:        $HUEY_SVC
   DB_TYPE:         $DB_TYPE
+  DJANGO_SETTINGS: ${DJANGO_SETTINGS_MODULE:-<unset → manage.py default>}
   HAS_FRONTEND:    $HAS_FRONTEND
   NODE_VERSION:    $NODE_VERSION
   BRANCH:          $BRANCH
@@ -79,7 +94,7 @@ EOF
 
 1. Salud del servidor:
 ```bash
-bash $HOME/webapps/ops/vps/scripts/diagnostics/quick-status.sh
+bash $HOME/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
 ```
 
 2. Working tree limpio:
@@ -103,6 +118,8 @@ cd "$PROJECT_DIR" && git fetch origin && git checkout "$BRANCH" && git pull orig
 
 5. Backend deps + migrations:
 ```bash
+# migrate corre con el DJANGO_SETTINGS_MODULE exportado en Phase 0 (módulo de prod,
+# no el *_dev/SQLite que manage.py usaría por default).
 cd "$PROJECT_DIR/backend" && \
     "$PROJECT_DIR/$VENV_PATH" -m pip install -r requirements.txt && \
     "$PROJECT_DIR/$VENV_PATH" manage.py migrate
@@ -129,6 +146,7 @@ fi
 
 7. Collectstatic (si aplica):
 ```bash
+# collectstatic hereda el DJANGO_SETTINGS_MODULE exportado en Phase 0 (módulo de prod).
 if [ "$COLLECTSTATIC" = "true" ]; then
     cd "$PROJECT_DIR/backend" && "$PROJECT_DIR/$VENV_PATH" manage.py collectstatic --noinput
 fi
@@ -168,7 +186,7 @@ cd "$PROJECT_DIR" && git log --oneline -1
 
 12. Post-deploy check del repo ops:
 ```bash
-bash $HOME/webapps/ops/vps/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+bash $HOME/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
 ```
 
 ---
@@ -193,9 +211,9 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 
 ## Notas
 
-- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/ops/vps/projects.yml`. Funciona para staging y producción.
+- Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/vps-ops-toolkit/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
-- Fuente canónica: `ops/vps/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
 
 ---
 
