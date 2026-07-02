@@ -1,5 +1,5 @@
 interface:
   display_name: "Human"
-  short_description: "Responde en espanol con estructura escaneable (tablas, listas, categorias)."
+  short_description: "Respuesta puntual en espanol: conclusion primero, tablas/listas por default, cero relleno."
 policy:
   allow_implicit_invocation: true
