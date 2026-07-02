@@ -1,6 +1,6 @@
 ---
 name: migrate-project
-description: "Migra un proyecto Django entre VPS del fleet (18 pasos: git clone primero, creds inline, snapshot, cutover). Per-project, no whole-VPS. v1.1 con git clone como primer acto + 3 bug fixes + version check."
+description: "Migra un proyecto Django entre VPS del fleet (20 pasos: git clone, creds, snapshot, systemd+nginx deploy, SSL emit, cutover). Per-project, no whole-VPS. v1.3 con deploy automático de systemd units (paso 16) + nginx site (paso 17) + SSL cert chicken-and-egg handler (paso 19) + auto-cleanup mysql-users.env post-cutover (paso 20.9). Reducción ~30 min de manual work por migración."
 argument-hint: "<project_name> <target_vps_alias> [--check|--apply|--cutover --confirm-downtime|--rollback]"
 allowed-tools: Bash, Read, Edit
 ---
@@ -30,7 +30,9 @@ La detección usa `resolve_server_alias` + `is_dev_machine` de `scripts/lib/boot
 ## Entorno requerido
 
 **Pre-requisitos en target:**
-- Bootstrap aplicado (`bootstrap.sh --apply --skip-projects` ya corrido)
+- Bootstrap aplicado (`bootstrap.sh --apply` ya corrido — default desde
+  2026-05-19 ya skipea Phase 4.5-4.9; el runtime del proyecto migrado
+  llega por este script vía `FORCE_SINGLE_PROJECT`, no por bootstrap.sh)
 - nginx + letsencrypt directories presentes
 - `config/credentials/servers/<target_alias>/mysql-users.env` existe (puede estar vacío)
 - SSH alias funcional desde el host de invocación (Tailscale o `~/.ssh/config`)
@@ -87,7 +89,7 @@ pesado en paso 12.
 
 ---
 
-## Los 18 pasos
+## Los 20 pasos (v1.3)
 
 ### Paso 1 — Preflight SSH/Tailscale + repo version check
 
@@ -100,7 +102,8 @@ aborta con instrucción de `git pull` (Hardening D v1.1).
 
 Confirma que el target tiene `/etc/nginx/nginx.conf`, `/etc/letsencrypt/`,
 y `certbot` instalado. Si no, aborta con instrucción de correr
-`bootstrap.sh --apply --skip-projects` primero.
+`bootstrap.sh --apply` primero (default skipea Phase 4.5-4.9, que es lo
+correcto para preparar un target de migración).
 
 ### Paso 3 — DNS pre-check
 
@@ -122,28 +125,48 @@ en paso 18 cutover).
 **v1.1 insight:** movido desde paso 10 al inicio para fail-fast en auth
 de GitHub (≤10s vs ≤30min después del snapshot).
 
-### Paso 5 — Read DB creds + payment keys del origin (inline, KB-scale)
+### Paso 5 — Read DB creds + payment keys DEL REPO (single source of truth)
 
 ```bash
-ssh <origin> "sudo grep -E '^(DB_USER|DB_PASSWORD|WOMPI_*|STRIPE_*|PAYPAL_*)\\s*=' /home/ryzepeck/webapps/<proj>/backend/.env"
+grep -E '^(DB_USER|DB_PASSWORD|WOMPI_*|STRIPE_*|PAYPAL_*)\s*=' \
+  config/credentials/projects/<proj>/prod.env
 ```
 
-Lectura inline de 2 valores (DB_USER, DB_PASSWORD) más payment-key
-detection en un solo SSH session. Salida usada por:
-- Paso 6 (inject en mysql-users.env)
-- Paso 17 (SSL strategy ya decidida)
+Lectura local del repo (`config/credentials/projects/<proj>/<env>.env`),
+que es el source-of-truth desde 2026-05-17 (Fase 4 de centralización de
+credenciales). Sin SSH, sin file I/O remoto.
 
-**v1.1 insight:** elimina el dependency loop del v1 (donde necesitabas
-el snapshot completo + transfer ANTES de poder leer DB creds). Esto es
-lo que desbloquea el reorden.
+Si el archivo no existe → falla con instrucción de correr
+`sync-credentials.sh capture --env=prod --apply` primero.
 
-### Paso 6 — Inyectar DB credentials en mysql-users.env del target
+**v1.2 insight:** el repo ES la fuente de verdad. Antes (v1.1) leíamos
+el `.env` runtime de origin via SSH; eso funcionaba pero ignoraba que el
+repo ya tenía la misma información, y si live-vs-repo drift existía,
+quién ganaba era ambiguo.
 
-Appendea `DB_USER_<PROJ>` y `DB_PASSWORD_<PROJ>` a
-`config/credentials/servers/<target_alias>/mysql-users.env`. Confirm
-prompt al operador antes de mutar.
+### Paso 6 — Build/append `mysql-users.env` del target
 
-**Importante:** después de este paso, el operador debe commitear +
+Si `config/credentials/servers/<target>/mysql-users.env` no existe en
+target, lo **bootstrapea** con `BACKUP_USER` + `BACKUP_USER_PASSWORD`
+desde `config/credentials/global/backup-env`.
+
+Después appendea `DB_USER_<PROJ>` y `DB_PASSWORD_<PROJ>` (leídos del paso
+5) marcados con `# migration-temp:<proj>`.
+
+**Por qué un marker temp:** mientras `projects.yml` diga
+`server: <origin>` (hasta paso 18 cutover), `build-mysql-users-env.sh`
+no incluiría al proyecto al regenerar limpio. El marker documenta que
+es un append provisional. Después del cutover (server: flip), el
+operador re-corre:
+
+```bash
+bash scripts/maintenance/build-mysql-users-env.sh --server=<target> --apply
+```
+
+…que regenera `mysql-users.env` desde el source-of-truth, eliminando el
+marker.
+
+**Importante:** después del append, el operador debe commitear +
 pushear el archivo y correr `git pull` en target antes de continuar
 (paso 8 lo hace inline al inicio de setup-mysql).
 
@@ -239,7 +262,32 @@ Crea venv, instala dependencias, builds frontend (si aplica), corre
 `collectstatic` y deploya systemd units. **Deja services STOPPED** —
 origin sigue sirviendo tráfico.
 
-### Paso 16 — Propagar project_skills
+### Paso 16 — Deploy systemd units para el proyecto (v1.3 NEW)
+
+Despliega los .service / .socket / .timer + drop-ins del proyecto desde
+`config/systemd/` al `/etc/systemd/system/` del target + `daemon-reload`.
+
+Files iterados (cuando existen en el repo):
+- `<gunicorn_svc>.service`, `<gunicorn_svc>.socket`
+- `<huey_svc>.service`
+- `<proj_kebab>-clearsessions.{service,timer}`
+- `<proj_kebab>-dbbackup.{service,timer}`
+- Drop-ins: `<gunicorn_svc>.environment.conf`, `<gunicorn_svc>.override.conf` (MemoryMax), `<huey_svc>.override.conf`
+
+Reemplaza el manual work descubierto durante kore (~9 `sudo install`
+manuales + `daemon-reload`).
+
+### Paso 17 — Deploy nginx site para el proyecto (v1.3 NEW, NO enable todavía)
+
+```bash
+sudo install -m 644 config/nginx/sites-available/<proj> /etc/nginx/sites-available/<proj>
+```
+
+**Importante:** NO crea el symlink a `sites-enabled/` aún. El cert no
+existe todavía → si enable + reload nginx ahora, falla por `ssl_certificate`
+refs missing. El enable se hace en paso 19 después del cert emit.
+
+### Paso 18 — Propagar project_skills
 
 ```bash
 bash scripts/maintenance/sync-shared-skills.sh --apply --project=<proj>
@@ -248,34 +296,37 @@ bash scripts/maintenance/sync-shared-skills.sh --apply --project=<proj>
 Sincroniza las skills custom declaradas en `project_skills:` al
 `.claude/` del nuevo proyecto en target.
 
-### Paso 17 — Nginx + SSL strategy
+### Paso 19 — Emit SSL cert + enable nginx site (v1.3 EXPANDED)
 
-`SSL_STRATEGY` ya fue decidido en paso 5 vía detección inline de payment
-keys. Este paso solo reporta:
-- Si `blue-green-recommended` → recordatorio al operador para ejecutar
-  `capture-letsencrypt → tarball → restore en target` ANTES del cutover.
-- Sino, defer SSL HTTP-01 al paso 18.
+Invoca el helper nuevo `scripts/bootstrap/emit-project-ssl-cert.sh <proj>`
+que maneja el chicken-and-egg de cert + site:
 
-El config nginx ya vive en `config/nginx/sites-available/<proj>` y se
-deploya en bootstrap fase 4.
+1. Pre-create `/etc/letsencrypt/options-ssl-nginx.conf` si missing (EFF standard content)
+2. Pre-generate `/etc/letsencrypt/ssl-dhparams.pem` si missing (`openssl dhparam 2048`)
+3. Skip si cert ya existe para el dominio primario
+4. Si necesita emitir:
+   - Disable site temporal (rm sites-enabled symlink) + reload nginx
+   - `certbot --nginx -d <primary> -d <san1> ...` (HTTP-01 challenge)
+   - Re-enable site (ln -sf) + reload nginx
+5. Reporta cert path + expiry
 
-### Paso 18 — CUTOVER (ventana de downtime)
+Si `SSL_STRATEGY` (decidido en paso 5) es `blue-green-recommended`, este
+paso warneea — el operator puede abortar y hacer blue-green manual (capture
+letsencrypt en origin → restore en target) en vez de HTTP-01 con downtime.
+
+### Paso 20 — CUTOVER (ventana de downtime)
 
 Sólo se ejecuta con `--cutover --confirm-downtime`:
 
 1. **Stop** `<gunicorn_svc>` + `<huey_svc>` en origin (downtime starts).
-2. **Final delta mysqldump** en origin con `chmod 644` post-dump (Bug C
-   fix v1.1) → rsync a target → import en target (captura escrituras
-   durante la ventana de pasos 4-17).
+2. **Final delta mysqldump** en origin via `mysqldump --defaults-file=/etc/mysql/debian.cnf` → rsync a target → import en target (captura escrituras durante la ventana de pasos 4-19).
 3. **Start** services en target.
-4. **DNS flip guidance**: imprime IP del target, espera confirmación del
-   operador (operador cambia A record en panel DNS).
+4. **DNS flip guidance**: imprime IP del target, espera confirmación del operador (operador cambia A record en panel DNS).
 5. **Dig loop** hasta resolver target (timeout 5 min).
-6. **Emit SSL** vía certbot HTTP-01 (si no se hizo blue-green).
+6. **Emit SSL** vía certbot HTTP-01 (solo si paso 19 lo defirió por blue-green).
 7. **Smoke tests**: `curl -fsS https://<domain>/`, `systemctl is-active`.
-8. **Commit `projects.yml`**: flip de `server: <origin>` → `<target>`.
-   El skill hace el `awk` surgical del cambio; el commit + push lo hace
-   el operador con los comandos que el script imprime.
+8. **Commit `projects.yml`**: flip de `server: <origin>` → `<target>` (el skill hace el `awk` surgical; commit + push manual).
+9. **(v1.3 NEW) Auto-cleanup `mysql-users.env`**: corre `build-mysql-users-env.sh --server=<target> --apply` para regenerar el archivo limpio sin marker `migration-temp:<proj>`. Reporta diff; commit + push manual.
 
 ---
 

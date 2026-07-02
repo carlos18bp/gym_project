@@ -1,6 +1,6 @@
 ---
 name: git-sync
-description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Defaults to vps-ops-toolkit; pass --all para iterar LOCAL_PROJECTS + toolkit."
+description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Defaults to the current repo (cwd); pass --all para iterar LOCAL_PROJECTS + toolkit."
 allowed-tools: Bash
 argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
 ---
@@ -10,13 +10,17 @@ argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
 Rebase the current branch onto its parent (`main` / `master`) so it picks up work that teammates have merged. Also pulls the current branch's own remote first, handles dirty working trees, and walks through any rebase conflicts.
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `/git-sync` → opera SOLO en `~/webapps/vps-ops-toolkit/`.
+> - Sin argumento: `/git-sync` → opera sobre el repo git del **directorio
+>   actual (cwd)** — el repo desde el que se lanzó Claude Code. Se resuelve
+>   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
+>   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
+>   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
 > - Con `--all`: `/git-sync --all` → itera sobre `LOCAL_PROJECTS` del host
 >   + `vps-ops-toolkit`. En un VPS reporta solo los proyectos cuyo `server:`
 >   matchea el hostname; en dev, todos los `status: active`.
 >
-> No acepta nombres de proyecto individuales — si necesitás operar en un
-> repo específico, `cd` primero o invocá git directo.
+> No acepta nombres de proyecto individuales — para operar en un repo
+> específico, lanzá Claude Code desde ese repo (o `cd` a él antes de invocar).
 
 ---
 
@@ -28,8 +32,16 @@ OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
 
 case "$ARGS_RAW" in
     "")
-        REPOS=("vps-ops-toolkit")
-        MODE_LABEL="default (toolkit only)"
+        # Repo actual — el del cwd (donde se lanzó Claude Code)
+        REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+            echo "❌ ERROR: el directorio actual no es un repo git."
+            echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all."
+            exit 2
+        }
+        cd "$REPO_ROOT"                        # anclar el cwd al top del repo
+        REPOS=("$(basename "$REPO_ROOT")")
+        REPO_DIR_OVERRIDE="$REPO_ROOT"
+        MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
         ;;
     "--all")
         source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
@@ -39,19 +51,24 @@ case "$ARGS_RAW" in
         ;;
     *)
         echo "❌ ERROR: argumento desconocido '$ARGS_RAW'."
-        echo "   Válido: (vacío) → vps-ops-toolkit  |  --all → todos los locales."
+        echo "   Válido: (vacío) → repo actual  |  --all → todos los locales."
         exit 2
         ;;
 esac
 
-VALID_REPOS=()
-for r in "${REPOS[@]}"; do
-    if [ -d "$HOME/webapps/$r/.git" ]; then
-        VALID_REPOS+=("$r")
-    else
-        echo "⏭️  $r — dir no existe o no es repo git (skip)"
-    fi
-done
+if [ -n "${REPO_DIR_OVERRIDE:-}" ]; then
+    # Modo default: el repo actual ya fue validado por git rev-parse
+    VALID_REPOS=("${REPOS[@]}")
+else
+    VALID_REPOS=()
+    for r in "${REPOS[@]}"; do
+        if [ -d "$HOME/webapps/$r/.git" ]; then
+            VALID_REPOS+=("$r")
+        else
+            echo "⏭️  $r — dir no existe o no es repo git (skip)"
+        fi
+    done
+fi
 
 echo "🔧 Modo: $MODE_LABEL — repos a procesar: ${#VALID_REPOS[@]}"
 printf '   - %s\n' "${VALID_REPOS[@]}"
@@ -62,14 +79,36 @@ printf '   - %s\n' "${VALID_REPOS[@]}"
 ## Iteración sobre `VALID_REPOS`
 
 Las Phases 1-7 siguientes se ejecutan **una vez por cada repo** en
-`VALID_REPOS`. Antes de empezar cada iteración:
+`VALID_REPOS`. Antes de empezar cada iteración, resolver `REPO_DIR` según el
+modo — **las variables de Phase 0 no persisten entre bloques bash, así que el
+modo default se reancla al cwd en vez de leer una variable perdida**:
+
+**Modo default (sin `--all`)** — hay un solo repo, el del cwd:
+
+```bash
+# Reanclar SIEMPRE desde el cwd. Es robusto entre bloques bash (el cwd
+# persiste y el modo default nunca sale del repo) y NO cae al fallback
+# ~/webapps/ ni al toolkit si una variable se perdió.
+REPO_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "❌ ERROR: el cwd dejó de ser un repo git — abortando (no asumo ~/webapps ni el toolkit)."
+    exit 2
+}
+cd "$REPO_DIR"
+echo ""
+echo "═══════════════════════════════════════════════"
+echo "  🎯 Repo objetivo: $REPO_DIR  ($(git -C "$REPO_DIR" branch --show-current))"
+echo "═══════════════════════════════════════════════"
+```
+
+**Modo `--all`** — Claude itera `VALID_REPOS` y entra a cada repo bajo
+`~/webapps/<repo>`:
 
 ```bash
 REPO_DIR="$HOME/webapps/$REPO"
 cd "$REPO_DIR"
 echo ""
 echo "═══════════════════════════════════════════════"
-echo "  $REPO  ($(git -C "$REPO_DIR" branch --show-current))"
+echo "  🎯 Repo objetivo: $REPO_DIR  ($(git -C "$REPO_DIR" branch --show-current))"
 echo "═══════════════════════════════════════════════"
 ```
 
@@ -80,8 +119,8 @@ en el summary final, y **continuar con el siguiente repo**. No abortar el
 loop completo. Si un rebase queda a medio resolver, registrar el repo como
 "⚠️ con conflictos pendientes" y notificar al operador al cierre.
 
-En modo default (sin `--all`), `VALID_REPOS` contiene solo
-`vps-ops-toolkit` y no hay loop real — las phases corren una vez.
+En modo default (sin `--all`), `VALID_REPOS` contiene solo el repo
+actual (resuelto desde el cwd) y no hay loop real — las phases corren una vez.
 
 ---
 

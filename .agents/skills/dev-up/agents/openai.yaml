@@ -1,0 +1,6 @@
+interface:
+  display_name: "Dev Up"
+  short_description: "Bootstrap and run the local dev servers"
+
+policy:
+  allow_implicit_invocation: false

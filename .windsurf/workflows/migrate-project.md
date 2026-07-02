@@ -1,5 +1,5 @@
 ---
-description: Migra un proyecto Django entre VPS del fleet (per-project, no whole-VPS). 18 pasos con tres gates (--check, --apply, --cutover). v1.1 reordena con git clone como primer acto de modificación + inline DB credential read via SSH (sin esperar al snapshot pesado) + 3 bug fixes (sudo en payment probe, rsync sudo, delta dump perms) + version check del repo en origin/target.
+description: Migra un proyecto Django entre VPS del fleet (per-project, no whole-VPS). 20 pasos con tres gates (--check, --apply, --cutover). v1.3 con deploy automático de systemd units (paso 16) + nginx site (paso 17) + SSL cert chicken-and-egg handler vía emit-project-ssl-cert.sh (paso 19) + auto-cleanup mysql-users.env post-cutover (paso 20.9). Reducción ~30 min de manual work por migración vs v1.2.
 ---
 
 # Migrate Project — Per-project migration entre VPS del fleet
