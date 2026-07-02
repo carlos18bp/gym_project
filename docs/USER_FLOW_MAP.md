@@ -850,10 +850,11 @@ Mismas ramificaciones que process-create, con datos precargados.
 1. En Dcs. Archivados, click "Editar y reenviar para firma" en documento Rejected/Expired
 2. Se navega a DocumentForm en modo `correction`
 3. Editar contenido y/o variables
-4. Click "Guardar y reenviar para firma"
-5. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }`
-6. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
-7. Redirección a pestaña "Dcs. Por Firmar"
+4. (Opcional) Fijar "Fecha límite para firmar" (input `correction-signature-due-date`; se precarga sólo si la fecha guardada es futura — una fecha vencida re-expiraría el documento)
+5. Click "Guardar y reenviar para firma"
+6. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }` (`''` limpia la fecha)
+7. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
+8. Redirección a pestaña "Dcs. Por Firmar"
 
 **Diferencia con flujo anterior:**
 - Antes: dos llamadas HTTP (`PUT update` + `POST reopen-signatures`)
@@ -1062,7 +1063,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### sign-archived-documents: Documentos archivados (firma)
 - **Módulo:** signatures | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard` (tab Archivados) | **E2E:** ✅
-- **Descripción:** Documentos rechazados y expirados
+- **Descripción:** Documentos rechazados y expirados. La acción "Previsualizar" renderiza las variables con sus valores (los estados Rejected/Expired procesan variables igual que Completed/PendingSignatures/FullySigned)
 
 ---
 
