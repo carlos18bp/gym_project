@@ -55,12 +55,13 @@ def admin_user():
 
 @pytest.fixture
 def private_minuta(creator_lawyer):
-    """Draft minuta NOT shared for edit."""
+    """Draft minuta with shared edit explicitly disabled by its creator."""
     document = DynamicDocument.objects.create(
         title='Minuta Privada',
         content='<p>Contenido {{var_uno}}</p>',
         state='Draft',
         created_by=creator_lawyer,
+        allow_shared_edit=False,
     )
     DocumentVariable.objects.create(document=document, name_en='var_uno', value='v1')
     return document
@@ -142,6 +143,15 @@ class TestMinutaUpdateOwnership:
     def test_client_cannot_update_published_unassigned_template(self, api_client, client_user, shared_minuta):
         shared_minuta.allow_shared_edit = False
         shared_minuta.save()
+        api_client.force_authenticate(user=client_user)
+        url = reverse('update_dynamic_document', kwargs={'pk': shared_minuta.pk})
+        response = api_client.patch(url, {'title': 'Cliente edita'}, format='json')
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.edge
+    def test_client_cannot_edit_shared_minuta(self, api_client, client_user, shared_minuta):
+        # The shared-edit grant is lawyer-only: a client must not edit a
+        # minuta even when allow_shared_edit is enabled (the default).
         api_client.force_authenticate(user=client_user)
         url = reverse('update_dynamic_document', kwargs={'pk': shared_minuta.pk})
         response = api_client.patch(url, {'title': 'Cliente edita'}, format='json')
@@ -254,11 +264,11 @@ class TestCanModifyMinutaUnit:
         assert can_modify_minuta(document, other_lawyer, {'state': 'Progress'}) is True
 
     @pytest.mark.edge
-    def test_new_minutas_default_to_not_shared(self, creator_lawyer):
+    def test_new_minutas_default_to_shared(self, creator_lawyer):
         document = DynamicDocument.objects.create(
             title='Minuta nueva',
             content='<p>x</p>',
             state='Draft',
             created_by=creator_lawyer,
         )
-        assert document.allow_shared_edit is False
+        assert document.allow_shared_edit is True

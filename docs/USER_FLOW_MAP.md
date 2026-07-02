@@ -1019,7 +1019,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### minutas-shared-visibility: Visibilidad compartida y edición colaborativa de minutas
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅ (`minutas-shared-visibility.spec.js`)
-- **Descripción:** Todos los abogados ven todas las minutas (Draft/Published) sin importar quién las creó, con columna informativa "Creado por" y filtro de tres alcances "Todas / Compartidas / Mías" (params backend `shared` y `lawyer_id`). Solo el creador modifica/elimina/publica su minuta, salvo que active el flag `allow_shared_edit` ("Compartir edición"), que habilita a los demás abogados a editar contenido/nombre/variables (nunca eliminar ni cambiar estado). Los no creadores siempre pueden previsualizar y crear una copia.
+- **Descripción:** Todos los abogados ven todas las minutas (Draft/Published) sin importar quién las creó, con columna informativa "Creado por" y filtro de tres alcances "Todas / Compartidas / Mías" (params backend `shared` y `lawyer_id`). Solo el creador modifica/elimina/publica su minuta, salvo por el flag `allow_shared_edit` (**activado por defecto** para promover la colaboración), que habilita a los demás abogados a editar contenido/nombre/variables (nunca eliminar ni cambiar estado; el grant es solo para abogados, no clientes). El creador puede desactivarlo con "Dejar de compartir". Los no creadores siempre pueden previsualizar y crear una copia.
 
 **Pasos:**
 1. Lawyer A navega a `/dynamic_document_dashboard` → tab "Minutas"

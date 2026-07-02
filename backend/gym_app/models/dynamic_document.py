@@ -140,7 +140,7 @@ class DynamicDocument(models.Model):
         help_text="If True, all users can view and use this document without explicit permissions."
     )
     allow_shared_edit = models.BooleanField(
-        default=False,
+        default=True,
         help_text="If True, lawyers other than the creator may edit this minuta (title, content, variables)."
     )
     letterhead_image = models.ImageField(

@@ -711,7 +711,7 @@
         "lawyer"
       ],
       "priority": "P2",
-      "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo que active allow_shared_edit, que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; copiar y previsualizar siempre disponibles",
+      "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo por allow_shared_edit (activado por defecto), que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; el creador puede desactivarlo y copiar/previsualizar siempre está disponible",
       "expectedSpecs": 1
     },
     "sign-client-flow": {

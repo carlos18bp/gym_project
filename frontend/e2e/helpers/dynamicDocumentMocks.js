@@ -30,6 +30,10 @@ export function buildMockDocument({
   state,
   createdBy,
   assignedTo = null,
+  // NOTE: the backend model defaults allow_shared_edit to TRUE for new
+  // minutas. The mock defaults to false so each spec opts into the shared
+  // scenario explicitly (most fixtures model minutas whose creator turned
+  // sharing off, which is the restrictive — and assert-heavy — case).
   allowSharedEdit = false,
   tags = [],
   code,

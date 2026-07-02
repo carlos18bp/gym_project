@@ -17,8 +17,9 @@ const COLLEAGUE_LAWYER = 8002;
 
 /**
  * Build the three minutas used across the tests: one created by the current
- * lawyer, one by a colleague (not shared), and one by a colleague with
- * shared editing enabled. All carry an informational created_by_name.
+ * lawyer, one by a colleague (sharing turned off by its creator), and one by
+ * a colleague with shared editing on (the backend default for new minutas).
+ * All carry an informational created_by_name.
  */
 function minutas() {
   return [
@@ -28,6 +29,7 @@ function minutas() {
         title: "Minuta Propia",
         state: "Draft",
         createdBy: CURRENT_LAWYER,
+        allowSharedEdit: false,
       }),
       created_by_name: "Ada Lovelace",
     },
@@ -37,6 +39,7 @@ function minutas() {
         title: "Minuta De Colega",
         state: "Published",
         createdBy: COLLEAGUE_LAWYER,
+        allowSharedEdit: false,
       }),
       created_by_name: "Grace Hopper",
     },

@@ -37,6 +37,7 @@ def can_modify_minuta(document, user, data=None):
       and only for content-editing payloads (no state change, no flag/permission
       changes — those fields are creator-only). ``data=None`` means a
       non-payload operation (e.g. delete), which shared edit never grants.
+      The shared-edit grant is lawyer-only: clients never edit minutas.
     """
     if document.state not in MINUTA_STATES:
         return True
@@ -47,7 +48,7 @@ def can_modify_minuta(document, user, data=None):
         return True
     if is_minuta_admin(user):
         return True
-    if document.allow_shared_edit and data is not None:
+    if document.allow_shared_edit and data is not None and document.is_lawyer(user):
         return not any(field in data for field in MINUTA_OWNER_ONLY_FIELDS)
     return False
 
