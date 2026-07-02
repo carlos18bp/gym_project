@@ -233,6 +233,7 @@ import LetterheadModal from '../common/LetterheadModal.vue';
 // Import hierarchical menu components
 import HierarchicalMenu from './HierarchicalMenu.vue';
 import { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
+import { getMinutaPermissions } from './menuOptionsHelper.js';
 
 // Composables
 const router = useRouter();
@@ -463,17 +464,13 @@ const cardConfigs = {
   
   lawyer: {
     getMenuOptions: (document, context) => {
-      // Minuta ownership rule (Draft/Published templates): only the creator
-      // manages the minuta; other lawyers may edit it only when the creator
-      // enabled allow_shared_edit, and can always preview/copy it.
-      const isMinuta = document.state === 'Draft' || document.state === 'Published';
-      const currentUserId = props.userStore?.currentUser?.id;
-      const isOwner = currentUserId != null && document.created_by === currentUserId;
-      const canManageMinuta = !isMinuta || isOwner;
-      const canEditMinuta = canManageMinuta || document.allow_shared_edit === true;
+      // Minuta ownership rule: shared policy with menuOptionsHelper (single
+      // source of truth) — only the creator manages a Draft/Published minuta;
+      // other lawyers edit only when allow_shared_edit is on.
+      const { canManage: canManageMinuta, canEdit } = getMinutaPermissions(document, props.userStore);
 
       const baseOptions = [
-        ...(canEditMinuta ? [{ label: "Editar", action: "edit" }] : []),
+        ...(canEdit ? [{ label: "Editar", action: "edit" }] : []),
         ...(canManageMinuta ? [
           { label: "Permisos", action: "permissions" },
           { label: "Eliminar", action: "delete" },

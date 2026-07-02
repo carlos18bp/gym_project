@@ -169,34 +169,17 @@
           aria-label="Filtrar minutas por alcance"
         >
           <button
+            v-for="(scope, index) in MINUTAS_SCOPES"
+            :key="scope.value"
             type="button"
-            @click="minutasScope = 'all'"
+            @click="minutasScope = scope.value"
             :class="[
               'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium',
-              minutasScope === 'all' ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
+              index > 0 ? 'border-l border-gray-300' : '',
+              minutasScope === scope.value ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
             ]"
           >
-            Todas
-          </button>
-          <button
-            type="button"
-            @click="minutasScope = 'shared'"
-            :class="[
-              'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium border-l border-gray-300',
-              minutasScope === 'shared' ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
-            ]"
-          >
-            Compartidas
-          </button>
-          <button
-            type="button"
-            @click="minutasScope = 'mine'"
-            :class="[
-              'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium border-l border-gray-300',
-              minutasScope === 'mine' ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
-            ]"
-          >
-            Mías
+            {{ scope.label }}
           </button>
         </div>
 
@@ -743,10 +726,12 @@ const relationshipsModalState = computed(() => {
  * page, then notify the parent (badge counters) via the refresh event.
  */
 const refreshCurrentView = async () => {
+  // Notify the parent first (badge counters) so both requests run
+  // concurrently instead of the badges waiting on the heavier list fetch.
+  emit('refresh');
   if (isServerPaginated.value) {
     await fetchWithFilters(currentPage.value);
   }
-  emit('refresh');
 };
 
 // Emit proxy handed to useDocumentActions: intercepts 'refresh' so document
@@ -786,6 +771,11 @@ const dateTo = ref("");
 const sortBy = ref('recent');
 // Minutas only: scope of the list — 'all' (shared visibility), 'shared'
 // (minutas flagged as collaboratively editable) or 'mine' (created by me).
+const MINUTAS_SCOPES = [
+  { value: 'all', label: 'Todas' },
+  { value: 'shared', label: 'Compartidas' },
+  { value: 'mine', label: 'Mías' },
+];
 const minutasScope = ref('all');
 const selectedDocuments = ref([]);
 const showActionsModal = ref(false);

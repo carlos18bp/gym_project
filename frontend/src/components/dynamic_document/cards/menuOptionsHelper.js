@@ -51,10 +51,7 @@ function canEditAndResendSignatureDocument(document, userStore) {
     return false;
   }
 
-  const currentUser = userStore?.currentUser;
-  const isCreator = document.created_by === currentUser?.id;
-
-  return userStore?.isLawyerLike || isCreator;
+  return userStore?.isLawyerLike || isDocumentCreator(document, userStore);
 }
 
 /**
@@ -63,6 +60,25 @@ function canEditAndResendSignatureDocument(document, userStore) {
 function isDocumentCreator(document, userStore) {
   const currentUserId = userStore?.currentUser?.id;
   return currentUserId != null && document.created_by === currentUserId;
+}
+
+/**
+ * Single source of truth for the minuta ownership policy (mirrors the
+ * backend can_modify_minuta): minutas are Draft/Published templates; the
+ * creator manages them (delete, state changes, permissions, share flag);
+ * other lawyers may edit content only when allow_shared_edit is on.
+ * Consumed by both menu builders (this helper and BaseDocumentCard).
+ */
+export function getMinutaPermissions(document, userStore) {
+  const isMinuta = document.state === 'Draft' || document.state === 'Published';
+  const isOwner = isDocumentCreator(document, userStore);
+  const canManage = !isMinuta || isOwner;
+  return {
+    isMinuta,
+    isOwner,
+    canManage,
+    canEdit: canManage || document.allow_shared_edit === true,
+  };
 }
 
 /**
@@ -101,9 +117,7 @@ const cardConfigs = {
       // For Minutas (archivos jurídicos) in lawyer view, provide a submenu
       // with three distinct edit actions: update name, document editor, and variables configuration.
       if (context === 'legal-documents' && (document.state === 'Draft' || document.state === 'Published')) {
-        const isOwner = isDocumentCreator(document, userStore);
-        // Non-owners may edit only when the creator enabled shared editing.
-        const canEdit = isOwner || document.allow_shared_edit === true;
+        const { isOwner, canEdit } = getMinutaPermissions(document, userStore);
 
         const editSubmenu = {
           label: "Editar",

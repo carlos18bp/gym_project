@@ -88,13 +88,14 @@ export const documentsContent = {
           <li><strong>Mis Documentos:</strong> Similar a la vista de clientes, permite al abogado usar minutas para crear documentos propios y formalizarlos con firmas.</li>
           <li><strong>Carpetas:</strong> Organizar documentos en carpetas personalizadas para mejor gestión.</li>
         </ul>
-        <p class="mt-2"><strong>Visibilidad compartida de Minutas:</strong> Todos los abogados ven y gestionan todas las minutas, sin importar quién las creó. La columna "Creado por" es solo informativa (no determina permisos). Usa el filtro "Todas / Solo mías" para alternar entre todas las minutas del equipo y únicamente las que tú creaste.</p>
+        <p class="mt-2"><strong>Visibilidad compartida de Minutas:</strong> Todos los abogados ven todas las minutas, sin importar quién las creó. La columna "Creado por" indica el creador, que es quien controla la minuta: solo él puede eliminarla, publicarla/moverla a borrador y activar o desactivar la edición compartida ("Compartir edición", activada por defecto). Cuando una minuta está compartida (badge "Compartida"), los demás abogados también pueden editarla; si no, solo pueden previsualizarla, copiarla o agregarla a carpetas. Usa el filtro "Todas / Compartidas / Mías" para alternar entre todas las minutas del equipo, las compartidas para edición y las que tú creaste.</p>
       `,
       features: [
-        'Minutas: Crear y gestionar plantillas de todos los abogados (visibilidad y control compartidos)',
-        'Columna "Creado por": indica el abogado que creó cada minuta (informativa)',
-        'Control total: cualquier abogado puede editar, eliminar, publicar o copiar cualquier minuta',
-        'Filtro "Todas / Solo mías": ver todas las minutas del equipo o solo las propias',
+        'Minutas: Crear y gestionar plantillas de todos los abogados (visibilidad compartida)',
+        'Columna "Creado por": indica el abogado que creó y controla cada minuta',
+        'Edición compartida: activada por defecto; el creador puede desactivarla con "Dejar de compartir"',
+        'Minutas ajenas: siempre se pueden previsualizar y copiar; editar solo si están compartidas; eliminar y publicar son exclusivas del creador',
+        'Filtro "Todas / Compartidas / Mías": ver todas las minutas, solo las compartidas o solo las propias',
         'Mis Documentos: Usar minutas para crear documentos propios y formalizarlos',
         'Carpetas: Organizar documentos en carpetas personalizadas',
         'Dcs. Por Firmar: Documentos pendientes de firma',
