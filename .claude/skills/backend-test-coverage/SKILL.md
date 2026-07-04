@@ -47,16 +47,6 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 5. Run only new/modified test files
 6. Verify tests pass and coverage improves
 
-## Output Format
-
-```
-### File: <test_file_path>
-- Tests added: <count>
-- Coverage before: <X%>
-- Coverage after: <Y%>
-- Command executed: pytest <path> -v
-```
-
 ---
 
 ## Output final

@@ -380,11 +380,38 @@ Flujo:
 
 ---
 
-## Resumen de garantías
+## Output final
 
-- **Detección automática** de entorno por proyecto vía `is_staging`.
-- **Hard refuse** ante mutaciones en production.
-- **Aislamiento de credenciales** staging vs prod en dirs separados, ambos gitignored.
-- **Cleanup automático** de screenshots/traces/downloads en `/tmp/playwright-mcp-${PROJ}/`.
-- **Verificación de integridad** post-run en production (diff de counts).
-- **Sub-agentes oficiales** (Planner/Generator/Healer) bootstrapeados on-demand cuando el operador pide tests persistentes.
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+(una fila por garantía verificada en el run):
+
+```markdown
+🟢 playwright-validation OK — <proyecto> (<env>)
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Detección de entorno | ✅ | <proyecto> → <env> vía is_staging |
+| Fake data / seed | ✅ | modelos poblados (⏭️ en production) |
+| Sesión autenticada | ✅ | storage state reusado <username>.json (<7d) |
+| Flujo validado | ✅ | browser_* ejecutados, snapshot/screenshot OK |
+| Aislamiento credenciales | ✅ | .playwright_<env>/ gitignored |
+| Read-only en production | ✅ | diff counts before/after = 0 (⏭️ en staging) |
+| Cleanup de artefactos | ✅ | /tmp/playwright-mcp-<proj>/<RUN_ID> borrado |
+```
+
+Casos de veredicto distinto a 🟢:
+
+- 🚫 **REFUSED** — se pidió mutar en production (submit, upload, Healer,
+  `populate_fake_data`). Detener y sugerir migrar la prueba al
+  `<base>_staging` equivalente.
+- ⏸️ — requiere login interactivo (sin sesión válida) o review humano del
+  spec del Planner antes del Generator.
+- ⚠️ — sesión expirada, cap MCP (`storage`/`testing`) no habilitada, o la
+  a11y tree no encontró el elemento (fallback a `vision`).
+- ❌ — dominio 5xx (servicio caído, no bug del test) o flujo roto real.
+
+## Next steps
+- (si ⏸️ prod muta) migrar la prueba al `<base>_staging` equivalente
+- (si ⚠️ sesión) borrar `<username>.json` y re-login interactivo
+- (si ❌ 5xx) `systemctl status <GUNICORN_SVC>` + `journalctl -u <svc> -n 100`

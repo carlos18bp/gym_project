@@ -398,22 +398,39 @@ Caso más simple del set analizado: sin twin staging, sin `extra_paths`, sólo `
 
 ## Output final
 
-Cierra siguiendo `[[_output-protocol]]`: veredicto + tabla por paso + next steps.
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+(migra UN proyecto origin → target; el veredicto nombra ambos hosts):
 
-Ejemplo de cierre exitoso:
+🟢 migrate-project <proj> <origin> → <target> OK — todas las celdas ✅
+🟡 migrate-project <proj> <origin> → <target> OK con N warning(s) — ≥1 ⚠️ (blue-green, redis slot, port)
+🔴 migrate-project <proj> <origin> → <target> — N error(es), revisar arriba — ≥1 ❌
+⏸️ migrate-project <proj> <origin> → <target> — pausa manual pendiente — DNS flip / confirmar downtime
+🚫 migrate-project <proj> <origin> → <target> — REFUSED (<razón>) — invocado desde origin VPS o repo viejo
+⏭️ migrate-project <proj> <origin> → <target> — N/A o saltado — modo `--check` (dry-run)
 
-```
-🟢 migrate-project mimittos_project → vps-projectapp-prod OK
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Preflight (SSH + bootstrap + DNS) | ✅ | conectividad origin/target, target listo, TTL DNS |
+| Clone + DB creds | ✅ | repo clonado en target, mysql-users.env poblado |
+| MySQL setup | ✅ | extra_packages instalados + DB/usuario creados |
+| Transfer de envs | ✅ | .env capturados en origin y restaurados en target |
+| Snapshot + restore de datos | ✅ | DB + media + extra_paths transferidos al target |
+| Runtime build | ✅ | venv + pip + frontend build en target |
+| Systemd + nginx deploy | ✅ | units + nginx site (enable diferido a SSL) |
+| Propagación de skills | ✅ | project_skills sincronizados en target |
+| SSL emit + nginx enable | ✅ | cert emitido (certbot HTTP-01), site enabled |
+| Cutover | ✅ | stop origin, delta dump, DNS flip, smoke, projects.yml flip |
 
-| Paso | Status |
-|---|---|
-| 1. Preflight SSH       | ✅ |
-| 2. Target bootstrap    | ✅ |
-| ... (todos los pasos)  | ✅ |
-| 16. Cutover            | ✅ |
+Sustituciones por modo/estado:
+- `--check` → veredicto ⏭️; cada dimensión reporta el plan (sin mutar).
+- `--apply` → fila **Cutover** en ⏭️ (services en origin vivos; target en warm spare).
+- Warnings (⚠️, veredicto 🟡): payment keys detectadas (blue-green recomendado),
+  redis slot conflict, frontend port collision, `db.sqlite3` huérfano.
+- Invocado desde el origin VPS o repo desactualizado → 🚫/❌ (safety gate / abort).
 
-Next steps:
-  - Validar smoke tests adicionales (audio upload UI)
-  - Borrar snapshot en origin después de 7d: rm -rf /home/ryzepeck/backups/vps/<UTC>
-  - Disable services en origin: ssh <origin> 'sudo systemctl disable <gunicorn> <huey>'
-```
+## Next steps
+- (manual, operador) cambiar el A record del dominio a la IP del target en el panel DNS
+- `bash scripts/maintenance/migrate-project.sh --rollback <proj> <target>` — si los smoke tests fallan post-cutover
+- (otro VPS, origin) `ssh <origin> 'sudo systemctl disable <gunicorn_svc> <huey_svc>'` — deshabilitar services en origin tras validar
+- (manual, ≥7d) `rm -rf /home/ryzepeck/backups/vps/<UTC>` — borrar el snapshot pesado en origin
+- `git add projects.yml config/credentials/servers/<target>/mysql-users.env && git commit && git push` — commitear el flip de `server:` + cleanup de mysql-users.env

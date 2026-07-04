@@ -47,21 +47,6 @@ Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
 5. Run only new/modified test files
 6. Verify tests pass and coverage improves
 
-## Output Format
-
-```
-### Layer: State Management | Shared Logic | UI Component
-### File: <source_file_path>
-### Test File: <test_file_path>
-**Coverage before:** X% statements, Y% branches
-**Coverage after:** X% statements, Y% branches
-**Tests added:**
-- test_name_1 (happy path)
-- test_name_2 (edge case)
-**Command executed:** npm test -- <path>
-**Result:** Pass / Fail
-```
-
 ---
 
 ## Output final

@@ -211,16 +211,8 @@ Si todos los modelos relevantes para el proyecto quedan en `0`, el comando apare
 
 ## 7. Reporte al operador
 
-Imprimir resumen estructurado:
-
-- ✅ Comando(s) ejecutados
-- ✅ Counts post-refresh por modelo (top 10 con más registros)
-- ⚠️ Warnings:
-  - Proyecto sin `--confirm` en su delete
-  - Proyecto sin delete command (data acumulada)
-  - Modelos principales con count=0 después del create
-  - `.env` del proyecto sin `DEBUG`/`DJANGO_ENV` declarados (no es prod, pero es ambiguo)
-- 📌 Sugerencias accionables si algo no salió ideal
+Cerrar con el bloque estándar de **Output final** (al pie): veredicto + tabla
+de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 
 ---
 
@@ -283,8 +275,7 @@ Si la invocación incluye `--dry-run`:
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/fake-data-refresh`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
 
 ```markdown
 🟢 fake-data-refresh OK — <proyecto>

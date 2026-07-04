@@ -43,3 +43,22 @@ Señales visibles de éxito: un mensaje de confirmación, un cambio en pantalla,
 - **Sin** preámbulos tipo "Aquí tienes la guía:". Empieza directo con el encabezado `### 1. ¿Qué es y para qué sirve?`.
 - Mantén cada bloque breve: el usuario debería poder leer toda la guía en menos de 2 minutos.
 - Si la funcionalidad aún no existe o no se puede identificar en el sistema, dilo con claridad y pide más contexto en lugar de inventar pasos.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Recap liviano al cierre de la guía (sin jerga, mismo tono amigable):
+
+🟢 user-walkthrough OK   (🟡 si quedaron dudas o no se pudo identificar bien la funcionalidad)
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Recorrido cubierto | ✅ | los 5 bloques: qué es, antes, paso a paso, éxito, problemas |
+| Pantallas mostradas | ✅ | cada paso describe una acción visible en pantalla |
+| Variantes por rol | ✅ | separadas si aplican (admin/cliente, logueado/invitado) |
+| Dudas abiertas | ✅ | ninguna, o listadas para el equipo técnico |
+
+## Next steps
+- (usuario) seguir el "Paso a paso" y confirmar las señales de "Cómo sabes que funcionó"
+- (si algo falla) avisar al equipo técnico con una captura de pantalla

@@ -53,3 +53,31 @@ c. Get required solution context from the code files in `backend/` and `frontend
 After every planning task, ALWAYS do 2 things:
 a. Document the plan in `docs/methodology/`: `architecture.md`, `product_requirement_docs.md`, `technical.md`
 b. Update planning context in `tasks/`: `active_context.md`, `tasks_plan.md`
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+(el entregable sigue siendo el PLAN; esta tabla lo resume):
+
+```markdown
+🟢 plan OK — <título del cambio>
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Alcance entendido | ✅ | requisitos clarificados, ambigüedades/assumptions resueltas |
+| Contexto leído | ✅ | docs/methodology + tasks/ + code paths afectados |
+| Solución formulada | ✅ | meta-arquitectura + trade-offs, opción óptima justificada |
+| Archivos/interfaces a tocar | ✅ | archivos, APIs, state y test surface mapeados |
+| Pasos del plan | ✅ | breakdown step-by-step, extendable/robust/accurate |
+| Verificación definida | ✅ | test plan + escenarios de error/fallback |
+```
+
+Si el alcance aún tiene preguntas abiertas para el operador, reportar
+`⏸️ plan — pausa manual pendiente` con las clarificaciones exactas en
+`## Next steps` en lugar del veredicto 🟢.
+
+## Next steps (si aplica)
+- (manual, operador) revisar y aprobar el plan antes de implementar
+- listar las clarificaciones pendientes (una por bullet) si el veredicto fue ⏸️

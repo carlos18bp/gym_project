@@ -219,3 +219,33 @@ se revierte por una falla de propagación.
    - `UNREACHABLE` → host inalcanzable (dev apagada, VPS caído); warning, seguí.
 
 En modo `--no-propagate`, omití esta fase por completo y decílo en el resumen.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
+
+🟢 git-commit OK   (🟡 si el push quedó pendiente o un host requiere sync manual; ⏸️ si Tailscale pide auth (exit 75); ⏭️ si no había cambios)
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Cambios inspeccionados | ✅ | `git status` + `git diff` revisados |
+| Commit creado | ✅ | FEAT/FIX/DOCS según el diff — `git commit -m "..."` |
+| Push | ✅ | `git push` al upstream OK |
+| Propagación al fleet | ✅ | sólo si el repo es vps-ops-toolkit; ver tabla por host |
+
+En `--all` anteponer una columna `repo` (un bloque de filas por repo). Un repo de
+proyecto (no el toolkit) marca "Propagación al fleet" como ⏭️ (no se propaga).
+
+Propagación del toolkit — una fila por host:
+
+| Host | Estado | Detalle |
+|---|---|---|
+| vps-projectapp-prod | ✅ | `SYNCED <sha>` |
+| vps-gym | ✅ | `SYNCED <sha>` |
+| dev | ⏭️ | `UNREACHABLE` (apagada) |
+
+## Next steps
+- (host con `CONFLICT_NEEDS_MANUAL_SYNC`) correr `/git-sync` en ese host — divergencia real
+- (si el push quedó pendiente) resolver upstream/conflicto y `git push`

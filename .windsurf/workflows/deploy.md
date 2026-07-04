@@ -59,3 +59,29 @@ sudo systemctl restart azurita && sudo systemctl restart azurita-huey
 - azurita uses SQLite (lightweight project).
 - `manage.py` is at the repo root; `venv/` is at the repo root too.
 - WorkingDirectory for gunicorn is `/home/ryzepeck/webapps/azurita`.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/deploy` (azurita):
+
+Línea de veredicto (elegir una):
+
+- `🟢 deploy OK — azurita` — todos los pasos ✅, health check 200
+- `🟡 deploy OK — azurita con N warning(s)` — desplegó, con observaciones
+- `🔴 deploy — azurita, N error(es), revisar arriba` — un paso falló
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| git pull origin main | ✅ | HEAD en <short-sha>, working tree limpio |
+| Backend deps (pip) | ✅ | requirements.txt instalado en venv |
+| Build frontend (Vite) | ✅ | advent-calendar → static/frontend/ |
+| Migraciones | ✅ | DJANGO_ENV=production migrate sin pendientes |
+| collectstatic | ✅ | static files recolectados con --noinput |
+| Restart services | ✅ | azurita.service + azurita-huey.service active |
+| Health check | ✅ | azurita.projectapp.co responde 200 |
+
+## Next steps
+- `bash /home/ryzepeck/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh` — snapshot post-deploy
+- (si 🔴) revisar `journalctl -u azurita -n 50` y re-correr el paso fallido

@@ -113,3 +113,24 @@ For each batch of tests, report:
 ## Coverage Report
 
 <!-- Paste coverage data here -->
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/backend-test-coverage-goal`:
+
+```markdown
+🟢 backend-test-coverage-goal OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Coverage report leído | ✅ | pytest --cov ejecutado, JSON parseado |
+| Files priorizados | ✅ | N archivos lowest-coverage × highest-impact |
+| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
+| Quality standards | ✅ | docs/TESTING_QUALITY_STANDARDS.md respetados |
+| Coverage delta | ✅ | X% → Y% en los archivos tocados |
+```
+
+Si quedan archivos sin alcanzar 100% pero el batch consumió su límite, reemplazar el ✅ de "Coverage delta" por ⚠️ y agregar `## Next steps` con los archivos pendientes y el siguiente lote.

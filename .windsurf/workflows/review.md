@@ -20,3 +20,27 @@ Make sure to:
 2. If you find any pre-existing bugs in the code, you should also report those since it's important for us to maintain general code quality for the user.
 3. Do NOT report issues that are speculative or low-confidence. All your conclusions should be based on a complete understanding of the codebase.
 4. Remember that if you were given a specific git commit, it may not be checked out and local code states may be different.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/review`.
+
+Línea de veredicto (elegir una):
+
+- `🟢 review OK` — cero hallazgos, código correcto
+- `🟡 review OK con N hallazgo(s)` — mejoras/observaciones, nada bloqueante
+- `🔴 review — N bug(s) crítico(s)` — bugs de lógica/seguridad, requieren fix
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Bugs de lógica | ✅ | N hallazgos — comportamiento incorrecto, control de flujo |
+| Seguridad | ✅ | N hallazgos — injection, authz, secretos, race conditions |
+| Edge cases | ✅ | N hallazgos — null/undefined, límites, inputs vacíos |
+| Calidad / estilo | ✅ | N hallazgos — convenciones, duplicación, legibilidad |
+| Tests | ✅ | N hallazgos — cobertura de los cambios, casos faltantes |
+
+## Next steps
+- (autor) corregir los hallazgos ❌/⚠️ listados con su `archivo:línea`
+- re-correr `/review` sobre el diff tras aplicar los fixes

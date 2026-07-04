@@ -200,22 +200,6 @@ Always run, even if no updates were applied.
    git commit -m "docs: vulnerability audit report (<YYYY-MM-DD>)"
    ```
 
-## Final output
-
-Print a short summary:
-```
-vuln-audit completed
-- Frontend: <X commits>, <vulns before → after>
-- Backend:  <X commits>, <vulns before → after>
-- Report:   audit-report.md (commit <SHA>)
-- Branch:   <current-branch>  (created-by-skill | pre-existing)
-- Next:     git push -u origin <branch> && open PR (operator). PR URL is reported after the push, per section 9 of git-branch-protocol.
-```
-
-Expected end state: 1–3 new commits on the working branch, clean working tree, **no `git push`** (left to the operator per `git-branch-protocol`).
-
-If aborted: print the reason and any `/tmp` files generated before the abort.
-
 ---
 
 ## Output final

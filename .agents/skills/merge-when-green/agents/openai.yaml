@@ -1,6 +1,6 @@
 interface:
   display_name: "Merge When Green"
-  short_description: "Commit, push and merge a PR once CI checks pass"
+  short_description: "Integrate the current branch when CI is green: PR-merge in project repos; local green gate + direct push to master + fleet propagation in vps-ops-toolkit"
 
 policy:
   allow_implicit_invocation: false

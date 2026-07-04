@@ -33,3 +33,31 @@ Return a compact but decision-complete plan with:
 - This is a planning workflow, not an implementation workflow.
 - Do not edit repo files while using this skill.
 - Do not assume memory files need updates unless the user asks or the plan itself is about methodology/runtime changes.
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+(el entregable sigue siendo el PLAN; esta tabla lo resume):
+
+```markdown
+🟢 plan OK — <título del cambio>
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Alcance entendido | ✅ | requisitos clarificados, ambigüedades/assumptions resueltas |
+| Contexto leído | ✅ | docs/methodology + tasks/ + code paths afectados |
+| Solución formulada | ✅ | meta-arquitectura + trade-offs, opción óptima justificada |
+| Archivos/interfaces a tocar | ✅ | archivos, APIs, state y test surface mapeados |
+| Pasos del plan | ✅ | breakdown step-by-step, extendable/robust/accurate |
+| Verificación definida | ✅ | test plan + escenarios de error/fallback |
+```
+
+Si el alcance aún tiene preguntas abiertas para el operador, reportar
+`⏸️ plan — pausa manual pendiente` con las clarificaciones exactas en
+`## Next steps` en lugar del veredicto 🟢.
+
+## Next steps (si aplica)
+- (manual, operador) revisar y aprobar el plan antes de implementar
+- listar las clarificaciones pendientes (una por bullet) si el veredicto fue ⏸️
