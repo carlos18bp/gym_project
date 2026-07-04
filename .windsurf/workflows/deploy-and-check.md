@@ -62,7 +62,7 @@ BRANCH="${ARGUMENTS:-$GIT_CURRENT_BRANCH}"
 # manage.py defaultea a *_dev (SQLite) en varios proyectos del fleet, así que
 # migrate/collectstatic DEBEN usar el módulo de prod o pegan a la base equivocada.
 # Fuente primaria: el Environment= del unit systemd de gunicorn. Fallback: backend/.env.
-# Los pasos 5 (migrate) y 7 (collectstatic) heredan este export.
+# Los pasos 5 (migrate) y 7 (collectstatic) lo re-derivan (el env no persiste entre pasos del skill).
 DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2>/dev/null \
         | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
 [ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
@@ -118,8 +118,15 @@ cd "$PROJECT_DIR" && git fetch origin && git checkout "$BRANCH" && git pull orig
 
 5. Backend deps + migrations:
 ```bash
-# migrate corre con el DJANGO_SETTINGS_MODULE exportado en Phase 0 (módulo de prod,
-# no el *_dev/SQLite que manage.py usaría por default).
+# manage.py suele tener setdefault a un settings *_dev (SQLite u otra DB). migrate DEBE
+# usar el settings REAL del servicio prod, y como el env NO persiste entre pasos del skill,
+# se re-deriva acá (systemd → .env). Sin esto, migrás la base equivocada.
+DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2>/dev/null \
+        | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
+[ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
+        "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
+export DJANGO_SETTINGS_MODULE
+echo "→ migrate con DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-<manage.py default — puede ser dev!>}"
 cd "$PROJECT_DIR/backend" && \
     "$PROJECT_DIR/$VENV_PATH" -m pip install -r requirements.txt && \
     "$PROJECT_DIR/$VENV_PATH" manage.py migrate
@@ -146,8 +153,14 @@ fi
 
 7. Collectstatic (si aplica):
 ```bash
-# collectstatic hereda el DJANGO_SETTINGS_MODULE exportado en Phase 0 (módulo de prod).
 if [ "$COLLECTSTATIC" = "true" ]; then
+    # Mismo motivo que migrate: usar el settings prod (STATIC_ROOT correcto). Re-derivar
+    # porque el env no persiste entre pasos del skill.
+    DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2>/dev/null \
+            | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
+    [ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
+            "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
+    export DJANGO_SETTINGS_MODULE
     cd "$PROJECT_DIR/backend" && "$PROJECT_DIR/$VENV_PATH" manage.py collectstatic --noinput
 fi
 ```
