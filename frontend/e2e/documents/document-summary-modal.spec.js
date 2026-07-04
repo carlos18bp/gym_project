@@ -82,7 +82,7 @@ test("folders grid shows empty state when no folders exist", { tag: ['@flow:docs
   await page.getByRole("button", { name: "Carpetas" }).click();
   await page.waitForLoadState("networkidle");
 
-  // FoldersGrid/FoldersTable empty state should show
+  // FoldersTable empty state should show
   await expect(page.getByText("No tienes carpetas aún").first()).toBeVisible({ timeout: 10_000 });
 
   // "Crear Primera Carpeta" or "Nueva Carpeta" button should be visible

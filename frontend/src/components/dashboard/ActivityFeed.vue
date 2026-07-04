@@ -1,8 +1,7 @@
 <!-- ActivityFeed.vue -->
 <!--
   Container for the dashboard tabs:
-  - NotificationsWidget — Notification Center summary (first tab, replaces the
-    standalone NotificationSummaryCard).
+  - NotificationsWidget — Notification Center summary (first tab).
   - FeedWidget — Recent user activity.
   - ContactsWidget — Contacts (clients) or Lawyers depending on role.
   - ReportsWidget — Reports/statistics, lawyer-only.
