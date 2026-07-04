@@ -115,6 +115,11 @@
 - Always write tags inline: `tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer']`
 - The `flow-tags.js` constants are still useful for type safety in other contexts, but must not be the sole source of `@flow:` strings in spec files
 
+### E2E: A Mis-Pointed `@flow:` Tag Silently Distorts Coverage
+- Coverage status is a pure function of which `@flow:<id>` a spec carries, so a tag pointing at the **wrong** flow-id causes two silent errors at once: the flow it *should* tag reads as `missing` (false-red) and the flow it *does* tag reads as `covered` even though nothing exercises it (false-green)
+- Seen 2026-07-04: `process-alert-recipients.spec.js` tested the alert **display** indicator but was tagged `@flow:process-alert-configure` (the interactive toggle). Retagging to `@flow:process-alerts` fixed both and exposed that the toggle flow genuinely has no spec (now a declared `knownGap`)
+- When a flow has both a display and an interactive half, tag each spec by the half it actually drives; record the untested half via `knownGaps` in `flow-definitions.json` instead of leaving a false-green
+
 ### SECOP UNSPSC Filter: Advanced Filters Toggle Required
 - The UNSPSC multi-select filter (`data-testid="filter-unspsc"`) in `SecopList.vue` is inside an "advanced filters" panel
 - The panel is **hidden by default** — must click `data-testid="toggle-advanced-filters"` first, then `data-testid="advanced-filters"` becomes visible

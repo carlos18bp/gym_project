@@ -52,14 +52,14 @@
 | 1 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
 | 2 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
 | 3 | `debug.log` is 6.7MB — already gitignored but no log rotation configured | Low | Operations |
-| 4 | E2E gap: `process-alert-configure` — registered flow (P2) without spec. The `notify_clients` toggle in `ProcessForm.vue:676` has no `data-testid` and no E2E coverage of the actual user interaction (toggle + save). Existing `process-alert-recipients.spec.js` only tests display read-only. Needs `data-testid` attributes + heavy ProcessForm mocking (case types, lawyers, clients). | Low | Testing / Process Alerts |
+| 4 | E2E gap: `process-alert-configure` — registered flow (P2) without spec. The `notify_clients` toggle in `ProcessForm.vue:676` has no `data-testid` and no E2E coverage of the actual user interaction (toggle + save). Existing `process-alert-recipients.spec.js` (retagged `@flow:process-alerts` on 2026-07-04, since it exercises the display indicator, not the toggle) covers only the display; the config-toggle flow has no spec and is declared as a `knownGap` in `flow-definitions.json`. Needs `data-testid` attributes + heavy ProcessForm mocking (case types, lawyers, clients). | Low | Testing / Process Alerts |
 | 5 | Pre-registered flow `minutas-columns` (P2, documents) corresponds to planned feature #2 Minutas — not yet implemented. Will get its spec when feature lands. | Low | Testing / Planned features |
 
 ---
 
 ## 4. Testing Status
 
-### Backend Tests (86 files — verified 2026-04-28)
+### Backend Tests (92 files — verified 2026-07-04)
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
@@ -79,7 +79,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (170 files — verified 2026-04-28)
+### Frontend Unit Tests (177 files — verified 2026-07-04)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -95,7 +95,7 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (193 spec files — verified 2026-06-23) — **150 flows registered**
+### Frontend E2E Tests (195 spec files — verified 2026-07-04) — **150 flows registered**
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)

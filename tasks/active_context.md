@@ -19,28 +19,33 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-06-23)
+### Codebase Metrics (verified 2026-07-04)
 
 | Metric | Count |
 |--------|-------|
 | Backend model files | 14 |
-| Backend model classes | 55 (+ User via AbstractUser + UserManager) |
+| Backend model classes | 54 (53 models.Model subclasses + User via AbstractUser; UserManager excluded) |
 | Backend view files | 29 |
 | Backend serializer files | 12 |
 | Backend URL patterns | 194 |
-| Backend test files | 89 |
+| Backend test files | 92 |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 116 |
+| Frontend Vue components | 117 |
 | Frontend view pages | 44 |
 | Frontend Pinia store files | 44 |
 | Frontend composables | 14 |
-| Frontend unit test files | 175 |
-| Frontend E2E spec files | 193 |
+| Frontend unit test files | 177 |
+| Frontend E2E spec files | 195 |
 | Frontend E2E flows (flow-definitions.json) | 150 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Memory Bank refresh + E2E flow-map reconciliation (2026-07-04)**:
+  - **Methodology refresh** (`/methodology-setup`): realigned drifted counts and stack versions across `architecture.md`, `technical.md`, `tasks_plan.md`, and this file to the verified codebase (model classes 55→54; backend tests →92; components →117; composables 11→14; routes 66→67; unit tests →177; E2E specs →195; Django 5.0.6→5.2.14, DRF →3.17.1, Vue →3.5, Vite →6.4.2, Playwright →1.60). Created the two missing Memory Bank dirs `docs/literature/` and `tasks/rfc/`.
+  - **E2E flow-map reconciliation** (`/e2e-user-flows-check`): retagged `process-alert-recipients.spec.js` `@flow:process-alert-configure`→`@flow:process-alerts` (it exercises the display indicator, not the toggle) — `process-alerts` had been a false-`missing`, `process-alert-configure` a false-`covered`. Added `knownGaps` to `process-alert-configure` + `service-admin-edit`; flipped the stale `legal-files-*` ❌→✅ markers in `USER_FLOW_MAP.md` and regenerated its coverage matrix from `flow-definitions.json`.
+  - **Roles**: confirmed **5 roles** (`admin` + 4 client-facing: `client`, `lawyer`, `corporate_client`, `basic`); the "4 roles" phrasing elsewhere refers to the client-facing set only.
 
 - **Release Agosto 2026 (worked in June) — two requirements, on branch `release-august-2026-c`, deployed to staging**:
   - **Minutas shared visibility** ✅ (commit `d595ae0`): removed the per-creator restriction so every lawyer sees/manages all minutas (Draft/Published). Added serializer field `created_by_name` (informational, `select_related('created_by')` → no N+1), a "Creado por" column gated by `isLawyerMinutasContext`, a "Todas / Solo mías" toggle (`onlyMine` reuses the backend `lawyer_id` param), and creator-name search. Replaced the orphaned `getDocumentsByLawyerId` getter with `allMinutas`. Tests: backend serializer/view, store + component unit. Flow `minutas-shared-visibility` (P2) registered.
@@ -172,8 +177,8 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Component | Detail |
 |-----------|--------|
-| Backend | Django 5.0.6 + DRF 3.15.2, SQLite (dev), Python 3.12 |
-| Frontend | Vue 3.4 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
+| Backend | Django 5.2.14 + DRF 3.17.1, SQLite (dev), Python 3.12 |
+| Frontend | Vue 3.5 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
 | Task Queue | Huey 2.5.2 (immediate mode in dev, Redis in prod) |
 | Testing | pytest, Jest 29, Playwright |
 | CI | GitHub Actions (test quality gate on PR/push) |

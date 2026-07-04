@@ -5,17 +5,17 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n66 routes"]
+        Router["Vue Router\n67 routes"]
         Views["44 View Pages"]
-        Components["113 Components"]
+        Components["117 Components"]
         Stores["44 Pinia Stores"]
-        Composables["11 Composables"]
+        Composables["14 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
-    subgraph Server["Backend (Django 5.0.6)"]
-        DRF["Django REST Framework\n189 API endpoints"]
-        Models["55 Models\n(14 model files)"]
+    subgraph Server["Backend (Django 5.2.14)"]
+        DRF["Django REST Framework\n~194 API endpoints"]
+        Models["54 Models\n(14 model files)"]
         Serializers["12 Serializer files"]
         Views_BE["29 View files"]
         Utils["3 Utility modules"]
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n86 test files"]
-        Jest["Jest\n169 test files"]
-        PW["Playwright\n189 E2E specs"]
+        Pytest["pytest\n92 test files"]
+        Jest["Jest\n177 test files"]
+        PW["Playwright\n195 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -201,7 +201,7 @@ erDiagram
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
-| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (client/lawyer/corporate_client/basic, default='basic'), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
+| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (admin/client/lawyer/corporate_client/basic, default='basic'; 5 roles total, 4 client-facing), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
 | `ActivityFeed` | action_type (create/edit/finish/delete/update/download/other), description, created_at | FK → User; max 20 per user (auto-cleanup on save) |
 | `UserSignature` | signature_image, method (upload/draw), ip_address, created_at | OneToOne → User |
 
@@ -465,7 +465,7 @@ flowchart TD
 flowchart TD
     subgraph Production
         Gunicorn["Gunicorn\n(WSGI server)"]
-        Django["Django 5.0.6"]
+        Django["Django 5.2.14"]
         MySQL["MySQL"]
         RedisQ["Redis\n(Huey broker)"]
         HueyW["Huey Worker\n(consumer)"]

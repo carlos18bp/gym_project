@@ -1,6 +1,6 @@
 {
-  "version": "1.9.1",
-  "lastUpdated": "2026-04-28",
+  "version": "1.9.3",
+  "lastUpdated": "2026-07-04",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -1146,6 +1146,16 @@
       "description": "404, 401, 403, 500, network errors, timeouts",
       "expectedSpecs": 1
     },
+    "misc-offline": {
+      "name": "Página sin conexión",
+      "module": "misc",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P4",
+      "description": "Página /no_connection mostrada cuando el dispositivo pierde la conexión a internet",
+      "expectedSpecs": 1
+    },
     "basic-restrictions": {
       "name": "Restricciones usuario básico",
       "module": "auth",
@@ -1470,7 +1480,10 @@
       ],
       "priority": "P2",
       "description": "Admin edita servicio existente, modifica etapas y campos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "knownGaps": [
+        "Partial coverage — service-admin-flow.spec.js exercises create/toggle but the full edit path (modify existing stages + fields and persist) is not fully asserted. Marked partial in docs/USER_FLOW_MAP.md."
+      ]
     },
     "service-admin-toggle": {
       "name": "Activar/desactivar servicio (Admin)",
@@ -1532,7 +1545,10 @@
       ],
       "priority": "P2",
       "description": "Abogado activa la alerta del último estado procesal en ProcessForm (al crear o editar) y alterna el toggle 'Notificar también a los clientes' (notify_clients), opcionalmente añade descripción personalizada. Persiste en StageAlert y se refleja en el indicador del detalle del proceso.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "knownGaps": [
+        "Interactive notify_clients toggle in ProcessForm (create/edit) not yet exercised by any spec — only the resulting alert indicator display is covered (see process-alerts). Blocked on adding data-testid to the toggle + heavy ProcessForm mocking (case types, lawyers, clients); tracked as debt in tasks/tasks_plan.md."
+      ]
     }
   }
 }
