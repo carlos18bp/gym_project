@@ -68,22 +68,6 @@ Correr el archivo de tests completo (no la suite) donde vivían los tests rotos,
 ### Paso 6 — Reportar
 Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos exactos ejecutados.
 
-## Formato de Output
-
-```
-### Test: <nombre_del_test>
-- Archivo: <ruta>
-- Error original: <mensaje corto>
-- Causa raíz: <explicación en 1-2 líneas>
-- Cambio aplicado: <qué se modificó>
-- Resultado: ✅ Pasa / ❌ Aún falla
-
-### Regresión
-- Archivo: <ruta del módulo>
-- Comando: <comando exacto>
-- Resultado: ✅ Sin regresiones / ⚠️ <detalle si hay problema>
-```
-
 ---
 
 ## Output final

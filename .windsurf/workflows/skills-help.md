@@ -143,8 +143,36 @@ Con los datos crudos de Phase 1 (y Phase 2 si `--all`), Claude arma la salida:
 5. **Pie**: `N skills listadas · M ignoradas` y, si aplica, cómo editar la lista de
    exclusión (`$IGNORE_FILE`). Si no existe el ignore.txt, repetí el hint para crearlo.
 
-> No uses el veredicto operacional 🟢/🟡/🔴 — esta skill es informativa; la
-> tabla-catálogo ES la salida.
+> Las **celdas de las tablas-catálogo NO llevan emoji de estado** (✅/⚠️/❌) — es
+> un catálogo, no un reporte de salud. Aun así, la skill cierra con el veredicto
+> de una línea del protocolo (ver "Output final").
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Skill informativa: la salida principal
+son las tablas-catálogo de Phase 3 (sus celdas no llevan emoji de estado). Cerrar
+con el veredicto de una línea, derivado del scan:
+
+- `🟢 skills-help OK` — discovery + scan + render completaron; catálogo emitido.
+- `⏭️ skills-help — N/A o saltado` — filtro sin matches (0 skills listadas).
+- `🔴 skills-help — 1 error, revisar arriba` — discovery falló (no existe
+  `.claude/skills/`, exit 1); sin catálogo.
+
+Tabla de dimensiones del scan (complementa las tablas-catálogo, no las reemplaza):
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Discovery (`.claude/skills/`) | ✅/❌ | dir hallado; `--all=<bool>`, filtro=`<val>` |
+| Scan proyecto | ✅ | N skills listadas · M ignoradas |
+| Plugins / globales (`--all`) | ✅/⏭️ | listados si `--all`; ⏭️ si no se pasó |
+| Render tablas-catálogo | ✅ | K categorías |
+
+## Next steps
+- `/skills-help --all` — agregar plugins/globales y comandos built-in
+- `/skills-help <término>` — filtrar el catálogo por nombre/descripción
+- (manual, operador) editar `.claude/skills/skills-help/ignore.txt` para ocultar skills
 
 ---
 

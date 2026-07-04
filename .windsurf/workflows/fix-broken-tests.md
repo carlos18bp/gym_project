@@ -102,24 +102,6 @@ Entregar un resumen estructurado con: qué falló, causa raíz, qué cambió, y 
 
 ---
 
-## Formato de Output
-
-```
-### Test: <nombre_del_test>
-- Archivo: <ruta>
-- Error original: <mensaje corto>
-- Causa raíz: <explicación en 1-2 líneas>
-- Cambio aplicado: <qué se modificó>
-- Resultado: ✅ Pasa / ❌ Aún falla
-
-### Regresión
-- Archivo: <ruta del módulo>
-- Comando: <comando exacto ejecutado>
-- Resultado: ✅ Sin regresiones / ⚠️ <detalle si hay problema>
-```
-
----
-
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de

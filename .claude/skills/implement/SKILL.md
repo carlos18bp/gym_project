@@ -75,3 +75,29 @@ Optimize the implemented code after all changes are tested and verified.
 After every implementation, ALWAYS do 2 things:
 a. Update other possibly affected codes in `backend/` and `frontend/`
 b. Update the documentation in `docs/` and `tasks/`
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/implement`:
+
+```markdown
+🟢 implement OK — <qué se implementó>
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Análisis de dependencias | ✅ | componentes afectados + flujo end-to-end trazado |
+| Plan | ✅ | archivos/funciones, side effects y trade-offs definidos |
+| Cambios | ✅ | cambio mínimo coherente, integrado con la arquitectura |
+| Tests | ✅ | cobertura para lo nuevo + regresión existente preservada |
+| Verificación | ✅ | slice mínimo de verificación corrió y pasó |
+| Docs/memory | ✅ | docs/ y tasks/ actualizados si el cambio lo exige |
+```
+
+Si un test falla, la verificación no pasa, o queda algo sin verificar,
+reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar
+`## Next steps` con el comando exacto de verificación pendiente
+(p.ej. `<venv>/bin/python manage.py test <app>` o `npx playwright test <spec>`)
+y lo que no se pudo confirmar.

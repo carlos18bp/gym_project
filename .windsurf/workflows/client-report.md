@@ -1,5 +1,5 @@
 ---
-description: "Gestiona los reportes de cambios del proyecto para el cliente en docs/reports/. Default: crea reporte de la sesión actual; --list tabula existentes; --find busca por tema."
+description: "Gestiona los reportes de cambios del proyecto para el cliente en docs/reports/. Default: crea reporte de la sesión actual; --list tabula existentes; --find busca por tema. Tras crear el .md, si el MCP \"Gestor de Documentos\" está disponible, publica/actualiza el reporte (pregunta antes de crear, confirma antes de actualizar)."
 auto_execution_mode: 1
 ---
 
@@ -140,6 +140,59 @@ OUT="$REPORTS_DIR/<Tema_En_Snake_Case>_${FECHA}.md"
 
 ---
 
+## Phase 4 — Publicar en el Gestor de Documentos (MCP) — solo MODE=create
+
+Tras escribir el `.md` local (Phase 3), publicá el reporte en el **Gestor de
+Documentos** (MCP `Gestor de Documentos`), que lo versiona y genera el PDF con marca.
+El `.md` en `docs/reports/` sigue siendo la fuente; este paso lo sincroniza al gestor.
+
+**Precondición — disponibilidad del conector.** Este paso requiere las tools del
+conector "Gestor de Documentos" en la sesión (`list_folders`, `list_documents`,
+`read_document`, `create_folder`, `create_document`, `update_document`) — un conector
+claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
+sin acceso, etc.), **SALTAR** el paso: dejar constancia en el output (`Gestor de
+Documentos: n/a en esta sesión`) y terminar con el reporte local. **Nunca falles por
+esto.**
+
+1. **Carpeta destino según el prompt/proyecto.**
+   - Deducí el proyecto/cliente del contexto de la sesión y de `$FREEFORM` (p.ej.
+     "Vastago Project", "Xpandia Project") — el nombre que ve el cliente, no el del
+     directorio del repo. Si el prompt nombra explícitamente una carpeta/subcarpeta,
+     ESA manda.
+   - `list_folders` → localizá la carpeta del proyecto (match por nombre, insensible a
+     mayúsculas/acentos) y, dentro, la subcarpeta correcta para reportes de cambios
+     (p.ej. "Feedback and Fixes", "Fixes", o la que indique el prompt). No hay una
+     convención de subcarpeta fija en el fleet: **resolvé por prompt** y ante duda,
+     preguntá.
+
+2. **¿Ya existe el reporte?**
+   - `list_documents(folder_id=<destino>)` → ¿hay un documento cuyo título corresponda
+     a este reporte (mismo tema)? Si hay candidato, `read_document` para confirmar que
+     es el mismo antes de decidir crear vs. actualizar.
+
+3. **Decidir y CONFIRMAR con el operador (obligatorio, sin excepción):**
+   - **Existe → ACTUALIZAR.** Antes de `update_document`, mostrá EXACTAMENTE qué se va a
+     actualizar: `document_id`, título, carpeta, y un resumen de qué cambia en el
+     contenido (qué secciones/puntos). Esperá confirmación explícita. Recién ahí
+     `update_document(document_id=…, markdown=<cuerpo del reporte>)`.
+   - **No existe → CREAR, pero PREGUNTÁ ANTES.** Nunca crees documento ni carpeta sin
+     preguntar. Mostrá: carpeta destino (y si hay que CREARLA porque falta la del
+     proyecto o la subcarpeta, decilo explícito), título propuesto, `language="es"`,
+     `client_name`. Esperá confirmación. Recién ahí, en orden:
+     - si el operador aprueba crear carpeta: `create_folder(name=…, parent_id=…)`;
+     - `create_document(title=…, markdown=<cuerpo del reporte>, folder_id=…,
+       language="es", client_name=…)`.
+
+   **Reglas de confirmación:** (a) preguntar SIEMPRE antes de crear algo nuevo (carpeta
+   o documento); (b) al actualizar, confirmar qué documento y qué contenido se
+   sobrescribe; (c) ante ambigüedad (varias carpetas/documentos candidatos), NO
+   adivines — preguntá.
+
+4. **Contenido.** El markdown que subís es el MISMO cuerpo del reporte de Phase 3 (la
+   plantilla del cliente), no un resumen. El gestor lo convierte a PDF.
+
+---
+
 ## Plantilla del reporte (usar literal, ajustando contenido)
 
 ```markdown
@@ -214,6 +267,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 | Phase 0 — Args | ✅ | MODE=create, fecha DDMMYYYY del sistema |
 | Phase 3 — Insumos | ✅ | N puntos (sesión + git log) |
 | Plantilla | ✅ | citas textuales + validación paso a paso |
+| Phase 4 — Gestor de Documentos | ✅ | creado id=… / actualizado id=… / n/a (sin conector) / omitido por operador |
 | Git | ⚠️ | sin commitear (decisión del operador) |
 
 ## Next steps

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tailscale Connect"
+  short_description: "Help with Tailscale Connect tasks and workflows"
+
+policy:
+  allow_implicit_invocation: false

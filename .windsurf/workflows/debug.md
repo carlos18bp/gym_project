@@ -133,24 +133,17 @@ If the user reports the recommended fix did not work or introduced a new error:
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/debug`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill (read-only: diagnostica, NO aplica el fix):
 
-```markdown
-🟢 debug OK — diagnóstico completo
-✨ Todo en orden — no hay acciones pendientes.
+🟢 debug OK   (🟡 si la hipótesis no alcanzó confianza alta; 🔴 si no se pudo reunir evidencia)
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Phase 1 — Error capture & context | ✅ | error reproducido, contexto leído |
-| Phase 2 — Root cause analysis | ✅ | hipótesis con evidencia (archivo:línea) |
-| Phase 3 — Recommended fix | ✅ | before/after + riesgo + prevención |
-| Phase 4 — Verification plan | ✅ | comandos repro + validate + regresión |
-```
+| Causa raíz | ✅ | identificada, con evidencia (archivo:línea) |
+| Fix recomendado | ✅ | before/after propuesto — NO aplicado (read-only) |
+| Riesgo de regresión | ✅ | side-effects + edge cases a verificar anotados |
+| Plan de verificación | ✅ | repro + validate + tests de regresión listados |
 
-Si el diagnóstico no alcanzó confianza alta (Phase 2 sin evidencia suficiente,
-hipótesis múltiples sin ranking, etc.), reemplazar el ✅ por ⚠️ y omitir la
-línea ✨; agregar `## Next steps` con el contexto adicional que necesita el
-operador (logs, repro exacto, estado del código).
-
-Cuando el operador autoriza aplicar el fix → invocar `/implement`. Esta skill
-**no** aplica cambios.
+## Next steps
+- (manual, operador) aplicar el fix before/after propuesto — esta skill no modifica archivos
+- tras aplicar: correr el comando de "Plan de verificación" para validar + chequear regresión

@@ -73,19 +73,10 @@ npx playwright test path/to/spec.spec.js
 python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semantic-rules strict
 ```
 
-## Deliverable
-
-- A phased plan (Phase 0-5)
-- Done conditions for each phase
-- Per-phase test-run commands (only changed tests)
-- Severity breakdown from initial gate run
-
----
-
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/test-quality-gate`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+(una fila por fase del plan; ⏭️ si la fase queda fuera del scope elegido):
 
 ```markdown
 🟢 test-quality-gate OK
@@ -103,7 +94,10 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 | Gate final | ✅ | score subió X → Y, errores=0 |
 ```
 
-Si una fase quedó incompleta (Phase 5 opcional, batch consumió límite,
-warnings/info no cerrados todos), reemplazar el ✅ por ⚠️ o ⏭️, omitir la
-línea ✨ y agregar `## Next steps` con los archivos restantes y el comando
-del gate para reverificar.
+Solo se corren los tests refactorizados (nunca la suite entera). Si una fase
+quedó incompleta (Phase 5 opcional, batch consumió límite, warnings/info no
+cerrados), reemplazar el ✅ por ⚠️ o ⏭️, omitir la línea ✨ y agregar
+`## Next steps` con los archivos restantes + el comando del gate.
+
+## Next steps
+- `python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semantic-rules strict` — re-correr el gate y confirmar el score

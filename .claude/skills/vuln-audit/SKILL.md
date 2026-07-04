@@ -265,18 +265,6 @@ Si al correr el skill no hay vulns ni outdated relevantes:
 - Generar igual el `audit-report.md` indicando "No updates applicable" en cada sección.
 - Hacer el commit del reporte solo si su contenido cambió respecto al existente.
 
-## Output al usuario (al terminar)
-Imprimir un bloque resumen:
-```
-vuln-audit completed
-- Frontend: <X commits>, <vulns before → after>
-- Backend:  <X commits>, <vulns before → after>
-- Report:   audit-report.md (commit <SHA>)
-- Branch:   <rama-actual>  (creada-por-skill | preexistente)
-- Next:     git push -u origin <rama> && abrir PR (operador). PR URL se reporta tras el push, según sección 9 del git-branch-protocol.
-```
-Si hubo abort, imprimir el motivo y los archivos en `/tmp` que se generaron antes del abort.
-
 ## Ejemplos de invocación
 - `/vuln-audit` — auditar y aplicar en backend + frontend.
 - `/vuln-audit frontend` — solo npm.

@@ -129,3 +129,30 @@ Go to **Windsurf → Settings → Cascade → Rules** and verify triggers match:
 | `methodology/debug.md` | Model Decision |
 | `methodology/error-documentation.md` | Model Decision |
 | `methodology/lessons-learned.md` | Model Decision |
+
+---
+
+## Output final
+
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de
+`/methodology-setup`:
+
+```markdown
+🟢 methodology-setup OK
+✨ Todo en orden — no hay acciones pendientes.
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Estructura de directorios | ✅ | docs/methodology, docs/literature, tasks/rfc creados |
+| Deep-dive codebase (conteos) | ✅ | counts exactos: models, componentes, pages, stores, tests |
+| 7 memory files creados/refrescados | ✅ | PRD, technical, architecture, tasks_plan, active_context… |
+| Cross-reference vs código | ✅ | claims verificados con find/grep, discrepancias corregidas |
+```
+
+Si algún conteo declarado no matchea `find`/`grep`, o un memory file quedó
+sin refrescar, reemplazar el ✅ por ⚠️/❌, omitir la línea ✨ y agregar
+`## Next steps` con el archivo y el comando de verificación exacto.
+
+## Next steps (si aplica)
+- (manual, operador) revisar `tasks/active_context.md` — foco actual y next steps
+- re-correr esta skill tras features grandes o cuando los conteos driften

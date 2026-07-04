@@ -10,6 +10,8 @@ Use the same workflow as `$debug`:
 - gather evidence first
 - return observations, root cause, recommended fix, and verification steps
 
+---
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Misma plantilla que `/debug`.

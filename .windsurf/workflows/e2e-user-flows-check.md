@@ -72,25 +72,22 @@ Deliver:
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/e2e-user-flows-check`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill (una fila por flujo auditado):
 
-```markdown
-🟢 e2e-user-flows-check OK
-✨ Todo en orden — no hay acciones pendientes.
+🟡 e2e-user-flows-check OK con N warning(s)   (🟢 si todos los flujos están cubiertos; ⚠️ por cada gap)
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Phase 0 — Scope | ✅ | roles, módulos y boundaries identificados |
-| Phase 1 — Source inventory | ✅ | docs + routes + tests + endpoints leídos |
-| Phase 2 — Candidate flows | ✅ | N flows extraídos con traceability |
-| Phase 3 — Normalize | ✅ | duplicados merged, P1–P4 asignado |
-| Phase 4 — Coverage mapping | ✅ | candidatos vs flow-definitions.json |
-| Phase 5 — Gaps & risks | ✅ | missing/partial/synthetic identificados |
-| Phase 6 — Register missing | ✅ | USER_FLOW_MAP.md + flow-definitions.json |
-```
+| Login / registro | ✅ | cubierto por `frontend/e2e/auth.spec.ts` |
+| Checkout / pago | ⚠️ | sin test E2E — registrado P1 |
+| Editar perfil | ⚠️ | parcial: happy-path sí, validaciones no |
+| ... (una fila por flujo: ✅ cubierto / ⚠️ gap o parcial) | | |
 
-Si hay flows sin registrar (Phase 6), open questions abiertas (Phase 7.5), o
-P1 sin cobertura, reemplazar el ✅ correspondiente por ⚠️ o ❌ y agregar
-`## Next steps` con los flow-ids pendientes y el `npx playwright codegen` que
-toca correr a continuación.
+Cerrar con el conteo agregado (flujos totales / cubiertos / parciales / faltantes)
+y confirmar el registro de los faltantes en `docs/USER_FLOW_MAP.md` +
+`frontend/e2e/flow-definitions.json`. Si la tabla supera 15 flujos, anteponer
+`### Top 3 acciones prioritarias` con los P1/P2 sin cobertura y su ID sugerido.
+
+## Next steps
+- (por cada ⚠️ sin test) `npx playwright codegen <url>` — generar el flujo faltante con su ID sugerido
+- confirmar que los flujos nuevos quedaron en `docs/USER_FLOW_MAP.md` + `frontend/e2e/flow-definitions.json`
