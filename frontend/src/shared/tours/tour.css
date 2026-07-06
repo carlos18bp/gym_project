@@ -1,44 +1,103 @@
 /*
- * Guided tour popover styling (driver.js).
+ * Guided tour styling (driver.js).
  *
  * driver.js renders into <body>, outside the Vue tree, so Tailwind
  * utility classes are not available here — plain CSS matching the brand
  * palette (primary #141E30, secondary #3348FF) and the rounded-card look
  * of the app. driver.css already ships a very high z-index (1e9), above
  * the sidebar (z-40) and CSS tooltips (z-50), so no override is needed.
+ *
+ * NOTE on progress flags: driver.js ORs a per-step showProgress with the
+ * global one, so the global flag is FALSE and content steps opt in per
+ * step (see useGuidedTour.buildSteps). Do not "fix" this back.
  */
+
+/* ============ 1. Base popover ============ */
 
 .gyj-tour-popover.driver-popover {
   border-radius: 0.75rem;
   box-shadow:
-    0 20px 25px -5px rgb(0 0 0 / 0.2),
-    0 8px 10px -6px rgb(0 0 0 / 0.2);
-  padding: 1.25rem;
+    0 20px 25px -5px rgb(20 30 48 / 0.25),
+    0 8px 10px -6px rgb(20 30 48 / 0.2);
+  padding: 1.25rem 1.375rem;
   max-width: 22rem;
+  animation: gyj-tour-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+
+@keyframes gyj-tour-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============ 2. Typography ============ */
+
+.gyj-tour-popover .gyj-tour-eyebrow {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3348ff;
+  margin-bottom: 0.375rem;
 }
 
 .gyj-tour-popover .driver-popover-title {
   color: #141e30;
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 700;
+  line-height: 1.35;
 }
 
 .gyj-tour-popover .driver-popover-description {
-  color: #374151;
+  color: #4b5563;
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1.6;
+  margin-top: 0.375rem;
 }
 
 .gyj-tour-popover .driver-popover-progress-text {
   color: #6b7280;
   font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
+
+/* ============ 3. Progress bar ============ */
+
+.gyj-tour-popover .gyj-tour-progress-track {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin: 0.875rem 0 0.25rem;
+}
+
+.gyj-tour-popover .gyj-tour-progress-fill {
+  height: 100%;
+  background: #3348ff;
+  border-radius: inherit;
+  transition: width 0.3s ease-out;
+}
+
+/* ============ 4. Buttons ============ */
 
 .gyj-tour-popover .driver-popover-footer button {
   border-radius: 0.5rem;
   font-size: 0.8125rem;
-  padding: 0.375rem 0.75rem;
+  padding: 0.4375rem 0.875rem;
   text-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+.gyj-tour-popover .driver-popover-footer button:focus-visible {
+  outline: 2px solid #3348ff;
+  outline-offset: 2px;
 }
 
 .gyj-tour-popover .driver-popover-next-btn {
@@ -48,7 +107,7 @@
 }
 
 .gyj-tour-popover .driver-popover-next-btn:hover {
-  background-color: #1d4ed8;
+  background-color: #2438cc;
 }
 
 .gyj-tour-popover .driver-popover-prev-btn {
@@ -74,4 +133,142 @@
 
 .gyj-tour-popover .gyj-tour-skip-btn:hover {
   color: #141e30;
+}
+
+.gyj-tour-popover .gyj-tour-skip-btn:focus-visible {
+  outline: 2px solid #3348ff;
+  outline-offset: 2px;
+}
+
+/* ============ 5. Welcome / closing cards ============ */
+
+.gyj-tour-popover--card.driver-popover {
+  max-width: 26rem;
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+}
+
+.gyj-tour-popover--card .driver-popover-title {
+  font-size: 1.25rem;
+}
+
+/* Belt and braces on top of the showProgress flag inversion */
+.gyj-tour-popover--card .driver-popover-progress-text {
+  display: none;
+}
+
+.gyj-tour-popover--card .driver-popover-footer {
+  justify-content: center;
+  gap: 0.625rem;
+}
+
+.gyj-tour-popover--card .gyj-tour-skip-btn {
+  margin-right: 0;
+}
+
+.gyj-tour-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background: #eef2ff;
+  color: #3348ff;
+  margin: 0 auto 0.75rem;
+}
+
+.gyj-tour-card-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.gyj-tour-kbd-hint {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.gyj-tour-kbd-hint kbd {
+  border: 1px solid #d1d5db;
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  padding: 0 0.3rem;
+  background: #f9fafb;
+  font-size: 0.6875rem;
+  color: #374151;
+}
+
+/* ============ 6. Stale re-offer modal ============ */
+/* Compound selectors (0,2,0) deliberately out-specify the single-class
+   .swal2-* globals in src/style.css. */
+
+.swal2-popup.gyj-tour-offer {
+  background: #ffffff;
+  color: #141e30;
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+  width: 26em;
+  box-shadow:
+    0 20px 25px -5px rgb(20 30 48 / 0.25),
+    0 8px 10px -6px rgb(20 30 48 / 0.2);
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-title {
+  color: #141e30;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-text {
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-actions {
+  gap: 0.75rem;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-confirm {
+  background-color: #3348ff;
+  color: #ffffff;
+  border: 1px solid #3348ff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-confirm:hover {
+  background-color: #2438cc;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-cancel {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.swal2-popup.gyj-tour-offer .gyj-tour-offer-cancel:hover {
+  background-color: #f3f4f6;
+}
+
+/* ============ 7. Reduced motion ============ */
+
+@media (prefers-reduced-motion: reduce) {
+  .gyj-tour-popover.driver-popover {
+    animation: none;
+  }
+
+  .gyj-tour-popover .gyj-tour-progress-fill {
+    transition: none;
+  }
 }

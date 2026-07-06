@@ -3,12 +3,23 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import '@/shared/tours/tour.css'
 import { get_request, create_request } from '@/stores/services/request_http'
-import { showConfirmationAlert } from '@/shared/confirmation_alert'
+import { showTourOfferAlert } from '@/shared/tours/tour_offer_alert'
+import { fireTourConfetti } from '@/shared/tours/confetti'
 import { getTourConfig } from '@/shared/tours'
 
 export const AUTO_START_DELAY_MS = 500
 
 const VALID_STATUSES = ['never', 'recent', 'stale']
+
+const CARD_CLASS = 'gyj-tour-popover gyj-tour-popover--card'
+
+// Inline heroicons (outline, 24px) for the framing cards. Raw SVG because
+// the popover DOM is managed by driver.js outside the Vue tree.
+const WELCOME_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9.36 17.35a.75.75 0 01-1.42 0l-.453-1.446a3.75 3.75 0 00-2.481-2.481L3.56 12.97a.75.75 0 010-1.42l1.446-.453a3.75 3.75 0 002.481-2.481L7.94 7.17a.75.75 0 011.42 0l.453 1.446a3.75 3.75 0 002.481 2.481l1.446.453a.75.75 0 010 1.42l-1.446.453a3.75 3.75 0 00-2.481 2.481zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>'
+
+const FINALE_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>'
 
 /**
  * Composable for the guided product tour (driver.js) of a module.
@@ -77,33 +88,79 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
     return null
   }
 
+  function isDesktopViewport() {
+    return typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : true
+  }
+
   /**
-   * Build the driver.js step list for the current role/viewport:
-   * - desktopOnly steps are dropped below the md breakpoint
-   * - steps without tab metadata are dropped when their target is not
-   *   visible in the DOM right now
-   * - steps with tab metadata are kept (their target renders after the
-   *   composable switches to that tab)
+   * Build the driver.js step list for the current role/viewport.
+   *
+   * Content steps: filtered exactly as before (desktopOnly below md,
+   * targets not visible right now unless tab metadata will render them),
+   * then decorated with a literal "Paso N de T" computed over content
+   * steps only — the framing cards must never shift the mandated counts.
+   * driver.js quirk: a per-step showProgress:false cannot override a
+   * global true (they are OR'ed), so the global flag stays false and
+   * content steps opt IN per step.
+   *
+   * Framing: an optional element-less welcome card is prepended and an
+   * optional finale (highlighting the help button) is appended. With
+   * zero content steps the tour does not run at all (fail-safe intact).
    */
   function buildSteps() {
     const config = getTourConfig(module)
     if (!config) return []
 
     const context = typeof getContext === 'function' ? getContext() : {}
-    const isDesktop =
-      typeof window.matchMedia === 'function'
-        ? window.matchMedia('(min-width: 768px)').matches
-        : true
+    const isDesktop = isDesktopViewport()
 
-    return config
+    const contentSteps = config
       .getSteps(getRole(), context)
       .filter((step) => !(step.desktopOnly && !isDesktop))
       .filter((step) => step.tab || resolveVisibleTarget(step.target))
-      .map((step) => ({
-        element: () => resolveVisibleTarget(step.target),
-        popover: step.popover,
-        tab: step.tab || null,
-      }))
+
+    if (!contentSteps.length) return []
+
+    const total = contentSteps.length
+    const steps = contentSteps.map((step, i) => ({
+      element: () => resolveVisibleTarget(step.target),
+      popover: {
+        ...step.popover,
+        showProgress: true,
+        progressText: `Paso ${i + 1} de ${total}`,
+      },
+      tab: step.tab || null,
+      data: { kind: 'content', index: i + 1, total },
+    }))
+
+    if (config.intro) {
+      steps.unshift({
+        // No `element` key: driver.js renders a centered modal-style card
+        popover: {
+          ...config.intro.popover,
+          showButtons: ['next', 'close'],
+          popoverClass: CARD_CLASS,
+        },
+        tab: config.intro.tab || null,
+        data: { kind: 'welcome' },
+      })
+    }
+
+    if (config.finale && resolveVisibleTarget(config.finale.target)) {
+      steps.push({
+        element: () => resolveVisibleTarget(config.finale.target),
+        popover: {
+          ...config.finale.popover,
+          popoverClass: `${CARD_CLASS} gyj-tour-popover--finale`,
+        },
+        tab: config.finale.tab || null,
+        data: { kind: 'finale' },
+      })
+    }
+
+    return steps
   }
 
   /**
@@ -132,9 +189,9 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
 
   /**
    * Register the completion POST at most once per tour run.  Called from
-   * every exit path (skip, close, overlay, "Finalizar") — driver.js only
-   * fires onDestroyed after the first highlight transition settles, so
-   * the explicit exit handlers must not rely on it alone.
+   * every exit path (skip, close, overlay, done) — driver.js only fires
+   * onDestroyed after the first highlight transition settles, so the
+   * explicit exit handlers must not rely on it alone.
    */
   function completeOnce() {
     if (completedThisRun) return
@@ -148,20 +205,86 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
   }
 
   /**
-   * driver.js has no built-in labeled skip control, so a text button is
-   * appended to every popover footer.
+   * True end of the tour ("Entendido" on the closing card, mouse or
+   * ArrowRight — driver.js dispatches onDoneClick instead of onNextClick
+   * on the last step). The only path that celebrates: skip/close/overlay
+   * routes never fire confetti.
    */
-  function renderSkipButton(popover) {
-    const skipButton = document.createElement('button')
-    skipButton.innerText = 'Omitir guía'
-    skipButton.className = 'gyj-tour-skip-btn'
-    skipButton.addEventListener('click', dismissTour)
-    popover.footerButtons.appendChild(skipButton)
+  function handleDoneClick() {
+    completeOnce()
+    if (driverObj) driverObj.destroy()
+    fireTourConfetti()
   }
 
   /**
-   * Backstop for exits driver.js initiates itself (overlay click,
-   * "Finalizar" past the last step); completeOnce() keeps it single-shot.
+   * Single global popover decorator (per-step onPopoverRender hooks would
+   * override it, so everything renders here based on the step's kind).
+   * driver.js sets state.activeStep before calling this hook.
+   */
+  function decoratePopover(popover, opts = {}) {
+    const config = getTourConfig(module)
+    const data = opts.state?.activeStep?.data || { kind: 'content' }
+
+    // 1. Eyebrow context label above the title (textContent: XSS-safe
+    //    even if a future module config ever carried dynamic text)
+    if (config?.eyebrow && popover.title) {
+      const eyebrow = document.createElement('span')
+      eyebrow.className = 'gyj-tour-eyebrow'
+      eyebrow.textContent = config.eyebrow
+      popover.title.insertAdjacentElement('beforebegin', eyebrow)
+    }
+
+    // 2. Circular icon on framing cards (innerHTML is safe here: the SVG
+    //    markup comes from the static module-level constants above)
+    if ((data.kind === 'welcome' || data.kind === 'finale') && popover.wrapper) {
+      const icon = document.createElement('span')
+      icon.className = 'gyj-tour-card-icon'
+      icon.setAttribute('aria-hidden', 'true')
+      icon.innerHTML = data.kind === 'welcome' ? WELCOME_ICON_SVG : FINALE_ICON_SVG
+      popover.wrapper.insertBefore(icon, popover.wrapper.firstChild)
+    }
+
+    // 3. Animated progress bar (content steps only)
+    if (data.kind === 'content' && data.total && popover.footer) {
+      const track = document.createElement('div')
+      track.className = 'gyj-tour-progress-track'
+      const fill = document.createElement('div')
+      fill.className = 'gyj-tour-progress-fill'
+      fill.style.width = `${((data.index - 1) / data.total) * 100}%`
+      track.appendChild(fill)
+      popover.footer.insertAdjacentElement('beforebegin', track)
+      window.requestAnimationFrame(() => {
+        fill.style.width = `${(data.index / data.total) * 100}%`
+      })
+    }
+
+    // 4. Keyboard hint (welcome card, desktop only)
+    if (data.kind === 'welcome' && isDesktopViewport() && popover.footer) {
+      const hint = document.createElement('div')
+      hint.className = 'gyj-tour-kbd-hint'
+      for (const key of ['←', '→']) {
+        const kbd = document.createElement('kbd')
+        kbd.textContent = key
+        hint.appendChild(kbd)
+      }
+      hint.appendChild(document.createTextNode(' para moverte por la guía'))
+      popover.footer.insertAdjacentElement('beforebegin', hint)
+    }
+
+    // 5. Skip button: "Ahora no" on the welcome card, "Omitir guía" on
+    //    content steps, none on the finale (redundant next to "Entendido")
+    if (data.kind !== 'finale' && popover.footerButtons) {
+      const skipButton = document.createElement('button')
+      skipButton.innerText = data.kind === 'welcome' ? 'Ahora no' : 'Omitir guía'
+      skipButton.className = 'gyj-tour-skip-btn'
+      skipButton.addEventListener('click', dismissTour)
+      popover.footerButtons.appendChild(skipButton)
+    }
+  }
+
+  /**
+   * Backstop for exits driver.js initiates itself (overlay click, Escape);
+   * completeOnce() keeps completion single-shot across all paths.
    */
   function handleDestroyed() {
     isTourActive.value = false
@@ -179,20 +302,23 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
 
     completedThisRun = false
     driverObj = driver({
-      showProgress: true,
-      progressText: 'Paso {{current}} de {{total}}',
+      showProgress: false, // content steps opt in per step (see buildSteps)
       nextBtnText: 'Siguiente',
       prevBtnText: 'Anterior',
       doneBtnText: 'Finalizar',
       allowClose: true,
-      overlayOpacity: 0.65,
-      stagePadding: 6,
+      overlayColor: '#141E30',
+      overlayOpacity: 0.7,
+      smoothScroll: true,
+      stagePadding: 8,
+      stageRadius: 12,
       popoverClass: 'gyj-tour-popover',
       steps: activeSteps,
       onNextClick: handleNextClick,
       onPrevClick: handlePrevClick,
       onCloseClick: dismissTour,
-      onPopoverRender: renderSkipButton,
+      onDoneClick: handleDoneClick,
+      onPopoverRender: decoratePopover,
       onDestroyed: handleDestroyed,
     })
     isTourActive.value = true
@@ -207,7 +333,7 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
   /**
    * Decide what to do after page load:
    * - 'never'  → auto-start after a short delay so first paint settles
-   * - 'stale'  → offer the tour again via confirmation modal; declining
+   * - 'stale'  → offer the tour again via the branded modal; declining
    *              also marks completion so the offer waits another cycle
    * - 'recent' / unknown → do nothing
    */
@@ -221,7 +347,7 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
     } else if (tourStatus.value === 'stale') {
       const config = getTourConfig(module)
       const message = config?.confirmMessage || '¿Quieres ver la guía del módulo?'
-      const confirmed = await showConfirmationAlert(message)
+      const confirmed = await showTourOfferAlert(message)
       if (confirmed) {
         startTour()
       } else {

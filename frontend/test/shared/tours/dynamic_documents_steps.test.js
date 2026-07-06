@@ -2,6 +2,9 @@ import {
   getTourSteps,
   MODULE_NAME,
   CONFIRM_MESSAGE,
+  EYEBROW_LABEL,
+  WELCOME_STEP,
+  FINAL_STEP,
 } from "@/shared/tours/dynamic_documents_steps";
 import { getTourConfig, tourRegistry } from "@/shared/tours";
 
@@ -84,6 +87,30 @@ describe("dynamic_documents_steps — step shape", () => {
   });
 });
 
+describe("welcome and closing cards", () => {
+  it("defines an element-less welcome card with its own CTA", () => {
+    expect(WELCOME_STEP.target).toBeNull();
+    expect(WELCOME_STEP.popover.title).toBe("Bienvenido a Archivos Jurídicos");
+    expect(WELCOME_STEP.popover.nextBtnText).toBe("Comenzar recorrido");
+    expect(WELCOME_STEP.desktopOnly).toBe(false);
+  });
+
+  it("closes the tour on the permanent help button", () => {
+    expect(FINAL_STEP.target).toBe('[data-tour="help-button"]');
+    expect(FINAL_STEP.popover.doneBtnText).toBe("Entendido");
+    expect(FINAL_STEP.popover.description).toContain(
+      "puedes repetir esta guía cuando quieras",
+    );
+    expect(FINAL_STEP.desktopOnly).toBe(false);
+  });
+
+  it("keeps the framing cards out of the content step lists", () => {
+    // The mandated 10/7 counts must never include welcome/finale.
+    expect(getTourSteps("lawyer")).not.toContain(WELCOME_STEP);
+    expect(getTourSteps("lawyer")).not.toContain(FINAL_STEP);
+  });
+});
+
 describe("tour registry", () => {
   it("resolves the dynamic_documents module config", () => {
     const config = getTourConfig(MODULE_NAME);
@@ -91,6 +118,9 @@ describe("tour registry", () => {
     expect(config).not.toBeNull();
     expect(config.getSteps).toBe(getTourSteps);
     expect(config.confirmMessage).toBe(CONFIRM_MESSAGE);
+    expect(config.eyebrow).toBe(EYEBROW_LABEL);
+    expect(config.intro).toBe(WELCOME_STEP);
+    expect(config.finale).toBe(FINAL_STEP);
   });
 
   it("returns null for unregistered modules", () => {
