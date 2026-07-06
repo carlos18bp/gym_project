@@ -77,4 +77,19 @@ describe("InfoTooltip", () => {
       wrapper.find('[data-testid="info-tooltip-icon"] svg').classes(),
     ).toContain("size-4");
   });
+
+  it.each([
+    ["top", "border-t-gray-900"],
+    ["bottom", "border-b-gray-900"],
+    ["left", "border-l-gray-900"],
+    ["right", "border-r-gray-900"],
+  ])("points the arrow toward the icon for position %s", async (position, expected) => {
+    const wrapper = mount(InfoTooltip, { props: { text: "Ayuda", position } });
+
+    await hover(wrapper);
+
+    const arrow = wrapper.find('[data-testid="info-tooltip-arrow"]');
+    expect(arrow.classes()).toContain(expected);
+    expect(arrow.text()).toBe("");
+  });
 });
