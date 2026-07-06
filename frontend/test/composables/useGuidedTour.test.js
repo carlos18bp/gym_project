@@ -234,6 +234,43 @@ describe("useGuidedTour — completion", () => {
     expect(mockCreateRequest).toHaveBeenCalledTimes(1);
     expect(tour.isTourActive.value).toBe(false);
   });
+
+  it("registers completion from the skip button without waiting for onDestroyed", async () => {
+    // driver.js only fires onDestroyed after the first highlight
+    // transition settles; an early skip must still POST completion.
+    mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const config = mockDriver.mock.calls[0][0];
+    const footerButtons = document.createElement("div");
+    config.onPopoverRender({ footerButtons });
+    const skipButton = footerButtons.querySelector("button");
+    expect(skipButton.innerText).toBe("Omitir guía");
+
+    skipButton.click();
+
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+    expect(mockDriverInstance.destroy).toHaveBeenCalledTimes(1);
+
+    // A late onDestroyed must not double-post
+    config.onDestroyed();
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers completion from the close (✕) button", async () => {
+    mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const config = mockDriver.mock.calls[0][0];
+    config.onCloseClick();
+
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+    expect(mockDriverInstance.destroy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("useGuidedTour — tab switching", () => {

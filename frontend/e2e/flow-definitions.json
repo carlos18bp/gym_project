@@ -714,6 +714,19 @@
       "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo por allow_shared_edit (activado por defecto), que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; el creador puede desactivarlo y copiar/previsualizar siempre está disponible",
       "expectedSpecs": 1
     },
+    "docs-guided-tour": {
+      "name": "Tour guiado del módulo Archivos Jurídicos",
+      "module": "documents",
+      "roles": [
+        "lawyer",
+        "client",
+        "basic",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Tour interactivo (driver.js) del dashboard de Archivos Jurídicos: auto-inicio en primera visita (status never), pasos diferenciados por rol (abogado 10 / cliente 7), cambio automático de pestañas, omitir/cerrar/finalizar registran completación (POST tour-progress/complete/), re-oferta vía modal SweetAlert2 a los 30 días (status stale) y re-lanzamiento manual con el botón '?' del header",
+      "expectedSpecs": 1
+    },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
       "module": "signatures",

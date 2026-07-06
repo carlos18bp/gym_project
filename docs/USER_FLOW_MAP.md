@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** April 10, 2026
-**Versión:** 1.9.2
+**Fecha:** July 6, 2026
+**Versión:** 1.9.4
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -1060,6 +1060,27 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### docs-guided-tour: Tour guiado del módulo Archivos Jurídicos
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (`docs-guided-tour-flow.spec.js`)
+- **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay con spotlight, popover con título/descripción en español, botones "Siguiente"/"Anterior"/"Omitir guía". Diferenciado por rol (abogado 10 pasos, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal de confirmación a los 30 días, y re-lanzamiento manual con el botón "?" del header. Si el usuario tiene firmas pendientes se agrega un paso final resaltando "Dcs. Por Firmar".
+
+**Pasos:**
+1. Usuario entra a `/dynamic_document_dashboard` por primera vez (status `never`)
+2. Tras cargar la página el tour inicia solo (~500ms): spotlight sobre las pestañas de navegación
+3. "Siguiente" recorre pestañas y botones ("Nueva Minuta", "Nuevo Documento", "Firma Electrónica", "Membrete Global"); el tour cambia de pestaña automáticamente cuando el elemento vive en otra tab
+4. Al finalizar o al hacer clic en "Omitir guía"/✕ se registra la completación (`POST /api/tour-progress/complete/`)
+5. En visitas posteriores (<30 días, status `recent`) el tour no se auto-inicia; el botón "?" lo relanza a demanda
+6. Pasados 30 días (status `stale`) aparece un modal "¿Quieres ver la guía del módulo de Archivos Jurídicos?"; rechazar también resetea el reloj de 30 días
+
+**Ramificaciones:**
+- ├── **Abogado/Admin:** 10 pasos (incluye Minutas, Dcs. Clientes, Nueva Minuta)
+- ├── **Cliente/Basic/Corporate:** 7 pasos (Carpetas, Mis Documentos, Por Firmar, Formalizados)
+- ├── **Móvil (<md):** pasos de pestañas individuales se omiten (viven en dropdown colapsado) — tour corto de 3 pasos
+- ├── **Con firmas pendientes:** paso final extra resaltando "Dcs. Por Firmar"
+- └── **Deep link (?tab=/?lawyerTab=):** el auto-inicio se suprime (el usuario llegó con un propósito)
+
+---
+
 ### sign-pending-documents: Documentos pendientes de firma
 - **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Por Firmar) | **E2E:** ✅
 - **Descripción:** Lista de documentos esperando firma del usuario
@@ -2059,7 +2080,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 11 | 11 | 0 | 0 |
-| Documents | 32 | 32 | 0 | 0 |
+| Documents | 33 | 33 | 0 | 0 |
 | Signatures | 12 | 12 | 0 | 0 |
 | Legal Requests | 8 | 8 | 0 | 0 |
 | Organizations | 16 | 16 | 0 | 0 |
@@ -2070,7 +2091,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Notifications | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **150** | **150** | **0** | **0** |
+| **Total** | **151** | **151** | **0** | **0** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
 >
@@ -2083,4 +2104,4 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 **Documento generado:** July 16, 2026
 **Versión:** 1.9.4
-**Estado:** 150/150 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz regenerada con `frontend/scripts/generate-coverage.js` (cobertura estática por tags `@flow:`) contra `flow-definitions.json` v1.9.3. Nota: el artefacto local `e2e-results/flow-coverage.json` del 07-07 con 153 flujos provenía de las definiciones de la rama `release-august-2026-c-v2` (PR #95: `admin-data-reassignment`, `docs-contract-execution`, `docs-guided-tour`) — esos 3 flujos llegarán a esta rama cuando mergee el PR.
+**Estado:** 151/151 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.9.4 (cobertura estática por tags `@flow:`). `docs-guided-tour` ya aterrizó en esta rama; los otros 2 flujos de PR #95 (`admin-data-reassignment`, `docs-contract-execution`) llegan en commits posteriores de la misma rama.

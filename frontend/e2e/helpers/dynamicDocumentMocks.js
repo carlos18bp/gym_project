@@ -110,6 +110,11 @@ export async function installDynamicDocumentApiMocks(
     documents = null,
     folders = null,
     pendingSignaturesCount = 0,
+    // Guided tour status: null keeps the generic `{}` fallback, which the
+    // useGuidedTour composable treats as "do nothing" — specs that don't
+    // care about the tour stay unaffected. Set 'never' | 'recent' | 'stale'
+    // to exercise the tour flows.
+    tourStatus = null,
   }
 ) {
   const user = buildMockUser({ id: userId, role, hasSignature });
@@ -180,6 +185,32 @@ export async function installDynamicDocumentApiMocks(
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ pending_count: pendingSignaturesCount }),
+      };
+    }
+
+    // Guided tour progress (query string is stripped by getApiPath)
+    if (apiPath === "tour-progress/" && tourStatus) {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          module_name: "dynamic_documents",
+          status: tourStatus,
+          completed_at:
+            tourStatus === "never" ? null : new Date().toISOString(),
+        }),
+      };
+    }
+
+    if (apiPath === "tour-progress/complete/") {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          module_name: "dynamic_documents",
+          status: "recent",
+          completed_at: new Date().toISOString(),
+        }),
       };
     }
 

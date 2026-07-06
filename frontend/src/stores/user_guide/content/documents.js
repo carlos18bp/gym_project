@@ -28,6 +28,46 @@ export const documentsContent = {
   `,
   sections: [
     {
+      id: 'guided-tour',
+      name: 'Guía interactiva del módulo',
+      description: 'Tour guiado paso a paso sobre la interfaz de Archivos Jurídicos',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>El módulo cuenta con un <strong>tour guiado interactivo</strong> que resalta cada elemento de la pantalla (pestañas y botones) con un foco visual y una explicación breve, para que aprendas a usarlo sin leer manuales.</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Primer ingreso:</strong> el tour inicia automáticamente al cargar la página.</li>
+          <li><strong>Contenido según tu rol:</strong> los abogados ven 10 pasos (minutas, documentos de clientes, firma, membrete); los clientes 7 pasos (carpetas, documentos, firmas).</li>
+          <li><strong>Navegación:</strong> usa "Siguiente" y "Anterior" para avanzar o retroceder; "Omitir guía" lo cierra en cualquier momento. El tour cambia de pestaña automáticamente cuando lo necesita.</li>
+          <li><strong>Repaso mensual:</strong> si pasaron más de 30 días desde la última vez, el sistema pregunta si quieres ver la guía de nuevo (nunca se fuerza).</li>
+          <li><strong>Acceso manual:</strong> el botón <strong>"?"</strong> en el encabezado del módulo relanza el tour cuando quieras.</li>
+        </ul>
+        <p class="mt-2">Además, junto a los botones principales hay <strong>iconos de información (ⓘ)</strong>: pasa el cursor sobre ellos para ver una descripción rápida sin ejecutar el tour completo.</p>
+      `,
+      steps: [
+        {
+          title: 'Inicia sesión y entra a Archivos Jurídicos',
+          description: 'En tu primer ingreso el tour arranca solo después de que carga la página'
+        },
+        {
+          title: 'Recorre los pasos con "Siguiente"',
+          description: 'Cada paso resalta una pestaña o botón y explica para qué sirve'
+        },
+        {
+          title: 'Finaliza u omite',
+          description: 'Al terminar (o al omitir) el sistema recuerda que ya viste la guía'
+        },
+        {
+          title: 'Relánzalo cuando lo necesites',
+          description: 'Haz clic en el botón "?" del encabezado para repetir el tour'
+        }
+      ],
+      tips: [
+        'Si tienes documentos pendientes de firma, el tour agrega un paso final que te lleva directo a esa pestaña',
+        'En el celular el tour es más corto: las pestañas se explican sobre el menú desplegable',
+        'Los iconos ⓘ quedan siempre disponibles como referencia rápida después del tour'
+      ]
+    },
+    {
       id: 'editor-toolbar-by-role',
       name: 'Botones del Editor según tu Rol',
       description: 'Qué ves en el editor TinyMCE y por qué',
