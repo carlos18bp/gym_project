@@ -1,13 +1,20 @@
 <template>
-  <div class="relative group inline-flex items-center">
+  <div
+    class="relative inline-flex items-center"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+    @focusin="isHovered = true"
+    @focusout="isHovered = false"
+  >
     <span class="inline-flex" data-testid="info-tooltip-icon">
       <InformationCircleIcon
-        :class="[iconClass, 'text-gray-400 group-hover:text-secondary cursor-help transition-colors duration-150']"
+        :class="[iconClass, isHovered ? 'text-secondary' : 'text-gray-400', 'cursor-help transition-colors duration-150']"
       />
     </span>
     <div
+      v-if="isHovered"
       :class="[
-        'absolute z-50 hidden group-hover:block px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg pointer-events-none w-max max-w-[16rem]',
+        'absolute z-50 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg pointer-events-none w-max max-w-[16rem]',
         positionClasses
       ]"
       data-testid="info-tooltip"
@@ -19,11 +26,13 @@
 </template>
 
 <script setup>
-// Reusable info-icon tooltip (CSS group-hover pattern shared with
-// DocumentForm's variable hints). Complements the guided tour as a
-// permanent quick reference next to key actions.
-import { computed } from "vue";
+// Reusable info-icon tooltip. The bubble is v-if-gated (not CSS-hidden)
+// so its text never sits in the DOM until hover — hidden tooltip copy
+// would otherwise collide with text-based selectors in the E2E suite.
+import { computed, ref } from "vue";
 import { InformationCircleIcon } from "@heroicons/vue/24/outline";
+
+const isHovered = ref(false);
 
 const props = defineProps({
   text: {
