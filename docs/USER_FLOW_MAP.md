@@ -1062,21 +1062,23 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### docs-guided-tour: Tour guiado del módulo Archivos Jurídicos
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (`docs-guided-tour-flow.spec.js`)
-- **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay con spotlight, popover con título/descripción en español, botones "Siguiente"/"Anterior"/"Omitir guía". Diferenciado por rol (abogado 10 pasos, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal de confirmación a los 30 días, y re-lanzamiento manual con el botón "?" del header. Si el usuario tiene firmas pendientes se agrega un paso final resaltando "Dcs. Por Firmar".
+- **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay tintado de marca con spotlight redondeado, popover con eyebrow "Guía · Archivos Jurídicos", barra de progreso animada + conteo "Paso X de Y", botones "Siguiente"/"Anterior"/"Omitir guía" y navegación por teclado (← →). Abre con una tarjeta de bienvenida ("Comenzar recorrido" / "Ahora no") y cierra resaltando el botón "?" del header ("Entendido"), con una breve celebración de confetti solo al completarlo. Diferenciado por rol (abogado 10 pasos de contenido, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal brandeado a los 30 días, re-lanzamiento manual con el botón "?" (que muestra un ping azul mientras la guía esté pendiente).
 
 **Pasos:**
-1. Usuario entra a `/dynamic_document_dashboard` por primera vez (status `never`)
-2. Tras cargar la página el tour inicia solo (~500ms): spotlight sobre las pestañas de navegación
-3. "Siguiente" recorre pestañas y botones ("Nueva Minuta", "Nuevo Documento", "Firma Electrónica", "Membrete Global"); el tour cambia de pestaña automáticamente cuando el elemento vive en otra tab
-4. Al finalizar o al hacer clic en "Omitir guía"/✕ se registra la completación (`POST /api/tour-progress/complete/`)
-5. En visitas posteriores (<30 días, status `recent`) el tour no se auto-inicia; el botón "?" lo relanza a demanda
-6. Pasados 30 días (status `stale`) aparece un modal "¿Quieres ver la guía del módulo de Archivos Jurídicos?"; rechazar también resetea el reloj de 30 días
+1. Usuario entra a `/dynamic_document_dashboard` por primera vez (status `never`); el botón "?" muestra un ping azul
+2. Tras cargar la página aparece la tarjeta de bienvenida centrada; "Comenzar recorrido" inicia (o "Ahora no" declina y registra la vista)
+3. "Siguiente" recorre pestañas y botones ("Nueva Minuta", "Nuevo Documento", "Firma Electrónica", "Membrete Global") con barra de progreso "Paso X de 10/7"; el tour cambia de pestaña automáticamente cuando el elemento vive en otra tab
+4. El último paso resalta el botón "?" del header; "Entendido" cierra con confetti y registra la completación (`POST /api/tour-progress/complete/`)
+5. Omitir ("Omitir guía"/✕/"Ahora no") también registra la completación, sin confetti; el ping del "?" desaparece
+6. En visitas posteriores (<30 días, status `recent`) el tour no se auto-inicia; el botón "?" lo relanza a demanda desde la bienvenida
+7. Pasados 30 días (status `stale`) aparece el modal brandeado "¿Quieres ver la guía del módulo de Archivos Jurídicos?" ("Ver la guía" / "Ahora no"); rechazar también resetea el reloj de 30 días
 
 **Ramificaciones:**
-- ├── **Abogado/Admin:** 10 pasos (incluye Minutas, Dcs. Clientes, Nueva Minuta)
-- ├── **Cliente/Basic/Corporate:** 7 pasos (Carpetas, Mis Documentos, Por Firmar, Formalizados)
-- ├── **Móvil (<md):** pasos de pestañas individuales se omiten (viven en dropdown colapsado) — tour corto de 3 pasos
-- ├── **Con firmas pendientes:** paso final extra resaltando "Dcs. Por Firmar"
+- ├── **Abogado/Admin:** 10 pasos de contenido (incluye Minutas, Dcs. Clientes, Nueva Minuta) + bienvenida y cierre
+- ├── **Cliente/Basic/Corporate:** 7 pasos de contenido (Carpetas, Mis Documentos, Por Firmar, Formalizados) + bienvenida y cierre
+- ├── **Móvil (<md):** pasos de pestañas individuales se omiten (viven en dropdown colapsado) — 3 pasos de contenido + bienvenida y cierre
+- ├── **Con firmas pendientes:** paso de contenido extra resaltando "Dcs. Por Firmar" antes del cierre
+- ├── **prefers-reduced-motion:** sin animaciones (pop-in, barra, ping, confetti)
 - └── **Deep link (?tab=/?lawyerTab=):** el auto-inicio se suprime (el usuario llegó con un propósito)
 
 ---
