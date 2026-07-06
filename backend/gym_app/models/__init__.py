@@ -1,6 +1,7 @@
 from .user import User, ActivityFeed, UserSignature
 from .process import Case, Stage, CaseFile, Process, StageAlert, RecentProcess
 from .notification import Notification
+from .tour_progress import TourProgress
 from .password_code import PasswordCode
 from .email_verification_code import EmailVerificationCode
 from .legal_request import LegalRequest, LegalRequestFiles, LegalRequestType, LegalDiscipline, LegalRequestResponse
@@ -26,6 +27,7 @@ from .service_tramite import (
 __all__ = [
     'User', 'Process', 'Stage', 'CaseFile', 'Case', 'StageAlert', 'ActivityFeed', 'UserSignature',
     'Notification',
+    'TourProgress',
     'LegalRequest', 'LegalRequestType', 'LegalDiscipline', 'LegalRequestFiles', 'LegalRequestResponse',
     'CorporateRequest', 'CorporateRequestType', 'CorporateRequestFiles', 'CorporateRequestResponse',
     'Organization', 'OrganizationInvitation', 'OrganizationMembership', 'OrganizationPost',

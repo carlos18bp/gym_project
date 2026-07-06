@@ -12,6 +12,7 @@ from .secop import (
     ProcessClassificationSerializer, SECOPAlertSerializer,
     SyncLogSerializer, SavedViewSerializer
 )
+from .tour_progress import TourProgressSerializer
 from .service_tramite import (
     ServiceSerializer,
     ServiceListSerializer,
@@ -34,6 +35,7 @@ __all__ = [
     'SECOPProcessListSerializer', 'SECOPProcessDetailSerializer',
     'ProcessClassificationSerializer', 'SECOPAlertSerializer',
     'SyncLogSerializer', 'SavedViewSerializer',
+    'TourProgressSerializer',
     'ServiceSerializer', 'ServiceListSerializer', 'ServiceStageSerializer', 'ServiceFieldSerializer',
     'ServiceRequestListSerializer', 'ServiceRequestDetailSerializer', 'ServiceRequestAnswerSerializer',
     'ServiceRequestFieldFileSerializer', 'ServiceRequestLawyerResponseSerializer',

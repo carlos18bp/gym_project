@@ -13,7 +13,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification, tour_progress
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
 from django.urls import path
@@ -318,6 +318,12 @@ notification_urls = [
     path('notifications/<int:pk>/delete/', notification.notification_delete, name='notification-delete'),
 ]
 
+# Guided tour progress URLs
+tour_progress_urls = [
+    path('tour-progress/', tour_progress.tour_progress_status, name='tour-progress-status'),
+    path('tour-progress/complete/', tour_progress.tour_progress_complete, name='tour-progress-complete'),
+]
+
 # Services and procedures module URLs
 service_tramite_urls = [
     # Catalog visibility
@@ -365,5 +371,6 @@ urlpatterns = (
     subscription_urls +
     secop_urls +
     service_tramite_urls +
-    notification_urls
+    notification_urls +
+    tour_progress_urls
 )
