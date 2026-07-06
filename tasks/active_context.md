@@ -19,24 +19,24 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-07-16, post quality-initiative)
+### Codebase Metrics (verified 2026-07-16 post quality-initiative, + Guided Tour deltas)
 
 | Metric | Count |
 |--------|-------|
-| Backend model files | 14 |
-| Backend model classes | 54 (53 models.Model subclasses + User via AbstractUser; UserManager excluded) |
-| Backend view files | 29 |
-| Backend serializer files | 12 |
-| Backend URL patterns | 194 |
-| Backend test files | 95 (3032 tests) |
+| Backend model files | 15 |
+| Backend model classes | 55 (54 models.Model subclasses + User via AbstractUser; UserManager excluded) |
+| Backend view files | 30 |
+| Backend serializer files | 13 |
+| Backend URL patterns | 196 |
+| Backend test files | 96 (3049 tests) |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 111 (117 → 111 after unused-component cleanup `9ec8737`) |
+| Frontend Vue components | 112 (117 → 111 after unused-component cleanup `9ec8737`, +1 `InfoTooltip`) |
 | Frontend view pages | 44 |
 | Frontend Pinia store files | 44 |
-| Frontend composables | 14 |
-| Frontend unit test files | 194 |
-| Frontend E2E spec files | 198 |
-| Frontend E2E flows (flow-definitions.json) | 150 — **150/150 covered (100%)** |
+| Frontend composables | 15 |
+| Frontend unit test files | 197 |
+| Frontend E2E spec files | 199 |
+| Frontend E2E flows (flow-definitions.json) | 151 — **151/151 covered (100%)** |
 
 ---
 
@@ -57,6 +57,12 @@ The application is **feature-complete** with all 18 major features implemented, 
   - **Unused frontend components removed** (`9ec8737`): components 117 → 111; 3 orphan unit test suites deleted.
   - **Quality gate false positives fixed** (`c054df1`): `pytest.raises` now counts as assertion; commands test area recognized (`scripts/quality/backend_analyzer.py`).
   - **Ops**: rotated logs gitignored (`6cba400`); deploy-and-check skill hardened + prod `DJANGO_SETTINGS_MODULE` fix synced from toolkit (`3da7668`, `b0d9c7b`); task-queue docs corrected celery→huey (`1a66b4f`).
+- **Guided Tour / Interactive Onboarding — Req #4 (2026-07-06, branch `release-august-2026-c-v2`)**:
+  - **Backend**: `TourProgress` model (`models/tour_progress.py`, migration `0067`, `unique_together user+module_name`, explicit `completed_at` refreshed per completion, `STALE_AFTER_DAYS = 30` + `is_stale` property — the 30-day rule lives on the backend clock). Endpoints `GET /api/tour-progress/?module=` → `never|recent|stale` and `POST /api/tour-progress/complete/` (`update_or_create`), both JWT + user-scoped. Registered in admin (Notifications section) and wiped by `delete_fake_data` (no create seeder — the empty state IS the correct demo state). 17 pytest tests.
+  - **Frontend core**: `driver.js ^1.6` (new dep). `shared/tours/` — `dynamic_documents_steps.js` (lawyer 10 / client 7 steps, Spanish copy, conditional pending-signatures closing step via `usePendingSignatures().hasPending`), `index.js` module registry (extensible to Procesos/Solicitudes), `tour.css` (brand-styled popover, plain CSS since driver.js renders into `<body>`). `useGuidedTour` composable: status fetch (fail-safe: empty/unknown response → no-op, which keeps the ~60 existing document E2E specs green with their `{}` mock fallback), auto-start on `never` (~500ms), SweetAlert2 re-offer on `stale` (declining also POSTs to reset the clock), tab switching via injected `setActiveTab` callback (driver.js global `onNextClick`/`onPrevClick` overrides + `nextTick` + rAF), visibility-aware dual desktop/mobile `data-tour` selectors (`offsetParent` check), `desktopOnly` steps dropped under md.
+  - **Gotcha (caught by E2E)**: driver.js only fires `onDestroyed` after the first highlight transition (~400ms) settles — an early "Omitir guía"/✕ click closed the tour without POSTing. Fix: `completeOnce()` (idempotent) called directly from the skip/close handlers, with `onDestroyed` as backstop.
+  - **Dashboard integration**: `data-tour` attrs on tabs nav + tab buttons + 4 action buttons (desktop AND mobile variants share values), "?" help button in `ModuleHeader` `#actions` slot (relaunch anytime), auto-trigger at the END of `onMounted` (after the pending-signatures redirect; suppressed on `?tab=`/`?lawyerTab=` deep links), new `InfoTooltip.vue` (group-hover pattern) beside the desktop action buttons.
+  - **Tests/docs**: 28 Jest (composable 16, steps config, InfoTooltip) + `docs-guided-tour-flow.spec.js` (6 E2E tests incl. tab auto-switch assertion, skip POST, help-button relaunch, stale modal, mobile short tour). Flow `docs-guided-tour` (P2) in `flow-definitions.json` v1.9.4 (150→151 flows) + `USER_FLOW_MAP.md` v1.9.4. User guide section `guided-tour` in `user_guide/content/documents.js` (all roles).
 
 - **Memory Bank refresh + E2E flow-map reconciliation (2026-07-04)**:
   - **Methodology refresh** (`/methodology-setup`): realigned drifted counts and stack versions across `architecture.md`, `technical.md`, `tasks_plan.md`, and this file to the verified codebase (model classes 55→54; backend tests →92; components →117; composables 11→14; routes 66→67; unit tests →177; E2E specs →195; Django 5.0.6→5.2.14, DRF →3.17.1, Vue →3.5, Vite →6.4.2, Playwright →1.60). Created the two missing Memory Bank dirs `docs/literature/` and `tasks/rfc/`.
@@ -183,7 +189,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Decision | Status | Context |
 |----------|--------|---------|
-| 12 planned features in `docs/next_requirements/` | 4 complete (#5 Notification Center, #6 Legal Files Alerts via signature_notification_service, #7 Process Alerts via process_alert_tasks + StageAlert, #12 In-Place Formalize); 8 awaiting prioritization | Remaining: Reassignment, minutas, preview, guided tour, Outlook auth, marketplace, optional signature, contract execution |
+| 12 planned features in `docs/next_requirements/` | 5 complete (#4 Guided Tour, #5 Notification Center, #6 Legal Files Alerts via signature_notification_service, #7 Process Alerts via process_alert_tasks + StageAlert, #12 In-Place Formalize; #8 Outlook Auth also shipped in Release Agosto 2026) | Remaining: Reassignment, minutas, preview, marketplace, optional signature, contract execution |
 | Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up and adapted for Windsurf |
 | Large file modularization | Under consideration | `user_guide.js` (143KB), `reports.py` (74KB) could be split |
 
