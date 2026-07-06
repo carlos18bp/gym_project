@@ -131,31 +131,42 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
   }
 
   /**
+   * Register the completion POST at most once per tour run.  Called from
+   * every exit path (skip, close, overlay, "Finalizar") — driver.js only
+   * fires onDestroyed after the first highlight transition settles, so
+   * the explicit exit handlers must not rely on it alone.
+   */
+  function completeOnce() {
+    if (completedThisRun) return
+    completedThisRun = true
+    markCompleted()
+  }
+
+  function dismissTour() {
+    completeOnce()
+    if (driverObj) driverObj.destroy()
+  }
+
+  /**
    * driver.js has no built-in labeled skip control, so a text button is
-   * appended to every popover footer.  Skipping destroys the tour, which
-   * routes through onDestroyed and marks it completed.
+   * appended to every popover footer.
    */
   function renderSkipButton(popover) {
     const skipButton = document.createElement('button')
     skipButton.innerText = 'Omitir guía'
     skipButton.className = 'gyj-tour-skip-btn'
-    skipButton.addEventListener('click', () => {
-      if (driverObj) driverObj.destroy()
-    })
+    skipButton.addEventListener('click', dismissTour)
     popover.footerButtons.appendChild(skipButton)
   }
 
   /**
-   * Fires on both "Finalizar" and any skip/close path, so completion is
-   * registered exactly once per run regardless of how the tour ended.
+   * Backstop for exits driver.js initiates itself (overlay click,
+   * "Finalizar" past the last step); completeOnce() keeps it single-shot.
    */
   function handleDestroyed() {
     isTourActive.value = false
     driverObj = null
-    if (!completedThisRun) {
-      completedThisRun = true
-      markCompleted()
-    }
+    completeOnce()
   }
 
   /**
@@ -180,6 +191,7 @@ export function useGuidedTour({ module, getRole, setActiveTab, getContext }) {
       steps: activeSteps,
       onNextClick: handleNextClick,
       onPrevClick: handlePrevClick,
+      onCloseClick: dismissTour,
       onPopoverRender: renderSkipButton,
       onDestroyed: handleDestroyed,
     })
