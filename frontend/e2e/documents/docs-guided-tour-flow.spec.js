@@ -7,13 +7,16 @@ import { DOCS_GUIDED_TOUR } from "../helpers/flow-tags.js";
  * E2E for docs-guided-tour (Req #4 — Tour Guiado / Onboarding Interactivo).
  *
  * Exercises the driver.js guided tour of the Archivos Jurídicos dashboard:
- * auto-start on first visit, tab auto-switching, skip, completion POST,
- * manual relaunch via the "?" help button and the 30-day stale re-offer.
+ * welcome card, tab auto-switching, per-content-step progress, skip paths,
+ * help-button finale with completion POST, manual relaunch via the "?"
+ * button (with its attention ping) and the 30-day stale re-offer.
  */
 
 const TOUR_POPOVER = ".driver-popover";
+const TITLE = ".driver-popover-title";
 const NEXT_BTN = ".driver-popover-next-btn";
 const PROGRESS = ".driver-popover-progress-text";
+const HELP_PING = '[data-testid="tour-help-ping"]';
 
 async function loginTo(page, { userId, role, tourStatus }) {
   await installDynamicDocumentApiMocks(page, {
@@ -42,17 +45,25 @@ function waitForCompletionPost(page) {
   );
 }
 
+async function passWelcomeCard(page) {
+  await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator(TITLE)).toHaveText("Bienvenido a Archivos Jurídicos");
+  await expect(page.locator(PROGRESS)).toBeHidden();
+  await expect(page.locator(NEXT_BTN)).toHaveText("Comenzar recorrido");
+  await page.locator(NEXT_BTN).click();
+}
+
 test(
   "lawyer first visit auto-starts the tour, switches tabs and posts completion",
   { tag: [...DOCS_GUIDED_TOUR, "@role:lawyer"] },
   async ({ page }) => {
     await loginTo(page, { userId: 9301, role: "lawyer", tourStatus: "never" });
 
-    // Auto-start after page load (composable delays ~500ms)
-    await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".driver-popover-title")).toHaveText(
-      "Pestañas de navegación",
-    );
+    // Attention ping while the guide is due
+    await expect(page.locator(HELP_PING)).toBeVisible({ timeout: 15_000 });
+
+    await passWelcomeCard(page);
+    await expect(page.locator(TITLE)).toHaveText("Pestañas de navegación");
     await expect(page.locator(PROGRESS)).toHaveText("Paso 1 de 10");
 
     // Advance to step 5 ("Nuevo Documento"), which lives in the
@@ -65,7 +76,7 @@ test(
     ];
     for (const title of stepTitles) {
       await page.locator(NEXT_BTN).click();
-      await expect(page.locator(".driver-popover-title")).toHaveText(title);
+      await expect(page.locator(TITLE)).toHaveText(title);
     }
     // The highlighted element is the desktop "Nuevo Documento" button,
     // which only renders while the my-documents tab is active.
@@ -73,18 +84,29 @@ test(
       page.locator('[data-tour="btn-new-document"].driver-active-element'),
     ).toBeVisible();
 
-    // Finish the remaining steps (assert progress between clicks so each
-    // async tab switch settles); the last button reads "Finalizar".
+    // Finish the remaining content steps (assert progress between clicks
+    // so each async tab switch settles).
     for (let step = 6; step <= 10; step++) {
       await page.locator(NEXT_BTN).click();
       await expect(page.locator(PROGRESS)).toHaveText(`Paso ${step} de 10`);
     }
-    await expect(page.locator(NEXT_BTN)).toHaveText("Finalizar");
+
+    // Functional finale: the tour ends on the "?" help button
+    await page.locator(NEXT_BTN).click();
+    await expect(page.locator(TITLE)).toHaveText("Hasta aquí el recorrido");
+    await expect(
+      page.locator('[data-testid="tour-help-button"].driver-active-element'),
+    ).toBeVisible();
+    await expect(page.locator(PROGRESS)).toBeHidden();
+    await expect(page.locator(NEXT_BTN)).toHaveText("Entendido");
 
     const completionPost = waitForCompletionPost(page);
     await page.locator(NEXT_BTN).click();
     await completionPost;
     await expect(page.locator(TOUR_POPOVER)).toHaveCount(0);
+
+    // Completion clears the attention ping
+    await expect(page.locator(HELP_PING)).toHaveCount(0);
   },
 );
 
@@ -94,10 +116,29 @@ test(
   async ({ page }) => {
     await loginTo(page, { userId: 9302, role: "lawyer", tourStatus: "never" });
 
-    await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
+    await passWelcomeCard(page);
+    await expect(page.locator(PROGRESS)).toHaveText("Paso 1 de 10");
 
     const completionPost = waitForCompletionPost(page);
     await page.getByRole("button", { name: "Omitir guía" }).click();
+    await completionPost;
+    await expect(page.locator(TOUR_POPOVER)).toHaveCount(0);
+  },
+);
+
+test(
+  "declining the welcome card with Ahora no registers completion",
+  { tag: [...DOCS_GUIDED_TOUR, "@role:lawyer"] },
+  async ({ page }) => {
+    await loginTo(page, { userId: 9307, role: "lawyer", tourStatus: "never" });
+
+    await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(TITLE)).toHaveText(
+      "Bienvenido a Archivos Jurídicos",
+    );
+
+    const completionPost = waitForCompletionPost(page);
+    await page.getByRole("button", { name: "Ahora no" }).click();
     await completionPost;
     await expect(page.locator(TOUR_POPOVER)).toHaveCount(0);
   },
@@ -115,9 +156,14 @@ test(
     // Give the auto-start window time to (not) fire
     await page.waitForTimeout(1500);
     await expect(page.locator(TOUR_POPOVER)).toHaveCount(0);
+    // No attention ping when the guide was completed recently
+    await expect(page.locator(HELP_PING)).toHaveCount(0);
 
     await page.locator('[data-testid="tour-help-button"]').click();
     await expect(page.locator(TOUR_POPOVER)).toBeVisible();
+    await expect(page.locator(TITLE)).toHaveText(
+      "Bienvenido a Archivos Jurídicos",
+    );
   },
 );
 
@@ -132,9 +178,13 @@ test(
     await expect(modal).toContainText(
       "¿Quieres ver la guía del módulo de Archivos Jurídicos?",
     );
+    await expect(page.locator(".swal2-confirm")).toHaveText("Ver la guía");
 
     await page.locator(".swal2-confirm").click();
     await expect(page.locator(TOUR_POPOVER)).toBeVisible();
+    await expect(page.locator(TITLE)).toHaveText(
+      "Bienvenido a Archivos Jurídicos",
+    );
   },
 );
 
@@ -144,14 +194,17 @@ test(
   async ({ page }) => {
     await loginTo(page, { userId: 9305, role: "client", tourStatus: "never" });
 
-    await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
+    await passWelcomeCard(page);
     await expect(page.locator(PROGRESS)).toHaveText("Paso 1 de 7");
 
     for (let step = 2; step <= 7; step++) {
       await page.locator(NEXT_BTN).click();
       await expect(page.locator(PROGRESS)).toHaveText(`Paso ${step} de 7`);
     }
-    await expect(page.locator(NEXT_BTN)).toHaveText("Finalizar");
+
+    await page.locator(NEXT_BTN).click();
+    await expect(page.locator(TITLE)).toHaveText("Hasta aquí el recorrido");
+    await expect(page.locator(NEXT_BTN)).toHaveText("Entendido");
 
     const completionPost = waitForCompletionPost(page);
     await page.locator(NEXT_BTN).click();
@@ -167,9 +220,23 @@ test(
     await page.setViewportSize({ width: 375, height: 812 });
     await loginTo(page, { userId: 9306, role: "client", tourStatus: "never" });
 
-    await expect(page.locator(TOUR_POPOVER)).toBeVisible({ timeout: 15_000 });
+    await passWelcomeCard(page);
     // Individual tab steps are desktop-only: tabs overview + Nuevo
     // Documento + Firma Electrónica remain.
     await expect(page.locator(PROGRESS)).toHaveText("Paso 1 de 3");
+
+    for (let step = 2; step <= 3; step++) {
+      await page.locator(NEXT_BTN).click();
+      await expect(page.locator(PROGRESS)).toHaveText(`Paso ${step} de 3`);
+    }
+
+    // The help-button finale also works on mobile (hero header is
+    // always rendered).
+    await page.locator(NEXT_BTN).click();
+    await expect(page.locator(TITLE)).toHaveText("Hasta aquí el recorrido");
+    await expect(
+      page.locator('[data-testid="tour-help-button"].driver-active-element'),
+    ).toBeVisible();
+    await expect(page.locator(NEXT_BTN)).toHaveText("Entendido");
   },
 );

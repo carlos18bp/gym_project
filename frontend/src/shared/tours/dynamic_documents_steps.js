@@ -16,6 +16,39 @@ export const MODULE_NAME = 'dynamic_documents';
 export const CONFIRM_MESSAGE =
   '¿Quieres ver la guía del módulo de Archivos Jurídicos?';
 
+// Small-caps context label rendered above every popover title.
+export const EYEBROW_LABEL = 'Guía · Archivos Jurídicos';
+
+// Element-less opening card: driver.js renders steps without a target as
+// a centered modal-style popover. Not counted in the "Paso X de Y" math.
+export const WELCOME_STEP = {
+  target: null,
+  tab: null,
+  desktopOnly: false,
+  popover: {
+    title: 'Bienvenido a Archivos Jurídicos',
+    description:
+      'En este breve recorrido conocerás las secciones del módulo y las acciones principales para crear, organizar y firmar tus documentos. Puedes salir en cualquier momento.',
+    nextBtnText: 'Comenzar recorrido',
+  },
+};
+
+// Functional closing card: highlights the permanent "?" help button so
+// the tour ends by teaching the user how to bring it back.
+export const FINAL_STEP = {
+  target: '[data-tour="help-button"]',
+  tab: null,
+  desktopOnly: false,
+  popover: {
+    title: 'Hasta aquí el recorrido',
+    description:
+      'Si más adelante necesitas repasar estos pasos, puedes repetir esta guía cuando quieras desde este botón de ayuda.',
+    doneBtnText: 'Entendido',
+    side: 'bottom',
+    align: 'end',
+  },
+};
+
 const LAWYER_STEPS = [
   {
     target: '[data-tour="tabs-nav"]',

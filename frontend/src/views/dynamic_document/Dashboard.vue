@@ -3,15 +3,27 @@
     <ModuleHeader title="Documentos Dinámicos">
       <template #menu-button><slot></slot></template>
       <template #actions>
-        <!-- Permanent help button: relaunches the guided tour on demand -->
+        <!-- Permanent help button: relaunches the guided tour on demand.
+             The ping dot invites first-time (or 30-day stale) users and
+             disappears once the tour is completed or declined. -->
         <button
           @click="startTour"
-          class="inline-flex items-center justify-center size-10 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors duration-200"
+          class="relative inline-flex items-center justify-center size-10 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors duration-200"
           title="Ver guía del módulo"
           data-testid="tour-help-button"
+          data-tour="help-button"
           type="button"
         >
           <QuestionMarkCircleIcon class="size-6" />
+          <span
+            v-if="isTourDue"
+            data-testid="tour-help-ping"
+            aria-hidden="true"
+            class="absolute -top-0.5 -right-0.5 flex size-3"
+          >
+            <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+            <span class="relative inline-flex size-3 rounded-full bg-secondary ring-2 ring-white"></span>
+          </span>
         </button>
       </template>
     </ModuleHeader>
@@ -783,7 +795,7 @@ const isLawyerLike = computed(() => userStore.isLawyerLike);
 // Guided tour (driver.js). The tab-switch callback is injected so the
 // composable can drive whichever tab set belongs to the current role,
 // mirroring how the pending-signatures redirect sets these refs directly.
-const { startTour, maybeAutoStartTour } = useGuidedTour({
+const { startTour, maybeAutoStartTour, tourStatus } = useGuidedTour({
   module: TOUR_MODULE,
   getRole: () => (isLawyerLike.value ? 'lawyer' : userRole.value),
   setActiveTab: (name) => {
@@ -795,6 +807,13 @@ const { startTour, maybeAutoStartTour } = useGuidedTour({
   },
   getContext: () => ({ hasPendingSignatures: hasPending.value }),
 });
+
+// Attention dot on the help button while the guide is due (first visit
+// or stale 30-day re-offer); markCompleted() flips status to 'recent'
+// on every exit path, and the null fail-safe never pings.
+const isTourDue = computed(
+  () => tourStatus.value === 'never' || tourStatus.value === 'stale'
+);
 
 /**
  * Handles section updates from the navigation.

@@ -1,4 +1,5 @@
 import { useGuidedTour, AUTO_START_DELAY_MS } from "@/composables/useGuidedTour";
+import { EYEBROW_LABEL } from "@/shared/tours/dynamic_documents_steps";
 
 const mockGetRequest = jest.fn();
 const mockCreateRequest = jest.fn();
@@ -8,11 +9,18 @@ jest.mock("@/stores/services/request_http", () => ({
   create_request: (...args) => mockCreateRequest(...args),
 }));
 
-const mockShowConfirmationAlert = jest.fn();
-jest.mock("@/shared/confirmation_alert", () => ({
+const mockShowTourOfferAlert = jest.fn();
+jest.mock("@/shared/tours/tour_offer_alert", () => ({
   __esModule: true,
-  showConfirmationAlert: (...args) => mockShowConfirmationAlert(...args),
+  showTourOfferAlert: (...args) => mockShowTourOfferAlert(...args),
 }));
+
+jest.mock("@/shared/tours/confetti", () => ({
+  __esModule: true,
+  fireTourConfetti: jest.fn(),
+  TOUR_CONFETTI_COLORS: [],
+}));
+import { fireTourConfetti } from "@/shared/tours/confetti";
 
 const mockDriverInstance = {
   drive: jest.fn(),
@@ -39,12 +47,36 @@ const ALL_TARGETS = [
   "btn-new-document",
   "btn-electronic-signature",
   "btn-global-letterhead",
+  "help-button",
 ];
 
 function mountTourTargets() {
   document.body.innerHTML = ALL_TARGETS.map(
     (target) => `<button data-tour="${target}"></button>`,
   ).join("");
+}
+
+/** Minimal but structurally-complete PopoverDOM for the decorator. */
+function makePopoverDom() {
+  const wrapper = document.createElement("div");
+  const title = document.createElement("header");
+  const description = document.createElement("div");
+  const footer = document.createElement("footer");
+  const footerButtons = document.createElement("span");
+  const progress = document.createElement("span");
+  footer.appendChild(progress);
+  footer.appendChild(footerButtons);
+  wrapper.append(title, description, footer);
+  document.body.appendChild(wrapper);
+  return { wrapper, title, description, footer, footerButtons, progress };
+}
+
+function decorate(config, kind, extra = {}) {
+  const popover = makePopoverDom();
+  config.onPopoverRender(popover, {
+    state: { activeStep: { data: { kind, ...extra } } },
+  });
+  return popover;
 }
 
 function makeTour(overrides = {}) {
@@ -137,7 +169,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
 
     await tour.maybeAutoStartTour();
 
-    expect(mockShowConfirmationAlert).not.toHaveBeenCalled();
+    expect(mockShowTourOfferAlert).not.toHaveBeenCalled();
     expect(mockDriverInstance.drive).not.toHaveBeenCalled();
   });
 
@@ -148,19 +180,19 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
 
     await tour.maybeAutoStartTour();
 
-    expect(mockShowConfirmationAlert).not.toHaveBeenCalled();
+    expect(mockShowTourOfferAlert).not.toHaveBeenCalled();
     expect(mockDriverInstance.drive).not.toHaveBeenCalled();
   });
 
   it("offers the tour and starts it on confirm when status is stale", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "stale" } });
-    mockShowConfirmationAlert.mockResolvedValue(true);
+    mockShowTourOfferAlert.mockResolvedValue(true);
     mountTourTargets();
     const { tour } = makeTour();
 
     await tour.maybeAutoStartTour();
 
-    expect(mockShowConfirmationAlert).toHaveBeenCalledWith(
+    expect(mockShowTourOfferAlert).toHaveBeenCalledWith(
       "¿Quieres ver la guía del módulo de Archivos Jurídicos?",
     );
     expect(mockDriverInstance.drive).toHaveBeenCalledTimes(1);
@@ -168,7 +200,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
 
   it("marks completion without starting when the stale offer is declined", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "stale" } });
-    mockShowConfirmationAlert.mockResolvedValue(false);
+    mockShowTourOfferAlert.mockResolvedValue(false);
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -183,8 +215,9 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
 });
 
 describe("useGuidedTour — startTour", () => {
-  it("does not start when no step target is available", async () => {
-    // Client steps carry no tab metadata, so an empty DOM filters all out.
+  it("does not start when no content target is available", async () => {
+    // Client steps carry no tab metadata, so an empty DOM filters all
+    // content out — the framing cards must never show alone.
     const { tour } = makeTour({ getRole: () => "client" });
 
     await tour.startTour();
@@ -193,7 +226,23 @@ describe("useGuidedTour — startTour", () => {
     expect(tour.isTourActive.value).toBe(false);
   });
 
-  it("drops desktop-only steps on mobile viewports", async () => {
+  it("frames the tour with a welcome card and a help-button finale", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+
+    await tour.startTour();
+
+    const config = mockDriver.mock.calls[0][0];
+    // Lawyer: welcome + 10 content + finale
+    expect(config.steps).toHaveLength(12);
+    expect(config.steps[0].data.kind).toBe("welcome");
+    expect(config.steps[0].element).toBeUndefined();
+    expect(config.steps[0].popover.nextBtnText).toBe("Comenzar recorrido");
+    expect(config.steps[11].data.kind).toBe("finale");
+    expect(config.steps[11].popover.doneBtnText).toBe("Entendido");
+  });
+
+  it("drops desktop-only steps on mobile viewports but keeps the framing cards", async () => {
     window.matchMedia = jest.fn().mockReturnValue({ matches: false });
     mountTourTargets();
     const { tour } = makeTour({ getRole: () => "client" });
@@ -201,11 +250,29 @@ describe("useGuidedTour — startTour", () => {
     await tour.startTour();
 
     const config = mockDriver.mock.calls[0][0];
-    // Client tour on mobile: tabs-nav + Nuevo Documento + Firma Electrónica.
-    expect(config.steps).toHaveLength(3);
+    // Client on mobile: welcome + (tabs-nav, Nuevo Documento, Firma) + finale
+    expect(config.steps).toHaveLength(5);
+    expect(config.steps[0].data.kind).toBe("welcome");
+    expect(config.steps[4].data.kind).toBe("finale");
   });
 
-  it("configures Spanish button texts and progress", async () => {
+  it("shows literal per-content-step progress over content steps only", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+
+    await tour.startTour();
+
+    const config = mockDriver.mock.calls[0][0];
+    // driver.js quirk: per-step showProgress cannot turn OFF a global
+    // true (they are OR'ed) — so the global is false and content opts in.
+    expect(config.showProgress).toBe(false);
+    expect(config.steps[1].popover.showProgress).toBe(true);
+    expect(config.steps[1].popover.progressText).toBe("Paso 1 de 10");
+    expect(config.steps[10].popover.progressText).toBe("Paso 10 de 10");
+    expect(config.steps[0].popover.showProgress).toBeUndefined();
+  });
+
+  it("configures Spanish button texts and the branded overlay", async () => {
     mountTourTargets();
     const { tour } = makeTour();
 
@@ -215,8 +282,109 @@ describe("useGuidedTour — startTour", () => {
     expect(config.nextBtnText).toBe("Siguiente");
     expect(config.prevBtnText).toBe("Anterior");
     expect(config.doneBtnText).toBe("Finalizar");
-    expect(config.progressText).toBe("Paso {{current}} de {{total}}");
+    expect(config.overlayColor).toBe("#141E30");
+    expect(config.smoothScroll).toBe(true);
+    expect(config.stageRadius).toBe(12);
     expect(tour.isTourActive.value).toBe(true);
+  });
+});
+
+describe("useGuidedTour — popover decoration", () => {
+  it("labels every popover with the module eyebrow", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], "content", {
+      index: 1,
+      total: 10,
+    });
+
+    const eyebrow = popover.title.previousElementSibling;
+    expect(eyebrow.className).toBe("gyj-tour-eyebrow");
+    expect(eyebrow.textContent).toBe(EYEBROW_LABEL);
+  });
+
+  it("inserts an animated progress bar on content steps", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], "content", {
+      index: 1,
+      total: 10,
+    });
+
+    const track = popover.footer.previousElementSibling;
+    expect(track.className).toBe("gyj-tour-progress-track");
+    // rAF is synchronous in this suite, so the fill already animated
+    // from 0% to the current step's 10%.
+    expect(track.firstChild.style.width).toBe("10%");
+  });
+
+  it("does not render a progress bar on the framing cards", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], "welcome");
+
+    expect(popover.wrapper.querySelector(".gyj-tour-progress-track")).toBeNull();
+  });
+
+  it("renders a circular icon on the framing cards", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], "welcome");
+
+    expect(popover.wrapper.firstChild.className).toBe("gyj-tour-card-icon");
+    expect(popover.wrapper.firstChild.querySelector("svg")).not.toBeNull();
+  });
+
+  it("shows the keyboard hint on the welcome card only on desktop", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+    const config = mockDriver.mock.calls[0][0];
+
+    const desktopPopover = decorate(config, "welcome");
+    expect(
+      desktopPopover.wrapper.querySelector(".gyj-tour-kbd-hint"),
+    ).not.toBeNull();
+
+    window.matchMedia = jest.fn().mockReturnValue({ matches: false });
+    const mobilePopover = decorate(config, "welcome");
+    expect(mobilePopover.wrapper.querySelector(".gyj-tour-kbd-hint")).toBeNull();
+  });
+
+  it.each([
+    ["welcome", "Ahora no"],
+    ["content", "Omitir guía"],
+  ])("labels the skip button on %s steps as '%s'", async (kind, label) => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], kind, {
+      index: 1,
+      total: 10,
+    });
+
+    expect(popover.footerButtons.querySelector(".gyj-tour-skip-btn").innerText).toBe(
+      label,
+    );
+  });
+
+  it("renders no skip button on the finale card", async () => {
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const popover = decorate(mockDriver.mock.calls[0][0], "finale");
+
+    expect(popover.footerButtons.querySelector(".gyj-tour-skip-btn")).toBeNull();
   });
 });
 
@@ -244,22 +412,21 @@ describe("useGuidedTour — completion", () => {
     await tour.startTour();
 
     const config = mockDriver.mock.calls[0][0];
-    const footerButtons = document.createElement("div");
-    config.onPopoverRender({ footerButtons });
-    const skipButton = footerButtons.querySelector("button");
-    expect(skipButton.innerText).toBe("Omitir guía");
+    const popover = decorate(config, "content", { index: 1, total: 10 });
+    const skipButton = popover.footerButtons.querySelector(".gyj-tour-skip-btn");
 
     skipButton.click();
 
     expect(mockCreateRequest).toHaveBeenCalledTimes(1);
     expect(mockDriverInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(fireTourConfetti).not.toHaveBeenCalled();
 
     // A late onDestroyed must not double-post
     config.onDestroyed();
     expect(mockCreateRequest).toHaveBeenCalledTimes(1);
   });
 
-  it("registers completion from the close (✕) button", async () => {
+  it("registers completion from the close (✕) button without confetti", async () => {
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -270,6 +437,26 @@ describe("useGuidedTour — completion", () => {
 
     expect(mockCreateRequest).toHaveBeenCalledTimes(1);
     expect(mockDriverInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(fireTourConfetti).not.toHaveBeenCalled();
+  });
+
+  it("celebrates with confetti only on the real end of the tour", async () => {
+    mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
+    mountTourTargets();
+    const { tour } = makeTour();
+    await tour.startTour();
+
+    const config = mockDriver.mock.calls[0][0];
+    config.onDoneClick();
+
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+    expect(mockDriverInstance.destroy).toHaveBeenCalledTimes(1);
+    expect(fireTourConfetti).toHaveBeenCalledTimes(1);
+
+    // A late onDestroyed must not double-post nor re-fire
+    config.onDestroyed();
+    expect(mockCreateRequest).toHaveBeenCalledTimes(1);
+    expect(fireTourConfetti).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -280,9 +467,9 @@ describe("useGuidedTour — tab switching", () => {
     await tour.startTour();
 
     const config = mockDriver.mock.calls[0][0];
-    // Lawyer step index 2 is "Nueva Minuta", which requires the
-    // legal-documents tab; moving from index 1 must switch first.
-    mockDriverInstance.getActiveIndex.mockReturnValue(1);
+    // With the welcome card at index 0, "Nueva Minuta" (requires the
+    // legal-documents tab) sits at index 3; moving from 2 must switch.
+    mockDriverInstance.getActiveIndex.mockReturnValue(2);
     config.onNextClick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -299,7 +486,8 @@ describe("useGuidedTour — tab switching", () => {
     await tour.startTour();
 
     const config = mockDriver.mock.calls[0][0];
-    // Moving from index 1 back to index 0 (tabs overview, no tab).
+    // Moving from the first content step back to the welcome card —
+    // neither carries tab metadata.
     mockDriverInstance.getActiveIndex.mockReturnValue(1);
     config.onPrevClick();
     await new Promise((resolve) => setTimeout(resolve, 0));
