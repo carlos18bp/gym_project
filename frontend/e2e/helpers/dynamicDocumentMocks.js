@@ -52,6 +52,8 @@ export function buildMockDocument({
   summary_subscription_date = null,
   summary_start_date = null,
   summary_end_date = null,
+  summary_payment_installments = null,
+  payments_summary = null,
 } = {}) {
   const nowIso = new Date().toISOString();
 
@@ -79,6 +81,71 @@ export function buildMockDocument({
     summary_subscription_date,
     summary_start_date,
     summary_end_date,
+    summary_payment_installments,
+    payments_summary,
+  };
+}
+
+/**
+ * Build the payments payload the backend list endpoint returns, from a
+ * mutable in-memory plan ({documentId, totalInstallments, records}).
+ * Mirrors the backend sequential rules so specs exercise real flows.
+ */
+function buildPaymentsPayload(plan, role) {
+  const byNumber = new Map(plan.records.map((r) => [r.installment_number, r]));
+  let acceptedCount = 0;
+  let inReview = false;
+  let nextUploadable = null;
+  let totalAmount = null;
+
+  for (let n = 1; n <= plan.totalInstallments; n++) {
+    const record = byNumber.get(n);
+    if (record && record.status === "accepted") {
+      acceptedCount++;
+      if (record.amount != null) {
+        totalAmount = (totalAmount || 0) + Number(record.amount);
+      }
+      continue;
+    }
+    if (record && record.status === "uploaded") {
+      inReview = true;
+    } else {
+      nextUploadable = n;
+    }
+    break;
+  }
+
+  const slots = [];
+  for (let n = 1; n <= plan.totalInstallments; n++) {
+    const record = byNumber.get(n) || null;
+    slots.push({
+      installment_number: n,
+      status: record ? record.status : "pending",
+      record: record
+        ? {
+            id: record.id,
+            amount: record.amount ?? null,
+            notes: record.notes ?? "",
+            original_name: record.original_name ?? `cuenta_cobro_${n}.pdf`,
+            rejection_reason: record.rejection_reason ?? null,
+            uploaded_at: record.uploaded_at ?? new Date().toISOString(),
+            uploaded_by_name: record.uploaded_by_name ?? "E2E User",
+          }
+        : null,
+    });
+  }
+
+  return {
+    document_id: plan.documentId,
+    configured: true,
+    total_installments: plan.totalInstallments,
+    accepted_count: acceptedCount,
+    total_amount_accepted: totalAmount != null ? String(totalAmount) : null,
+    in_review: inReview,
+    next_uploadable: nextUploadable,
+    can_review: role === "lawyer",
+    can_upload: nextUploadable != null,
+    slots,
   };
 }
 
@@ -115,6 +182,11 @@ export async function installDynamicDocumentApiMocks(
     // care about the tour stay unaffected. Set 'never' | 'recent' | 'stale'
     // to exercise the tour flows.
     tourStatus = null,
+    // Contract-execution plan: null disables the payment endpoints. Shape:
+    // { documentId, totalInstallments, records: [{installment_number,
+    //   status, amount?, notes?, rejection_reason?, ...}] } — the object is
+    // MUTATED by upload/accept/reject so multi-step specs see fresh state.
+    paymentPlan = null,
   }
 ) {
   const user = buildMockUser({ id: userId, role, hasSignature });
@@ -212,6 +284,75 @@ export async function installDynamicDocumentApiMocks(
           completed_at: new Date().toISOString(),
         }),
       };
+    }
+
+    // Contract execution (cuentas de cobro) — stateful in-memory plan
+    if (paymentPlan) {
+      const base = `dynamic-documents/${paymentPlan.documentId}/payment-records/`;
+      const method = route.request().method();
+      const json = (payload, status = 200) => ({
+        status,
+        contentType: "application/json",
+        body: JSON.stringify(payload),
+      });
+      // Normalize ids once so accept/reject can address records
+      paymentPlan.records.forEach((record) => {
+        if (record.id == null) record.id = 300 + record.installment_number;
+      });
+
+      if (apiPath === base && method === "GET") {
+        return json(buildPaymentsPayload(paymentPlan, role));
+      }
+
+      if (apiPath === `${base}upload/` && method === "POST") {
+        const current = buildPaymentsPayload(paymentPlan, role);
+        if (current.next_uploadable == null) {
+          return json(
+            { detail: "Hay una cuenta de cobro en revisión; espera la decisión del abogado." },
+            409
+          );
+        }
+        const slotNumber = current.next_uploadable;
+        const existing = paymentPlan.records.find(
+          (record) => record.installment_number === slotNumber
+        );
+        if (existing) {
+          existing.status = "uploaded";
+          existing.uploaded_at = new Date().toISOString();
+        } else {
+          paymentPlan.records.push({
+            id: 300 + slotNumber,
+            installment_number: slotNumber,
+            status: "uploaded",
+          });
+        }
+        return json(buildPaymentsPayload(paymentPlan, role), 201);
+      }
+
+      if (apiPath.startsWith(base) && method === "POST") {
+        const [recordIdRaw, action] = apiPath.slice(base.length).split("/");
+        const record = paymentPlan.records.find(
+          (candidate) => candidate.id === Number(recordIdRaw)
+        );
+        if (record && action === "accept") {
+          record.status = "accepted";
+          return json(buildPaymentsPayload(paymentPlan, role));
+        }
+        if (record && action === "reject") {
+          const body = route.request().postDataJSON?.() || {};
+          record.status = "rejected";
+          record.rejection_reason = body.rejection_reason || "";
+          return json(buildPaymentsPayload(paymentPlan, role));
+        }
+      }
+
+      if (apiPath.startsWith(base) && apiPath.endsWith("/download/") && method === "GET") {
+        return {
+          status: 200,
+          contentType: "application/pdf",
+          body: "%PDF-1.4 e2e cuenta de cobro stub",
+        };
+      }
     }
 
     // Document list endpoint — supports query-param filtering and paginated response format.

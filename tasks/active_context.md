@@ -20,23 +20,31 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
 ### Codebase Metrics (verified 2026-07-16 post quality-initiative, + Guided Tour deltas)
+### Codebase Metrics (verified 2026-07-04; updated 2026-07-07 with Guided Tour + Contract Execution)
 
 | Metric | Count |
 |--------|-------|
 | Backend model files | 15 |
-| Backend model classes | 55 (54 models.Model subclasses + User via AbstractUser; UserManager excluded) |
-| Backend view files | 30 |
+| Backend model classes | 56 (55 models.Model subclasses + User via AbstractUser; UserManager excluded) |
+| Backend view files | 31 |
 | Backend serializer files | 13 |
 | Backend URL patterns | 196 |
 | Backend test files | 96 (3049 tests) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 112 (117 → 111 after unused-component cleanup `9ec8737`, +1 `InfoTooltip`) |
+| Backend URL patterns | 201 |
+| Backend test files | 96 |
+| Backend Huey periodic tasks | 11 |
+| Frontend Vue components | 120 |
 | Frontend view pages | 44 |
-| Frontend Pinia store files | 44 |
+| Frontend Pinia store files | 45 |
 | Frontend composables | 15 |
 | Frontend unit test files | 197 |
 | Frontend E2E spec files | 199 |
 | Frontend E2E flows (flow-definitions.json) | 151 — **151/151 covered (100%)** |
+| Frontend unit test files | 183 |
+| Frontend E2E spec files | 197 |
+| Frontend E2E flows (flow-definitions.json) | 152 |
 
 ---
 
@@ -57,6 +65,12 @@ The application is **feature-complete** with all 18 major features implemented, 
   - **Unused frontend components removed** (`9ec8737`): components 117 → 111; 3 orphan unit test suites deleted.
   - **Quality gate false positives fixed** (`c054df1`): `pytest.raises` now counts as assertion; commands test area recognized (`scripts/quality/backend_analyzer.py`).
   - **Ops**: rotated logs gitignored (`6cba400`); deploy-and-check skill hardened + prod `DJANGO_SETTINGS_MODULE` fix synced from toolkit (`3da7668`, `b0d9c7b`); task-queue docs corrected celery→huey (`1a66b4f`).
+- **Contract Execution / Cuentas de Cobro — Req #11 (2026-07-07, branch `release-august-2026-c-v2`)**:
+  - **Backend**: `DocumentPaymentRecord` (migración `0068`; unique doc+cuota; lazy — sin filas hasta el primer upload, slots `pending` sintetizados por la API; re-upload tras rechazo actualiza el MISMO registro y conserva `rejection_reason` como audit trail; el archivo físico viejo se borra manualmente porque post_delete no dispara en updates). Nuevo summary type `payment_installments` — los summaries siguen siendo `SerializerMethodField` computados, cero columnas; parser estricto (`parse_payment_installments`) compartido entre modelo y serializer. 5 endpoints `payment-records/*` function-based con **shape de respuesta único** (`can_upload/can_review/next_uploadable/slots`) para que el FE nunca calcule reglas; secuencial autoritativo (409 fuera de orden o con cuota en revisión); validación inline 20MB/ext; download con record scoped al documento (anti-IDOR). `payment_notification_service` espejo del de firmas (email+in-app `general`+`link_type document`; skip si sube el creador o si assigned_to es el revisor). Prefetch `payment_records` en `get_optimized_document_queryset`.
+  - **Frontend**: store module `paymentRecords` (toda mutación devuelve el payload refrescado), opción "Forma de pago (N cuotas)" en DocumentVariablesConfig (auto field_type number), fila en DocumentSummaryModal via `formatInstallments` (1→"Pago único"), menú "Subir/Ver Cuentas de Cobro" gated por `summary_payment_installments` + `payments_summary.next_uploadable` en cardConfigs signatures/lawyer-locked/client-locked, `PaymentRecordsModal` (barra de progreso, total aceptado, badges por estado, hint "Rechazo anterior", panel aceptar/rechazar con textarea obligatoria) y `UploadPaymentRecordModal` (drag&drop 1 archivo, cuota auto-seleccionada, monto/notas opcionales, `detail` del backend en 400/409).
+  - **Gotcha (cazado por E2E)**: `showNotification` (SweetAlert2) resuelve SOLO cuando el usuario cierra el toast — emitir eventos/encadenar modales ANTES de notificar, nunca `await showNotification` antes de un emit. Además el backdrop de swal intercepta clicks en E2E: descartar con `.swal2-confirm` antes del siguiente click.
+  - **Tests**: 22 modelo + 24 vistas + 3 serializer (pytest) + Jest en 6 suites + `contract-execution-flow.spec.js` (5 tests, mock stateful que replica las reglas secuenciales). Flow `docs-contract-execution` (P1) — flow-definitions v1.10.0 (152 flows). Fake data: 2 planes seeded y ciclo delete/create verificado en staging (migraciones 0067/0068 aplicadas). Guía de usuario: sección `contract-execution`.
+
 - **Guided Tour UI/UX polish (2026-07-06, branch `release-august-2026-c-v2`, second pass)**:
   - **Framing cards**: element-less welcome card ("Comenzar recorrido" / "Ahora no", desktop keyboard hint ← →) + functional finale highlighting the "?" help button ("Entendido"). Content counts stay exactly 10/7/3: driver.js ORs per-step `showProgress` with the global flag, so the global is `false` and content steps opt in with a LITERAL per-step `progressText: 'Paso N de T'` computed post-filter in `buildSteps()` (do not "fix" this inversion).
   - **Motion/visuals**: brand overlay `#141E30` @ 0.7, `stageRadius 12`, `smoothScroll`, 180ms pop-in, eyebrow "Guía · Archivos Jurídicos", animated 4px progress bar (rAF width transition), two-row popover footer (visual QA caught text wrapping at 22rem), focus-visible outlines, `prefers-reduced-motion` disables all motion.
@@ -198,7 +212,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Decision | Status | Context |
 |----------|--------|---------|
-| 12 planned features in `docs/next_requirements/` | 5 complete (#4 Guided Tour, #5 Notification Center, #6 Legal Files Alerts via signature_notification_service, #7 Process Alerts via process_alert_tasks + StageAlert, #12 In-Place Formalize; #8 Outlook Auth also shipped in Release Agosto 2026) | Remaining: Reassignment, minutas, preview, marketplace, optional signature, contract execution |
+| 12 planned features in `docs/next_requirements/` | 6 complete (#4 Guided Tour, #5 Notification Center, #6 Legal Files Alerts, #7 Process Alerts, #11 Contract Execution, #12 In-Place Formalize; #8 Outlook Auth also shipped in Release Agosto 2026) | Remaining: Reassignment, minutas, preview, marketplace, optional signature |
 | Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up and adapted for Windsurf |
 | Large file modularization | Under consideration | `user_guide.js` (143KB), `reports.py` (74KB) could be split |
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.9.4",
+  "version": "1.10.0",
   "lastUpdated": "2026-07-16",
   "flows": {
     "auth-login-email": {
@@ -712,6 +712,19 @@
       ],
       "priority": "P2",
       "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo por allow_shared_edit (activado por defecto), que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; el creador puede desactivarlo y copiar/previsualizar siempre está disponible",
+      "expectedSpecs": 1
+    },
+    "docs-contract-execution": {
+      "name": "Ejecución del contrato — cuentas de cobro",
+      "module": "documents",
+      "roles": [
+        "lawyer",
+        "client",
+        "basic",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Submódulo de ejecución sobre documentos FullySigned con variable 'Forma de pago (N cuotas)': carga secuencial de cuentas de cobro por cuota (cliente asignado o abogado creador; PDF/JPG/PNG/DOCX ≤20MB, monto y notas opcionales), revisión del abogado con aceptar (habilita la siguiente cuota) o rechazar con motivo obligatorio (re-carga del mismo slot), notificaciones email+in-app, modal de detalle con progreso X/N, total aceptado, estados por cuota y descarga de comprobantes. Documentos sin forma de pago no muestran las acciones",
       "expectedSpecs": 1
     },
     "docs-guided-tour": {

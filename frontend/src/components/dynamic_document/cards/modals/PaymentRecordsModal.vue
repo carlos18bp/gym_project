@@ -261,7 +261,7 @@ async function load() {
     paymentsData.value = await store.fetchPaymentRecords(props.document.id);
   } catch (error) {
     paymentsData.value = null;
-    await showNotification('No se pudieron cargar las cuentas de cobro.', 'error');
+    showNotification('No se pudieron cargar las cuentas de cobro.', 'error');
   } finally {
     loading.value = false;
   }
@@ -358,9 +358,10 @@ async function accept(slot) {
       slot.record.id
     );
     emit('updated');
-    await showNotification('Cuenta de cobro aceptada.', 'success');
+    // Fire-and-forget: showNotification resolves on user dismissal
+    showNotification('Cuenta de cobro aceptada.', 'success');
   } catch (error) {
-    await showNotification(
+    showNotification(
       error?.response?.data?.detail || 'No se pudo aceptar la cuenta de cobro.',
       'error'
     );
@@ -382,9 +383,9 @@ async function reject(slot) {
     rejectingSlot.value = null;
     rejectReason.value = '';
     emit('updated');
-    await showNotification('Cuenta de cobro rechazada.', 'success');
+    showNotification('Cuenta de cobro rechazada.', 'success');
   } catch (error) {
-    await showNotification(
+    showNotification(
       error?.response?.data?.detail || 'No se pudo rechazar la cuenta de cobro.',
       'error'
     );

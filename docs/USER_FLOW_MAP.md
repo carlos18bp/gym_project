@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** July 6, 2026
-**Versión:** 1.9.4
+**Fecha:** July 7, 2026
+**Versión:** 1.10.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -1060,6 +1060,27 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### docs-contract-execution: Ejecución del contrato — cuentas de cobro
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard` (tab Dcs. Formalizados) | **E2E:** ✅ (`contract-execution-flow.spec.js`)
+- **Descripción:** Los documentos completamente firmados con una variable clasificada como "Forma de pago (N cuotas)" habilitan el submódulo de ejecución del contrato: registro secuencial de cuentas de cobro por cuota. El menú del documento firmado gana "Subir Cuenta de Cobro" (cuando hay cuota disponible) y "Ver Cuentas de Cobro" (modal con barra de progreso X/N, total de montos aceptados, estado por cuota — Pendiente/Cargada/Aceptada/Rechazada — descarga de comprobantes y panel de revisión del abogado). Reglas autoritativas en backend: la cuota N+1 se habilita solo cuando N fue aceptada; una cuota en revisión bloquea nuevas cargas (409); el rechazo exige motivo y reabre el mismo slot conservando el historial.
+
+**Pasos:**
+1. Abogado clasifica una variable de la minuta como "Forma de pago (N cuotas)" (field_type number, valor entero ≥1); el dato aparece en el resumen del documento
+2. Con el documento `FullySigned`, cliente asignado (o abogado creador) abre "Subir Cuenta de Cobro": cuota auto-seleccionada, archivo PDF/JPG/PNG/DOCX ≤20MB, monto y notas opcionales
+3. El abogado recibe notificación (correo + campana) y revisa en "Ver Cuentas de Cobro": descarga el archivo y acepta o rechaza con motivo obligatorio
+4. Aceptar habilita la siguiente cuota; rechazar notifica al cliente con el motivo y reabre el mismo slot para re-carga
+5. Ambas partes consultan el historial (progreso, contabilidad de montos, quién cargó y cuándo) y descargan comprobantes
+
+**Ramificaciones:**
+- ├── **Cliente asignado:** puede cargar y consultar; nunca revisar
+- ├── **Abogado creador:** puede cargar en nombre del cliente (sin auto-notificación), revisar y consultar
+- ├── **Cuota en revisión:** nadie puede cargar hasta la decisión (409 en backend, CTA oculto en UI)
+- ├── **Cuota rechazada:** re-carga sobre el MISMO registro; el motivo anterior queda visible como historial
+- ├── **Documento sin forma de pago:** el submódulo no aparece (fail-safe, docs existentes intactos)
+- └── **Terceros:** 403 en API y sin acciones en el menú
+
+---
+
 ### docs-guided-tour: Tour guiado del módulo Archivos Jurídicos
 - **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (`docs-guided-tour-flow.spec.js`)
 - **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay tintado de marca con spotlight redondeado, popover con eyebrow "Guía · Archivos Jurídicos", barra de progreso animada + conteo "Paso X de Y", botones "Siguiente"/"Anterior"/"Omitir guía" y navegación por teclado (← →). Abre con una tarjeta de bienvenida ("Comenzar recorrido" / "Ahora no") y cierra resaltando el botón "?" del header ("Entendido"), con una breve celebración de confetti solo al completarlo. Diferenciado por rol (abogado 10 pasos de contenido, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal brandeado a los 30 días, re-lanzamiento manual con el botón "?" (que muestra un ping azul mientras la guía esté pendiente).
@@ -2082,7 +2103,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 11 | 11 | 0 | 0 |
-| Documents | 33 | 33 | 0 | 0 |
+| Documents | 34 | 34 | 0 | 0 |
 | Signatures | 12 | 12 | 0 | 0 |
 | Legal Requests | 8 | 8 | 0 | 0 |
 | Organizations | 16 | 16 | 0 | 0 |
@@ -2093,7 +2114,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Notifications | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **151** | **151** | **0** | **0** |
+| **Total** | **152** | **152** | **0** | **0** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
 >
@@ -2105,5 +2126,5 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 ---
 
 **Documento generado:** July 16, 2026
-**Versión:** 1.9.4
-**Estado:** 151/151 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.9.4 (cobertura estática por tags `@flow:`). `docs-guided-tour` ya aterrizó en esta rama; los otros 2 flujos de PR #95 (`admin-data-reassignment`, `docs-contract-execution`) llegan en commits posteriores de la misma rama.
+**Versión:** 1.10.0
+**Estado:** 152/152 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.10.0 (cobertura estática por tags `@flow:`). `docs-guided-tour` y `docs-contract-execution` ya aterrizaron en esta rama; falta `admin-data-reassignment` (PR #95), que llega en un commit posterior.
