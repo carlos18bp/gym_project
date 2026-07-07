@@ -97,6 +97,7 @@
               <option value="subscription_date">Fecha suscripción</option>
               <option value="start_date">Fecha inicio</option>
               <option value="end_date">Fecha fin</option>
+              <option value="payment_installments">Forma de pago (N cuotas)</option>
             </select>
           </div>
 
@@ -348,6 +349,10 @@ const handleSummaryFieldChange = (changedVariable) => {
 
   // Auto-adjust field type for specific classifications
   if (newValue === 'value' && changedVariable.field_type !== 'number') {
+    changedVariable.field_type = 'number';
+  }
+
+  if (newValue === 'payment_installments' && changedVariable.field_type !== 'number') {
     changedVariable.field_type = 'number';
   }
 

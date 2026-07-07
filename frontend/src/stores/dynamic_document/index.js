@@ -5,6 +5,7 @@ import { filterGetters } from "./filters";
 import { documentActions } from "./documents";
 import { tagActions } from "./tags";
 import { permissionActions } from "./permissions";
+import { paymentRecordActions } from "./paymentRecords";
 
 /**
  * Dynamic Document Store
@@ -37,5 +38,6 @@ export const useDynamicDocumentStore = defineStore("dynamicDocument", {
     ...documentActions,
     ...tagActions,
     ...permissionActions,
+    ...paymentRecordActions,
   },
 });
