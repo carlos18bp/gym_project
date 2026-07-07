@@ -542,10 +542,11 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     Custom admin configuration for the DynamicDocument model.
     Provides comprehensive management of dynamic documents with variable support.
     """
-    list_display = ('title', 'state', 'created_by', 'assigned_to', 'is_public', 'fully_signed', 'requires_signature', 'created_at')
-    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email', 'tags__name')
+    list_display = ('title', 'state', 'created_by', 'managed_by', 'assigned_to', 'is_public', 'fully_signed', 'requires_signature', 'created_at')
+    search_fields = ('title', 'content', 'created_by__email', 'managed_by__email', 'assigned_to__email', 'tags__name')
     list_filter = ('state', 'is_public', 'requires_signature', 'fully_signed', 'created_at', 'updated_at', 'tags')
     filter_horizontal = ('tags',)
+    raw_id_fields = ('created_by', 'managed_by', 'assigned_to')
     inlines = [DocumentVariableInline]
 
     fieldsets = (
@@ -553,8 +554,8 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
             'fields': ('title', 'content', 'state', 'letterhead_image')
         }),
         ('Access Control', {
-            'fields': ('is_public', 'created_by', 'assigned_to'),
-            'description': 'Control document visibility and ownership. When is_public=True, all users can view and use this document as a template.'
+            'fields': ('is_public', 'created_by', 'managed_by', 'assigned_to'),
+            'description': 'Control document visibility and ownership. created_by is the immutable author (audit); managed_by is the current responsible lawyer (changes on reassignment). When is_public=True, all users can view and use this document as a template.'
         }),
         ('Tags & Organization', {
             'fields': ('tags',),
@@ -573,7 +574,7 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         """Optimize queryset to reduce database queries."""
-        return super().get_queryset(request).select_related('created_by', 'assigned_to').prefetch_related('tags')
+        return super().get_queryset(request).select_related('created_by', 'managed_by', 'assigned_to').prefetch_related('tags')
 
 class LegalUpdateAdmin(admin.ModelAdmin):
     """

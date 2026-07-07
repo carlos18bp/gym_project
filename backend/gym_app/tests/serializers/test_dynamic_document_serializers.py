@@ -222,6 +222,25 @@ class TestDynamicDocumentSerializer:
         assert document.content == document_data['content']
         assert document.state == document_data['state']
         assert document.created_by == user
+        # New documents are managed by their creator (auto-init)
+        assert document.managed_by == user
+
+    def test_create_document_defaults_managed_by_to_explicit_creator(self, document_data, user):
+        """When created_by is passed explicitly, managed_by follows it."""
+        other = User.objects.create_user(email="explicit-creator@test.com", password="x")
+        document_data['created_by'] = other.id
+
+        class MockRequest:
+            def __init__(self, user):
+                self.user = user
+
+        serializer = DynamicDocumentSerializer(
+            data=document_data, context={'request': MockRequest(user)}
+        )
+        assert serializer.is_valid(), serializer.errors
+        document = serializer.save()
+        assert document.created_by == other
+        assert document.managed_by == other
 
     def test_create_document_variables(self, document_data, document_variable_data, user):
         """Test creating a document with variables - variables creation."""

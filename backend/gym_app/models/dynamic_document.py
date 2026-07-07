@@ -148,6 +148,14 @@ class DynamicDocument(models.Model):
         blank=True,
         help_text="The user to whom the document is assigned."
     )
+    managed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="managed_documents",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="The lawyer currently responsible for managing this document. Defaults to the creator and changes on admin reassignment; created_by never changes (audit trail)."
+    )
     created_at = models.DateTimeField(auto_now_add=True, help_text="Document creation timestamp.")
     updated_at = models.DateTimeField(auto_now=True, help_text="Document last updated timestamp.")
     requires_signature = models.BooleanField(default=False, help_text="Indicates if this document requires signatures.")
