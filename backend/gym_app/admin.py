@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from gym_app.utils.auth_utils import generate_auth_tokens
-from gym_app.models import User, Process, Stage, CaseFile, Case, StageAlert, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence, Notification, TourProgress
+from gym_app.models import User, Process, Stage, CaseFile, Case, StageAlert, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence, Notification, TourProgress, DocumentPaymentRecord
 from gym_app.models.user import UserSignature, ActivityFeed
 from gym_app.models.password_code import PasswordCode
 from gym_app.models.email_verification_code import EmailVerificationCode
@@ -627,6 +627,17 @@ class DocumentSignatureAdmin(admin.ModelAdmin):
     search_fields = ['document__title', 'signer__email', 'signer__first_name', 'signer__last_name']
     ordering = ['signed_at']
 
+class DocumentPaymentRecordAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the DocumentPaymentRecord model.
+    Manages cuentas de cobro uploaded per contract installment.
+    """
+    list_display = ('document', 'installment_number', 'status', 'amount', 'uploaded_by', 'uploaded_at')
+    list_filter = ('status', 'uploaded_at')
+    search_fields = ('document__title', 'uploaded_by__email')
+    readonly_fields = ('uploaded_at', 'created_at')
+    raw_id_fields = ('document', 'uploaded_by')
+
 class TagAdmin(admin.ModelAdmin):
     """
     Custom admin configuration for the Tag model.
@@ -959,9 +970,10 @@ class GyMAdminSite(admin.AdminSite):
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
                     if model['object_name'] in [
-                        'DynamicDocument', 'DocumentSignature', 'DocumentVariable', 
-                        'Tag', 'DocumentFolder', 'DocumentVisibilityPermission', 
-                        'DocumentUsabilityPermission', 'DocumentRelationship'
+                        'DynamicDocument', 'DocumentSignature', 'DocumentVariable',
+                        'Tag', 'DocumentFolder', 'DocumentVisibilityPermission',
+                        'DocumentUsabilityPermission', 'DocumentRelationship',
+                        'DocumentPaymentRecord'
                     ]
                 ]
             },
@@ -1031,6 +1043,7 @@ admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(IntranetProfile, IntranetProfileAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)
+admin_site.register(DocumentPaymentRecord, DocumentPaymentRecordAdmin)
 admin_site.register(Tag, TagAdmin)
 admin_site.register(DocumentFolder, DocumentFolderAdmin)
 admin_site.register(DocumentVisibilityPermission, DocumentVisibilityPermissionAdmin)

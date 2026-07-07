@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -5,6 +7,26 @@ import uuid
 import os
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+
+def parse_payment_installments(raw_value):
+    """Parse a payment-installments variable value into an int >= 1.
+
+    Returns None for empty, non-numeric, non-integer (e.g. "2.5") or
+    lower-than-one values. Shared by the model helper and the serializer
+    so both sides apply the exact same rule.
+    """
+    try:
+        text = str(raw_value).strip()
+        number = float(text)
+        installments = int(number)
+        if installments >= 1 and number == installments:
+            return installments
+        return None
+    except (TypeError, ValueError):
+        return None
 
 def document_version_path(instance, filename):
     """Generate unique path for document version files"""
@@ -532,10 +554,70 @@ class DynamicDocument(models.Model):
             
         return self.fully_signed
 
+    def get_payment_installments(self):
+        """Number of agreed payment installments (int >= 1) or None.
+
+        Reads the variable classified as 'payment_installments'. Iterates
+        the (possibly prefetched) relation instead of filtering so list
+        endpoints stay N+1-free.
+        """
+        for variable in self.variables.all():
+            if variable.summary_field == 'payment_installments':
+                return parse_payment_installments(variable.value)
+        return None
+
+    def get_payment_progress(self):
+        """Contract-execution progress for the payments submodule.
+
+        Returns None when the document is not fully signed or has no
+        valid payment-installments variable (feature off). Otherwise a
+        dict with total_installments, accepted_count, in_review,
+        next_uploadable (1-based slot or None) and total_amount_accepted.
+
+        Sequential rule: slots are walked in order; the first
+        non-accepted slot is the uploadable one, unless its record is
+        under review ('uploaded'), in which case nothing is uploadable.
+        """
+        if self.state != 'FullySigned':
+            return None
+        total = self.get_payment_installments()
+        if total is None:
+            return None
+
+        records = {
+            record.installment_number: record
+            for record in self.payment_records.all()
+        }
+        accepted_count = 0
+        in_review = False
+        next_uploadable = None
+        total_amount = None
+        for number in range(1, total + 1):
+            record = records.get(number)
+            if record and record.status == DocumentPaymentRecord.STATUS_ACCEPTED:
+                accepted_count += 1
+                if record.amount is not None:
+                    total_amount = (total_amount or Decimal('0')) + record.amount
+                continue
+            # First non-accepted slot decides availability
+            if record and record.status == DocumentPaymentRecord.STATUS_UPLOADED:
+                in_review = True
+            else:
+                next_uploadable = number
+            break
+
+        return {
+            'total_installments': total,
+            'accepted_count': accepted_count,
+            'in_review': in_review,
+            'next_uploadable': next_uploadable,
+            'total_amount_accepted': total_amount,
+        }
+
     def delete(self, *args, **kwargs):
         """
         Custom delete method to ensure proper cleanup when a document is deleted.
-        
+
         When a document is deleted:
         - Removes the document from all folders (this happens automatically with M2M relationships)
         - Can add additional cleanup logic here if needed
@@ -745,6 +827,7 @@ class DocumentVariable(models.Model):
         ('subscription_date', 'Fecha de suscripción'),
         ('start_date', 'Fecha de inicio'),
         ('end_date', 'Fecha de fin'),
+        ('payment_installments', 'Forma de pago (N cuotas)'),
     ]
 
     document = models.ForeignKey(
@@ -1020,3 +1103,103 @@ class DocumentRelationship(models.Model):
         """Override save to call clean validation."""
         self.clean()
         super().save(*args, **kwargs)
+
+
+def payment_record_file_path(instance, filename):
+    """Generate unique path for payment record (cuenta de cobro) files."""
+    ext = filename.split('.')[-1].lower()
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    return os.path.join(
+        'dynamic_documents', 'payment_records', str(timezone.now().year), unique_name
+    )
+
+
+class DocumentPaymentRecord(models.Model):
+    """
+    Cuenta de cobro uploaded for one installment of a fully signed contract.
+
+    One row per document/installment combination (lazy: rows exist only
+    once something was uploaded — slots without a row are "Pendiente").
+    A rejected record is re-submitted by updating the SAME row (new file,
+    status back to 'uploaded'); rejection_reason is kept as audit trail.
+    """
+
+    STATUS_UPLOADED = 'uploaded'
+    STATUS_ACCEPTED = 'accepted'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES = [
+        (STATUS_UPLOADED, 'Cargada'),
+        (STATUS_ACCEPTED, 'Aceptada'),
+        (STATUS_REJECTED, 'Rechazada'),
+    ]
+
+    document = models.ForeignKey(
+        DynamicDocument,
+        related_name='payment_records',
+        on_delete=models.CASCADE,
+        help_text="Fully signed document this payment record belongs to."
+    )
+    installment_number = models.PositiveIntegerField(
+        help_text="1-based installment number this record covers."
+    )
+    file = models.FileField(
+        upload_to=payment_record_file_path,
+        help_text="Cuenta de cobro file (PDF, JPG, PNG or DOCX)."
+    )
+    original_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Original filename as uploaded by the user."
+    )
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Optional installment amount."
+    )
+    notes = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Optional notes from the uploader."
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default=STATUS_UPLOADED,
+        db_index=True,
+    )
+    rejection_reason = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Mandatory reason given by the lawyer on rejection."
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='payment_records_uploaded',
+        help_text="User who performed the (last) upload."
+    )
+    uploaded_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="Refreshed manually on every re-upload."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('document', 'installment_number')
+        ordering = ['installment_number']
+
+    def __str__(self):
+        return (
+            f"Cuota {self.installment_number} [{self.status}] → {self.document}"
+        )
+
+
+@receiver(post_delete, sender=DocumentPaymentRecord)
+def delete_payment_record_file(sender, instance, **kwargs):
+    """Remove the physical file when a payment record row is deleted."""
+    if instance.file and os.path.isfile(instance.file.path):
+        os.remove(instance.file.path)
