@@ -159,6 +159,8 @@ import {
   XCircleIcon,
   HandThumbDownIcon,
   FolderPlusIcon,
+  BanknotesIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/vue/24/outline';
 import { getMenuOptionsForCardType } from '@/components/dynamic_document/cards/menuOptionsHelper.js';
 
@@ -286,7 +288,12 @@ const categorizeAction = (option, action, categorized) => {
 // Get icon for action
 const getIcon = (action) => {
   const actionLower = action.toLowerCase();
-  
+
+  // Contract execution (cuentas de cobro)
+  if (actionLower.includes('paymentrecord')) {
+    return actionLower.startsWith('upload') ? ArrowUpTrayIcon : BanknotesIcon;
+  }
+
   // Specific icon for signing action
   if (actionLower === 'sign' || actionLower.includes('firmar')) {
     return CheckCircleIcon;
@@ -334,7 +341,11 @@ const getIcon = (action) => {
 // Get icon color
 const getIconColor = (action) => {
   const actionLower = action.toLowerCase();
-  
+
+  if (actionLower.includes('paymentrecord')) {
+    return 'text-emerald-600';
+  }
+
   if (actionLower.includes('delete') || actionLower === 'eliminar') {
     return 'text-red-600';
   } else if (actionLower === 'reject' || actionLower.includes('rechazar')) {
