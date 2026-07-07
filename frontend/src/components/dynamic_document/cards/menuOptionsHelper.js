@@ -63,6 +63,31 @@ function isDocumentCreator(document, userStore) {
 }
 
 /**
+ * Contract-execution (cuentas de cobro) actions for fully signed
+ * documents with a configured payment plan. Backend fields drive the
+ * visibility: summary_payment_installments (plan configured) and
+ * payments_summary.next_uploadable (a slot is currently uploadable) —
+ * the menu never computes sequencing rules locally.
+ */
+function getPaymentMenuOptions(document, userStore) {
+  if (document.state !== 'FullySigned') return [];
+  if (!(document.summary_payment_installments > 0)) return [];
+
+  const currentUserId = userStore?.currentUser?.id;
+  const isParty =
+    isDocumentCreator(document, userStore) ||
+    (currentUserId != null && document.assigned_to === currentUserId);
+  if (!isParty) return [];
+
+  const options = [];
+  if (document.payments_summary?.next_uploadable != null) {
+    options.push({ label: "Subir Cuenta de Cobro", action: "uploadPaymentRecord" });
+  }
+  options.push({ label: "Ver Cuentas de Cobro", action: "viewPaymentRecords" });
+  return options;
+}
+
+/**
  * Single source of truth for the minuta ownership policy (mirrors the
  * backend can_modify_minuta): minutas are Draft/Published templates; the
  * creator manages them (delete, state changes, permissions, share flag);
@@ -109,6 +134,7 @@ const cardConfigs = {
         if (canSignDocument(document, userStore)) {
           lockedOptions.push({ label: "Firmar documento", action: "sign" });
         }
+        lockedOptions.push(...getPaymentMenuOptions(document, userStore));
         return lockedOptions;
       }
 
@@ -285,6 +311,9 @@ const cardConfigs = {
         });
       }
 
+      // Contract execution (cuentas de cobro) for fully signed documents
+      options.push(...getPaymentMenuOptions(document, userStore));
+
       // Download PDF option
       if (document.state === 'PendingSignatures') {
         options.push({
@@ -372,6 +401,8 @@ const cardConfigs = {
               label: "Descargar Doc. Formalizado",
               action: "downloadSignedDocument",
             });
+            // Contract execution (cuentas de cobro)
+            options.push(...getPaymentMenuOptions(document, userStore));
           }
 
           // No se exponen opciones de edición, formalización ni eliminación
