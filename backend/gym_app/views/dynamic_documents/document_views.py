@@ -61,6 +61,7 @@ def get_optimized_document_queryset(base_qs=None):
         'usability_permissions',
         'relationships_as_source',
         'relationships_as_target',
+        'payment_records',
     )
 
 
