@@ -13,7 +13,7 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification, tour_progress
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification, tour_progress, admin_reassignment
 from .views.layouts import sendEmail
 from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views, payments_views
 from django.urls import path
@@ -38,7 +38,13 @@ user_urls = [
     path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
-    
+
+    # Admin data reassignment (admin-only)
+    path('admin/reassignment/summary/', admin_reassignment.reassignment_summary, name='reassignment-summary'),
+    path('admin/reassignment/execute/', admin_reassignment.execute_reassignment, name='reassignment-execute'),
+    path('admin/lawyers/<int:user_id>/archive/', admin_reassignment.archive_lawyer, name='archive-lawyer'),
+    path('admin/lawyers/<int:user_id>/unarchive/', admin_reassignment.unarchive_lawyer, name='unarchive-lawyer'),
+
     # User global letterhead management
     path('user/letterhead/upload/', document_views.upload_user_letterhead_image, name='upload-user-letterhead-image'),
     path('user/letterhead/', document_views.get_user_letterhead_image, name='get-user-letterhead-image'),
