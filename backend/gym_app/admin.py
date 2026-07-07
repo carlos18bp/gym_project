@@ -23,10 +23,10 @@ class UserAdmin(BaseUserAdmin):
     """
     list_display = (
         'email', 'first_name', 'last_name', 'document_type', 'identification',
-        'role', 'is_staff', 'is_active', 'created_at'
+        'role', 'is_staff', 'is_active', 'is_archived', 'created_at'
     )
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
-    list_filter = ('role', 'document_type', 'is_staff', 'is_active', 'created_at')
+    list_filter = ('role', 'document_type', 'is_staff', 'is_active', 'is_archived', 'created_at')
     ordering = ('email',)
     filter_horizontal = ()
     
@@ -37,7 +37,7 @@ class UserAdmin(BaseUserAdmin):
                       'identification', 'document_type', 'photo_profile', 'letterhead_image')
         }),
         (_('Permissions'), {
-            'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 
+            'fields': ('role', 'is_active', 'is_archived', 'is_staff', 'is_superuser',
                       'is_gym_lawyer', 'is_profile_completed'),
         }),
         (_('Important dates'), {
@@ -77,6 +77,8 @@ class UserAdmin(BaseUserAdmin):
         if not request.user.is_superuser:
             return HttpResponseForbidden('Only superusers can use this feature.')
         user = get_object_or_404(User, pk=user_id)
+        if user.is_archived:
+            return HttpResponseForbidden('Cannot impersonate an archived user.')
         tokens = generate_auth_tokens(user)
         access_token = tokens['access']
         user_data = json.dumps(tokens['user'])

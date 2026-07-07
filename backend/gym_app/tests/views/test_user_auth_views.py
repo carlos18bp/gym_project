@@ -392,6 +392,31 @@ class TestSignIn:
         assert "access" in response.data
         assert "refresh" in response.data
 
+    def test_archived_user_blocked(self, api_client, user, monkeypatch):
+        """Archived accounts cannot sign in even with the right password."""
+        _mock_captcha_success(monkeypatch)
+        user.archive()
+        url = reverse("sign_in")
+        response = api_client.post(
+            url,
+            {"email": user.email, "password": "testpassword", "captcha_token": "tok"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert "archivada" in response.data["error"]
+
+    def test_archived_user_wrong_password_does_not_leak_state(self, api_client, user, monkeypatch):
+        """A wrong password on an archived account still returns 401, not 403."""
+        _mock_captcha_success(monkeypatch)
+        user.archive()
+        url = reverse("sign_in")
+        response = api_client.post(
+            url,
+            {"email": user.email, "password": "wrongpass", "captcha_token": "tok"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
 
 # =========================================================================
 # T11: sign_in — Google user without usable password (BUG-11)
@@ -508,6 +533,15 @@ class TestGoogleLogin:
         response = api_client.post(url, {"credential": "valid_token"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is False
+
+    def test_archived_user_blocked(self, api_client, user, monkeypatch):
+        """Archived accounts cannot log in via Google."""
+        _mock_google_token(monkeypatch, {"email": user.email})
+        user.archive()
+        url = reverse("google_login")
+        response = api_client.post(url, {"credential": "valid_token"}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert "archivada" in response.data["error_message"]
 
     def test_google_login_exception(self, api_client, monkeypatch):
         """Unexpected exception during user creation path returns 500."""
@@ -655,6 +689,15 @@ class TestOutlookLogin:
         response = api_client.post(url, {"id_token": "valid"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["created"] is False
+
+    def test_archived_user_blocked(self, api_client, user, monkeypatch):
+        """Archived accounts cannot log in via Outlook."""
+        _mock_microsoft_claims(monkeypatch, {"email": user.email, "xms_edov": True})
+        user.archive()
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert "archivada" in response.data["error_message"]
 
     def test_personal_account_consumers_tenant(self, api_client, monkeypatch):
         """A personal Microsoft account (consumers tenant) is trusted; name is split."""
