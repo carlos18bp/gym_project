@@ -201,11 +201,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
 
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    managed_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = DynamicDocument
         fields = [
-            'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
+            'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 'managed_by',
             'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
             'signature_type', 'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
@@ -474,6 +475,13 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Always set created_by to the current user if not explicitly provided
         if not validated_data.get('created_by') and creator:
             validated_data['created_by'] = creator
+
+        # New documents are managed by their creator (auto-init). This covers
+        # every creation path (create / duplicate / use-template) since they
+        # all go through this serializer. managed_by only changes via admin
+        # reassignment; created_by never changes.
+        if not validated_data.get('managed_by'):
+            validated_data['managed_by'] = validated_data.get('created_by') or creator
 
         # Reassemble {{variable}} markers that TinyMCE may have fragmented
         # across inline tags (typical after pasting a table from Word) before

@@ -44,6 +44,10 @@ def can_modify_minuta(document, user, data=None):
     user_pk = getattr(user, 'pk', None)
     if document.created_by_id == user_pk:
         return True
+    # The managing lawyer (post-reassignment) gains full minuta rights,
+    # equivalent to the creator, without altering created_by (audit).
+    if document.managed_by_id and document.managed_by_id == user_pk:
+        return True
     if document.assigned_to_id and document.assigned_to_id == user_pk:
         return True
     if is_minuta_admin(user):

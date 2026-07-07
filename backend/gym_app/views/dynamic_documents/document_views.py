@@ -52,7 +52,7 @@ def get_optimized_document_queryset(base_qs=None):
     """
     qs = base_qs if base_qs is not None else DynamicDocument.objects.all()
     return qs.select_related(
-        'created_by', 'assigned_to', 'formalized_by'
+        'created_by', 'assigned_to', 'managed_by', 'formalized_by'
     ).prefetch_related(
         'variables',
         Prefetch('tags', queryset=Tag.objects.select_related('created_by')),
@@ -140,7 +140,10 @@ def list_dynamic_documents(request):
         queryset = queryset.filter(assigned_to_id=client_id)
 
     if lawyer_id:
-        queryset = queryset.filter(created_by_id=lawyer_id)
+        # Scoped by the CURRENT manager (created OR reassigned to). Backfill
+        # makes this equivalent to created_by for pre-feature data; after a
+        # transfer, minutas move between lawyers' "Mías" scope correctly.
+        queryset = queryset.filter(managed_by_id=lawyer_id)
 
     # Filter minutas flagged as collaboratively editable ("Compartidas" scope)
     shared = request.query_params.get('shared', '')
@@ -343,9 +346,12 @@ def update_dynamic_document(request, pk):
             status=status.HTTP_403_FORBIDDEN
         )
 
-    # Prevent modifying the `created_by` field
+    # Prevent modifying the `created_by` field (audit) and `managed_by`
+    # (only the admin reassignment endpoint may change management).
     if 'created_by' in request.data:
         request.data.pop('created_by')
+    if 'managed_by' in request.data:
+        request.data.pop('managed_by')
 
     # Validate and update the document
     serializer = DynamicDocumentSerializer(document, data=request.data, partial=True, context={'request': request})

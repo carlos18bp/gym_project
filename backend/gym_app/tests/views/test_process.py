@@ -1038,3 +1038,23 @@ class TestUpdateProcessEmailNotification:
             )
 
         assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+class TestLawyerDeletionProtection:
+    """A lawyer that owns processes cannot be deleted (PROTECT)."""
+
+    def test_deleting_lawyer_with_process_raises_protected_error(self, process, lawyer_user):
+        from django.db.models import ProtectedError
+
+        with pytest.raises(ProtectedError):
+            lawyer_user.delete()
+        assert Process.objects.filter(id=process.id).exists()
+
+    def test_deleting_lawyer_without_process_succeeds(self):
+        lawyer = User.objects.create_user(
+            email="lonely-lawyer@test.com", password="x", role="Lawyer"
+        )
+        lawyer_id = lawyer.id
+        lawyer.delete()
+        assert not User.objects.filter(id=lawyer_id).exists()
