@@ -89,6 +89,9 @@ export const DOCS_MINUTAS_COLUMNS = ['@flow:minutas-columns', '@module:documents
 export const DOCS_GUIDED_TOUR = ['@flow:docs-guided-tour', '@module:documents', '@priority:P2'];
 export const DOCS_CONTRACT_EXECUTION = ['@flow:docs-contract-execution', '@module:documents', '@priority:P1'];
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+export const ADMIN_DATA_REASSIGNMENT = ['@flow:admin-data-reassignment', '@module:admin', '@priority:P1'];
+
 // ── Signatures ──────────────────────────────────────────────────────────────
 export const SIGN_ELECTRONIC_SIGNATURE = ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1'];
 export const SIGN_DOCUMENT_FLOW = ['@flow:sign-document-flow', '@module:signatures', '@priority:P1'];

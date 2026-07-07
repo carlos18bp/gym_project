@@ -1,7 +1,17 @@
 {
-  "version": "1.10.0",
+  "version": "1.11.0",
   "lastUpdated": "2026-07-16",
   "flows": {
+    "admin-data-reassignment": {
+      "name": "Reasignación de datos de abogado (admin)",
+      "module": "admin",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P1",
+      "description": "Módulo admin para transferir procesos y documentos de un abogado a otro: selectores origen/destino (destino excluye origen y archivados), vista previa con checkboxes y select-all, documentos en firma marcados como no transferibles con motivo, opción de archivar el origen, transferencia atómica con registro de actividad, y restauración de abogados archivados. created_by nunca cambia (auditoría); managed_by y assigned_to (cuando era el origen) migran al destino.",
+      "expectedSpecs": 1
+    },
     "auth-login-email": {
       "name": "Login con email/password",
       "module": "auth",
