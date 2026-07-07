@@ -31,7 +31,7 @@ export const useUserStore = defineStore("user", {
      * @returns {array} - List of users with 'client' role.
      */
     clients: (state) => {
-      return state.users.filter((user) => user.role === "client");
+      return state.users.filter((user) => user.role === "client" && !user.is_archived);
     },
 
     /**
@@ -41,19 +41,49 @@ export const useUserStore = defineStore("user", {
      */
     allClientTypes: (state) => {
       return state.users.filter(
-        (user) => user.role === "client" || user.role === "basic" || user.role === "corporate_client"
+        (user) => (user.role === "client" || user.role === "basic" || user.role === "corporate_client") && !user.is_archived
       );
     },
 
     /**
      * Get users with role of 'client', 'basic', 'corporate_client' and 'lawyer'.
+     * Archived accounts are excluded (they must not appear in selectors,
+     * the directory, or contact widgets).
      * @param {object} state - State.
      * @returns {array} - List of users with 'client', 'basic', 'corporate_client' and 'lawyer' role.
      */
     clientsAndLawyers: (state) => {
       return state.users.filter(
-        (user) => user.role == "client" || user.role == "basic" || user.role == "corporate_client" || user.role == "lawyer"
+        (user) => (user.role == "client" || user.role == "basic" || user.role == "corporate_client" || user.role == "lawyer") && !user.is_archived
       );
+    },
+
+    /**
+     * Active lawyers (role 'lawyer', not archived) — for assignment selectors.
+     * @param {object} state - State.
+     * @returns {array} - List of active lawyers.
+     */
+    lawyers: (state) => {
+      return state.users.filter((user) => user.role === "lawyer" && !user.is_archived);
+    },
+
+    /**
+     * Archived lawyers — for the admin reassignment "restore" list.
+     * @param {object} state - State.
+     * @returns {array} - List of archived lawyers.
+     */
+    archivedLawyers: (state) => {
+      return state.users.filter((user) => user.role === "lawyer" && user.is_archived);
+    },
+
+    /**
+     * Every lawyer regardless of archived status — for the reassignment
+     * source selector and admin metrics.
+     * @param {object} state - State.
+     * @returns {array} - List of all lawyers.
+     */
+    allLawyers: (state) => {
+      return state.users.filter((user) => user.role === "lawyer");
     },
 
     /**

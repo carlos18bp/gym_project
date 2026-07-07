@@ -45,6 +45,30 @@ describe("User Store (Auth)", () => {
     expect(store.getCurrentUser).toEqual({ id: 1, role: "client" });
   });
 
+  test("lawyer getters split active vs archived and exclude archived from selectors", () => {
+    const store = useUserStore();
+
+    store.$patch({
+      users: [
+        { id: 1, role: "client" },
+        { id: 2, role: "client", is_archived: true },
+        { id: 3, role: "lawyer" },
+        { id: 4, role: "lawyer", is_archived: true },
+        { id: 5, role: "lawyer" },
+      ],
+    });
+
+    // Active lawyers only
+    expect(store.lawyers.map((u) => u.id)).toEqual([3, 5]);
+    // Archived lawyers only
+    expect(store.archivedLawyers.map((u) => u.id)).toEqual([4]);
+    // Every lawyer regardless of status
+    expect(store.allLawyers.map((u) => u.id)).toEqual([3, 4, 5]);
+    // Archived users excluded from client/mixed selectors
+    expect(store.clients.map((u) => u.id)).toEqual([1]);
+    expect(store.clientsAndLawyers.map((u) => u.id)).toEqual([1, 3, 5]);
+  });
+
   // ``isLawyerLike`` is the single source of truth for lawyer-only UI
   // (Reports tab, process Edit actions). It must also grant access to admin
   // staff/superuser accounts — the R3 client feedback was that Admin users

@@ -361,4 +361,61 @@ describe("ProcessForm.vue", () => {
     expect(openSpy).toHaveBeenCalledWith("http://files.test/file.pdf", "_blank");
     openSpy.mockRestore();
   });
+
+  test("create mode defaults the responsible lawyer to the logged-in user", async () => {
+    const lawyer = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      users: [lawyer],
+      currentUser: lawyer,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(42);
+    expect(setupState.formData.lawyerId).toBe(42);
+  });
+
+  test("selector value (not the logged-in user) is what gets submitted", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const client = { id: 7, first_name: "Ana", last_name: "Lopez", role: "client" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      caseTypes: [{ id: 10, type: "Civil" }],
+      users: [me, colleague, client],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    // Admin/lawyer reassigns the process to a colleague at creation time
+    setupState.selectedLawyer = colleague;
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [client];
+    setupState.formData.plaintiff = "P";
+    setupState.formData.defendant = "D";
+    setupState.formData.subcase = "S";
+    setupState.formData.ref = "R";
+    setupState.formData.authority = "Court";
+    setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
+    setupState.formData.caseFiles = [{ file: createFile("f.pdf", "application/pdf") }];
+
+    mockSubmitHandler.mockResolvedValue();
+    await setupState.onSubmit();
+
+    expect(mockSubmitHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ lawyerId: 77 }),
+      expect.any(String),
+      false
+    );
+  });
+
+  test("edit mode prefills the selector from the assigned lawyer", async () => {
+    const { wrapper } = await mountEditView({ lawyer: { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer" } });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(99);
+    expect(setupState.formData.lawyerId).toBe(99);
+  });
 });
