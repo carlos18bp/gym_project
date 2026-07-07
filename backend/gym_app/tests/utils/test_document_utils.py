@@ -257,6 +257,51 @@ class TestSanitizeSoupForPdf:
         assert len(result.find_all('div')) == 2
 
 
+class TestNeutralizeCurrentColor:
+    """The CSS ``currentColor`` keyword crashes xhtml2pdf/reportlab; the
+    sanitizer must rewrite it to a value reportlab can parse."""
+
+    def test_neutralizes_currentcolor_in_table_border(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<table style="border: medium none currentcolor;">'
+            '<tr><td>x</td></tr></table>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        assert 'currentcolor' not in result.find('table').get('style', '').lower()
+
+    def test_neutralizes_mixed_case_currentcolor(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p style="border-color: currentColor;">text</p>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        assert 'currentcolor' not in result.find('p').get('style', '').lower()
+        assert 'transparent' in result.find('p').get('style', '')
+
+    def test_leaves_normal_color_declaration_untouched(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup('<p style="color: #333;">text</p>', 'html.parser')
+        result = sanitize_soup_for_pdf(soup)
+        assert 'color: #333' in result.find('p').get('style', '')
+
+    def test_pisa_renders_table_with_currentcolor_without_error(self):
+        from bs4 import BeautifulSoup
+        from io import BytesIO
+        from xhtml2pdf import pisa
+
+        soup = sanitize_soup_for_pdf(BeautifulSoup(
+            '<table style="border: medium none currentcolor;">'
+            '<tr><td>celda</td></tr></table>',
+            'html.parser',
+        ))
+        html = f"<!DOCTYPE html><html><body>{str(soup)}</body></html>"
+        status = pisa.CreatePDF(html.encode('utf-8'), dest=BytesIO())
+        assert status.err == 0
+
+
 class TestSanitizeSoupForExportAlias:
     """The sanitizer is shared by the PDF and Word export paths."""
 

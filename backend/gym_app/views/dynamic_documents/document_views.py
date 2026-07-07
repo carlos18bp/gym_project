@@ -670,6 +670,10 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
     except FileNotFoundError as e:
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
+        # Log the full traceback: the broad except otherwise returns a bare 500
+        # to the client and Django logs only "Internal Server Error" with no
+        # stack, making PDF failures undiagnosable without a manual repro.
+        logger.exception("Error generating PDF for doc_id=%s: %s", pk, e)
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])

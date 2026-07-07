@@ -17,6 +17,17 @@ _VARIABLE_PATTERN = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
 _INLINE_TAG_PATTERN = re.compile(r'<[^>]*>')
 _MSO_STYLE_PATTERN = re.compile(r'mso-[^:;"\']*:[^;"\']*;?', re.IGNORECASE)
 
+# xhtml2pdf / reportlab cannot parse the CSS ``currentColor`` keyword: it hands
+# the token straight to ``reportlab.lib.colors.toColor`` which raises
+# ``ValueError: Invalid color value 'currentcolor'`` and aborts the whole PDF.
+# TinyMCE emits ``border: medium none currentcolor`` on every table it creates,
+# so any document with an editor-inserted table would 500 on PDF download.
+# Since those borders are ``none`` (invisible), rewriting the keyword to
+# ``transparent`` — a value reportlab accepts — preserves the rendering while
+# removing the crash. Browsers (editor/preview) and python-docx (Word) already
+# ignore/understand it, so this only affects the PDF path.
+_CURRENTCOLOR_PATTERN = re.compile(r'\bcurrentcolor\b', re.IGNORECASE)
+
 # Block-level tags that may show up empty (``<p>&nbsp;</p>``, ``<div></div>``)
 # in TinyMCE output. ``<o:p>`` is the Office XML namespace tag that survives
 # Word paste; it is always purely decorative and is dropped unconditionally.
@@ -147,6 +158,23 @@ def _strip_excessive_inline_margins(soup):
             del node['style']
 
 
+def _neutralize_unsupported_color_keywords(soup):
+    """Replace the CSS ``currentColor`` keyword in inline styles with a value
+    xhtml2pdf/reportlab can parse.
+
+    reportlab's ``toColor`` raises ``ValueError`` on ``currentcolor``, which
+    aborts PDF generation entirely (HTTP 500). TinyMCE writes
+    ``border: medium none currentcolor`` on tables, so this crashes the PDF
+    export of any document containing an editor-created table. We rewrite the
+    keyword to ``transparent`` (accepted by reportlab); the affected borders
+    are ``none``, so this is visually a no-op.
+    """
+    for element in soup.find_all(style=True):
+        style = element['style']
+        if _CURRENTCOLOR_PATTERN.search(style):
+            element['style'] = _CURRENTCOLOR_PATTERN.sub('transparent', style)
+
+
 def sanitize_soup_for_export(soup):
     """Mutate ``soup`` in place so exports (PDF and Word) render consistently.
 
@@ -160,6 +188,8 @@ def sanitize_soup_for_export(soup):
     * promotes ``text-align`` from ``<td>/<th>`` inline styles to the legacy
       ``align`` attribute, which xhtml2pdf honours reliably
     * ensures ``<table>`` has sensible defaults (full width, collapsed borders)
+    * rewrites the CSS ``currentColor`` keyword (which reportlab cannot parse
+      and which crashes PDF generation) to ``transparent``
     * drops ``<o:p>`` Office-namespace artefacts (always paste-from-Word)
     * strips inline ``margin-*: Xpt`` declarations above
       :data:`_EXCESSIVE_MARGIN_PT_THRESHOLD` so paste-from-Word margins
@@ -217,6 +247,10 @@ def sanitize_soup_for_export(soup):
             match = re.search(r'text-align\s*:\s*([a-zA-Z]+)', style)
             if match:
                 block['align'] = match.group(1).lower()
+
+    # Rewrite the unparseable ``currentColor`` keyword before any PDF render so
+    # xhtml2pdf/reportlab doesn't abort with a ValueError on editor tables.
+    _neutralize_unsupported_color_keywords(soup)
 
     # Drop pure Word artefacts FIRST so the collapse step doesn't have to
     # reason about <o:p> blocks (each one would otherwise be treated as an
