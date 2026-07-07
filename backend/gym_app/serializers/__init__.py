@@ -5,7 +5,7 @@ from .legal_request import (
     LegalRequestFilesSerializer, LegalRequestResponseSerializer, LegalRequestListSerializer
 )
 from .intranet_gym import LegalDocumentSerializer, IntranetProfileSerializer
-from .dynamic_document import DynamicDocumentSerializer, DocumentVariableSerializer, RecentDocumentSerializer
+from .dynamic_document import DynamicDocumentSerializer, DocumentVariableSerializer, RecentDocumentSerializer, DocumentPaymentRecordSerializer
 from .legal_update import LegalUpdateSerializer
 from .secop import (
     SECOPProcessListSerializer, SECOPProcessDetailSerializer,
@@ -31,7 +31,7 @@ __all__ = [
     'LegalRequestSerializer', 'LegalRequestTypeSerializer', 'LegalDisciplineSerializer', 'LegalRequestFilesSerializer',
     'LegalRequestResponseSerializer', 'LegalRequestListSerializer',
     'LegalDocumentSerializer', 'IntranetProfileSerializer', 'DynamicDocumentSerializer', 'DocumentVariableSerializer', 'LegalUpdateSerializer',
-    'ActivityFeedSerializer', 'RecentDocumentSerializer', 'RecentProcessSerializer',
+    'ActivityFeedSerializer', 'RecentDocumentSerializer', 'RecentProcessSerializer', 'DocumentPaymentRecordSerializer',
     'SECOPProcessListSerializer', 'SECOPProcessDetailSerializer',
     'ProcessClassificationSerializer', 'SECOPAlertSerializer',
     'SyncLogSerializer', 'SavedViewSerializer',

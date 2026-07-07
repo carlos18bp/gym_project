@@ -15,7 +15,7 @@ This module defines all the URL patterns for the gym application, organized into
 """
 from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification, tour_progress
 from .views.layouts import sendEmail
-from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
+from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views, payments_views
 from django.urls import path
 
 # Authentication URLs
@@ -238,6 +238,13 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:document_id>/available-for-relationship/', relationship_views.list_available_documents_for_relationship, name='list-available-documents-for-relationship'),
     path('dynamic-documents/relationships/create/', relationship_views.create_document_relationship, name='create-document-relationship'),
     path('dynamic-documents/relationships/<int:relationship_id>/delete/', relationship_views.delete_document_relationship, name='delete-document-relationship'),
+
+    # Contract execution: cuentas de cobro per installment
+    path('dynamic-documents/<int:pk>/payment-records/', payments_views.list_payment_records, name='list-payment-records'),
+    path('dynamic-documents/<int:pk>/payment-records/upload/', payments_views.upload_payment_record, name='upload-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/accept/', payments_views.accept_payment_record, name='accept-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/reject/', payments_views.reject_payment_record, name='reject-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/download/', payments_views.download_payment_record_file, name='download-payment-record-file'),
 ]
 
 # Legal update management URLs
