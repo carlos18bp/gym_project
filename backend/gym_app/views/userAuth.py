@@ -227,9 +227,17 @@ def sign_in(request):
 
     # Verify password and generate tokens
     if user.check_password(password):
+        # Archived accounts are blocked from every login method. Checked
+        # only after a successful password so account state never leaks
+        # to callers probing with wrong credentials.
+        if user.is_archived:
+            return Response(
+                {'error': 'Tu cuenta ha sido archivada. Contacta al administrador.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         # Generate authentication tokens for the user
         return Response(generate_auth_tokens(user), status=status.HTTP_200_OK)
-    
+
     return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -300,6 +308,13 @@ def google_login(request):
                 'role': 'basic',
             }
         )
+
+        # Archived accounts are blocked from every login method
+        if not created and user.is_archived:
+            return Response(
+                {'status': 'error', 'error_message': 'Tu cuenta ha sido archivada. Contacta al administrador.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if created:
             # If the user was created, handle the optional profile picture
@@ -500,6 +515,13 @@ def outlook_login(request):
                 'role': 'basic',
             }
         )
+
+        # Archived accounts are blocked from every login method
+        if not created and user.is_archived:
+            return Response(
+                {'status': 'error', 'error_message': 'Tu cuenta ha sido archivada. Contacta al administrador.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # Serialize the user data
         serializer = UserSerializer(user)

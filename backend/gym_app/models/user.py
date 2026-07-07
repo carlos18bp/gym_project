@@ -135,6 +135,10 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True, help_text="The date the user was created.")
     is_gym_lawyer = models.BooleanField(default=False, help_text="Indicates if the user is a GYM lawyer.")
     is_profile_completed = models.BooleanField(default=False, help_text="Indicates if the user's profile is completed.")
+    is_archived = models.BooleanField(
+        default=False,
+        help_text="Indicates if the account is archived: blocked from every login method and excluded from active listings and notifications. Reversible.",
+    )
 
     # Set email as the username field and define required fields
     USERNAME_FIELD = 'email'
@@ -151,6 +155,22 @@ class User(AbstractUser):
             str: The email of the user.
         """
         return f"{self.email} ({self.last_name} {self.first_name})"
+
+    def archive(self):
+        """Archive the account.
+
+        Also flips ``is_active`` off so simplejwt (CHECK_USER_IS_ACTIVE)
+        rejects every request made with already-issued tokens.
+        """
+        self.is_archived = True
+        self.is_active = False
+        self.save(update_fields=['is_archived', 'is_active'])
+
+    def unarchive(self):
+        """Restore an archived account (reversible operation)."""
+        self.is_archived = False
+        self.is_active = True
+        self.save(update_fields=['is_archived', 'is_active'])
 
 
 class UserSignature(models.Model):
