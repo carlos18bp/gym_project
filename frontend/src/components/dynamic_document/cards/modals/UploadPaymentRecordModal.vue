@@ -227,10 +227,12 @@ async function submit() {
       amount: amount.value,
       notes: notes.value.trim(),
     });
-    await showNotification('Cuenta de cobro cargada correctamente.', 'success');
+    // Emit BEFORE notifying: showNotification resolves only when the
+    // user dismisses the SweetAlert, and the parent must switch modals now.
     emit('uploaded', data);
+    showNotification('Cuenta de cobro cargada correctamente.', 'success');
   } catch (error) {
-    await showNotification(
+    showNotification(
       error?.response?.data?.detail || 'No se pudo cargar la cuenta de cobro.',
       'error'
     );

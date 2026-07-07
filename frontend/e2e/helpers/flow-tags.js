@@ -87,6 +87,7 @@ export const DOCS_MULTIPLE = ['@flow:docs-multiple', '@module:documents', '@prio
 export const DOCS_PROFILE_NAVIGATION = ['@flow:docs-profile-navigation', '@module:documents', '@priority:P4'];
 export const DOCS_MINUTAS_COLUMNS = ['@flow:minutas-columns', '@module:documents', '@priority:P2'];
 export const DOCS_GUIDED_TOUR = ['@flow:docs-guided-tour', '@module:documents', '@priority:P2'];
+export const DOCS_CONTRACT_EXECUTION = ['@flow:docs-contract-execution', '@module:documents', '@priority:P1'];
 
 // ── Signatures ──────────────────────────────────────────────────────────────
 export const SIGN_ELECTRONIC_SIGNATURE = ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1'];
