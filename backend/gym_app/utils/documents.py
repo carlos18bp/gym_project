@@ -6,8 +6,12 @@ user typed content directly or pasted it from Word / Google Docs.
 """
 
 import logging
+import os
 import re
 from bs4 import BeautifulSoup
+from django.conf import settings
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +288,186 @@ def sanitize_html_for_pdf(html_content):
     if not html_content:
         return html_content
     return str(sanitize_soup_for_export(BeautifulSoup(html_content, 'html.parser')))
+
+
+def register_carlito_fonts():
+    """Register the Carlito font family in ReportLab and return its file paths.
+
+    Shared by every xhtml2pdf export path (standard document PDF, signed
+    original PDF, signatures page). Returns a dict of the four TTF paths so the
+    caller can wire them into the ``@font-face`` CSS.
+    """
+    font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
+    font_paths = {
+        "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
+        "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
+        "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
+        "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
+    }
+
+    # Verify that all font files exist
+    for name, path in font_paths.items():
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Font file not found: {path}")
+
+    # Register fonts in ReportLab
+    pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
+    pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
+    pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
+    pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
+
+    return font_paths
+
+
+def build_pdf_stylesheet(font_paths, *, background_style="", body_extra_top_padding=""):
+    """Return the canonical ``<style>`` block shared by the HTML→PDF exports.
+
+    Both ``download_dynamic_document_pdf`` (standard download) and
+    ``generate_original_document_pdf`` (signed original) render through
+    xhtml2pdf and previously carried their own near-identical copy of this
+    stylesheet, which had already drifted. This is the single source of truth
+    so any spacing/format fix applies to both paths at once.
+
+    The two genuinely caller-specific bits are parameters:
+
+    * ``background_style`` — the letterhead ``background-image`` declarations
+      (each caller resolves its own letterhead image and fallback user).
+    * ``body_extra_top_padding`` — extra ``padding-top`` applied only when a
+      letterhead is present (``1cm`` for the standard PDF, ``1.5cm`` for the
+      signed original).
+
+    The paragraph/table spacing model (0pt before / 6pt after / 1.35 line,
+    table ``margin: 0 0 6pt 0``, cell padding only) mirrors the TinyMCE editor
+    ``content_style`` and the Word export so all renderers agree.
+    """
+    return f"""
+    <style>
+    @page {{
+        size: letter;
+        margin: 2cm;{background_style}
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{font_paths["Carlito-Regular"]}') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{font_paths["Carlito-Bold"]}') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{font_paths["Carlito-Italic"]}') format('truetype');
+        font-weight: normal;
+        font-style: italic;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
+        font-weight: bold;
+        font-style: italic;
+    }}
+
+    body {{
+        font-family: 'Carlito', sans-serif !important;
+        font-size: 12pt;{body_extra_top_padding}
+        word-wrap: break-word;
+        -ms-word-break: break-word;
+        word-break: break-word;
+    }}
+
+    p, span, li, div {{
+        font-family: 'Carlito', sans-serif !important;
+        word-wrap: break-word;
+        -ms-word-break: break-word;
+        word-break: break-word;
+    }}
+
+    /*
+     * xhtml2pdf applies an oversized default margin to <p> blocks, which
+     * causes paragraphs to render with huge empty gaps between them even
+     * when the editor shows them with normal line spacing. Tighten those
+     * margins and the inter-line height so the PDF matches what the user
+     * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
+     *
+     * ``!important`` is used as a defence-in-depth alongside the
+     * ``_strip_excessive_inline_margins`` helper: if any ``margin-*: Xpt``
+     * slips past the helper, the global rule still wins for normal paragraphs.
+     */
+    p, div {{
+        margin-top: 0 !important;
+        margin-bottom: 6pt !important;
+        line-height: 1.35;
+    }}
+
+    br {{
+        line-height: 1.35;
+    }}
+
+    ul, ol {{
+        margin: 0 0 6pt 18pt;
+        padding: 0;
+    }}
+
+    li {{
+        margin: 0 0 2pt 0;
+        line-height: 1.35;
+    }}
+
+    strong {{
+        font-weight: bold !important;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    em {{
+        font-style: italic !important;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    strong em {{
+        font-weight: bold !important;
+        font-style: italic !important;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    u {{
+        text-decoration: underline !important;
+    }}
+
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 0 6pt 0;
+        table-layout: fixed;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    td, th {{
+        border: 1px solid #999;
+        padding: 4pt 6pt;
+        vertical-align: top;
+        text-align: left;
+        word-wrap: break-word;
+        font-family: 'Carlito', sans-serif !important;
+    }}
+
+    th {{
+        font-weight: bold;
+        background-color: #f5f5f5;
+    }}
+
+    tr {{
+        page-break-inside: avoid;
+    }}
+    </style>
+    """
 
 
 LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')

@@ -310,6 +310,54 @@ class TestSanitizeSoupForExportAlias:
         assert sanitize_soup_for_pdf is sanitize_soup_for_export
 
 
+class TestBuildPdfStylesheet:
+    """The single canonical stylesheet shared by both HTML→PDF export paths."""
+
+    _FONT_PATHS = {
+        "Carlito-Regular": "/fonts/Carlito-Regular.ttf",
+        "Carlito-Bold": "/fonts/Carlito-Bold.ttf",
+        "Carlito-Italic": "/fonts/Carlito-Italic.ttf",
+        "Carlito-BoldItalic": "/fonts/Carlito-BoldItalic.ttf",
+    }
+
+    def test_contains_canonical_paragraph_spacing(self):
+        from gym_app.utils.documents import build_pdf_stylesheet
+        css = build_pdf_stylesheet(self._FONT_PATHS)
+        assert 'margin-bottom: 6pt !important' in css
+        assert 'line-height: 1.35' in css
+
+    def test_contains_canonical_table_rules(self):
+        from gym_app.utils.documents import build_pdf_stylesheet
+        css = build_pdf_stylesheet(self._FONT_PATHS)
+        assert 'table-layout: fixed' in css
+        assert 'margin: 0 0 6pt 0' in css
+
+    def test_embeds_font_paths(self):
+        from gym_app.utils.documents import build_pdf_stylesheet
+        css = build_pdf_stylesheet(self._FONT_PATHS)
+        assert '/fonts/Carlito-Regular.ttf' in css
+
+    def test_injects_background_and_padding(self):
+        from gym_app.utils.documents import build_pdf_stylesheet
+        css = build_pdf_stylesheet(
+            self._FONT_PATHS,
+            background_style="\n        background-image: url('x');",
+            body_extra_top_padding="\n        padding-top: 1cm;",
+        )
+        assert "background-image: url('x')" in css
+        assert 'padding-top: 1cm' in css
+
+    def test_pisa_renders_stylesheet_without_error(self):
+        from io import BytesIO
+        from xhtml2pdf import pisa
+        from gym_app.utils.documents import build_pdf_stylesheet
+        css = build_pdf_stylesheet(self._FONT_PATHS)
+        html = f"<!DOCTYPE html><html><head>{css}</head><body><p>x</p>" \
+               "<table><tr><td>c</td></tr></table></body></html>"
+        status = pisa.CreatePDF(html.encode('utf-8'), dest=BytesIO())
+        assert status.err == 0
+
+
 class TestSanitizeHtmlForPdf:
     """Tests for string-in/string-out wrapper."""
 

@@ -2,7 +2,6 @@ import io
 import re
 import os
 import logging
-from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.template.loader import get_template
@@ -17,8 +16,6 @@ from xhtml2pdf import pisa
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from django.db.models import Prefetch
 from gym_app.models.dynamic_document import (
     DynamicDocument, RecentDocument, DocumentSignature,
@@ -28,6 +25,8 @@ from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, Dyna
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_export,
+    register_carlito_fonts,
+    build_pdf_stylesheet,
     get_letterhead_for_document,
     get_letterhead_word_template,
     ensure_letterhead_snapshot,
@@ -435,28 +434,8 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
         # Create the PDF buffer
         pdf_buffer = io.BytesIO()
 
-        # Define font file paths
-        font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
-        font_paths = {
-            "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
-            "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
-            "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
-            "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
-        }
-
-        # Verify that all font files exist
-        for name, path in font_paths.items():
-            if not os.path.exists(path):
-                raise FileNotFoundError(f"Font file not found: {path}")
-
-        # Register fonts in ReportLab
-        try:
-            pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
-            pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
-            pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
-            pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
-        except Exception as e:  # pragma: no cover – font registration failure
-            raise
+        # Register the Carlito font family and get its file paths for @font-face
+        font_paths = register_carlito_fonts()
 
         ensure_letterhead_snapshot(document)
 
@@ -494,137 +473,14 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
 
         body_extra_top_padding = ""
         if background_style:
-            body_extra_top_padding = "padding-top: 1cm;"
+            body_extra_top_padding = "\n        padding-top: 1cm;"
 
-        # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches)
-        styles = f"""
-        <style>
-        @page {{
-            size: letter;
-            margin: 2cm;{background_style}
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Regular"]}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Bold"]}') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Italic"]}') format('truetype');
-            font-weight: normal;
-            font-style: italic;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
-            font-weight: bold;
-            font-style: italic;
-        }}
-
-        body {{
-            font-family: 'Carlito', sans-serif !important;
-            font-size: 12pt;
-            {body_extra_top_padding}
-            word-wrap: break-word;
-            -ms-word-break: break-word;
-            word-break: break-word;
-        }}
-
-        p, span, li, div {{
-            font-family: 'Carlito', sans-serif !important;
-            word-wrap: break-word;
-            -ms-word-break: break-word;
-            word-break: break-word;
-        }}
-
-        /*
-         * xhtml2pdf applies an oversized default margin to <p> blocks, which
-         * causes paragraphs to render with huge empty gaps between them even
-         * when the editor shows them with normal line spacing. Tighten those
-         * margins and the inter-line height so the PDF matches what the user
-         * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
-         *
-         * ``!important`` is used as a defence-in-depth alongside the
-         * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``:
-         * if any ``margin-*: Xpt`` slips past the helper (e.g. value below
-         * the strip threshold but still aggregated by Word into oversized
-         * spacing), the global rule still wins for normal paragraphs.
-         */
-        p, div {{
-            margin-top: 0 !important;
-            margin-bottom: 6pt !important;
-            line-height: 1.35;
-        }}
-
-        br {{
-            line-height: 1.35;
-        }}
-
-        ul, ol {{
-            margin: 0 0 6pt 18pt;
-            padding: 0;
-        }}
-
-        li {{
-            margin: 0 0 2pt 0;
-            line-height: 1.35;
-        }}
-
-        strong {{
-            font-weight: bold !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        em {{
-            font-style: italic !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        strong em {{
-            font-weight: bold !important;
-            font-style: italic !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        u {{
-            text-decoration: underline !important;
-        }}
-
-        table {{
-            border-collapse: collapse;
-            margin: 0 0 6pt 0;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        td, th {{
-            border: 1px solid #999;
-            padding: 4pt 6pt;
-            vertical-align: top;
-            word-wrap: break-word;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        th {{
-            font-weight: bold;
-            background-color: #f5f5f5;
-        }}
-
-        tr {{
-            page-break-inside: avoid;
-        }}
-        </style>
-        """
+        # Canonical PDF stylesheet, shared with the signed-original export.
+        styles = build_pdf_stylesheet(
+            font_paths,
+            background_style=background_style,
+            body_extra_top_padding=body_extra_top_padding,
+        )
 
         # Construct the final HTML for the PDF
         html_content = f"""

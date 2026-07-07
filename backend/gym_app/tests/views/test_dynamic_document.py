@@ -619,9 +619,18 @@ class TestDynamicDocumentExport:
         def mock_create_pdf(*args, **kwargs):
             return MockPisaStatus()
 
-        monkeypatch.setattr(document_views.os.path, "exists", lambda path: True)
-        monkeypatch.setattr(document_views.pdfmetrics, "registerFont", lambda *args, **kwargs: None)
-        monkeypatch.setattr(document_views, "TTFont", lambda *args, **kwargs: object())
+        # Font registration now lives in utils.documents.register_carlito_fonts;
+        # stub it so the test exercises the pisa-error branch, not font I/O.
+        monkeypatch.setattr(
+            document_views,
+            "register_carlito_fonts",
+            lambda: {
+                "Carlito-Regular": "x",
+                "Carlito-Bold": "x",
+                "Carlito-Italic": "x",
+                "Carlito-BoldItalic": "x",
+            },
+        )
         monkeypatch.setattr(document_views.pisa, "CreatePDF", mock_create_pdf)
 
         url = reverse('download_dynamic_document_pdf', kwargs={'pk': sample_document.pk})
@@ -889,9 +898,14 @@ class TestDownloadPDF:
         assert "Font file" in resp.data.get("detail", "")
 
     @patch("gym_app.views.dynamic_documents.document_views.pisa.CreatePDF", side_effect=Exception("PDF boom"))
-    @patch("gym_app.views.dynamic_documents.document_views.os.path.exists", return_value=True)
-    @patch("gym_app.views.dynamic_documents.document_views.pdfmetrics.registerFont")
-    def test_general_error(self, _reg, _exists, _pisa, api, lawyer, doc_with_var):  # noqa: PT019
+    @patch(
+        "gym_app.views.dynamic_documents.document_views.register_carlito_fonts",
+        return_value={
+            "Carlito-Regular": "x", "Carlito-Bold": "x",
+            "Carlito-Italic": "x", "Carlito-BoldItalic": "x",
+        },
+    )
+    def test_general_error(self, _reg, _pisa, api, lawyer, doc_with_var):  # noqa: PT019
         """Lines 455-456: general exception returns 500."""
         api.force_authenticate(user=lawyer)
         url = reverse("download_dynamic_document_pdf", kwargs={"pk": doc_with_var.pk})

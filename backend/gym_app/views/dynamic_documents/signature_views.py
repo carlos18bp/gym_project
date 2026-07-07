@@ -19,6 +19,8 @@ from ..dynamic_documents.document_views import download_dynamic_document_pdf, ge
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_export,
+    register_carlito_fonts,
+    build_pdf_stylesheet,
     get_letterhead_for_document,
     snapshot_letterhead_on_formalize,
     ensure_letterhead_snapshot,
@@ -41,8 +43,6 @@ from reportlab.lib.units import inch
 from django.http import FileResponse, HttpResponse
 import traceback
 from io import BytesIO
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from PyPDF2 import PdfReader, PdfWriter
 from bs4 import BeautifulSoup
 from xhtml2pdf import pisa
@@ -1171,35 +1171,6 @@ def get_user_signature(request, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def register_carlito_fonts():
-    """
-    Register Carlito font family in ReportLab.
-    Returns a dictionary with font paths for CSS styling.
-    """
-    font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
-    font_paths = {
-        "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
-        "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
-        "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
-        "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
-    }
-
-    # Verify that all font files exist
-    for name, path in font_paths.items():
-        if not os.path.exists(path):  # pragma: no cover – font file missing
-            raise FileNotFoundError(f"Font file not found: {path}")
-
-    # Register fonts in ReportLab
-    try:
-        pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
-        pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
-        pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
-        pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
-    except Exception as e:  # pragma: no cover – font registration failure
-        raise
-
-    return font_paths
-
 def generate_original_document_pdf(document, fallback_user=None):
     """Generate the original document PDF and return its BytesIO buffer.
 
@@ -1258,131 +1229,12 @@ def generate_original_document_pdf(document, fallback_user=None):
             # Image file doesn't exist or path is invalid
             background_style = ""
 
-    # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches, same as standard PDF download)
-    styles = f"""
-    <style>
-    @page {{
-        size: letter;
-        margin: 2cm;{background_style}
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Regular"]}') format('truetype');
-        font-weight: normal;
-        font-style: normal;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Bold"]}') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Italic"]}') format('truetype');
-        font-weight: normal;
-        font-style: italic;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
-        font-weight: bold;
-        font-style: italic;
-    }}
-
-    body {{
-        font-family: 'Carlito', sans-serif !important;
-        font-size: 12pt;{body_extra_top_padding}
-    }}
-
-    p, span {{
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    /*
-     * xhtml2pdf applies an oversized default margin to <p> blocks, which
-     * causes paragraphs to render with huge empty gaps between them even when
-     * the editor shows them with normal line spacing. Tighten those margins
-     * so the signed PDF matches the editor (issue: client R3 — PDFs con
-     * espaciado gigante entre párrafos).
-     *
-     * ``!important`` and the inclusion of ``div`` mirror the rule in
-     * ``document_views.py``: it is defence-in-depth alongside the
-     * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``,
-     * so any inline ``margin-*: Xpt`` that slips past the helper still loses
-     * to the global rule for normal blocks.
-     */
-    p, div {{
-        margin-top: 0 !important;
-        margin-bottom: 6pt !important;
-        line-height: 1.35;
-    }}
-
-    br {{
-        line-height: 1.35;
-    }}
-
-    ul, ol {{
-        margin: 0 0 6pt 18pt;
-        padding: 0;
-    }}
-
-    li {{
-        margin: 0 0 2pt 0;
-        line-height: 1.35;
-    }}
-
-    strong {{
-        font-weight: bold !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    em {{
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    strong em {{
-        font-weight: bold !important;
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    u {{
-        text-decoration: underline !important;
-    }}
-
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0 0 6pt 0;
-        table-layout: fixed;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    td, th {{
-        border: 1px solid #999;
-        padding: 4pt 6pt;
-        vertical-align: top;
-        text-align: left;
-        word-wrap: break-word;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    th {{
-        font-weight: bold;
-        background-color: #f5f5f5;
-    }}
-
-    tr {{
-        page-break-inside: avoid;
-    }}
-    </style>
-    """
+    # Canonical PDF stylesheet, shared with the standard document download.
+    styles = build_pdf_stylesheet(
+        font_paths,
+        background_style=background_style,
+        body_extra_top_padding=body_extra_top_padding,
+    )
 
     # Construct the final HTML for the PDF
     html_content = f"""
