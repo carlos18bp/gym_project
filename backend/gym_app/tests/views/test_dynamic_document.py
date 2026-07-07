@@ -556,15 +556,9 @@ class TestDynamicDocumentExport:
     
     def test_download_dynamic_document_pdf_authenticated(self, api_client, user, sample_document, monkeypatch):
         """Test downloading a dynamic document as PDF when authenticated."""
-        # Mock the pisa.CreatePDF function to avoid actual PDF creation
-        class MockPisaStatus:
-            err = False
-            
-        def mock_create_pdf(*args, **kwargs):
-            return MockPisaStatus()
-            
-        monkeypatch.setattr('xhtml2pdf.pisa.CreatePDF', mock_create_pdf)
-        
+        # Stub the WeasyPrint render so the test avoids a real (slow) PDF pass.
+        monkeypatch.setattr(document_views, "render_document_pdf", lambda **k: b"%PDF-1.7 fake")
+
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -609,29 +603,14 @@ class TestDynamicDocumentExport:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "Font file not found" in response.data['detail']
 
-    def test_download_dynamic_document_pdf_pisa_error_returns_500(self, api_client, user, sample_document, monkeypatch):
-        """Verify download dynamic document pdf pisa error returns 500."""
+    def test_download_dynamic_document_pdf_render_error_returns_500(self, api_client, user, sample_document, monkeypatch):
+        """Verify a WeasyPrint render failure returns a 500 with a helpful detail."""
         api_client.force_authenticate(user=user)
 
-        class MockPisaStatus:
-            err = True
+        def boom(*args, **kwargs):
+            raise Exception("render boom")
 
-        def mock_create_pdf(*args, **kwargs):
-            return MockPisaStatus()
-
-        # Font registration now lives in utils.documents.register_carlito_fonts;
-        # stub it so the test exercises the pisa-error branch, not font I/O.
-        monkeypatch.setattr(
-            document_views,
-            "register_carlito_fonts",
-            lambda: {
-                "Carlito-Regular": "x",
-                "Carlito-Bold": "x",
-                "Carlito-Italic": "x",
-                "Carlito-BoldItalic": "x",
-            },
-        )
-        monkeypatch.setattr(document_views.pisa, "CreatePDF", mock_create_pdf)
+        monkeypatch.setattr(document_views, "render_document_pdf", boom)
 
         url = reverse('download_dynamic_document_pdf', kwargs={'pk': sample_document.pk})
         response = api_client.get(url)
@@ -897,15 +876,8 @@ class TestDownloadPDF:
         assert resp.status_code == 500
         assert "Font file" in resp.data.get("detail", "")
 
-    @patch("gym_app.views.dynamic_documents.document_views.pisa.CreatePDF", side_effect=Exception("PDF boom"))
-    @patch(
-        "gym_app.views.dynamic_documents.document_views.register_carlito_fonts",
-        return_value={
-            "Carlito-Regular": "x", "Carlito-Bold": "x",
-            "Carlito-Italic": "x", "Carlito-BoldItalic": "x",
-        },
-    )
-    def test_general_error(self, _reg, _pisa, api, lawyer, doc_with_var):  # noqa: PT019
+    @patch("gym_app.views.dynamic_documents.document_views.render_document_pdf", side_effect=Exception("PDF boom"))
+    def test_general_error(self, _render, api, lawyer, doc_with_var):  # noqa: PT019
         """Lines 455-456: general exception returns 500."""
         api.force_authenticate(user=lawyer)
         url = reverse("download_dynamic_document_pdf", kwargs={"pk": doc_with_var.pk})

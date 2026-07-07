@@ -311,7 +311,8 @@ class TestSanitizeSoupForExportAlias:
 
 
 class TestBuildPdfStylesheet:
-    """The single canonical stylesheet shared by both HTML→PDF export paths."""
+    """The WeasyPrint stylesheet mirrors the editor content_style so the PDF is
+    WYSIWYG with the on-screen editor."""
 
     _FONT_PATHS = {
         "Carlito-Regular": "/fonts/Carlito-Regular.ttf",
@@ -320,42 +321,49 @@ class TestBuildPdfStylesheet:
         "Carlito-BoldItalic": "/fonts/Carlito-BoldItalic.ttf",
     }
 
-    def test_contains_canonical_paragraph_spacing(self):
+    def test_paragraph_spacing_mirrors_editor_without_important(self):
         from gym_app.utils.documents import build_pdf_stylesheet
         css = build_pdf_stylesheet(self._FONT_PATHS)
-        assert 'margin-bottom: 6pt !important' in css
-        assert 'line-height: 1.35' in css
+        # Editor parity: margin has NO !important so inline margins win (tight spacing).
+        assert 'p, div { margin: 0 0 6pt 0; line-height: 1.35; }' in css
+        assert 'margin-bottom: 6pt !important' not in css
 
-    def test_contains_canonical_table_rules(self):
+    def test_contains_editor_table_rules(self):
         from gym_app.utils.documents import build_pdf_stylesheet
         css = build_pdf_stylesheet(self._FONT_PATHS)
-        assert 'table-layout: fixed' in css
-        assert 'margin: 0 0 6pt 0' in css
+        assert 'table { border-collapse: collapse; margin: 0 0 6pt 0; }' in css
+        assert 'table-layout: fixed' not in css  # dropped (xhtml2pdf-only workaround)
 
-    def test_embeds_font_paths(self):
+    def test_embeds_font_paths_as_file_urls(self):
         from gym_app.utils.documents import build_pdf_stylesheet
         css = build_pdf_stylesheet(self._FONT_PATHS)
-        assert '/fonts/Carlito-Regular.ttf' in css
+        assert "file:///fonts/Carlito-Regular.ttf" in css
 
-    def test_injects_background_and_padding(self):
+    def test_injects_body_top_padding(self):
         from gym_app.utils.documents import build_pdf_stylesheet
-        css = build_pdf_stylesheet(
-            self._FONT_PATHS,
-            background_style="\n        background-image: url('x');",
-            body_extra_top_padding="\n        padding-top: 1cm;",
+        assert 'padding-top: 1cm' in build_pdf_stylesheet(self._FONT_PATHS, top_padding="1cm")
+        assert 'padding-top' not in build_pdf_stylesheet(self._FONT_PATHS, top_padding=None)
+
+
+class TestRenderHtmlToPdf:
+    """WeasyPrint render smoke test."""
+
+    def test_renders_simple_html_to_pdf_bytes(self):
+        from gym_app.utils.documents import render_html_to_pdf
+        pdf = render_html_to_pdf(
+            "<html><body><p>Hola</p><table><tr><td>c</td></tr></table></body></html>",
+            base_url=".",
         )
-        assert "background-image: url('x')" in css
-        assert 'padding-top: 1cm' in css
+        assert isinstance(pdf, (bytes, bytearray))
+        assert pdf[:5] == b"%PDF-"
 
-    def test_pisa_renders_stylesheet_without_error(self):
-        from io import BytesIO
-        from xhtml2pdf import pisa
-        from gym_app.utils.documents import build_pdf_stylesheet
-        css = build_pdf_stylesheet(self._FONT_PATHS)
-        html = f"<!DOCTYPE html><html><head>{css}</head><body><p>x</p>" \
-               "<table><tr><td>c</td></tr></table></body></html>"
-        status = pisa.CreatePDF(html.encode('utf-8'), dest=BytesIO())
-        assert status.err == 0
+
+class TestBuildLetterheadLayerHtml:
+    """The letterhead becomes a fixed full-page layer (WeasyPrint)."""
+
+    def test_returns_empty_when_no_letterhead(self):
+        from gym_app.utils.documents import build_letterhead_layer_html
+        assert build_letterhead_layer_html(None) == ""
 
 
 class TestSanitizeHtmlForPdf:

@@ -1,7 +1,6 @@
 import datetime
 import io
 import logging
-import os
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
@@ -20,7 +19,7 @@ from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_export,
     register_carlito_fonts,
-    build_pdf_stylesheet,
+    render_document_pdf,
     get_letterhead_for_document,
     snapshot_letterhead_on_formalize,
     ensure_letterhead_snapshot,
@@ -45,11 +44,9 @@ import traceback
 from io import BytesIO
 from PyPDF2 import PdfReader, PdfWriter
 from bs4 import BeautifulSoup
-from xhtml2pdf import pisa
 from reportlab.pdfgen import canvas
 from django.core.mail import EmailMessage
 import hashlib
-import base64
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 
@@ -1194,76 +1191,19 @@ def generate_original_document_pdf(document, fallback_user=None):
             replacement_value or ""
         )
 
-    # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+    # Parse once; sanitize Word-pasted markup in place so the renderer
     # preserves table formatting and alignment.
     soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
-    # Create temporary buffer for initial PDF
-    temp_buffer = BytesIO()
-
-    # Register fonts
-    font_paths = register_carlito_fonts()
-
-    # Define background image style if letterhead exists
-    background_style = ""
-    body_extra_top_padding = ""
     letterhead_image = get_letterhead_for_document(document, fallback_user=fallback_user)
-    if letterhead_image:  # pragma: no cover – letterhead image processing
-        try:
-            # Get the absolute path to the letterhead image
-            letterhead_path = os.path.abspath(letterhead_image.path)
-            if os.path.exists(letterhead_path):
-                # Convert image to base64 for better xhtml2pdf compatibility
-                import base64
-                with open(letterhead_path, 'rb') as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode()
-                    img_mime = 'image/png'  # Assuming PNG as per validation
-                    background_style = f"""
-        background-image: url('data:{img_mime};base64,{img_data}');
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: contain;
-        background-attachment: fixed;"""
-                    body_extra_top_padding = "\n        padding-top: 1.5cm;"
-        except (ValueError, AttributeError, IOError):
-            # Image file doesn't exist or path is invalid
-            background_style = ""
 
-    # Canonical PDF stylesheet, shared with the standard document download.
-    styles = build_pdf_stylesheet(
-        font_paths,
-        background_style=background_style,
-        body_extra_top_padding=body_extra_top_padding,
-    )
-
-    # Construct the final HTML for the PDF
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{document.title}</title>
-        {styles}
-    </head>
-    <body>
-        {str(soup)}
-    </body>
-    </html>
-    """
-
-    # Generate the initial PDF with xhtml2pdf
-    pisa_status = pisa.CreatePDF(
-        html_content.encode('utf-8'),
-        dest=temp_buffer
-    )
-
-    # Check for errors in PDF generation
-    if pisa_status.err:  # pragma: no cover – PDF conversion failure
-        raise Exception("HTML to PDF conversion failed")
-
-    # No watermark: return the generated PDF as-is
-    temp_buffer.seek(0)
-    return temp_buffer
+    # Render with WeasyPrint (browser-grade CSS/table layout → matches editor)
+    return BytesIO(render_document_pdf(
+        title=document.title,
+        body_html=str(soup),
+        letterhead_image=letterhead_image,
+        top_padding="1.5cm",
+    ))
 
 def create_signatures_pdf(document, request):
     """

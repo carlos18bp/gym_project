@@ -1,7 +1,7 @@
 """Document HTML utilities shared by dynamic-document views and serializers.
 
 These helpers normalise the TinyMCE output so that variable substitution and
-PDF rendering (via xhtml2pdf) work consistently regardless of whether the
+PDF rendering (via WeasyPrint) work consistently regardless of whether the
 user typed content directly or pasted it from Word / Google Docs.
 """
 
@@ -290,12 +290,12 @@ def sanitize_html_for_pdf(html_content):
     return str(sanitize_soup_for_export(BeautifulSoup(html_content, 'html.parser')))
 
 
-def register_carlito_fonts():
-    """Register the Carlito font family in ReportLab and return its file paths.
+def get_carlito_font_paths():
+    """Return the four Carlito TTF file paths, validating each exists.
 
-    Shared by every xhtml2pdf export path (standard document PDF, signed
-    original PDF, signatures page). Returns a dict of the four TTF paths so the
-    caller can wire them into the ``@font-face`` CSS.
+    Split from :func:`register_carlito_fonts` so the WeasyPrint export paths —
+    which load fonts themselves via ``@font-face`` — can get the paths without
+    paying for reportlab font registration they never use.
     """
     font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
     font_paths = {
@@ -304,170 +304,199 @@ def register_carlito_fonts():
         "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
         "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
     }
-
-    # Verify that all font files exist
     for name, path in font_paths.items():
         if not os.path.exists(path):
             raise FileNotFoundError(f"Font file not found: {path}")
+    return font_paths
 
-    # Register fonts in ReportLab
+
+def register_carlito_fonts():
+    """Register the Carlito font family in ReportLab and return its file paths.
+
+    Used by the reportlab-based PDFs (the signatures page / watermark, which
+    draw text with ``canvas.setFont('Carlito', …)``). HTML→PDF paths that render
+    with WeasyPrint should call :func:`get_carlito_font_paths` instead.
+    """
+    font_paths = get_carlito_font_paths()
     pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
     pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
     pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
     pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
-
     return font_paths
 
 
-def build_pdf_stylesheet(font_paths, *, background_style="", body_extra_top_padding=""):
-    """Return the canonical ``<style>`` block shared by the HTML→PDF exports.
+def build_pdf_stylesheet(font_paths, *, top_padding=None):
+    """Return the ``<style>`` block for the WeasyPrint HTML→PDF exports.
 
     Both ``download_dynamic_document_pdf`` (standard download) and
     ``generate_original_document_pdf`` (signed original) render through
-    xhtml2pdf and previously carried their own near-identical copy of this
-    stylesheet, which had already drifted. This is the single source of truth
-    so any spacing/format fix applies to both paths at once.
+    :func:`render_html_to_pdf`. This is the single source of truth so any
+    spacing/format fix applies to both paths at once.
 
-    The two genuinely caller-specific bits are parameters:
+    The rules **mirror the TinyMCE editor ``content_style``**
+    (``frontend/src/views/dynamic_document/DocumentEditor.vue``) so the exported
+    PDF is WYSIWYG with the on-screen editor: WeasyPrint implements the real CSS
+    cascade, so authored inline styles (paragraph ``margin: 0``, Word table
+    backgrounds/widths) win exactly like they do in the browser. Notably the
+    ``p, div`` margin rule carries **no** ``!important`` — otherwise it would
+    override the inline ``margin: 0`` the editor honours and reintroduce the
+    oversized gaps.
 
-    * ``background_style`` — the letterhead ``background-image`` declarations
-      (each caller resolves its own letterhead image and fallback user).
-    * ``body_extra_top_padding`` — extra ``padding-top`` applied only when a
-      letterhead is present (``1cm`` for the standard PDF, ``1.5cm`` for the
-      signed original).
-
-    The paragraph/table spacing model (0pt before / 6pt after / 1.35 line,
-    table ``margin: 0 0 6pt 0``, cell padding only) mirrors the TinyMCE editor
-    ``content_style`` and the Word export so all renderers agree.
+    ``top_padding`` (e.g. ``"1cm"``) pushes the body down when a letterhead layer
+    is present (see :func:`build_letterhead_layer_html`) so text clears the
+    header; pass ``None`` when there is no letterhead. Carlito is loaded from the
+    local TTF files via ``@font-face`` (the editor's Google-Fonts import is
+    unavailable offline / under WeasyPrint's fetcher).
     """
+    def _url(key):
+        return f"file://{font_paths[key]}"
+
+    padding_decl = f"\n        padding-top: {top_padding};" if top_padding else ""
+
     return f"""
     <style>
     @page {{
         size: letter;
-        margin: 2cm;{background_style}
+        margin: 2cm;
     }}
 
     @font-face {{
         font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Regular"]}') format('truetype');
+        src: url('{_url("Carlito-Regular")}') format('truetype');
         font-weight: normal;
         font-style: normal;
     }}
 
     @font-face {{
         font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Bold"]}') format('truetype');
+        src: url('{_url("Carlito-Bold")}') format('truetype');
         font-weight: bold;
         font-style: normal;
     }}
 
     @font-face {{
         font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Italic"]}') format('truetype');
+        src: url('{_url("Carlito-Italic")}') format('truetype');
         font-weight: normal;
         font-style: italic;
     }}
 
     @font-face {{
         font-family: 'Carlito';
-        src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
+        src: url('{_url("Carlito-BoldItalic")}') format('truetype');
         font-weight: bold;
         font-style: italic;
     }}
 
+    /* --- Mirror of DocumentEditor.vue content_style (WYSIWYG with editor) --- */
+    body, p, span, div, strong, em, u, i, b {{
+        font-family: 'Carlito', sans-serif !important;
+    }}
     body {{
-        font-family: 'Carlito', sans-serif !important;
-        font-size: 12pt;{body_extra_top_padding}
-        word-wrap: break-word;
-        -ms-word-break: break-word;
-        word-break: break-word;
+        font-size: 12pt;{padding_decl}
     }}
+    p, div {{ margin: 0 0 6pt 0; line-height: 1.35; }}
+    table {{ border-collapse: collapse; margin: 0 0 6pt 0; }}
+    td, th {{ border: 1px solid #999; padding: 4pt 6pt; vertical-align: top; }}
 
-    p, span, li, div {{
-        font-family: 'Carlito', sans-serif !important;
-        word-wrap: break-word;
-        -ms-word-break: break-word;
-        word-break: break-word;
+    /* Full-page letterhead layer (see build_letterhead_layer_html). Fixed
+       elements repeat on every page in WeasyPrint. The -2cm offsets + explicit
+       US-Letter sheet size (21.59cm x 27.94cm = @page ``size: letter``) bleed it
+       under the 2cm @page margins so the art covers the full sheet. NOTE: these
+       are hardcoded to the sheet size on purpose — WeasyPrint 63 drops the image
+       entirely if the width/height use ``calc(100% + 4cm)`` on a fixed element,
+       so keep them in sync with the @page size above if it ever changes. */
+    .letterhead-layer {{
+        position: fixed;
+        top: -2cm; left: -2cm;
+        width: 21.59cm; height: 27.94cm;
+        z-index: -1;
     }}
-
-    /*
-     * xhtml2pdf applies an oversized default margin to <p> blocks, which
-     * causes paragraphs to render with huge empty gaps between them even
-     * when the editor shows them with normal line spacing. Tighten those
-     * margins and the inter-line height so the PDF matches what the user
-     * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
-     *
-     * ``!important`` is used as a defence-in-depth alongside the
-     * ``_strip_excessive_inline_margins`` helper: if any ``margin-*: Xpt``
-     * slips past the helper, the global rule still wins for normal paragraphs.
-     */
-    p, div {{
-        margin-top: 0 !important;
-        margin-bottom: 6pt !important;
-        line-height: 1.35;
-    }}
-
-    br {{
-        line-height: 1.35;
-    }}
-
-    ul, ol {{
-        margin: 0 0 6pt 18pt;
-        padding: 0;
-    }}
-
-    li {{
-        margin: 0 0 2pt 0;
-        line-height: 1.35;
-    }}
-
-    strong {{
-        font-weight: bold !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    em {{
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    strong em {{
-        font-weight: bold !important;
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    u {{
-        text-decoration: underline !important;
-    }}
-
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0 0 6pt 0;
-        table-layout: fixed;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    td, th {{
-        border: 1px solid #999;
-        padding: 4pt 6pt;
-        vertical-align: top;
-        text-align: left;
-        word-wrap: break-word;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    th {{
-        font-weight: bold;
-        background-color: #f5f5f5;
-    }}
-
-    tr {{
-        page-break-inside: avoid;
+    .letterhead-layer img {{
+        width: 100%; height: 100%; object-fit: contain;
     }}
     </style>
     """
+
+
+def build_letterhead_layer_html(letterhead_image):
+    """Return a fixed full-page ``<div>`` embedding ``letterhead_image`` as a
+    base64 data URI, or ``''`` when there is no usable letterhead.
+
+    WeasyPrint does not paint ``background`` on ``@page``; instead a
+    ``position: fixed`` element (styled by ``.letterhead-layer`` in
+    :func:`build_pdf_stylesheet`) repeats on every page. The image is embedded
+    as a data URI so no network/file fetch is needed at render time.
+    """
+    if not letterhead_image:
+        return ""
+    try:
+        letterhead_path = os.path.abspath(letterhead_image.path)
+    except (ValueError, AttributeError):
+        return ""
+    if not os.path.exists(letterhead_path):
+        logger.warning("Letterhead file missing on disk: %s", letterhead_path)
+        return ""
+    try:
+        import base64
+        with open(letterhead_path, 'rb') as img_file:
+            img_data = base64.b64encode(img_file.read()).decode()
+    except (IOError, OSError) as exc:
+        logger.warning("Failed to embed letterhead %s: %s", letterhead_path, exc)
+        return ""
+    return (
+        '<div class="letterhead-layer">'
+        f'<img src="data:image/png;base64,{img_data}">'
+        '</div>'
+    )
+
+
+def render_html_to_pdf(html_content, *, base_url):
+    """Render ``html_content`` to PDF bytes using WeasyPrint.
+
+    WeasyPrint is a browser-grade renderer (real CSS cascade + table layout), so
+    the output matches the TinyMCE editor for both paragraph spacing and complex
+    Word-pasted tables — which xhtml2pdf could not lay out correctly.
+
+    Imported lazily so a missing native dependency (Pango/Cairo/…) surfaces only
+    when a PDF is actually requested, instead of taking down the whole views
+    module at import time. ``base_url`` lets relative ``url(...)`` references in
+    the HTML/CSS resolve against the project directory.
+    """
+    from weasyprint import HTML  # lazy: native libs only needed at render time
+
+    return HTML(string=html_content, base_url=str(base_url)).write_pdf()
+
+
+def render_document_pdf(*, title, body_html, letterhead_image=None, top_padding="1cm"):
+    """Assemble the shared document HTML (stylesheet + letterhead + body) and
+    render it to PDF bytes with WeasyPrint.
+
+    Single source of truth for the document-PDF skeleton used by both the
+    standard download and the signed original, so the ``<head>``/``<body>``
+    wrapper cannot drift between the two paths. Callers keep their own
+    variable-substitution and letterhead-resolution logic (which differ) and pass
+    the already-substituted ``body_html`` plus the resolved ``letterhead_image``.
+    """
+    font_paths = get_carlito_font_paths()
+    letterhead_html = build_letterhead_layer_html(letterhead_image)
+    styles = build_pdf_stylesheet(
+        font_paths,
+        top_padding=top_padding if letterhead_html else None,
+    )
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    {styles}
+</head>
+<body>
+    {letterhead_html}
+    {body_html}
+</body>
+</html>"""
+    return render_html_to_pdf(html_content, base_url=settings.BASE_DIR)
 
 
 LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')

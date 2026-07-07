@@ -12,7 +12,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from bs4 import BeautifulSoup, NavigableString
-from xhtml2pdf import pisa
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -25,8 +24,7 @@ from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, Dyna
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_export,
-    register_carlito_fonts,
-    build_pdf_stylesheet,
+    render_document_pdf,
     get_letterhead_for_document,
     get_letterhead_word_template,
     ensure_letterhead_snapshot,
@@ -384,7 +382,7 @@ def delete_dynamic_document(request, pk):
 @require_document_visibility
 def download_dynamic_document_pdf(request, pk, for_version=False):
     """
-    Generates and returns a PDF file for a given document using ReportLab and xhtml2pdf.
+    Generates and returns a PDF file for a given document using WeasyPrint.
 
     This function retrieves a document from the database, replaces dynamic variables within 
     its content, applies a predefined font style, and converts the content into a properly 
@@ -427,88 +425,22 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             )
             processed_content = pattern.sub(replacement_value or "", processed_content)
 
-        # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+        # Parse once; sanitize Word-pasted markup in place so the renderer
         # preserves table formatting and alignment.
         soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
-        # Create the PDF buffer
-        pdf_buffer = io.BytesIO()
-
-        # Register the Carlito font family and get its file paths for @font-face
-        font_paths = register_carlito_fonts()
-
         ensure_letterhead_snapshot(document)
-
-        # Define background image style if letterhead exists
-        background_style = ""
         letterhead_image = get_letterhead_for_document(
             document, fallback_user=request.user
         )
-        if letterhead_image:
-            try:
-                # Get the absolute path to the letterhead image
-                letterhead_path = os.path.abspath(letterhead_image.path)
-                if os.path.exists(letterhead_path):
-                    # Convert image to base64 for better xhtml2pdf compatibility
-                    import base64
-                    with open(letterhead_path, 'rb') as img_file:
-                        img_data = base64.b64encode(img_file.read()).decode()
-                        img_mime = 'image/png'  # Assuming PNG as per validation
-                        background_style = f"""
-            background-image: url('data:{img_mime};base64,{img_data}');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            background-attachment: fixed;"""
-                else:
-                    logger.warning(
-                        "Letterhead file missing on disk for doc_id=%s path=%s",
-                        document.pk, letterhead_path,
-                    )
-            except (ValueError, AttributeError, IOError) as e:
-                logger.warning(
-                    "Failed to embed letterhead for doc_id=%s: %s", document.pk, e,
-                )
-                background_style = ""
 
-        body_extra_top_padding = ""
-        if background_style:
-            body_extra_top_padding = "\n        padding-top: 1cm;"
-
-        # Canonical PDF stylesheet, shared with the signed-original export.
-        styles = build_pdf_stylesheet(
-            font_paths,
-            background_style=background_style,
-            body_extra_top_padding=body_extra_top_padding,
-        )
-
-        # Construct the final HTML for the PDF
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>{document.title}</title>
-            {styles}
-        </head>
-        <body>
-            {str(soup)}
-        </body>
-        </html>
-        """
-
-        # Generate the PDF with xhtml2pdf
-        pisa_status = pisa.CreatePDF(
-            html_content.encode('utf-8'),
-            dest=pdf_buffer
-        )
-
-        # Check for errors in PDF generation
-        if pisa_status.err:
-            raise Exception("HTML to PDF conversion failed")
-
-        # Return the generated PDF as a response
-        pdf_buffer.seek(0)
+        # Render with WeasyPrint (browser-grade CSS/table layout → matches editor)
+        pdf_buffer = io.BytesIO(render_document_pdf(
+            title=document.title,
+            body_html=str(soup),
+            letterhead_image=letterhead_image,
+            top_padding="1cm",
+        ))
 
         # If this is for a version, return the buffer
         if for_version:  # pragma: no cover – not currently invoked with True

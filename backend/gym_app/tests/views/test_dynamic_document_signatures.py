@@ -1765,29 +1765,20 @@ class TestGetLetterheadForDocument:
 class TestPdfHelpers:
     """Tests for Pdf Helpers."""
 
-    @patch('gym_app.views.dynamic_documents.signature_views.os.path.exists', return_value=False)
+    @patch('gym_app.utils.documents.os.path.exists', return_value=False)
     def test_register_carlito_fonts_missing_file(self, mock_exists):
-        """Lines 740-742: FileNotFoundError when font missing."""
+        """register_carlito_fonts raises FileNotFoundError when a font is missing
+        (existence check lives in get_carlito_font_paths)."""
         with pytest.raises(FileNotFoundError) as exc_info:
             signature_views.register_carlito_fonts()
         assert exc_info.value is not None
 
-    @patch('gym_app.views.dynamic_documents.signature_views.pisa')
-    @patch('gym_app.views.dynamic_documents.signature_views.register_carlito_fonts')
+    @patch('gym_app.views.dynamic_documents.signature_views.render_document_pdf', return_value=b'%PDF-1.7 fake')
     @patch('gym_app.views.dynamic_documents.signature_views.get_letterhead_for_document', return_value=None)
     def test_generate_original_document_pdf_success(
-        self, mock_lh, mock_fonts, mock_pisa, lawyer_user
+        self, mock_lh, mock_render, lawyer_user
     ):
-        """Lines 793-932: successful PDF generation."""
-        mock_fonts.return_value = {
-            "Carlito-Regular": "/fake/Carlito-Regular.ttf",
-            "Carlito-Bold": "/fake/Carlito-Bold.ttf",
-            "Carlito-Italic": "/fake/Carlito-Italic.ttf",
-            "Carlito-BoldItalic": "/fake/Carlito-BoldItalic.ttf",
-        }
-        mock_pisa_status = SimpleNamespace(err=0)
-        mock_pisa.CreatePDF.return_value = mock_pisa_status
-
+        """Successful PDF generation returns a BytesIO buffer."""
         doc = DynamicDocument.objects.create(
             title="Test PDF", content="<p>Hello {{greeting}}</p>", state="Draft",
             created_by=lawyer_user,
@@ -1799,25 +1790,17 @@ class TestPdfHelpers:
         result = signature_views.generate_original_document_pdf(doc, lawyer_user)
         assert isinstance(result, BytesIO)
 
-    @patch('gym_app.views.dynamic_documents.signature_views.pisa')
-    @patch('gym_app.views.dynamic_documents.signature_views.register_carlito_fonts')
+    @patch('gym_app.views.dynamic_documents.signature_views.render_document_pdf', side_effect=Exception("render boom"))
     @patch('gym_app.views.dynamic_documents.signature_views.get_letterhead_for_document', return_value=None)
-    def test_generate_original_document_pdf_pisa_error(
-        self, mock_lh, mock_fonts, mock_pisa, lawyer_user
+    def test_generate_original_document_pdf_render_error(
+        self, mock_lh, mock_render, lawyer_user
     ):
-        """Lines 927-928: pisa conversion error raises."""
-        mock_fonts.return_value = {
-            "Carlito-Regular": "/fake/r.ttf", "Carlito-Bold": "/fake/b.ttf",
-            "Carlito-Italic": "/fake/i.ttf", "Carlito-BoldItalic": "/fake/bi.ttf",
-        }
-        mock_pisa_status = SimpleNamespace(err=1)
-        mock_pisa.CreatePDF.return_value = mock_pisa_status
-
+        """A render failure propagates out of generate_original_document_pdf."""
         doc = DynamicDocument.objects.create(
             title="Err", content="<p>x</p>", state="Draft",
             created_by=lawyer_user,
         )
-        with pytest.raises(Exception, match="HTML to PDF conversion failed") as exc_info:
+        with pytest.raises(Exception, match="render boom") as exc_info:
             signature_views.generate_original_document_pdf(doc, lawyer_user)
         assert exc_info.value is not None
 
