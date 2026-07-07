@@ -31,6 +31,7 @@ const mountView = (user) =>
         FolderIcon: { template: "<span />" },
         PlusCircleIcon: { template: "<span />" },
         ChevronRightIcon: { template: "<span />" },
+        ArrowsRightLeftIcon: { template: "<span />" },
       },
     },
   });
@@ -67,5 +68,19 @@ describe("QuickActionButtons.vue", () => {
 
     expect(links.some((link) => link.text().includes("Nueva Minuta"))).toBe(true);
     expect(links.length).toBeGreaterThanOrEqual(3);
+  });
+
+  test("admins see the reassignment quick action (not lawyer/client cards)", () => {
+    const wrapper = mountView({ role: "admin", is_staff: true });
+
+    expect(wrapper.text()).toContain("Reasignar Datos");
+    expect(wrapper.find("[data-testid='quick-action-reassign']").exists()).toBe(true);
+    expect(wrapper.text()).not.toContain("Radicar Informe"); // lawyer-only
+    expect(wrapper.text()).not.toContain("Radicar Solicitud"); // client-only
+  });
+
+  test("lawyers and clients do not see the reassignment quick action", () => {
+    expect(mountView({ role: "lawyer" }).text()).not.toContain("Reasignar Datos");
+    expect(mountView({ role: "client" }).text()).not.toContain("Reasignar Datos");
   });
 });

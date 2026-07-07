@@ -309,6 +309,18 @@ const router = createRouter({
       ],
     },
     {
+      path: "/data_reassignment",
+      component: SlideBar,
+      children: [
+        {
+          path: "",
+          name: "data_reassignment",
+          component: () => import(/* webpackChunkName: "data-reassignment" */ "@/views/admin/DataReassignment.vue"),
+          meta: { requiresAuth: true, title: "Reasignación de Datos", requiresAdmin: true },
+        },
+      ],
+    },
+    {
       path: "/intranet_g_y_m",
       component: SlideBar,
       children: [

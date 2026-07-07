@@ -28,6 +28,9 @@
                 </Suspense>
             </div>
             
+            <!-- Admin-only lawyer metrics (active vs archived) -->
+            <LawyerMetricsWidget v-if="isAdminUser" class="w-full" />
+
             <!-- Quick action buttons always full width -->
             <QuickActionButtons :user="currentUser" class="w-full"></QuickActionButtons>
 
@@ -63,6 +66,7 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed.vue';
 import LegalUpdatesCard from '@/components/dashboard/LegalUpdatesCard.vue';
 import QuickActionButtons from '@/components/dashboard/QuickActionButtons.vue';
 import FeaturedServicesGrid from '@/components/dashboard/FeaturedServicesGrid.vue';
+import LawyerMetricsWidget from '@/components/dashboard/widgets/LawyerMetricsWidget.vue';
 import { useUserStore } from '@/stores/auth/user';
 import { useAuthStore } from '@/stores/auth/auth';
 
@@ -73,6 +77,12 @@ const authStore = useAuthStore();
 // Component state - use computed to make currentUser reactive to store changes
 const currentUser = computed(() => {
   return userStore.userById(authStore.userAuth?.id) || {};
+});
+
+// Admin-only widgets (role admin / staff / superuser)
+const isAdminUser = computed(() => {
+  const u = currentUser.value;
+  return !!(u && (u.role === 'admin' || u.is_staff || u.is_superuser));
 });
 const activeProcesses = ref(0);
 
