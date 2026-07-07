@@ -51,6 +51,16 @@
           </div>
         </div>
 
+        <!-- Forma de pago -->
+        <div v-if="summaryInstallments">
+          <div class="text-[11px] font-medium uppercase tracking-wide text-gray-400 mb-0.5">
+            Forma de pago
+          </div>
+          <div class="text-gray-900">
+            {{ summaryInstallments }}
+          </div>
+        </div>
+
         <!-- Plazo -->
         <div v-if="document.summary_term">
           <div class="text-[11px] font-medium uppercase tracking-wide text-gray-400 mb-0.5">
@@ -103,6 +113,7 @@
 <script setup>
 import { computed } from 'vue';
 import { formatSummaryValue } from '@/components/dynamic_document/common/formatSummaryValue';
+import { formatInstallments } from '@/components/dynamic_document/common/formatInstallments';
 
 const props = defineProps({
   isVisible: {
@@ -127,6 +138,11 @@ const summaryValue = computed(() => {
   return formatSummaryValue(props.document);
 });
 
+const summaryInstallments = computed(() => {
+  if (!props.document) return '';
+  return formatInstallments(props.document.summary_payment_installments);
+});
+
 const hasAnyDate = computed(() => {
   if (!props.document) return false;
   return Boolean(
@@ -142,6 +158,7 @@ const hasAnySummary = computed(() => {
     summaryCounterparty.value ||
     props.document.summary_object ||
     summaryValue.value ||
+    summaryInstallments.value ||
     props.document.summary_term ||
     hasAnyDate.value
   );
