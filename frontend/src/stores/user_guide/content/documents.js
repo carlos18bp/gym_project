@@ -673,6 +673,47 @@ export const documentsContent = {
       }
     },
     {
+      id: 'contract-execution',
+      name: 'Ejecución del Contrato — Cuentas de Cobro',
+      description: 'Seguimiento de pagos por cuotas en documentos formalizados',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>Los documentos <strong>completamente firmados</strong> que tengan configurada una variable de tipo <strong>"Forma de pago (N cuotas)"</strong> habilitan el submódulo de ejecución del contrato: un registro ordenado de las cuentas de cobro de cada cuota pactada.</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Configuración (abogado):</strong> al clasificar las variables de la minuta, marca una como "Forma de pago (N cuotas)" e indica el número de cuotas. El dato aparece en el resumen del documento junto al valor y el plazo.</li>
+          <li><strong>Carga secuencial:</strong> la cuota 1 siempre está disponible; cada cuota siguiente se habilita cuando la anterior es <strong>aceptada</strong> por el abogado. Mientras una cuenta esté en revisión no se puede cargar otra.</li>
+          <li><strong>Subir Cuenta de Cobro:</strong> desde el menú del documento firmado, adjunta el archivo (PDF, JPG, PNG o DOCX, máx. 20 MB) y opcionalmente el monto y notas. El abogado recibe una notificación por correo y en la campana.</li>
+          <li><strong>Revisión del abogado:</strong> en "Ver Cuentas de Cobro" puede descargar el archivo y <strong>Aceptar</strong> (habilita la siguiente cuota) o <strong>Rechazar</strong> con un motivo obligatorio. El cliente es notificado en ambos casos.</li>
+          <li><strong>Cuota rechazada:</strong> el cliente ve el motivo y puede volver a cargar el archivo corregido para la misma cuota.</li>
+          <li><strong>Seguimiento:</strong> la vista muestra el progreso (X/N aceptadas), el total de montos aceptados y el estado de cada cuota: Pendiente, Cargada (en revisión), Aceptada o Rechazada.</li>
+        </ul>
+        <p class="mt-2">Los documentos firmados sin forma de pago configurada no muestran estas opciones.</p>
+      `,
+      steps: [
+        {
+          title: 'Configura la forma de pago',
+          description: 'El abogado clasifica una variable como "Forma de pago (N cuotas)" con el número de cuotas pactadas'
+        },
+        {
+          title: 'Carga la cuenta de cobro',
+          description: 'Con el documento firmado, usa "Subir Cuenta de Cobro" y adjunta el archivo de la cuota disponible'
+        },
+        {
+          title: 'El abogado revisa',
+          description: 'Acepta la cuenta (habilita la siguiente cuota) o la rechaza con un motivo'
+        },
+        {
+          title: 'Consulta el historial',
+          description: '"Ver Cuentas de Cobro" muestra el progreso, los montos y el estado de cada cuota, con descarga de comprobantes'
+        }
+      ],
+      tips: [
+        'El monto es opcional pero ayuda a llevar la contabilidad del contrato en la vista de detalle',
+        'La carga puede hacerla el cliente asignado o el abogado creador en su nombre',
+        'Ambas partes pueden descargar los comprobantes en cualquier momento'
+      ]
+    },
+    {
       id: 'document-key-fields',
       name: 'Clasificación de Campos Clave',
       description: 'Información esencial visible sin abrir documentos',
