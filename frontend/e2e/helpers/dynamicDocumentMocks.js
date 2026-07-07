@@ -394,12 +394,13 @@ export async function installDynamicDocumentApiMocks(
         );
       }
 
-      // Server-side creator filter (mirrors backend `created_by_id=lawyer_id`),
-      // used by the minutas "Mías" scope.
+      // Server-side manager filter (mirrors backend `managed_by_id=lawyer_id`),
+      // used by the minutas "Mías" scope. Falls back to created_by for mock
+      // docs that don't set managed_by (backfill = created_by).
       const lawyerIdParam = params.get("lawyer_id");
       if (lawyerIdParam) {
         const lid = Number(lawyerIdParam);
-        filtered = filtered.filter((d) => d.created_by === lid);
+        filtered = filtered.filter((d) => (d.managed_by ?? d.created_by) === lid);
       }
 
       // Server-side shared-edit filter (mirrors backend `allow_shared_edit=True`),

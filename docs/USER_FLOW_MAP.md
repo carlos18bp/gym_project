@@ -3,7 +3,7 @@
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
 **Fecha:** July 7, 2026
-**Versión:** 1.10.0
+**Versión:** 1.11.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -394,6 +394,29 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 **Ramificaciones:**
 - └── **Reconexión:** El usuario recupera internet y vuelve a navegar por la app
+
+---
+
+## Flujos — Admin
+
+### admin-data-reassignment: Reasignación de datos de abogado
+- **Módulo:** admin | **Prioridad:** P1 | **Ruta:** `/data_reassignment` | **E2E:** ✅ (`data-reassignment-flow.spec.js`)
+- **Descripción:** Módulo exclusivo de administradores para transferir procesos y documentos de un abogado a otro y archivar cuentas de abogados. Acceso desde el menú lateral "Reasignación de Datos" (solo admin) y el botón rápido del dashboard. La transferencia es atómica: los procesos pasan al destino, la gestión de documentos (`managed_by`) también, y `assigned_to` migra solo cuando era el abogado origen; `created_by` nunca cambia (auditoría). Los documentos en estados de firma (Pendiente/Firmado/Rechazado/Vencido) no son transferibles. Archivar un abogado bloquea su login por todos los métodos, lo excluye de listados y notificaciones, y es reversible.
+
+**Pasos:**
+1. El administrador entra a `/data_reassignment` (guard `requiresAdmin`; los no-admin son redirigidos al dashboard)
+2. Selecciona el abogado origen → el sistema carga la vista previa (procesos + documentos elegibles + no elegibles con motivo)
+3. Selecciona el abogado destino (excluye al origen y a los archivados)
+4. Marca procesos/documentos (o "Seleccionar todos"); opcionalmente "Archivar abogado origen al finalizar"
+5. Confirma en el modal → transferencia atómica → toast de éxito con el resumen (y aviso de archivado si aplica)
+6. Los abogados archivados pueden restaurarse desde la card "Abogados archivados"
+
+**Ramificaciones:**
+- ├── **Documentos en firma:** listados como no transferibles con motivo (En proceso de firma / Firmado / Rechazado / Vencido); excluidos del "Seleccionar todos"
+- ├── **Documentos personales del abogado (assigned_to = origen):** su `assigned_to` migra al destino; los asignados a clientes conservan su cliente
+- ├── **Minutas:** su gestión (`managed_by`) migra, por lo que aparecen en el scope "Mías" del destino y desaparecen del origen
+- ├── **Archivar origen:** bloqueo total de login (tradicional + Google/Outlook), exclusión de listados y notificaciones; reversible vía "Restaurar"
+- └── **No-admin:** el guard redirige al dashboard; el ítem de menú y el botón rápido no se muestran
 
 ---
 
@@ -2114,7 +2137,8 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Notifications | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **152** | **152** | **0** | **0** |
+| Admin | 1 | 1 | 0 | 0 |
+| **Total** | **153** | **153** | **0** | **0** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
 >
@@ -2126,5 +2150,5 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 ---
 
 **Documento generado:** July 16, 2026
-**Versión:** 1.10.0
-**Estado:** 152/152 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.10.0 (cobertura estática por tags `@flow:`). `docs-guided-tour` y `docs-contract-execution` ya aterrizaron en esta rama; falta `admin-data-reassignment` (PR #95), que llega en un commit posterior.
+**Versión:** 1.11.0
+**Estado:** 153/153 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.11.0 (cobertura estática por tags `@flow:`). Los 3 flujos de PR #95 (`docs-guided-tour`, `docs-contract-execution`, `admin-data-reassignment`) ya están en esta rama tras el rebase sobre `release-august-2026-c`.
