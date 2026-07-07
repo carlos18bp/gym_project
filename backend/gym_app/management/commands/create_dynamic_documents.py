@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.core.files import File
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
@@ -19,6 +20,7 @@ from gym_app.models import (
     DocumentVisibilityPermission,
     DocumentUsabilityPermission,
     RecentDocument,
+    DocumentPaymentRecord,
 )
 from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
 
@@ -1164,6 +1166,58 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'✓ Created {relationships_created} document relationships simulating signature workflow scenarios'
+            )
+        )
+
+        # ── Contract execution (cuentas de cobro) seeding ──────────────
+        # Doc A: 3 installments with progress (1 accepted + 1 under
+        # review) so the review panel and progress bar can be demoed.
+        # Doc B: 2 installments with no records (fresh first-run state).
+        payment_docs = list(
+            DynamicDocument.objects.filter(
+                state='FullySigned', assigned_to__isnull=False
+            ).order_by('id')[:2]
+        )
+        seeded_records = 0
+        for index, doc in enumerate(payment_docs):
+            installments = 3 if index == 0 else 2
+            if not doc.variables.filter(summary_field='payment_installments').exists():
+                DocumentVariable.objects.create(
+                    document=doc,
+                    name_en='payment_installments',
+                    name_es='Forma de pago',
+                    tooltip='Número de cuotas pactadas en el contrato',
+                    field_type='number',
+                    value=str(installments),
+                    summary_field='payment_installments',
+                )
+
+            if index == 0 and not doc.payment_records.exists():
+                DocumentPaymentRecord.objects.create(
+                    document=doc,
+                    installment_number=1,
+                    file=ContentFile(b'%PDF-1.4 fake cuenta de cobro 1', name='cuenta_cobro_1.pdf'),
+                    original_name='cuenta_cobro_1.pdf',
+                    amount=random.randint(500_000, 5_000_000),
+                    status=DocumentPaymentRecord.STATUS_ACCEPTED,
+                    uploaded_by=doc.assigned_to,
+                )
+                DocumentPaymentRecord.objects.create(
+                    document=doc,
+                    installment_number=2,
+                    file=ContentFile(b'%PDF-1.4 fake cuenta de cobro 2', name='cuenta_cobro_2.pdf'),
+                    original_name='cuenta_cobro_2.pdf',
+                    amount=random.randint(500_000, 5_000_000),
+                    notes='Cuenta correspondiente a la segunda cuota.',
+                    status=DocumentPaymentRecord.STATUS_UPLOADED,
+                    uploaded_by=doc.assigned_to,
+                )
+                seeded_records += 2
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'✓ Seeded payment plans on {len(payment_docs)} signed documents '
+                f'({seeded_records} cuenta de cobro records)'
             )
         )
 
