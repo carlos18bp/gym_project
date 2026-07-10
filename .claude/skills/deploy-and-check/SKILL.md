@@ -87,7 +87,9 @@ DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2
         | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
 [ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
         "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
-export DJANGO_SETTINGS_MODULE
+# NO exportar vacío: un env var vacío ANULA el setdefault de manage.py/wsgi → ImproperlyConfigured.
+# Sólo exportar si resolvió; si no, unset para que aplique el default (env-aware) del proyecto.
+if [ -n "$DJANGO_SETTINGS_MODULE" ]; then export DJANGO_SETTINGS_MODULE; else unset DJANGO_SETTINGS_MODULE; fi
 if [ -z "$DJANGO_SETTINGS_MODULE" ]; then
     echo "⚠️  DJANGO_SETTINGS_MODULE no resuelto (ni systemd ni .env) — manage.py usará su setdefault (¡puede apuntar a dev/SQLite!)"
 fi
@@ -145,7 +147,9 @@ DJANGO_SETTINGS_MODULE=$(systemctl show "$GUNICORN_SVC" -p Environment --value 2
         | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
 [ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
         "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
-export DJANGO_SETTINGS_MODULE
+# NO exportar vacío: un env var vacío ANULA el setdefault de manage.py/wsgi → ImproperlyConfigured.
+# Sólo exportar si resolvió; si no, unset para que aplique el default (env-aware) del proyecto.
+if [ -n "$DJANGO_SETTINGS_MODULE" ]; then export DJANGO_SETTINGS_MODULE; else unset DJANGO_SETTINGS_MODULE; fi
 echo "→ migrate con DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-<manage.py default — puede ser dev!>}"
 cd "$PROJECT_DIR/backend" && \
     "$PROJECT_DIR/$VENV_PATH" -m pip install -r requirements.txt && \
@@ -155,19 +159,32 @@ cd "$PROJECT_DIR/backend" && \
 6. Frontend build (si aplica):
 ```bash
 if [ "$HAS_FRONTEND" = "true" ]; then
-    bash -c "
+    # FRONTEND_SVC: preferir frontend_service: de projects.yml (fuente de verdad —
+    # la derivación por nombre falla con los *_staging, p.ej. tuhuella-frontend).
+    FRONTEND_SVC=$(awk -v p="$PROJECT_NAME" '
+        /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+        n==p && /^[[:space:]]+frontend_service:/{print $NF; exit}
+    ' "$HOME/webapps/vps-ops-toolkit/projects.yml")
+    [ -z "$FRONTEND_SVC" ] && FRONTEND_SVC="${PROJECT_NAME%_project}-frontend"
+    # Build en subshell con set -e: cualquier fallo corta el paso con exit ≠ 0.
+    # Si falla, NO tocar node_modules (quedan para debug) y ABORTAR el deploy.
+    if ! bash -ec "
         export NVM_DIR=\"\$HOME/.nvm\"
-        source \"\$NVM_DIR/nvm.sh\"
-        [ -n \"$NODE_VERSION\" ] && nvm use $NODE_VERSION
-        cd \"$PROJECT_DIR/frontend\" && $FRONTEND_BUILD
-        FRONTEND_SVC=\"${PROJECT_NAME%_project}-frontend\"
-        if ! systemctl list-units --all 2>/dev/null | grep -q \"\$FRONTEND_SVC.service\"; then
-            rm -rf node_modules
-            echo \"✅ node_modules removidos (build estático)\"
-        else
-            echo \"ℹ️ node_modules conservados (frontend service runtime)\"
-        fi
-    "
+        source \"\$NVM_DIR/nvm.sh\" >/dev/null 2>&1 || true
+        command -v nvm >/dev/null || { echo \"❌ nvm no disponible en \$NVM_DIR\"; exit 1; }
+        if [ -n \"$NODE_VERSION\" ]; then nvm use $NODE_VERSION; fi
+        cd \"$PROJECT_DIR/frontend\"
+        $FRONTEND_BUILD
+    "; then
+        echo "❌ ERROR: frontend build FALLÓ ($FRONTEND_BUILD) — node_modules conservados; deploy abortado."
+        exit 1
+    fi
+    if systemctl list-units --all 2>/dev/null | grep -q "$FRONTEND_SVC.service"; then
+        echo "ℹ️ Build OK — node_modules conservados (frontend service runtime: $FRONTEND_SVC)"
+    else
+        rm -rf "$PROJECT_DIR/frontend/node_modules"
+        echo "✅ Build OK — node_modules removidos (build estático)"
+    fi
 fi
 ```
 
@@ -180,7 +197,9 @@ if [ "$COLLECTSTATIC" = "true" ]; then
             | tr ' ' '\n' | grep '^DJANGO_SETTINGS_MODULE=' | head -1 | cut -d= -f2-)
     [ -z "$DJANGO_SETTINGS_MODULE" ] && DJANGO_SETTINGS_MODULE=$(grep -hE '^DJANGO_SETTINGS_MODULE=' \
             "$PROJECT_DIR/backend/.env" 2>/dev/null | head -1 | cut -d= -f2-)
-    export DJANGO_SETTINGS_MODULE
+    # NO exportar vacío: un env var vacío ANULA el setdefault de manage.py/wsgi → ImproperlyConfigured.
+    # Sólo exportar si resolvió; si no, unset para que aplique el default (env-aware) del proyecto.
+    if [ -n "$DJANGO_SETTINGS_MODULE" ]; then export DJANGO_SETTINGS_MODULE; else unset DJANGO_SETTINGS_MODULE; fi
     cd "$PROJECT_DIR/backend" && "$PROJECT_DIR/$VENV_PATH" manage.py collectstatic --noinput
 fi
 ```
@@ -192,7 +211,12 @@ fi
 8. Reiniciar gunicorn + huey + frontend:
 ```bash
 sudo systemctl restart "$GUNICORN_SVC" && sudo systemctl restart "$HUEY_SVC"
-FRONTEND_SVC="${PROJECT_NAME%_project}-frontend"
+# FRONTEND_SVC: mismo lookup que el paso 6 (frontend_service: del yml, fallback legacy)
+FRONTEND_SVC=$(awk -v p="$PROJECT_NAME" '
+    /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+    n==p && /^[[:space:]]+frontend_service:/{print $NF; exit}
+' "$HOME/webapps/vps-ops-toolkit/projects.yml")
+[ -z "$FRONTEND_SVC" ] && FRONTEND_SVC="${PROJECT_NAME%_project}-frontend"
 if systemctl list-units --all 2>/dev/null | grep -q "$FRONTEND_SVC.service"; then
     sudo systemctl restart "$FRONTEND_SVC"
 fi
