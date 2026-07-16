@@ -222,3 +222,40 @@ class TestAuditPdfVariants:
         buffer = signature_views.create_signatures_pdf(doc, request)
 
         assert buffer.getvalue().startswith(b"%PDF")
+
+
+@pytest.mark.django_db
+class TestWordExportTableEdgeCases:
+    """HTML-to-docx conversion guards: empty tables, ragged rows, th bolding."""
+
+    def test_word_export_handles_degenerate_tables(
+        self, api_client, creator_lawyer
+    ):
+        content = (
+            "<p>Intro</p>"
+            "<table></table>"                                  # table without rows
+            "<table><tr></tr><tr><td>solo</td></tr></table>"   # row without cells
+            "<table>"
+            "<tr><th>H1</th></tr>"                             # th header -> bold
+            "<tr><td>a</td><td>overflow</td></tr>"             # more cells than cols
+            "</table>"
+        )
+        doc = DynamicDocument.objects.create(
+            title="Doc Word Tables",
+            content=content,
+            state="Completed",
+            created_by=creator_lawyer,
+        )
+        api_client.force_authenticate(user=creator_lawyer)
+
+        response = api_client.get(
+            reverse("download_dynamic_document_word", args=[doc.pk])
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        body = (
+            b"".join(response.streaming_content)
+            if getattr(response, "streaming", False)
+            else response.content
+        )
+        assert body[:2] == b"PK"  # docx files are zip containers
