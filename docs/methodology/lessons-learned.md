@@ -194,6 +194,13 @@
 - `PostFormModal.vue` (identical script-setup + named headlessui imports + `as="template"` pattern) tests FINE with the stub recipe in `test/components/organizations/PostFormModal.test.js` — root difference not yet identified
 - Before retrying, diff the two SFCs' compiled output (`@vue/vue3-jest`) rather than iterating on mount recipes
 
+### Shared Staging DB Carries v2-Branch Migrations (fake-data refresh landmines)
+- The staging MySQL DB is shared across branch checkouts; `release-august-2026-c-v2` migrations left schema this branch's ORM doesn't know:
+  - `gym_app_documentpaymentrecord` (cuentas de cobro) — FK to DynamicDocument blocks `delete_fake_data`; fix: empty its rows (never drop the table, it belongs to the v2 feature)
+  - `gym_app_user.is_archived` NOT NULL without DB default — every User INSERT from this branch failed with MySQL 1364; fixed 2026-07-16 by adding `DEFAULT 0` (harmless for v2: Django never relies on DB defaults)
+- Diagnostic recipe: compare `information_schema.COLUMNS` (NOT NULL, no default) against `apps.get_models()` columns to find every landmine at once before reseeding
+- `create_fake_data` must run **from `backend/`** — `create_legal_requests` reads the relative path `media/example_files/`
+
 ### Global App Zoom (80% desktop / 75% mobile)
 - `frontend/src/style.css` applies a global `zoom` (commit `cc92301`, 2026-07-15) to widen the UI
 - Pixel-based assertions (screenshots, `boundingBox()` checks) in E2E/unit tests see the zoomed geometry — prefer role/testid-based assertions over pixel math
