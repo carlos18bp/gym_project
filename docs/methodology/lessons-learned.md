@@ -188,6 +188,12 @@
 - The PDF stylesheet/HTML builder lives ONCE in `backend/gym_app/utils/documents.py` — never re-inline styles in `document_views.py` or `signature_views.py`; both consume the shared builder
 - xhtml2pdf is still used for service/trámite PDFs (`services/service_tramite_pdf.py`) — don't remove it from requirements
 
+### Jest: ExampleModal.vue Renders Empty Under vue3-jest (open investigation)
+- `src/views/user_guide/components/ExampleModal.vue` mounts to empty html under Jest with EVERY approach tried (2026-07-16): real @headlessui/vue + attachTo + flushes, VTU name-based stubs, and full `jest.mock('@headlessui/vue')`
+- Symptom inside a fixture SFC: `import { TransitionRoot } from '@headlessui/vue'` is `undefined` in script-setup while `import * as hui` sees the mock keys — Vue warns "Invalid vnode type: undefined"
+- `PostFormModal.vue` (identical script-setup + named headlessui imports + `as="template"` pattern) tests FINE with the stub recipe in `test/components/organizations/PostFormModal.test.js` — root difference not yet identified
+- Before retrying, diff the two SFCs' compiled output (`@vue/vue3-jest`) rather than iterating on mount recipes
+
 ### Global App Zoom (80% desktop / 75% mobile)
 - `frontend/src/style.css` applies a global `zoom` (commit `cc92301`, 2026-07-15) to widen the UI
 - Pixel-based assertions (screenshots, `boundingBox()` checks) in E2E/unit tests see the zoomed geometry — prefer role/testid-based assertions over pixel math
