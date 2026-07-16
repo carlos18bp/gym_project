@@ -2,12 +2,17 @@
 import pytest
 from types import SimpleNamespace
 
+from unittest.mock import MagicMock, patch
+
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
     sanitize_soup_for_pdf,
     sanitize_html_for_pdf,
     get_letterhead_for_document,
     get_letterhead_word_template,
+    build_letterhead_layer_html,
+    _copy_field_to_snapshot,
+    ensure_letterhead_snapshot,
 )
 
 
@@ -455,3 +460,286 @@ class TestGetLetterheadWordTemplate:
         doc = SimpleNamespace()  # no letterhead_word_template attr
         creator = SimpleNamespace(letterhead_word_template="creator_tpl.docx")
         assert get_letterhead_word_template(doc, creator) == "creator_tpl.docx"
+
+
+# ── letterhead layer / snapshot edge cases (coverage batch 2026-07-16) ──
+
+
+class _RaisingPathField:
+    """FileField stand-in whose .path raises like an unsaved field does."""
+
+    def __bool__(self):
+        return True
+
+    @property
+    def path(self):
+        raise ValueError("The file has no path")
+
+
+class TestBuildLetterheadLayerHtmlEdgeCases:
+    """Failure branches of build_letterhead_layer_html."""
+
+    def test_returns_empty_when_path_raises(self):
+        assert build_letterhead_layer_html(_RaisingPathField()) == ""
+
+    def test_returns_empty_when_file_missing_on_disk(self):
+        field = SimpleNamespace(path="/nonexistent/letterhead.png")
+        assert build_letterhead_layer_html(field) == ""
+
+    def test_returns_empty_when_file_unreadable(self, tmp_path):
+        img = tmp_path / "lh.png"
+        img.write_bytes(b"png-bytes")
+        field = SimpleNamespace(path=str(img))
+
+        with patch("builtins.open", side_effect=IOError("permission denied")):
+            assert build_letterhead_layer_html(field) == ""
+
+    def test_embeds_existing_file_as_base64_layer(self, tmp_path):
+        img = tmp_path / "lh.png"
+        img.write_bytes(b"png-bytes")
+        field = SimpleNamespace(path=str(img))
+
+        html = build_letterhead_layer_html(field)
+
+        assert '<div class="letterhead-layer">' in html
+        assert "data:image/png;base64," in html
+
+
+class TestGetLetterheadForDocumentLockedStates:
+    """Snapshot chain for formalized documents (image field)."""
+
+    def test_snapshot_wins_in_locked_state(self):
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot="snap.png",
+            letterhead_image="doc.png",
+        )
+        assert get_letterhead_for_document(doc) == "snap.png"
+
+    def test_document_image_when_snapshot_empty(self):
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot=None,
+            letterhead_image="doc.png",
+        )
+        assert get_letterhead_for_document(doc) == "doc.png"
+
+    def test_issuer_image_when_document_has_none(self):
+        issuer = SimpleNamespace(letterhead_image="issuer.png")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot=None,
+            letterhead_image=None,
+            formalized_by=issuer,
+        )
+        assert get_letterhead_for_document(doc) == "issuer.png"
+
+    def test_created_by_image_when_formalizer_missing(self):
+        creator = SimpleNamespace(letterhead_image="creator.png")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot=None,
+            letterhead_image=None,
+            formalized_by=None,
+            created_by=creator,
+        )
+        assert get_letterhead_for_document(doc) == "creator.png"
+
+    def test_locked_state_ignores_fallback_user(self):
+        fallback = SimpleNamespace(letterhead_image="fallback.png")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot=None,
+            letterhead_image=None,
+            formalized_by=None,
+            created_by=None,
+        )
+        assert get_letterhead_for_document(doc, fallback_user=fallback) is None
+
+
+class TestGetLetterheadWordTemplateLockedStates:
+    """Snapshot chain for formalized documents (Word template field)."""
+
+    def test_snapshot_wins_in_locked_state(self):
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_word_template_snapshot="snap.docx",
+            letterhead_word_template="doc.docx",
+        )
+        assert get_letterhead_word_template(doc) == "snap.docx"
+
+    def test_document_template_when_snapshot_empty(self):
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_word_template_snapshot=None,
+            letterhead_word_template="doc.docx",
+        )
+        assert get_letterhead_word_template(doc) == "doc.docx"
+
+    def test_issuer_template_when_document_has_none(self):
+        issuer = SimpleNamespace(letterhead_word_template="issuer.docx")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_word_template_snapshot=None,
+            letterhead_word_template=None,
+            formalized_by=issuer,
+        )
+        assert get_letterhead_word_template(doc) == "issuer.docx"
+
+    def test_locked_state_ignores_fallback_user(self):
+        fallback = SimpleNamespace(letterhead_word_template="fallback.docx")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_word_template_snapshot=None,
+            letterhead_word_template=None,
+            formalized_by=None,
+            created_by=None,
+        )
+        assert get_letterhead_word_template(doc, fallback_user=fallback) is None
+
+
+class TestCopyFieldToSnapshot:
+    """Failure and naming branches of _copy_field_to_snapshot."""
+
+    def test_returns_false_for_empty_source(self):
+        assert _copy_field_to_snapshot(None, MagicMock(), 1, "png") is False
+
+    def test_returns_false_when_source_unreadable(self):
+        source = MagicMock()
+        source.open.side_effect = FileNotFoundError("gone")
+        source.name = "letterheads/a.png"
+
+        assert _copy_field_to_snapshot(source, MagicMock(), 1, "png") is False
+
+    def test_returns_false_when_target_save_fails(self):
+        source = MagicMock()
+        source.read.return_value = b"bytes"
+        source.name = "letterheads/a.png"
+        target = MagicMock()
+        target.save.side_effect = ValueError("no file backend")
+
+        assert _copy_field_to_snapshot(source, target, 7, "png") is False
+
+    def test_copies_bytes_using_snapshot_name(self):
+        source = MagicMock()
+        source.read.return_value = b"bytes"
+        source.name = "letterheads/mi logo.png"
+        target = MagicMock()
+
+        assert _copy_field_to_snapshot(source, target, 7, "png") is True
+        assert target.save.call_args[0][0] == "snapshot_7_mi logo.png"
+
+    def test_defaults_base_name_when_source_has_no_name(self):
+        source = MagicMock()
+        source.read.return_value = b"bytes"
+        source.name = ""
+        target = MagicMock()
+
+        assert _copy_field_to_snapshot(source, target, 7, "docx") is True
+        assert target.save.call_args[0][0] == "snapshot_7_letterhead.docx"
+
+
+class TestEnsureLetterheadSnapshot:
+    """Lazy snapshot guards at download time."""
+
+    def test_skips_documents_not_in_locked_state(self):
+        doc = SimpleNamespace(state="Draft")
+        with patch(
+            "gym_app.utils.documents.snapshot_letterhead_on_formalize"
+        ) as mock_snapshot:
+            ensure_letterhead_snapshot(doc)
+        mock_snapshot.assert_not_called()
+
+    def test_skips_documents_with_both_snapshots(self):
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot="snap.png",
+            letterhead_word_template_snapshot="snap.docx",
+        )
+        with patch(
+            "gym_app.utils.documents.snapshot_letterhead_on_formalize"
+        ) as mock_snapshot:
+            ensure_letterhead_snapshot(doc)
+        mock_snapshot.assert_not_called()
+
+    def test_backfills_missing_snapshot_with_resolved_issuer(self):
+        issuer = SimpleNamespace(letterhead_image="issuer.png")
+        doc = SimpleNamespace(
+            state="FullySigned",
+            letterhead_image_snapshot=None,
+            letterhead_word_template_snapshot="snap.docx",
+            formalized_by=issuer,
+        )
+        with patch(
+            "gym_app.utils.documents.snapshot_letterhead_on_formalize"
+        ) as mock_snapshot:
+            ensure_letterhead_snapshot(doc)
+        mock_snapshot.assert_called_once_with(doc, issuer)
+
+
+class TestSanitizeSoupMarginAndCellAlignment:
+    """Remaining margin/alignment branches of sanitize_soup_for_pdf."""
+
+    def test_keeps_margin_declaration_when_value_is_not_a_number(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<p style="margin-top:1.2.3pt;color:red;">text</p>', 'html.parser'
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('p')
+        assert 'margin-top:1.2.3pt' in p.get('style', '')
+
+    def test_promotes_text_align_from_paragraph_inside_cell(self):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(
+            '<table><tr><td><p style="text-align: right;">x</p></td></tr></table>',
+            'html.parser',
+        )
+        result = sanitize_soup_for_pdf(soup)
+        p = result.find('td').find('p')
+        assert p.get('align') == 'right'
+
+
+class TestLetterheadIssuerFallbacksPreFormalization:
+    """Issuer chain for drafts + word-template snapshot source resolution."""
+
+    def test_draft_uses_issuer_image_when_document_has_none(self):
+        issuer = SimpleNamespace(letterhead_image="issuer.png")
+        doc = SimpleNamespace(
+            state="Draft", letterhead_image=None, formalized_by=issuer
+        )
+        assert get_letterhead_for_document(doc) == "issuer.png"
+
+    def test_draft_uses_issuer_word_template_when_document_has_none(self):
+        issuer = SimpleNamespace(letterhead_word_template="issuer.docx")
+        doc = SimpleNamespace(
+            state="Draft", letterhead_word_template=None, formalized_by=issuer
+        )
+        assert get_letterhead_word_template(doc) == "issuer.docx"
+
+    def test_formalize_snapshots_word_template_from_issuer(self):
+        from gym_app.utils.documents import snapshot_letterhead_on_formalize
+
+        issuer = SimpleNamespace(
+            letterhead_image=None, letterhead_word_template="issuer.docx"
+        )
+        doc = SimpleNamespace(
+            pk=9,
+            state="PendingSignatures",
+            letterhead_image=None,
+            letterhead_image_snapshot=None,
+            letterhead_word_template=None,
+            letterhead_word_template_snapshot=None,
+            save=MagicMock(),
+        )
+
+        with patch(
+            "gym_app.utils.documents._copy_field_to_snapshot", return_value=True
+        ) as mock_copy:
+            snapshot_letterhead_on_formalize(doc, issuer)
+
+        word_call = mock_copy.call_args_list[1]
+        assert word_call[0][0] == "issuer.docx"
+        doc.save.assert_called_once_with(
+            update_fields=["letterhead_image_snapshot", "letterhead_word_template_snapshot"]
+        )
