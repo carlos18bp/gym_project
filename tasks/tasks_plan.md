@@ -52,7 +52,6 @@
 | 1 | SQLite used in development — limited concurrent write support | Low | Backend / Dev only |
 | 2 | `DJANGO_SECRET_KEY` has insecure default in settings.py | Medium | Security (dev only, overridden in production) |
 | 3 | `debug.log` is 6.7MB — gitignored (rotated `debug.log.N` files also ignored since `6cba400`), but no `RotatingFileHandler` found in repo settings; rotation config still pending | Low | Operations |
-| 4 | E2E gap: `process-alert-configure` — registered flow (P2) without spec. The `notify_clients` toggle in `ProcessForm.vue:676` has no `data-testid` and no E2E coverage of the actual user interaction (toggle + save). Existing `process-alert-recipients.spec.js` (retagged `@flow:process-alerts` on 2026-07-04, since it exercises the display indicator, not the toggle) covers only the display; the config-toggle flow has no spec and is declared as a `knownGap` in `flow-definitions.json`. Needs `data-testid` attributes + heavy ProcessForm mocking (case types, lawyers, clients). | Low | Testing / Process Alerts |
 | 5 | Pre-registered flow `minutas-columns` (P2, documents) corresponds to planned feature #2 Minutas — not yet implemented. Will get its spec when feature lands. | Low | Testing / Planned features |
 
 ---

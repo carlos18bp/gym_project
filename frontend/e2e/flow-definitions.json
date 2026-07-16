@@ -1,6 +1,6 @@
 {
-  "version": "1.9.3",
-  "lastUpdated": "2026-07-04",
+  "version": "1.9.4",
+  "lastUpdated": "2026-07-16",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -1545,10 +1545,7 @@
       ],
       "priority": "P2",
       "description": "Abogado activa la alerta del último estado procesal en ProcessForm (al crear o editar) y alterna el toggle 'Notificar también a los clientes' (notify_clients), opcionalmente añade descripción personalizada. Persiste en StageAlert y se refleja en el indicador del detalle del proceso.",
-      "expectedSpecs": 1,
-      "knownGaps": [
-        "Interactive notify_clients toggle in ProcessForm (create/edit) not yet exercised by any spec — only the resulting alert indicator display is covered (see process-alerts). Blocked on adding data-testid to the toggle + heavy ProcessForm mocking (case types, lawyers, clients); tracked as debt in tasks/tasks_plan.md."
-      ]
+      "expectedSpecs": 1
     }
   }
 }

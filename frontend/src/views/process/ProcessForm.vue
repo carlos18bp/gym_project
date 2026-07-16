@@ -657,6 +657,7 @@
             <label class="text-sm font-medium text-gray-700">Alerta activa</label>
             <button
               type="button"
+              data-testid="alert-active-toggle"
               @click="lastStageDateIsPast ? null : (formData.alertIsActive = !formData.alertIsActive)"
               :disabled="lastStageDateIsPast"
               :class="[
@@ -685,6 +686,7 @@
             <label class="text-sm font-medium text-gray-700">Notificar también a los clientes</label>
             <button
               type="button"
+              data-testid="alert-notify-clients-toggle"
               @click="formData.alertNotifyClients = !formData.alertNotifyClients"
               :class="formData.alertNotifyClients ? 'bg-blue-600' : 'bg-gray-200'"
               class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
@@ -701,6 +703,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Descripción personalizada (opcional)</label>
             <textarea
               v-model="formData.alertDescription"
+              data-testid="alert-description-input"
               rows="2"
               class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
               placeholder="Ej: Recordar presentar memorial ante el juzgado"
