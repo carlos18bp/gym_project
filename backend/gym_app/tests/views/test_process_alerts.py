@@ -285,3 +285,147 @@ class TestStageAlertNotifications:
             category='process_alert',
             link_id__in=Process.objects.filter(ref='ALERT-INACTIVE-1').values_list('id', flat=True),
         ).exists()
+
+
+# ── validation 400s, email guards and pending badge (coverage batch 2026-07-16) ──
+
+from unittest.mock import patch
+
+from django.utils import timezone
+
+from gym_app.models import Notification
+
+
+@pytest.mark.django_db
+class TestAlertConfigValidation:
+    """Activating an alert on a past-dated last stage returns 400."""
+
+    def _create(self, api_client, client_user, lawyer_user, case_type, **overrides):
+        overrides.setdefault('alertIsActive', True)
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2020-01-01'}],
+            **overrides,
+        )
+        return api_client.post(
+            reverse('create-process'),
+            {'mainData': json.dumps(payload)},
+            format='multipart',
+        )
+
+    def test_create_rejects_active_alert_on_past_stage_date(
+        self, api_client, admin_user, client_user, lawyer_user, case_type
+    ):
+        api_client.force_authenticate(user=admin_user)
+
+        response = self._create(api_client, client_user, lawyer_user, case_type)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'No se puede activar' in response.data['detail']
+
+    def test_update_rejects_active_alert_on_past_stage_date(
+        self, api_client, admin_user, client_user, lawyer_user, case_type
+    ):
+        api_client.force_authenticate(user=admin_user)
+        ok = self._create(
+            api_client, client_user, lawyer_user, case_type,
+            alertIsActive=False, ref='ALERT-UPD-400',
+        )
+        assert ok.status_code == status.HTTP_201_CREATED
+        process = Process.objects.get(ref='ALERT-UPD-400')
+
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2020-01-01'}],
+            ref='ALERT-UPD-400',
+            alertIsActive=True,
+        )
+        response = api_client.put(
+            reverse('update-process', args=[process.pk]),
+            {'mainData': json.dumps(payload)},
+            format='multipart',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'No se puede activar' in response.data['detail']
+
+
+@pytest.mark.django_db
+class TestAlertActivationEmailGuards:
+    """Recipient and failure guards of the activation email helper."""
+
+    def _activate(self, api_client, client_user, lawyer_user, case_type, ref):
+        payload = _make_payload(
+            [client_user.id], lawyer_user.id, case_type.id,
+            stages=[{'status': 'Audiencia', 'date': '2099-12-31'}],
+            ref=ref,
+            alertIsActive=True,
+            alertNotifyClients=False,
+        )
+        return api_client.post(
+            reverse('create-process'),
+            {'mainData': json.dumps(payload)},
+            format='multipart',
+        )
+
+    def test_no_email_sent_when_no_recipient_has_email(
+        self, api_client, admin_user, client_user, lawyer_user, case_type
+    ):
+        api_client.force_authenticate(user=admin_user)
+        User.objects.filter(pk=lawyer_user.pk).update(email='')
+        lawyer_user.refresh_from_db()
+
+        with patch('gym_app.views.process.send_template_email') as mock_email:
+            response = self._activate(
+                api_client, client_user, lawyer_user, case_type, 'ALERT-NOMAIL'
+            )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_email.assert_not_called()
+
+    def test_email_failure_is_logged_and_creation_succeeds(
+        self, api_client, admin_user, client_user, lawyer_user, case_type
+    ):
+        api_client.force_authenticate(user=admin_user)
+
+        with patch(
+            'gym_app.views.process.send_template_email',
+            side_effect=Exception('smtp down'),
+        ), patch('gym_app.views.process.logger') as mock_logger:
+            response = self._activate(
+                api_client, client_user, lawyer_user, case_type, 'ALERT-SMTPFAIL'
+            )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_logger.error.assert_called()
+
+
+@pytest.mark.django_db
+class TestPendingProcessAlertsCount:
+    """SlideBar badge endpoint scoped to category=process_alert."""
+
+    def test_counts_only_unread_active_process_alerts(
+        self, api_client, lawyer_user
+    ):
+        api_client.force_authenticate(user=lawyer_user)
+        Notification.objects.create(
+            user=lawyer_user, category='process_alert', title='a', message='d'
+        )
+        Notification.objects.create(
+            user=lawyer_user, category='process_alert', title='b', message='d',
+            is_read=True,
+        )
+        Notification.objects.create(
+            user=lawyer_user, category='general', title='c', message='d'
+        )
+        snoozed = Notification.objects.create(
+            user=lawyer_user, category='process_alert', title='e', message='d',
+        )
+        Notification.objects.filter(pk=snoozed.pk).update(
+            snoozed_until=timezone.now() + timezone.timedelta(days=1)
+        )
+
+        response = api_client.get(reverse('process-pending-alerts-count'))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['pending_count'] == 1
