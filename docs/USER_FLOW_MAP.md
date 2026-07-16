@@ -2058,7 +2058,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Profile | 2 | 2 | 0 | 0 |
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
-| Processes | 11 | 10 | 1 | 0 |
+| Processes | 11 | 9 | 1 | 1 |
 | Documents | 32 | 32 | 0 | 0 |
 | Signatures | 12 | 12 | 0 | 0 |
 | Legal Requests | 8 | 8 | 0 | 0 |
@@ -2066,20 +2066,25 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 3 | 3 | 0 | 0 |
 | **SECOP** | **16** | **16** | **0** | **0** |
-| **Servicios y Tramites** | **15** | **14** | **1** | **0** |
+| **Servicios y Tramites** | **15** | **15** | **0** | **0** |
 | Notifications | 1 | 1 | 0 | 0 |
-| Misc | 3 | 3 | 0 | 0 |
+| Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **149** | **147** | **2** | **0** |
+| **Total** | **150** | **148** | **1** | **1** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
 >
-> **Parciales (2):**
+> **Parcial (1):**
+> - `process-alerts` (Processes): 1/3 `expectedSpecs` — `process-alert-recipients.spec.js` cubre el display del indicador; faltan 2 specs adicionales declarados en `flow-definitions.json`.
+>
+> **Sin cobertura (1):**
+> - `process-alert-configure` (Processes): el **toggle interactivo** `notify_clients` en `ProcessForm` no tiene spec dedicado (registrado como `knownGap` — requiere `data-testid` + mocking de ProcessForm; deuda en `tasks/tasks_plan.md`).
+>
+> **Cubierto con knownGap (1):**
 > - `service-admin-edit` (Servicios): el spec cubre create/toggle; la edición completa de etapas + campos no está totalmente aseverada.
-> - `process-alert-configure` (Processes): el **display** del indicador de alerta está cubierto por `process-alerts`; el **toggle interactivo** `notify_clients` en `ProcessForm` aún no tiene spec dedicado (el reporter lo marca `missing` hasta agregarlo — requiere `data-testid` + mocking de ProcessForm; deuda en `tasks/tasks_plan.md`).
 
 ---
 
-**Documento generado:** July 4, 2026
-**Versión:** 1.9.2
-**Estado:** 147/149 flujos cubiertos, 2 parciales (`service-admin-edit`, `process-alert-configure`), 0 sin cobertura. Correcciones: re-tag de `process-alert-recipients.spec.js` (`process-alert-configure`→`process-alerts`, refleja el flujo que realmente ejercita); marcadores `legal-files-*` ❌→✅ (tienen specs vía `flow-tags.js`); matriz regenerada desde `flow-definitions.json` y versión sincronizada a v1.9.2.
+**Documento generado:** July 16, 2026
+**Versión:** 1.9.3
+**Estado:** 148/150 flujos cubiertos, 1 parcial (`process-alerts` 1/3 specs), 1 sin cobertura (`process-alert-configure`, knownGap registrado). Matriz regenerada con `frontend/scripts/generate-coverage.js` (cobertura estática por tags `@flow:`) contra `flow-definitions.json` v1.9.3. Nota: el artefacto local `e2e-results/flow-coverage.json` del 07-07 con 153 flujos provenía de las definiciones de la rama `release-august-2026-c-v2` (PR #95: `admin-data-reassignment`, `docs-contract-execution`, `docs-guided-tour`) — esos 3 flujos llegarán a esta rama cuando mergee el PR.
