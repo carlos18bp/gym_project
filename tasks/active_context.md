@@ -19,7 +19,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-07-16)
+### Codebase Metrics (verified 2026-07-16, post quality-initiative)
 
 | Metric | Count |
 |--------|-------|
@@ -28,19 +28,28 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 29 |
 | Backend serializer files | 12 |
 | Backend URL patterns | 194 |
-| Backend test files | 94 |
+| Backend test files | 95 (3032 tests) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 111 (117 → 111 after unused-component cleanup `9ec8737`) |
 | Frontend view pages | 44 |
 | Frontend Pinia store files | 44 |
 | Frontend composables | 14 |
-| Frontend unit test files | 181 |
-| Frontend E2E spec files | 195 |
-| Frontend E2E flows (flow-definitions.json) | 150 |
+| Frontend unit test files | 194 |
+| Frontend E2E spec files | 198 |
+| Frontend E2E flows (flow-definitions.json) | 150 — **150/150 covered (100%)** |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Phased quality initiative (2026-07-16)** — 20+ commits on `release-august-2026-c`:
+  - **Memory Bank refreshed** (drift 04-07 → 16-07 closed) + `USER_FLOW_MAP` matrix resynced.
+  - **Backend coverage** (fresh baseline 96.22%): 10 batches — `signature_notification_service` 82→98%, `views/notification` →100%, `utils/documents` letterhead/snapshot edges, `views/secop` →98%, `process_alert_tasks` →99%, `service_tramite` serializer →95%, process alert validation/badge, prefetched permission chain, formalize/correct race 409s + audit PDF variants, Word-export table guards. Migrations excluded via `.coveragerc`.
+  - **Bugs fixed**: 4 MySQL-only test failures (collation sorts + `action_type` overflow, `31c7249`) and a real 500 — renaming a SECOP saved view to a duplicate name (RESOLVED-019, `d781e7f`).
+  - **Frontend unit coverage** (baseline 89.22%): 8 batches — 13 files 0%→100% (`msal_config`, `ScheduleAppointment`, user_guide×5, `DirectoryList`, `IntranetGyM`, `SignaturesList`, `DocumentTagsManager`, store shim) + `App.vue` 98%. Jest-only babel plugin (`test/babel/vite-meta-env.cjs`) unlocks `import.meta` — `DocumentEditor.vue` is now testable.
+  - **Quality gate STRICT: score 100, 0 errors, exit 0** (`83f0eed`) — 236 docstrings added, imports sorted, 13 assertion-less tests converted to plain asserts; warnings 17→13 (rest pre-date the session).
+  - **E2E flow coverage 150/150 (100%)**: `process-alert-configure` got its dedicated spec (data-testids added to ProcessForm alert controls) and `process-alerts` completed 3/3 specs (`3746a43`). flow-definitions v1.9.4.
+  - **Pending**: fake-data refresh of staging blocked on a manual one-liner (orphan `gym_app_documentpaymentrecord` table from the v2 branch blocks `delete_fake_data`; staging data partially deleted until run). Next coverage targets: `DocumentEditor.vue` (909 stmts, 0%), large partials (`DocumentListTable` 75.9%, `SignaturesListTable` 77.4%), 13 pre-existing gate warnings.
 
 - **PDF/WeasyPrint overhaul + UI zoom + cleanup (2026-07-07 → 2026-07-15)**:
   - **Dynamic-document PDF stack migrated to WeasyPrint** (`2d390fa`): exports now match the editor rendering. Root sequence: 500 crash on editor-created tables fixed with markup normalization (`2ba6d77`), duplicated PDF stylesheet consolidated into a shared builder in `gym_app/utils/documents.py` consumed by both `document_views.py` and `signature_views.py` (`65c48ce`), then rendering switched from xhtml2pdf to WeasyPrint 63.1. xhtml2pdf remains for service/trámite PDFs + fake-data command. Details in `error-documentation.md` → RESOLVED-018.
