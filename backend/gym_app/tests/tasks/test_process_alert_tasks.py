@@ -261,3 +261,92 @@ class TestProcessAlertRecipients:
             )
         )
         assert notif_users == {lawyer.id}
+
+
+# ── deactivation, guards and email failure (coverage batch 2026-07-16) ──
+
+from unittest.mock import patch
+
+from gym_app.process_alert_tasks import deactivate_past_alerts
+
+
+@pytest.mark.django_db
+class TestDeactivatePastAlerts:
+    """Daily cleanup of alerts whose stage date already lapsed."""
+
+    def test_deactivates_alert_with_past_stage_date(
+        self, lawyer, process_client, case_type
+    ):
+        process = _make_process(lawyer, [process_client], case_type)
+        stage = _add_stage(process, days_from_today=-2)
+        StageAlert.objects.create(stage=stage, is_active=True)
+
+        result = deactivate_past_alerts.call_local()
+
+        alert = StageAlert.objects.get(stage=stage)
+        assert alert.is_active is False
+        assert result == "deactivated=1"
+
+    def test_keeps_alert_with_future_stage_date(
+        self, lawyer, process_client, case_type
+    ):
+        process = _make_process(lawyer, [process_client], case_type)
+        stage = _add_stage(process, days_from_today=3)
+        StageAlert.objects.create(stage=stage, is_active=True)
+
+        result = deactivate_past_alerts.call_local()
+
+        alert = StageAlert.objects.get(stage=stage)
+        assert alert.is_active is True
+        assert result == "deactivated=0"
+
+
+@pytest.mark.django_db
+class TestSendProcessAlertsGuards:
+    """Early-continue guards and email failure logging."""
+
+    def test_skips_process_without_stages(
+        self, lawyer, process_client, case_type
+    ):
+        _make_process(lawyer, [process_client], case_type)
+
+        with patch(
+            "gym_app.process_alert_tasks._send_alert_email"
+        ) as mock_email:
+            send_process_alerts.call_local()
+
+        mock_email.assert_not_called()
+
+    def test_skips_alert_when_no_recipient_has_email(
+        self, process_client, case_type
+    ):
+        lawyer_no_email = User.objects.create_user(
+            email="temp_lawyer@test.com", password="pw", role="lawyer"
+        )
+        process = _make_process(lawyer_no_email, [], case_type, ref="ALERT-NOEMAIL")
+        stage = _add_stage(process, days_from_today=3)
+        StageAlert.objects.create(stage=stage, is_active=True, notify_clients=False)
+        User.objects.filter(pk=lawyer_no_email.pk).update(email="")
+
+        with patch(
+            "gym_app.process_alert_tasks._send_alert_email"
+        ) as mock_email:
+            send_process_alerts.call_local()
+
+        mock_email.assert_not_called()
+        assert Notification.objects.count() == 0
+
+    def test_logs_error_when_alert_email_fails(
+        self, lawyer, process_client, case_type
+    ):
+        process = _make_process(lawyer, [process_client], case_type)
+        stage = _add_stage(process, days_from_today=3)
+        StageAlert.objects.create(stage=stage, is_active=True)
+
+        with patch(
+            "gym_app.process_alert_tasks.send_template_email",
+            side_effect=Exception("smtp down"),
+        ), patch("gym_app.process_alert_tasks.logger") as mock_logger:
+            send_process_alerts.call_local()
+
+        mock_logger.error.assert_called()

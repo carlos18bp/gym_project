@@ -171,6 +171,12 @@
 - **Affected files**: `frontend/e2e/process/process-alert-recipients.spec.js`, `frontend/e2e/flow-definitions.json`, `docs/USER_FLOW_MAP.md`
 - **Prevention idea**: a mis-pointed tag is invisible without cross-checking spec intent vs flow id; consider a CI assertion that every flow with `expectedSpecs > 0` has ≥1 tagging spec, and review `knownGaps` flows periodically.
 
+### [RESOLVED-019] Renaming a SECOP saved view to a duplicate name returned 500
+- **Context** (2026-07-16): surfaced while writing coverage tests for the saved-view PATCH endpoint.
+- **Root Cause**: `SavedViewSerializer` has no duplicate-name validation on **update** — creation intentionally upserts by `(user, name)` via `update_or_create`, but the PATCH path calls `instance.save()` straight into the MySQL unique constraint → `IntegrityError` 500. RESOLVED-006 had only addressed the creation flow.
+- **Resolution** (commit `d781e7f`): `validate_name` rejects duplicates **only when `self.instance` is set** (rename), preserving create-upsert semantics. Regression test `TestSecopSavedViewEdit::test_patch_duplicate_name_returns_400`.
+- **Affected files**: `backend/gym_app/serializers/secop.py`, `backend/gym_app/tests/views/test_secop_views.py`
+
 ### [RESOLVED-018] PDF export 500 on editor-created tables + editor/PDF rendering mismatch
 - **Context** (2026-07-07): Exporting a dynamic document to PDF returned HTTP 500 when the content contained tables created in the TinyMCE editor; exports also rendered differently from the editor (spacing, table borders).
 - **Root Cause**: xhtml2pdf could not handle the editor's table markup, and its CSS subset diverged from what the browser editor showed. The PDF stylesheet was additionally duplicated across `document_views.py` and `signature_views.py`, so fixes drifted apart.
