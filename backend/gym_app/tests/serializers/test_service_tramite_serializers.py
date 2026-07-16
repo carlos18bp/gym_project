@@ -723,3 +723,160 @@ class TestServiceRequestDetailSerializer:
         serializer = ServiceRequestDetailSerializer(req)
 
         assert serializer.data["requester_name"] == "noname_requester@test.com"
+
+
+# ============================================================
+# Upsert edge branches + URL builders (coverage batch 2026-07-16)
+# ============================================================
+
+
+@pytest.mark.django_db
+@pytest.mark.integration
+class TestServiceSerializerUpsertEdges:
+    """Nonexistent-id fallbacks and duplicate-order validation."""
+
+    def _update_payload(self, service, stages):
+        return {
+            "name": service.name,
+            "short_title": service.short_title,
+            "slug": service.slug,
+            "is_active": service.is_active,
+            "stages": stages,
+        }
+
+    def test_update_with_unknown_stage_id_creates_new_stage(
+        self, service_with_stages, ser_admin
+    ):
+        request = _make_request(user=ser_admin)
+        payload = self._update_payload(
+            service_with_stages,
+            [{"id": 999999, "title": "Etapa fantasma", "order": 5, "fields": []}],
+        )
+
+        serializer = ServiceSerializer(
+            service_with_stages, data=payload, context={"request": request}
+        )
+        assert serializer.is_valid(), serializer.errors
+        service = serializer.save()
+
+        assert service.stages.filter(title="Etapa fantasma").exists()
+
+    def test_update_with_duplicate_stage_order_raises_validation_error(
+        self, service_with_stages, ser_admin
+    ):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        request = _make_request(user=ser_admin)
+        payload = self._update_payload(
+            service_with_stages,
+            [
+                {"title": "Etapa A", "order": 1, "fields": []},
+                {"title": "Etapa B", "order": 1, "fields": []},
+            ],
+        )
+
+        serializer = ServiceSerializer(
+            service_with_stages, data=payload, context={"request": request}
+        )
+        assert serializer.is_valid(), serializer.errors
+        with pytest.raises(DjangoValidationError) as exc_info:
+            serializer.save()
+
+        assert "orden único" in str(exc_info.value)
+
+    def test_update_with_unknown_field_id_creates_new_field(
+        self, service_with_stages, ser_admin
+    ):
+        request = _make_request(user=ser_admin)
+        stage = service_with_stages.stages.first()
+        payload = self._update_payload(
+            service_with_stages,
+            [
+                {
+                    "id": stage.id,
+                    "title": stage.title,
+                    "order": stage.order,
+                    "fields": [
+                        {
+                            "id": 999999,
+                            "key": "campo_fantasma",
+                            "label": "Fantasma",
+                            "field_type": "input",
+                            "order": 9,
+                        }
+                    ],
+                }
+            ],
+        )
+
+        serializer = ServiceSerializer(
+            service_with_stages, data=payload, context={"request": request}
+        )
+        assert serializer.is_valid(), serializer.errors
+        serializer.save()
+
+        stage.refresh_from_db()
+        assert stage.fields.filter(key="campo_fantasma").exists()
+
+    def test_update_with_duplicate_field_order_raises_validation_error(
+        self, service_with_stages, ser_admin
+    ):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        request = _make_request(user=ser_admin)
+        payload = self._update_payload(
+            service_with_stages,
+            [
+                {
+                    "title": "Etapa campos",
+                    "order": 7,
+                    "fields": [
+                        {"key": "a", "label": "Campo A", "field_type": "input", "order": 1},
+                        {"key": "b", "label": "Campo B", "field_type": "input", "order": 1},
+                    ],
+                }
+            ],
+        )
+
+        serializer = ServiceSerializer(
+            service_with_stages, data=payload, context={"request": request}
+        )
+        assert serializer.is_valid(), serializer.errors
+        with pytest.raises(DjangoValidationError) as exc_info:
+            serializer.save()
+
+        assert "Campo A" in str(exc_info.value)
+        assert "Campo B" in str(exc_info.value)
+
+
+class TestServiceRequestUrlBuilders:
+    """URL builder methods return None without a request in context."""
+
+    def test_lawyer_response_file_download_url_none_without_request(self):
+        from types import SimpleNamespace
+        from gym_app.serializers.service_tramite import (
+            ServiceRequestLawyerResponseFileSerializer,
+        )
+
+        serializer = ServiceRequestLawyerResponseFileSerializer(context={})
+        obj = SimpleNamespace(id=1, response_id=2, response=SimpleNamespace(service_request_id=3))
+
+        assert serializer.get_download_url(obj) is None
+
+    def test_document_url_none_without_request(self):
+        from types import SimpleNamespace
+        from gym_app.serializers.service_tramite import ServiceRequestDetailSerializer
+
+        serializer = ServiceRequestDetailSerializer(context={})
+        obj = SimpleNamespace(id=1, generated_document="docs/x.pdf")
+
+        assert serializer.get_document_url(obj) is None
+
+    def test_document_url_none_without_generated_document(self):
+        from types import SimpleNamespace
+        from gym_app.serializers.service_tramite import ServiceRequestDetailSerializer
+
+        serializer = ServiceRequestDetailSerializer(context={})
+        obj = SimpleNamespace(id=1, generated_document=None)
+
+        assert serializer.get_document_url(obj) is None
