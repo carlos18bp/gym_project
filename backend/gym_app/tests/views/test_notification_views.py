@@ -330,3 +330,69 @@ def test_delete_returns_404_for_other_user(
         f"/api/notifications/{other_user_notification.id}/delete/"
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ── page fallback, mark-unread and unarchive (coverage batch 2026-07-16) ──
+
+@pytest.mark.django_db
+def test_notification_list_falls_back_to_page_one_on_invalid_page(
+    api_client, client_user, notification
+):
+    """A non-numeric page param falls back to the first page instead of crashing."""
+    api_client.force_authenticate(user=client_user)
+    response = api_client.get("/api/notifications/", {"page": "abc"})
+    assert response.status_code == status.HTTP_200_OK
+    ids = [n["id"] for n in response.data["results"]]
+    assert notification.id in ids
+
+
+@pytest.mark.django_db
+def test_mark_unread_single_notification(api_client, client_user, notification):
+    """Mark a read notification back as unread."""
+    notification.is_read = True
+    notification.save(update_fields=["is_read"])
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.post(f"/api/notifications/{notification.id}/unread/")
+
+    assert response.status_code == status.HTTP_200_OK
+    notification.refresh_from_db()
+    assert notification.is_read is False
+
+
+@pytest.mark.django_db
+def test_mark_unread_returns_404_for_other_user(
+    api_client, client_user, other_user_notification
+):
+    """Cannot mark another user's notification as unread."""
+    api_client.force_authenticate(user=client_user)
+    response = api_client.post(
+        f"/api/notifications/{other_user_notification.id}/unread/"
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_unarchive_notification(api_client, client_user, notification):
+    """Restore an archived notification back to the active list."""
+    notification.is_archived = True
+    notification.save(update_fields=["is_archived"])
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.post(f"/api/notifications/{notification.id}/unarchive/")
+
+    assert response.status_code == status.HTTP_200_OK
+    notification.refresh_from_db()
+    assert notification.is_archived is False
+
+
+@pytest.mark.django_db
+def test_unarchive_returns_404_for_other_user(
+    api_client, client_user, other_user_notification
+):
+    """Cannot unarchive another user's notification."""
+    api_client.force_authenticate(user=client_user)
+    response = api_client.post(
+        f"/api/notifications/{other_user_notification.id}/unarchive/"
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
