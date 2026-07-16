@@ -15,7 +15,7 @@
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.7 |
 | Production Server | Gunicorn | 23.0.0 |
-| PDF Generation | xhtml2pdf 0.2.17, PyMuPDF 1.25.3, reportlab 4.2.5 |
+| PDF Generation | WeasyPrint 63.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.25.3, reportlab 4.2.5 |
 | Document Processing | python-docx 1.1.2, PyPDF2 3.0.1, pypdf 5.3.0, openpyxl 3.1.5, XlsxWriter 3.2.0, pandas 2.2.2 |
 | Image Processing | Pillow 10.4.0, opencv-python-headless 4.11.0.86 |
 | Digital Signatures | pyHanko 0.25.3 |
@@ -176,11 +176,11 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 92 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 177 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 170) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 170) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 170) | `frontend/test/views/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 94 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 181 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 181) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 181) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 181) | `frontend/test/views/` |
 | Frontend E2E User Flows | Playwright | 195 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
@@ -227,7 +227,7 @@ gym_project/
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
 │   │   ├── management/commands/ # 12 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
 │   │   ├── templates/        # 21 email/PDF templates
-│   │   ├── tests/            # 92 test files (models, serializers, tasks, utils, views, services, commands) — verified 2026-07-04
+│   │   ├── tests/            # 94 test files (models, serializers, tasks, utils, views, services, commands) — verified 2026-07-16
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
 │   │   ├── notification_tasks.py    # Huey periodic — reactivate snoozed notifications every 15 min
@@ -247,7 +247,7 @@ gym_project/
 │   │   ├── router/           # 1 file, 67 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 177 unit test files (11 subdirectories)
+│   ├── test/                 # 181 unit test files (11 subdirectories)
 │   ├── e2e/                  # 195 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines

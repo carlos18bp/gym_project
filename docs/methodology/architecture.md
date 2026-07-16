@@ -7,7 +7,7 @@ flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
         Router["Vue Router\n67 routes"]
         Views["44 View Pages"]
-        Components["117 Components"]
+        Components["111 Components"]
         Stores["44 Pinia Stores"]
         Composables["14 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
@@ -67,8 +67,8 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n92 test files"]
-        Jest["Jest\n177 test files"]
+        Pytest["pytest\n94 test files"]
+        Jest["Jest\n181 test files"]
         PW["Playwright\n195 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end

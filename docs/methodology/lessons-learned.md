@@ -182,3 +182,12 @@
 - In multi-step flows (e.g. registration: `send_verification_code` → `sign_on`), only the **first** step should call `verify_captcha`. The second step relies on the emailed passcode/token as its bot-proof gate
 - E2E mocks (`authSignOnMocks.js`) always return `success: true`, so they cannot detect token-reuse bugs — validate in staging against the real Google endpoint
 - If every step genuinely needs captcha, migrate to reCAPTCHA v3 (score-based, multi-action)
+
+### PDF Export: WeasyPrint + Shared Stylesheet Builder (2026-07-07)
+- Dynamic-document PDF exports render with **WeasyPrint** (not xhtml2pdf) so output matches the TinyMCE editor; editor-created tables must be normalized before rendering (xhtml2pdf 500'd on them)
+- The PDF stylesheet/HTML builder lives ONCE in `backend/gym_app/utils/documents.py` — never re-inline styles in `document_views.py` or `signature_views.py`; both consume the shared builder
+- xhtml2pdf is still used for service/trámite PDFs (`services/service_tramite_pdf.py`) — don't remove it from requirements
+
+### Global App Zoom (80% desktop / 75% mobile)
+- `frontend/src/style.css` applies a global `zoom` (commit `cc92301`, 2026-07-15) to widen the UI
+- Pixel-based assertions (screenshots, `boundingBox()` checks) in E2E/unit tests see the zoomed geometry — prefer role/testid-based assertions over pixel math

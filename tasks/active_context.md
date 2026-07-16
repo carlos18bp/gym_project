@@ -19,7 +19,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-07-04)
+### Codebase Metrics (verified 2026-07-16)
 
 | Metric | Count |
 |--------|-------|
@@ -28,19 +28,26 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 29 |
 | Backend serializer files | 12 |
 | Backend URL patterns | 194 |
-| Backend test files | 92 |
+| Backend test files | 94 |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 117 |
+| Frontend Vue components | 111 (117 → 111 after unused-component cleanup `9ec8737`) |
 | Frontend view pages | 44 |
 | Frontend Pinia store files | 44 |
 | Frontend composables | 14 |
-| Frontend unit test files | 177 |
+| Frontend unit test files | 181 |
 | Frontend E2E spec files | 195 |
 | Frontend E2E flows (flow-definitions.json) | 150 |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **PDF/WeasyPrint overhaul + UI zoom + cleanup (2026-07-07 → 2026-07-15)**:
+  - **Dynamic-document PDF stack migrated to WeasyPrint** (`2d390fa`): exports now match the editor rendering. Root sequence: 500 crash on editor-created tables fixed with markup normalization (`2ba6d77`), duplicated PDF stylesheet consolidated into a shared builder in `gym_app/utils/documents.py` consumed by both `document_views.py` and `signature_views.py` (`65c48ce`), then rendering switched from xhtml2pdf to WeasyPrint 63.1. xhtml2pdf remains for service/trámite PDFs + fake-data command. Details in `error-documentation.md` → RESOLVED-018.
+  - **Global app zoom** (`cc92301`): `frontend/src/style.css` forces 80% desktop / 75% mobile zoom for a wider UI — pixel-based test assertions see zoomed geometry.
+  - **Unused frontend components removed** (`9ec8737`): components 117 → 111; 3 orphan unit test suites deleted.
+  - **Quality gate false positives fixed** (`c054df1`): `pytest.raises` now counts as assertion; commands test area recognized (`scripts/quality/backend_analyzer.py`).
+  - **Ops**: rotated logs gitignored (`6cba400`); deploy-and-check skill hardened + prod `DJANGO_SETTINGS_MODULE` fix synced from toolkit (`3da7668`, `b0d9c7b`); task-queue docs corrected celery→huey (`1a66b4f`).
 
 - **Memory Bank refresh + E2E flow-map reconciliation (2026-07-04)**:
   - **Methodology refresh** (`/methodology-setup`): realigned drifted counts and stack versions across `architecture.md`, `technical.md`, `tasks_plan.md`, and this file to the verified codebase (model classes 55→54; backend tests →92; components →117; composables 11→14; routes 66→67; unit tests →177; E2E specs →195; Django 5.0.6→5.2.14, DRF →3.17.1, Vue →3.5, Vite →6.4.2, Playwright →1.60). Created the two missing Memory Bank dirs `docs/literature/` and `tasks/rfc/`.
@@ -188,6 +195,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 5. Next Steps
 
+0. **Phased quality initiative IN PROGRESS (2026-07-16)** — running on `release-august-2026-c`: Memory Bank refresh (✅ this update) → new-feature-checklist audit → e2e-user-flows-check → fake-data-refresh (staging) → iterative backend/frontend-unit coverage to 100% → quality gate strict → iterative E2E flow coverage. Plan: `~/.claude/plans/ejecuta-en-un-plan-sequential-koala.md`.
 1. **SECOP Module** ✅ — Fully complete: implementation, bug fixes, UI/UX redesign, backend tests (120), frontend tests (53), E2E (22 tests across 8 specs), fake data validated, 12/12 flows registered in `flow-definitions.json` and `USER_FLOW_MAP.md` (all ✅)
    - **Remaining**: Live data sync verification (`python manage.py sync_secop`) — requires SECOP API access
    - **Fixed (2026-03-19)**: E2E `secop-alert-create-flow.spec.js` — 2 `data-testid` mismatches (`alert-form` → `alert-form-modal`, `alert-name-input` → `alert-name`)
