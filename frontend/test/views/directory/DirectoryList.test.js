@@ -119,6 +119,7 @@ describe("views/directory/DirectoryList.vue", () => {
     const wrapper = mountList();
     await wrapper.findAll("li")[0].trigger("click");
 
+    // quality: allow-implementation-coupling (emitting close from the stubbed modal child)
     wrapper.findComponent({ name: "DirectoryUserDetailsModal" }).vm.$emit("close");
     await wrapper.vm.$nextTick();
 

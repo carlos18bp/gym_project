@@ -32,7 +32,7 @@ def creator_lawyer():
 
 @pytest.fixture
 def other_lawyer():
-    """A different lawyer (non-creator)."""
+    """Create a different lawyer (non-creator)."""
     return User.objects.create_user(
         email='other_lawyer@test.com',
         password='testpassword',
@@ -69,7 +69,7 @@ def private_minuta(creator_lawyer):
 
 @pytest.fixture
 def shared_minuta(creator_lawyer):
-    """Published minuta with shared edit enabled."""
+    """Create a published minuta with shared edit enabled."""
     return DynamicDocument.objects.create(
         title='Minuta Compartida',
         content='<p>Contenido compartido</p>',
@@ -84,6 +84,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_cannot_update_private_minuta(self, api_client, other_lawyer, private_minuta):
+        """Non creator lawyer cannot update private minuta."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': private_minuta.pk})
         response = api_client.patch(url, {'title': 'Hackeada'}, format='json')
@@ -91,6 +92,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_creator_can_update_own_private_minuta(self, api_client, creator_lawyer, private_minuta):
+        """Creator can update own private minuta."""
         api_client.force_authenticate(user=creator_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': private_minuta.pk})
         response = api_client.patch(url, {'title': 'Renombrada'}, format='json')
@@ -98,6 +100,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_admin_can_update_any_minuta(self, api_client, admin_user, private_minuta):
+        """Admin can update any minuta."""
         api_client.force_authenticate(user=admin_user)
         url = reverse('update_dynamic_document', kwargs={'pk': private_minuta.pk})
         response = api_client.patch(url, {'title': 'Ajustada por admin'}, format='json')
@@ -105,6 +108,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_can_edit_shared_minuta_content(self, api_client, other_lawyer, shared_minuta):
+        """Non creator lawyer can edit shared minuta content."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': shared_minuta.pk})
         response = api_client.patch(
@@ -114,6 +118,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_cannot_change_state_of_shared_minuta(self, api_client, other_lawyer, shared_minuta):
+        """Non creator lawyer cannot change state of shared minuta."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': shared_minuta.pk})
         response = api_client.patch(url, {'state': 'Draft'}, format='json')
@@ -121,6 +126,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_cannot_toggle_shared_flag(self, api_client, other_lawyer, shared_minuta):
+        """Non creator lawyer cannot toggle shared flag."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': shared_minuta.pk})
         response = api_client.patch(url, {'allow_shared_edit': False}, format='json')
@@ -128,6 +134,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_can_update_progress_document(self, api_client, other_lawyer, creator_lawyer):
+        """Non creator lawyer can update progress document."""
         document = DynamicDocument.objects.create(
             title='Doc en progreso',
             content='<p>Contenido</p>',
@@ -141,6 +148,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.edge
     def test_client_cannot_update_published_unassigned_template(self, api_client, client_user, shared_minuta):
+        """Client cannot update published unassigned template."""
         shared_minuta.allow_shared_edit = False
         shared_minuta.save()
         api_client.force_authenticate(user=client_user)
@@ -150,6 +158,7 @@ class TestMinutaUpdateOwnership:
 
     @pytest.mark.edge
     def test_client_cannot_edit_shared_minuta(self, api_client, client_user, shared_minuta):
+        """Client cannot edit shared minuta."""
         # The shared-edit grant is lawyer-only: a client must not edit a
         # minuta even when allow_shared_edit is enabled (the default).
         api_client.force_authenticate(user=client_user)
@@ -163,6 +172,7 @@ class TestMinutaDeleteOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_cannot_delete_private_minuta(self, api_client, other_lawyer, private_minuta):
+        """Non creator lawyer cannot delete private minuta."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('delete_dynamic_document', kwargs={'pk': private_minuta.pk})
         response = api_client.delete(url)
@@ -170,6 +180,7 @@ class TestMinutaDeleteOwnership:
 
     @pytest.mark.integration
     def test_non_creator_lawyer_cannot_delete_shared_minuta(self, api_client, other_lawyer, shared_minuta):
+        """Non creator lawyer cannot delete shared minuta."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('delete_dynamic_document', kwargs={'pk': shared_minuta.pk})
         response = api_client.delete(url)
@@ -177,6 +188,7 @@ class TestMinutaDeleteOwnership:
 
     @pytest.mark.integration
     def test_creator_can_delete_own_minuta(self, api_client, creator_lawyer, private_minuta):
+        """Creator can delete own minuta."""
         api_client.force_authenticate(user=creator_lawyer)
         url = reverse('delete_dynamic_document', kwargs={'pk': private_minuta.pk})
         response = api_client.delete(url)
@@ -188,6 +200,7 @@ class TestSharedFilter:
 
     @pytest.mark.integration
     def test_shared_param_returns_only_flagged_minutas(self, api_client, other_lawyer, private_minuta, shared_minuta):
+        """Shared param returns only flagged minutas."""
         api_client.force_authenticate(user=other_lawyer)
         url = reverse('list_dynamic_documents')
         response = api_client.get(url, {'shared': 'true'})
@@ -202,6 +215,7 @@ class TestUpdateResponseFreshVariables:
 
     @pytest.mark.contract
     def test_update_response_contains_new_variables(self, api_client, creator_lawyer, private_minuta):
+        """Update response contains new variables."""
         api_client.force_authenticate(user=creator_lawyer)
         url = reverse('update_dynamic_document', kwargs={'pk': private_minuta.pk})
         payload = {
@@ -218,6 +232,7 @@ class TestUpdateResponseFreshVariables:
 
     @pytest.mark.contract
     def test_serializer_exposes_allow_shared_edit(self, api_client, creator_lawyer, shared_minuta):
+        """Serializer exposes allow shared edit."""
         api_client.force_authenticate(user=creator_lawyer)
         url = reverse('list_dynamic_documents')
         response = api_client.get(url, {'shared': 'true'})
@@ -230,31 +245,38 @@ class TestCanModifyMinutaUnit:
 
     @pytest.mark.edge
     def test_creator_always_allowed(self, creator_lawyer, private_minuta):
+        """Creator always allowed."""
         assert can_modify_minuta(private_minuta, creator_lawyer) is True
 
     @pytest.mark.edge
     def test_assigned_user_allowed(self, other_lawyer, private_minuta):
+        """Assigned user allowed."""
         private_minuta.assigned_to = other_lawyer
         assert can_modify_minuta(private_minuta, other_lawyer) is True
 
     @pytest.mark.edge
     def test_other_lawyer_denied_without_flag(self, other_lawyer, private_minuta):
+        """Other lawyer denied without flag."""
         assert can_modify_minuta(private_minuta, other_lawyer, {'title': 'x'}) is False
 
     @pytest.mark.edge
     def test_other_lawyer_allowed_with_flag_and_clean_payload(self, other_lawyer, shared_minuta):
+        """Other lawyer allowed with flag and clean payload."""
         assert can_modify_minuta(shared_minuta, other_lawyer, {'title': 'x'}) is True
 
     @pytest.mark.edge
     def test_other_lawyer_denied_with_flag_and_state_payload(self, other_lawyer, shared_minuta):
+        """Other lawyer denied with flag and state payload."""
         assert can_modify_minuta(shared_minuta, other_lawyer, {'state': 'Draft'}) is False
 
     @pytest.mark.edge
     def test_flag_does_not_grant_delete(self, other_lawyer, shared_minuta):
+        """Flag does not grant delete."""
         assert can_modify_minuta(shared_minuta, other_lawyer) is False
 
     @pytest.mark.edge
     def test_non_minuta_state_unrestricted(self, other_lawyer, creator_lawyer):
+        """Non minuta state unrestricted."""
         document = DynamicDocument.objects.create(
             title='Doc completado',
             content='<p>x</p>',
@@ -265,6 +287,7 @@ class TestCanModifyMinutaUnit:
 
     @pytest.mark.edge
     def test_new_minutas_default_to_shared(self, creator_lawyer):
+        """New minutas default to shared."""
         document = DynamicDocument.objects.create(
             title='Minuta nueva',
             content='<p>x</p>',

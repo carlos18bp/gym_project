@@ -1,6 +1,6 @@
 """Tests for signature_notification_service."""
 
-from datetime import date, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from freezegun import freeze_time
 
-from gym_app.models import DynamicDocument, DocumentSignature, Notification
+from gym_app.models import DocumentSignature, DynamicDocument, Notification
 from gym_app.services.signature_notification_service import (
     notify_daily_pending_reminders,
     notify_signature_completed,
@@ -86,7 +86,7 @@ def test_notify_signature_requested_sends_email(
 def test_notify_signature_requested_no_signers(mock_email, sig_document):
     """No-op when signers list is empty."""
     notify_signature_requested(sig_document, [])
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
     assert Notification.objects.count() == 0
 
 
@@ -204,7 +204,7 @@ def test_notify_signature_reopened_creates_in_app_only(
 
     notify_signature_reopened(sig_document)
 
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
     notifs = Notification.objects.filter(category="signature_reopened")
     assert set(notifs.values_list("user_id", flat=True)) == {
         client_user.id,
@@ -278,7 +278,7 @@ def test_daily_reminder_skips_users_with_only_recent_documents(
 
     notify_daily_pending_reminders()
 
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
     assert not Notification.objects.filter(
         user=signer_user, category="signature_reminder"
     ).exists()
@@ -327,7 +327,7 @@ def test_notify_signature_requested_skips_signers_without_email(
 
     notify_signature_requested(sig_document, [client_user])
 
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
 
 
 @pytest.mark.django_db
@@ -341,7 +341,7 @@ def test_notify_signature_requested_logs_error_when_email_fails(
 
     notify_signature_requested(sig_document, [client_user])
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -358,7 +358,7 @@ def test_notify_signature_progress_logs_error_when_email_fails(
 
     notify_signature_progress(sig_document, client_user)
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -372,7 +372,7 @@ def test_notify_signature_completed_logs_error_when_email_fails(
 
     notify_signature_completed(sig_document, client_user)
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -385,7 +385,7 @@ def test_notify_signature_rejected_returns_when_creator_has_no_email(
 
     notify_signature_rejected(sig_document, client_user, comment="typo")
 
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
     assert Notification.objects.count() == 0
 
 
@@ -400,7 +400,7 @@ def test_notify_signature_rejected_logs_error_when_email_fails(
 
     notify_signature_rejected(sig_document, client_user)
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -413,7 +413,7 @@ def test_notify_signature_expired_returns_when_creator_has_no_email(
 
     notify_signature_expired(sig_document)
 
-    mock_email.assert_not_called()
+    assert mock_email.call_count == 0
     assert Notification.objects.count() == 0
 
 
@@ -428,7 +428,7 @@ def test_notify_signature_expired_logs_error_when_email_fails(
 
     notify_signature_expired(sig_document)
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -455,7 +455,7 @@ def test_notify_signature_reopened_logs_error_when_notification_fails(
 
     notify_signature_reopened(sig_document)
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1
 
 
 @pytest.mark.django_db
@@ -480,4 +480,4 @@ def test_notify_daily_pending_reminders_logs_error_when_email_fails(
 
     notify_daily_pending_reminders()
 
-    mock_logger.error.assert_called_once()
+    assert mock_logger.error.call_count == 1

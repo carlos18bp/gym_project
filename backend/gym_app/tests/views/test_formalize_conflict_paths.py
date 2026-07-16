@@ -17,6 +17,7 @@ User = get_user_model()
 @pytest.fixture
 @pytest.mark.django_db
 def creator_lawyer():
+    """Creator lawyer."""
     return User.objects.create_user(
         email="formalize.lawyer@test.com",
         password="pw",
@@ -29,6 +30,7 @@ def creator_lawyer():
 @pytest.fixture
 @pytest.mark.django_db
 def recipient_client():
+    """Recipient client."""
     return User.objects.create_user(
         email="formalize.client@test.com",
         password="pw",
@@ -41,6 +43,7 @@ def recipient_client():
 @pytest.fixture
 @pytest.mark.django_db
 def completed_document(creator_lawyer):
+    """Completed document."""
     return DynamicDocument.objects.create(
         title="Doc Completado",
         content="<p>x</p>",
@@ -71,6 +74,7 @@ class TestFormalizeOptimisticLock409:
     def test_informative_conflict_returns_409(
         self, api_client, creator_lawyer, recipient_client, completed_document
     ):
+        """Informative conflict returns 409."""
         api_client.force_authenticate(user=creator_lawyer)
 
         response = self._race(
@@ -86,6 +90,7 @@ class TestFormalizeOptimisticLock409:
     def test_issuer_only_conflict_returns_409(
         self, api_client, creator_lawyer, recipient_client, completed_document
     ):
+        """Issuer only conflict returns 409."""
         api_client.force_authenticate(user=creator_lawyer)
 
         response = self._race(
@@ -99,6 +104,7 @@ class TestFormalizeOptimisticLock409:
     def test_normal_conflict_returns_409(
         self, api_client, creator_lawyer, recipient_client, completed_document
     ):
+        """Normal conflict returns 409."""
         api_client.force_authenticate(user=creator_lawyer)
 
         response = self._race(
@@ -112,6 +118,7 @@ class TestFormalizeOptimisticLock409:
     def test_correct_document_conflict_returns_409(
         self, api_client, creator_lawyer, recipient_client
     ):
+        """Correct document conflict returns 409."""
         document = DynamicDocument.objects.create(
             title="Doc Rechazado",
             content="<p>x</p>",
@@ -137,6 +144,7 @@ class TestInformativeNotificationEmailGuard:
     def test_email_failure_is_logged_and_formalization_succeeds(
         self, api_client, creator_lawyer, recipient_client, completed_document
     ):
+        """Email failure is logged and formalization succeeds."""
         api_client.force_authenticate(user=creator_lawyer)
         url = reverse("formalize-document", args=[completed_document.pk])
 
@@ -162,6 +170,7 @@ class TestGrantVisibilityToRecipients:
     def test_skips_lawyer_recipients(
         self, creator_lawyer, recipient_client, completed_document
     ):
+        """Skips lawyer recipients."""
         other_lawyer = User.objects.create_user(
             email="grant.lawyer@test.com", password="pw", role="lawyer"
         )
@@ -206,6 +215,7 @@ class TestAuditPdfVariants:
     def test_informative_certificate_renders(
         self, creator_lawyer, recipient_client
     ):
+        """Informative certificate renders."""
         doc = self._formalized_doc(creator_lawyer, recipient_client, "informative")
         request = RequestFactory().get("/")
 
@@ -216,6 +226,7 @@ class TestAuditPdfVariants:
     def test_issuer_only_certificate_renders(
         self, creator_lawyer, recipient_client
     ):
+        """Issuer only certificate renders."""
         doc = self._formalized_doc(creator_lawyer, recipient_client, "issuer_only")
         request = RequestFactory().get("/")
 
@@ -231,6 +242,7 @@ class TestWordExportTableEdgeCases:
     def test_word_export_handles_degenerate_tables(
         self, api_client, creator_lawyer
     ):
+        """Word export handles degenerate tables."""
         content = (
             "<p>Intro</p>"
             "<table></table>"                                  # table without rows

@@ -1019,18 +1019,21 @@ class TestSecopMultiValueFilters:
     def test_entity_name_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Entity name accepts csv values."""
         ids = self._ids(api_client, {'entity_name': 'Ministerio de Transporte,INVIAS'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
     def test_department_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Department accepts csv values."""
         ids = self._ids(api_client, {'department': 'Bogotá D.C.,Antioquia'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
     def test_procurement_method_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Procurement method accepts csv values."""
         ids = self._ids(
             api_client,
             {'procurement_method': 'Licitación pública,Concurso de méritos'},
@@ -1040,30 +1043,35 @@ class TestSecopMultiValueFilters:
     def test_status_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Status accepts csv values."""
         ids = self._ids(api_client, {'status': 'Abierto,Cerrado'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
     def test_contract_type_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Contract type accepts csv values."""
         ids = self._ids(api_client, {'contract_type': 'Obra,Consultoría'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
     def test_unspsc_code_accepts_csv_values(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Unspsc code accepts csv values."""
         ids = self._ids(api_client, {'unspsc_code': '72101500,81101500'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
     def test_keywords_all_words_of_phrase_must_match(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Keywords all words of phrase must match."""
         ids = self._ids(api_client, {'keywords': 'vía terciaria'})
         assert ids == {process_open.process_id}
 
     def test_keywords_pipe_separated_phrases_are_unioned(
         self, api_client, lawyer, process_open, process_closed
     ):
+        """Keywords pipe separated phrases are unioned."""
         ids = self._ids(api_client, {'keywords': 'terciaria|ambiental'})
         assert ids == {process_open.process_id, process_closed.process_id}
 
@@ -1074,6 +1082,7 @@ class TestSecopSavedViewEdit:
     """PUT/PATCH branch of the saved-view detail endpoint."""
 
     def test_patch_renames_saved_view(self, api_client, lawyer):
+        """Patch renames saved view."""
         view = SavedView.objects.create(
             user=lawyer, name='Old Name', filters={'status': 'Abierto'},
         )
@@ -1086,6 +1095,7 @@ class TestSecopSavedViewEdit:
         assert view.name == 'New Name'
 
     def test_patch_duplicate_name_returns_400(self, api_client, lawyer):
+        """Patch duplicate name returns 400."""
         SavedView.objects.create(user=lawyer, name='Taken', filters={})
         view = SavedView.objects.create(user=lawyer, name='Mine', filters={})
         url = reverse('secop-delete-saved-view', args=[view.pk])

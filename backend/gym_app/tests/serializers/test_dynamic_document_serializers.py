@@ -1193,8 +1193,10 @@ class TestDocumentSignatureSerializer:
         assert s.data["signer_name"] == "anon@example.com"
 
     def test_signer_id_exposed_on_read(self, lawyer, document):
-        """signer_id must be present in serialized output so the frontend can
-        identify which signature belongs to the document creator."""
+        """signer_id must be present in serialized output so the frontend can.
+
+        identify which signature belongs to the document creator.
+        """
         sig = DocumentSignature.objects.create(document=document, signer=lawyer)
         s = DocumentSignatureSerializer(sig)
         assert s.data["signer_id"] == lawyer.pk

@@ -1767,8 +1767,10 @@ class TestPdfHelpers:
 
     @patch('gym_app.utils.documents.os.path.exists', return_value=False)
     def test_register_carlito_fonts_missing_file(self, mock_exists):
-        """register_carlito_fonts raises FileNotFoundError when a font is missing
-        (existence check lives in get_carlito_font_paths)."""
+        """register_carlito_fonts raises FileNotFoundError when a font is missing.
+
+        (existence check lives in get_carlito_font_paths).
+        """
         with pytest.raises(FileNotFoundError) as exc_info:
             signature_views.register_carlito_fonts()
         assert exc_info.value is not None
@@ -3281,10 +3283,12 @@ class TestDocumentDetailSignersExposed:
 
     @pytest.fixture
     def api(self):
+        """Build an API client."""
         return APIClient()
 
     @pytest.fixture
     def lawyer(self):
+        """Lawyer."""
         return User.objects.create_user(
             email="signers_lawyer@t.com", password="pw", role="lawyer",
             first_name="Law", last_name="Yer",
@@ -3292,6 +3296,7 @@ class TestDocumentDetailSignersExposed:
 
     @pytest.fixture
     def client_user(self):
+        """Client user."""
         return User.objects.create_user(
             email="signers_client@t.com", password="pw", role="client",
             first_name="Cli", last_name="Ent",
@@ -3353,8 +3358,9 @@ class TestDocumentDetailSignersExposed:
         SerializerMethodField could expose enriched output. The write path must
         still accept the legacy ``signers: [id1, id2]`` shape via initial_data.
         """
-        from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
         from rest_framework.test import APIRequestFactory
+
+        from gym_app.serializers.dynamic_document import DynamicDocumentSerializer
 
         rf = APIRequestFactory()
         request = rf.post("/")
@@ -3381,8 +3387,10 @@ class TestDocumentDetailSignersExposed:
 
 @pytest.mark.django_db
 class TestLetterheadSnapshot:
-    """Once formalized, the letterhead must be frozen so the document content
-    is identical regardless of who downloads it (security/integrity)."""
+    """Once formalized, the letterhead must be frozen so the document content.
+
+    is identical regardless of who downloads it (security/integrity).
+    """
 
     def _png_bytes(self):
         from io import BytesIO
@@ -3393,8 +3401,10 @@ class TestLetterheadSnapshot:
         return buf.getvalue()
 
     def test_resolver_in_locked_state_uses_snapshot_and_ignores_fallback_user(self, lawyer_user, signer_user):
-        """In post-formalization states the snapshot is the only source — fallback
-        users (downloaders) must not influence the rendered letterhead."""
+        """In post-formalization states the snapshot is the only source — fallback.
+
+        users (downloaders) must not influence the rendered letterhead.
+        """
         from gym_app.utils.documents import get_letterhead_for_document
 
         doc = DynamicDocument.objects.create(
@@ -3571,6 +3581,7 @@ class TestSignersIsCreatorFlag:
 
     @freeze_time('2026-01-15 10:00:00')
     def test_creator_signer_is_marked_is_creator_true(self, api_client, lawyer_user, signer_user):
+        """Creator signer is marked is creator true."""
         doc = DynamicDocument.objects.create(
             title="Issuer-only",
             content="<p>x</p>",
@@ -3589,6 +3600,7 @@ class TestSignersIsCreatorFlag:
 
     @freeze_time('2026-01-15 10:00:00')
     def test_recipient_signer_is_marked_is_creator_false(self, api_client, lawyer_user, signer_user):
+        """Recipient signer is marked is creator false."""
         doc = DynamicDocument.objects.create(
             title="Issuer-only",
             content="<p>x</p>",
@@ -3607,6 +3619,7 @@ class TestSignersIsCreatorFlag:
 
     @freeze_time('2026-01-15 10:00:00')
     def test_is_creator_persists_after_creator_signs(self, api_client, lawyer_user, signer_user):
+        """Is creator persists after creator signs."""
         doc = DynamicDocument.objects.create(
             title="Issuer-only signed",
             content="<p>x</p>",

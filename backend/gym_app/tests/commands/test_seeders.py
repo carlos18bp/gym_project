@@ -10,17 +10,17 @@ import pytest
 from django.core.management import call_command
 
 from gym_app.models import (
-    User,
+    CorporateRequest,
+    IntranetProfile,
+    LegalUpdate,
     Organization,
     OrganizationMembership,
+    PaymentHistory,
     Service,
     ServiceField,
     ServiceRequest,
-    CorporateRequest,
     Subscription,
-    PaymentHistory,
-    IntranetProfile,
-    LegalUpdate,
+    User,
 )
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
@@ -60,6 +60,7 @@ def org_with_member(role_users):
 # ── Subscriptions ────────────────────────────────────────────────────────────
 
 def test_create_subscriptions_covers_all_plan_and_status_combos(role_users):
+    """Create subscriptions covers all plan and status combos."""
     call_command("create_subscriptions")
 
     assert set(Subscription.objects.values_list("plan_type", flat=True)) == {"basico", "cliente", "corporativo"}
@@ -68,6 +69,7 @@ def test_create_subscriptions_covers_all_plan_and_status_combos(role_users):
 
 
 def test_create_subscriptions_seeds_declined_and_error_payments(role_users):
+    """Create subscriptions seeds declined and error payments."""
     call_command("create_subscriptions")
 
     statuses = set(PaymentHistory.objects.values_list("status", flat=True))
@@ -75,12 +77,14 @@ def test_create_subscriptions_seeds_declined_and_error_payments(role_users):
 
 
 def test_create_subscriptions_error_payment_carries_message(role_users):
+    """Create subscriptions error payment carries message."""
     call_command("create_subscriptions")
 
     assert PaymentHistory.objects.filter(status="error", error_message__isnull=False).exists()
 
 
 def test_create_subscriptions_is_idempotent(role_users):
+    """Create subscriptions is idempotent."""
     call_command("create_subscriptions")
     first = Subscription.objects.count()
 
@@ -92,6 +96,7 @@ def test_create_subscriptions_is_idempotent(role_users):
 # ── Services / trámites ──────────────────────────────────────────────────────
 
 def test_create_services_covers_all_eight_field_types(role_users, media_tmp):
+    """Create services covers all eight field types."""
     call_command("create_services")
 
     assert set(ServiceField.objects.values_list("field_type", flat=True)) == {
@@ -100,6 +105,7 @@ def test_create_services_covers_all_eight_field_types(role_users, media_tmp):
 
 
 def test_create_services_requests_span_all_six_statuses(role_users, media_tmp):
+    """Create services requests span all six statuses."""
     call_command("create_services")
 
     assert set(ServiceRequest.objects.values_list("status", flat=True)) == {
@@ -108,6 +114,7 @@ def test_create_services_requests_span_all_six_statuses(role_users, media_tmp):
 
 
 def test_create_services_marks_one_service_soft_deleted(role_users, media_tmp):
+    """Create services marks one service soft deleted."""
     call_command("create_services")
 
     assert Service.objects.filter(is_deleted=True).exists()
@@ -115,6 +122,7 @@ def test_create_services_marks_one_service_soft_deleted(role_users, media_tmp):
 
 @pytest.mark.edge
 def test_create_services_draft_requests_have_no_tracking_number(role_users, media_tmp):
+    """Create services draft requests have no tracking number."""
     call_command("create_services")
 
     drafts = ServiceRequest.objects.filter(status="DRAFT")
@@ -123,6 +131,7 @@ def test_create_services_draft_requests_have_no_tracking_number(role_users, medi
 
 
 def test_create_services_submitted_requests_have_tracking_number(role_users, media_tmp):
+    """Create services submitted requests have tracking number."""
     call_command("create_services")
 
     submitted = ServiceRequest.objects.exclude(status="DRAFT")
@@ -131,6 +140,7 @@ def test_create_services_submitted_requests_have_tracking_number(role_users, med
 
 
 def test_create_services_is_idempotent(role_users, media_tmp):
+    """Create services is idempotent."""
     call_command("create_services")
     first = ServiceRequest.objects.count()
 
@@ -142,6 +152,7 @@ def test_create_services_is_idempotent(role_users, media_tmp):
 # ── Corporate requests ───────────────────────────────────────────────────────
 
 def test_create_corporate_requests_span_all_five_statuses(role_users, org_with_member, media_tmp):
+    """Create corporate requests span all five statuses."""
     call_command("create_corporate_requests")
 
     assert set(CorporateRequest.objects.values_list("status", flat=True)) == {
@@ -150,6 +161,7 @@ def test_create_corporate_requests_span_all_five_statuses(role_users, org_with_m
 
 
 def test_create_corporate_requests_pass_business_rule_validation(role_users, org_with_member, media_tmp):
+    """Create corporate requests pass business rule validation."""
     call_command("create_corporate_requests")
 
     assert CorporateRequest.objects.exists()
@@ -158,6 +170,7 @@ def test_create_corporate_requests_pass_business_rule_validation(role_users, org
 
 
 def test_create_corporate_requests_generate_request_numbers(role_users, org_with_member, media_tmp):
+    """Create corporate requests generate request numbers."""
     call_command("create_corporate_requests")
 
     assert all(
@@ -167,6 +180,7 @@ def test_create_corporate_requests_generate_request_numbers(role_users, org_with
 
 
 def test_create_corporate_requests_is_idempotent(role_users, org_with_member, media_tmp):
+    """Create corporate requests is idempotent."""
     call_command("create_corporate_requests")
     first = CorporateRequest.objects.count()
 
@@ -178,6 +192,7 @@ def test_create_corporate_requests_is_idempotent(role_users, org_with_member, me
 # ── Intranet content ─────────────────────────────────────────────────────────
 
 def test_create_intranet_content_keeps_profile_a_singleton(media_tmp):
+    """Create intranet content keeps profile a singleton."""
     call_command("create_intranet_content")
     call_command("create_intranet_content")
 
@@ -185,6 +200,7 @@ def test_create_intranet_content_keeps_profile_a_singleton(media_tmp):
 
 
 def test_create_intranet_content_seeds_active_and_inactive_updates(media_tmp):
+    """Create intranet content seeds active and inactive updates."""
     call_command("create_intranet_content")
 
     assert LegalUpdate.objects.filter(is_active=True).exists()

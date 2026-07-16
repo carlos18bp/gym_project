@@ -190,6 +190,7 @@ describe("components/dynamic_document/lawyer/document-config/DocumentTagsManager
   test("exposes getTagIds to parent components", async () => {
     const wrapper = await mountManager();
 
+    // quality: allow-implementation-coupling (getTagIds is the defineExpose public API)
     expect(wrapper.vm.getTagIds()).toEqual([1]);
     expect(mockTags.getTagIds).toHaveBeenCalled();
   });

@@ -1,9 +1,10 @@
 """Tests for GET /api/dynamic-documents/document-notification-counts/."""
 
+from datetime import timedelta
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
 from rest_framework.test import APIClient
 
 from gym_app.models import DynamicDocument, Notification
@@ -11,6 +12,7 @@ from gym_app.models import DynamicDocument, Notification
 
 @pytest.fixture
 def api_client():
+    """Build an API client."""
     return APIClient()
 
 

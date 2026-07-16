@@ -13,6 +13,7 @@ from gym_app.models import Notification, User
 
 @pytest.fixture
 def owner(db):
+    """Owner."""
     return User.objects.create_user(
         email="notif_owner@test.com",
         password="testpassword",
@@ -22,6 +23,7 @@ def owner(db):
 
 @pytest.mark.django_db
 def test_notification_applies_default_category_and_priority(owner):
+    """Notification applies default category and priority."""
     notification = Notification.objects.create(
         user=owner, title="Hola", message="cuerpo"
     )
@@ -32,6 +34,7 @@ def test_notification_applies_default_category_and_priority(owner):
 
 @pytest.mark.django_db
 def test_notification_state_flags_default_to_false(owner):
+    """Notification state flags default to false."""
     notification = Notification.objects.create(
         user=owner, title="Hola", message="cuerpo"
     )
@@ -43,6 +46,7 @@ def test_notification_state_flags_default_to_false(owner):
 
 @pytest.mark.django_db
 def test_notification_link_type_defaults_to_empty_string(owner):
+    """Notification link type defaults to empty string."""
     notification = Notification.objects.create(
         user=owner, title="Hola", message="cuerpo"
     )
@@ -53,6 +57,7 @@ def test_notification_link_type_defaults_to_empty_string(owner):
 
 @pytest.mark.django_db
 def test_notifications_are_ordered_most_recent_first(owner):
+    """Notifications are ordered most recent first."""
     older = Notification.objects.create(user=owner, title="Viejo", message="x")
     Notification.objects.filter(pk=older.pk).update(
         created_at=timezone.now() - timezone.timedelta(days=1)
@@ -66,6 +71,7 @@ def test_notifications_are_ordered_most_recent_first(owner):
 
 @pytest.mark.django_db
 def test_notification_str_includes_category_and_title(owner):
+    """Notification str includes category and title."""
     notification = Notification.objects.create(
         user=owner, title="Firma pendiente", message="cuerpo", category="signature_request"
     )
@@ -76,6 +82,7 @@ def test_notification_str_includes_category_and_title(owner):
 @pytest.mark.django_db
 @pytest.mark.edge
 def test_notification_rejects_invalid_category(owner):
+    """Notification rejects invalid category."""
     notification = Notification(user=owner, title="Hola", message="cuerpo", category="not_a_category")
 
     with pytest.raises(ValidationError):

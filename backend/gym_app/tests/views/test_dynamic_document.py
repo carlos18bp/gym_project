@@ -924,6 +924,7 @@ class TestDownloadWord:
     @staticmethod
     def _download_docx(api, lawyer, content):
         import io
+
         from docx import Document as DocxDocument
 
         doc = DynamicDocument.objects.create(
@@ -936,8 +937,10 @@ class TestDownloadWord:
         return DocxDocument(io.BytesIO(b"".join(resp.streaming_content)))
 
     def test_word_body_does_not_duplicate_table_cell_text(self, api, lawyer):
-        """The template wrapper <div> and <p> inside <td> must not re-emit
-        their text as body paragraphs (find_all is recursive)."""
+        """The template wrapper <div> and <p> inside <td> must not re-emit.
+
+        their text as body paragraphs (find_all is recursive).
+        """
         docx_doc = self._download_docx(
             api, lawyer,
             "<p>Intro</p><table><tr><td><p>Cell A</p></td></tr></table><p>Fin</p>",

@@ -50,6 +50,7 @@ describe("views/schedule_appointment/ScheduleAppointment.vue", () => {
   test("appends the Calendly script to the document head on mount", () => {
     mountView();
 
+    // quality: allow-fragile-selector (script injected into document.head, outside the wrapper)
     const script = document.head.querySelector(
       "script[src='https://assets.calendly.com/assets/external/widget.js']"
     );
@@ -59,6 +60,7 @@ describe("views/schedule_appointment/ScheduleAppointment.vue", () => {
   test("loads the Calendly script asynchronously", () => {
     mountView();
 
+    // quality: allow-fragile-selector (script injected into document.head, outside the wrapper)
     const script = document.head.querySelector("script[src*='calendly']");
     expect(script.async).toBe(true);
   });

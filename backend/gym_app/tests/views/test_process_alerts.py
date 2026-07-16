@@ -10,6 +10,7 @@ from gym_app.models import Case, Process, Stage, StageAlert, User
 
 @pytest.fixture
 def lawyer_user():
+    """Lawyer user."""
     return User.objects.create_user(
         email='alerts.lawyer@test.com',
         password='x',
@@ -19,6 +20,7 @@ def lawyer_user():
 
 @pytest.fixture
 def admin_user():
+    """Admin user."""
     return User.objects.create_user(
         email='alerts.admin@test.com',
         password='x',
@@ -28,6 +30,7 @@ def admin_user():
 
 @pytest.fixture
 def client_user():
+    """Client user."""
     return User.objects.create_user(
         email='alerts.client@test.com',
         password='x',
@@ -37,6 +40,7 @@ def client_user():
 
 @pytest.fixture
 def case_type():
+    """Case type."""
     return Case.objects.create(type='Civil')
 
 
@@ -63,6 +67,7 @@ class TestCreateProcessAlerts:
     def test_create_creates_alert_for_every_stage(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Create creates alert for every stage."""
         api_client.force_authenticate(user=admin_user)
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
@@ -86,6 +91,7 @@ class TestCreateProcessAlerts:
     def test_last_stage_alert_uses_payload_config(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Last stage alert uses payload config."""
         api_client.force_authenticate(user=admin_user)
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
@@ -113,6 +119,7 @@ class TestCreateProcessAlerts:
     def test_non_last_stages_get_default_alert_config(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Non last stages get default alert config."""
         api_client.force_authenticate(user=admin_user)
         payload = _make_payload(
             [client_user.id], lawyer_user.id, case_type.id,
@@ -142,6 +149,7 @@ class TestUpdateProcessAlerts:
     def test_update_deletes_old_stage_rows(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Update deletes old stage rows."""
         api_client.force_authenticate(user=admin_user)
         process = Process.objects.create(
             authority='C', plaintiff='P', defendant='D', ref='UPD-1',
@@ -170,6 +178,7 @@ class TestUpdateProcessAlerts:
     def test_update_creates_alerts_for_all_new_stages(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Update creates alerts for all new stages."""
         api_client.force_authenticate(user=admin_user)
         process = Process.objects.create(
             authority='C', plaintiff='P', defendant='D', ref='UPD-2',
@@ -216,6 +225,7 @@ class TestStageAlertNotifications:
     def test_lawyer_receives_notification_when_activating_alert(
         self, api_client, client_user, lawyer_user, case_type,
     ):
+        """Lawyer receives notification when activating alert."""
         from gym_app.models import Notification
 
         api_client.force_authenticate(user=lawyer_user)
@@ -316,6 +326,7 @@ class TestAlertConfigValidation:
     def test_create_rejects_active_alert_on_past_stage_date(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Create rejects active alert on past stage date."""
         api_client.force_authenticate(user=admin_user)
 
         response = self._create(api_client, client_user, lawyer_user, case_type)
@@ -326,6 +337,7 @@ class TestAlertConfigValidation:
     def test_update_rejects_active_alert_on_past_stage_date(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Update rejects active alert on past stage date."""
         api_client.force_authenticate(user=admin_user)
         ok = self._create(
             api_client, client_user, lawyer_user, case_type,
@@ -371,6 +383,7 @@ class TestAlertActivationEmailGuards:
     def test_no_email_sent_when_no_recipient_has_email(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """No email sent when no recipient has email."""
         api_client.force_authenticate(user=admin_user)
         User.objects.filter(pk=lawyer_user.pk).update(email='')
         lawyer_user.refresh_from_db()
@@ -386,6 +399,7 @@ class TestAlertActivationEmailGuards:
     def test_email_failure_is_logged_and_creation_succeeds(
         self, api_client, admin_user, client_user, lawyer_user, case_type
     ):
+        """Email failure is logged and creation succeeds."""
         api_client.force_authenticate(user=admin_user)
 
         with patch(
@@ -407,6 +421,7 @@ class TestPendingProcessAlertsCount:
     def test_counts_only_unread_active_process_alerts(
         self, api_client, lawyer_user
     ):
+        """Counts only unread active process alerts."""
         api_client.force_authenticate(user=lawyer_user)
         Notification.objects.create(
             user=lawyer_user, category='process_alert', title='a', message='d'

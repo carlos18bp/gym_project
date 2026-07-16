@@ -39,7 +39,7 @@ def read_notification(client_user):
 @pytest.fixture
 @pytest.mark.django_db
 def archived_notification(client_user):
-    """Archived notification for client_user."""
+    """Create an archived notification for client_user."""
     return Notification.objects.create(
         user=client_user,
         title="Archived note",

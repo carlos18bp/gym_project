@@ -747,6 +747,7 @@ class TestServiceSerializerUpsertEdges:
     def test_update_with_unknown_stage_id_creates_new_stage(
         self, service_with_stages, ser_admin
     ):
+        """Update with unknown stage id creates new stage."""
         request = _make_request(user=ser_admin)
         payload = self._update_payload(
             service_with_stages,
@@ -764,6 +765,7 @@ class TestServiceSerializerUpsertEdges:
     def test_update_with_duplicate_stage_order_raises_validation_error(
         self, service_with_stages, ser_admin
     ):
+        """Update with duplicate stage order raises validation error."""
         from django.core.exceptions import ValidationError as DjangoValidationError
 
         request = _make_request(user=ser_admin)
@@ -787,6 +789,7 @@ class TestServiceSerializerUpsertEdges:
     def test_update_with_unknown_field_id_creates_new_field(
         self, service_with_stages, ser_admin
     ):
+        """Update with unknown field id creates new field."""
         request = _make_request(user=ser_admin)
         stage = service_with_stages.stages.first()
         payload = self._update_payload(
@@ -821,6 +824,7 @@ class TestServiceSerializerUpsertEdges:
     def test_update_with_duplicate_field_order_raises_validation_error(
         self, service_with_stages, ser_admin
     ):
+        """Update with duplicate field order raises validation error."""
         from django.core.exceptions import ValidationError as DjangoValidationError
 
         request = _make_request(user=ser_admin)
@@ -853,7 +857,9 @@ class TestServiceRequestUrlBuilders:
     """URL builder methods return None without a request in context."""
 
     def test_lawyer_response_file_download_url_none_without_request(self):
+        """Lawyer response file download url none without request."""
         from types import SimpleNamespace
+
         from gym_app.serializers.service_tramite import (
             ServiceRequestLawyerResponseFileSerializer,
         )
@@ -864,7 +870,9 @@ class TestServiceRequestUrlBuilders:
         assert serializer.get_download_url(obj) is None
 
     def test_document_url_none_without_request(self):
+        """Document url none without request."""
         from types import SimpleNamespace
+
         from gym_app.serializers.service_tramite import ServiceRequestDetailSerializer
 
         serializer = ServiceRequestDetailSerializer(context={})
@@ -873,7 +881,9 @@ class TestServiceRequestUrlBuilders:
         assert serializer.get_document_url(obj) is None
 
     def test_document_url_none_without_generated_document(self):
+        """Document url none without generated document."""
         from types import SimpleNamespace
+
         from gym_app.serializers.service_tramite import ServiceRequestDetailSerializer
 
         serializer = ServiceRequestDetailSerializer(context={})
