@@ -5,7 +5,6 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 from freezegun import freeze_time
-
 from gym_app.models import Notification
 from gym_app.notification_tasks import reactivate_snoozed_notifications
 

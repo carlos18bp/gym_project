@@ -163,3 +163,23 @@
   3. **Data repair command**: new `python manage.py repair_orphan_variable_tokens` (dry-run by default, `--apply` to write, filters `--assigned-to` / `--ids`) rewrites orphan tokens to the matching variable name when they differ only by internal whitespace; unmatched tokens are reported, never guessed.
 - **Affected files**: `frontend/src/shared/document_utils.js`, `frontend/src/views/dynamic_document/DocumentEditor.vue`, `backend/gym_app/management/commands/repair_orphan_variable_tokens.py`
 - **Prevention idea (open)**: validate on template save that every `{{token}}` in content has a matching variable; template 525 («Pagaré y carta de instrucciones») still contains a fragmented token `Numero_Pagare</span>` with the same risk pattern.
+
+### [RESOLVED-017] Mis-tagged E2E spec masked process-alert coverage (false-red + false-green)
+- **Context** (2026-07-04): The flow-coverage report showed `process-alerts` (the alert **display** indicator flow) as `missing`, while `process-alert-configure` (the interactive `notify_clients` toggle) showed as `covered` — yet no spec actually exercised the toggle.
+- **Root Cause**: `frontend/e2e/process/process-alert-recipients.spec.js` verifies the display indicator + history-modal badge (read-only, on `/process_detail`), but every `test()` was tagged `@flow:process-alert-configure`. Coverage status is a pure function of the `@flow:` tag, so the display flow was left with zero tags (false-`missing`) and the config flow inherited a passing spec that never touched the toggle (false-`covered`).
+- **Resolution** (2026-07-04): retagged the spec `@flow:process-alert-configure` → `@flow:process-alerts` (the flow it truly drives). `process-alerts` now reports `covered`; `process-alert-configure` correctly reports `missing` and carries a `knownGaps` note in `flow-definitions.json` (its toggle spec is pending `data-testid` + ProcessForm mocking). Also corrected stale `legal-files-*` ❌→✅ markers in `docs/USER_FLOW_MAP.md` (they are covered via `flow-tags.js` constants) and regenerated the coverage matrix from `flow-definitions.json`.
+- **Affected files**: `frontend/e2e/process/process-alert-recipients.spec.js`, `frontend/e2e/flow-definitions.json`, `docs/USER_FLOW_MAP.md`
+- **Prevention idea**: a mis-pointed tag is invisible without cross-checking spec intent vs flow id; consider a CI assertion that every flow with `expectedSpecs > 0` has ≥1 tagging spec, and review `knownGaps` flows periodically.
+
+### [RESOLVED-019] Renaming a SECOP saved view to a duplicate name returned 500
+- **Context** (2026-07-16): surfaced while writing coverage tests for the saved-view PATCH endpoint.
+- **Root Cause**: `SavedViewSerializer` has no duplicate-name validation on **update** — creation intentionally upserts by `(user, name)` via `update_or_create`, but the PATCH path calls `instance.save()` straight into the MySQL unique constraint → `IntegrityError` 500. RESOLVED-006 had only addressed the creation flow.
+- **Resolution** (commit `d781e7f`): `validate_name` rejects duplicates **only when `self.instance` is set** (rename), preserving create-upsert semantics. Regression test `TestSecopSavedViewEdit::test_patch_duplicate_name_returns_400`.
+- **Affected files**: `backend/gym_app/serializers/secop.py`, `backend/gym_app/tests/views/test_secop_views.py`
+
+### [RESOLVED-018] PDF export 500 on editor-created tables + editor/PDF rendering mismatch
+- **Context** (2026-07-07): Exporting a dynamic document to PDF returned HTTP 500 when the content contained tables created in the TinyMCE editor; exports also rendered differently from the editor (spacing, table borders).
+- **Root Cause**: xhtml2pdf could not handle the editor's table markup, and its CSS subset diverged from what the browser editor showed. The PDF stylesheet was additionally duplicated across `document_views.py` and `signature_views.py`, so fixes drifted apart.
+- **Resolution** (commits `2ba6d77`, `65c48ce`, `2d390fa`): dynamic-document PDF rendering migrated to **WeasyPrint 63.1** with a shared stylesheet/HTML builder consolidated in `backend/gym_app/utils/documents.py`; editor-created table markup is normalized before rendering. Both `document_views.py` and `signature_views.py` consume the shared builder. xhtml2pdf remains only for service/trámite PDFs (`services/service_tramite_pdf.py`).
+- **Affected files**: `backend/gym_app/utils/documents.py`, `backend/gym_app/views/dynamic_documents/document_views.py`, `backend/gym_app/views/dynamic_documents/signature_views.py`, `backend/requirements.txt`
+- **Tests**: `backend/gym_app/tests/utils/test_document_utils.py` (builder + table normalization), regression updates in `test_dynamic_document.py` / `test_dynamic_document_signatures.py`.

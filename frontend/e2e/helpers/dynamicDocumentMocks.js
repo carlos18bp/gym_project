@@ -30,6 +30,11 @@ export function buildMockDocument({
   state,
   createdBy,
   assignedTo = null,
+  // NOTE: the backend model defaults allow_shared_edit to TRUE for new
+  // minutas. The mock defaults to false so each spec opts into the shared
+  // scenario explicitly (most fixtures model minutas whose creator turned
+  // sharing off, which is the restrictive — and assert-heavy — case).
+  allowSharedEdit = false,
   tags = [],
   code,
   createdAt,
@@ -56,6 +61,7 @@ export function buildMockDocument({
     state,
     created_by: createdBy,
     assigned_to: assignedTo,
+    allow_shared_edit: allowSharedEdit,
     code: code || `DOC-${id}`,
     tags,
     created_at: createdAt || nowIso,
@@ -214,6 +220,21 @@ export async function installDynamicDocumentApiMocks(
         filtered = filtered.filter((d) =>
           Array.isArray(d.tags) && d.tags.some((t) => t.id === tid)
         );
+      }
+
+      // Server-side creator filter (mirrors backend `created_by_id=lawyer_id`),
+      // used by the minutas "Mías" scope.
+      const lawyerIdParam = params.get("lawyer_id");
+      if (lawyerIdParam) {
+        const lid = Number(lawyerIdParam);
+        filtered = filtered.filter((d) => d.created_by === lid);
+      }
+
+      // Server-side shared-edit filter (mirrors backend `allow_shared_edit=True`),
+      // used by the minutas "Compartidas" scope.
+      const sharedParam = (params.get("shared") || "").toLowerCase();
+      if (sharedParam === "true" || sharedParam === "1") {
+        filtered = filtered.filter((d) => d.allow_shared_edit === true);
       }
 
       // Server-side sort

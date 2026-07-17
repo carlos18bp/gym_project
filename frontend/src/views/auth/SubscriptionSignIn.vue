@@ -110,13 +110,11 @@
             </div>
           </div>
 
-          <div class="mt-6 flex justify-center">
-            <GoogleLogin 
-              :callback="handleLoginWithGoogle" 
-              select-account
-              :auto-login="false"
-            />
-          </div>
+          <SocialLoginButtons
+            class="mt-6"
+            @google="handleLoginWithGoogle"
+            @outlook="handleLoginWithOutlook"
+          />
         </div>
       </div>
 
@@ -142,6 +140,8 @@ import { useAuthStore } from "@/stores/auth/auth";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { loginWithGoogle } from "@/shared/login_with_google";
+import { loginWithOutlook } from "@/shared/login_with_outlook";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
@@ -250,5 +250,15 @@ const handleLoginWithGoogle = async (response) => {
   } catch (error) {
     showNotification("Error al iniciar sesión con Google", "error");
   }
+};
+
+const handleLoginWithOutlook = () => {
+  // Redirect to checkout instead of dashboard after Microsoft login
+  const plan = route.query.plan || 'basico';
+  loginWithOutlook(router, authStore, {
+    redirect: { name: 'checkout', params: { plan } },
+    successMessageCreated: "¡Registro exitoso con Microsoft!",
+    successMessageLoggedIn: "¡Inicio de sesión exitoso con Microsoft!",
+  });
 };
 </script>

@@ -115,6 +115,11 @@
 - Always write tags inline: `tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer']`
 - The `flow-tags.js` constants are still useful for type safety in other contexts, but must not be the sole source of `@flow:` strings in spec files
 
+### E2E: A Mis-Pointed `@flow:` Tag Silently Distorts Coverage
+- Coverage status is a pure function of which `@flow:<id>` a spec carries, so a tag pointing at the **wrong** flow-id causes two silent errors at once: the flow it *should* tag reads as `missing` (false-red) and the flow it *does* tag reads as `covered` even though nothing exercises it (false-green)
+- Seen 2026-07-04: `process-alert-recipients.spec.js` tested the alert **display** indicator but was tagged `@flow:process-alert-configure` (the interactive toggle). Retagging to `@flow:process-alerts` fixed both and exposed that the toggle flow genuinely has no spec (now a declared `knownGap`)
+- When a flow has both a display and an interactive half, tag each spec by the half it actually drives; record the untested half via `knownGaps` in `flow-definitions.json` instead of leaving a false-green
+
 ### SECOP UNSPSC Filter: Advanced Filters Toggle Required
 - The UNSPSC multi-select filter (`data-testid="filter-unspsc"`) in `SecopList.vue` is inside an "advanced filters" panel
 - The panel is **hidden by default** — must click `data-testid="toggle-advanced-filters"` first, then `data-testid="advanced-filters"` becomes visible
@@ -177,3 +182,25 @@
 - In multi-step flows (e.g. registration: `send_verification_code` → `sign_on`), only the **first** step should call `verify_captcha`. The second step relies on the emailed passcode/token as its bot-proof gate
 - E2E mocks (`authSignOnMocks.js`) always return `success: true`, so they cannot detect token-reuse bugs — validate in staging against the real Google endpoint
 - If every step genuinely needs captcha, migrate to reCAPTCHA v3 (score-based, multi-action)
+
+### PDF Export: WeasyPrint + Shared Stylesheet Builder (2026-07-07)
+- Dynamic-document PDF exports render with **WeasyPrint** (not xhtml2pdf) so output matches the TinyMCE editor; editor-created tables must be normalized before rendering (xhtml2pdf 500'd on them)
+- The PDF stylesheet/HTML builder lives ONCE in `backend/gym_app/utils/documents.py` — never re-inline styles in `document_views.py` or `signature_views.py`; both consume the shared builder
+- xhtml2pdf is still used for service/trámite PDFs (`services/service_tramite_pdf.py`) — don't remove it from requirements
+
+### Jest: ExampleModal.vue Renders Empty Under vue3-jest (open investigation)
+- `src/views/user_guide/components/ExampleModal.vue` mounts to empty html under Jest with EVERY approach tried (2026-07-16): real @headlessui/vue + attachTo + flushes, VTU name-based stubs, and full `jest.mock('@headlessui/vue')`
+- Symptom inside a fixture SFC: `import { TransitionRoot } from '@headlessui/vue'` is `undefined` in script-setup while `import * as hui` sees the mock keys — Vue warns "Invalid vnode type: undefined"
+- `PostFormModal.vue` (identical script-setup + named headlessui imports + `as="template"` pattern) tests FINE with the stub recipe in `test/components/organizations/PostFormModal.test.js` — root difference not yet identified
+- Before retrying, diff the two SFCs' compiled output (`@vue/vue3-jest`) rather than iterating on mount recipes
+
+### Shared Staging DB Carries v2-Branch Migrations (fake-data refresh landmines)
+- The staging MySQL DB is shared across branch checkouts; `release-august-2026-c-v2` migrations left schema this branch's ORM doesn't know:
+  - `gym_app_documentpaymentrecord` (cuentas de cobro) — FK to DynamicDocument blocks `delete_fake_data`; fix: empty its rows (never drop the table, it belongs to the v2 feature)
+  - `gym_app_user.is_archived` NOT NULL without DB default — every User INSERT from this branch failed with MySQL 1364; fixed 2026-07-16 by adding `DEFAULT 0` (harmless for v2: Django never relies on DB defaults)
+- Diagnostic recipe: compare `information_schema.COLUMNS` (NOT NULL, no default) against `apps.get_models()` columns to find every landmine at once before reseeding
+- `create_fake_data` must run **from `backend/`** — `create_legal_requests` reads the relative path `media/example_files/`
+
+### Global App Zoom (80% desktop / 75% mobile)
+- `frontend/src/style.css` applies a global `zoom` (commit `cc92301`, 2026-07-15) to widen the UI
+- Pixel-based assertions (screenshots, `boundingBox()` checks) in E2E/unit tests see the zoomed geometry — prefer role/testid-based assertions over pixel math

@@ -62,6 +62,10 @@ class ASTAnalyzer:
         "assertTemplateUsed", "assertTemplateNotUsed",
     }
     
+    # pytest context-manager assertions (e.g. `with pytest.raises(...)`,
+    # `with pytest.warns(...)`) — the exception/warning check IS the assertion.
+    PYTEST_ASSERTIONS = {"raises", "warns"}
+
     # Mock assertion methods
     MOCK_ASSERTIONS = {
         "assert_called", "assert_called_once", "assert_called_with",
@@ -125,11 +129,18 @@ class ASTAnalyzer:
             if isinstance(child, ast.Assert):
                 assertions.append(ast.unparse(child) if hasattr(ast, 'unparse') else "assert ...")
             
-            # unittest self.assert*
+            # unittest self.assert* / pytest.raises / pytest.warns
             elif isinstance(child, ast.Call):
                 if isinstance(child.func, ast.Attribute):
                     if child.func.attr in cls.ASSERTION_PATTERNS:
                         assertions.append(child.func.attr)
+                    # `pytest.raises(...)` / `pytest.warns(...)`
+                    elif child.func.attr in cls.PYTEST_ASSERTIONS:
+                        assertions.append(child.func.attr)
+                # bare `raises(...)` / `warns(...)` imported from pytest
+                elif isinstance(child.func, ast.Name):
+                    if child.func.id in cls.PYTEST_ASSERTIONS:
+                        assertions.append(child.func.id)
         
         return len(assertions), assertions
     

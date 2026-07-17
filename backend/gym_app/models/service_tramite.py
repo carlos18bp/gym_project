@@ -4,7 +4,6 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import Q
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.text import slugify
@@ -208,9 +207,12 @@ class ServiceRequest(models.Model):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
+            # Unconditional on purpose: NULLs never collide in a unique index, so
+            # drafts (tracking_year/tracking_sequence still NULL) coexist freely
+            # without a condition. A conditional constraint is silently dropped by
+            # MySQL (models.W036), leaving the pair unenforced.
             models.UniqueConstraint(
                 fields=["tracking_year", "tracking_sequence"],
-                condition=Q(tracking_year__isnull=False, tracking_sequence__isnull=False),
                 name="unique_service_request_year_sequence",
             )
         ]

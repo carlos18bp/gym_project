@@ -145,6 +145,7 @@ export const USER_GUIDE_NAVIGATION = ['@flow:user-guide-navigation', '@module:us
 export const MISC_POLICIES = ['@flow:misc-policies', '@module:misc', '@priority:P4'];
 export const MISC_PWA_INSTALL = ['@flow:misc-pwa-install', '@module:misc', '@priority:P4'];
 export const MISC_ERROR_HANDLING = ['@flow:misc-error-handling', '@module:misc', '@priority:P3'];
+export const MISC_OFFLINE = ['@flow:misc-offline', '@module:misc', '@priority:P4'];
 
 // ── Basic User ──────────────────────────────────────────────────────────────
 export const BASIC_RESTRICTIONS = ['@flow:basic-restrictions', '@module:auth', '@priority:P3'];

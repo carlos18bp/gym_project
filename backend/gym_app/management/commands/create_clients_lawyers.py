@@ -1,7 +1,14 @@
+import os
+import random
+
+from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
-from gym_app.models import User
+from gym_app.models import User, UserSignature
 from ._seeder_constants import RESERVED_CLIENT_EMAILS, SPECIAL_USERS_SPEC, CLIENT_OWNED_EMAILS
+
+# Existing example image reused for electronic-signature fake data.
+SIGNATURE_IMAGE_PATH = 'media/legal_request_files/img.png'
 
 class Command(BaseCommand):
     help = 'Create fake data for clients and lawyers'
@@ -106,4 +113,35 @@ class Command(BaseCommand):
                     special_user.save(update_fields=['role'])
                 self.stdout.write(self.style.WARNING(f'Special user already exists: {special_user.email} ({special_user.role})'))
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully ensured {num_clients} clients and {num_lawyers} lawyers'))
+        # ── Electronic signatures ────────────────────────────────────────────
+        # Seed a UserSignature (OneToOne) for the preferred demo users so the
+        # electronic-signature flow has real signatures backing it.
+        signatures_created = 0
+        if os.path.isfile(SIGNATURE_IMAGE_PATH):
+            signer_emails = [
+                'carlos18bp@gmail.com',
+                'info.montreal.studios@gmail.com',
+                'core.paginaswebscolombia@gmail.com',
+                'corporate1@gmail.com',
+            ]
+            for email in signer_emails:
+                user = User.objects.filter(email=email).first()
+                if not user or UserSignature.objects.filter(user=user).exists():
+                    continue
+                with open(SIGNATURE_IMAGE_PATH, 'rb') as fh:
+                    UserSignature.objects.create(
+                        user=user,
+                        signature_image=File(fh, name=f'signature_{user.id}.png'),
+                        method=random.choice(['upload', 'draw']),
+                        ip_address=f'192.168.1.{random.randint(1, 254)}',
+                    )
+                signatures_created += 1
+        else:
+            self.stdout.write(self.style.WARNING(
+                f'Signature image not found at {SIGNATURE_IMAGE_PATH}; skipping UserSignature seeding'
+            ))
+
+        self.stdout.write(self.style.SUCCESS(
+            f'Successfully ensured {num_clients} clients and {num_lawyers} lawyers '
+            f'(+{signatures_created} user signatures)'
+        ))

@@ -3,7 +3,7 @@
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
 **Fecha:** April 10, 2026
-**Versión:** 1.7.0
+**Versión:** 1.9.2
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -78,6 +78,24 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 - ├── **Usuario existente:** Redirect a `/dashboard`
 - ├── **Usuario nuevo:** Se crea cuenta automáticamente → redirect a `/dashboard`
 - └── **Error token/popup cerrado:** Mensaje de error
+
+---
+
+### auth-login-outlook: Iniciar sesión con Microsoft/Outlook
+- **Módulo:** auth | **Prioridad:** P1 | **Ruta:** `/sign_in`, `/sign_on`, suscripción | **E2E:** ✅
+- **Descripción:** Usuario accede o se registra mediante MSAL con cuenta de Microsoft (personal o corporativa). El ID token se verifica server-side; el correo se acepta solo si está verificado (xms_edov / tenant de consumidores / allowlist) para prevenir nOAuth.
+
+**Pasos:**
+1. Navega a `/sign_in` (o `/sign_on`, o el flujo de suscripción)
+2. Click "Continuar con Microsoft"
+3. Autentica en el popup de Microsoft
+4. El backend verifica el ID token y el correo
+
+**Ramificaciones:**
+- ├── **Usuario existente:** Redirect a `/dashboard` (o checkout en suscripción)
+- ├── **Usuario nuevo:** Se crea cuenta `basic` automáticamente → redirect
+- ├── **Correo no verificado (tenant no confiable):** 401, no se crea/enlaza cuenta
+- └── **Popup cancelado / error:** Notificación, permanece en la vista
 
 ---
 
@@ -369,6 +387,13 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 - ├── **Sin conexión:** Redirect a `/no_connection`
 - ├── **Ruta no encontrada:** Redirect a `/sign_in` (catch-all)
 - └── **Error en router guard:** Redirect a `/sign_in`
+
+### misc-offline: Página sin conexión
+- **Módulo:** misc | **Prioridad:** P4 | **Ruta:** `/no_connection` | **E2E:** ✅
+- **Descripción:** Página mostrada cuando el dispositivo pierde la conexión a internet (`views/offline/NoConnection.vue`). Ruta pública, sin autenticación.
+
+**Ramificaciones:**
+- └── **Reconexión:** El usuario recupera internet y vuelve a navegar por la app
 
 ---
 
@@ -832,10 +857,11 @@ Mismas ramificaciones que process-create, con datos precargados.
 1. En Dcs. Archivados, click "Editar y reenviar para firma" en documento Rejected/Expired
 2. Se navega a DocumentForm en modo `correction`
 3. Editar contenido y/o variables
-4. Click "Guardar y reenviar para firma"
-5. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }`
-6. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
-7. Redirección a pestaña "Dcs. Por Firmar"
+4. (Opcional) Fijar "Fecha límite para firmar" (input `correction-signature-due-date`; se precarga sólo si la fecha guardada es futura — una fecha vencida re-expiraría el documento)
+5. Click "Guardar y reenviar para firma"
+6. `POST /api/dynamic-documents/:id/correct/` con `{ content, variables, signature_due_date }` (`''` limpia la fecha)
+7. Backend: actualiza contenido, recrea variables, resetea firmas, transiciona a PendingSignatures
+8. Redirección a pestaña "Dcs. Por Firmar"
 
 **Diferencia con flujo anterior:**
 - Antes: dos llamadas HTTP (`PUT update` + `POST reopen-signatures`)
@@ -998,6 +1024,24 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### minutas-shared-visibility: Visibilidad compartida y edición colaborativa de minutas
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Minutas) | **E2E:** ✅ (`minutas-shared-visibility.spec.js`)
+- **Descripción:** Todos los abogados ven todas las minutas (Draft/Published) sin importar quién las creó, con columna informativa "Creado por" y filtro de tres alcances "Todas / Compartidas / Mías" (params backend `shared` y `lawyer_id`). Solo el creador modifica/elimina/publica su minuta, salvo por el flag `allow_shared_edit` (**activado por defecto** para promover la colaboración), que habilita a los demás abogados a editar contenido/nombre/variables (nunca eliminar ni cambiar estado; el grant es solo para abogados, no clientes). El creador puede desactivarlo con "Dejar de compartir". Los no creadores siempre pueden previsualizar y crear una copia.
+
+**Pasos:**
+1. Lawyer A navega a `/dynamic_document_dashboard` → tab "Minutas"
+2. La tabla lista minutas creadas por cualquier abogado (no solo las propias)
+3. La columna "Creado por" muestra el nombre del abogado creador; las minutas con edición compartida llevan badge "Compartida"
+4. Click en "Mías" → la tabla se reduce a las minutas creadas por el abogado actual
+5. Click en "Compartidas" → la tabla se reduce a las minutas con `allow_shared_edit=true`
+6. Click en "Todas" → vuelve a mostrar todas las minutas del equipo
+7. Minuta propia: menú de acciones completo (editar, permisos, eliminar, publicar/borrador, membrete, copiar, "Compartir edición"/"Dejar de compartir")
+8. Minuta ajena NO compartida: solo previsualizar, crear copia y agregar a carpeta (+ descargas si está publicada)
+9. Minuta ajena compartida: además puede editar (nombre/documento/variables), pero no eliminar, cambiar estado, permisos ni membrete
+10. El backend rechaza con 403 cualquier update/delete que viole estas reglas (incl. intento de cambiar `state` o `allow_shared_edit` por un no creador)
+
+---
+
 ### docs-empty-states: Estados vacíos
 - **Módulo:** documents | **Prioridad:** P4 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅
 - **Descripción:** UI cuando no hay documentos, carpetas, tags u otros elementos
@@ -1030,7 +1074,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ### sign-archived-documents: Documentos archivados (firma)
 - **Módulo:** signatures | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard` (tab Archivados) | **E2E:** ✅
-- **Descripción:** Documentos rechazados y expirados
+- **Descripción:** Documentos rechazados y expirados. La acción "Previsualizar" renderiza las variables con sus valores (los estados Rejected/Expired procesan variables igual que Completed/PendingSignatures/FullySigned)
 
 ---
 
@@ -1041,7 +1085,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### legal-files-menu-pulse: Pulso visual en menú "Archivos Jurídicos" con firmas pendientes
-- **Módulo:** signatures | **Prioridad:** P1 | **Ruta:** SlideBar (cualquier ruta autenticada) | **E2E:** ❌ (Req #6)
+- **Módulo:** signatures | **Prioridad:** P1 | **Ruta:** SlideBar (cualquier ruta autenticada) | **E2E:** ✅ (Req #6 — `legal-files-menu-pulse.spec.js` vía `flow-tags.js`)
 - **Descripción:** Tras login, el SlideBar consulta `GET /api/dynamic-documents/pending-signatures-count/` y, si hay firmas pendientes, muestra un indicador pulsante (badge con conteo + dot animado) sobre el ítem "Archivos Jurídicos". Al visitar el módulo, el flag `pendingSignaturesAlerted` se persiste en `sessionStorage` y el pulso desaparece para el resto de la sesión. Al cerrar sesión (`auth.logout()`) el flag se limpia para que el siguiente login reactive el alerta.
 - **Componentes:** `SlideBar.vue`, `composables/usePendingSignatures.js` (constante exportada `PENDING_SIGNATURES_ALERTED_KEY`), `stores/auth/auth.js`.
 - **Roles:** lawyer, client, corporate_client, basic.
@@ -1049,7 +1093,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### legal-files-auto-redirect: Auto-selección de tab "Documentos Por Firmar" en primer ingreso
-- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ❌ (Req #6)
+- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (Req #6 — `legal-files-auto-redirect.spec.js` vía `flow-tags.js`)
 - **Descripción:** En la primera visita post-login al Dashboard de documentos, si `usePendingSignatures.shouldAlert` es `true` (hay pendientes y no se ha marcado la sesión), se selecciona automáticamente la pestaña "Dcs. Por Firmar" y se llama `markAlerted()`. Si la URL incluye `?tab=` o `?lawyerTab=` explícitos, esos parámetros tienen prioridad sobre la auto-redirección. Visitas posteriores en la misma sesión respetan la navegación normal.
 - **Componentes:** `views/dynamic_document/Dashboard.vue` (lógica en `onMounted` + watch sobre `route.query`).
 - **Roles:** lawyer, client, corporate_client, basic.
@@ -1057,7 +1101,7 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ---
 
 ### legal-files-table-pulse: Pulso de ~8s en filas pendientes de la tabla de firmas
-- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Por Firmar) | **E2E:** ❌ (Req #6)
+- **Módulo:** signatures | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` (tab Por Firmar) | **E2E:** ✅ (Req #6 — `legal-files-table-pulse.spec.js` vía `flow-tags.js`)
 - **Descripción:** Al montar `SignaturesListTable` con `state="PendingSignatures"`, las filas donde el usuario actual figura como firmante con firma pendiente reciben la clase `animate-pulse bg-blue-50` durante `PULSE_DURATION_MS = 8000` (8 segundos). El `setTimeout` se cancela en `onBeforeUnmount` para evitar fugas. Pasado el timeout, el pulso se detiene y `shouldPulsate(document)` retorna `false`.
 - **Componentes:** `components/dynamic_document/common/SignaturesListTable.vue` (`isPulseActive` ref + `shouldPulsate`).
 - **Roles:** lawyer, client, corporate_client, basic.
@@ -2009,27 +2053,34 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 | Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
 |--------|---------------|------------|-----------|------------------|
-| Auth | 11 | 11 | 0 | 0 |
+| Auth | 13 | 13 | 0 | 0 |
 | Subscriptions | 6 | 6 | 0 | 0 |
 | Profile | 2 | 2 | 0 | 0 |
-| Dashboard | 9 | 9 | 0 | 0 |
+| Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
-| Processes | 9 | 9 | 0 | 0 |
-| Documents | 34 | 34 | 0 | 0 |
-| Signatures | 11 | 11 | 0 | 0 |
-| Legal Requests | 10 | 10 | 0 | 0 |
-| Organizations | 15 | 15 | 0 | 0 |
+| Processes | 11 | 11 | 0 | 0 |
+| Documents | 32 | 32 | 0 | 0 |
+| Signatures | 12 | 12 | 0 | 0 |
+| Legal Requests | 8 | 8 | 0 | 0 |
+| Organizations | 16 | 16 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
-| Intranet | 4 | 4 | 0 | 0 |
+| Intranet | 3 | 3 | 0 | 0 |
 | **SECOP** | **16** | **16** | **0** | **0** |
-| **Servicios y Tramites** | **15** | **14** | **1** | **0** |
-| Basic | 1 | 1 | 0 | 0 |
+| **Servicios y Tramites** | **15** | **15** | **0** | **0** |
+| Notifications | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **150** | **149** | **1** | **0** |
+| **Total** | **150** | **150** | **0** | **0** |
+
+> **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
+>
+> **Cerrados el 16-07-2026:** `process-alert-configure` ganó su spec dedicado (`process-alert-configure-flow.spec.js`, toggle `notify_clients` + descripción con `data-testid`s nuevos) y `process-alerts` completó sus 3 specs (`process-alert-recipients`, `process-alert-inactive-indicator`, `process-alert-past-date-guard`).
+>
+> **Cubierto con knownGap (1):**
+> - `service-admin-edit` (Servicios): el spec cubre create/toggle; la edición completa de etapas + campos no está totalmente aseverada.
 
 ---
 
-**Documento generado:** April 22, 2026
-**Versión:** 1.8.1
-**Estado:** 149/150 flujos cubiertos (1 parcial: service-admin-edit). Añadido: minutas-columns (Documents). Corregido: basic-restrictions sub-variants ❌→✅.
+**Documento generado:** July 16, 2026
+**Versión:** 1.9.4
+**Estado:** 150/150 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz regenerada con `frontend/scripts/generate-coverage.js` (cobertura estática por tags `@flow:`) contra `flow-definitions.json` v1.9.3. Nota: el artefacto local `e2e-results/flow-coverage.json` del 07-07 con 153 flujos provenía de las definiciones de la rama `release-august-2026-c-v2` (PR #95: `admin-data-reassignment`, `docs-contract-execution`, `docs-guided-tour`) — esos 3 flujos llegarán a esta rama cuando mergee el PR.

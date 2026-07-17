@@ -3,12 +3,18 @@ from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 
 from gym_app.models import EmailVerificationCode, PasswordCode
+from gym_app.views.userAuth import (
+    MICROSOFT_CONSUMERS_TENANT_ID,
+    _verify_microsoft_id_token,
+)
 
 User = get_user_model()
 FIXED_REFERENCE_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
@@ -559,6 +565,159 @@ class TestGoogleLogin:
         assert response.status_code == status.HTTP_200_OK
         u = User.objects.get(email="nopic@example.com")
         assert u.photo_profile == "" or u.photo_profile is None
+
+
+# =========================================================================
+# outlook_login (Microsoft Entra ID token verification + nOAuth hardening)
+# =========================================================================
+
+def _mock_microsoft_claims(monkeypatch, claims):
+    """Mock _verify_microsoft_id_token to return *claims* (bypasses JWKS/network)."""
+    monkeypatch.setattr(
+        "gym_app.views.userAuth._verify_microsoft_id_token",
+        lambda *a, **kw: claims,
+    )
+
+
+@pytest.mark.django_db
+class TestOutlookLogin:
+    """Tests for Microsoft/Outlook Login."""
+
+    def test_missing_token(self, api_client):
+        """Missing id_token returns 400."""
+        url = reverse("outlook_login")
+        response = api_client.post(url, {}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["error_message"] == "Microsoft ID token is required."
+
+    def test_invalid_token(self, api_client, monkeypatch):
+        """Invalid Microsoft token returns 401."""
+        mock_verify = MagicMock(side_effect=jwt.InvalidTokenError("bad"))
+        monkeypatch.setattr(
+            "gym_app.views.userAuth._verify_microsoft_id_token", mock_verify
+        )
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "bad_token"}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data["error_message"] == "Invalid Microsoft token."
+        mock_verify.assert_called_once_with("bad_token")
+
+    def test_token_without_email(self, api_client, monkeypatch):
+        """Verified token without an email claim returns 400."""
+        _mock_microsoft_claims(monkeypatch, {"xms_edov": True, "given_name": "No"})
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["error_message"] == "Email not found in Microsoft token."
+
+    def test_unverified_email_rejected(self, api_client, monkeypatch):
+        """Email from an untrusted tenant without xms_edov is rejected (nOAuth)."""
+        _mock_microsoft_claims(monkeypatch, {
+            "email": "victim@example.com",
+            "tid": "attacker-tenant-id",
+        })
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "forged"}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert not User.objects.filter(email="victim@example.com").exists()
+
+    def test_preferred_username_not_used_as_identity(self, api_client, monkeypatch):
+        """preferred_username (UPN) is never used as the account email."""
+        _mock_microsoft_claims(monkeypatch, {
+            "preferred_username": "victim@example.com",
+            "xms_edov": True,
+        })
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not User.objects.filter(email="victim@example.com").exists()
+
+    def test_create_new_user_verified_work_account(self, api_client, monkeypatch):
+        """A domain-verified work account (xms_edov) creates a new basic user."""
+        _mock_microsoft_claims(monkeypatch, {
+            "email": "new@corp.com",
+            "xms_edov": True,
+            "given_name": "New",
+            "family_name": "Corp",
+        })
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] is True
+        assert "access" in response.data
+        user = User.objects.get(email="new@corp.com")
+        assert user.role == "basic"
+
+    def test_existing_user(self, api_client, user, monkeypatch):
+        """An existing email logs in (created False), regardless of provider."""
+        _mock_microsoft_claims(monkeypatch, {"email": user.email, "xms_edov": True})
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["created"] is False
+
+    def test_personal_account_consumers_tenant(self, api_client, monkeypatch):
+        """A personal Microsoft account (consumers tenant) is trusted; name is split."""
+        _mock_microsoft_claims(monkeypatch, {
+            "email": "person@outlook.com",
+            "tid": MICROSOFT_CONSUMERS_TENANT_ID,
+            "name": "Person Outlook",
+        })
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        user = User.objects.get(email="person@outlook.com")
+        assert user.first_name == "Person"
+        assert user.last_name == "Outlook"
+
+    @override_settings(MICROSOFT_TRUSTED_TENANTS={"corp-tenant-id"})
+    def test_allowlisted_tenant_without_xms_edov(self, api_client, monkeypatch):
+        """A tenant in MICROSOFT_TRUSTED_TENANTS is trusted without xms_edov."""
+        _mock_microsoft_claims(monkeypatch, {
+            "email": "user@corp.com",
+            "tid": "corp-tenant-id",
+        })
+        url = reverse("outlook_login")
+        response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert User.objects.filter(email="user@corp.com").exists()
+
+    def test_outlook_login_exception(self, api_client, monkeypatch):
+        """Unexpected error during user creation returns 500."""
+        _mock_microsoft_claims(monkeypatch, {"email": "exc@corp.com", "xms_edov": True})
+        url = reverse("outlook_login")
+        with patch("gym_app.views.userAuth.User.objects.get_or_create", side_effect=Exception("DB error")):
+            response = api_client.post(url, {"id_token": "valid"}, format="json")
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.data["error_message"] == "DB error"
+
+
+class TestVerifyMicrosoftIdToken:
+    """Unit tests for the Microsoft ID token issuer validation."""
+
+    def _patch_decode(self, monkeypatch, claims):
+        """Stub the JWKS client + jwt.decode so only issuer logic is exercised."""
+        signing_key = MagicMock()
+        signing_key.key = "key"
+        client = MagicMock()
+        client.get_signing_key_from_jwt.return_value = signing_key
+        monkeypatch.setattr(
+            "gym_app.views.userAuth._get_microsoft_jwks_client", lambda: client
+        )
+        monkeypatch.setattr("gym_app.views.userAuth.jwt.decode", lambda *a, **kw: claims)
+
+    def test_accepts_valid_issuer(self, monkeypatch):
+        """A well-formed multi-tenant issuer is accepted."""
+        claims = {"iss": "https://login.microsoftonline.com/some-tid/v2.0", "email": "a@b.com"}
+        self._patch_decode(monkeypatch, claims)
+        assert _verify_microsoft_id_token("tok") == claims
+
+    def test_rejects_bad_issuer(self, monkeypatch):
+        """An issuer outside Microsoft's host is rejected."""
+        self._patch_decode(monkeypatch, {"iss": "https://evil.example.com/tid/v2.0"})
+        with pytest.raises(jwt.InvalidIssuerError) as exc_info:
+            _verify_microsoft_id_token("tok")
+        assert "issuer" in str(exc_info.value).lower()
 
 
 # =========================================================================

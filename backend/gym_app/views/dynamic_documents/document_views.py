@@ -2,7 +2,6 @@ import io
 import re
 import os
 import logging
-from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.template.loader import get_template
@@ -13,12 +12,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from bs4 import BeautifulSoup, NavigableString
-from xhtml2pdf import pisa
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from django.db.models import Prefetch
 from gym_app.models.dynamic_document import (
     DynamicDocument, RecentDocument, DocumentSignature,
@@ -27,7 +23,8 @@ from gym_app.models.dynamic_document import (
 from gym_app.serializers.dynamic_document import DynamicDocumentSerializer, DynamicDocumentListSerializer, RecentDocumentSerializer
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
-    sanitize_soup_for_pdf,
+    sanitize_soup_for_export,
+    render_document_pdf,
     get_letterhead_for_document,
     get_letterhead_word_template,
     ensure_letterhead_snapshot,
@@ -35,6 +32,7 @@ from gym_app.utils.documents import (
 from django.utils import timezone
 from .permissions import (
     apply_visibility_filter,
+    can_modify_minuta,
     require_document_visibility,
     require_document_visibility_by_id,
     require_document_usability,
@@ -143,6 +141,11 @@ def list_dynamic_documents(request):
     if lawyer_id:
         queryset = queryset.filter(created_by_id=lawyer_id)
 
+    # Filter minutas flagged as collaboratively editable ("Compartidas" scope)
+    shared = request.query_params.get('shared', '')
+    if shared.lower() in ('1', 'true'):
+        queryset = queryset.filter(allow_shared_edit=True)
+
     # When true, restrict results to documents where the requesting user is
     # the creator (created_by) OR a signer (has a DocumentSignature row).
     user_related = request.query_params.get('user_related', '').lower() in ('true', '1')
@@ -161,7 +164,8 @@ def list_dynamic_documents(request):
     if unassigned:
         queryset = queryset.filter(assigned_to__isnull=True)
 
-    # Full-text search across title, variable values, and assigned user name
+    # Full-text search across title, variable values, assigned user name,
+    # and the creator's name (so lawyers can search shared minutas by author).
     search = request.query_params.get('search', '').strip()
     if search:
         queryset = queryset.filter(
@@ -169,6 +173,8 @@ def list_dynamic_documents(request):
             | Q(variables__value__icontains=search)
             | Q(assigned_to__first_name__icontains=search)
             | Q(assigned_to__last_name__icontains=search)
+            | Q(created_by__first_name__icontains=search)
+            | Q(created_by__last_name__icontains=search)
         ).distinct()
 
     # Filter by tag
@@ -330,6 +336,12 @@ def update_dynamic_document(request, pk):
             status=status.HTTP_403_FORBIDDEN
         )
 
+    if not can_modify_minuta(document, request.user, request.data):
+        return Response(
+            {'detail': 'Solo el creador de la minuta puede realizar esta acción.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Prevent modifying the `created_by` field
     if 'created_by' in request.data:
         request.data.pop('created_by')
@@ -355,6 +367,12 @@ def delete_dynamic_document(request, pk):
     except DynamicDocument.DoesNotExist:  # pragma: no cover – decorator intercepts first
         return Response({'detail': 'Dynamic document not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+    if not can_modify_minuta(document, request.user):
+        return Response(
+            {'detail': 'Solo el creador de la minuta puede eliminarla.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     document.delete()
     return Response({'detail': 'Dynamic document deleted successfully.'}, status=status.HTTP_200_OK)
 
@@ -364,7 +382,7 @@ def delete_dynamic_document(request, pk):
 @require_document_visibility
 def download_dynamic_document_pdf(request, pk, for_version=False):
     """
-    Generates and returns a PDF file for a given document using ReportLab and xhtml2pdf.
+    Generates and returns a PDF file for a given document using WeasyPrint.
 
     This function retrieves a document from the database, replaces dynamic variables within 
     its content, applies a predefined font style, and converts the content into a properly 
@@ -407,231 +425,22 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
             )
             processed_content = pattern.sub(replacement_value or "", processed_content)
 
-        # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+        # Parse once; sanitize Word-pasted markup in place so the renderer
         # preserves table formatting and alignment.
-        soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
-
-        # Create the PDF buffer
-        pdf_buffer = io.BytesIO()
-
-        # Define font file paths
-        font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
-        font_paths = {
-            "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
-            "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
-            "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
-            "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
-        }
-
-        # Verify that all font files exist
-        for name, path in font_paths.items():
-            if not os.path.exists(path):
-                raise FileNotFoundError(f"Font file not found: {path}")
-
-        # Register fonts in ReportLab
-        try:
-            pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
-            pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
-            pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
-            pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
-        except Exception as e:  # pragma: no cover – font registration failure
-            raise
+        soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
         ensure_letterhead_snapshot(document)
-
-        # Define background image style if letterhead exists
-        background_style = ""
         letterhead_image = get_letterhead_for_document(
             document, fallback_user=request.user
         )
-        if letterhead_image:
-            try:
-                # Get the absolute path to the letterhead image
-                letterhead_path = os.path.abspath(letterhead_image.path)
-                if os.path.exists(letterhead_path):
-                    # Convert image to base64 for better xhtml2pdf compatibility
-                    import base64
-                    with open(letterhead_path, 'rb') as img_file:
-                        img_data = base64.b64encode(img_file.read()).decode()
-                        img_mime = 'image/png'  # Assuming PNG as per validation
-                        background_style = f"""
-            background-image: url('data:{img_mime};base64,{img_data}');
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            background-attachment: fixed;"""
-                else:
-                    logger.warning(
-                        "Letterhead file missing on disk for doc_id=%s path=%s",
-                        document.pk, letterhead_path,
-                    )
-            except (ValueError, AttributeError, IOError) as e:
-                logger.warning(
-                    "Failed to embed letterhead for doc_id=%s: %s", document.pk, e,
-                )
-                background_style = ""
 
-        body_extra_top_padding = ""
-        if background_style:
-            body_extra_top_padding = "padding-top: 1cm;"
-
-        # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches)
-        styles = f"""
-        <style>
-        @page {{
-            size: letter;
-            margin: 2cm;{background_style}
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Regular"]}') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Bold"]}') format('truetype');
-            font-weight: bold;
-            font-style: normal;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-Italic"]}') format('truetype');
-            font-weight: normal;
-            font-style: italic;
-        }}
-
-        @font-face {{
-            font-family: 'Carlito';
-            src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
-            font-weight: bold;
-            font-style: italic;
-        }}
-
-        body {{
-            font-family: 'Carlito', sans-serif !important;
-            font-size: 12pt;
-            {body_extra_top_padding}
-            word-wrap: break-word;
-            -ms-word-break: break-word;
-            word-break: break-word;
-        }}
-
-        p, span, li, div {{
-            font-family: 'Carlito', sans-serif !important;
-            word-wrap: break-word;
-            -ms-word-break: break-word;
-            word-break: break-word;
-        }}
-
-        /*
-         * xhtml2pdf applies an oversized default margin to <p> blocks, which
-         * causes paragraphs to render with huge empty gaps between them even
-         * when the editor shows them with normal line spacing. Tighten those
-         * margins and the inter-line height so the PDF matches what the user
-         * sees in the editor (issue: client R3 — PDFs con espaciado gigante).
-         *
-         * ``!important`` is used as a defence-in-depth alongside the
-         * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``:
-         * if any ``margin-*: Xpt`` slips past the helper (e.g. value below
-         * the strip threshold but still aggregated by Word into oversized
-         * spacing), the global rule still wins for normal paragraphs.
-         */
-        p, div {{
-            margin-top: 0 !important;
-            margin-bottom: 6pt !important;
-            line-height: 1.35;
-        }}
-
-        br {{
-            line-height: 1.35;
-        }}
-
-        ul, ol {{
-            margin: 0 0 6pt 18pt;
-            padding: 0;
-        }}
-
-        li {{
-            margin: 0 0 2pt 0;
-            line-height: 1.35;
-        }}
-
-        strong {{
-            font-weight: bold !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        em {{
-            font-style: italic !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        strong em {{
-            font-weight: bold !important;
-            font-style: italic !important;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        u {{
-            text-decoration: underline !important;
-        }}
-
-        table {{
-            border-collapse: collapse;
-            margin: 8pt 0;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        td, th {{
-            border: 1px solid #999;
-            padding: 4pt 6pt;
-            vertical-align: top;
-            word-wrap: break-word;
-            font-family: 'Carlito', sans-serif !important;
-        }}
-
-        th {{
-            font-weight: bold;
-            background-color: #f5f5f5;
-        }}
-
-        tr {{
-            page-break-inside: avoid;
-        }}
-        </style>
-        """
-
-        # Construct the final HTML for the PDF
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>{document.title}</title>
-            {styles}
-        </head>
-        <body>
-            {str(soup)}
-        </body>
-        </html>
-        """
-
-        # Generate the PDF with xhtml2pdf
-        pisa_status = pisa.CreatePDF(
-            html_content.encode('utf-8'),
-            dest=pdf_buffer
-        )
-
-        # Check for errors in PDF generation
-        if pisa_status.err:
-            raise Exception("HTML to PDF conversion failed")
-
-        # Return the generated PDF as a response
-        pdf_buffer.seek(0)
+        # Render with WeasyPrint (browser-grade CSS/table layout → matches editor)
+        pdf_buffer = io.BytesIO(render_document_pdf(
+            title=document.title,
+            body_html=str(soup),
+            letterhead_image=letterhead_image,
+            top_padding="1cm",
+        ))
 
         # If this is for a version, return the buffer
         if for_version:  # pragma: no cover – not currently invoked with True
@@ -649,6 +458,10 @@ def download_dynamic_document_pdf(request, pk, for_version=False):
     except FileNotFoundError as e:
         return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as e:
+        # Log the full traceback: the broad except otherwise returns a bare 500
+        # to the client and Django logs only "Internal Server Error" with no
+        # stack, making PDF failures undiagnosable without a manual repro.
+        logger.exception("Error generating PDF for doc_id=%s: %s", pk, e)
         return Response({'detail': f'Error generating PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
@@ -695,8 +508,10 @@ def download_dynamic_document_word(request, pk):
         template = get_template("pdf_template.html")
         html_content = template.render({"content": processed_content})
 
-        # Parse HTML with BeautifulSoup
-        soup = BeautifulSoup(html_content, "html.parser")
+        # Parse HTML with BeautifulSoup and clean paste-from-Word artifacts
+        # (empty block runs, <o:p> tags, excessive inline margins) so the
+        # docx output keeps the same vertical rhythm as the editor and PDF.
+        soup = sanitize_soup_for_export(BeautifulSoup(html_content, "html.parser"))
 
         from docx.shared import Inches, Pt
         from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -746,21 +561,45 @@ def download_dynamic_document_word(request, pk):
         # Track whether we've already placed the first body paragraph
         first_body_paragraph_used = False
 
+        # Mirrors the PDF stylesheet (p { margin: 0 0 6pt 0; line-height: 1.35 })
+        # and the editor content_style so all three renderers agree on spacing.
+        def apply_body_paragraph_spacing(paragraph):
+            pf = paragraph.paragraph_format
+            pf.space_before = Pt(0)
+            pf.space_after = Pt(6)
+            if pf.line_spacing is None:
+                pf.line_spacing = 1.35
+
+        # Track table adjacency: two docx tables with nothing between them
+        # auto-merge when opened in Word, so a spacer paragraph is required.
+        last_block_was_table = False
+
         # Process HTML content
         # Include both <p> and <div> tags as paragraph blocks so that
         # templates that wrap content in <div> elements are still rendered.
-        for tag in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr", "table"]):
+        block_tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "hr", "table"]
+        for tag in soup.find_all(block_tags):
+            # find_all is recursive: skip blocks whose content is emitted by
+            # another branch, otherwise text gets duplicated in the output.
+            if tag.find_parent("table"):
+                # Cell content is handled by the <table> branch below.
+                continue
+            if tag.name in ("p", "div") and tag.find(block_tags):
+                # Container block (e.g. the template wrapper <div>): its block
+                # children are matched by find_all on their own iteration.
+                continue
+
             if tag.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                 level = int(tag.name[1])
                 heading = doc.add_heading(tag.get_text().strip(), level=level)
-                
+                last_block_was_table = False
+
                 # Ensure heading uses Calibri
                 for run in heading.runs:
                     run.font.name = font_name
 
             elif tag.name in ["p", "div"]:
-                if tag.get_text().strip() == "":
-                    continue
+                last_block_was_table = False
 
                 # For the very first body paragraph when using a template that has
                 # only the default empty paragraph, reuse that paragraph instead
@@ -777,7 +616,14 @@ def download_dynamic_document_word(request, pk):
                     paragraph = doc.add_paragraph()
 
                 first_body_paragraph_used = True
-                
+                apply_body_paragraph_spacing(paragraph)
+
+                if tag.get_text().strip() == "":
+                    # Keep the (single, post-sanitize) intentional blank line as
+                    # an empty paragraph — it also prevents adjacent docx tables
+                    # from auto-merging in Word.
+                    continue
+
                 # Apply paragraph style attributes
                 style = tag.get("style", "")
 
@@ -958,6 +804,8 @@ def download_dynamic_document_word(request, pk):
 
             elif tag.name == "hr":
                 hr_paragraph = doc.add_paragraph("_" * 71)
+                apply_body_paragraph_spacing(hr_paragraph)
+                last_block_was_table = False
                 # Ensure Calibri is applied to the horizontal rule
                 for run in hr_paragraph.runs:
                     run.font.name = font_name
@@ -967,6 +815,13 @@ def download_dynamic_document_word(request, pk):
                 rows = tag.find_all("tr")
                 if not rows:
                     continue
+
+                # Two directly adjacent docx tables auto-merge when the file is
+                # opened in Word — separate them with a zero-spacing paragraph.
+                if last_block_was_table:
+                    spacer = doc.add_paragraph()
+                    spacer.paragraph_format.space_before = Pt(0)
+                    spacer.paragraph_format.space_after = Pt(0)
 
                 # Determine number of columns from the first row
                 first_row_cells = rows[0].find_all(["td", "th"])
@@ -986,8 +841,11 @@ def download_dynamic_document_word(request, pk):
                         cell = docx_row.cells[idx]
                         cell_text = cell_tag.get_text(strip=True)
                         cell.text = cell_text
-                        # Apply font to cell paragraphs
+                        # Cell paragraphs must not inherit body spacing — the
+                        # editor and PDF render cells with padding only.
                         for para in cell.paragraphs:
+                            para.paragraph_format.space_before = Pt(0)
+                            para.paragraph_format.space_after = Pt(0)
                             for run in para.runs:
                                 run.font.name = font_name
                         # Bold for <th> header cells
@@ -995,6 +853,8 @@ def download_dynamic_document_word(request, pk):
                             for para in cell.paragraphs:
                                 for run in para.runs:
                                     run.bold = True
+
+                last_block_was_table = True
 
         # Save the document to a buffer
         docx_buffer = io.BytesIO()

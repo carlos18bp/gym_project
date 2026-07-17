@@ -255,6 +255,31 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/702");
   });
 
+  test("correction mode shows the signature due date input", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    const userId = 9214;
+    const docs = [
+      buildMockDocument({
+        id: 705,
+        title: "Poder Rechazado Con Fecha",
+        state: "Rejected",
+        createdBy: userId,
+        content: "<p>Contenido a corregir</p>",
+        requires_signature: true,
+        variables: [{ name_en: "client_name", name_es: "Nombre del cliente", value: "Juan", field_type: "input", tooltip: "" }],
+      }),
+    ];
+
+    await installFormalizeMocks(page, { userId, documents: docs });
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    });
+
+    await page.goto(`/dynamic_document_dashboard/document/use/correction/705/Poder%20Rechazado%20Con%20Fecha`);
+    await expect(page.getByTestId("correction-signature-due-date")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Fecha límite para firmar (opcional)")).toBeVisible();
+  });
+
   test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9212;
     let correctWasCalled = false;

@@ -1021,6 +1021,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
       states: ["Draft", "Published"],
       clientId: 10,
       lawyerId: 20,
+      shared: true,
       search: "contract",
       tagId: 3,
       dateFrom: "2026-01-01",
@@ -1036,6 +1037,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     expect(url).toContain("states=Draft%2CPublished");
     expect(url).toContain("client_id=10");
     expect(url).toContain("lawyer_id=20");
+    expect(url).toContain("shared=true");
     expect(url).toContain("search=contract");
     expect(url).toContain("tag_id=3");
     expect(url).toContain("date_from=2026-01-01");

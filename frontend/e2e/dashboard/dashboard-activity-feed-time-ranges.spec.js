@@ -7,7 +7,6 @@ import { mockApi } from "../helpers/api.js";
  * - activity_feed.js (41%) — fetchUserActivities, formatTimeAgo branches
  *   (seconds, minutes, hours, days, weeks, months, years)
  * - ContactsWidget.vue (23.9%) — lawyer contacts list rendering
- * - RecentProcessList.vue — recent processes widget
  * - UserWelcomeCard.vue — welcome card with stats
  */
 

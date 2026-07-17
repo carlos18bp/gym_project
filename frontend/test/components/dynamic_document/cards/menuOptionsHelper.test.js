@@ -81,9 +81,9 @@ describe("menuOptionsHelper.js", () => {
     test("legal-documents Draft uses edit submenu and does not include relationships", () => {
       const options = getMenuOptionsForCardType(
         "lawyer",
-        { id: 1, state: "Draft" },
+        { id: 1, state: "Draft", created_by: 7 },
         "legal-documents",
-        { currentUser: { email: "x@x.com" } }
+        { currentUser: { id: 7, email: "x@x.com" } }
       );
 
       const edit = options.find((o) => o.action === "edit-submenu");
@@ -98,14 +98,76 @@ describe("menuOptionsHelper.js", () => {
     test("legal-documents Published uses edit submenu and omits relationships", () => {
       const options = getMenuOptionsForCardType(
         "lawyer",
-        { id: 1, state: "Published" },
+        { id: 1, state: "Published", created_by: 7 },
         "legal-documents",
-        { currentUser: { email: "x@x.com" } }
+        { currentUser: { id: 7, email: "x@x.com" } }
       );
 
       expect(options.some((o) => o.action === "edit-submenu")).toBe(true);
       expect(options.some((o) => o.action === "relationships")).toBe(false);
       expect(options.some((o) => o.action === "draft")).toBe(true);
+    });
+
+    test("legal-documents owner menu includes the share-edit toggle", () => {
+      const notShared = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Draft", created_by: 7, allow_shared_edit: false },
+        "legal-documents",
+        { currentUser: { id: 7 } }
+      );
+      const shared = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Draft", created_by: 7, allow_shared_edit: true },
+        "legal-documents",
+        { currentUser: { id: 7 } }
+      );
+
+      expect(notShared.find((o) => o.action === "toggleSharedEdit").label).toBe("Compartir edición");
+      expect(shared.find((o) => o.action === "toggleSharedEdit").label).toBe("Dejar de compartir");
+    });
+
+    test("legal-documents non-owner without shared flag gets only use actions", () => {
+      const options = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Draft", created_by: 7, allow_shared_edit: false },
+        "legal-documents",
+        { currentUser: { id: 8 } }
+      );
+
+      const actions = options.map((o) => o.action);
+      expect(actions).toEqual(expect.arrayContaining(["preview", "copy", "addToFolder"]));
+      ["edit-submenu", "permissions", "delete", "letterhead", "toggleSharedEdit", "publish", "draft"].forEach((a) => {
+        expect(actions).not.toContain(a);
+      });
+    });
+
+    test("legal-documents non-owner with shared flag can edit but not delete or change state", () => {
+      const options = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Published", created_by: 7, allow_shared_edit: true },
+        "legal-documents",
+        { currentUser: { id: 8 } }
+      );
+
+      const actions = options.map((o) => o.action);
+      expect(actions).toContain("edit-submenu");
+      ["permissions", "delete", "letterhead", "toggleSharedEdit", "draft"].forEach((a) => {
+        expect(actions).not.toContain(a);
+      });
+    });
+
+    test("legal-documents non-owner Published keeps read-only download actions", () => {
+      const options = getMenuOptionsForCardType(
+        "lawyer",
+        { id: 1, state: "Published", created_by: 7, allow_shared_edit: false },
+        "legal-documents",
+        { currentUser: { id: 8 } }
+      );
+
+      const actions = options.map((o) => o.action);
+      expect(actions).toEqual(
+        expect.arrayContaining(["preview", "copy", "downloadPDF", "downloadWord"])
+      );
     });
 
     test("non Draft/Published adds relationships option", () => {

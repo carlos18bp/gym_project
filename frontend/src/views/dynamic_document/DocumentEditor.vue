@@ -510,6 +510,12 @@ const editorConfig = computed(() => ({
     body, p, span, div, strong, em, u, i, b {
       font-family: 'Carlito', sans-serif !important;
     }
+    /* Match the Word/PDF export spacing model so the editor is WYSIWYG:
+       p/div and tables use 6pt bottom margin and 1.35 line-height. */
+    body { font-size: 12pt; }
+    p, div { margin: 0 0 6pt 0; line-height: 1.35; }
+    table { border-collapse: collapse; margin: 0 0 6pt 0; }
+    td, th { border: 1px solid #999; padding: 4pt 6pt; vertical-align: top; }
     .variable-protected {
       background-color: #ffeb3b !important;
       color: #d32f2f !important;

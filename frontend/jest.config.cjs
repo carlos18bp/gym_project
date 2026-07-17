@@ -2,7 +2,10 @@ module.exports = {
     moduleFileExtensions: ['js', 'json', 'vue'],
     testMatch: ['<rootDir>/test/**/*.test.js'],
     testPathIgnorePatterns: ['<rootDir>/e2e/'],
-    coverageProvider: 'babel',
+    // v8 provider instruments at runtime, avoiding the babel-plugin-istanbul
+    // "_interopRequireDefault already declared" crash that the babel provider
+    // hits when instrumenting complex .vue SFCs.
+    coverageProvider: 'v8',
     coverageReporters: ['text', 'json-summary'],
     collectCoverageFrom: [
       'src/**/*.{js,vue}',
@@ -10,7 +13,10 @@ module.exports = {
       '!src/**/*.spec.js',
     ],
     transform: {
-      '^.+\\.vue$': '<rootDir>/test/utils/vue-jest-transformer.cjs',
+      // @vue/vue3-jest instruments .vue coverage natively when Jest requests it.
+      // The former custom double-pass transformer (test/utils/vue-jest-transformer.cjs)
+      // silently produced ZERO .vue coverage — every component/view read as 0%.
+      '^.+\\.vue$': '@vue/vue3-jest',
       '^.+\\.js$': 'babel-jest',
       ".+\\.(css|styl|less|sass|scss|png|jpg|svg|ttf|woff|woff2)$": "jest-transform-stub"
     },
@@ -19,6 +25,10 @@ module.exports = {
       customExportConditions: ["node", "node-addons"],
     },
     moduleNameMapper: {
+      // Stub sweetalert2: its dist injects CSS jsdom can't parse, crashing any
+      // suite that imports it transitively. Suites that assert Swal behavior
+      // jest.mock() it themselves, which overrides this mapping.
+      '^sweetalert2$': '<rootDir>/test/mocks/sweetalert2.cjs',
       '^@/(.*)$': '<rootDir>/src/$1',
       '\\.(css|less|scss|sass|png|svg)$': 'identity-obj-proxy',
     },

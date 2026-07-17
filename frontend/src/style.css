@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global forced app zoom — makes the UI feel wider / less oversized.
+   Desktop 80%, phone 75%. Uses CSS `zoom` (layout-aware, reflows content).
+   Tunable via the --app-zoom custom property. */
+:root {
+  --app-zoom: 0.8; /* desktop default */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --app-zoom: 0.75; /* phone */
+  }
+}
+
+html {
+  zoom: var(--app-zoom);
+}
+
+/* Never scale print / PDF output. */
+@media print {
+  html {
+    zoom: 1;
+  }
+}
+
 @font-face {
     font-family: 'Inter-Regular';
     src: url('@/assets/fonts/Inter_18pt-Regular.ttf') format('truetype');

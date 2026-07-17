@@ -1,13 +1,17 @@
 """Document HTML utilities shared by dynamic-document views and serializers.
 
 These helpers normalise the TinyMCE output so that variable substitution and
-PDF rendering (via xhtml2pdf) work consistently regardless of whether the
+PDF rendering (via WeasyPrint) work consistently regardless of whether the
 user typed content directly or pasted it from Word / Google Docs.
 """
 
 import logging
+import os
 import re
 from bs4 import BeautifulSoup
+from django.conf import settings
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +20,17 @@ logger = logging.getLogger(__name__)
 _VARIABLE_PATTERN = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
 _INLINE_TAG_PATTERN = re.compile(r'<[^>]*>')
 _MSO_STYLE_PATTERN = re.compile(r'mso-[^:;"\']*:[^;"\']*;?', re.IGNORECASE)
+
+# xhtml2pdf / reportlab cannot parse the CSS ``currentColor`` keyword: it hands
+# the token straight to ``reportlab.lib.colors.toColor`` which raises
+# ``ValueError: Invalid color value 'currentcolor'`` and aborts the whole PDF.
+# TinyMCE emits ``border: medium none currentcolor`` on every table it creates,
+# so any document with an editor-inserted table would 500 on PDF download.
+# Since those borders are ``none`` (invisible), rewriting the keyword to
+# ``transparent`` — a value reportlab accepts — preserves the rendering while
+# removing the crash. Browsers (editor/preview) and python-docx (Word) already
+# ignore/understand it, so this only affects the PDF path.
+_CURRENTCOLOR_PATTERN = re.compile(r'\bcurrentcolor\b', re.IGNORECASE)
 
 # Block-level tags that may show up empty (``<p>&nbsp;</p>``, ``<div></div>``)
 # in TinyMCE output. ``<o:p>`` is the Office XML namespace tag that survives
@@ -147,18 +162,38 @@ def _strip_excessive_inline_margins(soup):
             del node['style']
 
 
-def sanitize_soup_for_pdf(soup):
-    """Mutate ``soup`` in place so xhtml2pdf renders tables with correct format.
+def _neutralize_unsupported_color_keywords(soup):
+    """Replace the CSS ``currentColor`` keyword in inline styles with a value
+    xhtml2pdf/reportlab can parse.
+
+    reportlab's ``toColor`` raises ``ValueError`` on ``currentcolor``, which
+    aborts PDF generation entirely (HTTP 500). TinyMCE writes
+    ``border: medium none currentcolor`` on tables, so this crashes the PDF
+    export of any document containing an editor-created table. We rewrite the
+    keyword to ``transparent`` (accepted by reportlab); the affected borders
+    are ``none``, so this is visually a no-op.
+    """
+    for element in soup.find_all(style=True):
+        style = element['style']
+        if _CURRENTCOLOR_PATTERN.search(style):
+            element['style'] = _CURRENTCOLOR_PATTERN.sub('transparent', style)
+
+
+def sanitize_soup_for_export(soup):
+    """Mutate ``soup`` in place so exports (PDF and Word) render consistently.
 
     xhtml2pdf ignores ``mso-*`` styles, stumbles on Word-inserted class names,
     and loses cell alignment when it is only expressed via inline ``style``.
-    This pass:
+    The Word (python-docx) path suffers from the same paste-from-Word noise
+    (empty blocks, ``<o:p>`` tags, huge inline margins). This pass:
 
     * removes ``mso-*`` CSS declarations from inline ``style`` attributes
     * drops ``class`` attributes that start with ``Mso`` (MsoNormal, etc.)
     * promotes ``text-align`` from ``<td>/<th>`` inline styles to the legacy
       ``align`` attribute, which xhtml2pdf honours reliably
     * ensures ``<table>`` has sensible defaults (full width, collapsed borders)
+    * rewrites the CSS ``currentColor`` keyword (which reportlab cannot parse
+      and which crashes PDF generation) to ``transparent``
     * drops ``<o:p>`` Office-namespace artefacts (always paste-from-Word)
     * strips inline ``margin-*: Xpt`` declarations above
       :data:`_EXCESSIVE_MARGIN_PT_THRESHOLD` so paste-from-Word margins
@@ -217,6 +252,10 @@ def sanitize_soup_for_pdf(soup):
             if match:
                 block['align'] = match.group(1).lower()
 
+    # Rewrite the unparseable ``currentColor`` keyword before any PDF render so
+    # xhtml2pdf/reportlab doesn't abort with a ValueError on editor tables.
+    _neutralize_unsupported_color_keywords(soup)
+
     # Drop pure Word artefacts FIRST so the collapse step doesn't have to
     # reason about <o:p> blocks (each one would otherwise be treated as an
     # extra empty paragraph).
@@ -235,15 +274,229 @@ def sanitize_soup_for_pdf(soup):
     return soup
 
 
-def sanitize_html_for_pdf(html_content):
-    """String-in/string-out wrapper around :func:`sanitize_soup_for_pdf`.
+# Backwards-compatible alias — the sanitizer was PDF-only before the Word
+# export started reusing it.
+sanitize_soup_for_pdf = sanitize_soup_for_export
 
-    Prefer :func:`sanitize_soup_for_pdf` when the caller will also parse the
-    HTML, so the document is only parsed once.
+
+def sanitize_html_for_pdf(html_content):
+    """String-in/string-out wrapper around :func:`sanitize_soup_for_export`.
+
+    Prefer :func:`sanitize_soup_for_export` when the caller will also parse
+    the HTML, so the document is only parsed once.
     """
     if not html_content:
         return html_content
-    return str(sanitize_soup_for_pdf(BeautifulSoup(html_content, 'html.parser')))
+    return str(sanitize_soup_for_export(BeautifulSoup(html_content, 'html.parser')))
+
+
+def get_carlito_font_paths():
+    """Return the four Carlito TTF file paths, validating each exists.
+
+    Split from :func:`register_carlito_fonts` so the WeasyPrint export paths —
+    which load fonts themselves via ``@font-face`` — can get the paths without
+    paying for reportlab font registration they never use.
+    """
+    font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
+    font_paths = {
+        "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
+        "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
+        "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
+        "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
+    }
+    for name, path in font_paths.items():
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Font file not found: {path}")
+    return font_paths
+
+
+def register_carlito_fonts():
+    """Register the Carlito font family in ReportLab and return its file paths.
+
+    Used by the reportlab-based PDFs (the signatures page / watermark, which
+    draw text with ``canvas.setFont('Carlito', …)``). HTML→PDF paths that render
+    with WeasyPrint should call :func:`get_carlito_font_paths` instead.
+    """
+    font_paths = get_carlito_font_paths()
+    pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
+    pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
+    pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
+    pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
+    return font_paths
+
+
+def build_pdf_stylesheet(font_paths, *, top_padding=None):
+    """Return the ``<style>`` block for the WeasyPrint HTML→PDF exports.
+
+    Both ``download_dynamic_document_pdf`` (standard download) and
+    ``generate_original_document_pdf`` (signed original) render through
+    :func:`render_html_to_pdf`. This is the single source of truth so any
+    spacing/format fix applies to both paths at once.
+
+    The rules **mirror the TinyMCE editor ``content_style``**
+    (``frontend/src/views/dynamic_document/DocumentEditor.vue``) so the exported
+    PDF is WYSIWYG with the on-screen editor: WeasyPrint implements the real CSS
+    cascade, so authored inline styles (paragraph ``margin: 0``, Word table
+    backgrounds/widths) win exactly like they do in the browser. Notably the
+    ``p, div`` margin rule carries **no** ``!important`` — otherwise it would
+    override the inline ``margin: 0`` the editor honours and reintroduce the
+    oversized gaps.
+
+    ``top_padding`` (e.g. ``"1cm"``) pushes the body down when a letterhead layer
+    is present (see :func:`build_letterhead_layer_html`) so text clears the
+    header; pass ``None`` when there is no letterhead. Carlito is loaded from the
+    local TTF files via ``@font-face`` (the editor's Google-Fonts import is
+    unavailable offline / under WeasyPrint's fetcher).
+    """
+    def _url(key):
+        return f"file://{font_paths[key]}"
+
+    padding_decl = f"\n        padding-top: {top_padding};" if top_padding else ""
+
+    return f"""
+    <style>
+    @page {{
+        size: letter;
+        margin: 2cm;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{_url("Carlito-Regular")}') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{_url("Carlito-Bold")}') format('truetype');
+        font-weight: bold;
+        font-style: normal;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{_url("Carlito-Italic")}') format('truetype');
+        font-weight: normal;
+        font-style: italic;
+    }}
+
+    @font-face {{
+        font-family: 'Carlito';
+        src: url('{_url("Carlito-BoldItalic")}') format('truetype');
+        font-weight: bold;
+        font-style: italic;
+    }}
+
+    /* --- Mirror of DocumentEditor.vue content_style (WYSIWYG with editor) --- */
+    body, p, span, div, strong, em, u, i, b {{
+        font-family: 'Carlito', sans-serif !important;
+    }}
+    body {{
+        font-size: 12pt;{padding_decl}
+    }}
+    p, div {{ margin: 0 0 6pt 0; line-height: 1.35; }}
+    table {{ border-collapse: collapse; margin: 0 0 6pt 0; }}
+    td, th {{ border: 1px solid #999; padding: 4pt 6pt; vertical-align: top; }}
+
+    /* Full-page letterhead layer (see build_letterhead_layer_html). Fixed
+       elements repeat on every page in WeasyPrint. The -2cm offsets + explicit
+       US-Letter sheet size (21.59cm x 27.94cm = @page ``size: letter``) bleed it
+       under the 2cm @page margins so the art covers the full sheet. NOTE: these
+       are hardcoded to the sheet size on purpose — WeasyPrint 63 drops the image
+       entirely if the width/height use ``calc(100% + 4cm)`` on a fixed element,
+       so keep them in sync with the @page size above if it ever changes. */
+    .letterhead-layer {{
+        position: fixed;
+        top: -2cm; left: -2cm;
+        width: 21.59cm; height: 27.94cm;
+        z-index: -1;
+    }}
+    .letterhead-layer img {{
+        width: 100%; height: 100%; object-fit: contain;
+    }}
+    </style>
+    """
+
+
+def build_letterhead_layer_html(letterhead_image):
+    """Return a fixed full-page ``<div>`` embedding ``letterhead_image`` as a
+    base64 data URI, or ``''`` when there is no usable letterhead.
+
+    WeasyPrint does not paint ``background`` on ``@page``; instead a
+    ``position: fixed`` element (styled by ``.letterhead-layer`` in
+    :func:`build_pdf_stylesheet`) repeats on every page. The image is embedded
+    as a data URI so no network/file fetch is needed at render time.
+    """
+    if not letterhead_image:
+        return ""
+    try:
+        letterhead_path = os.path.abspath(letterhead_image.path)
+    except (ValueError, AttributeError):
+        return ""
+    if not os.path.exists(letterhead_path):
+        logger.warning("Letterhead file missing on disk: %s", letterhead_path)
+        return ""
+    try:
+        import base64
+        with open(letterhead_path, 'rb') as img_file:
+            img_data = base64.b64encode(img_file.read()).decode()
+    except (IOError, OSError) as exc:
+        logger.warning("Failed to embed letterhead %s: %s", letterhead_path, exc)
+        return ""
+    return (
+        '<div class="letterhead-layer">'
+        f'<img src="data:image/png;base64,{img_data}">'
+        '</div>'
+    )
+
+
+def render_html_to_pdf(html_content, *, base_url):
+    """Render ``html_content`` to PDF bytes using WeasyPrint.
+
+    WeasyPrint is a browser-grade renderer (real CSS cascade + table layout), so
+    the output matches the TinyMCE editor for both paragraph spacing and complex
+    Word-pasted tables — which xhtml2pdf could not lay out correctly.
+
+    Imported lazily so a missing native dependency (Pango/Cairo/…) surfaces only
+    when a PDF is actually requested, instead of taking down the whole views
+    module at import time. ``base_url`` lets relative ``url(...)`` references in
+    the HTML/CSS resolve against the project directory.
+    """
+    from weasyprint import HTML  # lazy: native libs only needed at render time
+
+    return HTML(string=html_content, base_url=str(base_url)).write_pdf()
+
+
+def render_document_pdf(*, title, body_html, letterhead_image=None, top_padding="1cm"):
+    """Assemble the shared document HTML (stylesheet + letterhead + body) and
+    render it to PDF bytes with WeasyPrint.
+
+    Single source of truth for the document-PDF skeleton used by both the
+    standard download and the signed original, so the ``<head>``/``<body>``
+    wrapper cannot drift between the two paths. Callers keep their own
+    variable-substitution and letterhead-resolution logic (which differ) and pass
+    the already-substituted ``body_html`` plus the resolved ``letterhead_image``.
+    """
+    font_paths = get_carlito_font_paths()
+    letterhead_html = build_letterhead_layer_html(letterhead_image)
+    styles = build_pdf_stylesheet(
+        font_paths,
+        top_padding=top_padding if letterhead_html else None,
+    )
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    {styles}
+</head>
+<body>
+    {letterhead_html}
+    {body_html}
+</body>
+</html>"""
+    return render_html_to_pdf(html_content, base_url=settings.BASE_DIR)
 
 
 LETTERHEAD_LOCKED_STATES = ('PendingSignatures', 'FullySigned', 'Rejected', 'Expired')

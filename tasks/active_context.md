@@ -19,29 +19,53 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-04-28)
+### Codebase Metrics (verified 2026-07-16, post quality-initiative)
 
 | Metric | Count |
 |--------|-------|
 | Backend model files | 14 |
-| Backend model classes | 55 (+ User via AbstractUser + UserManager) |
+| Backend model classes | 54 (53 models.Model subclasses + User via AbstractUser; UserManager excluded) |
 | Backend view files | 29 |
 | Backend serializer files | 12 |
-| Backend URL patterns | 189 |
-| Backend test files | 86 |
-| Backend migrations | 61 (latest: `0062_notification_and_stage_alert.py` — numbering has a gap) |
+| Backend URL patterns | 194 |
+| Backend test files | 95 (3032 tests) |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 113 |
+| Frontend Vue components | 111 (117 → 111 after unused-component cleanup `9ec8737`) |
 | Frontend view pages | 44 |
-| Frontend Pinia store files | 43 |
-| Frontend composables | 11 |
-| Frontend unit test files | 170 |
-| Frontend E2E spec files | 192 |
-| Frontend routes | 66 |
+| Frontend Pinia store files | 44 |
+| Frontend composables | 14 |
+| Frontend unit test files | 194 |
+| Frontend E2E spec files | 198 |
+| Frontend E2E flows (flow-definitions.json) | 150 — **150/150 covered (100%)** |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **Phased quality initiative (2026-07-16)** — 20+ commits on `release-august-2026-c`:
+  - **Memory Bank refreshed** (drift 04-07 → 16-07 closed) + `USER_FLOW_MAP` matrix resynced.
+  - **Backend coverage** (fresh baseline 96.22%): 10 batches — `signature_notification_service` 82→98%, `views/notification` →100%, `utils/documents` letterhead/snapshot edges, `views/secop` →98%, `process_alert_tasks` →99%, `service_tramite` serializer →95%, process alert validation/badge, prefetched permission chain, formalize/correct race 409s + audit PDF variants, Word-export table guards. Migrations excluded via `.coveragerc`.
+  - **Bugs fixed**: 4 MySQL-only test failures (collation sorts + `action_type` overflow, `31c7249`) and a real 500 — renaming a SECOP saved view to a duplicate name (RESOLVED-019, `d781e7f`).
+  - **Frontend unit coverage** (baseline 89.22%): 8 batches — 13 files 0%→100% (`msal_config`, `ScheduleAppointment`, user_guide×5, `DirectoryList`, `IntranetGyM`, `SignaturesList`, `DocumentTagsManager`, store shim) + `App.vue` 98%. Jest-only babel plugin (`test/babel/vite-meta-env.cjs`) unlocks `import.meta` — `DocumentEditor.vue` is now testable.
+  - **Quality gate STRICT: score 100, 0 errors, exit 0** (`83f0eed`) — 236 docstrings added, imports sorted, 13 assertion-less tests converted to plain asserts; warnings 17→13 (rest pre-date the session).
+  - **E2E flow coverage 150/150 (100%)**: `process-alert-configure` got its dedicated spec (data-testids added to ProcessForm alert controls) and `process-alerts` completed 3/3 specs (`3746a43`). flow-definitions v1.9.4.
+  - **Fake data refreshed** (delete + create completed after clearing two v2-schema landmines: orphan `gym_app_documentpaymentrecord` rows and `gym_app_user.is_archived` missing DB default — see lessons-learned). Post-seed counts verified: 34 users, 86 processes/249 stages (1 StageAlert each), 1190 documents, 60 legal requests, 30 SECOP, 6 services/24 requests, 9 subscriptions, 264 notifications. Next coverage targets: `DocumentEditor.vue` (909 stmts, 0%), large partials (`DocumentListTable` 75.9%, `SignaturesListTable` 77.4%), 13 pre-existing gate warnings.
+
+- **PDF/WeasyPrint overhaul + UI zoom + cleanup (2026-07-07 → 2026-07-15)**:
+  - **Dynamic-document PDF stack migrated to WeasyPrint** (`2d390fa`): exports now match the editor rendering. Root sequence: 500 crash on editor-created tables fixed with markup normalization (`2ba6d77`), duplicated PDF stylesheet consolidated into a shared builder in `gym_app/utils/documents.py` consumed by both `document_views.py` and `signature_views.py` (`65c48ce`), then rendering switched from xhtml2pdf to WeasyPrint 63.1. xhtml2pdf remains for service/trámite PDFs + fake-data command. Details in `error-documentation.md` → RESOLVED-018.
+  - **Global app zoom** (`cc92301`): `frontend/src/style.css` forces 80% desktop / 75% mobile zoom for a wider UI — pixel-based test assertions see zoomed geometry.
+  - **Unused frontend components removed** (`9ec8737`): components 117 → 111; 3 orphan unit test suites deleted.
+  - **Quality gate false positives fixed** (`c054df1`): `pytest.raises` now counts as assertion; commands test area recognized (`scripts/quality/backend_analyzer.py`).
+  - **Ops**: rotated logs gitignored (`6cba400`); deploy-and-check skill hardened + prod `DJANGO_SETTINGS_MODULE` fix synced from toolkit (`3da7668`, `b0d9c7b`); task-queue docs corrected celery→huey (`1a66b4f`).
+
+- **Memory Bank refresh + E2E flow-map reconciliation (2026-07-04)**:
+  - **Methodology refresh** (`/methodology-setup`): realigned drifted counts and stack versions across `architecture.md`, `technical.md`, `tasks_plan.md`, and this file to the verified codebase (model classes 55→54; backend tests →92; components →117; composables 11→14; routes 66→67; unit tests →177; E2E specs →195; Django 5.0.6→5.2.14, DRF →3.17.1, Vue →3.5, Vite →6.4.2, Playwright →1.60). Created the two missing Memory Bank dirs `docs/literature/` and `tasks/rfc/`.
+  - **E2E flow-map reconciliation** (`/e2e-user-flows-check`): retagged `process-alert-recipients.spec.js` `@flow:process-alert-configure`→`@flow:process-alerts` (it exercises the display indicator, not the toggle) — `process-alerts` had been a false-`missing`, `process-alert-configure` a false-`covered`. Added `knownGaps` to `process-alert-configure` + `service-admin-edit`; flipped the stale `legal-files-*` ❌→✅ markers in `USER_FLOW_MAP.md` and regenerated its coverage matrix from `flow-definitions.json`.
+  - **Roles**: confirmed **5 roles** (`admin` + 4 client-facing: `client`, `lawyer`, `corporate_client`, `basic`); the "4 roles" phrasing elsewhere refers to the client-facing set only.
+
+- **Release Agosto 2026 (worked in June) — two requirements, on branch `release-august-2026-c`, deployed to staging**:
+  - **Minutas shared visibility** ✅ (commit `d595ae0`): removed the per-creator restriction so every lawyer sees/manages all minutas (Draft/Published). Added serializer field `created_by_name` (informational, `select_related('created_by')` → no N+1), a "Creado por" column gated by `isLawyerMinutasContext`, a "Todas / Solo mías" toggle (`onlyMine` reuses the backend `lawyer_id` param), and creator-name search. Replaced the orphaned `getDocumentsByLawyerId` getter with `allMinutas`. Tests: backend serializer/view, store + component unit. Flow `minutas-shared-visibility` (P2) registered.
+  - **Microsoft/Outlook login** ✅ (commit `0494ec5`): `outlook_login` endpoint mirroring `google_login`, server-side ID token verification (`_verify_microsoft_id_token` via cached `PyJWKClient`, multi-tenant `common` authority). **nOAuth hardening**: email trusted only when verified (`xms_edov` true, the personal-accounts tenant, or `MICROSOFT_TRUSTED_TENANTS` allowlist); `preferred_username` never used as identity. Frontend uses `@azure/msal-browser` (`msal_config.js`, `login_with_outlook.js`, `OutlookLoginButton.vue`, 4 auth views, `/auth/outlook/callback`). Tests: backend (`TestOutlookLogin` + `TestVerifyMicrosoftIdToken`), frontend unit, E2E (`outlook-login-flow.spec.js`). Flow `auth-login-outlook` (P1) registered. **Pending operator step**: set `MICROSOFT_CLIENT_ID`/`VITE_MICROSOFT_CLIENT_ID` and enable the `xms_edov` optional claim in Azure (or `MICROSOFT_TRUSTED_TENANTS`).
 
 - **Hotfix 2026-06-11 — client editor blocked on documents with orphan `{{tokens}}` (RESOLVED-016)**:
   - **Bug**: 53 documents of coordinacion@estrategiaypoder.com could not be text-edited by the client — the `DocumentEditor.vue` integrity guard counted raw `{{...}}` tokens in saved content vs rendered `variable-protected` spans and reverted every keystroke when an orphan token (content `{{Numero_ contrato}}` vs variable `Numero_contrato`, typo inherited from an old version of template 580) never produced a span.
@@ -169,8 +193,8 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Component | Detail |
 |-----------|--------|
-| Backend | Django 5.0.6 + DRF 3.15.2, SQLite (dev), Python 3.12 |
-| Frontend | Vue 3.4 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
+| Backend | Django 5.2.14 + DRF 3.17.1, SQLite (dev), Python 3.12 |
+| Frontend | Vue 3.5 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
 | Task Queue | Huey 2.5.2 (immediate mode in dev, Redis in prod) |
 | Testing | pytest, Jest 29, Playwright |
 | CI | GitHub Actions (test quality gate on PR/push) |
@@ -180,6 +204,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 5. Next Steps
 
+0. **Phased quality initiative IN PROGRESS (2026-07-16)** — running on `release-august-2026-c`: Memory Bank refresh (✅ this update) → new-feature-checklist audit → e2e-user-flows-check → fake-data-refresh (staging) → iterative backend/frontend-unit coverage to 100% → quality gate strict → iterative E2E flow coverage. Plan: `~/.claude/plans/ejecuta-en-un-plan-sequential-koala.md`.
 1. **SECOP Module** ✅ — Fully complete: implementation, bug fixes, UI/UX redesign, backend tests (120), frontend tests (53), E2E (22 tests across 8 specs), fake data validated, 12/12 flows registered in `flow-definitions.json` and `USER_FLOW_MAP.md` (all ✅)
    - **Remaining**: Live data sync verification (`python manage.py sync_secop`) — requires SECOP API access
    - **Fixed (2026-03-19)**: E2E `secop-alert-create-flow.spec.js` — 2 `data-testid` mismatches (`alert-form` → `alert-form-modal`, `alert-name-input` → `alert-name`)

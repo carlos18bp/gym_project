@@ -5,6 +5,7 @@ import SubscriptionSignIn from "@/views/auth/SubscriptionSignIn.vue";
 import { useAuthStore } from "@/stores/auth/auth";
 
 const mockRouterPush = jest.fn();
+const mockLoginWithOutlook = jest.fn();
 const mockShowNotification = jest.fn();
 const mockFetchSiteKey = jest.fn();
 let mockRoute;
@@ -18,6 +19,11 @@ jest.mock("vue-router", () => ({
   __esModule: true,
   useRouter: () => ({ push: mockRouterPush }),
   useRoute: () => mockRoute,
+}));
+
+jest.mock("@/shared/login_with_outlook", () => ({
+  __esModule: true,
+  loginWithOutlook: (...args) => mockLoginWithOutlook(...args),
 }));
 
 jest.mock("@/shared/notification_message", () => ({

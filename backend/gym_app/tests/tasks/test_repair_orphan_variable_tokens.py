@@ -3,7 +3,6 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
-
 from gym_app.models.dynamic_document import DocumentVariable, DynamicDocument
 
 
@@ -28,7 +27,10 @@ def _make_document(owner, content, variable_names, title="RepairTestDoc"):
 
 @pytest.mark.django_db
 class TestRepairOrphanVariableTokens:
+    """Tests for Repair Orphan Variable Tokens."""
+
     def test_dry_run_does_not_modify_content(self, lawyer_user):
+        """Dry run does not modify content."""
         doc = _make_document(
             lawyer_user,
             "<p>Contrato {{Numero_ contrato}} firmado.</p>",
@@ -42,6 +44,7 @@ class TestRepairOrphanVariableTokens:
         assert doc.content == "<p>Contrato {{Numero_ contrato}} firmado.</p>"
 
     def test_dry_run_reports_the_pending_rewrite(self, lawyer_user):
+        """Dry run reports the pending rewrite."""
         doc = _make_document(
             lawyer_user,
             "<p>Contrato {{Numero_ contrato}} firmado.</p>",
@@ -54,6 +57,7 @@ class TestRepairOrphanVariableTokens:
         assert "{{Numero_ contrato}} -> {{Numero_contrato}}" in out.getvalue()
 
     def test_apply_rewrites_whitespace_mismatched_token(self, lawyer_user):
+        """Apply rewrites whitespace mismatched token."""
         doc = _make_document(
             lawyer_user,
             "<p>Contrato {{Numero_ contrato}} firmado.</p>",
@@ -67,6 +71,7 @@ class TestRepairOrphanVariableTokens:
         assert doc.content == "<p>Contrato {{Numero_contrato}} firmado.</p>"
 
     def test_apply_preserves_tokens_that_already_match_a_variable(self, lawyer_user):
+        """Apply preserves tokens that already match a variable."""
         doc = _make_document(
             lawyer_user,
             "<p>{{Numero_ contrato}} de {{Nombre_contratista}}.</p>",
@@ -80,6 +85,7 @@ class TestRepairOrphanVariableTokens:
         assert "{{Nombre_contratista}}" in doc.content
 
     def test_apply_rewrites_fragmented_token(self, lawyer_user):
+        """Apply rewrites fragmented token."""
         doc = _make_document(
             lawyer_user,
             "<p>Contrato {{<span>Numero_</span>&nbsp;contrato}} firmado.</p>",
@@ -93,6 +99,7 @@ class TestRepairOrphanVariableTokens:
         assert "{{Numero_contrato}}" in doc.content
 
     def test_token_without_safe_match_is_left_untouched(self, lawyer_user):
+        """Token without safe match is left untouched."""
         doc = _make_document(
             lawyer_user,
             "<p>Valor: {{Valor_total}}.</p>",
@@ -106,6 +113,7 @@ class TestRepairOrphanVariableTokens:
         assert "{{Valor_total}}" in doc.content
 
     def test_token_without_safe_match_is_reported_as_unmatched(self, lawyer_user):
+        """Token without safe match is reported as unmatched."""
         doc = _make_document(
             lawyer_user,
             "<p>Valor: {{Valor_total}}.</p>",
@@ -118,6 +126,7 @@ class TestRepairOrphanVariableTokens:
         assert "UNMATCHED" in out.getvalue()
 
     def test_consistent_document_is_not_reported(self, lawyer_user):
+        """Consistent document is not reported."""
         doc = _make_document(
             lawyer_user,
             "<p>Contrato {{Numero_contrato}}.</p>",

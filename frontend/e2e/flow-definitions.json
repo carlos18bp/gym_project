@@ -1,6 +1,6 @@
 {
-  "version": "1.9.1",
-  "lastUpdated": "2026-04-28",
+  "version": "1.9.4",
+  "lastUpdated": "2026-07-16",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -20,6 +20,16 @@
       ],
       "priority": "P1",
       "description": "Usuario inicia sesión con cuenta de Google",
+      "expectedSpecs": 1
+    },
+    "auth-login-outlook": {
+      "name": "Login con Microsoft/Outlook",
+      "module": "auth",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P1",
+      "description": "Usuario inicia sesión o se registra con cuenta de Microsoft (Outlook) vía MSAL + verificación de ID token server-side",
       "expectedSpecs": 1
     },
     "auth-register": {
@@ -694,6 +704,16 @@
       "description": "Visibilidad y orden de columnas de resumen en la tabla de minutas",
       "expectedSpecs": 1
     },
+    "minutas-shared-visibility": {
+      "name": "Visibilidad compartida y edición colaborativa de minutas",
+      "module": "documents",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P2",
+      "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo por allow_shared_edit (activado por defecto), que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; el creador puede desactivarlo y copiar/previsualizar siempre está disponible",
+      "expectedSpecs": 1
+    },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
       "module": "signatures",
@@ -1126,6 +1146,16 @@
       "description": "404, 401, 403, 500, network errors, timeouts",
       "expectedSpecs": 1
     },
+    "misc-offline": {
+      "name": "Página sin conexión",
+      "module": "misc",
+      "roles": [
+        "shared"
+      ],
+      "priority": "P4",
+      "description": "Página /no_connection mostrada cuando el dispositivo pierde la conexión a internet",
+      "expectedSpecs": 1
+    },
     "basic-restrictions": {
       "name": "Restricciones usuario básico",
       "module": "auth",
@@ -1450,7 +1480,10 @@
       ],
       "priority": "P2",
       "description": "Admin edita servicio existente, modifica etapas y campos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "knownGaps": [
+        "Partial coverage — service-admin-flow.spec.js exercises create/toggle but the full edit path (modify existing stages + fields and persist) is not fully asserted. Marked partial in docs/USER_FLOW_MAP.md."
+      ]
     },
     "service-admin-toggle": {
       "name": "Activar/desactivar servicio (Admin)",
