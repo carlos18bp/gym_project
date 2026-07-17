@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 from django.urls import reverse
 from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework.test import APIClient
 
 from gym_app.models import DynamicDocument, Notification
@@ -90,6 +91,7 @@ def test_ignores_read_notifications(api_client, client_user, lawyer_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-16 12:00:00")
 def test_ignores_snoozed_notifications(api_client, client_user, lawyer_user):
     """Notifications snoozed into the future are not counted."""
     doc = _make_document(lawyer_user, "FullySigned")

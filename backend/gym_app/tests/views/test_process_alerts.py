@@ -3,6 +3,7 @@ import json
 
 import pytest
 from django.urls import reverse
+from freezegun import freeze_time
 from rest_framework import status
 
 from gym_app.models import Case, Process, Stage, StageAlert, User
@@ -418,6 +419,7 @@ class TestAlertActivationEmailGuards:
 class TestPendingProcessAlertsCount:
     """SlideBar badge endpoint scoped to category=process_alert."""
 
+    @freeze_time("2026-07-16 12:00:00")
     def test_counts_only_unread_active_process_alerts(
         self, api_client, lawyer_user
     ):

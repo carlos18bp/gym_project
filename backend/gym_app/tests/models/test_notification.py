@@ -7,6 +7,7 @@ services. These tests pin its defaults, ordering and validation directly.
 import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from freezegun import freeze_time
 
 from gym_app.models import Notification, User
 
@@ -56,6 +57,7 @@ def test_notification_link_type_defaults_to_empty_string(owner):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-16 12:00:00")
 def test_notifications_are_ordered_most_recent_first(owner):
     """Notifications are ordered most recent first."""
     older = Notification.objects.create(user=owner, title="Viejo", message="x")

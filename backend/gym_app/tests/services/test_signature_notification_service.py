@@ -459,6 +459,7 @@ def test_notify_signature_reopened_logs_error_when_notification_fails(
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-16 12:00:00")
 @patch("gym_app.services.signature_notification_service.logger")
 @patch("gym_app.services.signature_notification_service.send_template_email")
 def test_notify_daily_pending_reminders_logs_error_when_email_fails(

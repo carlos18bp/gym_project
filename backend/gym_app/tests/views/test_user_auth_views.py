@@ -600,6 +600,7 @@ class TestOutlookLogin:
         response = api_client.post(url, {"id_token": "bad_token"}, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data["error_message"] == "Invalid Microsoft token."
+        mock_verify.assert_called_once_with("bad_token")
 
     def test_token_without_email(self, api_client, monkeypatch):
         """Verified token without an email claim returns 400."""

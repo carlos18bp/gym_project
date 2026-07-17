@@ -672,15 +672,21 @@ class TestCopyFieldToSnapshot:
 
     def test_returns_false_for_empty_source(self):
         """Returns false for empty source."""
-        assert _copy_field_to_snapshot(None, MagicMock(), 1, "png") is False
+        target = MagicMock()
+
+        assert _copy_field_to_snapshot(None, target, 1, "png") is False
+        target.save.assert_not_called()
 
     def test_returns_false_when_source_unreadable(self):
         """Returns false when source unreadable."""
         source = MagicMock()
         source.open.side_effect = FileNotFoundError("gone")
         source.name = "letterheads/a.png"
+        target = MagicMock()
 
-        assert _copy_field_to_snapshot(source, MagicMock(), 1, "png") is False
+        assert _copy_field_to_snapshot(source, target, 1, "png") is False
+        source.open.assert_called_once_with("rb")
+        target.save.assert_not_called()
 
     def test_returns_false_when_target_save_fails(self):
         """Returns false when target save fails."""
@@ -691,6 +697,8 @@ class TestCopyFieldToSnapshot:
         target.save.side_effect = ValueError("no file backend")
 
         assert _copy_field_to_snapshot(source, target, 7, "png") is False
+        source.close.assert_called_once()
+        target.save.assert_called_once()
 
     def test_copies_bytes_using_snapshot_name(self):
         """Copies bytes using snapshot name."""
@@ -700,6 +708,7 @@ class TestCopyFieldToSnapshot:
         target = MagicMock()
 
         assert _copy_field_to_snapshot(source, target, 7, "png") is True
+        target.save.assert_called_once()
         assert target.save.call_args[0][0] == "snapshot_7_mi logo.png"
 
     def test_defaults_base_name_when_source_has_no_name(self):
@@ -710,6 +719,7 @@ class TestCopyFieldToSnapshot:
         target = MagicMock()
 
         assert _copy_field_to_snapshot(source, target, 7, "docx") is True
+        target.save.assert_called_once()
         assert target.save.call_args[0][0] == "snapshot_7_letterhead.docx"
 
 

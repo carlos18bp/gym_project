@@ -367,4 +367,4 @@ class TestSendProcessAlertsGuards:
         ), patch("gym_app.process_alert_tasks.logger") as mock_logger:
             send_process_alerts.call_local()
 
-        assert mock_logger.error.called
+        assert mock_logger.error.call_count == 1
