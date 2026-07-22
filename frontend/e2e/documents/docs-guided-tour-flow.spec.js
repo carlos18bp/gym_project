@@ -178,9 +178,10 @@ test(
     await expect(modal).toContainText(
       "¿Quieres ver la guía del módulo de Archivos Jurídicos?",
     );
-    await expect(page.locator(".swal2-confirm")).toHaveText("Ver la guía");
+    const confirmButton = page.getByRole("button", { name: "Ver la guía" });
+    await expect(confirmButton).toBeVisible();
 
-    await page.locator(".swal2-confirm").click();
+    await confirmButton.click();
     await expect(page.locator(TOUR_POPOVER)).toBeVisible();
     await expect(page.locator(TITLE)).toHaveText(
       "Bienvenido a Archivos Jurídicos",

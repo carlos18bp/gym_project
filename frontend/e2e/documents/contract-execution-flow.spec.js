@@ -213,7 +213,7 @@ test(
     ).toContainText("Falta el concepto del cobro");
 
     // Dismiss the SweetAlert success toast (its backdrop blocks clicks)
-    await page.locator(".swal2-confirm").click();
+    await page.getByRole("button", { name: "OK" }).click();
 
     // The slot reopens: upload again from the detail modal (lawyer on behalf)
     await page.locator('[data-testid="upload-from-detail"]').click();
