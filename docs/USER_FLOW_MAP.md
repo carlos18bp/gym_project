@@ -400,7 +400,7 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 ## Flujos — Admin
 
 ### admin-data-reassignment: Reasignación de datos de abogado
-- **Módulo:** admin | **Prioridad:** P1 | **Ruta:** `/data_reassignment` | **E2E:** ✅ (`data-reassignment-flow.spec.js`)
+- **Módulo:** admin | **Prioridad:** P1 | **Ruta:** `/data_reassignment` | **E2E:** ✅ (`data-reassignment-flow.spec.js` — 5 tests: transferencia+archivado, restauración, entrada por quick action del dashboard, error de backend en execute, guard no-admin)
 - **Descripción:** Módulo exclusivo de administradores para transferir procesos y documentos de un abogado a otro y archivar cuentas de abogados. Acceso desde el menú lateral "Reasignación de Datos" (solo admin) y el botón rápido del dashboard. La transferencia es atómica: los procesos pasan al destino, la gestión de documentos (`managed_by`) también, y `assigned_to` migra solo cuando era el abogado origen; `created_by` nunca cambia (auditoría). Los documentos en estados de firma (Pendiente/Firmado/Rechazado/Vencido) no son transferibles. Archivar un abogado bloquea su login por todos los métodos, lo excluye de listados y notificaciones, y es reversible.
 
 **Pasos:**
@@ -416,6 +416,7 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 - ├── **Documentos personales del abogado (assigned_to = origen):** su `assigned_to` migra al destino; los asignados a clientes conservan su cliente
 - ├── **Minutas:** su gestión (`managed_by`) migra, por lo que aparecen en el scope "Mías" del destino y desaparecen del origen
 - ├── **Archivar origen:** bloqueo total de login (tradicional + Google/Outlook), exclusión de listados y notificaciones; reversible vía "Restaurar"
+- ├── **Error en la transferencia:** si el backend rechaza (400), el modal se cierra y el toast de error muestra el motivo devuelto
 - └── **No-admin:** el guard redirige al dashboard; el ítem de menú y el botón rápido no se muestran
 
 ---

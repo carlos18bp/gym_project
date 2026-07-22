@@ -8,8 +8,9 @@ import { mockApi } from "./api.js";
  * @param {number} options.adminId - the logged-in admin id
  * @param {object[]} options.lawyers - lawyer user objects (may include is_archived)
  * @param {object} options.summary - the /summary/ response payload
+ * @param {object} [options.executeError] - when set, /execute/ fails with { status, detail }
  */
-export async function installAdminReassignmentMocks(page, { adminId, role = "admin", lawyers, summary }) {
+export async function installAdminReassignmentMocks(page, { adminId, role = "admin", lawyers, summary, executeError }) {
   const admin = {
     id: adminId,
     role,
@@ -37,6 +38,13 @@ export async function installAdminReassignmentMocks(page, { adminId, role = "adm
       return { status: 200, contentType: "application/json", body: JSON.stringify(summary) };
     }
     if (apiPath === "admin/reassignment/execute/" && route.request().method() === "POST") {
+      if (executeError) {
+        return {
+          status: executeError.status || 400,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: executeError.detail }),
+        };
+      }
       const body = route.request().postDataJSON?.() || {};
       const target = users.find((u) => u.id === body.target_lawyer_id);
       const source = users.find((u) => u.id === body.source_lawyer_id);
@@ -58,6 +66,20 @@ export async function installAdminReassignmentMocks(page, { adminId, role = "adm
       const lawyer = users.find((u) => u.id === Number(unarchiveMatch[1]));
       if (lawyer) lawyer.is_archived = false;
       return { status: 200, contentType: "application/json", body: JSON.stringify(lawyer) };
+    }
+    // Dashboard shell endpoints — list-shaped so the dashboard renders when
+    // a test enters the module from the quick action.
+    const LIST_ENDPOINTS = [
+      "user-activities/",
+      "recent-processes/",
+      "dynamic-documents/recent/",
+      "legal-updates/active/",
+      "processes/",
+      "dynamic-documents/",
+      "dynamic-documents/folders/",
+    ];
+    if (LIST_ENDPOINTS.includes(apiPath)) {
+      return { status: 200, contentType: "application/json", body: "[]" };
     }
     // Misc dashboard/badge endpoints — empty responses keep the shell happy.
     return { status: 200, contentType: "application/json", body: "{}" };
