@@ -171,6 +171,12 @@
 - **Affected files**: `frontend/e2e/process/process-alert-recipients.spec.js`, `frontend/e2e/flow-definitions.json`, `docs/USER_FLOW_MAP.md`
 - **Prevention idea**: a mis-pointed tag is invisible without cross-checking spec intent vs flow id; consider a CI assertion that every flow with `expectedSpecs > 0` has ≥1 tagging spec, and review `knownGaps` flows periodically.
 
+### [RESOLVED-020] Admin dashboard rendered blank — RouterLink to dead route name `services_list`
+- **Context** (2026-07-22): surfaced while adding an E2E test that enters the reassignment module via the dashboard quick action — the first E2E to render the dashboard as admin.
+- **Root Cause**: `FeaturedServicesGrid.vue`'s "Ver todos" link targeted `{ name: 'services_list' }`, a route name removed when the services hub replaced the old list (commit `970ac1b` kept only the nameless `/services_list` path redirect). vue-router throws on resolving an unknown name inside `RouterLink`'s setup; the throw aborts the dashboard re-render triggered when the admin profile loads, wiping the whole body. Lawyer/client dashboards partially survived because their assertions target content rendered before the failing component.
+- **Resolution** (commit `984f07b`): link now targets `{ name: 'services_hub' }`. Regression: `data-reassignment-flow.spec.js` (5 tests), `dashboard-lawyer-view.spec.js`, `FeaturedServicesGrid.test.js` all green.
+- **Affected files**: `frontend/src/components/dashboard/FeaturedServicesGrid.vue`
+
 ### [RESOLVED-019] Renaming a SECOP saved view to a duplicate name returned 500
 - **Context** (2026-07-16): surfaced while writing coverage tests for the saved-view PATCH endpoint.
 - **Root Cause**: `SavedViewSerializer` has no duplicate-name validation on **update** — creation intentionally upserts by `(user, name)` via `update_or_create`, but the PATCH path calls `instance.save()` straight into the MySQL unique constraint → `IntegrityError` 500. RESOLVED-006 had only addressed the creation flow.
