@@ -134,9 +134,16 @@
           {{ formatRelativeDate(notif.created_at) }}
         </span>
 
-        <!-- Hover actions (overlay over the date column) -->
+        <!-- Hover actions (overlay over the date column). While this row's
+             snooze menu is open the bar stays visible and elevated: the
+             hover-out fade would otherwise hide the open menu and its
+             mid-transition opacity (<1) creates a stacking context that
+             buries the z-10 dropdown beneath the next row. -->
         <div
-          class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          :class="[
+            'absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 transition-opacity',
+            openSnoozeId === notif.id ? 'opacity-100 z-20' : 'opacity-0 group-hover:opacity-100',
+          ]"
         >
           <!-- Mark as read / unread toggle -->
           <button
