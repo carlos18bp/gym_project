@@ -133,3 +133,50 @@ test(
     await expect(page.getByText("Registro Marcario")).toBeVisible();
   }
 );
+
+test(
+  "admin deletes a service after confirming the SweetAlert prompt",
+  {
+    tag: [
+      "@flow:service-admin-delete",
+      "@module:services",
+      "@priority:P2",
+      "@role:admin",
+    ],
+  },
+  async ({ page }) => {
+    const existing = buildRegistroMarcarioService();
+
+    await installServiceTramiteApiMocks(page, {
+      userId: ADMIN_ID,
+      role: "admin",
+      services: [existing],
+    });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: {
+        id: ADMIN_ID,
+        role: "admin",
+        first_name: "Admin",
+        last_name: "E2E",
+        email: "admin@example.com",
+        is_profile_completed: true,
+        is_staff: true,
+      },
+    });
+
+    await page.goto("/services_admin");
+
+    // Select the service so the editor exposes the delete action
+    await page.getByRole("button", { name: /Registro Marcario/ }).click();
+    await page.getByRole("button", { name: "Eliminar servicio" }).click();
+
+    const confirm = page.locator('[class~="swal2-popup"]');
+    await expect(confirm).toContainText("¿Eliminar servicio?");
+    await page.getByRole("button", { name: "Sí, eliminar" }).click();
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Servicio eliminado");
+    await expect(page.getByRole("button", { name: /Registro Marcario/ })).toHaveCount(0);
+  }
+);

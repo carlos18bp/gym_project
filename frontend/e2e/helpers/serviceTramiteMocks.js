@@ -371,6 +371,14 @@ export async function installServiceTramiteApiMocks(
       };
     }
 
+    const adminDelete = apiPath.match(/^services\/admin\/(\d+)\/delete\/$/);
+    if (adminDelete && method === "DELETE") {
+      const id = Number(adminDelete[1]);
+      const idx = serviceList.findIndex((s) => s.id === id);
+      if (idx !== -1) serviceList.splice(idx, 1);
+      return { status: 204, contentType: "application/json", body: "" };
+    }
+
     if (apiPath === "services/admin/create/" && method === "POST") {
       const newService = buildMockService({ id: 999, name: "Nuevo Servicio", short_title: "Nuevo", slug: "nuevo-servicio" });
       return { status: 201, contentType: "application/json", body: JSON.stringify(newService) };
