@@ -5,7 +5,7 @@
         <h2 class="text-lg font-semibold text-gray-900">Servicios Destacados</h2>
       </div>
       <router-link
-        :to="{ name: 'services_list' }"
+        :to="{ name: 'services_hub' }"
         class="text-sm font-medium text-secondary hover:text-secondary/80"
       >
         Ver todos
