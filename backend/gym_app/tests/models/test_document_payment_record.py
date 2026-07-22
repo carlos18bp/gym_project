@@ -33,6 +33,7 @@ def make_signed_document(lawyer, client, installments="3", field_type="number"):
 
 
 def make_record(document, number, status=DocumentPaymentRecord.STATUS_UPLOADED, amount=None):
+    """Create a payment record for the given document and installment."""
     return DocumentPaymentRecord.objects.create(
         document=document,
         installment_number=number,
@@ -94,18 +95,21 @@ def test_post_delete_removes_physical_file(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_get_payment_installments_reads_variable(lawyer_user, client_user):
+    """Get payment installments reads variable."""
     document = make_signed_document(lawyer_user, client_user, installments="3")
     assert document.get_payment_installments() == 3
 
 
 @pytest.mark.django_db
 def test_get_payment_installments_none_without_variable(lawyer_user, client_user):
+    """Get payment installments none without variable."""
     document = make_signed_document(lawyer_user, client_user, installments=None)
     assert document.get_payment_installments() is None
 
 
 @pytest.mark.django_db
 def test_get_payment_installments_none_for_invalid_value(lawyer_user, client_user):
+    """Get payment installments none for invalid value."""
     # A misauthored variable (free-text input) must not break the feature
     document = make_signed_document(
         lawyer_user, client_user, installments="cero", field_type="input"
@@ -117,6 +121,7 @@ def test_get_payment_installments_none_for_invalid_value(lawyer_user, client_use
 
 @pytest.mark.django_db
 def test_progress_none_when_not_fully_signed(lawyer_user, client_user):
+    """Progress none when not fully signed."""
     document = make_signed_document(lawyer_user, client_user)
     document.state = "Draft"
     document.save(update_fields=["state"])
@@ -126,12 +131,14 @@ def test_progress_none_when_not_fully_signed(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_progress_none_when_feature_off(lawyer_user, client_user):
+    """Progress none when feature off."""
     document = make_signed_document(lawyer_user, client_user, installments=None)
     assert document.get_payment_progress() is None
 
 
 @pytest.mark.django_db
 def test_progress_no_records_first_slot_available(lawyer_user, client_user):
+    """Progress no records first slot available."""
     document = make_signed_document(lawyer_user, client_user)
 
     progress = document.get_payment_progress()
@@ -147,6 +154,7 @@ def test_progress_no_records_first_slot_available(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_progress_accepted_enables_next_slot(lawyer_user, client_user):
+    """Progress accepted enables next slot."""
     document = make_signed_document(lawyer_user, client_user)
     make_record(document, 1, status=DocumentPaymentRecord.STATUS_ACCEPTED, amount=Decimal("100.50"))
 
@@ -160,6 +168,7 @@ def test_progress_accepted_enables_next_slot(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_progress_uploaded_blocks_every_slot(lawyer_user, client_user):
+    """Progress uploaded blocks every slot."""
     document = make_signed_document(lawyer_user, client_user)
     make_record(document, 1, status=DocumentPaymentRecord.STATUS_UPLOADED)
 
@@ -171,6 +180,7 @@ def test_progress_uploaded_blocks_every_slot(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_progress_rejected_reopens_same_slot(lawyer_user, client_user):
+    """Progress rejected reopens same slot."""
     document = make_signed_document(lawyer_user, client_user)
     make_record(document, 1, status=DocumentPaymentRecord.STATUS_REJECTED)
 
@@ -182,6 +192,7 @@ def test_progress_rejected_reopens_same_slot(lawyer_user, client_user):
 
 @pytest.mark.django_db
 def test_progress_all_accepted_sums_amounts(lawyer_user, client_user):
+    """Progress all accepted sums amounts."""
     document = make_signed_document(lawyer_user, client_user)
     make_record(document, 1, status=DocumentPaymentRecord.STATUS_ACCEPTED, amount=Decimal("100"))
     make_record(document, 2, status=DocumentPaymentRecord.STATUS_ACCEPTED, amount=None)

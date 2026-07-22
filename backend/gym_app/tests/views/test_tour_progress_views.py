@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import pytest
+from freezegun import freeze_time
 from django.utils import timezone
 from rest_framework import status
 
@@ -51,6 +52,7 @@ def test_status_never_when_no_record(api_client, client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_status_recent_for_fresh_completion(api_client, client_user):
     """A completion within 30 days reports 'recent'."""
     TourProgress.objects.create(
@@ -67,6 +69,7 @@ def test_status_recent_for_fresh_completion(api_client, client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_status_stale_for_old_completion(api_client, client_user):
     """A completion older than 30 days reports 'stale'."""
     TourProgress.objects.create(
@@ -82,6 +85,7 @@ def test_status_stale_for_old_completion(api_client, client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_status_is_user_scoped(api_client, client_user, lawyer_user):
     """Another user's completion does not leak into the requester's status."""
     TourProgress.objects.create(
@@ -125,6 +129,7 @@ def test_complete_creates_record(api_client, client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_complete_twice_updates_without_duplicating(api_client, client_user):
     """A second completion refreshes completed_at on the same row."""
     old_time = timezone.now() - timedelta(days=40)

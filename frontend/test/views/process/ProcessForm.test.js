@@ -411,6 +411,126 @@ describe("ProcessForm.vue", () => {
     );
   });
 
+  test("edit mode prefills the stage alert configuration", async () => {
+    const { wrapper } = await mountEditView({
+      stages: [
+        { status: "Admisión", date: "2099-12-31", alert: { is_active: true, description: "Vence pronto", notify_clients: true } },
+      ],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect([
+      setupState.formData.alertIsActive,
+      setupState.formData.alertDescription,
+      setupState.formData.alertNotifyClients,
+    ]).toEqual([true, "Vence pronto", true]);
+  });
+
+  test("blocks submit when a stage status is empty", async () => {
+    const { wrapper } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.stages = [{ status: "   ", date: "2099-12-31" }];
+
+    await setupState.onSubmit();
+
+    expect(mockSwalFire).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Estado requerido!" })
+    );
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
+  test("blocks submit when a case file row has no file", async () => {
+    const { wrapper } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.caseFiles = [{ file: null }];
+
+    await setupState.onSubmit();
+
+    expect(mockSwalFire).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "¡Archivo requerido!" })
+    );
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
+  test("submitting an edit updates the process and navigates back", async () => {
+    const { wrapper, process } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    mockSubmitHandler.mockResolvedValue();
+
+    await setupState.onSubmit();
+
+    expect(mockSubmitHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ processIdParam: String(process.id) }),
+      expect.stringContaining("guardado exitosamente"),
+      true
+    );
+    expect(mockRouterBack).toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  test("case type search filters options by query", async () => {
+    const { wrapper } = await mountView({
+      caseTypes: [{ id: 10, type: "Civil" }, { id: 11, type: "Penal" }],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredCaseTypes.map((c) => c.id)).toEqual([10, 11]);
+
+    setupState.query = "civ";
+    await nextTick();
+
+    expect(setupState.filteredCaseTypes.map((c) => c.id)).toEqual([10]);
+  });
+
+  test("client search filters options by query", async () => {
+    const ana = { id: 7, first_name: "Ana", last_name: "Lopez", identification: "111", email: "ana@test.com", role: "client" };
+    const juan = { id: 8, first_name: "Juan", last_name: "Perez", identification: "222", email: "juan@test.com", role: "client" };
+    const { wrapper } = await mountView({ users: [ana, juan] });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredClients.map((c) => c.id)).toEqual([7, 8]);
+
+    setupState.query = "ana";
+    await nextTick();
+
+    expect(setupState.filteredClients.map((c) => c.id)).toEqual([7]);
+  });
+
+  test("rejects case files larger than the 200 MB limit", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.caseFiles = [{ file: null }];
+    const bigFile = createFile("huge.pdf", "application/pdf", 201 * 1024 * 1024);
+
+    setupState.handleFileUpload({ target: { files: [bigFile] } }, 0);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      expect.stringContaining("excede el límite de 200 MB"),
+      "warning"
+    );
+    expect(setupState.formData.caseFiles[0].file).toBeNull();
+  });
+
+  test("getInitials falls back to ? when both names are empty", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+
+    expect([
+      setupState.getInitials("Ana", "Lopez"),
+      setupState.getInitials("", ""),
+    ]).toEqual(["AL", "?"]);
+  });
+
+  test("cancelAction navigates back without submitting", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+
+    setupState.cancelAction();
+
+    expect(mockRouterBack).toHaveBeenCalled();
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
   test("lawyer search filters the selector options by query", async () => {
     const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
     const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
