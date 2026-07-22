@@ -89,3 +89,38 @@ test("lawyer sees multiple signed documents with different signature counts", { 
   await expect(page.getByText("1/1")).toBeVisible();
 });
 
+
+test("lawyer downloads the signatures certificate PDF of a formalized document", { tag: ['@flow:sign-download-signatures-pdf', '@module:signatures', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  const userId = 1700;
+
+  const documents = [
+    buildMockSignedDocument({
+      id: 8001,
+      title: "Contrato Firmado E2E",
+      createdBy: userId,
+      signatures: [
+        { signer_email: "client@example.com", signed: true },
+        { signer_email: "lawyer@example.com", signed: true },
+      ],
+    }),
+  ];
+
+  await installSignedDocumentsApiMocks(page, { userId, role: "lawyer", documents });
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard/signed-documents");
+  await expect(page.getByText("Contrato Firmado E2E")).toBeVisible();
+
+  const card = page.locator('[data-document-id="8001"]');
+  await expect(card).toBeVisible();
+  await card.getByRole("button").first().click();
+
+  const pdfRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/dynamic-documents/8001/generate-signatures-pdf/")
+  );
+  await page.getByText("Descargar Doc. Formalizado").click();
+  await pdfRequest;
+});
