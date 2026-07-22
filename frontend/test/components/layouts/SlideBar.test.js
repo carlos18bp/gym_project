@@ -557,6 +557,76 @@ describe("SlideBar.vue", () => {
     expect(await clickNav("Agendar Cita")).toEqual({ name: "schedule_appointment" });
   });
 
+  test("admin navigation shows Reasignación de Datos and hides client-only items", async () => {
+    const { wrapper } = await mountSlideBar({
+      user: {
+        id: 14,
+        first_name: "Admin",
+        last_name: "User",
+        role: "admin",
+        is_profile_completed: true,
+        is_gym_lawyer: false,
+        photo_profile: "",
+      },
+    });
+
+    const texts = wrapper
+      .findAll("a")
+      .map((a) => (a.text() || "").trim())
+      .filter(Boolean);
+
+    expect(texts).toContain("Reasignación de Datos");
+    expect(texts).not.toContain("Agendar Cita");
+    expect(texts).not.toContain("Organizaciones");
+  });
+
+  test("Reasignación de Datos navigates to the data_reassignment route", async () => {
+    const { wrapper } = await mountSlideBar({
+      user: {
+        id: 15,
+        first_name: "Admin",
+        last_name: "User",
+        role: "admin",
+        is_profile_completed: true,
+        is_gym_lawyer: false,
+        photo_profile: "",
+      },
+      routePath: "/dashboard",
+    });
+
+    const link = wrapper
+      .findAll("a")
+      .find((a) => (a.text() || "").trim() === "Reasignación de Datos");
+    expect(link).toBeTruthy();
+    mockRouterPush.mockClear();
+
+    await link.trigger("click");
+    await flushPromises();
+
+    expect(mockRouterPush).toHaveBeenCalledWith({ name: "data_reassignment" });
+  });
+
+  test("hides Reasignación de Datos for lawyer role", async () => {
+    const { wrapper } = await mountSlideBar({
+      user: {
+        id: 16,
+        first_name: "Gym",
+        last_name: "Lawyer",
+        role: "lawyer",
+        is_profile_completed: true,
+        is_gym_lawyer: true,
+        photo_profile: "",
+      },
+    });
+
+    const texts = wrapper
+      .findAll("a")
+      .map((a) => (a.text() || "").trim())
+      .filter(Boolean);
+
+    expect(texts).not.toContain("Reasignación de Datos");
+  });
+
   test("falls back to empty currentUser when auth user is not set", async () => {
     const { wrapper } = await mountSlideBar();
     await flushPromises();

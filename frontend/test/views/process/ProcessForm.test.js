@@ -411,6 +411,66 @@ describe("ProcessForm.vue", () => {
     );
   });
 
+  test("lawyer search filters the selector options by query", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const { wrapper } = await mountView({
+      users: [me, colleague],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    setupState.lawyerQuery = "mar";
+    await nextTick();
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([77]);
+  });
+
+  test("edit mode keeps an archived assigned lawyer selectable at the top", async () => {
+    const archived = { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer", is_archived: true };
+    const active = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const process = buildProcess({ lawyer: archived });
+
+    const { wrapper } = await mountView({
+      routeParams: { action: "edit", process_id: String(process.id) },
+      processes: [process],
+      users: [archived, active],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([99, 77]);
+  });
+
+  test("logs and continues when auxiliary data fails to load", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const processStore = useProcessStore();
+    const caseTypeStore = useCaseTypeStore();
+    const userStore = useUserStore();
+    const authStore = useAuthStore();
+    authStore.$patch({ userAuth: { id: 99 } });
+
+    jest.spyOn(processStore, "init").mockResolvedValue();
+    jest.spyOn(caseTypeStore, "init").mockResolvedValue();
+    jest.spyOn(userStore, "init").mockRejectedValue(new Error("network down"));
+
+    mockRoute.params = { action: "add", process_id: "" };
+    const wrapper = shallowMount(ProcessForm, {
+      global: { plugins: [pinia] },
+    });
+    await flushPromises();
+
+    expect(wrapper.exists()).toBe(true);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error initializing process form auxiliary data:",
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
+  });
+
   test("edit mode prefills the selector from the assigned lawyer", async () => {
     const { wrapper } = await mountEditView({ lawyer: { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer" } });
     const setupState = getSetupState(wrapper);
