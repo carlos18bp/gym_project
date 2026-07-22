@@ -28,7 +28,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 32 |
 | Backend serializer files | 13 |
 | Backend URL patterns | 205 |
-| Backend test files | 101 (3128 tests) |
+| Backend test files | 101 (3142 tests) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 115 |
 | Frontend view pages | 45 |
@@ -42,6 +42,10 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Quality-debt round + CI green on release-* (2026-07-22, ronda 2)**:
+  - **CI on release branches**: first CI cycle on PR #95 exposed and fixed three latent issues — 36 Jest failures (card tests missing stubs for the cuentas-de-cobro modals, `241478c`), a two-leaf migration graph (base's `0067_servicerequest...` vs v2's 0067-0070 chain → merge of base + `0071_merge`, `de27658`/`06711e4`), and a real UI overlap: the floating notification bell covered module-header actions at lg+, making the docs tour help button unclickable (`ec25149`, ModuleHeader `lg:pr-24`).
+  - **Quality gate strict fully green: score 100, status passed, 0 errors, 0 warnings** (`a87b82a`, `7340db6`): 46 docstrings + import sorts (payment/minuta/process test files), freeze_time on the 9 tour-progress tests, tightened payment asserts, `allow-fragile-selector` markers on useGuidedTour's popover-contract asserts, role-based SweetAlert selectors in 2 E2E specs. Remaining debt: 80 info-level suggestions.
+  - **ProcessForm.vue 100% statements/functions** (+11 Jest tests: stage-alert prefill, submit validations, edit submit path, search filters, 200MB file limit, helpers).
 - **Release close-out pipeline (2026-07-22)** — 5-phase skill pipeline over `admin-data-reassignment` on `release-august-2026-c-v2` (methodology refresh → feature checklist + coverage → E2E audit → fake-data refresh → staging deploy):
   - **Memory Bank refreshed**: counts recounted across architecture/technical/PRD/tasks_plan (`201a901`); PRD 4.1 now lists Outlook OAuth, archiving and the reassignment module.
   - **Coverage closed**: backend `views/admin_reassignment.py` 91→100% (+10 edge-case tests); `DataReassignment.vue` 100% stmts+branches; SlideBar admin nav and ProcessForm `filteredLawyers` (incl. archived prefill) asserted (`8ef0f24`). Quality gate: 0 findings on the 6 touched test files (34 pre-existing docstring errors cleared, broad `pytest.raises` narrowed, asserts ≤7).

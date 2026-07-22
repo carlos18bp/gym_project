@@ -58,7 +58,7 @@
 
 ## 4. Testing Status
 
-### Backend Tests (101 files / 3128 tests — verified 2026-07-22)
+### Backend Tests (101 files / 3142 tests — verified 2026-07-22)
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
