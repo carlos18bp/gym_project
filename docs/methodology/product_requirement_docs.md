@@ -51,11 +51,13 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 ### 4.1 User Management
 - Role-based access: Client, Lawyer, Basic, Corporate Client
 - JWT authentication (SimpleJWT) with 1-day access token lifetime
-- Google OAuth integration for social login
+- Google OAuth and Microsoft Outlook OAuth integration for social login
 - reCAPTCHA protection on registration/login
 - User profiles with activity feeds and electronic signatures
 - Email verification codes and password reset flow
 - Idle logout composable for session security
+- User archiving (`is_archived`): blocks login on all 3 auth methods, kills live JWTs, excludes archived users from notifications and lawyer/client selectors
+- Admin data-reassignment module (`/data_reassignment`, platform admins only): transfer processes and managed documents between lawyers with preview, validation matrix and optional archive/restore
 
 ### 4.2 Process Management
 - Legal cases with: authority, plaintiff, defendant, case type, subcase, file number
