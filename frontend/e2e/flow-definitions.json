@@ -1,6 +1,6 @@
 {
-  "version": "1.11.0",
-  "lastUpdated": "2026-07-16",
+  "version": "1.12.0",
+  "lastUpdated": "2026-07-22",
   "flows": {
     "admin-data-reassignment": {
       "name": "Reasignación de datos de abogado (admin)",
@@ -1581,6 +1581,132 @@
       ],
       "priority": "P2",
       "description": "Abogado activa la alerta del último estado procesal en ProcessForm (al crear o editar) y alterna el toggle 'Notificar también a los clientes' (notify_clients), opcionalmente añade descripción personalizada. Persiste en StageAlert y se refleja en el indicador del detalle del proceso.",
+      "expectedSpecs": 1
+    },
+    "notification-mark-read": {
+      "name": "Marcar notificaciones como leídas",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario marca una notificación individual como leída/no-leída desde las acciones hover y usa 'Marcar todas como leídas'; el badge de la campana refleja el conteo.",
+      "expectedSpecs": 1
+    },
+    "notification-snooze": {
+      "name": "Posponer notificación (snooze)",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario abre el menú 'Recordar después' de una notificación y elige un intervalo (1h/3h/1d/3d); la notificación desaparece de la lista activa hasta vencer el snooze.",
+      "expectedSpecs": 1
+    },
+    "notification-archive-toggle": {
+      "name": "Archivar y desarchivar notificación",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario archiva una notificación (pasa a la pestaña Archivadas) y la restaura desde allí (vuelve a Todas).",
+      "expectedSpecs": 1
+    },
+    "notification-delete": {
+      "name": "Eliminar notificación",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario elimina una notificación individual desde las acciones hover; desaparece de forma permanente.",
+      "expectedSpecs": 1
+    },
+    "notification-pagination": {
+      "name": "Paginación del centro de notificaciones",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P4",
+      "description": "Con más de una página, el usuario navega con Anterior/Siguiente y el indicador 'Página X de Y' se actualiza.",
+      "expectedSpecs": 1
+    },
+    "service-admin-delete": {
+      "name": "Eliminar servicio (admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin selecciona un servicio en /services_admin, pulsa 'Eliminar servicio', confirma en el SweetAlert y el servicio desaparece del catálogo (las solicitudes enviadas se conservan).",
+      "expectedSpecs": 1
+    },
+    "process-users-modal": {
+      "name": "Modal de participantes del proceso",
+      "module": "processes",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Desde el detalle del proceso, 'Ver usuarios' abre el modal de participantes con los clientes asociados (avatar/iniciales + nombre).",
+      "expectedSpecs": 1
+    },
+    "directory-navigate-to-process": {
+      "name": "Navegar del directorio a procesos",
+      "module": "directory",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Desde el modal de detalle de usuario del directorio, 'Ver proceso' navega al detalle del proceso y 'Ver todos en Procesos' al listado del usuario.",
+      "expectedSpecs": 1
+    },
+    "secop-list-error-retry": {
+      "name": "Reintentar carga del listado SECOP",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Si la carga del listado SECOP falla, se muestra el estado de error con 'Reintentar'; el botón recarga y muestra la tabla.",
+      "expectedSpecs": 1
+    },
+    "sign-download-signatures-pdf": {
+      "name": "Descargar certificado de firmas (PDF)",
+      "module": "signatures",
+      "roles": [
+        "lawyer",
+        "client"
+      ],
+      "priority": "P3",
+      "description": "Sobre un documento completamente firmado, la acción 'Descargar Doc. Formalizado' del menú de la tarjeta descarga el PDF de firmas (generate-signatures-pdf).",
+      "expectedSpecs": 1
+    },
+    "org-corporate-dashboard-stats": {
+      "name": "KPIs del dashboard corporativo",
+      "module": "organizations",
+      "roles": [
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "El dashboard del cliente corporativo muestra los KPIs (organizaciones, miembros, invitaciones pendientes) desde organizations/stats/ y se actualizan tras invitar un miembro.",
       "expectedSpecs": 1
     }
   }

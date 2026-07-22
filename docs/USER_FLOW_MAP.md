@@ -2150,6 +2150,42 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ---
 
-**Documento generado:** July 16, 2026
-**Versión:** 1.11.0
-**Estado:** 153/153 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.11.0 (cobertura estática por tags `@flow:`). Los 3 flujos de PR #95 (`docs-guided-tour`, `docs-contract-execution`, `admin-data-reassignment`) ya están en esta rama tras el rebase sobre `release-august-2026-c`.
+## Flujos añadidos — Auditoría exhaustiva 2026-07-22 (v1.12.0)
+
+Auditoría de doble fuente (interacciones frontend + clasificación de 205 endpoints) sobre el registro v1.11.0. Se detectaron y cubrieron 11 flujos:
+
+### notification-mark-read / notification-snooze / notification-archive-toggle / notification-delete / notification-pagination
+- **Módulo:** notifications | **Prioridad:** P3-P4 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js` — 6 tests)
+- **Descripción:** Acciones por ítem del centro de notificaciones: marcar leída/no-leída (individual y masiva, badge sincronizado), posponer con intervalos (1h/3h/1d/3d), archivar/desarchivar entre pestañas, eliminar definitivamente y paginación Anterior/Siguiente. Nota: la auditoría destapó y corrigió un bug real — el menú de snooze quedaba invisible/enterrado al salir del hover de la fila (fix: barra de acciones fijada con z-20 mientras su menú está abierto).
+
+### service-admin-delete
+- **Módulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ✅ (`service-admin-flow.spec.js`)
+- **Descripción:** Admin selecciona un servicio, pulsa "Eliminar servicio", confirma en SweetAlert ("Sí, eliminar") y el servicio sale del catálogo; las solicitudes ya enviadas se conservan.
+
+### process-users-modal
+- **Módulo:** processes | **Prioridad:** P3 | **Ruta:** `/process_detail/:id` | **E2E:** ✅ (`process-detail-actions.spec.js`)
+- **Descripción:** "Ver usuarios" abre el modal de participantes del proceso con los clientes asociados (avatar/iniciales + nombre) y estado vacío si no hay usuarios.
+
+### sign-download-signatures-pdf
+- **Módulo:** signatures | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard/signed-documents` | **E2E:** ✅ (`signed-documents-flow.spec.js`)
+- **Descripción:** Sobre un documento completamente firmado, la acción "Descargar Doc. Formalizado" del menú de la tarjeta descarga el certificado de firmas (`generate-signatures-pdf`). Requiere estado FullySigned y ≥1 firma registrada.
+
+### org-corporate-dashboard-stats
+- **Módulo:** organizations | **Prioridad:** P2 | **Ruta:** dashboard corporativo | **E2E:** ✅ (`organizations-corporate-invite-member-stats.spec.js`)
+- **Descripción:** KPIs del dashboard del cliente corporativo (organizaciones, miembros, invitaciones pendientes) servidos por `organizations/stats/`; se actualizan tras invitar un miembro.
+
+### directory-navigate-to-process
+- **Módulo:** directory | **Prioridad:** P4 | **Ruta:** `/directory_list` | **E2E:** ✅ (`directory.spec.js`)
+- **Descripción:** Desde el modal de detalle de usuario, "Ver proceso" navega al detalle y "Ver todos en Procesos" al listado filtrado por el usuario.
+
+### secop-list-error-retry
+- **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅ (`secop-list-error-retry.spec.js`)
+- **Descripción:** Ante un fallo de carga del listado, se muestra el estado de error con "Reintentar"; el botón recarga y renderiza la tabla.
+
+**Clasificados como no-flujo (auditoría 2026-07-22):** endpoints huérfanos sin consumidor de componente (candidatos a dead-code o UI pendiente): CRUD de legal-updates (store sin invocador), `corporate-requests/corporate/dashboard-stats/`, `organizations/<id>/public/`, plantilla Word de membrete por usuario, y los pares `recent-documents/processes` (alimentan un contador, widget sin cablear). 20 endpoints no-UI (permisos granulares superseded, firmas legacy, webhook Wompi).
+
+---
+
+**Documento generado:** July 22, 2026
+**Versión:** 1.12.0
+**Estado:** 164/164 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.12.0 (cobertura estática por tags `@flow:`).
