@@ -47,6 +47,13 @@ const SUMMARY = {
   counts: { processes: 1, eligible_documents: 1, ineligible_documents: 1 },
 };
 
+async function untilEnabled(wrapper, selector, attempts = 20) {
+  for (let i = 0; i < attempts; i++) {
+    if (wrapper.find(selector).attributes("disabled") === undefined) return;
+    await flushPromises();
+  }
+}
+
 function mountView() {
   return mount(DataReassignment, {
     global: {
@@ -121,7 +128,9 @@ describe("DataReassignment.vue", () => {
       target: { id: 2, full_name: "Beto Dos" },
     });
 
+    await untilEnabled(wrapper, "[data-testid='reassign-button']");
     await wrapper.find("[data-testid='reassign-button']").trigger("click");
+    await flushPromises();
     await wrapper.find("[data-testid='confirm-yes']").trigger("click");
     await flushPromises();
 
@@ -146,6 +155,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='select-all-documents']").setValue(true);
     await wrapper.find("[data-testid='archive-source-checkbox']").setValue(true);
 
+    await untilEnabled(wrapper, "[data-testid='reassign-button']");
     await wrapper.find("[data-testid='reassign-button']").trigger("click");
 
     expect(wrapper.find("[data-testid='confirm-message']").text()).toContain(
@@ -281,7 +291,7 @@ describe("DataReassignment.vue", () => {
       target: { id: 2, full_name: "Beto Dos" },
     });
 
-    await flushPromises();
+    await untilEnabled(wrapper, "[data-testid='reassign-button']");
     const reassignButton = wrapper.find("[data-testid='reassign-button']");
     expect(reassignButton.attributes("disabled")).toBeUndefined();
     await reassignButton.trigger("click");
@@ -306,7 +316,7 @@ describe("DataReassignment.vue", () => {
 
     mockExecute.mockRejectedValue(new Error("boom"));
 
-    await flushPromises();
+    await untilEnabled(wrapper, "[data-testid='reassign-button']");
     const reassignButton = wrapper.find("[data-testid='reassign-button']");
     expect(reassignButton.attributes("disabled")).toBeUndefined();
     await reassignButton.trigger("click");
