@@ -42,6 +42,10 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Total debt close-out (2026-07-22, ronda 3)**:
+  - **Gate strict 100% clean across ALL severities: 0 errors / 0 warnings / 0 info** (`af446f1`): 66 it→test renames, nested service payloads → named builders, frozen clock on the future-due-date prefill (fake timers with doNotFake), justified markers (`disable network_dependency` for the pure-orchestration outlook helper, `disable fragile_test_data` mock emails, `disable wait_for_timeout` bounded non-occurrence wait), stale eslint-disable removed.
+  - **DocumentEditor.vue 96.25→96.91%** (`caeb5e2`, 45 tests): the "0% / 909 stmts" note below is OBSOLETE — the 2026-07-16 initiative already brought it to 96% with 41 tests; ronda 3 closed the reachable residual branches (string-id coercion, no-id creation error, save without document, draft variable sync). Remainder: TinyMCE DOM handlers + unreachable defensive code.
+  - Round touched only tests/docs — no runtime change, staging deploy from ronda 2 (`987952e` runtime) remains current.
 - **Quality-debt round + CI green on release-* (2026-07-22, ronda 2)**:
   - **CI on release branches**: first CI cycle on PR #95 exposed and fixed three latent issues — 36 Jest failures (card tests missing stubs for the cuentas-de-cobro modals, `241478c`), a two-leaf migration graph (base's `0067_servicerequest...` vs v2's 0067-0070 chain → merge of base + `0071_merge`, `de27658`/`06711e4`), and a real UI overlap: the floating notification bell covered module-header actions at lg+, making the docs tour help button unclickable (`ec25149`, ModuleHeader `lg:pr-24`).
   - **Quality gate strict fully green: score 100, status passed, 0 errors, 0 warnings** (`a87b82a`, `7340db6`): 46 docstrings + import sorts (payment/minuta/process test files), freeze_time on the 9 tour-progress tests, tightened payment asserts, `allow-fragile-selector` markers on useGuidedTour's popover-contract asserts, role-based SweetAlert selectors in 2 E2E specs. Remaining debt: 80 info-level suggestions.
