@@ -189,6 +189,7 @@ export async function installDynamicDocumentApiMocks(
     paymentPlan = null,
   }
 ) {
+  const state = { wordTemplateUploaded: false };
   const user = buildMockUser({ id: userId, role, hasSignature });
 
   const defaultDocuments = [
@@ -565,14 +566,25 @@ export async function installDynamicDocumentApiMocks(
       return { status: 200, contentType: "application/json", body: JSON.stringify({ message: "deleted" }) };
     }
 
-    // Global letterhead (Word template)
+    // Global letterhead (Word template) — stateful: 404 until uploaded, then a
+    // docx blob so the modal can render the configured-template state.
     if (apiPath === "user/letterhead/word-template/") {
-      return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "not_found" }) };
+      if (!state.wordTemplateUploaded) {
+        return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "not_found" }) };
+      }
+      return {
+        status: 200,
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers: { "content-disposition": 'attachment; filename="membrete-e2e.docx"' },
+        body: "PK-mock-docx",
+      };
     }
     if (apiPath === "user/letterhead/word-template/upload/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ message: "ok", template_info: { name: "template.docx", size: 1024 } }) };
+      state.wordTemplateUploaded = true;
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ message: "ok", template_info: { filename: "membrete-e2e.docx", size_bytes: 1024 } }) };
     }
     if (apiPath === "user/letterhead/word-template/delete/") {
+      state.wordTemplateUploaded = false;
       return { status: 200, contentType: "application/json", body: JSON.stringify({ message: "deleted" }) };
     }
 

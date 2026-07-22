@@ -101,3 +101,36 @@ test("letterhead modal shows specifications toggle and Word template section", {
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#app")).toBeVisible();
 });
+
+test("lawyer uploads a global Word letterhead template", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  const userId = 8604;
+  const docs = [
+    buildMockDocument({ id: 3040, title: "Doc Word Template", state: "Published", createdBy: userId }),
+  ];
+
+  await installDynamicDocumentApiMocks(page, { userId, role: "lawyer", hasSignature: true, documents: docs });
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: /membrete global/i }).first().click();
+  await expect(page.getByRole("button", { name: "Seleccionar Plantilla .docx (Word)" })).toBeVisible({ timeout: 10_000 });
+
+  await page.locator('input[accept=".docx"]').setInputFiles({
+    name: "membrete-e2e.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: Buffer.from("PK-mock-docx"),
+  });
+
+  const uploadRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/user/letterhead/word-template/upload/")
+  );
+  await page.getByRole("button", { name: "Subir Plantilla" }).click();
+  await uploadRequest;
+
+  await expect(page.getByText("membrete-e2e.docx")).toBeVisible({ timeout: 10_000 });
+});

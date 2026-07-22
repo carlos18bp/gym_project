@@ -2182,7 +2182,7 @@ Auditoría de doble fuente (interacciones frontend + clasificación de 205 endpo
 - **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅ (`secop-list-error-retry.spec.js`)
 - **Descripción:** Ante un fallo de carga del listado, se muestra el estado de error con "Reintentar"; el botón recarga y renderiza la tabla.
 
-**Clasificados como no-flujo (auditoría 2026-07-22):** endpoints huérfanos sin consumidor de componente (candidatos a dead-code o UI pendiente): CRUD de legal-updates (store sin invocador), `corporate-requests/corporate/dashboard-stats/`, `organizations/<id>/public/`, plantilla Word de membrete por usuario, y los pares `recent-documents/processes` (alimentan un contador, widget sin cablear). 20 endpoints no-UI (permisos granulares superseded, firmas legacy, webhook Wompi).
+**Clasificados como no-flujo (auditoría 2026-07-22):** endpoints huérfanos sin consumidor de componente (candidatos a dead-code o UI pendiente): CRUD de legal-updates (store sin invocador), `corporate-requests/corporate/dashboard-stats/`, `organizations/<id>/public/`, y los pares `recent-documents/processes` (se escriben desde las vistas pero ningún widget los muestra). La plantilla Word de membrete SÍ tiene UI y quedó cubierta como ramificación de `docs-letterhead` (upload real en `docs-letterhead-flow.spec.js`). 20 endpoints no-UI (permisos granulares superseded, firmas legacy, webhook Wompi).
 
 ---
 
