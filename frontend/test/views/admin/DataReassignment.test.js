@@ -281,8 +281,14 @@ describe("DataReassignment.vue", () => {
       target: { id: 2, full_name: "Beto Dos" },
     });
 
-    await wrapper.find("[data-testid='reassign-button']").trigger("click");
-    await wrapper.find("[data-testid='confirm-yes']").trigger("click");
+    await flushPromises();
+    const reassignButton = wrapper.find("[data-testid='reassign-button']");
+    expect(reassignButton.attributes("disabled")).toBeUndefined();
+    await reassignButton.trigger("click");
+    await flushPromises();
+    const confirmYes = wrapper.find("[data-testid='confirm-yes']");
+    expect(confirmYes.exists()).toBe(true);
+    await confirmYes.trigger("click");
     await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -300,8 +306,14 @@ describe("DataReassignment.vue", () => {
 
     mockExecute.mockRejectedValue(new Error("boom"));
 
-    await wrapper.find("[data-testid='reassign-button']").trigger("click");
-    await wrapper.find("[data-testid='confirm-yes']").trigger("click");
+    await flushPromises();
+    const reassignButton = wrapper.find("[data-testid='reassign-button']");
+    expect(reassignButton.attributes("disabled")).toBeUndefined();
+    await reassignButton.trigger("click");
+    await flushPromises();
+    const confirmYes = wrapper.find("[data-testid='confirm-yes']");
+    expect(confirmYes.exists()).toBe(true);
+    await confirmYes.trigger("click");
     await flushPromises();
 
     expect(mockShowNotification).toHaveBeenCalledWith(
