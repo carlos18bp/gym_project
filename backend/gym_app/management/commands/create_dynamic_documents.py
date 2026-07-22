@@ -652,6 +652,7 @@ class Command(BaseCommand):
                 content=template_doc.content,
                 state=state,
                 created_by=template_doc.created_by,
+                managed_by=template_doc.created_by,
                 assigned_to=assigned_to_user,
                 created_at=created_at,
                 updated_at=created_at,
