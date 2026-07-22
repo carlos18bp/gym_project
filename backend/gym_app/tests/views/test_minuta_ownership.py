@@ -200,6 +200,7 @@ class TestManagerRights:
 
     @pytest.mark.integration
     def test_manager_can_modify_transferred_minuta(self, other_lawyer, private_minuta):
+        """Manager can modify transferred minuta."""
         # Simulate a reassignment: other_lawyer now manages a minuta they
         # did not create; created_by stays untouched.
         private_minuta.managed_by = other_lawyer
@@ -208,6 +209,7 @@ class TestManagerRights:
 
     @pytest.mark.integration
     def test_manager_can_delete_transferred_minuta(self, api_client, other_lawyer, private_minuta):
+        """Manager can delete transferred minuta."""
         private_minuta.managed_by = other_lawyer
         private_minuta.save(update_fields=['managed_by'])
         api_client.force_authenticate(user=other_lawyer)
@@ -218,6 +220,7 @@ class TestManagerRights:
 
     @pytest.mark.edge
     def test_unrelated_lawyer_without_share_still_denied(self, other_lawyer, private_minuta):
+        """Unrelated lawyer without share still denied."""
         # Not creator, not manager, shared edit off → denied.
         assert can_modify_minuta(private_minuta, other_lawyer, {'title': 'x'}) is False
 
@@ -229,6 +232,7 @@ class TestManagedByListScope:
     def test_lawyer_id_filters_by_manager_not_creator(
         self, api_client, creator_lawyer, other_lawyer
     ):
+        """Lawyer id filters by manager not creator."""
         doc = DynamicDocument.objects.create(
             title='Doc gestionado por otro',
             content='<p>x</p>',

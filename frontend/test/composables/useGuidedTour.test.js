@@ -323,6 +323,7 @@ describe("useGuidedTour — popover decoration", () => {
   });
 
   it("does not render a progress bar on the framing cards", async () => {
+    // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -333,6 +334,7 @@ describe("useGuidedTour — popover decoration", () => {
   });
 
   it("renders a circular icon on the framing cards", async () => {
+    // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -344,6 +346,7 @@ describe("useGuidedTour — popover decoration", () => {
   });
 
   it("shows the keyboard hint on the welcome card only on desktop", async () => {
+    // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -378,6 +381,7 @@ describe("useGuidedTour — popover decoration", () => {
   });
 
   it("renders no skip button on the finale card", async () => {
+    // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -404,6 +408,7 @@ describe("useGuidedTour — completion", () => {
   });
 
   it("registers completion from the skip button without waiting for onDestroyed", async () => {
+    // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     // driver.js only fires onDestroyed after the first highlight
     // transition settles; an early skip must still POST completion.
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });

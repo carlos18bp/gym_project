@@ -1045,6 +1045,7 @@ class TestLawyerDeletionProtection:
     """A lawyer that owns processes cannot be deleted (PROTECT)."""
 
     def test_deleting_lawyer_with_process_raises_protected_error(self, process, lawyer_user):
+        """Deleting lawyer with process raises protected error."""
         from django.db.models import ProtectedError
 
         with pytest.raises(ProtectedError):
@@ -1052,6 +1053,7 @@ class TestLawyerDeletionProtection:
         assert Process.objects.filter(id=process.id).exists()
 
     def test_deleting_lawyer_without_process_succeeds(self):
+        """Deleting lawyer without process succeeds."""
         lawyer = User.objects.create_user(
             email="lonely-lawyer@test.com", password="x", role="Lawyer"
         )

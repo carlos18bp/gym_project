@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import pytest
+from freezegun import freeze_time
 from django.db import IntegrityError
 from django.utils import timezone
 
@@ -10,6 +11,7 @@ from gym_app.models import TourProgress
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_tour_progress_creation(client_user):
     """A TourProgress record stores user, module and completion time."""
     now = timezone.now()
@@ -26,6 +28,7 @@ def test_tour_progress_creation(client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_tour_progress_str_contains_module_and_user(client_user):
     """__str__ includes the module name and the user."""
     progress = TourProgress.objects.create(
@@ -39,6 +42,7 @@ def test_tour_progress_str_contains_module_and_user(client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_tour_progress_unique_per_user_and_module(client_user):
     """Only one record is allowed per user/module combination."""
     TourProgress.objects.create(
@@ -56,6 +60,7 @@ def test_tour_progress_unique_per_user_and_module(client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_is_stale_false_within_threshold(client_user):
     """A completion 29 days ago is not stale."""
     progress = TourProgress.objects.create(
@@ -68,6 +73,7 @@ def test_is_stale_false_within_threshold(client_user):
 
 
 @pytest.mark.django_db
+@freeze_time("2026-07-01 12:00:00")
 def test_is_stale_true_past_threshold(client_user):
     """A completion 31 days ago is stale."""
     progress = TourProgress.objects.create(
