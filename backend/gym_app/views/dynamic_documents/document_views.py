@@ -3,6 +3,7 @@ import re
 import os
 import logging
 from django.db.models import Q
+from django.db.models.functions import Lower
 from django.http import FileResponse, Http404
 from django.template.loader import get_template
 from PIL import Image
@@ -216,11 +217,13 @@ def list_dynamic_documents(request):
 
     # Sort parameter
     sort_by = request.query_params.get('sort_by', 'recent')
+    # Lower() keeps name ordering case-insensitive on every backend (MySQL's
+    # _ci collation already behaves this way; SQLite's binary collation does not).
     sort_map = {
         'recent': '-updated_at',
         'oldest': 'updated_at',
-        'name-asc': 'title',
-        'name-desc': '-title',
+        'name-asc': Lower('title').asc(),
+        'name-desc': Lower('title').desc(),
     }
     order_field = sort_map.get(sort_by, '-updated_at')
     queryset = queryset.order_by(order_field)
