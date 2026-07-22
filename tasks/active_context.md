@@ -35,13 +35,18 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Frontend Pinia store files | 46 |
 | Frontend composables | 15 |
 | Frontend unit test files | 207 |
-| Frontend E2E spec files | 201 |
-| Frontend E2E flows (flow-definitions.json) | 153 (v1.11.0) |
+| Frontend E2E spec files | 203 |
+| Frontend E2E flows (flow-definitions.json) | 164 (v1.12.0) |
 
 ---
 
 ## 2. Recent Focus Areas
 
+- **Full user-flow coverage round (2026-07-22, ronda 4)**:
+  - **Exhaustive dual-source flow audit**: frontend interaction sweep + classification of all 205 backend endpoints vs registry v1.11.0 → 11 unregistered flows found, all implemented and registered (`flow-definitions.json` v1.12.0, **164/164 covered**): notification item actions ×5, service-admin delete, process participants modal, signatures-certificate download, corporate dashboard KPIs (tag on existing stats spec), directory→process navigation, SECOP list retry (`df716f9`). Orphan endpoints without component consumers documented as non-flows in USER_FLOW_MAP (legal-updates CRUD, corporate dashboard-stats, org public detail, user Word-letterhead, recent-docs/processes widgets — dead-code candidates worth a product decision).
+  - **Bug found by new E2E**: notification snooze menu was unusable on non-last rows — hover-out faded the actions bar (open menu invisible) and its mid-transition opacity buried the dropdown under the next row; actions bar now pins visible+z-20 while its menu is open (`5f3f692`).
+  - **DataReassignment CI flake root fix**: untilEnabled() active wait absorbs degraded scheduling of full-suite coverage runs (`d2d1ff5`).
+  - Gate remains 0/0/0. E2E spec files 201 → 203.
 - **Total debt close-out (2026-07-22, ronda 3)**:
   - **Gate strict 100% clean across ALL severities: 0 errors / 0 warnings / 0 info** (`af446f1`): 66 it→test renames, nested service payloads → named builders, frozen clock on the future-due-date prefill (fake timers with doNotFake), justified markers (`disable network_dependency` for the pure-orchestration outlook helper, `disable fragile_test_data` mock emails, `disable wait_for_timeout` bounded non-occurrence wait), stale eslint-disable removed.
   - **DocumentEditor.vue 96.25→96.91%** (`caeb5e2`, 45 tests): the "0% / 909 stmts" note below is OBSOLETE — the 2026-07-16 initiative already brought it to 96% with 41 tests; ronda 3 closed the reachable residual branches (string-id coercion, no-id creation error, save without document, draft variable sync). Remainder: TinyMCE DOM handlers + unreachable defensive code.
