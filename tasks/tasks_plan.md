@@ -58,7 +58,7 @@
 
 ## 4. Testing Status
 
-### Backend Tests (95 files / 3032 tests — verified 2026-07-16)
+### Backend Tests (101 files / 3128 tests — verified 2026-07-22)
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
@@ -78,7 +78,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (194 files — verified 2026-07-16)
+### Frontend Unit Tests (207 files — verified 2026-07-22)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -94,7 +94,7 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (198 spec files — verified 2026-07-16) — **150 flows registered, 150/150 covered (100%)**
+### Frontend E2E Tests (201 spec files — verified 2026-07-22) — **153 flows registered (v1.11.0)**
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)
