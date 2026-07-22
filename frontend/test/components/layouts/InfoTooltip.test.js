@@ -6,13 +6,13 @@ async function hover(wrapper) {
 }
 
 describe("InfoTooltip", () => {
-  it("renders the information icon", () => {
+  test("renders the information icon", () => {
     const wrapper = mount(InfoTooltip, { props: { text: "Ayuda" } });
 
     expect(wrapper.find('[data-testid="info-tooltip-icon"]').exists()).toBe(true);
   });
 
-  it("keeps the tooltip text out of the DOM until hover", () => {
+  test("keeps the tooltip text out of the DOM until hover", () => {
     // Hidden-but-present copy would collide with text-based selectors
     // in the E2E suite, so the bubble must not render at rest.
     const wrapper = mount(InfoTooltip, { props: { text: "Ayuda" } });
@@ -20,7 +20,7 @@ describe("InfoTooltip", () => {
     expect(wrapper.find('[data-testid="info-tooltip"]').exists()).toBe(false);
   });
 
-  it("renders the provided text inside the bubble on hover", async () => {
+  test("renders the provided text inside the bubble on hover", async () => {
     const wrapper = mount(InfoTooltip, {
       props: { text: "Crea o actualiza tu firma electrónica" },
     });
@@ -32,7 +32,7 @@ describe("InfoTooltip", () => {
     );
   });
 
-  it("hides the bubble again on mouse leave", async () => {
+  test("hides the bubble again on mouse leave", async () => {
     const wrapper = mount(InfoTooltip, { props: { text: "Ayuda" } });
 
     await hover(wrapper);
@@ -41,7 +41,7 @@ describe("InfoTooltip", () => {
     expect(wrapper.find('[data-testid="info-tooltip"]').exists()).toBe(false);
   });
 
-  it("positions the bubble above the icon by default", async () => {
+  test("positions the bubble above the icon by default", async () => {
     const wrapper = mount(InfoTooltip, { props: { text: "Ayuda" } });
 
     await hover(wrapper);
@@ -51,7 +51,7 @@ describe("InfoTooltip", () => {
     );
   });
 
-  it.each([
+  test.each([
     ["bottom", "top-full"],
     ["left", "right-full"],
     ["right", "left-full"],
@@ -68,7 +68,7 @@ describe("InfoTooltip", () => {
     },
   );
 
-  it("applies a custom icon class", () => {
+  test("applies a custom icon class", () => {
     const wrapper = mount(InfoTooltip, {
       props: { text: "Ayuda", iconClass: "size-4" },
     });
@@ -78,7 +78,7 @@ describe("InfoTooltip", () => {
     ).toContain("size-4");
   });
 
-  it.each([
+  test.each([
     ["top", "border-t-gray-900"],
     ["bottom", "border-b-gray-900"],
     ["left", "border-l-gray-900"],

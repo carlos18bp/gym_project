@@ -9,29 +9,29 @@ import {
 import { getTourConfig, tourRegistry } from "@/shared/tours";
 
 describe("dynamic_documents_steps — step lists", () => {
-  it("returns 10 base steps for lawyers", () => {
+  test("returns 10 base steps for lawyers", () => {
     expect(getTourSteps("lawyer")).toHaveLength(10);
   });
 
-  it("returns the lawyer tour for admins", () => {
+  test("returns the lawyer tour for admins", () => {
     expect(getTourSteps("admin")).toEqual(getTourSteps("lawyer"));
   });
 
-  it("returns 7 base steps for clients", () => {
+  test("returns 7 base steps for clients", () => {
     expect(getTourSteps("client")).toHaveLength(7);
   });
 
-  it("returns the client tour for basic users", () => {
+  test("returns the client tour for basic users", () => {
     expect(getTourSteps("basic")).toEqual(getTourSteps("client"));
   });
 
-  it("returns the client tour for corporate clients", () => {
+  test("returns the client tour for corporate clients", () => {
     expect(getTourSteps("corporate_client")).toEqual(getTourSteps("client"));
   });
 });
 
 describe("dynamic_documents_steps — conditional pending-signatures step", () => {
-  it("appends an extra closing step when the user has pending signatures", () => {
+  test("appends an extra closing step when the user has pending signatures", () => {
     const steps = getTourSteps("lawyer", { hasPendingSignatures: true });
 
     expect(steps).toHaveLength(11);
@@ -40,7 +40,7 @@ describe("dynamic_documents_steps — conditional pending-signatures step", () =
     expect(lastStep.tab).toBe("pending-signatures");
   });
 
-  it("appends the same closing step for clients", () => {
+  test("appends the same closing step for clients", () => {
     const steps = getTourSteps("client", { hasPendingSignatures: true });
 
     expect(steps).toHaveLength(8);
@@ -54,20 +54,20 @@ describe("dynamic_documents_steps — step shape", () => {
     ...getTourSteps("client"),
   ];
 
-  it("uses stable data-tour selectors for every target", () => {
+  test("uses stable data-tour selectors for every target", () => {
     allSteps.forEach((step) => {
       expect(step.target).toMatch(/^\[data-tour="[a-z-]+"\]$/);
     });
   });
 
-  it("provides a Spanish title and description on every popover", () => {
+  test("provides a Spanish title and description on every popover", () => {
     allSteps.forEach((step) => {
       expect(step.popover.title).toBeTruthy();
       expect(step.popover.description).toBeTruthy();
     });
   });
 
-  it("marks individual tab-button steps as desktop-only", () => {
+  test("marks individual tab-button steps as desktop-only", () => {
     getTourSteps("lawyer")
       .filter((step) => step.target.startsWith('[data-tour="tab-'))
       .forEach((step) => {
@@ -75,7 +75,7 @@ describe("dynamic_documents_steps — step shape", () => {
       });
   });
 
-  it("keeps the tabs overview and action buttons available on mobile", () => {
+  test("keeps the tabs overview and action buttons available on mobile", () => {
     const clientSteps = getTourSteps("client");
     const mobileSteps = clientSteps.filter((step) => !step.desktopOnly);
 
@@ -88,14 +88,14 @@ describe("dynamic_documents_steps — step shape", () => {
 });
 
 describe("welcome and closing cards", () => {
-  it("defines an element-less welcome card with its own CTA", () => {
+  test("defines an element-less welcome card with its own CTA", () => {
     expect(WELCOME_STEP.target).toBeNull();
     expect(WELCOME_STEP.popover.title).toBe("Bienvenido a Archivos Jurídicos");
     expect(WELCOME_STEP.popover.nextBtnText).toBe("Comenzar recorrido");
     expect(WELCOME_STEP.desktopOnly).toBe(false);
   });
 
-  it("closes the tour on the permanent help button", () => {
+  test("closes the tour on the permanent help button", () => {
     expect(FINAL_STEP.target).toBe('[data-tour="help-button"]');
     expect(FINAL_STEP.popover.doneBtnText).toBe("Entendido");
     expect(FINAL_STEP.popover.description).toContain(
@@ -104,7 +104,7 @@ describe("welcome and closing cards", () => {
     expect(FINAL_STEP.desktopOnly).toBe(false);
   });
 
-  it("keeps the framing cards out of the content step lists", () => {
+  test("keeps the framing cards out of the content step lists", () => {
     // The mandated 10/7 counts must never include welcome/finale.
     expect(getTourSteps("lawyer")).not.toContain(WELCOME_STEP);
     expect(getTourSteps("lawyer")).not.toContain(FINAL_STEP);
@@ -112,7 +112,7 @@ describe("welcome and closing cards", () => {
 });
 
 describe("tour registry", () => {
-  it("resolves the dynamic_documents module config", () => {
+  test("resolves the dynamic_documents module config", () => {
     const config = getTourConfig(MODULE_NAME);
 
     expect(config).not.toBeNull();
@@ -123,11 +123,11 @@ describe("tour registry", () => {
     expect(config.finale).toBe(FINAL_STEP);
   });
 
-  it("returns null for unregistered modules", () => {
+  test("returns null for unregistered modules", () => {
     expect(getTourConfig("unknown_module")).toBeNull();
   });
 
-  it("registers dynamic_documents as the only module for now", () => {
+  test("registers dynamic_documents as the only module for now", () => {
     expect(Object.keys(tourRegistry)).toEqual([MODULE_NAME]);
   });
 });

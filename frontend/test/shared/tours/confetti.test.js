@@ -17,7 +17,7 @@ describe("fireTourConfetti", () => {
     jest.useRealTimers();
   });
 
-  it("fires two mirrored bursts and a delayed center burst", () => {
+  test("fires two mirrored bursts and a delayed center burst", () => {
     fireTourConfetti();
 
     expect(confetti).toHaveBeenCalledTimes(2);
@@ -25,7 +25,7 @@ describe("fireTourConfetti", () => {
     expect(confetti).toHaveBeenCalledTimes(3);
   });
 
-  it("uses the brand palette and the reduced-motion library guard", () => {
+  test("uses the brand palette and the reduced-motion library guard", () => {
     fireTourConfetti();
 
     expect(confetti).toHaveBeenCalledWith(
@@ -36,7 +36,7 @@ describe("fireTourConfetti", () => {
     );
   });
 
-  it("does nothing under prefers-reduced-motion", () => {
+  test("does nothing under prefers-reduced-motion", () => {
     window.matchMedia = jest.fn().mockReturnValue({ matches: true });
 
     fireTourConfetti();
@@ -45,7 +45,7 @@ describe("fireTourConfetti", () => {
     expect(confetti).not.toHaveBeenCalled();
   });
 
-  it("never throws when the library fails", () => {
+  test("never throws when the library fails", () => {
     confetti.mockImplementation(() => {
       throw new Error("canvas unavailable");
     });

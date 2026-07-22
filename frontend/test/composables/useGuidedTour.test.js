@@ -113,7 +113,7 @@ beforeEach(() => {
 });
 
 describe("useGuidedTour — fetchTourStatus", () => {
-  it("stores a valid status from the API", async () => {
+  test("stores a valid status from the API", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "never" } });
     const { tour } = makeTour();
 
@@ -125,7 +125,7 @@ describe("useGuidedTour — fetchTourStatus", () => {
     expect(tour.tourStatus.value).toBe("never");
   });
 
-  it("resolves unknown responses to null (fail-safe)", async () => {
+  test("resolves unknown responses to null (fail-safe)", async () => {
     mockGetRequest.mockResolvedValue({ data: {} });
     const { tour } = makeTour();
 
@@ -134,7 +134,7 @@ describe("useGuidedTour — fetchTourStatus", () => {
     expect(tour.tourStatus.value).toBeNull();
   });
 
-  it("resolves API errors to null", async () => {
+  test("resolves API errors to null", async () => {
     mockGetRequest.mockRejectedValue(new Error("network"));
     const { tour } = makeTour();
 
@@ -145,7 +145,7 @@ describe("useGuidedTour — fetchTourStatus", () => {
 });
 
 describe("useGuidedTour — maybeAutoStartTour", () => {
-  it("auto-starts the tour after the delay when status is never", async () => {
+  test("auto-starts the tour after the delay when status is never", async () => {
     jest.useFakeTimers();
     mockGetRequest.mockResolvedValue({ data: { status: "never" } });
     mountTourTargets();
@@ -162,7 +162,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
     jest.useRealTimers();
   });
 
-  it("does nothing when status is recent", async () => {
+  test("does nothing when status is recent", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -173,7 +173,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
     expect(mockDriverInstance.drive).not.toHaveBeenCalled();
   });
 
-  it("does nothing when the status is unknown (fail-safe)", async () => {
+  test("does nothing when the status is unknown (fail-safe)", async () => {
     mockGetRequest.mockResolvedValue({ data: {} });
     mountTourTargets();
     const { tour } = makeTour();
@@ -184,7 +184,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
     expect(mockDriverInstance.drive).not.toHaveBeenCalled();
   });
 
-  it("offers the tour and starts it on confirm when status is stale", async () => {
+  test("offers the tour and starts it on confirm when status is stale", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "stale" } });
     mockShowTourOfferAlert.mockResolvedValue(true);
     mountTourTargets();
@@ -198,7 +198,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
     expect(mockDriverInstance.drive).toHaveBeenCalledTimes(1);
   });
 
-  it("marks completion without starting when the stale offer is declined", async () => {
+  test("marks completion without starting when the stale offer is declined", async () => {
     mockGetRequest.mockResolvedValue({ data: { status: "stale" } });
     mockShowTourOfferAlert.mockResolvedValue(false);
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
@@ -215,7 +215,7 @@ describe("useGuidedTour — maybeAutoStartTour", () => {
 });
 
 describe("useGuidedTour — startTour", () => {
-  it("does not start when no content target is available", async () => {
+  test("does not start when no content target is available", async () => {
     // Client steps carry no tab metadata, so an empty DOM filters all
     // content out — the framing cards must never show alone.
     const { tour } = makeTour({ getRole: () => "client" });
@@ -226,7 +226,7 @@ describe("useGuidedTour — startTour", () => {
     expect(tour.isTourActive.value).toBe(false);
   });
 
-  it("frames the tour with a welcome card and a help-button finale", async () => {
+  test("frames the tour with a welcome card and a help-button finale", async () => {
     mountTourTargets();
     const { tour } = makeTour();
 
@@ -242,7 +242,7 @@ describe("useGuidedTour — startTour", () => {
     expect(config.steps[11].popover.doneBtnText).toBe("Entendido");
   });
 
-  it("drops desktop-only steps on mobile viewports but keeps the framing cards", async () => {
+  test("drops desktop-only steps on mobile viewports but keeps the framing cards", async () => {
     window.matchMedia = jest.fn().mockReturnValue({ matches: false });
     mountTourTargets();
     const { tour } = makeTour({ getRole: () => "client" });
@@ -256,7 +256,7 @@ describe("useGuidedTour — startTour", () => {
     expect(config.steps[4].data.kind).toBe("finale");
   });
 
-  it("shows literal per-content-step progress over content steps only", async () => {
+  test("shows literal per-content-step progress over content steps only", async () => {
     mountTourTargets();
     const { tour } = makeTour();
 
@@ -272,7 +272,7 @@ describe("useGuidedTour — startTour", () => {
     expect(config.steps[0].popover.showProgress).toBeUndefined();
   });
 
-  it("configures Spanish button texts and the branded overlay", async () => {
+  test("configures Spanish button texts and the branded overlay", async () => {
     mountTourTargets();
     const { tour } = makeTour();
 
@@ -290,7 +290,7 @@ describe("useGuidedTour — startTour", () => {
 });
 
 describe("useGuidedTour — popover decoration", () => {
-  it("labels every popover with the module eyebrow", async () => {
+  test("labels every popover with the module eyebrow", async () => {
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -305,7 +305,7 @@ describe("useGuidedTour — popover decoration", () => {
     expect(eyebrow.textContent).toBe(EYEBROW_LABEL);
   });
 
-  it("inserts an animated progress bar on content steps", async () => {
+  test("inserts an animated progress bar on content steps", async () => {
     mountTourTargets();
     const { tour } = makeTour();
     await tour.startTour();
@@ -322,7 +322,7 @@ describe("useGuidedTour — popover decoration", () => {
     expect(track.firstChild.style.width).toBe("10%");
   });
 
-  it("does not render a progress bar on the framing cards", async () => {
+  test("does not render a progress bar on the framing cards", async () => {
     // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
@@ -333,7 +333,7 @@ describe("useGuidedTour — popover decoration", () => {
     expect(popover.wrapper.querySelector(".gyj-tour-progress-track")).toBeNull();
   });
 
-  it("renders a circular icon on the framing cards", async () => {
+  test("renders a circular icon on the framing cards", async () => {
     // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
@@ -345,7 +345,7 @@ describe("useGuidedTour — popover decoration", () => {
     expect(popover.wrapper.firstChild.querySelector("svg")).not.toBeNull();
   });
 
-  it("shows the keyboard hint on the welcome card only on desktop", async () => {
+  test("shows the keyboard hint on the welcome card only on desktop", async () => {
     // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
@@ -362,7 +362,7 @@ describe("useGuidedTour — popover decoration", () => {
     expect(mobilePopover.wrapper.querySelector(".gyj-tour-kbd-hint")).toBeNull();
   });
 
-  it.each([
+  test.each([
     ["welcome", "Ahora no"],
     ["content", "Omitir guía"],
   ])("labels the skip button on %s steps as '%s'", async (kind, label) => {
@@ -380,7 +380,7 @@ describe("useGuidedTour — popover decoration", () => {
     );
   });
 
-  it("renders no skip button on the finale card", async () => {
+  test("renders no skip button on the finale card", async () => {
     // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     mountTourTargets();
     const { tour } = makeTour();
@@ -393,7 +393,7 @@ describe("useGuidedTour — popover decoration", () => {
 });
 
 describe("useGuidedTour — completion", () => {
-  it("marks completion exactly once when the tour is destroyed", async () => {
+  test("marks completion exactly once when the tour is destroyed", async () => {
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -407,7 +407,7 @@ describe("useGuidedTour — completion", () => {
     expect(tour.isTourActive.value).toBe(false);
   });
 
-  it("registers completion from the skip button without waiting for onDestroyed", async () => {
+  test("registers completion from the skip button without waiting for onDestroyed", async () => {
     // quality: allow-fragile-selector (asserts DOM the composable itself builds; gyj-tour-* classes are its public popover contract)
     // driver.js only fires onDestroyed after the first highlight
     // transition settles; an early skip must still POST completion.
@@ -431,7 +431,7 @@ describe("useGuidedTour — completion", () => {
     expect(mockCreateRequest).toHaveBeenCalledTimes(1);
   });
 
-  it("registers completion from the close (✕) button without confetti", async () => {
+  test("registers completion from the close (✕) button without confetti", async () => {
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -445,7 +445,7 @@ describe("useGuidedTour — completion", () => {
     expect(fireTourConfetti).not.toHaveBeenCalled();
   });
 
-  it("celebrates with confetti only on the real end of the tour", async () => {
+  test("celebrates with confetti only on the real end of the tour", async () => {
     mockCreateRequest.mockResolvedValue({ data: { status: "recent" } });
     mountTourTargets();
     const { tour } = makeTour();
@@ -466,7 +466,7 @@ describe("useGuidedTour — completion", () => {
 });
 
 describe("useGuidedTour — tab switching", () => {
-  it("switches to the destination tab before moving forward", async () => {
+  test("switches to the destination tab before moving forward", async () => {
     mountTourTargets();
     const { tour, setActiveTab } = makeTour();
     await tour.startTour();
@@ -485,7 +485,7 @@ describe("useGuidedTour — tab switching", () => {
     );
   });
 
-  it("moves back without switching when the previous step has no tab", async () => {
+  test("moves back without switching when the previous step has no tab", async () => {
     mountTourTargets();
     const { tour, setActiveTab } = makeTour();
     await tour.startTour();

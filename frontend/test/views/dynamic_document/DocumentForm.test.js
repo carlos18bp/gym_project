@@ -367,12 +367,19 @@ describe("DocumentForm.vue", () => {
   test("correction mode prefills a future signature due date", async () => {
     mockRoute.params = { mode: "correction", id: "1", title: "Correction Doc" };
     const { docStore, mockDoc } = setupStores(pinia);
+    // Freeze only the clock (not the timers the mount flushing relies on) so
+    // the component and the test agree on "today" regardless of the run date.
+    jest.useFakeTimers({
+      doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "queueMicrotask", "nextTick"],
+    });
+    jest.setSystemTime(new Date("2026-07-01T12:00:00Z"));
     const futureDate = new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0];
     docStore.fetchDocumentById.mockResolvedValue({ ...mockDoc, signature_due_date: futureDate });
 
     const wrapper = await mountComponent(pinia);
 
     expect(wrapper.find('[data-testid="correction-signature-due-date"]').element.value).toBe(futureDate);
+    jest.useRealTimers();
   });
 
   test("correction mode leaves the due date empty when the stored date is past", async () => {

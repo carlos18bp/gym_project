@@ -11,7 +11,7 @@ describe("showTourOfferAlert", () => {
     jest.clearAllMocks();
   });
 
-  it("opens a branded, Tailwind-styled confirmation modal", async () => {
+  test("opens a branded, Tailwind-styled confirmation modal", async () => {
     Swal.fire.mockResolvedValue({ isConfirmed: true });
 
     await showTourOfferAlert("¿Quieres ver la guía?");
@@ -27,13 +27,13 @@ describe("showTourOfferAlert", () => {
     );
   });
 
-  it("resolves true when the user accepts", async () => {
+  test("resolves true when the user accepts", async () => {
     Swal.fire.mockResolvedValue({ isConfirmed: true });
 
     await expect(showTourOfferAlert("mensaje")).resolves.toBe(true);
   });
 
-  it("resolves false when the user declines", async () => {
+  test("resolves false when the user declines", async () => {
     Swal.fire.mockResolvedValue({ isConfirmed: false });
 
     await expect(showTourOfferAlert("mensaje")).resolves.toBe(false);
