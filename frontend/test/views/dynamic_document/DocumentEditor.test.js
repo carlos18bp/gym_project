@@ -859,4 +859,99 @@ describe("views/dynamic_document/DocumentEditor.vue — handlers profundos", () 
 
     expect(span.getAttribute("contenteditable")).toBe("false");
   });
+
+  describe("ramas residuales de guardado", () => {
+    test("template copy coerces a string user id into a numeric assigned_to", async () => {
+      mockRoute.path = "/dynamic_document_dashboard/client/editor/edit/7";
+      const template = {
+        id: 7,
+        title: "Plantilla",
+        content: "<p>Hola {{Nombre}}</p>",
+        state: "Published",
+        assigned_to: null,
+        variables: [{ name_en: "Nombre", name_es: "Nombre ES", field_type: "input", value: "Ana" }],
+        tags: [],
+      };
+      const { docStore, userStore } = setupStores({ role: "client", document: template });
+      userStore.currentUser.id = "10";
+      const wrapper = await mountEditor(pinia);
+
+      const { editor, buttons } = buildFakeEditor();
+      editorProps(wrapper).init.setup(editor);
+      await buttons.save.onAction();
+      await flushPromises();
+
+      expect(docStore.createDocument.mock.calls[0][0].assigned_to).toBe(10);
+    });
+
+    test("template copy without a returned id surfaces a creation error", async () => {
+      mockRoute.path = "/dynamic_document_dashboard/client/editor/edit/7";
+      const template = {
+        id: 7,
+        title: "Plantilla",
+        content: "<p>Hola {{Nombre}}</p>",
+        state: "Published",
+        assigned_to: null,
+        variables: [{ name_en: "Nombre", name_es: "Nombre ES", field_type: "input", value: "Ana" }],
+        tags: [],
+      };
+      const { docStore } = setupStores({ role: "client", document: template });
+      docStore.createDocument.mockResolvedValue({});
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      const wrapper = await mountEditor(pinia);
+
+      const { editor, buttons } = buildFakeEditor();
+      editorProps(wrapper).init.setup(editor);
+      await buttons.save.onAction();
+      await flushPromises();
+
+      expect(mockShowNotification).toHaveBeenCalledWith(
+        "Error: No se pudo crear el documento.",
+        "error"
+      );
+      errorSpy.mockRestore();
+    });
+
+    test("client save without a selected document reports an error", async () => {
+      mockRoute.path = "/dynamic_document_dashboard/client/editor/edit/7";
+      const { docStore } = setupStores({ role: "client" });
+      const wrapper = await mountEditor(pinia);
+      docStore.selectedDocument = null;
+
+      const { editor, buttons } = buildFakeEditor();
+      editorProps(wrapper).init.setup(editor);
+      await buttons.save.onAction();
+      await flushPromises();
+
+      expect(mockShowNotification).toHaveBeenCalledWith(
+        "Error: No se encontró el documento para guardar.",
+        "error"
+      );
+      expect(docStore.createDocument).not.toHaveBeenCalled();
+      expect(docStore.updateDocument).not.toHaveBeenCalled();
+    });
+
+    test("creating a draft from scratch syncs the extracted variables", async () => {
+      mockRoute = {
+        params: { title: "Nuevo" },
+        path: "/dynamic_document_dashboard/lawyer/editor/create/Nuevo",
+      };
+      const { docStore } = setupStores({ role: "lawyer" });
+      const wrapper = await mountEditor(pinia);
+      docStore.selectedDocument = null;
+      await wrapper
+        .findComponent({ name: "Editor" })
+        .vm.$emit("update:modelValue", "<p>Draft {{Cliente}}</p>");
+
+      const { editor, buttons } = buildFakeEditor();
+      editorProps(wrapper).init.setup(editor);
+      await buttons.save.onAction();
+      await flushPromises();
+
+      const payload = docStore.createDocument.mock.calls[0][0];
+      expect(payload.state).toBe("Draft");
+      expect(payload.variables.map((v) => v.name_en)).toEqual(["Cliente"]);
+      expect(localStorage.getItem("lastUpdatedDocumentId")).toBe("99");
+    });
+  });
 });
