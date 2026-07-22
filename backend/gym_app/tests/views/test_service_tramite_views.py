@@ -174,12 +174,9 @@ def _mock_pdf_and_notify(monkeypatch):
     monkeypatch.setattr("gym_app.views.service_tramite.notify_service_request_status_change", lambda *_, **__: None)
 
 
-@pytest.mark.django_db
-def test_admin_can_create_service_with_nested_stages(api_client, admin_user):
-    """Admin creates a service with stages and fields via the admin endpoint."""
-    api_client.force_authenticate(user=admin_user)
-
-    payload = {
+def build_nested_service_create_payload():
+    """Build the nested create payload (service → stage → field) for admin create tests."""
+    return {
         "name": "Nuevo Servicio",
         "short_title": "Nuevo",
         "slug": "nuevo-servicio",
@@ -205,6 +202,45 @@ def test_admin_can_create_service_with_nested_stages(api_client, admin_user):
             }
         ],
     }
+
+
+def build_service_update_payload(service, stage, field):
+    """Build the nested update payload that renames the given stage and field."""
+    return {
+        "name": "Servicio Actualizado",
+        "short_title": "Actualizado",
+        "slug": service.slug,
+        "description": "Descripcion actualizada",
+        "is_active": True,
+        "is_featured": True,
+        "featured_order": 1,
+        "stages": [
+            {
+                "id": stage.id,
+                "title": "Etapa Renombrada",
+                "order": 1,
+                "is_active": True,
+                "fields": [
+                    {
+                        "id": field.id,
+                        "key": field.key,
+                        "label": "Nombre Actualizado",
+                        "field_type": "input",
+                        "is_required": True,
+                        "order": 1,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_admin_can_create_service_with_nested_stages(api_client, admin_user):
+    """Admin creates a service with stages and fields via the admin endpoint."""
+    api_client.force_authenticate(user=admin_user)
+
+    payload = build_nested_service_create_payload()
 
     response = api_client.post(
         reverse("services-admin-create"),
@@ -541,33 +577,7 @@ def test_admin_can_update_service_with_upsert_stages(api_client, admin_user, sam
     stage = sample_service.stages.first()
     field = stage.fields.first()
 
-    payload = {
-        "name": "Servicio Actualizado",
-        "short_title": "Actualizado",
-        "slug": sample_service.slug,
-        "description": "Descripcion actualizada",
-        "is_active": True,
-        "is_featured": True,
-        "featured_order": 1,
-        "stages": [
-            {
-                "id": stage.id,
-                "title": "Etapa Renombrada",
-                "order": 1,
-                "is_active": True,
-                "fields": [
-                    {
-                        "id": field.id,
-                        "key": field.key,
-                        "label": "Nombre Actualizado",
-                        "field_type": "input",
-                        "is_required": True,
-                        "order": 1,
-                    }
-                ],
-            }
-        ],
-    }
+    payload = build_service_update_payload(sample_service, stage, field)
 
     response = api_client.put(
         reverse("services-admin-update", kwargs={"service_id": sample_service.id}),

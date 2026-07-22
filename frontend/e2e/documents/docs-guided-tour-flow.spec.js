@@ -153,7 +153,9 @@ test(
     await expect(
       page.locator('[data-testid="lawyer-tab-legal-documents"]'),
     ).toBeVisible({ timeout: 15_000 });
-    // Give the auto-start window time to (not) fire
+    // Give the auto-start window time to (not) fire — a bounded wait is the
+    // only way to assert non-occurrence. quality: disable wait_for_timeout (bounded window is the only way to assert the tour does NOT auto-start)
+    // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(1500);
     await expect(page.locator(TOUR_POPOVER)).toHaveCount(0);
     // No attention ping when the guide was completed recently
