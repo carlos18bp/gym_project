@@ -19,37 +19,35 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-07-16 post quality-initiative, + Guided Tour deltas)
-### Codebase Metrics (verified 2026-07-04; updated 2026-07-07 with Guided Tour + Contract Execution)
+### Codebase Metrics (verified 2026-07-22 — full recount; previous table had duplicated rows from a merge)
 
 | Metric | Count |
 |--------|-------|
 | Backend model files | 15 |
 | Backend model classes | 56 (55 models.Model subclasses + User via AbstractUser; UserManager excluded) |
-| Backend view files | 31 |
+| Backend view files | 32 |
 | Backend serializer files | 13 |
-| Backend URL patterns | 196 |
-| Backend test files | 96 (3049 tests) |
+| Backend URL patterns | 205 |
+| Backend test files | 101 (3128 tests) |
 | Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 112 (117 → 111 after unused-component cleanup `9ec8737`, +1 `InfoTooltip`) |
-| Backend URL patterns | 201 |
-| Backend test files | 96 |
-| Backend Huey periodic tasks | 11 |
-| Frontend Vue components | 120 |
-| Frontend view pages | 44 |
-| Frontend Pinia store files | 45 |
+| Frontend Vue components | 115 |
+| Frontend view pages | 45 |
+| Frontend Pinia store files | 46 |
 | Frontend composables | 15 |
-| Frontend unit test files | 197 |
-| Frontend E2E spec files | 199 |
-| Frontend E2E flows (flow-definitions.json) | 151 — **151/151 covered (100%)** |
-| Frontend unit test files | 183 |
-| Frontend E2E spec files | 197 |
-| Frontend E2E flows (flow-definitions.json) | 152 |
+| Frontend unit test files | 207 |
+| Frontend E2E spec files | 201 |
+| Frontend E2E flows (flow-definitions.json) | 153 (v1.11.0) |
 
 ---
 
 ## 2. Recent Focus Areas
 
+- **Release close-out pipeline (2026-07-22)** — 5-phase skill pipeline over `admin-data-reassignment` on `release-august-2026-c-v2` (methodology refresh → feature checklist + coverage → E2E audit → fake-data refresh → staging deploy):
+  - **Memory Bank refreshed**: counts recounted across architecture/technical/PRD/tasks_plan (`201a901`); PRD 4.1 now lists Outlook OAuth, archiving and the reassignment module.
+  - **Coverage closed**: backend `views/admin_reassignment.py` 91→100% (+10 edge-case tests); `DataReassignment.vue` 100% stmts+branches; SlideBar admin nav and ProcessForm `filteredLawyers` (incl. archived prefill) asserted (`8ef0f24`). Quality gate: 0 findings on the 6 touched test files (34 pre-existing docstring errors cleared, broad `pytest.raises` narrowed, asserts ≤7).
+  - **Fake data fix**: template-derived docs in `create_dynamic_documents` now set `managed_by` (`10983cc`) — the strict `managed_by_id` lawyer scope left them orphaned. Post-reseed verified: 1210 docs, 0 with `managed_by` NULL, archived-lawyer seed intact.
+  - **Bug found by new E2E (RESOLVED-020)**: admin dashboard rendered blank — FeaturedServicesGrid "Ver todos" linked dead route name `services_list`; fixed to `services_hub` (`984f07b`). E2E flow now has 5 tests (quick-action entry + execute-error added, `55d0df2`).
+  - **Deployed to staging**: post-deploy-check PASS=16/0 FAIL, health 200 (app/db/redis ok) @ `55d0df2`.
 - **Phased quality initiative (2026-07-16)** — 20+ commits on `release-august-2026-c`:
   - **Memory Bank refreshed** (drift 04-07 → 16-07 closed) + `USER_FLOW_MAP` matrix resynced.
   - **Backend coverage** (fresh baseline 96.22%): 10 batches — `signature_notification_service` 82→98%, `views/notification` →100%, `utils/documents` letterhead/snapshot edges, `views/secop` →98%, `process_alert_tasks` →99%, `service_tramite` serializer →95%, process alert validation/badge, prefetched permission chain, formalize/correct race 409s + audit PDF variants, Word-export table guards. Migrations excluded via `.coveragerc`.
