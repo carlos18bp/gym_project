@@ -147,6 +147,8 @@ describe("DocumentCard.vue", () => {
           HierarchicalMenu: { template: "<div />" },
           LetterheadModal: { template: "<div />" },
           DocumentRelationshipsModal: { template: "<div />" },
+          PaymentRecordsModal: { template: "<div />" },
+          UploadPaymentRecordModal: { template: "<div />" },
         },
       },
     });
@@ -223,6 +225,8 @@ describe("DocumentCard.vue", () => {
           HierarchicalMenu: { template: "<div />" },
           LetterheadModal: { template: "<div />" },
           DocumentRelationshipsModal: { template: "<div />" },
+          PaymentRecordsModal: { template: "<div />" },
+          UploadPaymentRecordModal: { template: "<div />" },
         },
       },
     });
