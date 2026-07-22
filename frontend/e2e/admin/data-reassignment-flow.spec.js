@@ -26,8 +26,13 @@ const SUMMARY = {
   counts: { processes: 1, eligible_documents: 1, ineligible_documents: 1 },
 };
 
-async function loginAsAdmin(page) {
-  await installAdminReassignmentMocks(page, { adminId: ADMIN_ID, lawyers: LAWYERS, summary: SUMMARY });
+async function loginAsAdmin(page, mockOverrides = {}) {
+  await installAdminReassignmentMocks(page, {
+    adminId: ADMIN_ID,
+    lawyers: LAWYERS,
+    summary: SUMMARY,
+    ...mockOverrides,
+  });
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: {
@@ -99,6 +104,45 @@ test(
     const toast = page.locator('[class~="swal2-popup"]');
     await expect(toast).toBeVisible({ timeout: 15_000 });
     await expect(toast).toContainText("restaurado");
+  },
+);
+
+test(
+  "admin reaches the module from the dashboard quick action",
+  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin"] },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/dashboard");
+
+    await page.locator('[data-testid="quick-action-reassign"]').click();
+
+    await expect(page).toHaveURL(/\/data_reassignment/, { timeout: 15_000 });
+    await expect(page.locator('[data-testid="source-lawyer-select"]')).toBeVisible();
+  },
+);
+
+test(
+  "execute failure surfaces the backend reason",
+  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin"] },
+  async ({ page }) => {
+    await loginAsAdmin(page, {
+      executeError: { status: 400, detail: "El abogado destino está archivado." },
+    });
+    await page.goto("/data_reassignment");
+
+    await page.locator('[data-testid="source-lawyer-select"]').selectOption("1");
+    await expect(page.locator('[data-testid="documents-card"]')).toBeVisible({ timeout: 15_000 });
+    await page.locator('[data-testid="target-lawyer-select"]').selectOption("2");
+    await page.locator('[data-testid="select-all-documents"]').check();
+
+    await page.locator('[data-testid="reassign-button"]').click();
+    const confirmButton = page.getByRole("button", { name: "Confirmar" });
+    await expect(confirmButton).toBeVisible();
+    await confirmButton.click();
+
+    const toast = page.locator('[class~="swal2-popup"]');
+    await expect(toast).toBeVisible({ timeout: 15_000 });
+    await expect(toast).toContainText("El abogado destino está archivado.");
   },
 );
 
