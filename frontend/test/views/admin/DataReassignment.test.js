@@ -109,6 +109,7 @@ describe("DataReassignment.vue", () => {
 
     await wrapper.find("[data-testid='select-all-documents']").setValue(true);
     await wrapper.find("[data-testid='select-all-processes']").setValue(true);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeUndefined();
 
@@ -196,6 +197,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='target-lawyer-select']").setValue("2");
 
     await wrapper.find("[data-testid='process-checkbox-10']").setValue(true);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeUndefined();
   });
@@ -208,6 +210,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='process-checkbox-10']").setValue(true);
 
     await wrapper.find("[data-testid='process-checkbox-10']").setValue(false);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
   });
@@ -220,6 +223,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='select-all-processes']").setValue(true);
 
     await wrapper.find("[data-testid='select-all-processes']").setValue(false);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
   });
@@ -231,6 +235,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='target-lawyer-select']").setValue("2");
 
     await wrapper.find("[data-testid='document-checkbox-20']").setValue(true);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeUndefined();
   });
@@ -243,6 +248,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='document-checkbox-20']").setValue(true);
 
     await wrapper.find("[data-testid='document-checkbox-20']").setValue(false);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
   });
@@ -255,6 +261,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='select-all-documents']").setValue(true);
 
     await wrapper.find("[data-testid='select-all-documents']").setValue(false);
+    await flushPromises();
 
     expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
   });
