@@ -3,8 +3,8 @@
 from datetime import timedelta
 
 import pytest
-from freezegun import freeze_time
 from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
 
 from gym_app.models import TourProgress
