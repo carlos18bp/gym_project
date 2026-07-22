@@ -134,3 +134,56 @@ test("lawyer can search processes by plaintiff name", { tag: ['@flow:process-det
   await expect(rowCarlos).toBeVisible();
   await expect(rowMaria).toBeHidden({ timeout: 5_000 });
 });
+
+test("lawyer opens the participants modal from the process detail", { tag: ['@flow:process-users-modal', '@module:processes', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+  const lawyerId = 7000;
+  const client = {
+    id: 7001,
+    first_name: "Ana",
+    last_name: "García",
+    email: "ana@example.com",
+    role: "client",
+    photo_profile: "",
+  };
+  const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", isGymLawyer: true });
+
+  const processes = [
+    buildMockProcess({
+      id: 5001,
+      clients: [client],
+      lawyer: { id: lawyerId },
+      caseType: "Tutela",
+      subcase: "Derecho Salud",
+      ref: "RAD-5001",
+      authority: "Juzgado 1",
+      plaintiff: "Demandante A",
+      defendant: "Demandado A",
+      stages: [{ status: "Inicio" }],
+      progress: 40,
+    }),
+  ];
+
+  await installProcessApiMocks(page, {
+    userId: lawyerId,
+    role: "lawyer",
+    processes,
+    users: [lawyer, client],
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: lawyerId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/process_detail/5001");
+  await expect(page.getByRole("heading", { name: "Tutela" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Ver usuarios" }).click();
+
+  const modal = page.getByTestId("process-users-modal");
+  await expect(modal).toBeVisible();
+  await expect(modal.getByText("Usuarios asociados a este proceso")).toBeVisible();
+  await expect(modal.getByText("Ana García")).toBeVisible();
+
+  await page.keyboard.press("Escape");
+});
