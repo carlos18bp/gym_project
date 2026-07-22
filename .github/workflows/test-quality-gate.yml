@@ -12,7 +12,7 @@ on:
       - '.pre-commit-config.yaml'
       - '.github/workflows/test-quality-gate.yml'
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'release-*' ]
     paths:
       - 'backend/gym_app/tests/**'
       - 'frontend/test/**'
