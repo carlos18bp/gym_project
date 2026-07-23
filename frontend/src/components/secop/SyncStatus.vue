@@ -42,11 +42,17 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(["trigger-sync"]);
+
 const syncing = ref(false);
 
 function handleTriggerSync() {
   if (syncing.value) return;
   syncing.value = true;
+  // Ask the parent to POST secop/sync/trigger/. The backend schedules a Huey
+  // task and returns immediately, so there is no completion signal to await;
+  // the disabled window doubles as a cooldown against re-triggering the sync.
+  emit("trigger-sync");
   setTimeout(() => { syncing.value = false; }, 180000);
 }
 

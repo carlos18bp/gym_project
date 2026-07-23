@@ -33,7 +33,15 @@ test.describe("SECOP Admin Sync Flow", () => {
     await expect(syncBtn).toContainText("Sincronizar");
     await expect(syncBtn).toHaveAttribute("title", "Sincronizar ahora");
 
+    // Clicking fires the manual sync: the store POSTs secop/sync/trigger/,
+    // which schedules the background job on the backend.
+    const triggerRequest = page.waitForRequest(
+      (request) =>
+        request.url().includes("/api/secop/sync/trigger/") &&
+        request.method() === "POST"
+    );
     await syncBtn.click();
+    await triggerRequest;
 
     // Transition: the button locks itself and reports the sync in progress
     await expect(syncBtn).toBeDisabled();
