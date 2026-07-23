@@ -178,6 +178,34 @@ test.describe("ElectronicSignatureModal", { tag: ['@flow:sign-electronic-signatu
     ).toBeVisible({ timeout: 10_000 });
   });
 
+  test("clear button removes the uploaded signature image", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    const userId = 2009;
+
+    await openSignatureModal(page, { userId, hasSignature: false });
+
+    await page.getByRole("button", { name: "Subir imagen" }).click();
+
+    // quality: allow-fragile-selector (hidden file input scoped by accept attribute)
+    const fileInput = page.locator('input[type="file"][accept="image/png,image/jpeg"]');
+    await fileInput.setInputFiles({
+      name: "signature.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "base64"
+      ),
+    });
+
+    const preview = page.locator('img[alt="Firma"]');
+    await expect(preview).toBeVisible();
+
+    // Clear the preview by its accessible name — also guards the aria-label.
+    await page.getByRole("button", { name: "Quitar imagen de firma" }).click();
+
+    await expect(preview).toHaveCount(0);
+    await expect(page.getByText("Haz clic para subir una imagen")).toBeVisible();
+  });
+
   test("lawyer can close signature modal via close button", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 2005;
 
@@ -252,8 +280,9 @@ test.describe("ElectronicSignatureModal", { tag: ['@flow:sign-electronic-signatu
     // Save button should be enabled after drawing
     await expect(page.getByRole("button", { name: "Guardar" })).toBeEnabled();
 
-    // Click the canvas clear button
-    await page.getByTestId("draw-signature-clear").click();
+    // Click the canvas clear button by its accessible name — this also guards
+    // the aria-label, so removing it turns the test red.
+    await page.getByRole("button", { name: "Borrar firma dibujada" }).click();
 
     // After clearing, save button should be disabled again
     await expect(page.getByRole("button", { name: "Guardar" })).toBeDisabled({ timeout: 5_000 });
