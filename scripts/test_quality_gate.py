@@ -21,6 +21,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import re
 import sys
@@ -44,6 +45,7 @@ from quality import (
     SuiteResult,
     DEFAULT_CONFIG,
     Patterns,
+    load_project_config,
 )
 from quality.backend_analyzer import PythonAnalyzer
 from quality.external_lint import ExternalLintRunResult, ExternalLintRunner
@@ -59,6 +61,13 @@ ALLOW_MARKER_RULE_IDS: dict[str, str] = {
     "allow-fragile-selector": "fragile_locator",
     "allow-serial": "serial_dependency",
     "allow-multi-render": "multi_render",
+    # Junk-test rules. Each opt-out must carry a reason in parentheses; the
+    # report lists active exceptions so they stay visible instead of quietly
+    # becoming the norm.
+    "allow-no-interaction": "no_user_interaction",
+    "allow-deep-link": "deep_link_entry",
+    "allow-render-only": "no_data_assertion",
+    "allow-duplicate": "duplicate_coverage",
 }
 
 ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -71,13 +80,26 @@ RELAXED_CROSS_ENGINE_RULE_IDS: frozenset[str] = frozenset({"sleep_call", "wait_f
 
 
 def build_config(args: argparse.Namespace) -> Config:
-    """Build configuration from CLI arguments."""
-    return Config(
-        backend_app_name=args.backend_app,
-        max_test_lines=args.max_test_lines,
-        max_assertions_per_test=args.max_assertions,
-        max_patches_per_test=args.max_patches,
-    )
+    """
+    Build configuration for the run.
+
+    Precedence: explicit CLI flag > `.testquality.yml` at the repo root >
+    canonical defaults shipped with the quality core. CLI flags default to None
+    so that "not passed" is distinguishable from "passed the default value" —
+    otherwise every run would silently clobber the project's declared config.
+    """
+    config = load_project_config(args.repo_root)
+
+    overrides = {
+        "backend_app_name": args.backend_app,
+        "frontend_unit_dir": args.frontend_unit_dir,
+        "max_test_lines": args.max_test_lines,
+        "max_assertions_per_test": args.max_assertions,
+        "max_patches_per_test": args.max_patches,
+    }
+    overrides = {key: value for key, value in overrides.items() if value is not None}
+
+    return dataclasses.replace(config, **overrides) if overrides else config
 
 
 class QualityReport:
@@ -143,11 +165,19 @@ class QualityReport:
         normalized = file_path.replace("\\", "/")
         if normalized.startswith("backend/"):
             return "backend"
-        if normalized.startswith("frontend/test/"):
+        if any(normalized.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
             return "frontend_unit"
         if normalized.startswith("frontend/e2e/"):
             return "frontend_e2e"
         return None
+
+    def _frontend_unit_prefixes(self) -> tuple[str, ...]:
+        """Return accepted frontend-unit path prefixes (configured + legacy)."""
+        configured = f"frontend/{self.config.frontend_unit_dir.strip('/').replace('\\\\', '/')}/"
+        prefixes = [configured]
+        if configured != "frontend/test/":
+            prefixes.append("frontend/test/")
+        return tuple(dict.fromkeys(prefixes))
 
     def _collect_exception_markers(
         self,
@@ -545,7 +575,7 @@ class QualityReport:
         if normalized_file.startswith("frontend/e2e/"):
             self._find_or_create_file_result(e2e, normalized_file, "e2e").issues.append(issue)
             return
-        if normalized_file.startswith("frontend/test/"):
+        if any(normalized_file.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
             self._find_or_create_file_result(unit, normalized_file, "unit").issues.append(issue)
             return
 
@@ -754,6 +784,9 @@ class QualityReport:
         
         # Analyze frontend unit tests
         if self.suite is None or self.suite == "frontend-unit":
+            if self.verbose:
+                print(f"\n{Colors.BLUE}[Frontend Unit Tests]{Colors.RESET}")
+            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_unit_analyzer import FrontendUnitAnalyzer
@@ -773,6 +806,9 @@ class QualityReport:
         
         # Analyze frontend E2E tests
         if self.suite is None or self.suite == "frontend-e2e":
+            if self.verbose:
+                print(f"\n{Colors.BLUE}[Frontend E2E Tests]{Colors.RESET}")
+            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_e2e_analyzer import FrontendE2EAnalyzer
@@ -820,27 +856,7 @@ class QualityReport:
         self._dedupe_issues(backend, unit, e2e)
         self._apply_suite_findings(backend, unit, e2e, semantic_suppressed, active_exceptions)
         active_exceptions_summary = self._active_exceptions_summary(active_exceptions, invalid_markers)
-
-        # Print accurate per-suite summaries after all post-processing
-        if self.verbose:
-            for label, suite_result in (
-                ("Frontend Unit Tests", unit),
-                ("Frontend E2E Tests", e2e),
-            ):
-                if not suite_result.files:
-                    continue
-                kind = "unit" if "Unit" in label else "E2E"
-                print(f"\n{Colors.BLUE}[{label}]{Colors.RESET}")
-                print(f"  Found {suite_result.file_count} {kind} test files")
-                for fr in suite_result.files:
-                    if fr.issues:
-                        print(f"    {Path(fr.file).name}: {fr.issue_count} issues")
-                print(
-                    f"  Total: {suite_result.test_count} tests, "
-                    f"{suite_result.error_count} errors, "
-                    f"{suite_result.warning_count} warnings"
-                )
-
+        
         # Build summary
         all_issues = backend.all_issues + unit.all_issues + e2e.all_issues
         
@@ -989,10 +1005,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report-path", type=Path,
                         default=Path("test-results/test-quality-report.json"),
                         help="JSON report output path")
-    parser.add_argument("--backend-app", default="gym_app",
-                        help="Django app name (default: gym_app)")
+    parser.add_argument("--backend-app", default=None,
+                        help="Django app name (overrides .testquality.yml)")
     parser.add_argument("--suite", choices=["backend", "frontend-unit", "frontend-e2e"],
                         help="Analyze specific suite only")
+    parser.add_argument("--frontend-unit-dir", default=None,
+                        help="Frontend unit test dir relative to frontend/ (overrides .testquality.yml)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Verbose output")
     parser.add_argument("--strict", action="store_true",
@@ -1034,7 +1052,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Include only this exact file path (repeatable). "
-            "Paths should be repo-relative (e.g., backend/gym_app/tests/models/test_x.py)."
+            "Paths should be repo-relative (e.g., backend/core_app/tests/models/test_x.py)."
         ),
     )
     parser.add_argument(
@@ -1044,14 +1062,14 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Include files matching glob pattern (repeatable). "
-            "Example: 'backend/gym_app/tests/models/test_*.py'."
+            "Example: 'backend/core_app/tests/models/test_*.py'."
         ),
     )
     
     # Threshold overrides
-    parser.add_argument("--max-test-lines", type=int, default=50)
-    parser.add_argument("--max-assertions", type=int, default=7)
-    parser.add_argument("--max-patches", type=int, default=5)
+    parser.add_argument("--max-test-lines", type=int, default=None)
+    parser.add_argument("--max-assertions", type=int, default=None)
+    parser.add_argument("--max-patches", type=int, default=None)
     
     return parser.parse_args()
 

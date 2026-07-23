@@ -6,6 +6,7 @@ Analyzes Jest/Vue Test Utils test files using the Babel AST bridge.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Iterator
@@ -23,6 +24,13 @@ from .base import (
 )
 from .patterns import Patterns
 from .js_ast_bridge import JSASTBridge, JSFileResult, JSIssueInfo
+from .junk_detectors import (
+    analyze_unit_source,
+    collect_blocks,
+    detect_duplicates,
+    extract_test_blocks,
+    findings_to_issues,
+)
 
 
 # Map AST parser issue types to our categories
@@ -94,10 +102,16 @@ class FrontendUnitAnalyzer:
         for suffix in self.config.js_unit_suffixes:
             files.extend(test_root.rglob(f"*{suffix}"))
         
-        # Exclude E2E files if they somehow end up here
+        # Exclude E2E files and build artifacts if they somehow end up here
+        _EXCLUDED_DIRS = frozenset({
+            "node_modules", "coverage", "coverage-e2e",
+            ".next", "dist", "build", "test-results",
+        })
         files = [
-            f for f in files 
-            if "e2e" not in str(f).lower() and "playwright" not in str(f).lower()
+            f for f in files
+            if "e2e" not in str(f).lower()
+            and "playwright" not in str(f).lower()
+            and not any(part in _EXCLUDED_DIRS for part in f.parts)
         ]
         
         files = sorted(files)
@@ -166,16 +180,16 @@ class FrontendUnitAnalyzer:
         issues = []
         rel_path = file_path.relative_to(self.repo_root)
         
-        # Unit tests should be in frontend/test/
-        expected_prefix = Path("frontend") / "test"
+        # Unit tests should be in configured frontend unit test directory.
+        expected_prefix = Path("frontend") / self.config.frontend_unit_dir
         if not str(rel_path).startswith(str(expected_prefix)):
             issues.append(Issue(
                 file=str(rel_path),
-                message=f"Unit test file should be in frontend/test/",
+                message=f"Unit test file should be in {expected_prefix.as_posix()}/",
                 severity=Severity.WARNING,
                 category=IssueCategory.MISPLACED_FILE,
                 line=1,
-                suggestion=f"Move to frontend/test/ directory",
+                suggestion=f"Move to {expected_prefix.as_posix()}/ directory",
             ))
         
         return issues
@@ -214,6 +228,13 @@ class FrontendUnitAnalyzer:
         
         # Check file location
         issues.extend(self._check_file_location(file_path))
+
+        # Junk-test detectors, read from source so they survive a missing bridge
+        try:
+            source = file_path.read_text(encoding="utf-8", errors="replace")
+            issues.extend(findings_to_issues(analyze_unit_source(source, rel_path, file_path)))
+        except OSError:
+            pass
         
         # Build TestInfo list from parsed tests
         tests = [
@@ -240,6 +261,47 @@ class FrontendUnitAnalyzer:
             issues=issues,
         )
     
+    def _analyze_file_source_only(self, file_path: Path) -> FileResult:
+        """
+        Junk detectors alone, for when the AST bridge is unavailable.
+
+        Tests are enumerated from source so a degraded run does not report an
+        empty suite.
+        """
+        rel_path = str(file_path.relative_to(self.repo_root))
+        try:
+            source = file_path.read_text(encoding="utf-8", errors="replace")
+            issues = findings_to_issues(analyze_unit_source(source, rel_path, file_path))
+        except OSError:
+            source, issues = "", []
+
+        tests = [
+            TestInfo(
+                name=block.name,
+                lineno=block.start_line,
+                end_lineno=block.end_line,
+                num_lines=block.end_line - block.start_line + 1,
+                num_assertions=len(re.findall(r"\bexpect\s*\(", block.source)),
+                test_type="test",
+            )
+            for block in extract_test_blocks(source, rel_path)
+        ]
+
+        return FileResult(
+            file=rel_path, area="unit", location_ok=True, tests=tests, issues=issues,
+        )
+
+    def _attach_duplicate_issues(self, result: SuiteResult, files: list[Path]) -> None:
+        """Report duplicate coverage across the whole unit suite."""
+        findings = detect_duplicates(collect_blocks(files, self.repo_root))
+        if not findings:
+            return
+        by_file = {fr.file.replace("\\", "/"): fr for fr in result.files}
+        for issue in findings_to_issues(findings):
+            target = by_file.get(issue.file.replace("\\", "/"))
+            if target is not None:
+                target.issues.append(issue)
+
     def analyze_suite(
         self,
         test_root: Path,
@@ -247,8 +309,11 @@ class FrontendUnitAnalyzer:
     ) -> SuiteResult:
         """Analyze all unit test files."""
         result = SuiteResult(suite_name="frontend_unit")
-        
-        if not self.bridge.is_available():
+        bridge_ok = self.bridge.is_available()
+
+        if not bridge_ok:
+            # Reported as an error so a run without the bridge is never mistaken
+            # for a clean one, but the source-based junk detectors still run.
             error_file = str((Path("frontend") / self.config.frontend_unit_dir).as_posix())
             result.add_file(FileResult(
                 file=error_file,
@@ -257,7 +322,10 @@ class FrontendUnitAnalyzer:
                 tests=[],
                 issues=[Issue(
                     file=error_file,
-                    message="AST bridge not available - frontend unit tests were not analyzed",
+                    message=(
+                        "AST bridge not available - AST-based unit rules were NOT run "
+                        f"(junk detectors still applied): {self.bridge.unavailable_reason()}"
+                    ),
                     severity=Severity.ERROR,
                     category=IssueCategory.PARSE_ERROR,
                     line=1,
@@ -265,13 +333,28 @@ class FrontendUnitAnalyzer:
                 )],
             ))
             if self.verbose:
-                print(f"  {Colors.YELLOW}AST bridge not available{Colors.RESET}")
-            return result
-        
+                print(f"  {Colors.YELLOW}AST bridge not available - source-only pass{Colors.RESET}")
+
         files = self.discover_files(test_root, file_matcher=file_matcher)
-        
+
+        if self.verbose:
+            print(f"  Found {len(files)} unit test files")
+
         for file_path in files:
-            file_result = self.analyze_file(file_path)
+            file_result = (
+                self.analyze_file(file_path) if bridge_ok
+                else self._analyze_file_source_only(file_path)
+            )
             result.add_file(file_result)
+
+            if self.verbose and file_result.issues:
+                print(f"    {file_path.name}: {len(file_result.issues)} issues")
+
+        self._attach_duplicate_issues(result, files)
+        
+        if self.verbose:
+            err = sum(1 for i in result.all_issues if i.severity == Severity.ERROR)
+            warn = sum(1 for i in result.all_issues if i.severity == Severity.WARNING)
+            print(f"  Total: {result.test_count} tests, {err} errors, {warn} warnings")
         
         return result
