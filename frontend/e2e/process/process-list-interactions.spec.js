@@ -164,12 +164,13 @@ test.describe("ProcessList search filtering", { tag: ['@flow:process-list-view',
     await expect(page.getByText("Pedro Martín")).toBeVisible();
 
     // Type in search field
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await searchInput.fill("Carlos");
-      // Wait for filtering
-      await expect(page.getByText("Carlos Gómez")).toBeVisible({ timeout: 5_000 });
-    }
+    const searchInput = page.getByPlaceholder("Buscar procesos...");
+    await expect(searchInput).toBeVisible({ timeout: 5_000 });
+    await searchInput.fill("Carlos");
+
+    // Filtering keeps the match and removes the non-matching process
+    await expect(page.getByText("Carlos Gómez")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Pedro Martín")).toHaveCount(0);
   });
 });
 

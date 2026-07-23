@@ -168,17 +168,21 @@ export async function installOrganizationsDashboardApiMocks(
 ) {
   const me = buildMockUser({ id: userId, role });
 
+  // When the client under test IS the authenticated user (client-role
+  // scenarios), reuse `me` so users/ has no duplicated ids.
   const clientUser = clientUserId
-    ? buildMockUser({
-        id: clientUserId,
-        role: "client",
-        firstName: "E2E",
-        lastName: "Client",
-        email: clientUserEmail,
-      })
+    ? clientUserId === userId
+      ? me
+      : buildMockUser({
+          id: clientUserId,
+          role: "client",
+          firstName: "E2E",
+          lastName: "Client",
+          email: clientUserEmail,
+        })
     : null;
 
-  const knownUsers = clientUser ? [me, clientUser] : [me];
+  const knownUsers = clientUser && clientUser !== me ? [me, clientUser] : [me];
 
   const organization = buildMockOrganization({
     id: 1,

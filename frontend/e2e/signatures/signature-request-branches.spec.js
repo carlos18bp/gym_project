@@ -104,7 +104,9 @@ test("client sees pending documents assigned to them for signing", { tag: ['@flo
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Doc Para Firma Cliente")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Pendiente", { exact: true })).toBeVisible();
 });

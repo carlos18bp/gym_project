@@ -61,9 +61,11 @@ test("client sees documents awaiting their signature", { tag: ['@flow:sign-pendi
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Doc Para Firmar Cliente")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
 test("empty Dcs. Por Firmar tab shows empty state", { tag: ['@flow:sign-pending-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -82,7 +84,8 @@ test("empty Dcs. Por Firmar tab shows empty state", { tag: ['@flow:sign-pending-
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
-  // Should show empty or no pending documents
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+
+  // No PendingSignatures documents exist — the tab shows its empty state
+  await expect(page.getByText("No tienes documentos pendientes por firmar")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Doc Sin Firma")).toBeHidden();
 });

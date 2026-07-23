@@ -45,7 +45,7 @@ test("client sees their processes in process list", { tag: ['@flow:process-reque
   await expect(page.getByText("RAD-INFO-001").or(page.getByText("Cliente E2E"))).toBeVisible({ timeout: 10_000 });
 });
 
-test("client process list shows Nueva Solicitud button for requesting information", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client process list shows Solicitar Información button for requesting information", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const clientId = 9002;
   const lawyerId = 9003;
 
@@ -79,9 +79,11 @@ test("client process list shows Nueva Solicitud button for requesting informatio
   await page.goto("/process_list");
   await expect(page).toHaveURL(/\/process_list/, { timeout: 15_000 });
 
-  // Client should see "Nueva Solicitud" button to request information
-  const newRequestBtn = page.getByRole("link", { name: /Nueva Solicitud/i });
-  if (await newRequestBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await expect(newRequestBtn).toBeVisible();
-  }
+  // Clients see the "Solicitar Información" button, which navigates to the
+  // legal request creation form
+  const requestInfoBtn = page.getByRole("button", { name: "Solicitar Información" });
+  await expect(requestInfoBtn).toBeVisible({ timeout: 10_000 });
+
+  await requestInfoBtn.click();
+  await expect(page).toHaveURL(/\/legal_request_create/, { timeout: 10_000 });
 });

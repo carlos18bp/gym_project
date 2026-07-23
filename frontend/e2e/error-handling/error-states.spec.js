@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -215,52 +216,55 @@ test.describe("error handling: network errors", { tag: ['@flow:misc-error-handli
 
 test.describe("error handling: form validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
   test("form shows validation errors for invalid input", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/sign-in");
-    await page.waitForLoadState("networkidle");
+    await mockApi(page, async ({ apiPath }) => {
+      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+      if (apiPath === "validate_token/") return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
+      return null;
+    });
 
-    // Try to submit empty form
-    const submitBtn = page.getByRole("button", { name: /ingresar|sign in|login/i }).first();
-    if (await submitBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await submitBtn.click();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-    // Form should show validation errors or remain on page
-    await expect(page.locator("body")).toBeVisible();
+    // Submitting the empty form surfaces the client-side validation error
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Email is required", { timeout: 10_000 });
+
+    // The user stays on the sign-in page
+    await expect(page).toHaveURL(/\/sign_in/);
   });
 
   test("form shows server validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await mockApi(page, async ({ route, apiPath }) => {
       if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+      if (apiPath === "google-captcha/verify/") return { status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) };
+      if (apiPath === "validate_token/") return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
 
-      // Return validation error for login
-      if (apiPath === "token/" && route.request().method() === "POST") {
-        return { status: 400, contentType: "application/json", body: JSON.stringify({ detail: "Invalid credentials" }) };
+      // Reject the credentials at the API boundary
+      if (apiPath === "sign_in/" && route.request().method() === "POST") {
+        return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "Credenciales inválidas" }) };
       }
 
       return null;
     });
 
-    await page.goto("/sign-in");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-    // Fill in invalid credentials
-    const emailInput = page.getByPlaceholder(/email|correo/i).first();
-    const passInput = page.getByPlaceholder(/contraseña|password/i).first();
-    
-    if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await emailInput.fill("invalid@example.com");
-      await passInput.fill("wrongpassword");
-      
-      const submitBtn = page.getByRole("button", { name: /ingresar|sign in|login/i }).first();
-      if (await submitBtn.isVisible()) {
-        await submitBtn.click();
-        await page.waitForLoadState('networkidle');
-      }
-    }
+    // Fill in invalid credentials and submit
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="email"]').fill("invalid@example.com");
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="password"]').fill("wrongpassword");
+    await bypassCaptcha(page);
 
-    // Should show error message or remain on form
-    await expect(page.locator("body")).toBeVisible();
+    const submitBtn = page.getByRole("button", { name: "Iniciar sesión" });
+    await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+    await submitBtn.click();
+
+    // The 401 surfaces the invalid-credentials notification and the user
+    // remains on the sign-in page
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Credenciales inválidas", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/sign_in/);
   });
 });
 

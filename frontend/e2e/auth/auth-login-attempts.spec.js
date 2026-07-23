@@ -52,20 +52,14 @@ async function attemptLogin(page) {
   await loginBtn.click();
 }
 
-async function dismissAlertIfVisible(page) {
-  // Wait for the SweetAlert to appear (API call may still be in flight), then dismiss it
-  try {
-    await page.locator('[class~="swal2-popup"]').waitFor({ state: "visible", timeout: 5_000 });
-    const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
-    if (await confirmButton.isVisible().catch(() => false)) {
-      await confirmButton.click();
-    }
-    // Wait for the modal to close before continuing
-    await page.locator('[class~="swal2-popup"]').waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
-  } catch {
-    // No alert appeared within timeout
-  }
-  if (page.isClosed()) return;
+async function dismissFailedAttemptAlert(page) {
+  // Every failed attempt surfaces a SweetAlert: either the invalid-credentials
+  // warning or the lockout warning (every 3rd try). Its absence is a bug.
+  const popup = page.locator('[class~="swal2-popup"]');
+  await expect(popup).toBeVisible({ timeout: 10_000 });
+  const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
+  await expect(confirmButton).toBeVisible();
+  await confirmButton.click();
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll(".swal2-container").forEach((el) => el.remove());
@@ -87,7 +81,7 @@ test("after 3 failed login attempts, user sees lockout timer", { tag: ['@flow:au
   // Attempt 3 failed logins
   for (let i = 0; i < 3; i++) {
     await attemptLogin(page);
-    await dismissAlertIfVisible(page);
+    await dismissFailedAttemptAlert(page);
     // eslint-disable-next-line playwright/no-wait-for-timeout
     await page.waitForTimeout(500);
   }
@@ -143,7 +137,7 @@ test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:a
 
   // One more failed attempt (6th total)
   await attemptLogin(page);
-  await dismissAlertIfVisible(page);
+  await dismissFailedAttemptAlert(page);
 
   await expect.poll(
     () => page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10)),

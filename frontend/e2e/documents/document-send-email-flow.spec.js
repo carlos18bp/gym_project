@@ -142,15 +142,14 @@ test("lawyer attaches file then removes it from attachment list", { tag: ['@flow
 
   await expect(page.getByText("borrar.pdf")).toBeVisible({ timeout: 5_000 });
 
-  // Hover on file card to reveal remove X button, then click it
-  const fileCard = page.getByText("borrar.pdf").locator(".."); // quality: allow-fragile-selector (parent of file name text)
-  await fileCard.hover();
-  const xButton = fileCard.locator("svg").first(); // quality: allow-fragile-selector (XMarkIcon inside file card)
-  if (await xButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await xButton.click();
-  }
+  // Hover on the file card to reveal the remove button, then click it
+  await page.getByText("borrar.pdf").hover();
+  const removeButton = page.getByTestId("remove-file-button");
+  await expect(removeButton).toBeVisible({ timeout: 5_000 });
+  await removeButton.click();
 
-  // After removal, the upload area text should reappear
+  // After removal the file card disappears and the upload area text reappears
+  await expect(page.getByText("borrar.pdf")).toBeHidden({ timeout: 5_000 });
   await expect(page.getByText("Sube un archivo")).toBeVisible({ timeout: 5_000 });
 });
 

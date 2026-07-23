@@ -188,15 +188,14 @@ test("lawyer sees signature modal with draw and upload options", { tag: ['@flow:
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Verify the lawyer document dashboard loaded
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Open the electronic signature modal from the dashboard header
+  await page.getByRole("button", { name: "Firma Electrónica" }).click();
 
-  // Verify has_signature state is false — lawyer needs to upload/draw signature
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("lawyer");
+  // Without a stored signature the modal offers both creation methods
+  await expect(page.getByRole("heading", { name: "Firma Electrónica", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
 });
 
 test("lawyer sees pending signatures tab with documents awaiting signatures", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -211,19 +210,13 @@ test("lawyer sees pending signatures tab with documents awaiting signatures", { 
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Navigate to pending signatures tab
-  const pendingTab = page.getByRole("button", { name: /Pendientes|Por Firmar/i });
-  if (await pendingTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await pendingTab.click();
-    // Should show the pending document
-    await expect(page.getByText("Poder Especial").or(page.getByText("PendingSignatures"))).toBeVisible({ timeout: 10_000 });
-  } else {
-    // If tab not visible, verify we're on the dashboard
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible();
-  }
+  // Navigate to the pending signatures tab
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+
+  // The pending document is listed with its pending-signature status
+  await expect(page.getByText("Poder Especial")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("signatures-list-row-502").getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
 test("lawyer with no signature sees upload prompt in profile context", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -238,16 +231,19 @@ test("lawyer with no signature sees upload prompt in profile context", { tag: ['
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Verify the dashboard loads — the signature upload flow is triggered from the document dashboard
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Open the profile modal from the user menu
+  await page.getByRole("button", { name: /Open user menu|E2E Lawyer/i }).click();
+  await page.getByText("Perfil").click();
 
-  // Check that has_signature state is reflected — the user has no signature
-  const hasSignature = await page.evaluate(() => {
-    const userAuth = JSON.parse(localStorage.getItem("userAuth") || "{}");
-    return userAuth.has_signature;
-  });
-  expect(hasSignature).toBeFalsy();
+  const profileModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
+  await expect(profileModal).toBeVisible({ timeout: 10_000 });
+
+  // The profile exposes the electronic signature entry point
+  await profileModal.getByRole("button", { name: "Firma electrónica" }).click();
+
+  // Without a stored signature the modal prompts to add one (draw or upload)
+  await expect(page.getByText("Añadir firma electrónica")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
 });

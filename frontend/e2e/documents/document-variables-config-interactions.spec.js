@@ -85,13 +85,10 @@ test("variables config page renders variables and action buttons", { tag: ['@flo
   await expect(page.getByRole("heading", { name: "Field1" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Field2" })).toBeVisible();
 
-  // Action buttons for the save/publish/cancel flow. Scoped to #app because
-  // the layout may render a duplicate mobile footer.
-  // quality: allow-fragile-selector (stable application ID)
-  const app = page.locator("#app");
-  await expect(app.getByRole("button", { name: "Guardar como borrador" }).first()).toBeVisible();
-  await expect(app.getByRole("button", { name: "Publicar" }).first()).toBeVisible();
-  await expect(app.getByRole("button", { name: "Cancelar" }).first()).toBeVisible();
+  // Action buttons for the save/publish/cancel flow.
+  await expect(page.getByTestId("variables-config-save-draft")).toBeVisible();
+  await expect(page.getByTestId("variables-config-publish")).toBeVisible();
+  await expect(page.getByTestId("variables-config-cancel")).toBeVisible();
 });
 
 test("variables config: selecting 'Valor' classification reveals currency selector", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

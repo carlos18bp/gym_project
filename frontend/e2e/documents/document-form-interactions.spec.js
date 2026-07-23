@@ -332,13 +332,14 @@ test.describe("DocumentForm complete and generate", { tag: ['@flow:docs-form-int
     // The "Monto" field has tooltip "Valor en pesos" — check label is visible
     await expect(page.getByText("Monto")).toBeVisible();
 
-    // Tooltip info icon should be present near the field label
-    // quality: allow-fragile-selector (stable application ID)
-    const tooltipIcon = page.locator("#field-2").locator("..").locator("[title], [data-tooltip]").first();
-    if (await tooltipIcon.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await tooltipIcon.hover();
-      await expect(page.getByText("Valor en pesos")).toBeVisible({ timeout: 3_000 });
-    }
+    // The tooltip info icon renders next to the "Monto" label (variable index 2)
+    const tooltipIcon = page.getByTestId("variable-tooltip-2");
+    await expect(tooltipIcon).toBeVisible();
+
+    // Tooltip text is hidden until hover reveals it
+    await expect(page.getByText("Valor en pesos")).toBeHidden();
+    await tooltipIcon.hover();
+    await expect(page.getByText("Valor en pesos")).toBeVisible({ timeout: 3_000 });
   });
 });
 

@@ -72,8 +72,10 @@ test("lawyer sees delete option when clicking a draft document row", { tag: ['@f
 
   // Click document to open actions
   await page.getByText("Doc Para Eliminar").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+
+  // The actions modal opens and offers the delete action for the Draft doc
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("document-action-delete")).toBeVisible();
 });
 
 test("lawyer sees documents list after navigating to dashboard", { tag: ['@flow:docs-delete', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {

@@ -24,11 +24,13 @@ test("user with incomplete profile sees profile completion modal on dashboard", 
   });
 
   await page.goto("/");
-  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
-  // Should show profile completion modal or redirect to profile
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // The profile modal auto-opens with the "Completa tu perfil" call to action
+  const profileModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
+  await expect(profileModal).toBeVisible({ timeout: 15_000 });
+  await expect(profileModal.getByRole("button", { name: "Completa tu perfil" })).toBeVisible();
+  await expect(profileModal.getByText("Nuevo Usuario")).toBeVisible();
 });
 
 test("user with completed profile does not see profile completion modal", { tag: ['@flow:profile-complete', '@module:profile', '@priority:P2', '@role:shared'] }, async ({ page }) => {
@@ -48,11 +50,14 @@ test("user with completed profile does not see profile completion modal", { tag:
   });
 
   await page.goto("/");
-  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
-  // Dashboard should load normally without modal
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Positive anchor: dashboard content rendered for the completed user
+  await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
+
+  // The forced profile-completion modal must NOT be present
+  await expect(page.locator("#viewProfileModal")).toBeHidden(); // quality: allow-fragile-selector (stable DOM id)
+  await expect(page.getByRole("button", { name: "Completa tu perfil" })).toBeHidden();
 });
 
 test("lawyer with incomplete profile sees completion prompt", { tag: ['@flow:profile-complete', '@module:profile', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -72,7 +77,10 @@ test("lawyer with incomplete profile sees completion prompt", { tag: ['@flow:pro
   });
 
   await page.goto("/");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+
+  const profileModal = page.locator("#viewProfileModal"); // quality: allow-fragile-selector (stable DOM id)
+  await expect(profileModal).toBeVisible({ timeout: 15_000 });
+  await expect(profileModal.getByRole("button", { name: "Completa tu perfil" })).toBeVisible();
+  await expect(profileModal.getByText("Nuevo Abogado")).toBeVisible();
 });

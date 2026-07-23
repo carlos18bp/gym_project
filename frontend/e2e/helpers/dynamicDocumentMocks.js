@@ -527,6 +527,37 @@ export async function installDynamicDocumentApiMocks(
       return { status: 200, contentType: "application/json", body: "[]" };
     }
 
+    // Signature rejection — stateful: flips the document to Rejected and
+    // stores the rejection comment on the signer's signature entry, so the
+    // archived tab (states=Rejected,Expired) and the detail refetch that
+    // follow a reject see fresh state.
+    const rejectMatch = apiPath.match(/^dynamic-documents\/(\d+)\/reject\/(\d+)\/$/);
+    if (rejectMatch && route.request().method() === "POST") {
+      const doc = docs.find((d) => d.id === Number(rejectMatch[1]));
+      if (doc) {
+        const body = route.request().postDataJSON?.() || {};
+        doc.state = "Rejected";
+        const signerId = Number(rejectMatch[2]);
+        const signature = (doc.signatures || []).find(
+          (sig) => sig.signer_id === signerId || sig.user === signerId
+        );
+        if (signature) {
+          signature.rejected = true;
+          signature.rejection_comment = body.comment || "";
+        }
+        return {
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(doc),
+        };
+      }
+      return {
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Not found" }),
+      };
+    }
+
     // Document detail
     if (apiPath.match(/^dynamic-documents\/\d+\/$/)) {
       const docId = Number(apiPath.match(/^dynamic-documents\/(\d+)\/$/)[1]);

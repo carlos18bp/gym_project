@@ -1,10 +1,12 @@
+// quality: disable fragile_test_data (emails are mock credentials used only for API route interception, not real production data)
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installOrganizationsDashboardApiMocks } from "../helpers/organizationsDashboardMocks.js";
 
 /**
  * Branch coverage tests for org-invite-member flow.
- * Tests different invitation states and validation.
+ * Drives the corporate dashboard invite modal, the members modal, and the
+ * client-side memberships view.
  */
 
 test("corporate user sees invite form on organization dashboard", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
@@ -20,13 +22,17 @@ test("corporate user sees invite form on organization dashboard", { tag: ['@flow
     userAuth: { id: userId, role: "corporate_client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/organizations");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/organizations_dashboard");
+  await expect(page.getByRole("heading", { name: "Panel Corporativo", level: 1 })).toBeVisible({ timeout: 15_000 });
+
+  // Opening the invite modal from the organization card shows the invite form
+  await page.getByRole("button", { name: "Invitar Miembro" }).click();
+  await expect(page.getByRole("heading", { name: "Invitar Nuevo Miembro" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Email del Cliente")).toBeVisible();
+  await expect(page.getByPlaceholder("cliente@ejemplo.com")).toBeVisible();
 });
 
-test("corporate user with active organization sees members tab", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
+test("corporate user with active organization sees members list", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
   const userId = 9401;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -39,10 +45,17 @@ test("corporate user with active organization sees members tab", { tag: ['@flow:
     userAuth: { id: userId, role: "corporate_client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/organizations");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/organizations_dashboard");
+  await expect(page.getByRole("heading", { name: "Panel Corporativo", level: 1 })).toBeVisible({ timeout: 15_000 });
+
+  // The org card metric button opens the members modal with the seeded members
+  await page.getByRole("button", { name: "2 miembros" }).click();
+  await expect(page.getByRole("heading", { name: "Miembros de Acme Corp" })).toBeVisible({ timeout: 10_000 });
+
+  // Scope member names to the modal (they also appear in the requests section)
+  const membersModal = page.getByLabel("Miembros de Acme Corp");
+  await expect(membersModal.getByText("Client One")).toBeVisible();
+  await expect(membersModal.getByText("Client Two")).toBeVisible();
 });
 
 test("client user sees organizations they belong to", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
@@ -51,6 +64,8 @@ test("client user sees organizations they belong to", { tag: ['@flow:org-client-
   await installOrganizationsDashboardApiMocks(page, {
     userId,
     role: "client",
+    clientUserId: userId,
+    startWithClientMemberships: true,
   });
 
   await setAuthLocalStorage(page, {
@@ -58,8 +73,10 @@ test("client user sees organizations they belong to", { tag: ['@flow:org-client-
     userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/organizations");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/organizations_dashboard");
+  await expect(page.getByRole("heading", { name: "Mis Organizaciones", level: 1 })).toBeVisible({ timeout: 15_000 });
+
+  // Membership content renders: announcements section and the org card
+  await expect(page.getByRole("heading", { name: "Anuncios de Organizaciones" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acme Corp" }).first()).toBeVisible();
 });

@@ -223,11 +223,9 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-    // Rejected documents should appear in archived tab
+    // Rejected documents appear in the archived tab
     await page.getByRole("button", { name: /Archivados/i }).click();
-    await page.waitForLoadState("networkidle");
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Contrato Rechazado")).toBeVisible({ timeout: 15_000 });
   });
 
   test("correction navigates to DocumentForm in correction mode", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
