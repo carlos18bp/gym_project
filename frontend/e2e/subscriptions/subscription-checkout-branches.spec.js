@@ -16,9 +16,10 @@ import { installWompiStubs } from "../helpers/wompiStubs.js";
  * which could never fail. The real routes are /subscriptions and /checkout/:plan.
  */
 
-test("user without subscription sees plan selection page", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("user switches from the paid plan checkout to the free one", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9000;
 
+  await installWompiStubs(page);
   await installSubscriptionsApiMocks(page, {
     userId,
     role: "client",
@@ -31,11 +32,21 @@ test("user without subscription sees plan selection page", { tag: ['@flow:subscr
   });
 
   await page.goto("/subscriptions");
-
   await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Plan Cliente" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
+
+  // First choice: the paid Plan Cliente
+  // quality: allow-fragile-selector (positional access: second plan card is Plan Cliente)
+  await page.getByRole("button", { name: "Elegir plan" }).nth(1).click();
+  await expect(page).toHaveURL(/\/checkout\/cliente/, { timeout: 10_000 });
+
+  // Second thoughts: back to the plans and pick the free one instead
+  await page.getByRole("button", { name: "Volver a planes" }).click();
+  // quality: allow-fragile-selector (positional access: first plan card is Plan Básico)
+  await page.getByRole("button", { name: "Elegir plan" }).first().click();
+
+  await expect(page).toHaveURL(/\/checkout\/basico/, { timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Activar Plan Gratuito" })).toBeVisible();
+  await expect(page.getByText("Configura tu método de pago")).toHaveCount(0);
 });
 
 test("authenticated client reaches free checkout from basic plan selection", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
@@ -120,15 +131,25 @@ test("paid plan checkout requires a payment method before confirming", { tag: ['
 
   await expect(page.getByRole("heading", { name: "Plan Cliente" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Método de pago", { exact: true })).toBeVisible();
-  await expect(page.getByText("Configura tu método de pago")).toBeVisible();
+
+  // Submitting the empty card form is refused before anything is tokenized
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
+
+  // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+  const warning = page.locator('[class~="swal2-popup"]');
+  await expect(warning).toContainText("Información incompleta", { timeout: 10_000 });
+  // quality: allow-fragile-selector (SweetAlert2 confirm button, precedent in suite)
+  await page.locator('[class~="swal2-confirm"]').click();
 
   // Without a tokenized card the confirm button must stay disabled
+  await expect(page.getByText("Configura tu método de pago")).toBeVisible();
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test("lawyer user sees subscription plans page", { tag: ['@flow:subscriptions-view-plans', '@module:subscriptions', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer selects the corporate plan and reaches its checkout", { tag: ['@flow:subscriptions-view-plans', '@module:subscriptions', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 9004;
 
+  await installWompiStubs(page);
   await installSubscriptionsApiMocks(page, {
     userId,
     role: "lawyer",
@@ -141,8 +162,13 @@ test("lawyer user sees subscription plans page", { tag: ['@flow:subscriptions-vi
   });
 
   await page.goto("/subscriptions");
-
   await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
-  // All three plans are offered, each with its own selection button
+
+  // All three plans are offered to lawyers too, each with its own button
   await expect(page.getByRole("button", { name: "Elegir plan" })).toHaveCount(3);
+  // quality: allow-fragile-selector (positional access: third plan card is Plan Corporativo)
+  await page.getByRole("button", { name: "Elegir plan" }).nth(2).click();
+
+  await expect(page).toHaveURL(/\/checkout\/corporativo/, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
 });

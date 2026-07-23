@@ -2192,6 +2192,30 @@ Reescritura de **47 specs (135 sitios sintéticos → 0)**: asserts condicionale
 
 ---
 
+## Auditoría "interacción real" — 2026-07-23 (ronda 6)
+
+Segunda pasada de profundidad, con criterio distinto al anti-synthetic de R5: **¿el test ejecuta la acción del usuario, o fabrica el estado final con mocks y aserta lo que él mismo cocinó?** Medida con `scripts/audit_e2e_interactions.py` (persistido, sale con código 1 mientras queden sospechosos).
+
+| Categoría | Antes | Después |
+|---|---|---|
+| Interactivos (conducen la acción) | 394 | **544** |
+| Guards / empty states / restricciones (legítimos) | 86 | 75 |
+| Marcados `// audit: load-only flow` | 0 | 11 |
+| **Solo renderizan un mock (sospechosos)** | **159** | **0** |
+
+Los 159 se reescribieron para ejecutar la acción y asertar la transición. Validación del criterio "puede fallar" por mutación: quitar `pageSize` del watcher de `SecopList.vue` pone rojo el test de tamaño de página; restaurarlo lo devuelve a verde. El criterio quedó escrito en `docs/TESTING_QUALITY_STANDARDS.md` § "Drive the Interaction, Assert the Transition" para specs futuros.
+
+**Bugs y código muerto que destapó la reescritura:**
+- 🐛 **Botón de sincronización SECOP inerte**: `SyncStatus.vue` no declara `defineEmits`, así que `@trigger-sync` nunca dispara y `POST secop/sync/trigger/` jamás se envía — el usuario ve un spinner de 180 s y no pasa nada. Pendiente de decisión de producto (arreglarlo lanzaría sincronizaciones reales contra Socrata).
+- 🐛 **Botón de limpiar firma sin nombre accesible** (solo-icono, sin `aria-label`): su test estaba muerto porque el locator nunca hacía match. Hueco de accesibilidad real.
+- **`document-key-fields.spec.js` probaba un campo inexistente** (`is_key` no aparece en `src/`): el spec entero verificaba una funcionalidad fantasma; reescrito contra `summary_field`.
+- Navegación falsificada con `page.evaluate(router.push(...))` en lugar de usar la UI.
+- Rutas sin punto de entrada: `/dynamic_document_dashboard/signed-documents`, `/subscriptions`, `/legal_requests` (el sidebar filtra ambos ítems), `/no_connection` (nada escucha `navigator.onLine`).
+- Ramas muertas: sub-secciones de `GuideNavigation.vue` que ningún módulo define; SweetAlert "Firmantes requeridos" inalcanzable porque el botón ya se deshabilita; `deleteOrganization` en el store sin componente que lo llame.
+- `hasMore` con page size hardcodeado a 20 en `LegalRequestsList.vue`.
+
+---
+
 **Documento generado:** July 22, 2026
 **Versión:** 1.12.0
 **Estado:** 164/164 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.12.0 (cobertura estática por tags `@flow:`).

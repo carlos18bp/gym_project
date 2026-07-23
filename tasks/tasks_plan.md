@@ -94,7 +94,7 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (203 spec files — verified 2026-07-22) — **164 flows registered, 164/164 covered (v1.12.0)**
+### Frontend E2E Tests (204 spec files / 630 tests, 0 audit suspects — verified 2026-07-23) — **164 flows registered, 164/164 covered (v1.12.0)**
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)

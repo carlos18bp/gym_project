@@ -910,6 +910,63 @@ it('updates display when count prop changes', async () => {
 
 ## E2E-Specific Standards
 
+### Drive the Interaction, Assert the Transition
+
+An E2E test earns its keep only when it performs the user action its name
+describes and then asserts the change that action produced. A test that
+pre-cooks a mock, navigates straight to the end state and asserts that end
+state proves nothing: the product logic that produces the transition is never
+exercised, so the test stays green while the feature rots.
+
+Every E2E test must satisfy all three:
+
+1. **It performs the action** (`click` / `fill` / `selectOption` /
+   `setInputFiles` / `press`), starting from the state the user would see.
+2. **It asserts the transition**, not the starting point — DOM that was not
+   there before, a new URL, an emitted request (with its payload when the
+   payload is the guarantee), or mutated state in a stateful mock.
+3. **It can fail.** Delete the `@click` handler from the component: the test
+   must turn red. If it stays green, it was never testing that button.
+
+```javascript
+// ❌ WRONG - fabricates the end state, never closes anything
+test('lawyer closes the preview modal via the close button', async ({ page }) => {
+  await installMocks(page, { modalOpen: false });
+  await page.goto('/documents');
+  await expect(page.getByTestId('preview-modal')).toHaveCount(0);
+});
+
+// ✅ CORRECT - opens it, closes it, asserts the transition
+test('lawyer closes the preview modal via the close button', async ({ page }) => {
+  await installMocks(page, { documents: [buildMockDocument({ id: 7 })] });
+  await page.goto('/documents');
+
+  await page.getByTestId('document-row-7').click();
+  await page.getByTestId('document-action-preview').click();
+  const modal = page.getByTestId('preview-modal');
+  await expect(modal).toBeVisible();
+
+  await page.getByTestId('preview-close').click();
+  await expect(modal).toHaveCount(0);
+});
+```
+
+**External SDKs** (Google/Outlook OAuth, Wompi, reCAPTCHA): stub the SDK, then
+click the real button. What is under test is how the app reacts to the
+callback, not the vendor's code.
+
+**Legitimate exceptions.** Route guards, empty states and role restrictions
+are real flows where loading and observing *is* what the user does. Mark them
+so the audit classifies them deterministically instead of guessing from the
+test name:
+
+```javascript
+// audit: load-only flow (route guard — the redirect IS the behaviour)
+```
+
+Run `python3 scripts/audit_e2e_interactions.py` to classify the whole suite;
+it exits non-zero while any unmarked interaction-free test remains.
+
 ### Selector Hierarchy
 
 Use selectors in this **priority order** (most stable to least stable):

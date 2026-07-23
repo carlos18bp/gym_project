@@ -58,7 +58,7 @@ test("corporate user with active organization sees members list", { tag: ['@flow
   await expect(membersModal.getByText("Client Two")).toBeVisible();
 });
 
-test("client user sees organizations they belong to", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client user switches from their organizations to their requests tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 9402;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -76,7 +76,15 @@ test("client user sees organizations they belong to", { tag: ['@flow:org-client-
   await page.goto("/organizations_dashboard");
   await expect(page.getByRole("heading", { name: "Mis Organizaciones", level: 1 })).toBeVisible({ timeout: 15_000 });
 
-  // Membership content renders: announcements section and the org card
+  // Starting point: membership content renders (announcements + org card)
   await expect(page.getByRole("heading", { name: "Anuncios de Organizaciones" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Acme Corp" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis Solicitudes Corporativas" })).toHaveCount(0);
+
+  // The requests tab is only enabled because the client belongs to an organization
+  await page.getByRole("button", { name: /Mis Solicitudes/ }).first().click();
+
+  // Transition: the requests section replaces the organizations section
+  await expect(page.getByRole("heading", { name: "Mis Solicitudes Corporativas" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Salir" })).toHaveCount(0);
 });

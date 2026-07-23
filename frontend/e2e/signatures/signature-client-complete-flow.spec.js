@@ -150,7 +150,7 @@ async function installSignatureClientMocks(page, { userId, lawyerId, hasSignatur
   });
 }
 
-test("client sees pending document in documents dashboard", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client reaches the documents dashboard from the sidebar", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 8300;
   const lawyerId = 8301;
 
@@ -161,11 +161,16 @@ test("client sees pending document in documents dashboard", { tag: ['@flow:sign-
     userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
+  await page.goto("/dashboard");
+  await page.getByText("Archivos Juridicos").first().waitFor({ timeout: 15_000 });
 
-  // Client should see their document dashboard with the pending document
-  await expect(page.getByText("Contrato de Arrendamiento").or(page.getByText("Mis Documentos"))).toBeVisible({ timeout: 15_000 });
+  // The documents module is not mounted yet
+  await expect(page.getByRole("button", { name: "Dcs. Por Firmar" })).toHaveCount(0);
+
+  await page.getByText("Archivos Juridicos").first().click();
+
+  await expect(page).toHaveURL(/\/dynamic_document_dashboard/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Dcs. Por Firmar" })).toBeVisible({ timeout: 15_000 });
 });
 
 test("client sees pending signatures section with document awaiting their signature", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {

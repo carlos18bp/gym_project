@@ -86,12 +86,20 @@ test(
       },
     });
 
-    await page.goto(`/process_detail/${process.id}`);
+    // Start where the user starts: the process list
+    await page.goto("/process_list");
+    const processRow = page.getByRole("row").filter({ hasText: "Ana Pérez" });
+    await expect(processRow).toBeVisible({ timeout: 15_000 });
 
+    await processRow.click();
+
+    // Transition: the detail view opens and exposes the alert recipient copy
+    await expect(page).toHaveURL(new RegExp(`/process_detail/${process.id}`), {
+      timeout: 10_000,
+    });
     await expect(page.getByRole("heading", { name: "Civil" })).toBeVisible({
       timeout: 15_000,
     });
-
     await expect(
       page.getByText(/Alerta activa.*Notifica al abogado y clientes/)
     ).toBeVisible({ timeout: 10_000 });

@@ -4,6 +4,7 @@ import {
   installSubscriptionsApiMocks,
   buildMockSubscription,
 } from "../helpers/subscriptionsMocks.js";
+import { installWompiStubs } from "../helpers/wompiStubs.js";
 
 /**
  * Deep coverage for:
@@ -12,7 +13,7 @@ import {
  * - Checkout.vue (62.6%) — free plan submission flow
  */
 
-test("active basico plan shows plan features and current plan badge", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("subscriber returning from checkout compares the three plan cards", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9850;
 
   await installSubscriptionsApiMocks(page, {
@@ -30,19 +31,16 @@ test("active basico plan shows plan features and current plan badge", { tag: ['@
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  await page.goto("/subscriptions");
+  // The subscriber is on their current (free) plan checkout and goes back to
+  // the catalogue to compare what the other plans offer.
+  await page.goto("/checkout/basico");
+  await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Volver a planes" }).click();
 
-  // Plan features appear across cards — use first()
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible();
   await expect(page.getByText("Consulta Procesos Judiciales").first()).toBeVisible();
   await expect(page.getByText("Documentos Jurídicos").first()).toBeVisible();
-
-  // Guarantee badge in header
-  await expect(page.getByText("30 días de garantía de reembolso")).toBeVisible();
-  await expect(page.getByText("Cancela en cualquier momento")).toBeVisible();
-
-  // All three plan headings should be visible
   await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Plan Cliente" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
@@ -93,9 +91,10 @@ test("free plan checkout submits without payment method section", { tag: ['@flow
   await expect(page.locator('input[placeholder*="tarjeta"]')).toHaveCount(0);
 });
 
-test("corporativo plan checkout shows payment form with card inputs", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("corporativo checkout confirms the subscription with the tokenized card", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9852;
 
+  await installWompiStubs(page, { sessionId: "e2e-wompi-session", tokenId: "e2e-card-token" });
   await installSubscriptionsApiMocks(page, {
     userId,
     role: "client",
@@ -108,17 +107,29 @@ test("corporativo plan checkout shows payment form with card inputs", { tag: ['@
   });
 
   await page.goto("/checkout/corporativo");
-
   await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 15_000 });
 
-  // Paid plan should show plan details
-  await expect(page.getByText("Plan seleccionado")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
+  // Tokenize a card, then confirm the paid subscription
+  await page.getByPlaceholder("Como aparece en la tarjeta").fill("E2E Corp");
+  await page.getByPlaceholder("0000 0000 0000 0000").fill("4242 4242 4242 4242");
+  await page.getByPlaceholder("MM").fill("12");
+  await page.getByPlaceholder("AA").fill("29");
+  await page.getByPlaceholder("CVC", { exact: true }).fill("123");
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
 
-  // Order summary with price
-  await expect(page.getByText("Resumen del pedido")).toBeVisible();
-  await expect(page.getByText("Total").first()).toBeVisible();
+  const confirmButton = page.getByRole("button", { name: "Confirmar Suscripción" });
+  await expect(confirmButton).toBeEnabled({ timeout: 10_000 });
 
-  // Contact info section
-  await expect(page.getByText("Información de contacto")).toBeVisible();
+  const createRequest = page.waitForRequest(
+    (request) => request.url().includes("/api/subscriptions/create/") && request.method() === "POST"
+  );
+  await confirmButton.click();
+
+  const payload = (await createRequest).postDataJSON();
+  expect(payload.plan_type).toBe("corporativo");
+  expect(payload.token).toBe("e2e-card-token");
+  expect(payload.session_id).toBe("e2e-wompi-session");
+
+  // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("Suscripción Creada", { timeout: 10_000 });
 });

@@ -30,31 +30,24 @@ async function installLoginAttemptsMocks(page) {
   });
 }
 
-async function resetSignInState(page) {
-  await page.addInitScript(() => {
-    if (window.location.pathname !== "/sign_in") return;
-    localStorage.removeItem("token");
-    localStorage.removeItem("userAuth");
-    localStorage.setItem("signInTries", "0");
-    localStorage.setItem("signInSecondsRemaining", "0");
-    localStorage.setItem("signInSecondsAcumulated", "0");
-    localStorage.removeItem("signInIntervalId");
-  });
+async function seedSignInState(page, { tries = 0, secondsRemaining = 0, secondsAcumulated = 0 } = {}) {
+  await page.addInitScript(
+    ({ tries: t, secondsRemaining: r, secondsAcumulated: a }) => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userAuth");
+      localStorage.setItem("signInTries", String(t));
+      localStorage.setItem("signInSecondsRemaining", String(r));
+      localStorage.setItem("signInSecondsAcumulated", String(a));
+      localStorage.removeItem("signInIntervalId");
+    },
+    { tries, secondsRemaining, secondsAcumulated }
+  );
 }
 
-async function attemptLogin(page) {
-  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
-  await expect(loginBtn).toBeVisible({ timeout: 15_000 });
-  await page.locator('[id="email"]').fill("wrong@example.com");
-  await page.locator('[id="password"]').fill("wrongpassword");
-  await bypassCaptcha(page);
-  await expect(loginBtn).toBeEnabled({ timeout: 10_000 });
-  await loginBtn.click();
-}
-
-async function dismissFailedAttemptAlert(page) {
+async function dismissAttemptAlert(page) {
   // Every failed attempt surfaces a SweetAlert: either the invalid-credentials
   // warning or the lockout warning (every 3rd try). Its absence is a bug.
+  // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
   const popup = page.locator('[class~="swal2-popup"]');
   await expect(popup).toBeVisible({ timeout: 10_000 });
   const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
@@ -68,87 +61,112 @@ async function dismissFailedAttemptAlert(page) {
   });
 }
 
-// quality: disable wait_for_timeout (throttle between sequential login attempts for localStorage state propagation)
+async function failLoginAttempt(page, expectedTries) {
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeEnabled({ timeout: 15_000 });
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="email"]').fill("wrong@example.com");
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="password"]').fill("wrongpassword");
+  await bypassCaptcha(page);
+  await loginBtn.click();
+  await dismissAttemptAlert(page);
+  await expect
+    .poll(() => page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10)), { timeout: 10_000 })
+    .toBe(expectedTries);
+}
+
 test("after 3 failed login attempts, user sees lockout timer", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(90_000);
 
-  await resetSignInState(page);
+  await seedSignInState(page);
   await installLoginAttemptsMocks(page);
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-  // Attempt 3 failed logins
-  for (let i = 0; i < 3; i++) {
-    await attemptLogin(page);
-    await dismissFailedAttemptAlert(page);
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(500);
-  }
+  // Two rejected attempts leave the form usable
+  await failLoginAttempt(page, 1);
+  await failLoginAttempt(page, 2);
+  await expect(page.getByText(/Intentar de nuevo en/)).toBeHidden();
 
-  // After 3 failed attempts, signInTries should be 3 and seconds remaining should be set
-  const tries = await page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10));
-  expect(tries).toBe(3);
+  // The third rejection is the one that locks the form
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="email"]').fill("wrong@example.com");
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="password"]').fill("wrongpassword");
+  await bypassCaptcha(page);
+  await loginBtn.click();
+  await dismissAttemptAlert(page);
+
+  // The countdown is now on screen and the submit button is locked
+  await expect(page.getByText(/Intentar de nuevo en/)).toBeVisible({ timeout: 10_000 });
+  await expect(loginBtn).toBeDisabled();
 
   const secondsRemaining = await page.evaluate(() => parseInt(localStorage.getItem("signInSecondsRemaining"), 10));
-  expect(secondsRemaining).toBeGreaterThan(0);
   expect(secondsRemaining).toBeLessThanOrEqual(60);
 });
 
-test("lockout timer pre-seeded at 3 tries shows remaining seconds on page load", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user can submit again once the lockout countdown runs out", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installLoginAttemptsMocks(page);
 
-  // Pre-seed localStorage with 3 failed attempts and active lockout
-  await page.addInitScript(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userAuth");
-    localStorage.setItem("signInTries", "3");
-    localStorage.setItem("signInSecondsRemaining", "55");
-    localStorage.setItem("signInSecondsAcumulated", "60");
-  });
+  // Land on the page mid-lockout: 3 failures, 2 seconds left on the timer
+  await seedSignInState(page, { tries: 3, secondsRemaining: 2, secondsAcumulated: 60 });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-  // The remaining seconds should be visible or the login button should reflect the lockout
-  // Verify localStorage state is preserved
-  const tries = await page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10));
-  expect(tries).toBe(3);
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(page.getByText(/Intentar de nuevo en/)).toBeVisible();
+  await expect(loginBtn).toBeDisabled();
 
-  const seconds = await page.evaluate(() => parseInt(localStorage.getItem("signInSecondsRemaining"), 10));
-  expect(seconds).toBeGreaterThan(0);
+  // Once the countdown drains, the form accepts a new submission
+  await expect(loginBtn).toBeEnabled({ timeout: 15_000 });
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="email"]').fill("wrong@example.com");
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="password"]').fill("wrongpassword");
+  await bypassCaptcha(page);
+
+  const signInRequest = page.waitForRequest(
+    (request) => request.url().includes("/api/sign_in/") && request.method() === "POST"
+  );
+  await loginBtn.click();
+
+  expect((await signInRequest).postDataJSON().email).toBe("wrong@example.com");
+  // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("Credenciales inválidas", { timeout: 10_000 });
 });
 
 test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   test.setTimeout(60_000);
   await installLoginAttemptsMocks(page);
 
-  // Pre-seed localStorage at 5 tries (next failure = 6th = next lockout tier)
-  await page.addInitScript(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userAuth");
-    localStorage.setItem("signInTries", "5");
-    localStorage.setItem("signInSecondsRemaining", "0");
-    localStorage.setItem("signInSecondsAcumulated", "60");
-  });
+  // Pre-seed at 5 tries: the next failure is the 6th and hits the next tier
+  await seedSignInState(page, { tries: 5, secondsRemaining: 0, secondsAcumulated: 60 });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-  // One more failed attempt (6th total)
-  await attemptLogin(page);
-  await dismissFailedAttemptAlert(page);
+  const loginBtn = page.getByRole("button", { name: "Iniciar sesión" });
+  await expect(loginBtn).toBeEnabled({ timeout: 15_000 });
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="email"]').fill("wrong@example.com");
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="password"]').fill("wrongpassword");
+  await bypassCaptcha(page);
+  await loginBtn.click();
+  await dismissAttemptAlert(page);
 
-  await expect.poll(
-    () => page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10)),
-    { timeout: 5_000 },
-  ).toBe(6);
+  await expect
+    .poll(() => page.evaluate(() => parseInt(localStorage.getItem("signInTries"), 10)), { timeout: 10_000 })
+    .toBe(6);
 
-  // After 6 tries, accumulated should double from 60 to 120
+  // Second lockout doubles the accumulated penalty and re-locks the form
+  await expect(page.getByText(/Intentar de nuevo en/)).toBeVisible();
+  await expect(loginBtn).toBeDisabled();
+
   const accumulated = await page.evaluate(() => parseInt(localStorage.getItem("signInSecondsAcumulated"), 10));
   expect(accumulated).toBe(120);
-
-  const remaining = await page.evaluate(() => parseInt(localStorage.getItem("signInSecondsRemaining"), 10));
-  expect(remaining).toBeGreaterThan(0);
-  expect(remaining).toBeLessThanOrEqual(120);
 });

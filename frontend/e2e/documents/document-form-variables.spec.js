@@ -7,6 +7,28 @@ import {
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
+/**
+ * DocumentForm variable rendering and editing.
+ *
+ * The form is always reached through the product's own navigation:
+ * - clients: "Nuevo Documento" → template row → "Usar plantilla" → name → "Continuar"
+ * - lawyers: "Mis Documentos" → document row → "Completar" → "Editar Documento"
+ */
+
+/**
+ * Walk a client from the dashboard to the "name your document" step of the
+ * template flow. The caller performs the final "Continuar" click.
+ */
+async function openTemplateNameStep(page, templateTitle) {
+  await page.goto("/dynamic_document_dashboard");
+  await page.getByRole("button", { name: "Nuevo Documento" }).click();
+  await expect(page.getByText(templateTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.getByText(templateTitle, { exact: true }).click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-useTemplate").click();
+  await page.locator("#document-name").fill(templateTitle); // quality: allow-fragile-selector (stable DOM id)
+}
+
 test("client can view document form with variable fields", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 8300;
 
@@ -15,6 +37,7 @@ test("client can view document form with variable fields", { tag: ['@flow:docs-f
     title: "Contrato de Arrendamiento",
     state: "Published",
     createdBy: 999,
+    assignedTo: null,
     content: "<p>Contrato entre {{nombre_arrendador}} y {{nombre_arrendatario}}</p>",
     variables: [
       {
@@ -64,21 +87,11 @@ test("client can view document form with variable fields", { tag: ['@flow:docs-f
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  // Navigate to dashboard first to load documents into the store
-  await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByRole("button", { name: /Carpetas/ })).toBeVisible({ timeout: 15_000 });
+  await openTemplateNameStep(page, "Contrato de Arrendamiento");
+  await page.getByRole("button", { name: "Continuar" }).click();
 
-  // Use client-side navigation to preserve store state
-  await page.evaluate(() => {
-    window.__vue_router__.push("/dynamic_document_dashboard/document/use/creator/901/Contrato de Arrendamiento");
-  }).catch(() => {});
-  // Fallback: use hash-based navigation
-  await page.evaluate(() => {
-    const router = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$router;
-    if (router) router.push('/dynamic_document_dashboard/document/use/creator/901/Contrato de Arrendamiento');
-  }).catch(() => {});
-
-  // Should see the document title
+  // Should land on the creator form for that template
+  await expect(page).toHaveURL(/document\/use\/creator\/901/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Contrato de Arrendamiento" })).toBeVisible({ timeout: 15_000 });
 
   // Should see variable labels
@@ -97,6 +110,7 @@ test("client can fill in form variables and see validation", { tag: ['@flow:docs
     title: "Poder Especial",
     state: "Published",
     createdBy: 999,
+    assignedTo: null,
     content: "<p>Poder otorgado a {{nombre_apoderado}}</p>",
     variables: [
       {
@@ -126,15 +140,8 @@ test("client can fill in form variables and see validation", { tag: ['@flow:docs
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  // Navigate to dashboard first to load documents into the store
-  await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByRole("button", { name: /Carpetas/ })).toBeVisible({ timeout: 15_000 });
-
-  // Use client-side navigation to preserve store state
-  await page.evaluate(() => {
-    const router = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$router;
-    if (router) router.push('/dynamic_document_dashboard/document/use/creator/902/Poder Especial');
-  }).catch(() => {});
+  await openTemplateNameStep(page, "Poder Especial");
+  await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByRole("heading", { name: "Poder Especial" })).toBeVisible({ timeout: 15_000 });
 
@@ -154,8 +161,9 @@ test("lawyer can open document form in editor mode", { tag: ['@flow:docs-form-in
   const doc = buildMockDocument({
     id: 903,
     title: "Tutela Salud",
-    state: "Draft",
+    state: "Progress",
     createdBy: userId,
+    assignedTo: userId,
     content: "<p>Acción de tutela por {{motivo}}</p>",
     variables: [
       {
@@ -179,16 +187,19 @@ test("lawyer can open document form in editor mode", { tag: ['@flow:docs-form-in
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  // Navigate to dashboard first to load documents into the store
   await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Mis Documentos" }).click();
 
-  // Use client-side navigation to preserve store state
-  await page.evaluate(() => {
-    const router = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$router;
-    if (router) router.push('/dynamic_document_dashboard/document/use/editor/903/Tutela Salud');
-  }).catch(() => {});
+  const row = page.getByRole("table").getByText("Tutela Salud");
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-editForm").click();
+  await page.getByRole("button", { name: "Editar Documento" }).click();
 
+  await expect(page).toHaveURL(/document\/use\/editor\/903/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Tutela Salud" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Motivo de la Tutela")).toBeVisible();
+  // Editor mode preloads the stored value, unlike creator mode.
+  await expect(page.locator("#field-0")).toHaveValue("Negación de tratamiento"); // quality: allow-fragile-selector (stable DOM id)
 });

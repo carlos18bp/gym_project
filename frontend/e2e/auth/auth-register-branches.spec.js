@@ -2,6 +2,8 @@ import { test, expect } from "../helpers/test.js";
 import { installAuthSignOnApiMocks } from "../helpers/authSignOnMocks.js";
 import { bypassCaptcha } from "../helpers/captcha.js";
 
+// quality: allow-fragile-test-data (mock emails exist only to feed the mocked API routes)
+
 /**
  * Branch coverage tests for auth-register flow.
  * Tests validation errors, duplicate email, and edge cases by driving
@@ -98,7 +100,7 @@ test("registration form shows error when verification code fails", { tag: ['@flo
   await expect(page).toHaveURL(/\/sign_on/);
 });
 
-test("registration page renders with all form fields", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("registration form rejects a mismatched password confirmation", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installAuthSignOnApiMocks(page, {
     userId: 9102,
   });
@@ -107,20 +109,26 @@ test("registration page renders with all form fields", { tag: ['@flow:auth-regis
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible({ timeout: 15_000 });
 
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="first_name"]')).toBeVisible();
+  await page.locator('[id="first_name"]').fill("Branch");
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="last_name"]')).toBeVisible();
+  await page.locator('[id="last_name"]').fill("Tester");
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="email"]')).toBeVisible();
+  await page.locator('[id="email"]').fill("mismatch-user@example.com");
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="password"]')).toBeVisible();
+  await page.locator('[id="password"]').fill("SecurePass1!");
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="confirm_password"]')).toBeVisible();
+  await page.locator('[id="confirm_password"]').fill("DifferentPass1!");
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator('[id="privacy-policy"]')).toBeVisible();
+  await page.locator('[id="privacy-policy"]').check();
 
-  await expect(page.getByRole("button", { name: "Registrarse" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Iniciar sesión" })).toBeVisible();
+  await bypassCaptcha(page);
+  await submitRegistration(page);
+
+  // Client-side validation blocks the request: the passcode step never unlocks
+  await dismissNotification(page, "Las contraseñas no coinciden");
+  // quality: allow-fragile-selector (stable application ID)
+  await expect(page.locator('[id="passcode"]')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/sign_on/);
 });
 
 test("registration with server error shows error notification", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {

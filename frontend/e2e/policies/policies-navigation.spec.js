@@ -12,15 +12,21 @@ import { test, expect } from "../helpers/test.js";
  */
 
 test.describe("policies: privacy policy page", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
-  test("privacy policy page loads successfully", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/policies/privacy_policy");
+  test("opening the privacy policy from sign in replaces the login form with the policy", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("link", { name: "Aviso de privacidad" }).click();
 
     await expect(page.getByRole("heading", { name: "Política de Privacidad", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "1. Introducción" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeHidden();
   });
 
-  test("privacy policy contains required sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/policies/privacy_policy");
+  test("privacy policy opened from sign in exposes its data-protection sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("link", { name: "Aviso de privacidad" }).click();
 
     await expect(page.getByRole("heading", { name: "1. Introducción" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "2. Información que Recopilamos" })).toBeVisible();
@@ -35,26 +41,34 @@ test.describe("policies: privacy policy page", { tag: ['@flow:misc-policies', '@
     await expect(page.getByRole("heading", { name: "Política de Privacidad", exact: true })).toBeVisible();
   });
 
-  test("privacy policy page is scrollable for long content", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  test("keyboard End scrolls the privacy policy to its closing section", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await page.goto("/policies/privacy_policy");
     await expect(page.getByRole("heading", { name: "Política de Privacidad", exact: true })).toBeVisible();
 
-    // Scroll down and verify the page actually moved
-    await page.evaluate(() => window.scrollBy(0, 500));
-    const scrollY = await page.evaluate(() => window.scrollY);
-    expect(scrollY).toBeGreaterThan(0);
+    // The user scrolls with the keyboard: focus the document, then press End
+    await page.locator("body").click();
+    await page.keyboard.press("End");
+
+    await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5_000 }).toBeGreaterThan(0);
   });
 });
 
 test.describe("policies: terms of use page", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
-  test("terms of use page loads successfully", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/policies/terms_of_use");
+  test("opening the terms of use from sign in replaces the login form with the terms", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("link", { name: "Condiciones de uso" }).click();
 
     await expect(page.getByRole("heading", { name: "Términos y Condiciones", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeHidden();
   });
 
-  test("terms of use contains required sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/policies/terms_of_use");
+  test("terms of use opened from sign in exposes its service-description sections", { tag: ['@flow:misc-policies', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("link", { name: "Condiciones de uso" }).click();
 
     await expect(page.getByRole("heading", { name: "1. Introducción" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "2. Descripción del Servicio" })).toBeVisible();

@@ -41,7 +41,7 @@ function buildPendingDoc(userId, lawyerId) {
   });
 }
 
-async function setupClientPendingTab(page, { userId, lawyerId }) {
+async function setupClientDashboard(page, { userId, lawyerId }) {
   await installDynamicDocumentApiMocks(page, {
     userId,
     role: "client",
@@ -55,14 +55,23 @@ async function setupClientPendingTab(page, { userId, lawyerId }) {
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await expect(page.getByTestId("client-tab-pending-signatures")).toBeVisible({ timeout: 15_000 });
+}
+
+async function setupClientPendingTab(page, { userId, lawyerId }) {
+  await setupClientDashboard(page, { userId, lawyerId });
   await page.getByTestId("client-tab-pending-signatures").click();
   await expect(page.getByTestId("signatures-list-row-901")).toBeVisible({ timeout: 15_000 });
 }
 
-test("client sees document pending their signature in dashboard", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
-  await setupClientPendingTab(page, { userId: 8600, lawyerId: 8601 });
+test("client opens the pending signatures tab and finds their document", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+  await setupClientDashboard(page, { userId: 8600, lawyerId: 8601 });
+  await expect(page.getByTestId("signatures-list-row-901")).toBeHidden();
+
+  await page.getByTestId("client-tab-pending-signatures").click();
 
   const row = page.getByTestId("signatures-list-row-901");
+  await expect(row).toBeVisible({ timeout: 15_000 });
   await expect(row.getByText("Poder General")).toBeVisible();
   await expect(row.getByText("Pendiente", { exact: true })).toBeVisible();
 });

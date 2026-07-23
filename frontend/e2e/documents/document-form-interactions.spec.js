@@ -21,12 +21,13 @@ import {
 
 const LAWYER_ID = 32000;
 
-function buildDocWithVariables({ id = 960, title = "Minuta de Prueba", state = "Draft" } = {}) {
+function buildDocWithVariables({ id = 960, title = "Minuta de Prueba", state = "Progress" } = {}) {
   return buildMockDocument({
     id,
     title,
     state,
     createdBy: LAWYER_ID,
+    assignedTo: LAWYER_ID,
     variables: [
       { name_en: "Client Name", name_es: "Nombre del Cliente", field_type: "input", value: "", tooltip: "Nombre completo del cliente", summary_field: "none" },
       { name_en: "Description", name_es: "Descripción", field_type: "text_area", value: "", tooltip: "", summary_field: "none" },
@@ -87,12 +88,30 @@ async function setupDocumentForm(page, { mode = "editor", doc = null } = {}) {
 }
 
 /**
+ * Walk from the dashboard to the "name your document" step of the edit flow:
+ * "Mis Documentos" tab → document row → actions modal → "Completar".
+ * Callers finish with the "Editar Documento" click so the navigation into
+ * DocumentForm is driven by the test itself.
+ */
+async function openEditNameStep(page, doc) {
+  await page.goto("/dynamic_document_dashboard");
+  await page.getByRole("button", { name: "Mis Documentos" }).click();
+  const row = page.getByRole("table").getByText(doc.title);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-editForm").click();
+  await expect(page.locator("#document-name")).toBeVisible({ timeout: 10_000 }); // quality: allow-fragile-selector (stable application ID)
+}
+
+/**
  * Navigate to the document form and wait for fields to render.
  */
-async function gotoDocumentForm(page, doc, mode = "editor") {
-  await page.goto(`/dynamic_document_dashboard/document/use/${mode}/${doc.id}/${encodeURIComponent(doc.title)}`);
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByText("Nombre del Cliente")).toBeVisible({ timeout: 15_000 });
+async function gotoDocumentForm(page, doc) {
+  await openEditNameStep(page, doc);
+  await page.getByRole("button", { name: "Editar Documento" }).click();
+  await expect(page).toHaveURL(new RegExp(`document/use/editor/${doc.id}`), { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: doc.title })).toBeVisible({ timeout: 15_000 });
 }
 
 // ---------- Form rendering ----------
@@ -100,10 +119,12 @@ async function gotoDocumentForm(page, doc, mode = "editor") {
 test.describe("DocumentForm field rendering", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, () => {
   test("renders document title and variable labels in editor mode", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, { mode: "editor" });
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await openEditNameStep(page, doc);
+
+    await page.getByRole("button", { name: "Editar Documento" }).click();
 
     // Document title
+    await expect(page).toHaveURL(new RegExp(`document/use/editor/${doc.id}`), { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: doc.title })).toBeVisible({ timeout: 15000 });
 
     // Variable labels
@@ -115,31 +136,33 @@ test.describe("DocumentForm field rendering", { tag: ['@flow:docs-form-interacti
 
   test("renders input fields for each variable type", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, { mode: "editor" });
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await openEditNameStep(page, doc);
+
+    await page.getByRole("button", { name: "Editar Documento" }).click();
 
     // Wait for form to load
     await expect(page.getByText("Nombre del Cliente")).toBeVisible({ timeout: 15000 });
 
-    // Text input field
+    // Each field type must render an editable control, not just a label.
     // quality: allow-fragile-selector (stable application ID)
     const textInput = page.locator("#field-0");
-    await expect(textInput).toBeVisible();
+    await textInput.fill("Carlos Ruiz");
+    await expect(textInput).toHaveValue("Carlos Ruiz");
 
-    // Textarea field
     // quality: allow-fragile-selector (stable application ID)
     const textArea = page.locator("#field-1");
-    await expect(textArea).toBeVisible();
+    await textArea.fill("Servicios de asesoría");
+    await expect(textArea).toHaveValue("Servicios de asesoría");
 
-    // Number field
     // quality: allow-fragile-selector (stable application ID)
     const numberInput = page.locator("#field-2");
-    await expect(numberInput).toBeVisible();
+    await numberInput.fill("7500");
+    await expect(numberInput).toHaveValue("7500");
 
-    // Date field
     // quality: allow-fragile-selector (stable application ID)
     const dateInput = page.locator("#field-3");
-    await expect(dateInput).toBeVisible();
+    await dateInput.fill("2025-09-30");
+    await expect(dateInput).toHaveValue("2025-09-30");
   });
 });
 
@@ -148,8 +171,7 @@ test.describe("DocumentForm field rendering", { tag: ['@flow:docs-form-interacti
 test.describe("DocumentForm field interaction", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, () => {
   test("filling text input updates field value", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, { mode: "editor" });
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await gotoDocumentForm(page, doc);
 
     await expect(page.getByText("Nombre del Cliente")).toBeVisible({ timeout: 15000 });
 
@@ -162,8 +184,7 @@ test.describe("DocumentForm field interaction", { tag: ['@flow:docs-form-interac
 
   test("filling textarea updates field value", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, { mode: "editor" });
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await gotoDocumentForm(page, doc);
 
     await expect(page.getByText("Descripción")).toBeVisible({ timeout: 15000 });
 
@@ -180,8 +201,7 @@ test.describe("DocumentForm field interaction", { tag: ['@flow:docs-form-interac
 test.describe("DocumentForm save buttons", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, () => {
   test("shows Guardar Borrador and Completar buttons in editor mode", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, { mode: "editor" });
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await gotoDocumentForm(page, doc);
 
     await expect(page.getByText("Nombre del Cliente")).toBeVisible({ timeout: 15000 });
 
@@ -351,8 +371,9 @@ test.describe("DocumentForm email and select fields", { tag: ['@flow:docs-form-i
     const docWithEmailSelect = buildMockDocument({
       id: 964,
       title: "Minuta Email Select",
-      state: "Draft",
+      state: "Progress",
       createdBy: LAWYER_ID,
+      assignedTo: LAWYER_ID,
       variables: [
         { name_en: "Contact Email", name_es: "Correo de Contacto", field_type: "email", value: "", tooltip: "Email del contacto", summary_field: "none" },
         { name_en: "Category", name_es: "Categoría", field_type: "select", value: "", tooltip: "", summary_field: "none", select_options: ["Laboral", "Civil", "Penal"] },
@@ -364,8 +385,7 @@ test.describe("DocumentForm email and select fields", { tag: ['@flow:docs-form-i
       doc: docWithEmailSelect,
     });
 
-    await page.goto(`/dynamic_document_dashboard/document/use/editor/${doc.id}/${encodeURIComponent(doc.title)}`);
-    await page.waitForLoadState("networkidle");
+    await gotoDocumentForm(page, doc);
 
     // Labels should be visible
     await expect(page.getByText("Correo de Contacto")).toBeVisible({ timeout: 15_000 });

@@ -47,10 +47,16 @@ async function installServiceRequestDetailMocks(page, { userId, role, requestDet
   });
 }
 
-async function installNotificationsMocks(page, { userId, role, notifications, unreadCount }) {
+async function installNotificationsMocks(
+  page,
+  { userId, role, notifications, unreadCount, requestDetail = null }
+) {
   const me = buildMockUser({ id: userId, role });
 
   await mockApi(page, async ({ apiPath }) => {
+    if (requestDetail && apiPath === `service-requests/${requestDetail.id}/`) {
+      return { status: 200, contentType: "application/json", body: JSON.stringify(requestDetail) };
+    }
     if (apiPath === "validate_token/") {
       return { status: 200, contentType: "application/json", body: "{}" };
     }
@@ -118,13 +124,17 @@ test(
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto("/notifications");
+    await page.goto("/dashboard");
 
     const bell = page.getByTestId("notification-bell");
     await expect(bell).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("notification-badge")).toHaveText("3");
+    await expect(page.getByText("Centro de Notificaciones")).toHaveCount(0);
 
-    await expect(page.getByText("Centro de Notificaciones")).toBeVisible();
+    await bell.click();
+
+    await expect(page).toHaveURL(/\/notifications$/, { timeout: 15_000 });
+    await expect(page.getByText("Centro de Notificaciones")).toBeVisible({ timeout: 10_000 });
   }
 );
 
@@ -223,10 +233,26 @@ test(
       document_url: null,
     };
 
-    await installServiceRequestDetailMocks(page, {
+    await installNotificationsMocks(page, {
       userId,
       role: "lawyer",
+      unreadCount: 1,
       requestDetail,
+      notifications: [
+        {
+          id: 77,
+          title: "Nueva solicitud de servicio",
+          message: "Revisa la solicitud SR-OPACITY",
+          category: "service_request",
+          priority: "high",
+          is_read: false,
+          is_archived: false,
+          snoozed_until: null,
+          link_type: "service_request",
+          link_id: requestId,
+          created_at: new Date().toISOString(),
+        },
+      ],
     });
 
     await setAuthLocalStorage(page, {
@@ -234,7 +260,14 @@ test(
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    await page.goto(`/service_requests/${requestId}?highlight=${requestId}`);
+    // Reach the highlight the way the user does: open the notification.
+    await page.goto("/notifications");
+    await page.getByTestId("notification-77").click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/service_requests/${requestId}\\?highlight=${requestId}`),
+      { timeout: 15_000 }
+    );
 
     // quality: allow-fragile-selector (notification-highlight is the semantic class for the highlight feature being tested)
     const card = page.locator(".notification-highlight").first();

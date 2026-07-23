@@ -15,10 +15,11 @@ import { installWompiStubs } from "../helpers/wompiStubs.js";
  * cancel-anytime policy and lets the user switch plans through checkout.
  */
 
-test("active subscriber sees cancel-anytime policy on the plans page", { tag: ['@flow:subscriptions-cancel', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("active subscriber leaving checkout finds the cancel-anytime policy", { tag: ['@flow:subscriptions-cancel', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9100;
   const sub = buildMockSubscription({ planType: "cliente", status: "active" });
 
+  await installWompiStubs(page);
   await installSubscriptionsApiMocks(page, {
     userId,
     role: "client",
@@ -30,9 +31,14 @@ test("active subscriber sees cancel-anytime policy on the plans page", { tag: ['
     userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/subscriptions");
+  // The subscriber is mid-checkout and backs out of the purchase
+  await page.goto("/checkout/cliente");
+  await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Volver a planes" }).click();
+
+  // The plans page is where the cancellation policy is stated
+  await expect(page).toHaveURL(/\/subscriptions/);
   await expect(page.getByText("Cancela en cualquier momento")).toBeVisible();
   await expect(page.getByText("30 días de garantía de reembolso")).toBeVisible();
 });

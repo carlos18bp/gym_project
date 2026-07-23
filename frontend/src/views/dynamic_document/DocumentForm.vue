@@ -171,6 +171,7 @@
               : 'bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
           "
           :disabled="!allFieldsComplete || formalizeButtonDisabled"
+          data-testid="document-form-submit"
           @click="saveDocument(route.params.mode === 'formalize' ? 'Published' : 'Completed')"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,6 +214,7 @@
               :class="signatureType === 'normal' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'"
             >
               <input type="radio" v-model="signatureType" value="normal"
+                data-testid="formalize-signature-type-normal"
                 class="mt-0.5 h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500" />
               <div>
                 <span class="text-sm font-medium text-gray-900">Todas las partes firman</span>
@@ -223,6 +225,7 @@
               :class="signatureType === 'issuer_only' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'"
             >
               <input type="radio" v-model="signatureType" value="issuer_only"
+                data-testid="formalize-signature-type-issuer-only"
                 class="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" />
               <div>
                 <span class="text-sm font-medium text-gray-900">Solo firma del emisor</span>
@@ -233,6 +236,7 @@
               :class="signatureType === 'informative' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'"
             >
               <input type="radio" v-model="signatureType" value="informative"
+                data-testid="formalize-signature-type-informative"
                 class="mt-0.5 h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500" />
               <div>
                 <span class="text-sm font-medium text-gray-900">Documento informativo (sin firmas)</span>
@@ -252,14 +256,16 @@
               type="text"
               v-model="userSearchQuery"
               @input="searchUsers"
+              data-testid="formalize-signer-search"
               placeholder="Buscar usuario por nombre o correo..."
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
             />
             <div v-if="showUserResults && filteredUsers.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-40 sm:max-h-60 overflow-auto">
               <ul class="py-1">
                 <li 
-                  v-for="user in filteredUsers" 
+                  v-for="user in filteredUsers"
                   :key="user.id"
+                  :data-testid="'formalize-signer-option-' + user.id"
                   @click="addSigner(user)"
                   class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                 >
@@ -303,14 +309,16 @@
               type="text"
               v-model="recipientSearchQuery"
               @input="searchRecipients"
+              data-testid="formalize-recipient-search"
               placeholder="Buscar destinatario por nombre o correo..."
               class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300"
             />
             <div v-if="showRecipientResults && filteredRecipients.length > 0" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto">
               <ul class="py-1">
                 <li 
-                  v-for="user in filteredRecipients" 
+                  v-for="user in filteredRecipients"
                   :key="user.id"
+                  :data-testid="'formalize-recipient-option-' + user.id"
                   @click="addRecipient(user)"
                   class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                 >
@@ -356,6 +364,7 @@
             v-model="signatureDueDate"
             type="date"
             :min="minSignatureDate"
+            data-testid="formalize-signature-due-date"
             class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
           />
         </div>

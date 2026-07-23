@@ -35,13 +35,26 @@ async function setupIntranet(page, { documents = [] } = {}) {
 // ---------- Company attributes banner ----------
 
 test.describe("IntranetGyM company attributes", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, () => {
-  test("renders Seguridad, Confianza, Tranquilidad banner", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
-    await setupIntranet(page);
+  test("searching a term with no matches empties the procedures list", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
+    await setupIntranet(page, {
+      documents: [
+        buildMockIntranetDoc({ id: 1, name: "Manual de Operaciones" }),
+        buildMockIntranetDoc({ id: 2, name: "Política de Seguridad" }),
+      ],
+    });
     await page.goto("/intranet_g_y_m");
-    await page.waitForLoadState("networkidle");
 
-    await expect(page.getByText("Seguridad")).toBeVisible({ timeout: 10000 });
+    // Starting point: the attributes banner and both procedures are on screen
+    await expect(page.getByText("Seguridad", { exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Confianza")).toBeVisible();
+    await expect(page.getByText("Tranquilidad")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Manual de Operaciones" })).toBeVisible();
+
+    await page.locator("input#search").fill("no-existe-este-procedimiento");
+
+    // Transition: no procedure survives the filter, the banner stays put
+    await expect(page.getByRole("button", { name: "Manual de Operaciones" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Política de Seguridad" })).toHaveCount(0);
     await expect(page.getByText("Tranquilidad")).toBeVisible();
   });
 });
@@ -49,30 +62,30 @@ test.describe("IntranetGyM company attributes", { tag: ['@flow:intranet-interact
 // ---------- Company info ----------
 
 test.describe("IntranetGyM company info section", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, () => {
-  test("shows G&M heading and member count", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
+  test("Organigrama modal closes from the header close icon", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
     await setupIntranet(page);
     await page.goto("/intranet_g_y_m");
-    await page.waitForLoadState("networkidle");
 
+    // Starting point: the company info block with the member count
     await expect(page.getByRole("heading", { name: "G&M", exact: true })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Firma de Abogados G&M")).toBeVisible();
     // Mock returns lawyers_count: 3
     await expect(page.getByText("3 miembros")).toBeVisible();
+
+    await page.getByRole("button", { name: /Ver Organigrama/i }).click();
+    await expect(page.getByRole("heading", { name: "Organigrama G&M" })).toBeVisible({ timeout: 5000 });
+
+    await page.getByTitle("Cerrar").click();
+
+    // Transition: the modal is dismissed and the company info is reachable again
+    await expect(page.getByRole("heading", { name: "Organigrama G&M" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "G&M", exact: true })).toBeVisible();
   });
 });
 
-// ---------- Organigrama button ----------
-
-test.describe("IntranetGyM organigrama button", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, () => {
-  test("Ver Organigrama button is visible for lawyers", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
-    await setupIntranet(page);
-    await page.goto("/intranet_g_y_m");
-    await page.waitForLoadState("networkidle");
-
-    const orgBtn = page.getByRole("button", { name: /Ver Organigrama/i });
-    await expect(orgBtn).toBeVisible({ timeout: 10000 });
-  });
-});
+// NOTE: a "Ver Organigrama button is visible for lawyers" test used to live here.
+// It never drove the button and is strictly subsumed by the modal open/close
+// tests below, so it was removed instead of duplicated.
 
 // ---------- Enviar Informe button ----------
 
@@ -101,34 +114,60 @@ test.describe("IntranetGyM facturation", { tag: ['@flow:intranet-interactions', 
 // ---------- Procedimientos section ----------
 
 test.describe("IntranetGyM procedimientos section", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, () => {
-  test("renders Procedimientos G&M heading and search bar", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
-    await setupIntranet(page);
+  test("clearing the search restores the full procedures list", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
+    await setupIntranet(page, {
+      documents: [
+        buildMockIntranetDoc({ id: 1, name: "Manual de Operaciones" }),
+        buildMockIntranetDoc({ id: 2, name: "Política de Seguridad" }),
+      ],
+    });
     await page.goto("/intranet_g_y_m");
-    await page.waitForLoadState("networkidle");
 
     await expect(page.getByText("Procedimientos G&M")).toBeVisible({ timeout: 10000 });
 
-    // Search bar should be present
-    const searchInput = page.getByPlaceholder(/Buscar/i);
-    await expect(searchInput).toBeVisible();
+    const searchInput = page.locator("input#search");
+    await searchInput.fill("Manual");
+    await expect(page.getByRole("button", { name: "Política de Seguridad" })).toHaveCount(0);
+
+    await searchInput.fill("");
+
+    // Transition: emptying the search brings the filtered-out procedure back
+    await expect(page.getByRole("button", { name: "Política de Seguridad" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Manual de Operaciones" })).toBeVisible();
   });
 });
 
 // ---------- Documents rendering ----------
 
 test.describe("IntranetGyM documents list", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, () => {
-  test("renders intranet documents when available", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
+  test("lawyer downloads an intranet document from the list", { tag: ['@flow:intranet-interactions', '@module:intranet', '@priority:P3', '@role:lawyer-gym'] }, async ({ page }) => {
     const docs = [
       buildMockIntranetDoc({ id: 1, name: "Manual de Operaciones" }),
       buildMockIntranetDoc({ id: 2, name: "Política de Seguridad" }),
     ];
     await setupIntranet(page, { documents: docs });
-    await page.goto("/intranet_g_y_m");
-    await page.waitForLoadState("networkidle");
 
-    // Documents should be listed (the component renders document names)
-    await expect(page.getByText("Manual de Operaciones")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Política de Seguridad")).toBeVisible();
+    // The document binary is stubbed so the download never hits the network
+    await page.route("https://example.test/**", async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        body: "fake-docx-content",
+      })
+    );
+
+    await page.goto("/intranet_g_y_m");
+
+    // Starting point: both documents are listed
+    await expect(page.getByRole("button", { name: "Manual de Operaciones" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: "Política de Seguridad" })).toBeVisible();
+
+    const fileRequest = page.waitForRequest("https://example.test/file.docx");
+    await page.getByRole("button", { name: "Manual de Operaciones" }).click();
+
+    // Transition: the file is fetched and the download is confirmed to the user
+    await fileRequest;
+    await expect(page.getByText('Documento "Manual de Operaciones" descargado exitosamente')).toBeVisible({ timeout: 10_000 });
   });
 });
 

@@ -21,6 +21,7 @@
         <!-- Module Button -->
         <button
           @click="selectModule(module.id)"
+          :aria-current="selectedModule === module.id ? 'true' : 'false'"
           :class="[
             'w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors',
             selectedModule === module.id

@@ -82,6 +82,12 @@ test("a lawyer sees colleague minutas with the informational 'Creado por' column
   await expect(page.getByText("Minuta Propia")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Minuta De Colega")).toBeVisible();
 
+  // The column is informational, not a filter: sorting by name must keep the
+  // colleague's minuta on screen with its creator still attributed.
+  await page.getByRole("button", { name: "Más recientes" }).click();
+  await page.getByRole("menuitem", { name: "Nombre (A-Z)" }).click();
+  await expect(page.getByText("Minuta De Colega")).toBeVisible({ timeout: 10_000 });
+
   // Informational "Creado por" column header + the creator names.
   const table = page.getByRole("table");
   await expect(table.getByRole("columnheader", { name: "Creado por" })).toBeVisible();

@@ -9,9 +9,10 @@ import { LEGAL_FILES_AUTO_REDIRECT } from "../helpers/flow-tags.js";
 /**
  * E2E for legal-files-auto-redirect (Req #6).
  *
- * Verifies that the first post-login visit to the document Dashboard
- * auto-selects the "Dcs. Por Firmar" tab when there are pending signatures,
- * but explicit URL params (?tab=, ?lawyerTab=) override the auto-redirect.
+ * Verifies that the first visit of the session to the document Dashboard —
+ * reached the way a user reaches it, from the sidebar — auto-selects the
+ * "Dcs. Por Firmar" tab when there are pending signatures, but that explicit
+ * URL params (?tab=, ?lawyerTab=) override the auto-redirect.
  */
 
 function buildPendingDoc(userId, id, title) {
@@ -57,8 +58,16 @@ test(
       },
     });
 
-    await page.goto("/dynamic_document_dashboard");
+    // Enter the module the way the user does — from the sidebar, with no tab
+    // hint in the URL, so the auto-redirect is the only thing that can select
+    // the pending-signatures tab.
+    await page.goto("/dashboard");
+    await page.getByText("Archivos Juridicos").first().waitFor({ timeout: 15_000 });
+    await expect(page.getByText("Contrato Pendiente Auto")).toHaveCount(0);
 
+    await page.getByText("Archivos Juridicos").first().click();
+
+    await expect(page).toHaveURL(/\/dynamic_document_dashboard$/, { timeout: 15_000 });
     await expect(page.getByText("Contrato Pendiente Auto")).toBeVisible({
       timeout: 15_000,
     });
