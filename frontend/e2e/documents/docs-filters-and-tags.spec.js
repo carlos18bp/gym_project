@@ -8,6 +8,10 @@ import { mockApi } from "../helpers/api.js";
 /**
  * Consolidated E2E tests for docs-filters and docs-tags flows.
  * Replaces 11 fragmented spec files with 6 user-flow tests.
+ *
+ * Tag creation/deletion is only reachable through the variables-config view
+ * (/dynamic_document_dashboard/lawyer/variables-config), which hosts the
+ * DocumentTagsManager — the dashboard itself has no tag CRUD UI.
  */
 
 async function installFilterTagMocks(page, { userId, documents, tags = [] }) {
@@ -155,20 +159,20 @@ test("lawyer filters documents by tag from tag filter dropdown", { tag: ['@flow:
   await page.goto("/dynamic_document_dashboard");
   await page.getByRole("button", { name: "Minutas" }).click();
   await expect(page.getByText("Contrato Laboral")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Demanda Civil")).toBeVisible();
 
-  // Open tag filter and select "Laboral"
-  const tagFilterBtn = page.locator('[data-testid="tag-filter-button"]').or(page.getByRole("button", { name: /etiqueta|tag/i })).first();
-  const tagFilterVisible = await tagFilterBtn.isVisible({ timeout: 3_000 }).catch(() => false);
+  // Open the tag filter and pick "Laboral" — the table must refetch with
+  // the server-side tag_id filter and drop the non-matching documents.
+  await page.getByRole("button", { name: "Etiqueta" }).click();
+  const tagFilterRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/dynamic-documents/") && request.url().includes("tag_id=601")
+  );
+  await page.getByRole("menuitem", { name: "Laboral" }).click();
+  await tagFilterRequest;
 
-  if (tagFilterVisible) {
-    await tagFilterBtn.click();
-    const laboralOption = page.getByText("Laboral").first();
-    await laboralOption.click({ timeout: 3_000 });
-  }
-
-  // Verify documents display correctly on the dashboard
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.getByText("Demanda Civil")).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.getByText("Poder Sin Tag")).toHaveCount(0);
+  await expect(page.getByText("Contrato Laboral")).toBeVisible();
 });
 
 test("lawyer sees search input on documents dashboard", { tag: ['@flow:docs-filters', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -213,56 +217,86 @@ test("lawyer opens tag filter and sees available tags", { tag: ['@flow:docs-tags
   await page.getByRole("button", { name: "Minutas" }).click();
   await expect(page.getByText("Doc Con Tags")).toBeVisible({ timeout: 15_000 });
 
-  // Tags should be loaded (visible in the tag filter area or on the card)
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("lawyer");
+  await page.getByRole("button", { name: "Etiqueta" }).click();
+
+  await expect(page.getByRole("menuitem", { name: "Todos" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Laboral" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Civil" })).toBeVisible();
 });
 
 test("lawyer creates a new tag via tag management", { tag: ['@flow:docs-tags', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7511;
-  const tags = [{ id: 703, name: "Existente", color_id: 0 }];
   const documents = [
-    buildMockDocument({ id: 5040, title: "Doc Para Tags", state: "Draft", createdBy: userId, tags }),
+    buildMockDocument({ id: 5040, title: "Doc Para Tags", state: "Draft", createdBy: userId }),
   ];
 
-  await installFilterTagMocks(page, { userId, documents, tags });
+  await installFilterTagMocks(page, { userId, documents, tags: [] });
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.getByRole("button", { name: "Minutas" }).click();
-  await expect(page.getByText("Doc Para Tags")).toBeVisible({ timeout: 15_000 });
+  // Tag management lives in the variables-config view (DocumentTagsManager).
+  await page.goto("/dynamic_document_dashboard/lawyer/variables-config?documentId=5040");
 
-  // Verify the tag management area is accessible
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await page.getByRole("button", { name: "Nueva Etiqueta" }).click();
+  await expect(page.getByRole("heading", { name: "Nueva Etiqueta" })).toBeVisible({ timeout: 10_000 });
+
+  await page.getByLabel("Nombre de la etiqueta").fill("EtiquetaE2E");
+
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/dynamic-documents/tags/create/") &&
+      request.method() === "POST"
+  );
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await createRequest;
+
+  // Success notification (blocking SweetAlert) confirms the creation.
+  await expect(page.getByText("Etiqueta creada exitosamente")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByText("Etiquetas Disponibles:")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("EtiquetaE2E")).toBeVisible();
 });
 
 test("lawyer deletes a tag and it disappears from the list", { tag: ['@flow:docs-tags', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7512;
-  const tags = [
-    { id: 704, name: "AEliminar", color_id: 2 },
-    { id: 705, name: "Conservar", color_id: 3 },
-  ];
   const documents = [
-    buildMockDocument({ id: 5050, title: "Doc Tags Delete", state: "Published", createdBy: userId, tags }),
+    buildMockDocument({ id: 5050, title: "Doc Tags Delete", state: "Published", createdBy: userId }),
   ];
 
-  await installFilterTagMocks(page, { userId, documents, tags });
+  await installFilterTagMocks(page, { userId, documents, tags: [] });
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.getByRole("button", { name: "Minutas" }).click();
-  await expect(page.getByText("Doc Tags Delete")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/dynamic_document_dashboard/lawyer/variables-config?documentId=5050");
 
-  // Verify dashboard loaded with tags
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  // Create a tag through the real modal so the chip to delete exists.
+  await page.getByRole("button", { name: "Nueva Etiqueta" }).click();
+  await page.getByLabel("Nombre de la etiqueta").fill("TagTemporal");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByText("Etiqueta creada exitosamente")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+  await expect(page.getByText("TagTemporal")).toBeVisible({ timeout: 10_000 });
+
+  // Delete it from the chip's trash button and confirm in the SweetAlert.
+  await page.getByRole("button", { name: "Eliminar etiqueta" }).click();
+  await expect(page.locator('[class~="swal2-popup"]')).toBeVisible({ timeout: 10_000 });
+
+  const deleteRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/dynamic-documents/tags/900/delete/") &&
+      request.method() === "DELETE"
+  );
+  await page.getByRole("button", { name: "Sí, eliminar" }).click();
+  await deleteRequest;
+
+  // Success notification confirms the deletion; dismiss it.
+  await expect(page.getByText("Etiqueta eliminada exitosamente")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByText("TagTemporal")).toHaveCount(0, { timeout: 10_000 });
 });

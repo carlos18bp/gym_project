@@ -138,11 +138,13 @@ async function installSubscriptionSignUpMocks(page, { userId, signUpResponse = "
 
 const alertDialog = (page) => page.getByRole("dialog");
 
-async function dismissAlertIfVisible(page, timeout = 10_000) {
+async function dismissAlert(page, expectedText) {
+  const dialog = alertDialog(page);
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toContainText(expectedText);
   const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
-  if (await confirmButton.isVisible({ timeout }).catch(() => false)) {
-    await confirmButton.click();
-  }
+  await expect(confirmButton).toBeVisible();
+  await confirmButton.click();
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll(".swal2-container").forEach((el) => el.remove());
@@ -206,8 +208,8 @@ test("subscription sign-up sends verification code and completes registration", 
   await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
   await registerBtn.click();
 
-  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
-  await dismissAlertIfVisible(page);
+  // Verification-code-sent notification must appear before the passcode step
+  await dismissAlert(page, "código");
 
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#passcode")).toBeVisible({ timeout: 10_000 });
@@ -217,7 +219,7 @@ test("subscription sign-up sends verification code and completes registration", 
   await page.getByRole("button", { name: "Verificar y crear cuenta" }).click();
 
   // Dismiss success notification so it doesn't block navigation
-  await dismissAlertIfVisible(page, 5_000);
+  await dismissAlert(page, "Registro exitoso");
 
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });

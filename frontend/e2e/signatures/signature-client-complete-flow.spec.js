@@ -180,18 +180,12 @@ test("client sees pending signatures section with document awaiting their signat
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Navigate to pending documents tab if available
-  const pendingTab = page.getByRole("button", { name: /Por Firmar|Pendientes/i });
-  if (await pendingTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await pendingTab.click();
-    await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
-  } else {
-    // Verify dashboard loaded
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-  }
+  // Navigate to the pending documents tab
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
+  // The signature status column shows the document as pending
+  await expect(page.getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
 test("client with signature clicks pending document and sees sign action", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
@@ -206,27 +200,19 @@ test("client with signature clicks pending document and sees sign action", { tag
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // Navigate to pending documents tab
-  const pendingTab = page.getByRole("button", { name: /Por Firmar|Pendientes/i });
-  if (await pendingTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await pendingTab.click();
-    await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
+  // Navigate to the pending documents tab
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
 
-    // Click on the pending document row to open actions modal
-    await page.getByText("Contrato de Arrendamiento").click();
+  // Click on the pending document row to open the actions modal
+  await page.getByText("Contrato de Arrendamiento").click();
 
-    // Should see document actions including sign option
-    await expect(page.getByRole("button", { name: /Firmar documento/i })).toBeVisible({ timeout: 10_000 });
-  } else {
-    // Fallback: verify dashboard loaded with pending document data
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-  }
+  // Should see document actions including sign option
+  await expect(page.getByRole("button", { name: /Firmar documento/i })).toBeVisible({ timeout: 10_000 });
 });
 
-test("client without signature has has_signature false in session state", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client without signature is prompted to create one when signing", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 8304;
   const lawyerId = 8305;
 
@@ -238,13 +224,22 @@ test("client without signature has has_signature false in session state", { tag:
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Open the pending document and try to sign it
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Contrato de Arrendamiento").click();
+  await page.getByRole("button", { name: /Firmar documento/i }).click();
 
-  // Verify client session reflects no signature
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("client");
-  expect(userAuth.has_signature).toBe(false);
+  // Without a registered signature the app warns and offers to create one
+  await expect(page.getByText("Para firmar documentos necesitas tener una firma registrada.")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByText("¿Deseas crear una firma electrónica ahora?")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Aceptar" }).click();
+
+  // Accepting opens the electronic signature modal with the creation options
+  await expect(page.getByRole("heading", { name: "Firma Electrónica", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
 });

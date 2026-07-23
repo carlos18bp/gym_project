@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="fixed inset-0 z-50 flex items-center justify-center" data-testid="document-signatures-modal">
     <div class="absolute inset-0 bg-black opacity-50" @click="close"></div>
     <div class="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
       <!-- Modal header -->

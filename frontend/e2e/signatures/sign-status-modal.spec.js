@@ -4,8 +4,19 @@ import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dy
 
 /**
  * E2E tests for sign-status-modal flow.
- * Covers: viewing signature status modal with signer table.
+ * Covers: viewing the "Estado de Formalización" modal with the signer table.
  */
+
+/**
+ * DocumentSignaturesModal first queries pending-documents-full and falls back
+ * to the document detail endpoint. Return an empty list so the modal uses the
+ * detail endpoint already handled by installDynamicDocumentApiMocks.
+ */
+async function stubPendingDocumentsFull(page) {
+  await page.route("**/api/dynamic-documents/user/*/pending-documents-full/", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+  );
+}
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
 test("lawyer clicks document on Dcs. Por Firmar and sees signature status info", { tag: ['@flow:sign-status-modal', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -22,6 +33,7 @@ test("lawyer clicks document on Dcs. Por Firmar and sees signature status info",
   ];
 
   await installDynamicDocumentApiMocks(page, { userId, role: "lawyer", hasSignature: true, documents: docs });
+  await stubPendingDocumentsFull(page);
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
@@ -33,10 +45,18 @@ test("lawyer clicks document on Dcs. Por Firmar and sees signature status info",
   await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
   await expect(page.getByText("Contrato Con Firmas")).toBeVisible({ timeout: 10_000 });
 
-  // Click document row to see actions/status
+  // Click document row and open the signature status modal from the actions
   await page.getByText("Contrato Con Firmas").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await page.getByRole("button", { name: "Estado de Formalización" }).click();
+
+  const statusModal = page.getByTestId("document-signatures-modal");
+  await expect(statusModal.getByRole("heading", { name: "Estado de Formalización del Documento" })).toBeVisible({ timeout: 10_000 });
+
+  // Signer table lists both signers with their individual status
+  await expect(statusModal.getByText("E2E Lawyer")).toBeVisible();
+  await expect(statusModal.getByText("Firmado", { exact: true })).toBeVisible();
+  await expect(statusModal.getByText("Cliente Test")).toBeVisible();
+  await expect(statusModal.getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
@@ -54,6 +74,7 @@ test("fully signed document shows all signers completed in status view", { tag: 
   ];
 
   await installDynamicDocumentApiMocks(page, { userId, role: "lawyer", hasSignature: true, documents: docs });
+  await stubPendingDocumentsFull(page);
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
@@ -66,6 +87,12 @@ test("fully signed document shows all signers completed in status view", { tag: 
   await expect(page.getByText("Contrato Todo Firmado")).toBeVisible({ timeout: 10_000 });
 
   await page.getByText("Contrato Todo Firmado").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await page.getByRole("button", { name: "Estado de Formalización" }).click();
+
+  const statusModal = page.getByTestId("document-signatures-modal");
+  await expect(statusModal.getByRole("heading", { name: "Estado de Formalización del Documento" })).toBeVisible({ timeout: 10_000 });
+
+  // Every signer appears as signed — no pending entries remain
+  await expect(statusModal.getByText("Firmado", { exact: true })).toHaveCount(2);
+  await expect(statusModal.getByText("Pendiente", { exact: true })).toBeHidden();
 });

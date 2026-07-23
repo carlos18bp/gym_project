@@ -220,3 +220,22 @@ test(
     await expect(page.getByText("Página 1 de 2")).toBeVisible();
   }
 );
+
+test(
+  "mobile viewport shows the top bar and archiving works from a phone",
+  { tag: ["@flow:notification-archive-toggle", "@module:notifications", "@priority:P4", "@role:shared"] },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openNotifications(page, { notifications: [buildNotification(1), buildNotification(2)] });
+
+    // The sticky mobile top bar only renders below lg
+    // quality: allow-fragile-selector (structural mobile bar has no text content to anchor on)
+    await expect(page.locator("div.sticky.top-0.lg\\:hidden").first()).toBeVisible();
+
+    await page.getByTestId("archive-1").click();
+    await expect(page.getByTestId("notification-1")).toHaveCount(0);
+
+    await page.getByTestId("tab-archived").click();
+    await expect(page.getByTestId("notification-1")).toBeVisible();
+  }
+);

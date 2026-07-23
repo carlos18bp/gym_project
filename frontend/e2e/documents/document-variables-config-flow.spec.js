@@ -80,7 +80,7 @@ test("lawyer can go from DocumentEditor to Variables Config and save draft", { t
   await page.locator("#name_es_0").fill("Contraparte"); // quality: allow-fragile-selector (stable DOM id)
   await page.locator("#name_es_1").fill("Valor"); // quality: allow-fragile-selector (stable DOM id)
 
-  await page.locator("#app").getByRole("button", { name: "Guardar como borrador" }).click();
+  await page.getByTestId("variables-config-save-draft").click();
 
   await expect(page.locator(".swal2-popup")).toBeVisible({ timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
   await expect(page.locator(".swal2-popup")).toContainText("Documento guardado como borrador"); // quality: allow-fragile-selector (class selector targets stable UI structure)

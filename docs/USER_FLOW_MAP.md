@@ -2186,6 +2186,12 @@ Auditoría de doble fuente (interacciones frontend + clasificación de 205 endpo
 
 ---
 
+## Pasada de profundidad — Auditoría anti-synthetic 2026-07-23
+
+Reescritura de **47 specs (135 sitios sintéticos → 0)**: asserts condicionales (`if (visible)`), `.catch(() => false)` y asserts sobre `#app` reemplazados por interacciones conducidas con outcomes observables. Hallazgos estructurales corregidos: 10+ tests apuntaban a **rutas fantasma** (`/process`, `/organizations`, `/subscription`, `/privacy-policy`, `/terms-of-use` → catch-all a sign_in); labels/estados/selectores inexistentes ("InProgress", "Nueva Solicitud", `/sign-in`); fixtures con shapes inválidos. Dead-code adicional confirmado: **no existe UI de gestión de suscripción** (cancel/reactivate/update-payment sin componente) ni CRUD de legal-updates. La pestaña Carpetas no tiene buscador (test infalsificable reemplazado). Variantes añadidas: rol basic en SECOP (overlays de upgrade) y mobile en el centro de notificaciones.
+
+---
+
 **Documento generado:** July 22, 2026
 **Versión:** 1.12.0
 **Estado:** 164/164 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.12.0 (cobertura estática por tags `@flow:`).

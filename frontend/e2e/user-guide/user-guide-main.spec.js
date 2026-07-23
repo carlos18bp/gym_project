@@ -140,17 +140,13 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for search input
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await searchInput.fill("documento");
-      await page.waitForLoadState('domcontentloaded');
-    }
+    // Typing 3+ characters triggers the guide search and opens the results dropdown
+    const searchInput = page.getByPlaceholder("Buscar en el manual...");
+    await expect(searchInput).toBeVisible({ timeout: 10_000 });
+    await searchInput.fill("documento");
 
-    // Page should respond
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeVisible({ timeout: 5_000 });
   });
 
   test("search filters guide content", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -164,21 +160,17 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for search input
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await searchInput.fill("proceso");
-      await page.waitForLoadState('domcontentloaded');
-      
-      // Clear search
-      await searchInput.clear();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    const searchInput = page.getByPlaceholder("Buscar en el manual...");
+    await expect(searchInput).toBeVisible({ timeout: 10_000 });
 
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
+    // Searching shows the results dropdown
+    await searchInput.fill("proceso");
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeVisible({ timeout: 5_000 });
+
+    // Clearing the input (below the 3-char threshold) closes the dropdown
+    await searchInput.clear();
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeHidden();
   });
 });
 
@@ -234,17 +226,23 @@ test.describe("user guide: example modal component", { tag: ['@flow:user-guide-n
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for example buttons or links
-    const exampleBtn = page.getByRole("button", { name: /ejemplo|example|ver/i }).first();
-    if (await exampleBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await exampleBtn.click();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    // Navigate: sidebar module "Procesos" → section card in the module overview
+    const sidebar = page.locator("aside");
+    await expect(sidebar.getByRole("button", { name: "Procesos", exact: true })).toBeVisible({ timeout: 10_000 });
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
+    await page.getByRole("button", { name: "Radicar Proceso (Solo Abogados)" }).click();
 
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
+    // The section exposes the example trigger
+    await page.getByRole("button", { name: "Ver Ejemplo Completo" }).click();
+
+    // ExampleModal opens with the example content
+    await expect(page.getByRole("heading", { name: "Ejemplo: Radicar un Proceso de Tutela" })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Paso a paso para crear un nuevo proceso de tutela en el sistema.")).toBeVisible();
+
+    // Closing the modal removes the example content
+    await page.getByRole("button", { name: "Entendido" }).click();
+    await expect(page.getByRole("heading", { name: "Ejemplo: Radicar un Proceso de Tutela" })).toBeHidden();
   });
 });
 

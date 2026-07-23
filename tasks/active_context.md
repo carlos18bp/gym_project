@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Depth round: anti-synthetic E2E pass (2026-07-23, ronda 5)**:
+  - **47 specs rewritten, 135 synthetic assert sites → 0** (4 parallel agents): conditional asserts, swallowed failures and un-failable `#app` asserts replaced by driven interactions with observable outcomes (waitForRequest, stateful mocks, DOM results). ~215 tests green.
+  - **Structural findings**: 10+ tests hit phantom routes (`/process`, `/organizations`, `/subscription`, `/privacy-policy` → catch-all redirect) without anyone noticing; nonexistent states/labels/selectors made asserts dead since creation; fixtures with invalid shapes left lists empty. Additional dead code confirmed: subscription management UI (cancel/reactivate/update-payment) and legal-updates CRUD have no components.
+  - **Role/mobile variants**: SECOP basic-role upgrade overlays and notification-center mobile covered. Practical rule recorded: data-testid does not pass through Heroicons components (put it on native elements).
+  - Gate stays 0/0/0.
 - **Full user-flow coverage round (2026-07-22, ronda 4)**:
   - **Exhaustive dual-source flow audit**: frontend interaction sweep + classification of all 205 backend endpoints vs registry v1.11.0 → 11 unregistered flows found, all implemented and registered (`flow-definitions.json` v1.12.0, **164/164 covered**): notification item actions ×5, service-admin delete, process participants modal, signatures-certificate download, corporate dashboard KPIs (tag on existing stats spec), directory→process navigation, SECOP list retry (`df716f9`). Orphan endpoints without component consumers documented as non-flows in USER_FLOW_MAP (legal-updates CRUD, corporate dashboard-stats, org public detail, user Word-letterhead, recent-docs/processes widgets — dead-code candidates worth a product decision).
   - **Bug found by new E2E**: notification snooze menu was unusable on non-last rows — hover-out faded the actions bar (open menu invisible) and its mid-transition opacity buried the dropdown under the next row; actions bar now pins visible+z-20 while its menu is open (`5f3f692`).

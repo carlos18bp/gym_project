@@ -271,7 +271,7 @@
           alt="G&M Consultores Juridicos"
         />
       </div>
-      <nav class="relative flex flex-1 flex-col">
+      <nav data-testid="sidebar-nav" class="relative flex flex-1 flex-col">
         <ul role="list" class="flex flex-1 flex-col gap-y-5">
           <li>
             <!-- Profile dropdown -->

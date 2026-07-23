@@ -120,14 +120,13 @@ test.describe("Profile modal via user menu", { tag: ['@flow:docs-profile-navigat
     await expect(page.locator("#viewProfileModal")).toBeVisible({ timeout: 5000 });
 
     // Close via X button (XMarkIcon in the top-right)
-    // quality: allow-fragile-selector (positional access on filtered set)
-    const closeBtn = page.locator("#viewProfileModal svg.cursor-pointer").first();
-    if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await closeBtn.click();
-      // Modal should close
-      // quality: allow-fragile-selector (stable application ID)
-      await expect(page.locator("#viewProfileModal")).toBeHidden({ timeout: 5000 });
-    }
+    const closeBtn = page.getByTestId("profile-close-button");
+    await expect(closeBtn).toBeVisible({ timeout: 3000 });
+    await closeBtn.click();
+
+    // Modal should close
+    // quality: allow-fragile-selector (stable application ID)
+    await expect(page.locator("#viewProfileModal")).toBeHidden({ timeout: 5000 });
   });
 });
 

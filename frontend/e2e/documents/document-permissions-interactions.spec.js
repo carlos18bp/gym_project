@@ -239,10 +239,9 @@ test.describe("Permissions modal combined grant and revoke", { tag: ['@flow:docs
     // Revoke visibility by unchecking
     await visibilityCheckbox.uncheck();
 
-    // Summary should no longer show the client or should be empty
-    const summaryStillVisible = await page.getByText(/Pueden ver/).first().isVisible({ timeout: 3000 }).catch(() => false);
-    // If summary still shows, Carlos should not be listed; if hidden, grant/revoke worked
-    expect(typeof summaryStillVisible).toBe("boolean");
+    // With no visibility users left, the permissions summary disappears entirely
+    await expect(page.getByText(/Pueden ver/)).toHaveCount(0, { timeout: 5000 });
+    await expect(page.getByText("Resumen de Permisos:")).toHaveCount(0);
   });
 
   test("granting user visibility and role visibility together updates combined summary", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

@@ -1,12 +1,13 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dynamicDocumentMocks.js";
+import { openDocumentActionsModal } from "../helpers/documentActions.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 /**
  * Consolidated E2E tests for docs-letterhead flow.
- * Replaces 6 fragmented spec files with 4 user-flow tests.
+ * Replaces 6 fragmented spec files with 5 user-flow tests.
  */
 
 test("lawyer opens Global Letterhead modal and sees upload sections", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -24,22 +25,12 @@ test("lawyer opens Global Letterhead modal and sees upload sections", { tag: ['@
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  // Look for global letterhead button
-  const globalBtn = page.getByRole("button", { name: /membrete global/i })
-    .or(page.locator('[data-testid="global-letterhead-btn"]'))
-    // quality: allow-fragile-selector (positional access on filtered set)
-    .first();
-  const visible = await globalBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+  await page.getByRole("button", { name: /membrete global/i }).first().click();
 
-  if (visible) {
-    await globalBtn.click();
-    // Modal should show upload sections
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible();
-  }
-
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gestión de Membrete Global para PDF" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Seleccionar Imagen PNG para PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Seleccionar Plantilla .docx (Word)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sin Membrete para PDF" })).toBeVisible();
 });
 
 test("lawyer opens document-specific Letterhead modal from actions menu", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -55,15 +46,15 @@ test("lawyer opens document-specific Letterhead modal from actions menu", { tag:
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByText("Doc Con Membrete")).toBeVisible({ timeout: 15_000 });
 
-  // Click document row to see actions
-  await page.getByText("Doc Con Membrete").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  await openDocumentActionsModal(page, "Doc Con Membrete");
+  await page.getByTestId("document-action-letterhead").click();
+
+  await expect(page.getByRole("heading", { name: "Gestión de Membrete", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Sin Membrete", exact: true })).toBeVisible();
 });
 
-test("client sees Membrete Global button on document dashboard", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client opens Membrete Global modal from document dashboard", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 8602;
   const docs = [
     buildMockDocument({ id: 3020, title: "Doc Cliente", state: "Completed", createdBy: 999, assignedTo: userId }),
@@ -76,12 +67,13 @@ test("client sees Membrete Global button on document dashboard", { tag: ['@flow:
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("client");
+  const membreteBtn = page.getByRole("button", { name: /membrete global/i }).first();
+  await expect(membreteBtn).toBeVisible({ timeout: 15_000 });
+  await membreteBtn.click();
+
+  await expect(page.getByRole("heading", { name: "Gestión de Membrete Global para PDF" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Seleccionar Imagen PNG para PDF" })).toBeVisible();
 });
 
 test("letterhead modal shows specifications toggle and Word template section", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -98,8 +90,16 @@ test("letterhead modal shows specifications toggle and Word template section", {
 
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+
+  await page.getByRole("button", { name: /membrete global/i }).first().click();
+  await expect(page.getByRole("heading", { name: "Plantilla Word para documentos (.docx)" })).toBeVisible({ timeout: 10_000 });
+
+  // Specifications section is collapsed by default and toggles on demand.
+  await page.getByRole("button", { name: "Ver Especificaciones" }).click();
+  await expect(page.getByRole("heading", { name: "Especificaciones del Membrete para PDF" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Ocultar Especificaciones" }).click();
+  await expect(page.getByRole("heading", { name: "Especificaciones del Membrete para PDF" })).toBeHidden();
 });
 
 test("lawyer uploads a global Word letterhead template", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {

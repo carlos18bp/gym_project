@@ -28,10 +28,13 @@ function buildMockLegalUpdate({ id, title, content, isActive = true, imageUrl = 
   };
 }
 
+// NOTE: the legalUpdate store exposes create/update/delete actions, but no UI
+// component drives them (LegalUpdatesCard.vue is display-only). These tests
+// therefore cover the only reachable flow: displaying active legal updates on
+// the dashboard carousel.
 async function installLegalUpdateMocks(page, { userId, role, updates = [] }) {
   const user = buildMockUser({ id: userId, role });
-  let legalUpdates = [...updates];
-  let nextId = 1000;
+  const legalUpdates = [...updates];
 
   await mockApi(page, async ({ route, apiPath }) => {
     if (apiPath === "validate_token/") {
@@ -53,37 +56,6 @@ async function installLegalUpdateMocks(page, { userId, role, updates = [] }) {
     if (apiPath === "legal-updates/active/") {
       const activeUpdates = legalUpdates.filter((u) => u.is_active);
       return { status: 200, contentType: "application/json", body: JSON.stringify(activeUpdates) };
-    }
-
-    if (apiPath === "legal-updates/" && route.request().method() === "POST") {
-      const body = route.request().postDataJSON?.() || {};
-      const newUpdate = buildMockLegalUpdate({
-        id: nextId++,
-        title: body.title || "Nueva Actualización",
-        content: body.content || "",
-        isActive: true,
-      });
-      legalUpdates.unshift(newUpdate);
-      return { status: 201, contentType: "application/json", body: JSON.stringify(newUpdate) };
-    }
-
-    const updateMatch = apiPath.match(/^legal-updates\/(\d+)\/$/);
-    if (updateMatch) {
-      const updateId = Number(updateMatch[1]);
-      
-      if (route.request().method() === "PUT" || route.request().method() === "PATCH") {
-        const body = route.request().postDataJSON?.() || {};
-        const idx = legalUpdates.findIndex((u) => u.id === updateId);
-        if (idx >= 0) {
-          legalUpdates[idx] = { ...legalUpdates[idx], ...body };
-          return { status: 200, contentType: "application/json", body: JSON.stringify(legalUpdates[idx]) };
-        }
-      }
-
-      if (route.request().method() === "DELETE") {
-        legalUpdates = legalUpdates.filter((u) => u.id !== updateId);
-        return { status: 204, contentType: "application/json", body: "" };
-      }
     }
 
     if (apiPath === "google-captcha/site-key/") {
@@ -143,13 +115,12 @@ test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-
     await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
 
-    // Dashboard should show legal updates section or the updates themselves
-    // Check if either the section title or the update content is visible
-    const updatesVisible = await page.getByText("Nueva Ley de Protección de Datos").isVisible().catch(() => false) ||
-                           await page.getByText("Actualizaciones").isVisible().catch(() => false);
-    
-    await expect(page.locator("body")).toBeVisible();
-    expect(updatesVisible || true).toBeTruthy(); // Page loads without error
+    // The LegalUpdatesCard carousel renders the CONTENT of each active update
+    // (titles are only used as image alt text)
+    await expect(
+      page.getByText("Se ha aprobado una nueva ley que regula el tratamiento de datos personales."),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Modificaciones importantes al código civil.")).toHaveCount(1);
   });
 
   test("dashboard shows empty state when no legal updates", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -205,9 +176,8 @@ test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-
     await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
 
-    // Inactive updates should not be visible (mock only returns active ones)
-    const inactiveVisible = await page.getByText("Actualización Inactiva").isVisible().catch(() => false);
-    await expect(page.locator("body")).toBeVisible();
-    expect(inactiveVisible).toBeFalsy();
+    // Only the active update's content renders in the carousel
+    await expect(page.getByText("Esta actualización está activa.")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Esta actualización está inactiva.")).toHaveCount(0);
   });
 });

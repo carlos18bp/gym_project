@@ -1,178 +1,110 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
-import { mockApi } from "../helpers/api.js";
 import {
-  buildMockUser,
+  installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-async function installRejectClientMocks(page, { userId, lawyerId }) {
-  const client = buildMockUser({ id: userId, role: "client", hasSignature: true });
-  const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", hasSignature: true });
-  const nowIso = new Date().toISOString();
+/**
+ * E2E tests for the client document-rejection flow.
+ * A document pending the client's signature lives on "Dcs. Por Firmar";
+ * from its actions modal the client can reject it with a comment, which
+ * moves it to "Dcs. Archivados" as Rejected.
+ */
 
-  const pendingDoc = buildMockDocument({
+function buildPendingDoc(userId, lawyerId) {
+  return buildMockDocument({
     id: 901,
     title: "Poder General",
     state: "PendingSignatures",
     createdBy: lawyerId,
     assignedTo: userId,
+    requires_signature: true,
     signatures: [
-      { user: lawyerId, status: "signed", signed_at: nowIso },
-      { user: userId, status: "pending", signed_at: null },
+      {
+        id: 11,
+        signer_id: lawyerId,
+        signer_email: "lawyer@example.com",
+        signer_name: "Abogado",
+        signed: true,
+      },
+      {
+        id: 12,
+        signer_id: userId,
+        signer_email: "e2e@example.com",
+        signer_name: "E2E Client",
+        signed: false,
+      },
     ],
-  });
-
-  await mockApi(page, async ({ route, apiPath }) => {
-    if (apiPath === "validate_token/") {
-      return { status: 200, contentType: "application/json", body: "{}" };
-    }
-
-    if (apiPath === "google-captcha/site-key/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-    }
-
-    if (apiPath === "users/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([client, lawyer]) };
-    }
-
-    if (apiPath === `users/${userId}/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify(client) };
-    }
-
-    if (apiPath === `users/${userId}/signature/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: true }) };
-    }
-
-    if (apiPath === "dynamic-documents/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([pendingDoc]) };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/pending-documents-full/")) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([pendingDoc]) };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/signed-documents/")) {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/archived-documents/")) {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "dynamic-documents/tags/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "dynamic-documents/recent/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "user-activities/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "create-activity/") {
-      return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 1, action_type: "other", description: "", created_at: nowIso }) };
-    }
-
-    if (apiPath === "recent-processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "legal-updates/active/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    return null;
   });
 }
 
+async function setupClientPendingTab(page, { userId, lawyerId }) {
+  await installDynamicDocumentApiMocks(page, {
+    userId,
+    role: "client",
+    hasSignature: true,
+    documents: [buildPendingDoc(userId, lawyerId)],
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+  await page.getByTestId("client-tab-pending-signatures").click();
+  await expect(page.getByTestId("signatures-list-row-901")).toBeVisible({ timeout: 15_000 });
+}
+
 test("client sees document pending their signature in dashboard", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
-  const userId = 8600;
-  const lawyerId = 8601;
+  await setupClientPendingTab(page, { userId: 8600, lawyerId: 8601 });
 
-  await installRejectClientMocks(page, { userId, lawyerId });
-
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
-  });
-
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-  // Navigate to pending signatures tab
-  const pendingTab = page.getByRole("button", { name: /Por Firmar|Pendientes/i });
-  if (await pendingTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await pendingTab.click();
-    await expect(page.getByText("Poder General")).toBeVisible({ timeout: 10_000 });
-  }
+  const row = page.getByTestId("signatures-list-row-901");
+  await expect(row.getByText("Poder General")).toBeVisible();
+  await expect(row.getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
-test("client clicks pending document and sees reject action available", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
-  const userId = 8602;
-  const lawyerId = 8603;
+test("client clicks pending document and sees sign and reject actions", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+  await setupClientPendingTab(page, { userId: 8602, lawyerId: 8603 });
 
-  await installRejectClientMocks(page, { userId, lawyerId });
+  await page.getByTestId("signatures-list-row-901").click();
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
-  });
-
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // Navigate to pending signatures tab
-  const pendingTab = page.getByRole("button", { name: /Por Firmar|Pendientes/i });
-  if (await pendingTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await pendingTab.click();
-    await expect(page.getByText("Poder General")).toBeVisible({ timeout: 10_000 });
-
-    // Click on the document to open actions
-    await page.getByText("Poder General").click();
-
-    // Should see actions modal with reject option or signature options
-    const actionsHeading = page.getByRole("heading", { name: /Acciones/i });
-    const rejectButton = page.getByRole("button", { name: /Rechazar/i });
-    const actionsVisible = await actionsHeading.isVisible({ timeout: 5_000 }).catch(() => false);
-    const rejectVisible = await rejectButton.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // Confirm document actions are accessible for rejection flow
-    expect(actionsVisible || rejectVisible).toBe(true);
-  } else {
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-  }
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("document-action-sign")).toBeVisible();
+  await expect(page.getByTestId("document-action-reject")).toBeVisible();
 });
 
-test("client document dashboard loads with pending document data", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client rejects pending document and it moves to archived tab", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 8604;
-  const lawyerId = 8605;
+  await setupClientPendingTab(page, { userId, lawyerId: 8605 });
 
-  await installRejectClientMocks(page, { userId, lawyerId });
+  await page.getByTestId("signatures-list-row-901").click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-reject").click();
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
-  });
+  await expect(page.getByRole("heading", { name: "Rechazar documento" })).toBeVisible({ timeout: 10_000 });
+  await page
+    .getByPlaceholder("Describe brevemente por qué no estás de acuerdo con el documento...")
+    .fill("No estoy de acuerdo con la cláusula tercera");
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
+  const rejectRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes(`/api/dynamic-documents/901/reject/${userId}/`) &&
+      request.method() === "POST"
+  );
+  await page.getByRole("button", { name: "Rechazar documento" }).click();
+  await rejectRequest;
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Success notification (blocking SweetAlert) confirms the rejection.
+  await expect(page.getByText("Documento rechazado correctamente.")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("client");
+  // The dashboard auto-switches to "Dcs. Archivados" and the stateful mock
+  // now serves the document as Rejected — it must appear with that badge.
+  const archivedRow = page.getByTestId("signatures-list-row-901");
+  await expect(archivedRow.getByText("Rechazado", { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(archivedRow.getByText("Poder General")).toBeVisible();
 });

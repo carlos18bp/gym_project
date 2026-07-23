@@ -27,6 +27,7 @@
           >
             <div
               v-if="currentUser.is_profile_completed"
+              data-testid="profile-close-button"
               class="absolute top-0 right-0 p-8"
             >
               <XMarkIcon

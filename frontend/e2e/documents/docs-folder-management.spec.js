@@ -7,7 +7,13 @@ import { mockApi } from "../helpers/api.js";
 
 /**
  * Consolidated E2E tests for docs-folders flow.
- * Replaces 10 fragmented spec files with 6 user-flow tests.
+ *
+ * NOTE (flow gap): the Carpetas tab has NO search input in the real UI —
+ * Dashboard only renders a search box inside the document tables, and
+ * FolderManagement receives a `searchQuery` prop that nothing feeds on that
+ * tab. The former "folders table can be searched" test was therefore
+ * unfalsifiable and has been replaced by the delete-folder flow, which is
+ * reachable from the row menu.
  */
 
 async function installFolderMocks(page, { userId, role = "lawyer", documents, folders }) {
@@ -85,12 +91,12 @@ async function installFolderMocks(page, { userId, role = "lawyer", documents, fo
 
 test("lawyer sees existing folders on Carpetas tab", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7600;
-  const folders = [
-    buildMockFolder({ id: 401, name: "Contratos", documentIds: [6001], colorId: 0 }),
-    buildMockFolder({ id: 402, name: "Poderes", documentIds: [], colorId: 2 }),
-  ];
   const documents = [
     buildMockDocument({ id: 6001, title: "Contrato Base", state: "Published", createdBy: userId }),
+  ];
+  const folders = [
+    buildMockFolder({ id: 401, name: "Contratos", documents: [documents[0]], colorId: 0 }),
+    buildMockFolder({ id: 402, name: "Poderes", documents: [], colorId: 2 }),
   ];
 
   await installFolderMocks(page, { userId, documents, folders });
@@ -100,13 +106,11 @@ test("lawyer sees existing folders on Carpetas tab", { tag: ['@flow:docs-folders
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.getByTestId("lawyer-tab-folders").click();
 
-  // Navigate to Carpetas tab
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  await carpetasBtn.click();
-
-  await expect(page.getByText("Contratos")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Poderes")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Contratos/ })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("row", { name: /Poderes/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Contratos/ }).getByText("1 documento", { exact: true })).toBeVisible();
 });
 
 test("lawyer creates a new folder via modal", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -122,31 +126,36 @@ test("lawyer creates a new folder via modal", { tag: ['@flow:docs-folders', '@mo
   });
 
   await page.goto("/dynamic_document_dashboard");
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  await carpetasBtn.click();
+  await page.getByTestId("lawyer-tab-folders").click();
 
-  // Look for create folder button
-  const createBtn = page.getByRole("button", { name: /crear carpeta|nueva carpeta/i }).or(page.locator('[data-testid="create-folder-btn"]')).first();
-  const createVisible = await createBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+  await page.getByRole("button", { name: "Nueva Carpeta" }).click();
+  await expect(page.getByRole("heading", { name: "Nueva Carpeta" })).toBeVisible({ timeout: 10_000 });
 
-  if (createVisible) {
-    await createBtn.click();
-    // Modal should appear
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible();
-  }
+  await page.getByLabel("Nombre de la carpeta").fill("Carpeta E2E");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  const createRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/dynamic-documents/folders/create/") &&
+      request.method() === "POST"
+  );
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await createRequest;
+
+  // Success notification (blocking SweetAlert) confirms the creation.
+  await expect(page.getByText("Carpeta creada exitosamente")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByRole("heading", { name: "Nueva Carpeta" })).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByRole("row", { name: /Carpeta E2E/ })).toBeVisible({ timeout: 10_000 });
 });
 
 test("lawyer clicks folder to view its documents", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7602;
-  const folders = [
-    buildMockFolder({ id: 410, name: "Mi Carpeta", documentIds: [6020], colorId: 1 }),
-  ];
   const documents = [
     buildMockDocument({ id: 6020, title: "Doc en Carpeta", state: "Published", createdBy: userId }),
+  ];
+  const folders = [
+    buildMockFolder({ id: 410, name: "Mi Carpeta", documents: [documents[0]], colorId: 1 }),
   ];
 
   await installFolderMocks(page, { userId, documents, folders });
@@ -156,24 +165,25 @@ test("lawyer clicks folder to view its documents", { tag: ['@flow:docs-folders',
   });
 
   await page.goto("/dynamic_document_dashboard");
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  await carpetasBtn.click();
+  await page.getByTestId("lawyer-tab-folders").click();
 
-  await expect(page.getByText("Mi Carpeta")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("row", { name: /Mi Carpeta/ })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("row", { name: /Mi Carpeta/ }).click();
 
-  // Click on the folder to open details
-  await page.getByText("Mi Carpeta").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  const detailsModal = page.getByTestId("folder-details-modal");
+  await expect(detailsModal).toBeVisible({ timeout: 10_000 });
+  await expect(detailsModal.getByRole("heading", { name: "Mi Carpeta" })).toBeVisible();
+  await expect(detailsModal.getByText("Doc en Carpeta")).toBeVisible();
+  await expect(detailsModal.getByText("1 documento", { exact: true })).toBeVisible();
 });
 
 test("client sees folders on Carpetas tab", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 7603;
-  const folders = [
-    buildMockFolder({ id: 420, name: "Carpeta Cliente", documentIds: [6030], colorId: 0 }),
-  ];
   const documents = [
     buildMockDocument({ id: 6030, title: "Doc Asignado", state: "Completed", createdBy: 999, assignedTo: userId }),
+  ];
+  const folders = [
+    buildMockFolder({ id: 420, name: "Carpeta Cliente", documents: [documents[0]], colorId: 0 }),
   ];
 
   await installFolderMocks(page, { userId, role: "client", documents, folders });
@@ -183,18 +193,14 @@ test("client sees folders on Carpetas tab", { tag: ['@flow:docs-folders', '@modu
   });
 
   await page.goto("/dynamic_document_dashboard");
+  await page.getByTestId("client-tab-folders").click();
 
-  // Client should see the Carpetas tab
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  const isVisible = await carpetasBtn.isVisible({ timeout: 10_000 }).catch(() => false);
+  await expect(page.getByRole("row", { name: /Carpeta Cliente/ })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("row", { name: /Carpeta Cliente/ }).click();
 
-  if (isVisible) {
-    await carpetasBtn.click();
-    await expect(page.getByText("Carpeta Cliente")).toBeVisible({ timeout: 10_000 });
-  }
-
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  const detailsModal = page.getByTestId("folder-details-modal");
+  await expect(detailsModal).toBeVisible({ timeout: 10_000 });
+  await expect(detailsModal.getByText("Doc Asignado")).toBeVisible();
 });
 
 test("empty folders section shows appropriate message", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -210,20 +216,18 @@ test("empty folders section shows appropriate message", { tag: ['@flow:docs-fold
   });
 
   await page.goto("/dynamic_document_dashboard");
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  await carpetasBtn.click();
+  await page.getByTestId("lawyer-tab-folders").click();
 
-  // Should show empty state or create button
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "No tienes carpetas aún" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Crear Primera Carpeta" })).toBeVisible();
 });
 
-test("folders table can be searched to filter folders", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer deletes a folder from the row menu", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7605;
   const folders = [
-    buildMockFolder({ id: 430, name: "Contratos Laborales", documentIds: [], colorId: 0 }),
-    buildMockFolder({ id: 431, name: "Poderes Especiales", documentIds: [], colorId: 1 }),
-    buildMockFolder({ id: 432, name: "Demandas", documentIds: [], colorId: 2 }),
+    buildMockFolder({ id: 430, name: "Contratos Laborales", documents: [], colorId: 0 }),
+    buildMockFolder({ id: 431, name: "Poderes Especiales", documents: [], colorId: 1 }),
+    buildMockFolder({ id: 432, name: "Demandas", documents: [], colorId: 2 }),
   ];
   const documents = [
     buildMockDocument({ id: 6050, title: "Doc", state: "Draft", createdBy: userId }),
@@ -236,22 +240,29 @@ test("folders table can be searched to filter folders", { tag: ['@flow:docs-fold
   });
 
   await page.goto("/dynamic_document_dashboard");
-  const carpetasBtn = page.getByRole("button", { name: /carpetas/i });
-  await carpetasBtn.click();
+  await page.getByTestId("lawyer-tab-folders").click();
 
-  await expect(page.getByText("Contratos Laborales")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Poderes Especiales")).toBeVisible();
-  await expect(page.getByText("Demandas")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Demandas/ })).toBeVisible({ timeout: 15_000 });
 
-  // Search for "Contratos"
-  const searchInput = page.getByPlaceholder("Buscar...").first();
-  const searchVisible = await searchInput.isVisible({ timeout: 3_000 }).catch(() => false);
+  // Delete uses a native confirm() dialog — accept it when it fires.
+  page.once("dialog", (dialog) => dialog.accept());
 
-  if (searchVisible) {
-    await searchInput.fill("Contratos");
-    await expect(page.getByText("Contratos Laborales")).toBeVisible({ timeout: 5_000 });
-  }
+  await page.getByRole("row", { name: /Demandas/ }).getByRole("button").click();
+  const deleteRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/dynamic-documents/folders/432/delete/") &&
+      request.method() === "DELETE"
+  );
+  await page.getByRole("menuitem", { name: "Eliminar" }).click();
+  await deleteRequest;
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  // Two success notifications fire in sequence (store + component); dismiss both.
+  await expect(page.getByText("Carpeta eliminada exitosamente")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+  await expect(page.getByText('Carpeta "Demandas" eliminada correctamente')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByRole("row", { name: /Demandas/ })).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.getByRole("row", { name: /Contratos Laborales/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Poderes Especiales/ })).toBeVisible();
 });

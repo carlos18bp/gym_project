@@ -24,7 +24,7 @@
             >
               {{ variable.name_es || variable.name_en }}
             </label>
-            <div v-if="variable.tooltip" class="relative group">
+            <div v-if="variable.tooltip" class="relative group" :data-testid="'variable-tooltip-' + index">
               <InformationCircleIcon
                 class="size-5 text-gray-400 hover:text-secondary cursor-pointer"
               />
