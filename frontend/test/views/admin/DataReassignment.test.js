@@ -1,6 +1,5 @@
 import { ref } from "vue";
 import { mount, flushPromises } from "@vue/test-utils";
-import { setActivePinia, createPinia } from "pinia";
 
 const mockShowNotification = jest.fn();
 jest.mock("@/shared/notification_message", () => ({
@@ -29,8 +28,27 @@ jest.mock("@/stores/admin_reassignment", () => ({
   }),
 }));
 
+const mockLawyersState = ref([]);
+
+jest.mock("@/stores/auth/user", () => ({
+  __esModule: true,
+  useUserStore: () => ({
+    get users() { return mockLawyersState.value; },
+    get lawyers() {
+      return mockLawyersState.value.filter((u) => u.role === "lawyer" && !u.is_archived);
+    },
+    get archivedLawyers() {
+      return mockLawyersState.value.filter((u) => u.role === "lawyer" && u.is_archived);
+    },
+    get allLawyers() {
+      return mockLawyersState.value.filter((u) => u.role === "lawyer");
+    },
+    fetchUsersData: jest.fn(),
+    init: jest.fn(),
+  }),
+}));
+
 import DataReassignment from "@/views/admin/DataReassignment.vue";
-import { useUserStore } from "@/stores/auth/user";
 
 const LAWYERS = [
   { id: 1, first_name: "Ana", last_name: "Uno", role: "lawyer" },
@@ -69,12 +87,10 @@ function mountView() {
 
 describe("DataReassignment.vue", () => {
   beforeEach(() => {
-    setActivePinia(createPinia());
     jest.clearAllMocks();
     mockSummaryState.value = null;
     mockExecutingState.value = false;
-    const store = useUserStore();
-    store.$patch({ users: LAWYERS });
+    mockLawyersState.value = LAWYERS.map((l) => ({ ...l }));
     mockFetchSummary.mockImplementation(async () => {
       mockSummaryState.value = SUMMARY;
       return SUMMARY;
