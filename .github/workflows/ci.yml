@@ -16,11 +16,10 @@ jobs:
   # ───────────────────────────────────────────
   backend-tests:
     runs-on: ubuntu-latest
-    # 3142 tests take 17-22 min on a healthy runner; a slow one crossed 30 and
-    # got killed mid-suite while the same commit passed elsewhere. 45 keeps the
-    # ceiling roughly 2x the typical run. The lasting fix is parallelising with
-    # pytest-xdist, which needs per-worker DB isolation verified first.
-    timeout-minutes: 45
+    # The suite runs in parallel (pytest -n auto); on the 4-vCPU runner that is
+    # ~2x faster than the serial run that used to crowd the old 30-min ceiling.
+    # 25 leaves comfortable headroom while still catching a genuine hang.
+    timeout-minutes: 25
     permissions:
       contents: read
     outputs:
@@ -54,7 +53,7 @@ jobs:
 
       - name: Run pytest
         run: >
-          pytest -v --tb=short
+          pytest -n auto --tb=short
           --junitxml=test-results/results.xml
           --cov=gym_app
           --cov-branch
