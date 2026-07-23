@@ -138,7 +138,13 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
 
     // The redirect carries the SAME id back, which is the in-place guarantee.
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("openSignaturesFor=603");
+    // Assert the outcome it produces — the signatures modal auto-opened for
+    // that document — instead of the openSignaturesFor query param, which the
+    // dashboard strips as soon as it consumes it (clear-open-signatures-for).
+    await expect(page).toHaveURL(/lawyerTab=pending-signatures/, { timeout: 10_000 });
+    const signaturesModal603 = page.getByTestId("document-signatures-modal");
+    await expect(signaturesModal603).toBeVisible({ timeout: 10_000 });
+    await expect(signaturesModal603.getByRole("heading", { name: "Acuerdo Confidencialidad" })).toBeVisible();
     expect(docs[0].state).toBe("PendingSignatures");
   });
 
@@ -413,7 +419,12 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await expect(page.locator('[class~="swal2-popup"]')).toContainText("Documento corregido y reenviado para firmas", { timeout: 15_000 });
     await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
 
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("openSignaturesFor=703");
+    // Same in-place guarantee, asserted on the modal the redirect opens rather
+    // than on the transient openSignaturesFor param.
+    await expect(page).toHaveURL(/lawyerTab=pending-signatures/, { timeout: 10_000 });
+    const signaturesModal703 = page.getByTestId("document-signatures-modal");
+    await expect(signaturesModal703).toBeVisible({ timeout: 10_000 });
+    await expect(signaturesModal703.getByRole("heading", { name: "Mandato Expirado" })).toBeVisible();
     expect(docs[0].state).toBe("PendingSignatures");
   });
 
