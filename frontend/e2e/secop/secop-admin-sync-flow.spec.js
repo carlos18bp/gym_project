@@ -18,33 +18,26 @@ test.describe("SECOP Admin Sync Flow", () => {
     await setAuthLocalStorage(page, LAWYER_AUTH);
   });
 
-  test("lawyer can see sync trigger button on list page", {
+  // NOTE: a second "lawyer can trigger manual sync and see confirmation" case
+  // used to live here guarded by `if (await syncBtn.isVisible())`, so it proved
+  // nothing beyond the panel still rendering. It is covered by the assertions
+  // below without the conditional.
+  test("triggering a manual sync puts the sync button in its in-flight state", {
     tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer'],
   }, async ({ page }) => {
     await page.goto("/secop");
-    await expect(page.getByTestId("sync-status")).toBeVisible();
 
-    // Look for sync trigger button (may be in header or status area)
-    const syncBtn = page.getByRole("button", { name: /Sincronizar|Sync/i });
-    if (await syncBtn.isVisible()) {
-      await expect(syncBtn).toBeVisible();
-    } else {
-      // Sync button may not be directly visible on list — verify sync status renders
-      await expect(page.getByTestId("sync-status-text")).toBeVisible();
-    }
-  });
+    // Starting point: the sync control is idle and clickable
+    const syncBtn = page.getByTestId("sync-trigger-btn");
+    await expect(syncBtn).toBeEnabled();
+    await expect(syncBtn).toContainText("Sincronizar");
+    await expect(syncBtn).toHaveAttribute("title", "Sincronizar ahora");
 
-  test("lawyer can trigger manual sync and see confirmation", {
-    tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer'],
-  }, async ({ page }) => {
-    await page.goto("/secop");
-    await expect(page.getByTestId("sync-status")).toBeVisible();
+    await syncBtn.click();
 
-    const syncBtn = page.getByRole("button", { name: /Sincronizar|Sync/i });
-    if (await syncBtn.isVisible()) {
-      await syncBtn.click();
-    }
-    // Verify sync status area is still visible after interaction
-    await expect(page.getByTestId("sync-status-text")).toBeVisible();
+    // Transition: the button locks itself and reports the sync in progress
+    await expect(syncBtn).toBeDisabled();
+    await expect(syncBtn).toContainText("Sincronizando");
+    await expect(syncBtn).toHaveAttribute("title", "Sincronizando...");
   });
 });

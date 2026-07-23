@@ -86,7 +86,7 @@ test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages",
   await expect(page.getByRole("heading", { name: "Histórico Procesal" })).toBeHidden({ timeout: 5_000 });
 });
 
-test("process detail page shows closed status process with Fallo stage", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("archived tab opens the closed process with Fallo stage", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const lawyerId = 7110;
   const nowIso = new Date().toISOString();
 
@@ -121,9 +121,21 @@ test("process detail page shows closed status process with Fallo stage", { tag: 
     userAuth: { id: lawyerId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await page.goto(`/process_detail/${closedProcess.id}`);
+  await page.goto("/process_list");
 
-  // Should render the closed process detail
+  // Starting point: the closed process is not in the active "Mis Procesos" tab
+  await expect(page.getByRole("button", { name: "Procesos Archivados" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Empleado")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Procesos Archivados" }).click();
+
+  // Transition: the archived tab surfaces the Fallo process
+  const archivedRow = page.getByRole("row").filter({ hasText: "Empleado" });
+  await expect(archivedRow).toBeVisible({ timeout: 10_000 });
+
+  await archivedRow.click();
+
+  // Transition: its detail page opens
   await expect(page.getByRole("heading", { name: "Laboral", exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("RAD-6010")).toBeVisible();
   await expect(page.getByText("Despido")).toBeVisible();

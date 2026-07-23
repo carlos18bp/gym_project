@@ -13,7 +13,7 @@ import {
  * - "Regresar" button navigates back
  */
 
-test("lawyer editor shows Continue and Return buttons", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("lawyer continuing with an empty document is blocked with a warning", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9300;
   const documentId = 301;
 
@@ -22,6 +22,19 @@ test("lawyer editor shows Continue and Return buttons", { tag: ['@flow:docs-edit
     userId,
     role: "lawyer",
     documentId,
+    document: {
+      id: documentId,
+      title: "Minuta Sin Contenido",
+      state: "Draft",
+      created_by: userId,
+      assigned_to: null,
+      code: `DOC-${documentId}`,
+      tags: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      content: "",
+      variables: [],
+    },
   });
 
   await setAuthLocalStorage(page, {
@@ -30,11 +43,18 @@ test("lawyer editor shows Continue and Return buttons", { tag: ['@flow:docs-edit
   });
 
   await page.goto(`/dynamic_document_dashboard/lawyer/editor/edit/${documentId}`);
+  await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible({ timeout: 15_000 });
 
-  // All three toolbar buttons should be visible for lawyers
-  await expect(page.getByRole("button", { name: "Guardar como borrador" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Regresar" })).toBeVisible();
+  await page.evaluate(() => {
+    if (window.tinymce && window.tinymce.activeEditor) {
+      window.tinymce.activeEditor.getContent = () => "";
+    }
+  });
+
+  await page.getByRole("button", { name: "Continuar" }).click();
+
+  await expect(page.locator(".swal2-popup")).toContainText("No puedes continuar con un documento vacío", { timeout: 15_000 }); // quality: allow-fragile-selector (class selector targets stable UI structure)
+  await expect(page).not.toHaveURL(/\/variables-config/);
 });
 
 test("lawyer clicks Regresar and navigates back to dashboard", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {

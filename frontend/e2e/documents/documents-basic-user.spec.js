@@ -107,6 +107,8 @@ test("basic user can access documents dashboard", { tag: ['@flow:basic-restricti
 });
 
 test("basic user session state reflects limited access role", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
+  // audit: load-only flow (role restriction — the subscription lock is a
+  // disabled control, so there is no interaction available to the basic user)
   const userId = 9602;
   const lawyerId = 9603;
 

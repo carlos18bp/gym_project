@@ -34,15 +34,21 @@ test("client sees legal request creation form on solicitudes page", { tag: ['@fl
   await expect(page.getByText("Especialidad")).toBeVisible();
 });
 
-test("client sees existing requests on solicitudes page", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees the empty state when there are no requests yet", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 9301;
 
   await installLegalRequestsApiMocks(page, {
     userId,
     role: "client",
-    requestDescription: "Consulta sobre contrato laboral",
-    requestTypeName: "Consulta",
-    disciplineName: "Laboral",
+  });
+
+  // Registered after the catch-all so it wins: this client has no requests.
+  await page.route(/\/api\/legal_requests\/(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ requests: [], count: 0, user_role: "client" }),
+    });
   });
 
   await setAuthLocalStorage(page, {
@@ -53,10 +59,10 @@ test("client sees existing requests on solicitudes page", { tag: ['@flow:legal-l
   await page.goto("/legal_requests");
   await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({ timeout: 15_000 });
 
-  // The seeded request card renders its number, description and discipline
-  await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("Consulta sobre contrato laboral")).toBeVisible();
-  await expect(page.getByText("Laboral", { exact: true })).toBeVisible();
+  // The client-specific empty copy replaces the request grid
+  await expect(page.getByRole("heading", { name: "No hay solicitudes" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No has creado ninguna solicitud aún")).toBeVisible();
+  await expect(page.getByText("REQ-1001")).toHaveCount(0);
 });
 
 test("lawyer sees management view for legal requests", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

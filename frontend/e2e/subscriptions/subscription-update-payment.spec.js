@@ -51,9 +51,10 @@ test("user saves a card and can change the payment method in paid checkout", { t
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test("user without subscription sees available plans", { tag: ['@flow:subscriptions-view-plans', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("rejected card tokenization leaves the checkout without a payment method", { tag: ['@flow:subscriptions-update-payment', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 9201;
 
+  await installWompiStubs(page, { tokenStatus: 422, tokenError: "La tarjeta fue rechazada" });
   await installSubscriptionsApiMocks(page, {
     userId,
     role: "client",
@@ -65,10 +66,23 @@ test("user without subscription sees available plans", { tag: ['@flow:subscripti
     userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
   });
 
-  await page.goto("/subscriptions");
+  await page.goto("/checkout/cliente");
+  await expect(page.getByText("Configura tu método de pago")).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Plan Cliente" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
+  await page.getByPlaceholder("Como aparece en la tarjeta").fill("E2E User");
+  await page.getByPlaceholder("0000 0000 0000 0000").fill("4000 0000 0000 0002");
+  await page.getByPlaceholder("MM").fill("12");
+  await page.getByPlaceholder("AA").fill("29");
+  await page.getByPlaceholder("CVC", { exact: true }).fill("123");
+
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
+
+  // Wompi refuses the card: the form stays and the purchase remains blocked
+  // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("La tarjeta fue rechazada", { timeout: 10_000 });
+  // quality: allow-fragile-selector (SweetAlert2 confirm button, precedent in suite)
+  await page.locator('[class~="swal2-confirm"]').click();
+
+  await expect(page.getByText("Método de pago configurado")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });

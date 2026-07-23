@@ -4,23 +4,20 @@ import {
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
-import { mockApi } from "../helpers/api.js";
 
 /**
- * E2E — RelatedDocumentsTab.vue (33.63%).
+ * E2E — RelatedDocumentsTab.vue.
  *
  * Exercises:
+ * - Tab switching between "Relacionar Documentos" and "Documentos Relacionados"
  * - Rendering document list with state colors/badges
  * - Search filtering within related documents
- * - "Pendiente" vs "Relacionado" badges
- * - "Desrelacionar" button
+ * - "Relacionado" badge and relationship provenance
+ * - "Desrelacionar" actually deleting the relationship
  * - Empty state (no related docs)
- * - Content preview snippets
- * - Relationship info (created_by, created_at)
- * - Tags rendering
  *
  * Access path: Completed doc → ActionsModal → "Administrar Asociaciones"
- * → click "Documentos Relacionados" tab → RelatedDocumentsTab renders.
+ * → tab navigation inside DocumentRelationshipsModal.
  */
 
 const LAWYER_ID = 26000;
@@ -68,6 +65,11 @@ function buildRelationships() {
   ];
 }
 
+/**
+ * Stateful relationship backend: DELETE actually drops the relationship and
+ * its target document, so the list the user sees after "Desrelacionar" is the
+ * mutated server state and not a pre-cooked fixture.
+ */
 async function setupWithRelationships(page, { withRelatedDocs = true } = {}) {
   const mainDoc = buildMockDocument({
     id: 500, title: "Contrato Principal Completado", state: "Completed",
@@ -76,24 +78,35 @@ async function setupWithRelationships(page, { withRelatedDocs = true } = {}) {
   mainDoc.relationships_count = withRelatedDocs ? 3 : 0;
 
   const docs = [mainDoc];
-  const relatedDocs = withRelatedDocs ? buildRelatedDocuments() : [];
-  const relationships = withRelatedDocs ? buildRelationships() : [];
+  const state = {
+    relatedDocs: withRelatedDocs ? buildRelatedDocuments() : [],
+    relationships: withRelatedDocs ? buildRelationships() : [],
+  };
 
   await installDynamicDocumentApiMocks(page, {
     userId: LAWYER_ID, role: "lawyer", hasSignature: true, documents: docs,
   });
 
-  // Mock relationships-specific API endpoints
+  await page.route("**/api/dynamic-documents/relationships/*/delete/", async (route) => {
+    const relationshipId = Number(route.request().url().match(/relationships\/(\d+)\/delete/)[1]);
+    const removed = state.relationships.find((rel) => rel.id === relationshipId);
+    state.relationships = state.relationships.filter((rel) => rel.id !== relationshipId);
+    if (removed) {
+      const targetId = removed.source_document === 500 ? removed.target_document : removed.source_document;
+      state.relatedDocs = state.relatedDocs.filter((doc) => doc.id !== targetId);
+    }
+    await route.fulfill({ status: 204, contentType: "application/json", body: "" });
+  });
   await page.route("**/api/dynamic-documents/*/relationships/", async (route) => {
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify(relationships),
+      body: JSON.stringify(state.relationships),
     });
   });
   await page.route("**/api/dynamic-documents/*/related-documents/", async (route) => {
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify(relatedDocs),
+      body: JSON.stringify(state.relatedDocs),
     });
   });
   await page.route("**/api/dynamic-documents/*/available-for-relationship/", async (route) => {
@@ -107,34 +120,30 @@ async function setupWithRelationships(page, { withRelatedDocs = true } = {}) {
     token: "e2e-token",
     userAuth: { id: LAWYER_ID, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
+
+  return state;
 }
 
 async function openRelationshipsModal(page) {
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
   // Switch to "Mis Documentos" tab where Completed docs show
   await page.getByRole("button", { name: "Mis Documentos" }).click();
-  await expect(page.getByText("Contrato Principal Completado")).toBeVisible({ timeout: 10000 });
+  const row = page.getByRole("table").getByText("Contrato Principal Completado");
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.click();
 
-  // Click document row to open ActionsModal
-  // quality: allow-fragile-selector (positional access on filtered set)
-  await page.locator("table tbody tr").first().click();
-  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10000 });
-
-  // Click "Administrar Asociaciones"
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Administrar Asociaciones" }).click();
-
-  // Wait for DocumentRelationshipsModal to open
-  await expect(page.getByText("Administrar Asociaciones de Documentos")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Administrar Asociaciones de Documentos")).toBeVisible({ timeout: 15_000 });
 }
 
+const relateTab = (page) => page.getByRole("button", { name: /Relacionar Documentos/ });
+const relatedTab = (page) => page.getByRole("button", { name: /Documentos Relacionados/ });
+
 async function switchToRelatedTab(page) {
-  // Click "Documentos Relacionados" tab
-  const relatedTab = page.getByRole("button", { name: /Documentos Relacionados/ });
-  await relatedTab.click();
-  // eslint-disable-next-line playwright/no-wait-for-timeout
-  await page.waitForTimeout(500);
+  await relatedTab(page).click();
+  await expect(page.getByPlaceholder("Buscar en documentos relacionados...")).toBeVisible({ timeout: 10_000 });
 }
 
 // ---------- RelatedDocumentsTab rendering ----------
@@ -143,10 +152,14 @@ test.describe("RelatedDocumentsTab renders related documents list", { tag: ['@fl
   test("shows related document titles and state badges", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await setupWithRelationships(page);
     await openRelationshipsModal(page);
-    await switchToRelatedTab(page);
 
-    // Related document titles should be visible (use heading role to avoid matching content preview)
-    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 5000 });
+    // Leave the related tab so the assertions below prove the tab switch renders it.
+    await relateTab(page).click();
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeHidden();
+
+    await relatedTab(page).click();
+
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "Poder Completado Beta" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Doc Pendiente Firma Gamma" })).toBeVisible();
 
@@ -159,30 +172,39 @@ test.describe("RelatedDocumentsTab renders related documents list", { tag: ['@fl
   test("shows Relacionado badge for confirmed relationships", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await setupWithRelationships(page);
     await openRelationshipsModal(page);
-    await switchToRelatedTab(page);
 
-    // "Relacionado" badges should appear for confirmed relationships
-    const relacionadoBadges = page.getByText("Relacionado");
-    // quality: allow-fragile-selector (positional access on filtered set)
-    await expect(relacionadoBadges.first()).toBeVisible({ timeout: 5000 });
+    await relateTab(page).click();
+    await expect(page.getByText("Relacionado", { exact: true })).toHaveCount(0);
+
+    await relatedTab(page).click();
+
+    // One "Relacionado" badge per confirmed relationship.
+    await expect(page.getByText("Relacionado", { exact: true })).toHaveCount(3, { timeout: 10_000 });
   });
 
   test("shows relationship creator info", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await setupWithRelationships(page);
     await openRelationshipsModal(page);
-    await switchToRelatedTab(page);
 
-    // "Relacionado por" info should be visible for at least one doc
-    await expect(page.getByText(/Relacionado por/).first()).toBeVisible({ timeout: 5000 });
+    await relateTab(page).click();
+    await expect(page.getByText(/Relacionado por/)).toHaveCount(0);
+
+    await relatedTab(page).click();
+
+    await expect(page.getByText(/Relacionado por Abogado García/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Relacionado por Abogado López/)).toBeVisible();
   });
 
   test("shows tags on related documents", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await setupWithRelationships(page);
     await openRelationshipsModal(page);
-    await switchToRelatedTab(page);
 
-    // Tags from related documents should be visible
-    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 5000 });
+    await relateTab(page).click();
+    await expect(page.getByText("Urgente")).toHaveCount(0);
+
+    await relatedTab(page).click();
+
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("Contratos")).toBeVisible();
     await expect(page.getByText("Urgente")).toBeVisible();
   });
@@ -197,7 +219,7 @@ test.describe("RelatedDocumentsTab search filtering", { tag: ['@flow:docs-relati
     await switchToRelatedTab(page);
 
     // All 3 docs should be visible initially
-    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "Poder Completado Beta" })).toBeVisible();
 
     // Type in the search box
@@ -214,13 +236,13 @@ test.describe("RelatedDocumentsTab search filtering", { tag: ['@flow:docs-relati
     await openRelationshipsModal(page);
     await switchToRelatedTab(page);
 
-    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 10_000 });
 
     const searchInput = page.getByPlaceholder("Buscar en documentos relacionados...");
     await searchInput.fill("ZZZZZZNOEXISTE");
 
     // Empty search state message
-    await expect(page.getByText("No se encontraron documentos")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("No se encontraron documentos")).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -233,7 +255,7 @@ test.describe("RelatedDocumentsTab empty state", { tag: ['@flow:docs-relationshi
     await switchToRelatedTab(page);
 
     // Empty state message
-    await expect(page.getByText("No hay documentos relacionados")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("No hay documentos relacionados")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/Utiliza la pestaña/).first()).toBeVisible();
   });
 });
@@ -241,16 +263,26 @@ test.describe("RelatedDocumentsTab empty state", { tag: ['@flow:docs-relationshi
 // ---------- RelatedDocumentsTab Desrelacionar button ----------
 
 test.describe("RelatedDocumentsTab unrelate button", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
-  test("shows Desrelacionar button for each related document", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    await setupWithRelationships(page);
+  test("Desrelacionar drops the relationship and removes the document from the list", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const state = await setupWithRelationships(page);
     await openRelationshipsModal(page);
     await switchToRelatedTab(page);
 
-    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeVisible({ timeout: 10_000 });
+    const unrelateButtons = page.getByRole("button", { name: "Desrelacionar" });
+    await expect(unrelateButtons).toHaveCount(3);
 
-    // "Desrelacionar" buttons should be visible (one per document)
-    const desrelacionarBtns = page.getByRole("button", { name: "Desrelacionar" });
-    const count = await desrelacionarBtns.count();
-    expect(count).toBeGreaterThanOrEqual(1);
+    const deleteRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/relationships/1001/delete/") && request.method() === "DELETE"
+    );
+    await page.getByTestId("unrelate-document-601").click();
+    await deleteRequest;
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Relación eliminada exitosamente", { timeout: 15_000 });
+    await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+
+    await expect(page.getByRole("heading", { name: "Contrato Firmado Alpha" })).toBeHidden({ timeout: 10_000 });
+    await expect(unrelateButtons).toHaveCount(2);
+    expect(state.relationships.map((rel) => rel.id)).toEqual([1002, 1003]);
   });
 });

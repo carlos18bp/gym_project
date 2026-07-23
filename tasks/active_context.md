@@ -35,13 +35,20 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Frontend Pinia store files | 46 |
 | Frontend composables | 15 |
 | Frontend unit test files | 207 |
-| Frontend E2E spec files | 203 |
+| Frontend E2E spec files | 204 (630 tests, 0 audit suspects) |
 | Frontend E2E flows (flow-definitions.json) | 164 (v1.12.0) |
 
 ---
 
 ## 2. Recent Focus Areas
 
+- **Real-interaction audit (2026-07-23, ronda 6)**:
+  - New criterion, sharper than R5's: does the test DRIVE the user action, or does it pre-cook a mock, `goto()` the end state and assert what it cooked? Measured by `scripts/audit_e2e_interactions.py` (persisted, exits 1 while suspects remain — usable as a CI/pre-commit gate).
+  - **159 suspects → 0**; interactive tests 394 → 544; 11 genuine load-only flows (guards/empty states) marked `// audit: load-only flow (reason)`. Criterion written into `docs/TESTING_QUALITY_STANDARDS.md` § "Drive the Interaction, Assert the Transition".
+  - **Mutation-validated**: removing `pageSize` from the `SecopList.vue` watcher turns the page-size test red; restoring it returns green. The suite now detects real breakage.
+  - **Product bugs found**: SECOP sync button is inert (`SyncStatus.vue` has no `defineEmits` → `POST secop/sync/trigger/` never fires; 180s fake spinner) — left for a product decision since fixing it starts real Socrata syncs. Signature "clear" button has no accessible name (its test was dead because the locator never matched) — real a11y gap.
+  - **Phantom coverage**: `document-key-fields.spec.js` tested an `is_key` field that exists nowhere in `src/`; another test faked navigation with `page.evaluate(router.push)`; one was fully redundant with three siblings.
+  - **Unreachable routes/dead branches catalogued**: `/signed-documents`, `/subscriptions`, `/legal_requests` (sidebar filters both entries), `/no_connection`; `GuideNavigation` sub-sections, the "Firmantes requeridos" alert, `deleteOrganization`.
 - **Depth round: anti-synthetic E2E pass (2026-07-23, ronda 5)**:
   - **47 specs rewritten, 135 synthetic assert sites → 0** (4 parallel agents): conditional asserts, swallowed failures and un-failable `#app` asserts replaced by driven interactions with observable outcomes (waitForRequest, stateful mocks, DOM results). ~215 tests green.
   - **Structural findings**: 10+ tests hit phantom routes (`/process`, `/organizations`, `/subscription`, `/privacy-policy` → catch-all redirect) without anyone noticing; nonexistent states/labels/selectors made asserts dead since creation; fixtures with invalid shapes left lists empty. Additional dead code confirmed: subscription management UI (cancel/reactivate/update-payment) and legal-updates CRUD have no components.

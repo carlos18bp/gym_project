@@ -56,8 +56,16 @@ test(
       },
     });
 
-    await page.goto("/service_requests/inbox");
-    await expect(page.getByText("2026-00010")).toBeVisible();
+    await page.goto("/dashboard");
+    await page.getByText("Bandeja de Solicitudes").first().waitFor({ timeout: 15_000 });
+
+    // Nothing from the inbox is on screen before the lawyer opens it
+    await expect(page.getByText("2026-00010")).toHaveCount(0);
+
+    await page.getByText("Bandeja de Solicitudes").first().click();
+
+    await expect(page).toHaveURL(/\/service_requests\/inbox$/, { timeout: 15_000 });
+    await expect(page.getByText("2026-00010")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("2026-00011")).toBeVisible();
   }
 );

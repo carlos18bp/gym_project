@@ -38,10 +38,14 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   test("sync status shows last successful sync time and process count", {
     tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
+    // audit: load-only flow (SyncStatus renders straight from GET secop/sync/;
+    // its only control is the Sincronizar button, covered by
+    // @flow:secop-trigger-sync in secop-admin-sync-flow.spec.js)
     await page.goto("/secop");
     await expect(page.getByTestId("sync-status")).toBeVisible();
 
-    // Sync status indicator should show process count
-    await expect(page.getByTestId("sync-status-text")).toBeVisible();
+    // Mock reports 150 indexed processes synced 6 hours ago
+    await expect(page.getByTestId("sync-status-text")).toHaveText("150 procesos");
+    await expect(page.getByTestId("sync-status")).toContainText("hace 6h");
   });
 });

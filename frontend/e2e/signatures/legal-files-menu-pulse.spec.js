@@ -6,14 +6,14 @@ import { LEGAL_FILES_MENU_PULSE } from "../helpers/flow-tags.js";
 /**
  * E2E for legal-files-menu-pulse (Req #6).
  *
- * Verifies the SlideBar shows a pulsing alert on "Archivos Juridicos"
- * when the user has pending signatures, and that once the session is
- * marked as alerted (via `sessionStorage.pendingSignaturesAlerted`)
- * subsequent loads do not re-show it.
+ * The user starts on the dashboard, sees the pulsing alert with the pending
+ * count on the "Archivos Juridicos" entry, and clicks it. Both tests drive
+ * that click: one asserts it lands on the documents module, the other asserts
+ * the session is marked as alerted only after the visit happens.
  */
 
 test(
-  "lawyer with pending signatures sees pulse and badge with the count",
+  "lawyer follows the pulsing Archivos Juridicos badge to the documents module",
   { tag: [...LEGAL_FILES_MENU_PULSE, "@role:lawyer"] },
   async ({ page }) => {
     const userId = 9001;
@@ -34,12 +34,17 @@ test(
       },
     });
 
-    await page.goto("/dynamic_document_dashboard");
+    await page.goto("/dashboard");
 
     await page.getByText("Archivos Juridicos").first().waitFor({ timeout: 15_000 });
     await expect(page.getByTestId("pending-signatures-indicator")).toBeVisible({
       timeout: 10_000,
     });
+    await expect(page.getByTestId("pending-signatures-count")).toHaveText("3");
+
+    await page.getByText("Archivos Juridicos").first().click();
+
+    await expect(page).toHaveURL(/\/dynamic_document_dashboard/, { timeout: 15_000 });
     await expect(page.getByTestId("pending-signatures-count")).toHaveText("3");
   }
 );
@@ -66,7 +71,16 @@ test(
       },
     });
 
-    await page.goto("/dynamic_document_dashboard");
+    await page.goto("/dashboard");
+
+    await page.getByText("Archivos Juridicos").first().waitFor({ timeout: 15_000 });
+
+    // The flag is only written by the documents module, never by the dashboard
+    expect(
+      await page.evaluate(() => sessionStorage.getItem("pendingSignaturesAlerted"))
+    ).toBeNull();
+
+    await page.getByText("Archivos Juridicos").first().click();
 
     await expect
       .poll(
@@ -74,7 +88,7 @@ test(
           page.evaluate(() =>
             sessionStorage.getItem("pendingSignaturesAlerted")
           ),
-        { timeout: 10_000 }
+        { timeout: 15_000 }
       )
       .toBe("true");
   }

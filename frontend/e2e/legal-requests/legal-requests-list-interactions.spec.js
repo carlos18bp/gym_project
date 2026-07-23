@@ -7,41 +7,56 @@ import {
 /**
  * E2E — LegalRequestsList.vue deeper interactions.
  *
- * Exercises:
- * - Client view: "Mis Solicitudes" heading, "Nueva Solicitud" button
- * - Lawyer view: "Solicitudes" heading, status filter dropdown
- * - Request entry rendering (request number, status, type)
- * - Empty state when no requests
- * - Status filter dropdown options
+ * Every test drives a control of the list and asserts the resulting change:
+ * - Client: top search bar refetch, card → detail navigation
+ * - Lawyer: status dropdown refetch, date-range refetch
+ *
+ * The mock honors the filter query params, so a broken `@change`/watch handler
+ * leaves the list untouched and turns these tests red.
  */
+
+const CLIENT_AUTH = (userId) => ({
+  token: "e2e-token",
+  userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
+});
+
+const LAWYER_AUTH = (userId) => ({
+  token: "e2e-token",
+  userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+});
 
 // ---------- Client view ----------
 
 test.describe("LegalRequestsList client view", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, () => {
-  test("client sees Mis Solicitudes heading and Nueva Solicitud button", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("client narrows the list with the top search bar", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 2400;
 
     await installLegalRequestsApiMocks(page, {
       userId,
       role: "client",
+      requestDescription: "Consulta sobre arrendamiento",
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, CLIENT_AUTH(userId));
 
     await page.goto("/legal_requests");
-    await page.waitForLoadState("networkidle");
 
-    // Client heading
-    await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Mis Solicitudes" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10_000 });
 
-    // "Nueva Solicitud" link/button should be visible for clients
-    await expect(page.getByRole("link", { name: /Nueva Solicitud/i })).toBeVisible();
+    // Typing a term that no request matches must empty the list
+    const searchRequest = page.waitForRequest((request) =>
+      request.url().includes("/api/legal_requests/") &&
+      request.url().includes("search=hipoteca")
+    );
+    await page.getByRole("searchbox", { name: "Buscar" }).fill("hipoteca");
+    await searchRequest;
+
+    await expect(page.getByText("REQ-1001")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "No se encontraron solicitudes" })).toBeVisible();
   });
 
-  test("client sees request entry with request number", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("client opens the request detail from its card", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 2401;
 
     await installLegalRequestsApiMocks(page, {
@@ -49,67 +64,76 @@ test.describe("LegalRequestsList client view", { tag: ['@flow:legal-list-client'
       role: "client",
       requestTypeName: "Consulta Legal",
       disciplineName: "Civil",
+      requestDescription: "Necesito revisar mi contrato",
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, CLIENT_AUTH(userId));
 
     await page.goto("/legal_requests");
-    await page.waitForLoadState("networkidle");
 
-    // Request entry should show request number
-    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: /Ver detalles/i }).click();
+
+    await expect(page).toHaveURL(/\/legal_request_detail\/1001$/, { timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "REQ-1001" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Necesito revisar mi contrato")).toBeVisible();
   });
 });
 
 // ---------- Lawyer view ----------
 
 test.describe("LegalRequestsList lawyer view", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, () => {
-  test("lawyer sees Solicitudes heading", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("lawyer filters the list by the Pendiente status", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 2410;
 
     await installLegalRequestsApiMocks(page, {
       userId,
       role: "lawyer",
+      requestStatus: "RESPONDED",
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
     await page.goto("/legal_requests");
-    await page.waitForLoadState("networkidle");
 
-    // Lawyer heading
-    await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Solicitudes", exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10_000 });
+
+    // The clear-filters button only exists once a filter is applied
+    await expect(page.getByRole("button", { name: /Limpiar/ })).toHaveCount(0);
+
+    // quality: allow-fragile-selector (the status dropdown is the only select in this view)
+    await page.locator("select").first().selectOption("PENDING");
+
+    // The only seeded request is RESPONDED, so filtering by PENDING empties the grid
+    await expect(page.getByText("REQ-1001")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "No hay solicitudes" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Limpiar/ })).toBeVisible();
   });
 
-  test("lawyer sees status filter dropdown with options", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("lawyer restores the full list with the clear-filters button", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 2411;
 
     await installLegalRequestsApiMocks(page, {
       userId,
       role: "lawyer",
+      requestStatus: "RESPONDED",
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
     await page.goto("/legal_requests");
-    await page.waitForLoadState("networkidle");
 
-    // Status filter dropdown should be visible
-    // quality: allow-fragile-selector (positional access on filtered set)
-    const statusFilter = page.locator("select").first();
-    await expect(statusFilter).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 15_000 });
 
-    // Should have status options (options are hidden in native select but present in DOM)
-    await expect(page.getByRole("option", { name: "Todos los estados" })).toHaveCount(1);
-    await expect(page.getByRole("option", { name: "Pendiente" })).toHaveCount(1);
+    // quality: allow-fragile-selector (the status dropdown is the only select in this view)
+    await page.locator("select").first().selectOption("CLOSED");
+    await expect(page.getByText("REQ-1001")).toHaveCount(0);
+
+    await page.getByRole("button", { name: /Limpiar/ }).click();
+
+    await expect(page.getByText("REQ-1001")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /Limpiar/ })).toHaveCount(0);
   });
 });

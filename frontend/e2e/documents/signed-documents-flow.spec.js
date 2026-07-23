@@ -44,6 +44,14 @@ test("lawyer can view signed documents list", { tag: ['@flow:sign-signed-documen
   await expect(page.getByText("Contrato Firmado E2E")).toBeVisible();
   await expect(page.getByText("Completamente firmado")).toBeVisible();
   await expect(page.getByText("2/2")).toBeVisible();
+
+  // The card menu is what turns the list into a working surface: opening it
+  // must reveal the actions a fully-signed document earns.
+  const card = page.locator('[data-document-id="8001"]'); // quality: allow-fragile-selector (data attribute is the card's stable hook)
+  await expect(page.getByText("Descargar Doc. Formalizado")).toBeHidden();
+  await card.getByRole("button").first().click();
+  await expect(page.getByText("Descargar Doc. Formalizado")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Previsualizar")).toBeVisible();
 });
 
 test("lawyer sees multiple signed documents with different signature counts", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:shared'] }, async ({ page }) => {
@@ -87,6 +95,13 @@ test("lawyer sees multiple signed documents with different signature counts", { 
   await expect(page.getByText("3/3")).toBeVisible();
   await expect(page.getByText("Poder Notarial")).toBeVisible();
   await expect(page.getByText("1/1")).toBeVisible();
+
+  // Each card must drive its OWN document: opening the second card's menu
+  // exposes actions scoped to it, not to the first one.
+  const secondCard = page.locator('[data-document-id="8012"]'); // quality: allow-fragile-selector (data attribute is the card's stable hook)
+  await secondCard.getByRole("button").first().click();
+  await expect(secondCard.getByText("Descargar Doc. Formalizado")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-document-id="8011"]').getByText("Descargar Doc. Formalizado")).toBeHidden(); // quality: allow-fragile-selector (data attribute is the card's stable hook)
 });
 
 

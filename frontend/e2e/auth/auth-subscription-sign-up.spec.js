@@ -153,31 +153,25 @@ async function dismissAlert(page, expectedText) {
   });
 }
 
-test("subscription sign-up page renders form with all required fields", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("visitor without an account switches from subscription sign-in to sign-up", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 8000;
 
   await installSubscriptionSignUpMocks(page, { userId });
 
-  await page.goto("/subscription/sign_up?plan=cliente");
-  await page.waitForLoadState("networkidle");
+  await page.goto("/subscription/sign_in?plan=cliente");
+  await expect(page.getByRole("heading", { name: "Inicia sesión para continuar" })).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByRole("heading", { name: "Crea tu cuenta" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Regístrate para completar tu suscripción")).toBeVisible();
+  await page.getByRole("link", { name: "Regístrate aquí" }).click();
 
+  // The chosen plan survives the switch and the registration form is served
+  await expect(page).toHaveURL(/\/subscription\/sign_up\?plan=cliente/);
+  await expect(page.getByRole("heading", { name: "Crea tu cuenta" })).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#email")).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#first_name")).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#last_name")).toBeVisible();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#password")).toBeVisible();
-  // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#confirm_password")).toBeVisible();
-
-  await expect(page.getByText("políticas de privacidad")).toBeVisible();
-  await expect(page.getByText("Inicia sesión aquí")).toBeVisible();
-  await expect(page.getByText("Volver a planes")).toBeVisible();
 });
 
 test("subscription sign-up sends verification code and completes registration", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {

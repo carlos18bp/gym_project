@@ -33,6 +33,10 @@ async function installAuthEdgeCaseMocks(page, { scenario = "default", userId = 9
 
   const nowIso = new Date().toISOString();
 
+  // The session is stateful: the visitor starts signed out and only becomes
+  // authenticated once the sign-in request succeeds.
+  let isLoggedIn = false;
+
   await mockApi(page, async ({ route, apiPath }) => {
     if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
 
@@ -41,7 +45,7 @@ async function installAuthEdgeCaseMocks(page, { scenario = "default", userId = 9
       if (scenario === "expired_token") {
         return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "token_expired" }) };
       }
-      if (scenario === "authenticated") {
+      if (scenario === "authenticated" || isLoggedIn) {
         return { status: 200, contentType: "application/json", body: "{}" };
       }
       // Default: unauthenticated
@@ -53,6 +57,7 @@ async function installAuthEdgeCaseMocks(page, { scenario = "default", userId = 9
       if (scenario === "invalid_credentials") {
         return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid_credentials" }) };
       }
+      isLoggedIn = true;
       return {
         status: 200,
         contentType: "application/json",
@@ -103,14 +108,26 @@ test("expired token redirects protected route to sign_in", { tag: ['@flow:auth-e
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible();
 });
 
-test("Google OAuth callback route renders sign-in page", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user signs in from the Google OAuth callback route", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "default" });
 
+  // The callback route renders the SignIn component, so the credential form
+  // must stay fully operational for a visitor who lands there.
   await page.goto("/auth/google/callback");
-
-  // Should render the sign-in page (same component as SignIn)
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("O continuar con")).toBeVisible();
+
+  await page.getByLabel(/correo/i).fill("test@example.com");
+  await page.getByLabel("Contraseña").fill("SecurePass1!");
+  await bypassCaptcha(page);
+
+  const signInRequest = page.waitForRequest(
+    (request) => request.url().includes("/api/sign_in/") && request.method() === "POST"
+  );
+  await page.getByRole("button", { name: /Iniciar sesión/i }).click();
+
+  expect((await signInRequest).postDataJSON().email).toBe("test@example.com");
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+  expect(await page.evaluate(() => localStorage.getItem("token"))).toBe("e2e-token-new");
 });
 
 test("sign-in with invalid credentials shows error notification", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
@@ -139,20 +156,26 @@ test("sign-in with invalid credentials shows error notification", { tag: ['@flow
 // fixture (helpers/test.js) auto-verifies captcha via a grecaptcha stub.
 // Captcha client-side validation should be covered by a unit test on signInUser.
 
-test("sign-in page shows terms and privacy policy links", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("sign-in page sends a new user to the registration form", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "default" });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-  // Should show legal links
-  await expect(page.getByText("Condiciones de uso")).toBeVisible();
-  await expect(page.getByText("Aviso de privacidad")).toBeVisible();
+  await page.getByRole("link", { name: "Registrarse." }).click();
 
-  // Should show registration link
-  await expect(page.getByText("¿Nuevo en G&M?")).toBeVisible();
-  await expect(page.getByText("Registrarse.")).toBeVisible();
+  await expect(page).toHaveURL(/\/sign_on/);
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida" })).toBeVisible();
+});
 
-  // Should show forgot password link
-  await expect(page.getByText("¿Olvidaste tu contraseña?")).toBeVisible();
+test("sign-in page sends a visitor who forgot the password to the recovery form", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  await installAuthEdgeCaseMocks(page, { scenario: "default" });
+
+  await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("link", { name: "¿Olvidaste tu contraseña?" }).click();
+
+  await expect(page).toHaveURL(/\/forget_password/);
+  await expect(page.getByRole("heading", { name: "No te preocupes, vamos ayudarte" })).toBeVisible();
 });

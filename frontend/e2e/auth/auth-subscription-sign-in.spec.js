@@ -117,27 +117,34 @@ async function installSubscriptionSignInMocks(page, { signInResponse = "success"
   });
 }
 
-test("subscription sign-in page renders form with email, password, and plan link", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("anonymous visitor picking a plan lands on the subscription sign-in form", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  await installSubscriptionSignInMocks(page);
+
+  await page.goto("/subscriptions");
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
+
+  // quality: allow-fragile-selector (positional access: second plan card is Plan Cliente)
+  await page.getByRole("button", { name: "Elegir plan" }).nth(1).click();
+
+  // Not authenticated: the plan is parked in the query and login is requested
+  await expect(page).toHaveURL(/\/subscription\/sign_in\?plan=cliente/, { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Inicia sesión para continuar" })).toBeVisible();
+  // quality: allow-fragile-selector (stable application ID)
+  await expect(page.locator('[id="email"]')).toBeVisible();
+  // quality: allow-fragile-selector (stable application ID)
+  await expect(page.locator('[id="password"]')).toBeVisible();
+});
+
+test("subscription sign-in returns the visitor to the plans page", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installSubscriptionSignInMocks(page);
 
   await page.goto("/subscription/sign_in?plan=cliente");
-
-  // Page heading
   await expect(page.getByRole("heading", { name: "Inicia sesión para continuar" })).toBeVisible({ timeout: 15_000 });
 
-  // Form fields
-  await expect(page.locator('[id="email"]')).toBeVisible();
-  await expect(page.locator('[id="password"]')).toBeVisible();
+  await page.getByRole("link", { name: "Volver a planes" }).click();
 
-  // Submit button
-  await expect(page.getByRole("button", { name: "Iniciar sesión" })).toBeVisible();
-
-  // "Volver a planes" link
-  await expect(page.getByText("Volver a planes")).toBeVisible();
-
-  // "¿No tienes cuenta?" registration link
-  await expect(page.getByText("¿No tienes cuenta?")).toBeVisible();
-  await expect(page.getByText("Regístrate aquí")).toBeVisible();
+  await expect(page).toHaveURL(/\/subscriptions/);
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible();
 });
 
 test("user signs in successfully and is redirected to checkout", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {

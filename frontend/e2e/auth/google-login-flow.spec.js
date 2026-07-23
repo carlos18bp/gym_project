@@ -168,9 +168,16 @@ async function installGoogleAuthMocks(page, { scenario = "existing_user_success"
   });
 }
 
+/**
+ * Drive the Google sign-in the same way a click on the GSI button would.
+ *
+ * The visible button is an iframe rendered by Google's own SDK, which the E2E
+ * fixture stubs out (renderButton is a no-op), so there is no DOM node to
+ * click. The seam that IS the app's own wiring is the callback vue3-google-login
+ * registers through google.accounts.id.initialize(): invoking it exercises
+ * SocialLoginButtons → @google → loginWithGoogle exactly like a real click.
+ */
 async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
-  // Wait for vue3-google-login to call google.accounts.id.initialize(),
-  // which stores the callback via our GSI stub in test.js.
   await page.waitForFunction(() => typeof window.__e2eGoogleLoginCallback === 'function', { timeout: 10_000 });
   await page.evaluate((cred) => {
     window.__e2eGoogleLoginCallback({ credential: cred });
@@ -185,7 +192,13 @@ test("google login signs in existing user and redirects to dashboard", { tag: ['
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
+  const googleRequest = page.waitForRequest(
+    (request) => request.url().includes("/api/google_login/") && request.method() === "POST"
+  );
   await triggerGoogleLogin(page);
+
+  // The credential handed over by the SDK is what the app forwards
+  expect((await googleRequest).postDataJSON().credential).toBe("e2e-google-credential");
 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("token")), { timeout: 15_000 })

@@ -83,7 +83,7 @@ async function installLegalUpdateMocks(page, { userId, role, updates = [] }) {
 }
 
 test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, () => {
-  test("lawyer sees active legal updates on dashboard", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("lawyer advances the carousel to the second active legal update", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     const userId = 1200;
 
     const updates = [
@@ -113,14 +113,17 @@ test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-
     });
 
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // The LegalUpdatesCard carousel renders the CONTENT of each active update
-    // (titles are only used as image alt text)
-    await expect(
-      page.getByText("Se ha aprobado una nueva ley que regula el tratamiento de datos personales."),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Modificaciones importantes al código civil.")).toHaveCount(1);
+    // Starting point: the carousel opens on the first active update
+    // quality: allow-fragile-selector (Swiper exposes the active slide only through its own class)
+    const activeSlide = page.locator(".swiper-slide-active");
+    await expect(activeSlide).toHaveText(/Se ha aprobado una nueva ley que regula el tratamiento de datos personales\./, { timeout: 15_000 });
+
+    // quality: allow-fragile-selector (Swiper pagination bullets carry no role or testid)
+    await page.locator(".swiper-pagination-bullet").nth(1).click();
+
+    // Transition: the second active update becomes the visible slide
+    await expect(activeSlide).toHaveText(/Modificaciones importantes al código civil\./, { timeout: 10_000 });
   });
 
   test("dashboard shows empty state when no legal updates", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {

@@ -25,14 +25,32 @@ async function installExtendedLegalRequestsMocks(page, { userId, role, requests,
     if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
     if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
 
-    // Requests list
+    // Requests list — applies the status/search filters the UI sends so a
+    // filter interaction produces an observable change in the grid.
     if (apiPath === "legal_requests/") {
+      const query = new URL(route.request().url()).searchParams;
+      const statusFilter = query.get("status") || "";
+      const search = (query.get("search") || "").toLowerCase();
+
+      const filtered = requests.filter((request) => {
+        const matchesStatus = !statusFilter || request.status === statusFilter;
+        const haystack = [
+          request.request_number,
+          request.description,
+          request.first_name,
+          request.last_name,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return matchesStatus && (!search || haystack.includes(search));
+      });
+
       return {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          requests,
-          count: requests.length,
+          requests: filtered,
+          count: filtered.length,
           user_role: role,
         }),
       };
@@ -79,7 +97,7 @@ async function installExtendedLegalRequestsMocks(page, { userId, role, requests,
   });
 }
 
-test("lawyer sees multiple legal requests with different statuses", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer filters the list down to the pending requests", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6100;
   const nowIso = new Date().toISOString();
 
@@ -102,14 +120,19 @@ test("lawyer sees multiple legal requests with different statuses", { tag: ['@fl
 
   await page.goto("/legal_requests");
 
-  // All requests should be visible
+  // All three requests are listed before filtering
   await expect(page.getByText("REQ-2001")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("REQ-2002")).toBeVisible();
   await expect(page.getByText("REQ-2003")).toBeVisible();
 
-  // Verify client names are displayed
-  await expect(page.getByRole("heading", { name: "Ana García" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Carlos Lopez" })).toBeVisible();
+  // quality: allow-fragile-selector (the status dropdown is the only select in this view)
+  await page.locator("select").first().selectOption("PENDING");
+
+  // The RESOLVED request drops out; the two PENDING ones stay
+  await expect(page.getByText("REQ-2002")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Carlos Lopez" })).toHaveCount(0);
+  await expect(page.getByText("REQ-2001")).toBeVisible();
+  await expect(page.getByText("REQ-2003")).toBeVisible();
 });
 
 test("lawyer opens a legal request detail from the list", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -142,7 +165,7 @@ test("lawyer opens a legal request detail from the list", { tag: ['@flow:legal-m
   await expect(page.getByText("Solicitud de Elena Ruiz")).toBeVisible();
 });
 
-test("client views their legal request detail with description", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("client opens their request from the list and reads the lawyer response", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6102;
 
   const requests = [
@@ -172,16 +195,20 @@ test("client views their legal request detail with description", { tag: ['@flow:
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  await page.goto("/legal_request_detail/4001");
+  await page.goto("/legal_requests");
 
-  // Client should see the request description
+  await expect(page.getByText("REQ-4001")).toBeVisible({ timeout: 15_000 });
+  // The conversation lives on the detail page only
+  await expect(page.getByText("Respuesta del abogado")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Ver detalles/i }).click();
+
+  await expect(page).toHaveURL(/\/legal_request_detail\/4001$/, { timeout: 10_000 });
   await expect(page.getByText("Mi consulta laboral")).toBeVisible({ timeout: 15_000 });
-
-  // Client should see the response from the lawyer
   await expect(page.getByText("Respuesta del abogado")).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer sees request count in the list", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer narrows the list with the search bar and the results summary follows", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
   const userId = 6103;
 
   const requests = [
@@ -202,11 +229,15 @@ test("lawyer sees request count in the list", { tag: ['@flow:legal-management-la
 
   await page.goto("/legal_requests");
 
-  // Both requests visible
+  // Both requests visible, summary counts both
   await expect(page.getByText("REQ-5001")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("REQ-5002")).toBeVisible();
+  await expect(page.getByText("Mostrando 2 de 2 solicitudes")).toBeVisible();
 
-  // Verify request type names are displayed
-  await expect(page.getByText("Tutela", { exact: true })).toBeVisible();
-  await expect(page.getByText("Consulta", { exact: true }).first()).toBeVisible();
+  await page.getByRole("searchbox", { name: "Buscar" }).fill("Pedro");
+
+  // Only Pedro's request survives the search and the summary recounts
+  await expect(page.getByText("REQ-5001")).toHaveCount(0);
+  await expect(page.getByText("REQ-5002")).toBeVisible();
+  await expect(page.getByText("Mostrando 1 de 1 solicitudes")).toBeVisible();
 });

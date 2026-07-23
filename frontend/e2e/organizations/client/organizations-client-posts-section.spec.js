@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client posts section: renders pinned post and link", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client posts section: opens the pinned post link in a new tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
   const userId = 3590;
 
   await installOrganizationsClientApiMocks(page, {
@@ -29,13 +29,18 @@ test("client posts section: renders pinned post and link", { tag: ['@flow:org-cl
     },
   });
 
+  // The external destination is stubbed so the click never leaves the harness
+  await page.context().route("https://example.com/**", async (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Enlace</h1>" })
+  );
+
   await page.goto("/organizations_dashboard");
   await page.waitForLoadState("networkidle");
 
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
   await expect(page.locator('h2:has-text("Anuncios de Organizaciones")')).toBeVisible();
 
-  // Post card contents
+  // Starting point: the pinned post card with its link
   const postCard = page
     .locator("div.bg-white.shadow.rounded-lg.border")
     .filter({ hasText: "Bienvenido a Acme Corp" })
@@ -46,8 +51,14 @@ test("client posts section: renders pinned post and link", { tag: ['@flow:org-cl
   await expect(postCard).toContainText("Anuncio Destacado");
 
   const link = postCard.getByRole("link", { name: "Ver enlace" }).first();
-  await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", "https://example.com");
+
+  const popupPromise = page.waitForEvent("popup");
+  await link.click();
+
+  // Transition: the linked resource opens in its own tab
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL("https://example.com/");
 });
 
 test("client posts section: empty state when organization has no posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {

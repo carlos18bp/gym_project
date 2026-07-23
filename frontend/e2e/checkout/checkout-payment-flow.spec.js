@@ -149,7 +149,7 @@ async function installCheckoutMocks(
 
 test.describe.configure({ timeout: 90_000 });
 
-test("paid checkout keeps subscribe disabled before payment tokenization", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("paid checkout keeps subscribe disabled until the card is tokenized", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5400, role: "client" });
 
   await installWompiExternalMocks(page);
@@ -161,7 +161,17 @@ test("paid checkout keeps subscribe disabled before payment tokenization", { tag
   await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Plan Cliente").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Método de pago", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Guardar método de pago" })).toBeVisible();
+
+  // Filling the card is NOT enough: the gate is the tokenization round-trip,
+  // so the subscribe button must stay disabled with a fully typed card.
+  await page.getByPlaceholder("Como aparece en la tarjeta").fill("E2E Holder");
+  await page.getByPlaceholder("0000 0000 0000 0000").fill("4242 4242 4242 4242");
+  await page.getByPlaceholder("MM").fill("12");
+  await page.getByPlaceholder("AA").fill("30");
+  await page.getByPlaceholder("CVC").fill("123");
+
+  await expect(page.getByText("Método de pago configurado")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guardar método de pago" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 

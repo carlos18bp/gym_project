@@ -84,14 +84,18 @@ async function setupWithClients(page) {
   });
 }
 
-async function openPermissionsModal(page) {
+async function openDocumentActions(page) {
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
   // Click document row to open ActionsModal
-  // quality: allow-fragile-selector (positional access on filtered set)
-  await page.locator("table tbody tr").first().click();
+  const row = page.getByRole("table").getByText("Minuta Con Permisos");
+  await expect(row).toBeVisible({ timeout: 15000 });
+  await row.click();
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10000 });
+}
+
+async function openPermissionsModal(page) {
+  await openDocumentActions(page);
 
   // Click "Permisos"
   await page.getByRole("button", { name: "Permisos" }).click();
@@ -107,9 +111,13 @@ test.describe("Permissions modal renders client list", { tag: ['@flow:docs-permi
   // quality: allow-fragile-test-data (mock client email in permissions test double)
   test("shows available clients with names and emails", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     await setupWithClients(page);
-    await openPermissionsModal(page);
+    await openDocumentActions(page);
+    await expect(page.getByText("Carlos Pérez")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Permisos" }).click();
 
     // Client names should be visible
+    await expect(page.getByRole("button", { name: "Guardar Permisos" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Carlos Pérez")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("María López")).toBeVisible();
     await expect(page.getByText("José García")).toBeVisible();
@@ -120,9 +128,13 @@ test.describe("Permissions modal renders client list", { tag: ['@flow:docs-permi
 
   test("shows role-based permissions section with role names", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     await setupWithClients(page);
-    await openPermissionsModal(page);
+    await openDocumentActions(page);
+    await expect(page.getByText("Cliente Corporativo")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Permisos" }).click();
 
     // Role names from MOCK_ROLES should be visible
+    await expect(page.getByRole("button", { name: "Guardar Permisos" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Cliente").first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText("Cliente Corporativo")).toBeVisible();
   });

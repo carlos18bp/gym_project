@@ -71,7 +71,14 @@ test(
       },
     });
 
-    await page.goto("/dynamic_document_dashboard?lawyerTab=pending-signatures");
+    // Land on the default tab (the explicit ?lawyerTab= param suppresses the
+    // auto-redirect) and let the user open "Dcs. Por Firmar" — the table only
+    // mounts, and therefore only pulses, as a result of that click.
+    await page.goto("/dynamic_document_dashboard?lawyerTab=my-documents");
+    await expect(page.getByRole("button", { name: "Dcs. Por Firmar" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("signatures-list-row-6001")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
 
     const row = page.getByTestId("signatures-list-row-6001");
     await expect(row).toBeVisible({ timeout: 15_000 });

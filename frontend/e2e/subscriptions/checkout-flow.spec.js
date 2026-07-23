@@ -1,6 +1,7 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { installWompiStubs } from "../helpers/wompiStubs.js";
 
 const buildCheckoutEmail = (userId) => `checkout-user-${userId}@example.test`;
 
@@ -66,7 +67,7 @@ async function installCheckoutMocks(page, { userId, planType = "basico" }) {
   });
 }
 
-test("checkout page renders plan details for free plan (basico)", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("selecting the free plan opens its checkout with the buyer's own data", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9100;
   const userEmail = buildCheckoutEmail(userId);
 
@@ -77,52 +78,47 @@ test("checkout page renders plan details for free plan (basico)", { tag: ['@flow
     userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
   });
 
-  await page.goto("/checkout/basico");
+  await page.goto("/subscriptions");
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
 
-  // Should show plan name and price
-  const basicPlanCard = page.locator("div").filter({
-    has: page.getByRole("heading", { name: "Plan Básico" }),
-  });
-  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible({ timeout: 15_000 });
-  const basicPlanPrice = basicPlanCard.locator("p", { hasText: "Gratuito" });
-  await expect(basicPlanPrice).toBeVisible();
+  // quality: allow-fragile-selector (positional access: first plan card is Plan Básico)
+  await page.getByRole("button", { name: "Elegir plan" }).first().click();
 
-  // Should show order summary
+  await expect(page).toHaveURL(/\/checkout\/basico/, { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
   await expect(page.getByText("Resumen del pedido")).toBeVisible();
 
-  // User info should be visible
+  // The checkout is filled with the signed-in buyer, not a placeholder
   await expect(page.getByText("Test User")).toBeVisible();
   await expect(page.getByText(userEmail)).toBeVisible();
-
-  // Free plan button should say "Activar Plan Gratuito"
   await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toBeVisible();
 });
 
-test("checkout page for corporativo plan shows correct plan info", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("selecting the corporate plan opens a paid checkout with the card form", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 9101;
   const userEmail = buildCheckoutEmail(userId);
 
-  await installCheckoutMocks(page, { userId, planType: "basico" });
+  await installWompiStubs(page);
+  await installCheckoutMocks(page, { userId, planType: "corporativo" });
 
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
   });
 
-  // Navigate to free (basico) checkout, then click "Volver a planes" to navigate back
-  await page.goto("/checkout/basico");
+  await page.goto("/subscriptions");
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByText("Finalizar Suscripción")).toBeVisible({ timeout: 15_000 });
+  // quality: allow-fragile-selector (positional access: third plan card is Plan Corporativo)
+  await page.getByRole("button", { name: "Elegir plan" }).nth(2).click();
 
-  // Verify the "Volver a planes" back button is visible
-  await expect(page.getByText("Volver a planes")).toBeVisible();
+  await expect(page).toHaveURL(/\/checkout\/corporativo/, { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Plan Corporativo" })).toBeVisible();
 
-  // Verify key features are listed
-  await expect(page.getByText("Consulta Procesos Judiciales")).toBeVisible();
-  await expect(page.getByText("+100 Documentos Jurídicos")).toBeVisible();
-
-  // Free plan should show "30 días de garantía de reembolso"
-  await expect(page.getByText("30 días de garantía de reembolso")).toBeVisible();
+  // A paid plan swaps the free-activation button for the payment section
+  await expect(page.getByText("Configura tu método de pago")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toHaveCount(0);
 });
 
 test("free plan checkout activates subscription successfully", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {

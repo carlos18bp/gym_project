@@ -16,10 +16,11 @@ const buildLawyerAuth = ({ userId }) => ({
 });
 
 /**
- * Navigate to the dynamic document dashboard and open the
- * ElectronicSignatureModal via the "Firma" action button.
+ * Land on the dynamic document dashboard with the signature endpoints mocked —
+ * the state the user sees before touching the signature feature. Tests whose
+ * subject *is* the opening click drive it from their own body.
  */
-async function openSignatureModal(page, { userId, hasSignature = false }) {
+async function gotoDocumentDashboard(page, { userId, hasSignature = false }) {
   await installDynamicDocumentApiMocks(page, {
     userId,
     role: "lawyer",
@@ -38,7 +39,18 @@ async function openSignatureModal(page, { userId, hasSignature = false }) {
 
   await setAuthLocalStorage(page, buildLawyerAuth({ userId }));
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
+
+  await expect(
+    page.getByRole("button", { name: "Firma Electrónica" })
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Navigate to the dynamic document dashboard and open the
+ * ElectronicSignatureModal via the "Firma" action button.
+ */
+async function openSignatureModal(page, { userId, hasSignature = false }) {
+  await gotoDocumentDashboard(page, { userId, hasSignature });
 
   // Click the "Firma Electrónica" button to open ElectronicSignatureModal
   await page.getByRole("button", { name: "Firma Electrónica" }).click();
@@ -53,7 +65,18 @@ test.describe("ElectronicSignatureModal", { tag: ['@flow:sign-electronic-signatu
   test("lawyer opens signature modal and sees signature options", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 2000;
 
-    await openSignatureModal(page, { userId, hasSignature: false });
+    await gotoDocumentDashboard(page, { userId, hasSignature: false });
+
+    // Nothing signature-related is mounted until the user asks for it
+    await expect(
+      page.getByRole("heading", { name: "Firma Electrónica", exact: true })
+    ).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Firma Electrónica" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Firma Electrónica", exact: true })
+    ).toBeVisible({ timeout: 10_000 });
 
     // Should show the two signature creation options
     await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
@@ -193,13 +216,17 @@ test.describe("ElectronicSignatureModal", { tag: ['@flow:sign-electronic-signatu
   test("SignatureModal shows heading and description text", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 2007;
 
-    await openSignatureModal(page, { userId, hasSignature: false });
+    await gotoDocumentDashboard(page, { userId, hasSignature: false });
+
+    await expect(page.getByText("Añadir firma electrónica")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Firma Electrónica" }).click();
 
     // SignatureModal renders inside ElectronicSignature when initialShowOptions is true
     // Verify the inner heading and description are visible
     await expect(
       page.getByText("Añadir firma electrónica")
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10_000 });
     await expect(
       page.getByText("Selecciona el método para añadir tu firma electrónica")
     ).toBeVisible();
@@ -225,12 +252,10 @@ test.describe("ElectronicSignatureModal", { tag: ['@flow:sign-electronic-signatu
     // Save button should be enabled after drawing
     await expect(page.getByRole("button", { name: "Guardar" })).toBeEnabled();
 
-    // Click "Limpiar" to clear the canvas
-    const clearBtn = page.getByRole("button", { name: /Limpiar/i });
-    if (await clearBtn.isVisible()) {
-      await clearBtn.click();
-      // After clearing, save button should be disabled again
-      await expect(page.getByRole("button", { name: "Guardar" })).toBeDisabled({ timeout: 5_000 });
-    }
+    // Click the canvas clear button
+    await page.getByTestId("draw-signature-clear").click();
+
+    // After clearing, save button should be disabled again
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeDisabled({ timeout: 5_000 });
   });
 });
