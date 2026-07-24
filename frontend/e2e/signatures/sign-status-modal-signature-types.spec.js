@@ -30,7 +30,13 @@ async function setupDashboard(page, { userId, docs }) {
   });
 }
 
-async function openSignaturesModal(page, { tab, docTitle }) {
+/**
+ * Walk the dashboard down to the document actions modal — the state right
+ * before the action under test. Each test fires the
+ * "Ver estado de firmas" click itself so the transition it asserts is the
+ * direct result of an action in its own body.
+ */
+async function openDocumentActions(page, { tab, docTitle }) {
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
@@ -40,8 +46,9 @@ async function openSignaturesModal(page, { tab, docTitle }) {
   await page.getByText(docTitle).first().click();
   await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
 
-  await page.getByTestId("document-action-viewSignatures").click();
-  await expect(page.getByRole("heading", { name: "Estado de Formalización del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(
+    page.getByRole("heading", { name: "Estado de Formalización del Documento" })
+  ).toHaveCount(0);
 }
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
@@ -58,7 +65,12 @@ test("issuer_only document shows 'Solo firma del emisor' badge and 'Pendiente de
   ];
 
   await setupDashboard(page, { userId, docs });
-  await openSignaturesModal(page, { tab: "Dcs. Por Firmar", docTitle: "Contrato Issuer Only" });
+  await openDocumentActions(page, { tab: "Dcs. Por Firmar", docTitle: "Contrato Issuer Only" });
+
+  await page.getByTestId("document-action-viewSignatures").click();
+  await expect(
+    page.getByRole("heading", { name: "Estado de Formalización del Documento" })
+  ).toBeVisible({ timeout: 10_000 });
 
   await expect(page.getByText("Solo firma del emisor")).toBeVisible();
   await expect(page.getByText("Pendiente de Firma", { exact: true })).toBeVisible();
@@ -80,7 +92,12 @@ test("issuer_only document shows 'Firmado' for issuer once signed and 'Informado
   ];
 
   await setupDashboard(page, { userId, docs });
-  await openSignaturesModal(page, { tab: "Dcs. Formalizados", docTitle: "Issuer Only Firmado" });
+  await openDocumentActions(page, { tab: "Dcs. Formalizados", docTitle: "Issuer Only Firmado" });
+
+  await page.getByTestId("document-action-viewSignatures").click();
+  await expect(
+    page.getByRole("heading", { name: "Estado de Formalización del Documento" })
+  ).toBeVisible({ timeout: 10_000 });
 
   await expect(page.getByText("Firmado", { exact: true })).toBeVisible();
   await expect(page.getByText("Informado", { exact: true })).toBeVisible();
@@ -102,7 +119,12 @@ test("informative document shows 'Emitido' for issuer and 'Informado' for other 
   ];
 
   await setupDashboard(page, { userId, docs });
-  await openSignaturesModal(page, { tab: "Dcs. Formalizados", docTitle: "Circular Informativa" });
+  await openDocumentActions(page, { tab: "Dcs. Formalizados", docTitle: "Circular Informativa" });
+
+  await page.getByTestId("document-action-viewSignatures").click();
+  await expect(
+    page.getByRole("heading", { name: "Estado de Formalización del Documento" })
+  ).toBeVisible({ timeout: 10_000 });
 
   await expect(page.getByText("Documento informativo")).toBeVisible();
   await expect(page.getByText("Documento formalizado (informativo)")).toBeVisible();
@@ -126,7 +148,12 @@ test("rejected signer shows 'Rechazado' label even when signature_type is inform
   ];
 
   await setupDashboard(page, { userId, docs });
-  await openSignaturesModal(page, { tab: "Dcs. Archivados", docTitle: "Informativa Rechazada" });
+  await openDocumentActions(page, { tab: "Dcs. Archivados", docTitle: "Informativa Rechazada" });
+
+  await page.getByTestId("document-action-viewSignatures").click();
+  await expect(
+    page.getByRole("heading", { name: "Estado de Formalización del Documento" })
+  ).toBeVisible({ timeout: 10_000 });
 
   await expect(page.getByText("Rechazado", { exact: true })).toBeVisible();
 });

@@ -72,14 +72,17 @@ test("lawyer sees delete option when clicking a draft document row", { tag: ['@f
 
   // Click document to open actions
   await page.getByText("Doc Para Eliminar").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+
+  // The actions modal opens and offers the delete action for the Draft doc
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("document-action-delete")).toBeVisible();
 });
 
-test("lawyer sees documents list after navigating to dashboard", { tag: ['@flow:docs-delete', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("confirming the delete alert removes the document from the list", { tag: ['@flow:docs-delete', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8831;
   const documents = [
     buildMockDocument({ id: 8010, title: "Doc Único", state: "Draft", createdBy: userId }),
+    buildMockDocument({ id: 8011, title: "Doc Superviviente", state: "Draft", createdBy: userId }),
   ];
 
   await installDeleteMocks(page, { userId, documents });
@@ -90,4 +93,23 @@ test("lawyer sees documents list after navigating to dashboard", { tag: ['@flow:
 
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByText("Doc Único")).toBeVisible({ timeout: 15_000 });
+
+  await page.getByText("Doc Único").first().click();
+  await expect(page.getByTestId("document-action-delete")).toBeVisible({ timeout: 10_000 });
+
+  const deleteRequest = page.waitForRequest(
+    (request) => request.url().includes("/dynamic-documents/8010/") && request.method() === "DELETE"
+  );
+  await page.getByTestId("document-action-delete").click();
+
+  // Confirmation alert must be accepted before anything leaves the server.
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("¿Estás seguro de que deseas eliminar el documento", { timeout: 10_000 });
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+  await deleteRequest;
+
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("Documento eliminado exitosamente", { timeout: 10_000 });
+  await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+
+  await expect(page.getByText("Doc Único")).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByText("Doc Superviviente")).toBeVisible();
 });

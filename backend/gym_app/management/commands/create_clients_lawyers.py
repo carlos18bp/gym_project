@@ -93,6 +93,25 @@ class Command(BaseCommand):
                     lawyer.save(update_fields=['role'])
                 self.stdout.write(self.style.WARNING(f'Lawyer already exists: {lawyer.email}'))
 
+        # Seed one archived lawyer so the reassignment module, its metrics,
+        # and archived-user selectors have data to show in staging demos.
+        archived, arch_created = User.objects.get_or_create(
+            email='abogado.archivado@example.com',
+            defaults={
+                'first_name': 'Abelardo',
+                'last_name': 'Archivado',
+                'role': 'lawyer',
+                'is_archived': True,
+                'is_active': False,
+            },
+        )
+        if arch_created or reset_passwords:
+            archived.set_password('password')
+            archived.is_archived = True
+            archived.is_active = False
+            archived.save()
+            self.stdout.write(self.style.SUCCESS(f'Archived lawyer seeded: {archived.email}'))
+
         for email, first_name, last_name, role in SPECIAL_USERS_SPEC:
             special_user, created = User.objects.get_or_create(
                 email=email,

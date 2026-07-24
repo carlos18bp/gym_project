@@ -361,4 +361,241 @@ describe("ProcessForm.vue", () => {
     expect(openSpy).toHaveBeenCalledWith("http://files.test/file.pdf", "_blank");
     openSpy.mockRestore();
   });
+
+  test("create mode defaults the responsible lawyer to the logged-in user", async () => {
+    const lawyer = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      users: [lawyer],
+      currentUser: lawyer,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(42);
+    expect(setupState.formData.lawyerId).toBe(42);
+  });
+
+  test("selector value (not the logged-in user) is what gets submitted", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const client = { id: 7, first_name: "Ana", last_name: "Lopez", role: "client" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      caseTypes: [{ id: 10, type: "Civil" }],
+      users: [me, colleague, client],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    // Admin/lawyer reassigns the process to a colleague at creation time
+    setupState.selectedLawyer = colleague;
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [client];
+    setupState.formData.plaintiff = "P";
+    setupState.formData.defendant = "D";
+    setupState.formData.subcase = "S";
+    setupState.formData.ref = "R";
+    setupState.formData.authority = "Court";
+    setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
+    setupState.formData.caseFiles = [{ file: createFile("f.pdf", "application/pdf") }];
+
+    mockSubmitHandler.mockResolvedValue();
+    await setupState.onSubmit();
+
+    expect(mockSubmitHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ lawyerId: 77 }),
+      expect.any(String),
+      false
+    );
+  });
+
+  test("edit mode prefills the stage alert configuration", async () => {
+    const { wrapper } = await mountEditView({
+      stages: [
+        { status: "Admisión", date: "2099-12-31", alert: { is_active: true, description: "Vence pronto", notify_clients: true } },
+      ],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect([
+      setupState.formData.alertIsActive,
+      setupState.formData.alertDescription,
+      setupState.formData.alertNotifyClients,
+    ]).toEqual([true, "Vence pronto", true]);
+  });
+
+  test("blocks submit when a stage status is empty", async () => {
+    const { wrapper } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.stages = [{ status: "   ", date: "2099-12-31" }];
+
+    await setupState.onSubmit();
+
+    expect(mockSwalFire).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Estado requerido!" })
+    );
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
+  test("blocks submit when a case file row has no file", async () => {
+    const { wrapper } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.caseFiles = [{ file: null }];
+
+    await setupState.onSubmit();
+
+    expect(mockSwalFire).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "¡Archivo requerido!" })
+    );
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
+  test("submitting an edit updates the process and navigates back", async () => {
+    const { wrapper, process } = await mountEditView();
+    const setupState = getSetupState(wrapper);
+    mockSubmitHandler.mockResolvedValue();
+
+    await setupState.onSubmit();
+
+    expect(mockSubmitHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ processIdParam: String(process.id) }),
+      expect.stringContaining("guardado exitosamente"),
+      true
+    );
+    expect(mockRouterBack).toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  test("case type search filters options by query", async () => {
+    const { wrapper } = await mountView({
+      caseTypes: [{ id: 10, type: "Civil" }, { id: 11, type: "Penal" }],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredCaseTypes.map((c) => c.id)).toEqual([10, 11]);
+
+    setupState.query = "civ";
+    await nextTick();
+
+    expect(setupState.filteredCaseTypes.map((c) => c.id)).toEqual([10]);
+  });
+
+  test("client search filters options by query", async () => {
+    const ana = { id: 7, first_name: "Ana", last_name: "Lopez", identification: "111", email: "ana@test.com", role: "client" };
+    const juan = { id: 8, first_name: "Juan", last_name: "Perez", identification: "222", email: "juan@test.com", role: "client" };
+    const { wrapper } = await mountView({ users: [ana, juan] });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredClients.map((c) => c.id)).toEqual([7, 8]);
+
+    setupState.query = "ana";
+    await nextTick();
+
+    expect(setupState.filteredClients.map((c) => c.id)).toEqual([7]);
+  });
+
+  test("rejects case files larger than the 200 MB limit", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+    setupState.formData.caseFiles = [{ file: null }];
+    const bigFile = createFile("huge.pdf", "application/pdf", 201 * 1024 * 1024);
+
+    setupState.handleFileUpload({ target: { files: [bigFile] } }, 0);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      expect.stringContaining("excede el límite de 200 MB"),
+      "warning"
+    );
+    expect(setupState.formData.caseFiles[0].file).toBeNull();
+  });
+
+  test("getInitials falls back to ? when both names are empty", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+
+    expect([
+      setupState.getInitials("Ana", "Lopez"),
+      setupState.getInitials("", ""),
+    ]).toEqual(["AL", "?"]);
+  });
+
+  test("cancelAction navigates back without submitting", async () => {
+    const { wrapper } = await mountView();
+    const setupState = getSetupState(wrapper);
+
+    setupState.cancelAction();
+
+    expect(mockRouterBack).toHaveBeenCalled();
+    expect(mockSubmitHandler).not.toHaveBeenCalled();
+  });
+
+  test("lawyer search filters the selector options by query", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const { wrapper } = await mountView({
+      users: [me, colleague],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    setupState.lawyerQuery = "mar";
+    await nextTick();
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([77]);
+  });
+
+  test("edit mode keeps an archived assigned lawyer selectable at the top", async () => {
+    const archived = { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer", is_archived: true };
+    const active = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const process = buildProcess({ lawyer: archived });
+
+    const { wrapper } = await mountView({
+      routeParams: { action: "edit", process_id: String(process.id) },
+      processes: [process],
+      users: [archived, active],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([99, 77]);
+  });
+
+  test("logs and continues when auxiliary data fails to load", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const processStore = useProcessStore();
+    const caseTypeStore = useCaseTypeStore();
+    const userStore = useUserStore();
+    const authStore = useAuthStore();
+    authStore.$patch({ userAuth: { id: 99 } });
+
+    jest.spyOn(processStore, "init").mockResolvedValue();
+    jest.spyOn(caseTypeStore, "init").mockResolvedValue();
+    jest.spyOn(userStore, "init").mockRejectedValue(new Error("network down"));
+
+    mockRoute.params = { action: "add", process_id: "" };
+    const wrapper = shallowMount(ProcessForm, {
+      global: { plugins: [pinia] },
+    });
+    await flushPromises();
+
+    expect(wrapper.exists()).toBe(true);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error initializing process form auxiliary data:",
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
+  });
+
+  test("edit mode prefills the selector from the assigned lawyer", async () => {
+    const { wrapper } = await mountEditView({ lawyer: { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer" } });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(99);
+    expect(setupState.formData.lawyerId).toBe(99);
+  });
 });

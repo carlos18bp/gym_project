@@ -5,7 +5,7 @@ import { installOrganizationsDashboardApiMocks } from "../../helpers/organizatio
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("corporate_client invite member increments pending invitations stat", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
+test("corporate_client invite member increments pending invitations stat", { tag: ['@flow:org-invite-members', '@flow:org-corporate-dashboard-stats', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
   const userId = 4400;
 
   await installOrganizationsDashboardApiMocks(page, {

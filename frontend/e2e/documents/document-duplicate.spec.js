@@ -113,13 +113,18 @@ test("lawyer sees original document in dashboard with action options", { tag: ['
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // The published minuta is listed on the default Minutas tab
+  const docRow = page.getByRole("table").getByText("Contrato Original");
+  await expect(docRow).toBeVisible({ timeout: 15_000 });
+
+  // Clicking the row opens the actions modal with the copy option
+  await docRow.click();
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("document-action-copy")).toBeVisible();
 });
 
-test("duplicate document API mock returns new document with Draft state", { tag: ['@flow:docs-duplicate', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer duplicates a document and the copy appears as Draft in the list", { tag: ['@flow:docs-duplicate', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8701;
 
   await installDuplicateDocMocks(page, { userId });
@@ -130,12 +135,33 @@ test("duplicate document API mock returns new document with Draft state", { tag:
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Open the actions modal for the original document
+  const docRow = page.getByRole("table").getByText("Contrato Original");
+  await expect(docRow).toBeVisible({ timeout: 15_000 });
+  await docRow.click();
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
 
-  // Verify the create endpoint mock works by checking documents are loaded
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("lawyer");
+  // Trigger "Crear una Copia" — a confirmation dialog appears
+  await page.getByTestId("document-action-copy").click();
+  // quality: allow-fragile-selector (third-party SweetAlert2 component class)
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("¿Deseas crear una copia", { timeout: 10_000 });
+
+  // Confirming fires the create request against dynamic-documents/create/
+  const createRequest = page.waitForRequest(
+    (req) => req.url().includes("dynamic-documents/create/") && req.method() === "POST",
+    { timeout: 10_000 }
+  );
+  // quality: allow-fragile-selector (third-party SweetAlert2 component class)
+  await page.locator(".swal2-confirm").click();
+  await createRequest;
+
+  // Success notification confirms the copy was created
+  // quality: allow-fragile-selector (third-party SweetAlert2 component class)
+  await expect(page.locator('[class~="swal2-popup"]')).toContainText("Copia creada exitosamente", { timeout: 10_000 });
+  // quality: allow-fragile-selector (third-party SweetAlert2 component class)
+  await page.locator(".swal2-confirm").click();
+
+  // After the refresh, the duplicated Draft document is listed alongside the original
+  await expect(page.getByRole("table").getByText("Contrato Original (copia)")).toBeVisible({ timeout: 15_000 });
 });

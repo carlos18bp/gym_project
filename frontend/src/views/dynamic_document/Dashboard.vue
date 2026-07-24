@@ -2,6 +2,30 @@
   <div class="min-h-screen bg-gray-50">
     <ModuleHeader title="Documentos Dinámicos">
       <template #menu-button><slot></slot></template>
+      <template #actions>
+        <!-- Permanent help button: relaunches the guided tour on demand.
+             The ping dot invites first-time (or 30-day stale) users and
+             disappears once the tour is completed or declined. -->
+        <button
+          @click="startTour"
+          class="relative inline-flex items-center justify-center size-10 rounded-full bg-white/20 text-white hover:bg-white/30 transition-colors duration-200"
+          title="Ver guía del módulo"
+          data-testid="tour-help-button"
+          data-tour="help-button"
+          type="button"
+        >
+          <QuestionMarkCircleIcon class="size-6" />
+          <span
+            v-if="isTourDue"
+            data-testid="tour-help-ping"
+            aria-hidden="true"
+            class="absolute -top-0.5 -right-0.5 flex size-3"
+          >
+            <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+            <span class="relative inline-flex size-3 rounded-full bg-secondary ring-2 ring-white"></span>
+          </span>
+        </button>
+      </template>
     </ModuleHeader>
 
     <!-- Main content -->
@@ -33,22 +57,33 @@
                 ? 'bg-white text-gray-700 hover:bg-purple-50 hover:border-purple-300'
                 : 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
             ]"
+            data-tour="btn-electronic-signature"
           >
             <FingerPrintIcon class="size-5 text-purple-500"></FingerPrintIcon>
             <span>Firma Electrónica</span>
           </button>
+          <InfoTooltip
+            class="self-center"
+            text="Crea o actualiza tu firma electrónica para firmar documentos"
+          />
           <button
             @click.stop="showGlobalLetterheadModal = true"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-white text-sm font-medium text-gray-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+            data-tour="btn-global-letterhead"
           >
             <DocumentTextIcon class="size-5 text-green-500"></DocumentTextIcon>
             <span>Membrete Global</span>
           </button>
+          <InfoTooltip
+            class="self-center"
+            text="Sube un membrete que se aplica a todos tus documentos"
+          />
           <!-- Nueva Minuta button - only in legal-documents tab -->
           <button
             v-if="activeLawyerTab === 'legal-documents'"
             @click.stop="handleCreateMinuta"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+            data-tour="btn-new-minuta"
           >
             <PlusIcon class="size-5"></PlusIcon>
             <span>Nueva Minuta</span>
@@ -58,6 +93,7 @@
             v-if="activeLawyerTab === 'my-documents'"
             @click.stop="handleCreateDocument"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
+            data-tour="btn-new-document"
           >
             <PlusIcon class="size-5"></PlusIcon>
             <span>Nuevo Documento</span>
@@ -71,7 +107,7 @@
         <TabsCard>
           <!-- Desktop Tabs -->
           <div class="hidden md:block px-4 sm:px-6">
-            <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
+            <nav class="flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs" data-tour="tabs-nav">
               <button
                 v-for="tab in lawyerNavigationTabs"
                 :key="tab.name"
@@ -83,6 +119,7 @@
                   'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer inline-flex items-center gap-2'
                 ]"
                 :data-testid="`lawyer-tab-${tab.name}`"
+                :data-tour="`tab-${tab.name}`"
               >
                 {{ tab.label }}
                 <!-- Per-tab badge: "Dcs. Por Firmar" shows the pending-signature
@@ -105,6 +142,7 @@
             <button
               @click.stop="showLawyerDropdown = !showLawyerDropdown"
               class="dropdown-button w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              data-tour="tabs-nav"
             >
               <span>{{ lawyerNavigationTabs.find(tab => tab.name === activeLawyerTab)?.label || 'Seleccionar sección' }}</span>
               <svg
@@ -163,6 +201,7 @@
                   ? 'bg-white hover:bg-purple-50'
                   : 'bg-gray-50 cursor-not-allowed opacity-60'
               ]"
+              data-tour="btn-electronic-signature"
             >
               <FingerPrintIcon class="size-6 text-purple-500 mb-1"></FingerPrintIcon>
               <span class="font-medium text-xs leading-tight">Firma</span>
@@ -170,6 +209,7 @@
             <button
               @click.stop="showGlobalLetterheadModal = true"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-green-200 bg-white text-center transition-all duration-200 hover:bg-green-50"
+              data-tour="btn-global-letterhead"
             >
               <DocumentTextIcon class="size-6 text-green-500 mb-1"></DocumentTextIcon>
               <span class="font-medium text-xs leading-tight">Membrete</span>
@@ -179,6 +219,7 @@
               v-if="activeLawyerTab === 'legal-documents'"
               @click.stop="handleCreateMinuta"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+              data-tour="btn-new-minuta"
             >
               <PlusIcon class="size-6 mb-1"></PlusIcon>
               <span class="font-medium text-xs leading-tight">Nueva Minuta</span>
@@ -188,6 +229,7 @@
               v-if="activeLawyerTab === 'my-documents'"
               @click.stop="handleCreateDocument"
               class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
+              data-tour="btn-new-document"
             >
               <PlusIcon class="size-6 mb-1"></PlusIcon>
               <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
@@ -298,10 +340,15 @@
         <button
           @click.stop="handleElectronicSignatureClick"
           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-white text-sm font-medium text-gray-700 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+          data-tour="btn-electronic-signature"
         >
           <FingerPrintIcon class="size-5 text-purple-500" />
           <span>Firma Electrónica</span>
         </button>
+        <InfoTooltip
+          class="self-center"
+          text="Crea o actualiza tu firma electrónica para firmar documentos"
+        />
         <div class="relative group">
           <button
             @click.stop="handleGlobalLetterheadClick"
@@ -312,6 +359,7 @@
                 ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60'
                 : 'border-green-200 bg-white text-gray-700 hover:bg-green-50 hover:border-green-300'
             ]"
+            data-tour="btn-global-letterhead"
           >
             <DocumentTextIcon
               :class="['size-5', isBasicUser ? 'text-gray-400' : 'text-green-500']"
@@ -326,14 +374,23 @@
             <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
           </div>
         </div>
+        <InfoTooltip
+          class="self-center"
+          text="Sube un membrete que se aplica a todos tus documentos"
+        />
         <button
           @click.stop="handleSection('useDocument')"
           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-secondary bg-secondary text-sm font-medium text-white hover:bg-blue-700 transition-all duration-200"
           type="button"
+          data-tour="btn-new-document"
         >
           <PlusIcon class="size-5" />
           <span>Nuevo Documento</span>
         </button>
+        <InfoTooltip
+          class="self-center"
+          text="Crea un documento a partir de una minuta publicada"
+        />
       </div>
 
       <!-- Navigation tabs — shared TabsCard wrapper for visual consistency.
@@ -341,7 +398,7 @@
       <TabsCard>
         <!-- Desktop Tabs -->
         <div class="hidden md:block px-4 sm:px-6">
-          <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs">
+          <nav class="-mb-px flex flex-wrap gap-x-4 gap-y-2 md:gap-x-8" aria-label="Tabs" data-tour="tabs-nav">
           <button
             v-for="tab in navigationTabs"
             :key="tab.name"
@@ -353,6 +410,7 @@
               'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm inline-flex items-center gap-2'
             ]"
             :data-testid="`client-tab-${tab.name}`"
+            :data-tour="`tab-${tab.name}`"
           >
             {{ tab.label }}
             <!-- Per-tab badge: "Dcs. Por Firmar" shows the pending-signature
@@ -374,6 +432,7 @@
           <button
             @click.stop="showClientDropdown = !showClientDropdown"
             class="w-full flex items-center justify-between py-4 px-3 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            data-tour="tabs-nav"
           >
             <span>{{ navigationTabs.find(tab => tab.name === activeTab)?.label || 'Seleccionar sección' }}</span>
             <svg
@@ -424,6 +483,7 @@
           <button
             @click.stop="handleElectronicSignatureClick"
             class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-purple-200 bg-white text-center transition-all duration-200 hover:bg-purple-50"
+            data-tour="btn-electronic-signature"
           >
             <FingerPrintIcon class="size-6 text-purple-500 mb-1" />
             <span class="font-medium text-xs leading-tight">Firma</span>
@@ -438,6 +498,7 @@
                   ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
                   : 'border-green-200 bg-white hover:bg-green-50'
               ]"
+              data-tour="btn-global-letterhead"
             >
               <DocumentTextIcon
                 :class="['size-6 mb-1', isBasicUser ? 'text-gray-400' : 'text-green-500']"
@@ -456,6 +517,7 @@
             @click.stop="handleSection('useDocument')"
             class="flex flex-col items-center justify-center py-3 px-2 rounded-lg border border-secondary bg-secondary text-white text-center transition-all duration-200 hover:bg-blue-700"
             type="button"
+            data-tour="btn-new-document"
           >
             <PlusIcon class="size-6 mb-1" />
             <span class="font-medium text-xs leading-tight">Nuevo Doc.</span>
@@ -603,7 +665,7 @@ import { useDocumentFolderStore } from "@/stores/dynamic_document/folders";
 import { usePendingSignatures } from "@/composables/usePendingSignatures";
 import { useDocumentTabBadges } from "@/composables/useDocumentTabBadges";
 import { useRouter, useRoute } from "vue-router";
-import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
+import { FingerPrintIcon, XMarkIcon, DocumentTextIcon, PlusIcon, MagnifyingGlassIcon, ChevronDownIcon, QuestionMarkCircleIcon } from "@heroicons/vue/24/outline";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { showNotification } from "@/shared/notification_message";
 
@@ -631,6 +693,9 @@ import LetterheadModal from "@/components/dynamic_document/common/LetterheadModa
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import { showPreviewModal, previewDocumentData } from "@/shared/document_utils";
 import { useBasicUserRestrictions } from "@/composables/useBasicUserRestrictions";
+import { useGuidedTour } from "@/composables/useGuidedTour";
+import { MODULE_NAME as TOUR_MODULE } from "@/shared/tours/dynamic_documents_steps";
+import InfoTooltip from "@/components/layouts/InfoTooltip.vue";
 
 // Store instances
 const userStore = useUserStore();
@@ -726,6 +791,29 @@ const userRole = computed(() => {
 });
 
 const isLawyerLike = computed(() => userStore.isLawyerLike);
+
+// Guided tour (driver.js). The tab-switch callback is injected so the
+// composable can drive whichever tab set belongs to the current role,
+// mirroring how the pending-signatures redirect sets these refs directly.
+const { startTour, maybeAutoStartTour, tourStatus } = useGuidedTour({
+  module: TOUR_MODULE,
+  getRole: () => (isLawyerLike.value ? 'lawyer' : userRole.value),
+  setActiveTab: (name) => {
+    if (isLawyerLike.value) {
+      activeLawyerTab.value = name;
+    } else {
+      activeTab.value = name;
+    }
+  },
+  getContext: () => ({ hasPendingSignatures: hasPending.value }),
+});
+
+// Attention dot on the help button while the guide is due (first visit
+// or stale 30-day re-offer); markCompleted() flips status to 'recent'
+// on every exit path, and the null fail-safe never pings.
+const isTourDue = computed(
+  () => tourStatus.value === 'never' || tourStatus.value === 'stale'
+);
 
 /**
  * Handles section updates from the navigation.
@@ -1204,6 +1292,14 @@ onMounted(async () => {
     if (docExists) {
       documentStore.lastUpdatedDocumentId = parseInt(savedId);
     }
+  }
+
+  // Guided tour auto-trigger: runs last so the pending-signatures redirect
+  // above settles first (each tour step switches tabs on its own anyway).
+  // Explicit deep links (?tab= / ?lawyerTab=) mean the user came with a
+  // purpose — skip the auto tour; the "?" help button remains available.
+  if (!hasExplicitTabParam && currentSection.value === 'default') {
+    maybeAutoStartTour();
   }
 });
 

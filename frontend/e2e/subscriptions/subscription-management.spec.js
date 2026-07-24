@@ -5,7 +5,7 @@ import {
   buildMockSubscription,
 } from "../helpers/subscriptionsMocks.js";
 
-test("authenticated user with active subscription sees plan info on subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("subscriber with an active plan can still switch plan from the plans page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 850;
 
   await installSubscriptionsApiMocks(page, {
@@ -24,14 +24,16 @@ test("authenticated user with active subscription sees plan info on subscription
   });
 
   await page.goto("/subscriptions");
-
-  // Should show the plans page with active plan highlighted
   await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
 
-  // All three plan buttons should be visible
-  const planButtons = page.getByRole("button", { name: "Elegir plan" });
-  await expect(planButtons.first()).toBeVisible(); // quality: allow-fragile-selector (positional selector for first matching element)
+  // Holding an active plan does not lock the catalogue: the free plan card
+  // still routes to its checkout.
+  // quality: allow-fragile-selector (positional access: first plan card is Plan Básico)
+  await page.getByRole("button", { name: "Elegir plan" }).first().click();
+
+  await expect(page).toHaveURL(/\/checkout\/basico/, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Activar Plan Gratuito" })).toBeVisible();
 });
 
 test("authenticated user navigates to paid plan checkout from subscriptions", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
@@ -61,7 +63,7 @@ test("authenticated user navigates to paid plan checkout from subscriptions", { 
   await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 10_000 });
 });
 
-test("checkout page shows user contact info and plan details", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("plan selection carries the contact and plan sections into checkout", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 852;
 
   await installSubscriptionsApiMocks(page, {
@@ -75,16 +77,16 @@ test("checkout page shows user contact info and plan details", { tag: ['@flow:su
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  await page.goto("/checkout/basico");
+  await page.goto("/subscriptions");
+  await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible({ timeout: 10_000 });
 
-  // Should show checkout page elements
+  // quality: allow-fragile-selector (positional access: first plan card is Plan Básico)
+  await page.getByRole("button", { name: "Elegir plan" }).first().click();
+
   await expect(page.getByRole("heading", { name: "Finalizar Suscripción" })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Información de contacto")).toBeVisible();
   await expect(page.getByText("Plan seleccionado")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Plan Básico" })).toBeVisible();
-
-  // "Volver a planes" button should be visible
-  await expect(page.getByText("Volver a planes")).toBeVisible();
 });
 
 test("checkout back button returns to subscriptions page", { tag: ['@flow:subscriptions-management', '@module:subscriptions', '@priority:P2', '@role:shared'] }, async ({ page }) => {

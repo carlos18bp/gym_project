@@ -1,11 +1,12 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
-import { installProcessApiMocks, buildMockProcess, buildMockUser } from "../helpers/processMocks.js";
+import { buildMockProcess, buildMockUser } from "../helpers/processMocks.js";
 import { mockApi } from "../helpers/api.js";
 
 /**
  * E2E tests for process-case-file-upload flow.
- * Covers: uploading/managing case files in a process.
+ * Covers: viewing the "Expediente" (case files) section of a process detail,
+ * both with existing files and in its empty state.
  */
 
 async function installProcessWithFilesMocks(page, { userId, processes }) {
@@ -26,10 +27,6 @@ async function installProcessWithFilesMocks(page, { userId, processes }) {
       if (proc) return { status: 200, contentType: "application/json", body: JSON.stringify(proc) };
     }
 
-    if (apiPath.match(/^processes\/\d+\/case-files\/$/) && route.request().method() === "POST") {
-      return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 999, name: "uploaded-file.pdf", url: "/files/uploaded-file.pdf", created_at: nowIso }) };
-    }
-
     if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
     if (apiPath.startsWith("update-recent-process/")) return { status: 201, contentType: "application/json", body: "{}" };
     if (apiPath === "user-activities/") return { status: 200, contentType: "application/json", body: "[]" };
@@ -43,14 +40,16 @@ async function installProcessWithFilesMocks(page, { userId, processes }) {
 
 test("lawyer navigates to process detail and sees case files section", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8810;
+  const lawyer = buildMockUser({ id: userId, role: "lawyer" });
   const processes = [
     buildMockProcess({
-      id: 501, clients: [userId + 1], lawyer: userId,
+      id: 501, clients: [buildMockUser({ id: userId + 1, role: "client" })], lawyer,
       caseType: "Civil", ref: "RAD-501", plaintiff: "Demandante",
-      defendant: "Demandado", stages: [{ name: "Radicación", date: "2025-01-01" }],
+      defendant: "Demandado", stages: [{ status: "Radicación", date: "2025-01-01" }],
       progress: 25,
+      // ProcessDetail derives the visible name from the `file` URL basename
       caseFiles: [
-        { id: 1, name: "demanda.pdf", url: "/files/demanda.pdf", created_at: "2025-01-01" },
+        { id: 1, file: "/media/case_files/demanda.pdf", created_at: "2025-01-01T10:00:00Z" },
       ],
     }),
   ];
@@ -61,19 +60,26 @@ test("lawyer navigates to process detail and sees case files section", { tag: ['
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await page.goto("/process");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/process_list");
+  await expect(page.getByText("Demandante", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  // Clicking the row navigates to the process detail
+  await page.getByText("Demandante", { exact: true }).click();
+  await expect(page).toHaveURL(/\/process_detail\/501/, { timeout: 10_000 });
+
+  // The Expediente section lists the uploaded case file
+  await expect(page.getByRole("heading", { name: "Expediente", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("demanda.pdf")).toBeVisible();
 });
 
 test("lawyer sees process with empty case files", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 8811;
+  const lawyer = buildMockUser({ id: userId, role: "lawyer" });
   const processes = [
     buildMockProcess({
-      id: 502, clients: [userId + 1], lawyer: userId,
+      id: 502, clients: [buildMockUser({ id: userId + 1, role: "client" })], lawyer,
       caseType: "Laboral", ref: "RAD-502", plaintiff: "Trabajador",
-      defendant: "Empresa", stages: [{ name: "Inicio", date: "2025-02-01" }],
+      defendant: "Empresa", stages: [{ status: "Inicio", date: "2025-02-01" }],
       progress: 10, caseFiles: [],
     }),
   ];
@@ -84,8 +90,13 @@ test("lawyer sees process with empty case files", { tag: ['@flow:process-case-fi
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await page.goto("/process");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/process_list");
+  await expect(page.getByText("Trabajador", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByText("Trabajador", { exact: true }).click();
+  await expect(page).toHaveURL(/\/process_detail\/502/, { timeout: 10_000 });
+
+  // The Expediente section shows its empty state when there are no files
+  await expect(page.getByRole("heading", { name: "Expediente", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No hay expedientes registrados")).toBeVisible();
 });

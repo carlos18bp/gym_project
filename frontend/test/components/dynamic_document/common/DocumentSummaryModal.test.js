@@ -58,6 +58,32 @@ describe("DocumentSummaryModal.vue", () => {
     expect(wrapper.vm.formatDate("2026-02-01T10:00:00Z")).toBe("2026-02-01");
   });
 
+  test.each([
+    [3, "3 cuotas"],
+    [1, "Pago único"],
+  ])("renders forma de pago for %s installments", (installments, expected) => {
+    const wrapper = mount(DocumentSummaryModal, {
+      props: {
+        isVisible: true,
+        document: buildDocument({ summary_payment_installments: installments }),
+      },
+    });
+
+    expect(wrapper.text()).toContain("Forma de pago");
+    expect(wrapper.text()).toContain(expected);
+  });
+
+  test("hides forma de pago when not configured", () => {
+    const wrapper = mount(DocumentSummaryModal, {
+      props: {
+        isVisible: true,
+        document: buildDocument({ summary_payment_installments: null }),
+      },
+    });
+
+    expect(wrapper.text()).not.toContain("Forma de pago");
+  });
+
   test("shows empty summary message and emits close", async () => {
     const wrapper = mount(DocumentSummaryModal, {
       props: {

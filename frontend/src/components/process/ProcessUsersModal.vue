@@ -4,7 +4,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
     @click.self="closeModal"
   >
-    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
+    <div data-testid="process-users-modal" class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
       <!-- Header -->
       <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex-shrink-0 rounded-t-xl">
         <div class="flex items-center justify-between">

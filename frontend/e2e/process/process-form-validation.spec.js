@@ -25,21 +25,7 @@ function getVisibleStageInputs(page) {
   return page.locator('input[name="stage"]:visible');
 }
 
-async function fillRequiredFormFields(page, { plaintiff, defendant, subcase, reference, authority, stage }) {
-  const plaintiffInputs = await page.locator('input[name="plaintiff"]:visible').all();
-  const defendantInputs = await page.locator('input[name="defendant"]:visible').all();
-
-  await plaintiffInputs[0].fill(plaintiff);
-  await defendantInputs[0].fill(defendant);
-  await page.getByRole("button", { name: "Seleccionar" }).click();
-  await page.getByText("Civil", { exact: true }).click();
-  await defendantInputs[1].fill(subcase);
-  await plaintiffInputs[1].fill(reference);
-  await page.getByRole("textbox", { name: /^Autoridad/ }).fill(authority);
-  await getVisibleStageInputs(page).fill(stage);
-}
-
-test("process form renders with all required fields and save button disabled initially", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("save button stays disabled while required fields are only partially filled", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -66,9 +52,18 @@ test("process form renders with all required fields and save button disabled ini
   await expect(page.getByText("Radicado")).toBeVisible();
   await expect(page.getByRole("textbox", { name: /^Autoridad/ })).toBeVisible();
 
-  // Save button should be disabled (no required fields filled)
+  // Starting point: nothing filled, save is blocked
   const saveBtn = page.getByRole("button", { name: "Guardar Proceso" });
-  await expect(saveBtn).toBeVisible();
+  await expect(saveBtn).toBeDisabled();
+
+  // Fill only two of the six required fields
+  const plaintiffInputs = await page.locator('input[name="plaintiff"]:visible').all();
+  const defendantInputs = await page.locator('input[name="defendant"]:visible').all();
+  await plaintiffInputs[0].fill("Demandante Parcial");
+  await defendantInputs[0].fill("Demandado Parcial");
+
+  // The typed values land in the form, but save stays blocked
+  await expect(plaintiffInputs[0]).toHaveValue("Demandante Parcial");
   await expect(saveBtn).toBeDisabled();
 
   // Cancel button should be visible
@@ -92,17 +87,23 @@ test("save button becomes enabled when all required fields are filled", { tag: [
   await page.goto("/process_form/add");
   await expect(page.getByRole("heading", { name: "Información del proceso" })).toBeVisible({ timeout: 15_000 });
 
-  await fillRequiredFormFields(page, {
-    plaintiff: "Demandante Test",
-    defendant: "Demandado Test",
-    subcase: "Subcaso Test",
-    reference: "RAD-001",
-    authority: "Juzgado 1",
-    stage: "Etapa Inicial",
-  });
-
-  // Save button should now be enabled
+  // Starting point: save is blocked
   const saveBtn = page.getByRole("button", { name: "Guardar Proceso" });
+  await expect(saveBtn).toBeDisabled();
+
+  const plaintiffInputs = await page.locator('input[name="plaintiff"]:visible').all();
+  const defendantInputs = await page.locator('input[name="defendant"]:visible').all();
+
+  await plaintiffInputs[0].fill("Demandante Test");
+  await defendantInputs[0].fill("Demandado Test");
+  await page.getByRole("button", { name: "Seleccionar" }).click();
+  await page.getByText("Civil", { exact: true }).click();
+  await defendantInputs[1].fill("Subcaso Test");
+  await plaintiffInputs[1].fill("RAD-001");
+  await page.getByRole("textbox", { name: /^Autoridad/ }).fill("Juzgado 1");
+  await getVisibleStageInputs(page).fill("Etapa Inicial");
+
+  // Transition: with every required field filled the save button unlocks
   await expect(saveBtn).toBeEnabled();
 });
 

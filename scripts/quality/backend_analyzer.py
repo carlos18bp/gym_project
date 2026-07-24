@@ -61,10 +61,15 @@ class ASTAnalyzer:
         "assertContains", "assertNotContains", "assertRedirects",
         "assertTemplateUsed", "assertTemplateNotUsed",
     }
-    
-    # pytest context-manager assertions (e.g. `with pytest.raises(...)`,
-    # `with pytest.warns(...)`) — the exception/warning check IS the assertion.
-    PYTEST_ASSERTIONS = {"raises", "warns"}
+
+    # Assertions expressed as context managers. `with pytest.raises(X):` states
+    # that the call must raise — the assertion is the construct itself, with no
+    # `assert` statement anywhere. Omitting these made the gate report correct
+    # tests as having no assertions.
+    CONTEXT_ASSERTION_PATTERNS = {
+        "raises", "warns", "deprecated_call",
+    }
+
 
     # Mock assertion methods
     MOCK_ASSERTIONS = {
@@ -123,25 +128,32 @@ class ASTAnalyzer:
             Tuple of (count, list of assertion source representations).
         """
         assertions = []
-        
+
         for child in ast.walk(node):
             # pytest assert
             if isinstance(child, ast.Assert):
                 assertions.append(ast.unparse(child) if hasattr(ast, 'unparse') else "assert ...")
-            
-            # unittest self.assert* / pytest.raises / pytest.warns
+
+            # unittest self.assert*
             elif isinstance(child, ast.Call):
                 if isinstance(child.func, ast.Attribute):
                     if child.func.attr in cls.ASSERTION_PATTERNS:
                         assertions.append(child.func.attr)
-                    # `pytest.raises(...)` / `pytest.warns(...)`
-                    elif child.func.attr in cls.PYTEST_ASSERTIONS:
+                    # `with pytest.raises(X):` is the assertion — the test states
+                    # that the call must raise. Counting only `assert` statements
+                    # reported 72 such tests in one repo as having no assertions,
+                    # which is a rule slandering correct tests.
+                    elif child.func.attr in cls.CONTEXT_ASSERTION_PATTERNS:
+                        assertions.append(f"{child.func.attr}()")
+                    # `m.assert_called_once_with(...)` is an assertion too. The
+                    # gate already knows this — `mock_call_contract_only` exists
+                    # precisely to flag tests that assert ONLY mock calls — so
+                    # reporting them as having none was self-contradictory.
+                    # Structural emptiness and weak-but-present are different
+                    # findings and each has its own rule.
+                    elif child.func.attr in cls.MOCK_ASSERTIONS:
                         assertions.append(child.func.attr)
-                # bare `raises(...)` / `warns(...)` imported from pytest
-                elif isinstance(child.func, ast.Name):
-                    if child.func.id in cls.PYTEST_ASSERTIONS:
-                        assertions.append(child.func.id)
-        
+
         return len(assertions), assertions
     
     @classmethod
@@ -383,43 +395,25 @@ class ASTAnalyzer:
     @classmethod
     def get_global_state_signals(cls, node: ast.FunctionDef) -> set[str]:
         """Collect global-state mutation signals within test function body."""
-        param_names = {arg.arg for arg in node.args.args}
-        settings_is_fixture = "settings" in param_names
-
         signals: set[str] = set()
         for child in ast.walk(node):
             if isinstance(child, ast.Assign):
                 for target in child.targets:
                     if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                         signals.add("os.environ mutation")
-                    elif (
-                        not settings_is_fixture
-                        and isinstance(target, ast.Attribute)
-                        and isinstance(target.value, ast.Name)
-                        and target.value.id == "settings"
-                    ):
+                    elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
                         signals.add(f"settings.{target.attr} mutation")
             elif isinstance(child, ast.AnnAssign):
                 target = child.target
                 if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                     signals.add("os.environ mutation")
-                elif (
-                    not settings_is_fixture
-                    and isinstance(target, ast.Attribute)
-                    and isinstance(target.value, ast.Name)
-                    and target.value.id == "settings"
-                ):
+                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
                     signals.add(f"settings.{target.attr} mutation")
             elif isinstance(child, ast.AugAssign):
                 target = child.target
                 if isinstance(target, ast.Subscript) and cls._is_os_environ_node(target.value):
                     signals.add("os.environ mutation")
-                elif (
-                    not settings_is_fixture
-                    and isinstance(target, ast.Attribute)
-                    and isinstance(target.value, ast.Name)
-                    and target.value.id == "settings"
-                ):
+                elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "settings":
                     signals.add(f"settings.{target.attr} mutation")
 
             if isinstance(child, ast.Call):
@@ -575,12 +569,13 @@ class PythonAnalyzer:
         return file_result
     
     def _analyze_test_function(
-        self, 
-        node: ast.FunctionDef, 
-        file: str, 
+        self,
+        node: ast.FunctionDef,
+        file: str,
         result: FileResult,
         class_name: str | None = None,
         source: str | None = None,
+        class_frozen: bool = False,
     ) -> TestInfo:
         """Analyze a single test function for quality issues."""
         full_name = f"{class_name}.{node.name}" if class_name else node.name
@@ -790,7 +785,7 @@ class PythonAnalyzer:
 
         # 16. Non-deterministic sources without explicit control
         nondeterministic_signals = ASTAnalyzer.get_nondeterministic_signals(node)
-        if nondeterministic_signals and not ASTAnalyzer.has_determinism_control(node):
+        if nondeterministic_signals and not ASTAnalyzer.has_determinism_control(node) and not class_frozen:
             detected = ", ".join(sorted(nondeterministic_signals))
             result.issues.append(Issue(
                 file=file,
@@ -884,13 +879,21 @@ class PythonAnalyzer:
                 identifier=cls.name,
             ))
         
+        # Detect class-level @freeze_time so methods inside don't get flagged
+        class_frozen = any(
+            (isinstance(d, ast.Call) and ASTAnalyzer._call_name(d) in {"freeze_time", "freezegun.freeze_time"})
+            or (isinstance(d, ast.Name) and d.id in {"freeze_time"})
+            or (isinstance(d, ast.Attribute) and d.attr in {"freeze_time"})
+            for d in cls.decorator_list
+        )
+
         # Track method names for duplicates
         method_names: dict[str, list[int]] = {}
-        
+
         for node in cls.body:
             if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
                 method_names.setdefault(node.name, []).append(node.lineno)
-                test_info = self._analyze_test_function(node, file, result, cls.name, source)
+                test_info = self._analyze_test_function(node, file, result, cls.name, source, class_frozen=class_frozen)
                 result.tests.append(test_info)
         
         # Check for duplicates within class

@@ -2,7 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from gym_app.models.dynamic_document import (
     DynamicDocument, DocumentVariable, RecentDocument, DocumentSignature, Tag, DocumentFolder,
-    DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentRelationship
+    DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentRelationship,
+    DocumentPaymentRecord, parse_payment_installments
 )
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
@@ -186,6 +187,11 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     summary_subscription_date = serializers.SerializerMethodField(read_only=True)
     summary_start_date = serializers.SerializerMethodField(read_only=True)
     summary_end_date = serializers.SerializerMethodField(read_only=True)
+    summary_payment_installments = serializers.SerializerMethodField(read_only=True)
+
+    # Contract-execution progress (cuentas de cobro) — null unless the
+    # document is FullySigned with a valid payment-installments variable
+    payments_summary = serializers.SerializerMethodField(read_only=True)
     
     # Document relationships count
     relationships_count = serializers.SerializerMethodField(read_only=True)
@@ -195,11 +201,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
 
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    managed_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = DynamicDocument
         fields = [
-            'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 
+            'id', 'title', 'content', 'state', 'created_by', 'assigned_to', 'managed_by',
             'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
             'signature_type', 'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
@@ -208,7 +215,8 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'summary_counterparty', 'summary_object', 'summary_value',
             'summary_value_currency', 'summary_term',
             'summary_subscription_date', 'summary_start_date',
-            'summary_end_date', 'relationships_count', 'created_by_name'
+            'summary_end_date', 'summary_payment_installments',
+            'payments_summary', 'relationships_count', 'created_by_name'
         ]
 
     def get_signer_ids(self, obj):
@@ -408,6 +416,26 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         var = self._get_first_summary_variable(obj, 'end_date')
         return var.value if var and var.value else None
 
+    def get_summary_payment_installments(self, obj):
+        var = self._get_first_summary_variable(obj, 'payment_installments')
+        if not var:
+            return None
+        return parse_payment_installments(var.value)
+
+    def get_payments_summary(self, obj):
+        """Minimal contract-execution progress so menus/cards can decide
+        visibility without an extra fetch. None when the feature is off."""
+        progress = obj.get_payment_progress()
+        if progress is None:
+            return None
+        total_amount = progress['total_amount_accepted']
+        return {
+            'accepted_count': progress['accepted_count'],
+            'in_review': progress['in_review'],
+            'next_uploadable': progress['next_uploadable'],
+            'total_amount_accepted': str(total_amount) if total_amount is not None else None,
+        }
+
     def create(self, validated_data):
         """
         Create a new document with its variables, signatures, and permissions.
@@ -447,6 +475,13 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         # Always set created_by to the current user if not explicitly provided
         if not validated_data.get('created_by') and creator:
             validated_data['created_by'] = creator
+
+        # New documents are managed by their creator (auto-init). This covers
+        # every creation path (create / duplicate / use-template) since they
+        # all go through this serializer. managed_by only changes via admin
+        # reassignment; created_by never changes.
+        if not validated_data.get('managed_by'):
+            validated_data['managed_by'] = validated_data.get('created_by') or creator
 
         # Reassemble {{variable}} markers that TinyMCE may have fragmented
         # across inline tags (typical after pasting a table from Word) before
@@ -746,6 +781,33 @@ class DynamicDocumentListSerializer(DynamicDocumentSerializer):
 
     class Meta(DynamicDocumentSerializer.Meta):
         fields = [f for f in DynamicDocumentSerializer.Meta.fields if f != 'content']
+
+
+class DocumentPaymentRecordSerializer(serializers.ModelSerializer):
+    """Read serializer for cuentas de cobro records.
+
+    ``document`` is omitted: the API always scopes records to the parent
+    document. Writes happen through explicit view logic (sequential
+    rules), never through this serializer.
+    """
+
+    uploaded_by_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = DocumentPaymentRecord
+        fields = [
+            'id', 'installment_number', 'status', 'amount', 'notes',
+            'original_name', 'rejection_reason', 'uploaded_at',
+            'uploaded_by_name',
+        ]
+        read_only_fields = fields
+
+    def get_uploaded_by_name(self, obj):
+        user = obj.uploaded_by
+        if not user:
+            return None
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        return full_name or user.email
 
 
 class RecentDocumentSerializer(serializers.ModelSerializer):

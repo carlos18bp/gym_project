@@ -271,7 +271,7 @@
           alt="G&M Consultores Juridicos"
         />
       </div>
-      <nav class="relative flex flex-1 flex-col">
+      <nav data-testid="sidebar-nav" class="relative flex flex-1 flex-col">
         <ul role="list" class="flex flex-1 flex-col gap-y-5">
           <li>
             <!-- Profile dropdown -->
@@ -524,6 +524,7 @@ import {
   BuildingLibraryIcon,
   BookOpenIcon,
   BellAlertIcon,
+  ArrowsRightLeftIcon,
 } from "@heroicons/vue/24/outline";
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useRouter, useRoute } from "vue-router";
@@ -597,7 +598,8 @@ onMounted(async () => {
         navItem.name !== "Directorio" &&
         navItem.name !== "Intranet G&M" &&
         navItem.name !== "Bandeja de Solicitudes" &&
-        navItem.name !== "Administrar Servicios"
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Reasignación de Datos"
     );
   }
 
@@ -605,7 +607,8 @@ onMounted(async () => {
     navigation.value = navigation.value.filter(
       (navItem) =>
         navItem.name !== "Organizaciones" &&
-        navItem.name !== "Administrar Servicios"
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Reasignación de Datos"
     );
 
     if (!currentUser.value.is_gym_lawyer) {
@@ -623,7 +626,9 @@ onMounted(async () => {
     );
   } else {
     navigation.value = navigation.value.filter(
-      (navItem) => navItem.name !== "Administrar Servicios"
+      (navItem) =>
+        navItem.name !== "Administrar Servicios" &&
+        navItem.name !== "Reasignación de Datos"
     );
   }
 
@@ -756,6 +761,16 @@ const navigation = ref([
     icon: BookOpenIcon,
     current: false,
     routes: ['/services_admin']
+  },
+  {
+    name: "Reasignación de Datos",
+    action: (item) => {
+      setCurrent(item);
+      router.push({ name: "data_reassignment" });
+    },
+    icon: ArrowsRightLeftIcon,
+    current: false,
+    routes: ['/data_reassignment']
   },
   {
     name: "Solicitudes",

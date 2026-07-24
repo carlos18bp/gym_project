@@ -5,7 +5,8 @@ from gym_app.models import (
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
     RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
     SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
-    Notification, Tag, UserSignature, IntranetProfile,
+    Notification, TourProgress, Tag, UserSignature, IntranetProfile,
+    DocumentPaymentRecord,
     Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestSequence,
     ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse,
     ServiceRequestLawyerResponseFile,
@@ -61,6 +62,14 @@ class Command(BaseCommand):
         for recent in RecentProcess.objects.all():
             recent.delete()
             self.stdout.write(self.style.SUCCESS(f'RecentProcess "{recent}" deleted'))
+
+        # Payment records first: per-row delete fires post_delete, which
+        # removes the physical cuenta de cobro files from disk.
+        deleted = 0
+        for record in DocumentPaymentRecord.objects.all():
+            record.delete()
+            deleted += 1
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} DocumentPaymentRecord(s)'))
 
         # Delete all dynamic documents and associated variables
         for document in DynamicDocument.objects.all():
@@ -158,6 +167,11 @@ class Command(BaseCommand):
 
         deleted = Notification.objects.all().delete()[0]
         self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} Notification(s)'))
+
+        # Guided-tour progress: wiping it restores the first-run tour
+        # experience after demos mark tours as completed.
+        deleted = TourProgress.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} TourProgress record(s)'))
 
         # Services / trámites (requests first: ServiceRequest.service is PROTECT).
         for model in (

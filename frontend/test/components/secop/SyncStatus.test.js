@@ -85,7 +85,10 @@ describe("SyncStatus.vue", () => {
     expect(btn.attributes("disabled")).toBeUndefined();
   });
 
-  test("does not emit trigger-sync when button clicked (sync delegated to cron)", async () => {
+  test("emits trigger-sync when the button is clicked", async () => {
+    // The manual trigger is a documented lawyer feature (user guide:
+    // "el sync ... también puede dispararse manualmente"); the parent listens
+    // for this event and POSTs secop/sync/trigger/.
     const wrapper = mount(SyncStatus, {
       props: {
         syncStatus: {
@@ -98,7 +101,24 @@ describe("SyncStatus.vue", () => {
     const btn = wrapper.find("[data-testid='sync-trigger-btn']");
     await btn.trigger("click");
 
-    expect(wrapper.emitted("trigger-sync")).toBeUndefined();
+    expect(wrapper.emitted("trigger-sync")).toHaveLength(1);
+  });
+
+  test("does not re-emit trigger-sync while a sync is already in flight", async () => {
+    const wrapper = mount(SyncStatus, {
+      props: {
+        syncStatus: {
+          last_success: { finished_at: TWO_HOURS_AGO },
+          total_processes: 100,
+        },
+      },
+    });
+
+    const btn = wrapper.find("[data-testid='sync-trigger-btn']");
+    await btn.trigger("click");
+    await btn.trigger("click");
+
+    expect(wrapper.emitted("trigger-sync")).toHaveLength(1);
   });
 
   test("disables button after click to prevent double-trigger", async () => {

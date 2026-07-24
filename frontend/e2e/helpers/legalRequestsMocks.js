@@ -90,6 +90,28 @@ export function buildMockLegalRequestDetail({
   };
 }
 
+/**
+ * Read a single text field out of a multipart/form-data request body.
+ * Used so the mock can echo back what the user actually typed instead of a
+ * canned string — otherwise the assertion would pass even if the UI sent
+ * nothing.
+ */
+export function readMultipartField(route, fieldName) {
+  const body = route.request().postData() || "";
+  const match = body.match(
+    new RegExp(`name="${fieldName}"\\r?\\n\\r?\\n([\\s\\S]*?)\\r?\\n--`)
+  );
+  return match ? match[1] : "";
+}
+
+/**
+ * Collect every `filename="…"` present in a multipart/form-data body.
+ */
+export function readMultipartFilenames(route) {
+  const body = route.request().postData() || "";
+  return [...body.matchAll(/filename="([^"]+)"/g)].map((m) => m[1]);
+}
+
 export async function installLegalRequestsApiMocks(
   page,
   {
@@ -98,6 +120,9 @@ export async function installLegalRequestsApiMocks(
     requestDescription = "Descripción de prueba",
     requestTypeName = "Consulta",
     disciplineName = "Civil",
+    requestStatus = "PENDING",
+    ownerId = userId,
+    files = [],
   }
 ) {
   const user = buildMockUser({ id: userId, role });
@@ -108,7 +133,7 @@ export async function installLegalRequestsApiMocks(
   let summary = buildMockLegalRequestSummary({
     id: requestId,
     requestNumber,
-    status: "PENDING",
+    status: requestStatus,
     firstName: "Client",
     lastName: "User",
     email: "client@example.com",
@@ -120,18 +145,21 @@ export async function installLegalRequestsApiMocks(
 
   let detail = buildMockLegalRequestDetail({
     id: requestId,
-    userId,
+    userId: ownerId,
     requestNumber,
-    status: "PENDING",
+    status: requestStatus,
     firstName: "Client",
     lastName: "User",
     email: "client@example.com",
     requestTypeName,
     disciplineName,
     description: requestDescription,
-    files: [],
+    files: [...files],
     responses: [],
   });
+
+  let nextFileId = 900;
+  let nextResponseId = 5000;
 
   await mockApi(page, async ({ route, apiPath }) => {
     // Auth
@@ -216,14 +244,33 @@ export async function installLegalRequestsApiMocks(
       return { status: 201, contentType: "application/json", body: "{}" };
     }
 
-    // Requests list (management store)
+    // Requests list (management store) — honors the filters the UI sends so a
+    // filter interaction produces an observable list change.
     if (apiPath === "legal_requests/") {
+      const query = new URL(route.request().url()).searchParams;
+      const statusFilter = query.get("status") || "";
+      const search = (query.get("search") || "").toLowerCase();
+      const dateFrom = query.get("date_from") || "";
+      const dateTo = query.get("date_to") || "";
+      const createdDate = summary.created_at.slice(0, 10);
+
+      const matches =
+        (!statusFilter || summary.status === statusFilter) &&
+        (!search ||
+          `${summary.request_number} ${summary.description}`
+            .toLowerCase()
+            .includes(search)) &&
+        (!dateFrom || dateFrom <= createdDate) &&
+        (!dateTo || dateTo >= createdDate);
+
+      const results = matches ? [summary] : [];
+
       return {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          requests: [summary],
-          count: 1,
+          requests: results,
+          count: results.length,
           user_role: role,
         }),
       };
@@ -238,22 +285,46 @@ export async function installLegalRequestsApiMocks(
       };
     }
 
-    // Create response (optional)
+    // Add files to an existing request (stateful: the detail grows)
+    if (apiPath === `legal_requests/${requestId}/files/`) {
+      const method = route.request().method();
+      if (method === "POST") {
+        const nowIso = new Date().toISOString();
+        const uploaded = readMultipartFilenames(route).map((name) => ({
+          id: (nextFileId += 1),
+          file: `/media/legal_requests/${name}`,
+          created_at: nowIso,
+        }));
+        detail = { ...detail, files: [...detail.files, ...uploaded] };
+
+        return {
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Files uploaded", files: uploaded }),
+        };
+      }
+    }
+
+    // Create response — echoes the text the user actually submitted
     if (apiPath === `legal_requests/${requestId}/responses/`) {
       const method = route.request().method();
       if (method === "POST") {
         const nowIso = new Date().toISOString();
+        const responseText = readMultipartField(route, "response_text");
+        const created = {
+          id: (nextResponseId += 1),
+          request: requestId,
+          user: userId,
+          response_text: responseText,
+          created_at: nowIso,
+        };
+        detail = { ...detail, responses: [...detail.responses, created] };
+        summary = { ...summary, response_count: summary.response_count + 1 };
+
         return {
           status: 201,
           contentType: "application/json",
-          body: JSON.stringify({
-            response: {
-              id: 5001,
-              request: requestId,
-              response_text: "ok",
-              created_at: nowIso,
-            },
-          }),
+          body: JSON.stringify({ response: created }),
         };
       }
     }

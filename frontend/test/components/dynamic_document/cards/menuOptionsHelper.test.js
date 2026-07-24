@@ -753,4 +753,94 @@ describe("menuOptionsHelper.js", () => {
     expect(Array.isArray(options)).toBe(true);
     expect(options.some((o) => o.action === "edit")).toBe(true);
   });
+
+  describe("contract execution (cuentas de cobro) menu options", () => {
+    const creatorStore = { currentUser: { id: 10, role: "lawyer" }, isLawyerLike: true };
+    const clientStore = { currentUser: { id: 20, role: "client" } };
+    const strangerStore = { currentUser: { id: 99, role: "client" } };
+
+    const buildSignedDoc = (overrides = {}) => ({
+      id: 1,
+      state: "FullySigned",
+      created_by: 10,
+      assigned_to: 20,
+      summary_payment_installments: 3,
+      payments_summary: {
+        accepted_count: 0,
+        in_review: false,
+        next_uploadable: 1,
+        total_amount_accepted: null,
+      },
+      ...overrides,
+    });
+
+    test("creator lawyer sees both payment actions on signed docs with plan", () => {
+      const options = getMenuOptionsForCardType(
+        "signatures", buildSignedDoc(), "table", creatorStore
+      );
+
+      expect(options.some((o) => o.action === "uploadPaymentRecord")).toBe(true);
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(true);
+    });
+
+    test("assigned client with no uploadable slot only sees the detail action", () => {
+      const doc = buildSignedDoc({
+        payments_summary: {
+          accepted_count: 0,
+          in_review: true,
+          next_uploadable: null,
+          total_amount_accepted: null,
+        },
+      });
+      const options = getMenuOptionsForCardType("signatures", doc, "table", clientStore);
+
+      expect(options.some((o) => o.action === "uploadPaymentRecord")).toBe(false);
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(true);
+    });
+
+    test("third parties never see payment actions", () => {
+      const options = getMenuOptionsForCardType(
+        "signatures", buildSignedDoc(), "table", strangerStore
+      );
+
+      expect(options.some((o) => o.action === "uploadPaymentRecord")).toBe(false);
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(false);
+    });
+
+    test("documents without a payment plan expose no payment actions", () => {
+      const doc = buildSignedDoc({
+        summary_payment_installments: null,
+        payments_summary: null,
+      });
+      const options = getMenuOptionsForCardType("signatures", doc, "table", creatorStore);
+
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(false);
+    });
+
+    test("non-signed documents expose no payment actions", () => {
+      const doc = buildSignedDoc({ state: "PendingSignatures" });
+      const options = getMenuOptionsForCardType("signatures", doc, "table", creatorStore);
+
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(false);
+    });
+
+    test("lawyer card locked menu includes payment actions for signed docs", () => {
+      const options = getMenuOptionsForCardType(
+        "lawyer", buildSignedDoc(), "list", creatorStore
+      );
+
+      expect(options.some((o) => o.action === "uploadPaymentRecord")).toBe(true);
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(true);
+    });
+
+    test("client my-documents locked menu includes payment actions for signed docs", () => {
+      const doc = buildSignedDoc({ requires_signature: true });
+      const options = getMenuOptionsForCardType(
+        "client", doc, "my-documents", clientStore
+      );
+
+      expect(options.some((o) => o.action === "uploadPaymentRecord")).toBe(true);
+      expect(options.some((o) => o.action === "viewPaymentRecords")).toBe(true);
+    });
+  });
 });

@@ -54,7 +54,7 @@ test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-stat
     await expect(page.getByRole("heading").first()).toBeVisible();
   });
 
-  test("dashboard shows tabs for navigation", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  test("dashboard tabs switch the visible section", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     const userId = 5002;
 
     await installDynamicDocumentApiMocks(page, {
@@ -76,6 +76,14 @@ test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-stat
     // Should have navigation tabs
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeHidden();
+
+    // Tabs are only worth rendering if they swap the section underneath.
+    await page.getByRole("button", { name: "Carpetas" }).click();
+    await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Minutas" }).click();
+    await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeHidden();
   });
 
   test("folders tab shows empty state when no folders", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {

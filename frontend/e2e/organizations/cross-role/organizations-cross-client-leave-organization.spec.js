@@ -78,7 +78,7 @@ test("cross-role: client leaves organization and corporate stats + org counts up
     startWithClientMemberships: true,
   });
 
-  // Step 1: client leaves (simulate through API; UI flow is covered elsewhere)
+  // Step 1: the client leaves the organization from the dashboard card
   await setAuthLocalStorage(page, {
     token: "e2e-token",
     userAuth: {
@@ -94,22 +94,20 @@ test("cross-role: client leaves organization and corporate stats + org counts up
 
   await page.goto("/organizations_dashboard");
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acme Corp" }).first()).toBeVisible();
 
-  const leaveResult = await page.evaluate(async () => {
-    const url = new URL("/api/organizations/1/leave/", window.location.origin).toString();
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
+  const leaveRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/organizations/1/leave/") &&
+      request.method() === "POST"
+  );
 
-    return { status: res.status, body: await res.json().catch(() => ({})) };
-  });
+  await page.getByRole("button", { name: "Salir" }).first().click();
+  await page.getByRole("button", { name: "Sí, salir" }).click();
 
-  expect(leaveResult.status).toBe(200);
-
-  await page.goto("/organizations_dashboard");
-  await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
-  await expect(page.getByText("No perteneces a ninguna organización")).toBeVisible();
+  // Transition: the leave request is sent and the membership disappears
+  await leaveRequest;
+  await expect(page.getByText("No perteneces a ninguna organización")).toBeVisible({ timeout: 10_000 });
 
   const requestsTab = page.locator('nav[aria-label="Tabs"] button:has-text("Mis Solicitudes")');
   await expect(requestsTab).toBeDisabled();

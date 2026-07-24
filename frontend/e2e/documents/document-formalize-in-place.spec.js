@@ -4,6 +4,11 @@ import {
   buildMockDocument,
   installFormalizeMocks,
 } from "../helpers/dynamicDocumentMocks.js";
+import {
+  openFormalizeFromMyDocuments,
+  openCorrectionFromArchived,
+  selectFormalizeSigner,
+} from "../helpers/documentActions.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -11,7 +16,17 @@ import {
  * E2E tests for in-place formalization (Completed → PendingSignatures on same document)
  * and correction (Rejected/Expired → PendingSignatures on same document).
  * Covers: formalize-in-place, correct-document flows.
+ *
+ * Every test drives the real entry points: the dashboard tab, the row click,
+ * the actions modal and the DocumentForm submit button. The formalize/correct
+ * POST payload IS the product contract, so it is asserted from the request the
+ * browser actually emitted.
  */
+
+const LAWYER_AUTH = (userId) => ({
+  token: "e2e-token",
+  userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+});
 
 
 // ── Formalize In-Place ──
@@ -31,17 +46,18 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
     await page.goto("/dynamic_document_dashboard");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Mis Documentos" }).click();
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText("Contrato Venta")).toBeVisible({ timeout: 15_000 });
+
+    const row = page.getByRole("table").getByText("Contrato Venta");
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+
+    await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("document-action-formalize")).toBeEnabled();
   });
 
   test("formalize navigates to DocumentForm in formalize mode", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -52,31 +68,37 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
         title: "Poder Especial",
         state: "Completed",
         createdBy: userId,
+        assignedTo: userId,
         content: "<p>Contenido del poder</p>",
       }),
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/formalize/602/Poder%20Especial`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/602");
+    await page.goto("/dynamic_document_dashboard");
+    await page.getByRole("button", { name: "Mis Documentos" }).click();
+    const row = page.getByRole("table").getByText("Poder Especial");
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+    await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId("document-action-formalize").click();
+
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("/document/use/formalize/602");
+    await expect(page.getByRole("heading", { name: "Poder Especial" })).toBeVisible();
+    await expect(page.getByText("Seleccionar usuarios que deben firmar")).toBeVisible();
   });
 
   test("formalize endpoint returns same document ID with PendingSignatures state", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9202;
-    let capturedFormalizeBody = null;
-
     const docs = [
       buildMockDocument({
         id: 603,
         title: "Acuerdo Confidencialidad",
         state: "Completed",
         createdBy: userId,
+        assignedTo: userId,
         content: "<p>NDA Content</p>",
       }),
     ];
@@ -84,71 +106,89 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
+      // Stateful: the same document row flips to PendingSignatures, so the
+      // dashboard the user lands on reflects the mutation.
       formalizeHandler: (route) => {
         const body = route.request().postDataJSON();
-        capturedFormalizeBody = body;
+        docs[0].state = "PendingSignatures";
+        docs[0].requires_signature = true;
+        docs[0].fully_signed = false;
+        docs[0].signature_due_date = body.signature_due_date;
         return {
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({
-            ...docs[0],
-            state: "PendingSignatures",
-            requires_signature: true,
-            fully_signed: false,
-            signature_due_date: body.signature_due_date,
-          }),
+          body: JSON.stringify(docs[0]),
         };
       },
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/formalize/603/Acuerdo%20Confidencialidad`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/603");
+    await page.goto("/dynamic_document_dashboard");
+    await openFormalizeFromMyDocuments(page, "Acuerdo Confidencialidad");
+    await selectFormalizeSigner(page, { query: "Client", userId: userId + 1 });
+
+    const formalizeRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/603/formalize/") && request.method() === "POST"
+    );
+    await page.getByTestId("document-form-submit").click();
+    await formalizeRequest;
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Documento formalizado y listo para firmas", { timeout: 15_000 });
+    await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+
+    // The redirect carries the SAME id back, which is the in-place guarantee.
+    // Assert the outcome it produces — the signatures modal auto-opened for
+    // that document — instead of the openSignaturesFor query param, which the
+    // dashboard strips as soon as it consumes it (clear-open-signatures-for).
+    await expect(page).toHaveURL(/lawyerTab=pending-signatures/, { timeout: 10_000 });
+    const signaturesModal603 = page.getByTestId("document-signatures-modal");
+    await expect(signaturesModal603).toBeVisible({ timeout: 10_000 });
+    await expect(signaturesModal603.getByRole("heading", { name: "Acuerdo Confidencialidad" })).toBeVisible();
+    expect(docs[0].state).toBe("PendingSignatures");
   });
 
   test("formalize call sends signers array in POST body", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9203;
-    let formalizeWasCalled = false;
-
     const docs = [
       buildMockDocument({
         id: 604,
         title: "Mandato",
         state: "Completed",
         createdBy: userId,
+        assignedTo: userId,
       }),
     ];
 
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
-      formalizeHandler: () => {
-        formalizeWasCalled = true;
-        return {
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...docs[0],
-            state: "PendingSignatures",
-            requires_signature: true,
-          }),
-        };
-      },
+      formalizeHandler: () => ({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...docs[0],
+          state: "PendingSignatures",
+          requires_signature: true,
+        }),
+      }),
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/formalize/604/Mandato`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/604");
+    await page.goto("/dynamic_document_dashboard");
+    await openFormalizeFromMyDocuments(page, "Mandato");
+    await selectFormalizeSigner(page, { query: "Client", userId: userId + 1 });
+
+    const formalizeRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/604/formalize/") && request.method() === "POST"
+    );
+    await page.getByTestId("document-form-submit").click();
+    const payload = (await formalizeRequest).postDataJSON();
+
+    expect(payload.signature_type).toBe("normal");
+    // The picked signer plus the issuing lawyer, who is auto-appended.
+    expect(payload.signers).toEqual(expect.arrayContaining([userId + 1, userId]));
   });
 
   test("formalize preserves document title (no _firma suffix)", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -161,35 +201,80 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
         title: originalTitle,
         state: "Completed",
         createdBy: userId,
+        assignedTo: userId,
       }),
     ];
 
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
-      formalizeHandler: () => {
-        return {
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            ...docs[0],
-            title: originalTitle,
-            state: "PendingSignatures",
-            requires_signature: true,
-          }),
-        };
-      },
+      formalizeHandler: () => ({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...docs[0],
+          state: "PendingSignatures",
+          requires_signature: true,
+        }),
+      }),
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
+
+    await page.goto("/dynamic_document_dashboard");
+    await openFormalizeFromMyDocuments(page, originalTitle);
+    await selectFormalizeSigner(page, { query: "Client", userId: userId + 1 });
+
+    const formalizeRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/605/formalize/") && request.method() === "POST"
+    );
+    await page.getByTestId("document-form-submit").click();
+    const payload = (await formalizeRequest).postDataJSON();
+
+    expect(payload.title).toBe(originalTitle);
+    expect(payload.title).not.toContain("_firma");
+  });
+
+  test("formalize sends the deadline typed into the signature due date field", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+    const userId = 9205;
+    const docs = [
+      buildMockDocument({
+        id: 606,
+        title: "Contrato Con Fecha Limite",
+        state: "Completed",
+        createdBy: userId,
+        assignedTo: userId,
+      }),
+    ];
+
+    await installFormalizeMocks(page, {
+      userId,
+      documents: docs,
+      formalizeHandler: () => ({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...docs[0], state: "PendingSignatures", requires_signature: true }),
+      }),
     });
 
-    await page.goto(`/dynamic_document_dashboard/document/use/formalize/605/${encodeURIComponent(originalTitle)}`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/605");
-    expect(page.url()).not.toContain("_firma");
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
+
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    await page.goto("/dynamic_document_dashboard");
+    await openFormalizeFromMyDocuments(page, "Contrato Con Fecha Limite");
+    await selectFormalizeSigner(page, { query: "Client", userId: userId + 1 });
+    await page.getByTestId("formalize-signature-due-date").fill(dueDate);
+
+    const formalizeRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/606/formalize/") && request.method() === "POST"
+    );
+    await page.getByTestId("document-form-submit").click();
+    const payload = (await formalizeRequest).postDataJSON();
+
+    expect(payload.signature_due_date).toBe(dueDate);
   });
 });
 
@@ -214,20 +299,17 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
     await page.goto("/dynamic_document_dashboard");
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-    // Rejected documents should appear in archived tab
+    // Rejected documents appear in the archived tab
     await page.getByRole("button", { name: /Archivados/i }).click();
-    await page.waitForLoadState("networkidle");
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Contrato Rechazado")).toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId("signatures-list-row-701").click();
+    await expect(page.getByTestId("document-action-editAndResend")).toBeEnabled({ timeout: 15_000 });
   });
 
   test("correction navigates to DocumentForm in correction mode", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -245,21 +327,27 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/correction/702/Poder%20Rechazado`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/702");
+    await page.goto("/dynamic_document_dashboard");
+    await page.getByRole("button", { name: /Archivados/i }).click();
+    const row = page.getByRole("table").getByText("Poder Rechazado");
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click();
+    await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 15_000 });
+
+    await page.getByTestId("document-action-editAndResend").click();
+
+    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("/document/use/correction/702");
+    await expect(page.getByLabel("Nombre del cliente")).toHaveValue("Juan");
+    await expect(page.getByRole("button", { name: "Guardar y reenviar para firma" })).toBeVisible();
   });
 
   test("correction mode shows the signature due date input", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-    const userId = 9214;
+    const userId = 9215;
     const docs = [
       buildMockDocument({
-        id: 705,
+        id: 706,
         title: "Poder Rechazado Con Fecha",
         state: "Rejected",
         createdBy: userId,
@@ -270,19 +358,22 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     ];
 
     await installFormalizeMocks(page, { userId, documents: docs });
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/correction/705/Poder%20Rechazado%20Con%20Fecha`);
-    await expect(page.getByTestId("correction-signature-due-date")).toBeVisible({ timeout: 15_000 });
+    const dueDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    await page.goto("/dynamic_document_dashboard");
+    await openCorrectionFromArchived(page, "Poder Rechazado Con Fecha");
+
     await expect(page.getByText("Fecha límite para firmar (opcional)")).toBeVisible();
+    await page.getByTestId("correction-signature-due-date").fill(dueDate);
+    await expect(page.getByTestId("correction-signature-due-date")).toHaveValue(dueDate);
   });
 
   test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
     const userId = 9212;
-    let correctWasCalled = false;
 
     const docs = [
       buildMockDocument({
@@ -292,34 +383,49 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
         createdBy: userId,
         content: "<p>Mandato content</p>",
         requires_signature: true,
+        variables: [{ name_en: "amount", name_es: "Monto", value: "100", field_type: "input", tooltip: "" }],
       }),
     ];
 
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
+      // Stateful: the same row leaves the archived tab and becomes pending.
       correctHandler: () => {
-        correctWasCalled = true;
+        docs[0].state = "PendingSignatures";
+        docs[0].fully_signed = false;
         return {
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({
-            ...docs[0],
-            state: "PendingSignatures",
-            fully_signed: false,
-          }),
+          body: JSON.stringify(docs[0]),
         };
       },
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/correction/703/Mandato%20Expirado`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/703");
+    await page.goto("/dynamic_document_dashboard");
+    await openCorrectionFromArchived(page, "Mandato Expirado");
+    await page.getByLabel("Monto").fill("250");
+
+    const correctRequest = page.waitForRequest(
+      (request) => request.url().includes("/dynamic-documents/703/correct/") && request.method() === "POST"
+    );
+    await page.getByRole("button", { name: "Guardar y reenviar para firma" }).click();
+    const payload = (await correctRequest).postDataJSON();
+
+    expect(payload.variables[0].value).toBe("250");
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Documento corregido y reenviado para firmas", { timeout: 15_000 });
+    await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+
+    // Same in-place guarantee, asserted on the modal the redirect opens rather
+    // than on the transient openSignaturesFor param.
+    await expect(page).toHaveURL(/lawyerTab=pending-signatures/, { timeout: 10_000 });
+    const signaturesModal703 = page.getByTestId("document-signatures-modal");
+    await expect(signaturesModal703).toBeVisible({ timeout: 10_000 });
+    await expect(signaturesModal703.getByRole("heading", { name: "Mandato Expirado" })).toBeVisible();
+    expect(docs[0].state).toBe("PendingSignatures");
   });
 
   test("formalize error shows notification and stays on page", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -330,29 +436,30 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
         title: "Doc Error Test",
         state: "Completed",
         createdBy: userId,
+        assignedTo: userId,
       }),
     ];
 
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
-      formalizeHandler: () => {
-        return {
-          status: 400,
-          contentType: "application/json",
-          body: JSON.stringify({ detail: "Solo los documentos en estado Completado pueden ser formalizados." }),
-        };
-      },
+      formalizeHandler: () => ({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Solo los documentos en estado Completado pueden ser formalizados." }),
+      }),
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/formalize/704/Doc%20Error%20Test`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("formalize/704");
+    await page.goto("/dynamic_document_dashboard");
+    await openFormalizeFromMyDocuments(page, "Doc Error Test");
+    await selectFormalizeSigner(page, { query: "Client", userId: userId + 1 });
+    await page.getByTestId("document-form-submit").click();
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Error al guardar documento", { timeout: 15_000 });
+    await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+    expect(page.url()).toContain("/document/use/formalize/704");
   });
 
   test("correct error shows notification and stays on page", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
@@ -370,22 +477,21 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await installFormalizeMocks(page, {
       userId,
       documents: docs,
-      correctHandler: () => {
-        return {
-          status: 409,
-          contentType: "application/json",
-          body: JSON.stringify({ detail: "El documento fue modificado por otro usuario." }),
-        };
-      },
+      correctHandler: () => ({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "El documento fue modificado por otro usuario." }),
+      }),
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await setAuthLocalStorage(page, LAWYER_AUTH(userId));
 
-    await page.goto(`/dynamic_document_dashboard/document/use/correction/705/Doc%20Correct%20Error`);
-    await page.waitForLoadState("networkidle");
-    await expect.poll(() => page.url(), { timeout: 10_000 }).toContain("correction/705");
+    await page.goto("/dynamic_document_dashboard");
+    await openCorrectionFromArchived(page, "Doc Correct Error");
+    await page.getByRole("button", { name: "Guardar y reenviar para firma" }).click();
+
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Error al corregir el documento para firma.", { timeout: 15_000 });
+    await page.locator(".swal2-confirm").click(); // quality: allow-fragile-selector (SweetAlert2 renders no role/testid on its confirm button)
+    expect(page.url()).toContain("/document/use/correction/705");
   });
 });

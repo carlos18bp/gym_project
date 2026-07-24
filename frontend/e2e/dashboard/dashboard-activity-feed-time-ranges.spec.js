@@ -79,7 +79,7 @@ test("activity feed renders entries with varied time ranges and formatTimeAgo br
   await expect(page.getByText(/Hace \d+ meses/)).toBeVisible();
 });
 
-test("lawyer dashboard renders welcome card with process stats", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("lawyer switches to the Contactos tab and sees the contacts list", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
   const userId = 4020;
   const nowIso = new Date().toISOString();
 
@@ -98,7 +98,10 @@ test("lawyer dashboard renders welcome card with process stats", { tag: ['@flow:
     },
   ];
 
-  await installDashboardDeepMocks(page, { userId, role: "lawyer", processes });
+  // quality: allow-fragile-test-data (the contact email is derived by buildMockUser and only used as a rendering assertion)
+  const contactLawyer = buildMockUser({ id: 4021, role: "lawyer", firstName: "Colega", lastName: "Contacto" });
+
+  await installDashboardDeepMocks(page, { userId, role: "lawyer", processes, users: [contactLawyer] });
 
   await setAuthLocalStorage(page, {
     token: "e2e-token",
@@ -107,11 +110,15 @@ test("lawyer dashboard renders welcome card with process stats", { tag: ['@flow:
 
   await page.goto("/dashboard");
 
-  // Welcome card should load with process stats
+  // Starting point: welcome card with process stats, contacts not rendered yet
   await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Colega Contacto")).toHaveCount(0);
 
-  // Process count stat should reflect 1 active (non-Fallo) process
-  await expect(page.getByText("1").first()).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("activity-feed-tab-contacts").click();
+
+  // Transition: the ContactsWidget replaces the notifications panel
+  await expect(page.getByText("Colega Contacto")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("colega@example.com")).toBeVisible();
 });
 
 test("client dashboard renders with empty activity feed state", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {

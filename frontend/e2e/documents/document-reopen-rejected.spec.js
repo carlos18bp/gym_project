@@ -1,204 +1,127 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
-import { mockApi } from "../helpers/api.js";
 import {
-  buildMockUser,
+  installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-async function installReopenRejectedMocks(page, { userId }) {
-  const lawyer = buildMockUser({ id: userId, role: "lawyer", hasSignature: true });
-  const nowIso = new Date().toISOString();
+/**
+ * E2E tests for the reopen-rejected-document flow (lawyer side).
+ * A rejected document lives on the "Dcs. Archivados" tab; from its actions
+ * modal the lawyer can read the rejection reason and reopen it via
+ * "Editar y reenviar para firma" (correction mode).
+ */
 
-  const rejectedDoc = buildMockDocument({
-    id: 701,
-    title: "Contrato Rechazado",
-    state: "Rejected",
-    createdBy: userId,
-    signatures: [
-      { user: userId, status: "signed", signed_at: nowIso },
-      { user: userId + 1, status: "rejected", signed_at: null, rejection_reason: "Datos incorrectos" },
-    ],
+function buildLawyerDocs(userId) {
+  return [
+    buildMockDocument({
+      id: 701,
+      title: "Contrato Rechazado",
+      state: "Rejected",
+      createdBy: userId,
+      requires_signature: true,
+      signatures: [
+        {
+          id: 1,
+          signer_id: userId,
+          signer_email: "e2e@example.com",
+          signer_name: "E2E Lawyer",
+          signed: true,
+        },
+        {
+          id: 2,
+          signer_id: userId + 1,
+          signer_email: "client@example.com",
+          signer_name: "Cliente Test",
+          signed: false,
+          rejected: true,
+          rejection_comment: "Datos incorrectos",
+        },
+      ],
+    }),
+    buildMockDocument({
+      id: 702,
+      title: "Minuta Borrador",
+      state: "Draft",
+      createdBy: userId,
+    }),
+  ];
+}
+
+async function setupLawyerDashboard(page, userId) {
+  await installDynamicDocumentApiMocks(page, {
+    userId,
+    role: "lawyer",
+    hasSignature: true,
+    documents: buildLawyerDocs(userId),
   });
 
-  const draftDoc = buildMockDocument({
-    id: 702,
-    title: "Minuta Borrador",
-    state: "Draft",
-    createdBy: userId,
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
-  await mockApi(page, async ({ route, apiPath }) => {
-    if (apiPath === "validate_token/") {
-      return { status: 200, contentType: "application/json", body: "{}" };
-    }
+  await page.goto("/dynamic_document_dashboard");
+  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+}
 
-    if (apiPath === "google-captcha/site-key/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-    }
-
-    if (apiPath === "users/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([lawyer]) };
-    }
-
-    if (apiPath === `users/${userId}/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify(lawyer) };
-    }
-
-    if (apiPath === `users/${userId}/signature/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: true }) };
-    }
-
-    if (apiPath === "dynamic-documents/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([rejectedDoc, draftDoc]) };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/archived-documents/")) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([rejectedDoc]) };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/signed-documents/")) {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/user/") && apiPath.endsWith("/pending-documents-full/")) {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath.startsWith("dynamic-documents/created-by/") && apiPath.endsWith("/pending-signatures/")) {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "dynamic-documents/tags/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "dynamic-documents/recent/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "user-activities/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "create-activity/") {
-      return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 1, action_type: "other", description: "", created_at: nowIso }) };
-    }
-
-    if (apiPath === "recent-processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "legal-updates/active/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    return null;
-  });
+async function openRejectedDocumentActions(page) {
+  await page.getByTestId("lawyer-tab-archived-documents").click();
+  const row = page.getByTestId("signatures-list-row-701");
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await row.click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
 }
 
 test("lawyer sees rejected document in archived documents section", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-  const userId = 8400;
+  await setupLawyerDashboard(page, 8400);
 
-  await installReopenRejectedMocks(page, { userId });
+  await page.getByTestId("lawyer-tab-archived-documents").click();
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-  });
-
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // Navigate to archived documents tab
-  const archivedTab = page.getByRole("button", { name: /Archivados/i });
-  if (await archivedTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await archivedTab.click();
-    await expect(page.getByText("Contrato Rechazado")).toBeVisible({ timeout: 10_000 });
-  } else {
-    // Dashboard loaded but archived tab may have different label
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-  }
+  const row = page.getByTestId("signatures-list-row-701");
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await expect(row.getByText("Contrato Rechazado")).toBeVisible();
+  await expect(row.getByText("Rechazado", { exact: true })).toBeVisible();
+  // The Draft minuta must NOT leak into the archived (Rejected/Expired) tab.
+  await expect(page.getByText("Minuta Borrador")).toHaveCount(0);
 });
 
-test("rejected document shows rejection reason in document data", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-  const userId = 8401;
+test("rejected document exposes its rejection reason from the actions modal", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  await setupLawyerDashboard(page, 8401);
 
-  await installReopenRejectedMocks(page, { userId });
+  await openRejectedDocumentActions(page);
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-  });
+  await page.getByTestId("document-action-viewRejectionReason").click();
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // Verify the document dashboard loaded with documents
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-
-  // Verify lawyer role is set correctly
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("lawyer");
+  await expect(page.getByRole("heading", { name: "Motivo del rechazo" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Datos incorrectos")).toBeVisible();
 });
 
-test("lawyer clicks rejected document and sees reopen action available", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-  const userId = 8402;
+test("lawyer reopens rejected document via editar y reenviar para firma", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  await setupLawyerDashboard(page, 8402);
 
-  await installReopenRejectedMocks(page, { userId });
+  await openRejectedDocumentActions(page);
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-  });
+  const reopenAction = page.getByTestId("document-action-editAndResend");
+  await expect(reopenAction).toBeVisible();
+  await reopenAction.click();
 
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // Navigate to archived documents tab
-  const archivedTab = page.getByRole("button", { name: /Archivados/i });
-  if (await archivedTab.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await archivedTab.click();
-    await expect(page.getByText("Contrato Rechazado")).toBeVisible({ timeout: 10_000 });
-
-    // Click on the rejected document to open actions
-    await page.getByText("Contrato Rechazado").click();
-
-    // Should see actions modal with reopen/edit option
-    const actionsHeading = page.getByRole("heading", { name: /Acciones/i });
-    const editButton = page.getByRole("button", { name: /Editar|Reabrir/i });
-    const actionsVisible = await actionsHeading.isVisible({ timeout: 5_000 }).catch(() => false);
-    const editVisible = await editButton.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    // Confirm reopen/edit actions are accessible for rejected document
-    expect(actionsVisible || editVisible).toBe(true);
-  } else {
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
-  }
+  await page.waitForURL("**/dynamic_document_dashboard/document/use/correction/701/**", { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Contrato Rechazado" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Guardar y reenviar para firma" })).toBeVisible();
 });
 
-test("lawyer dashboard loads with both draft and rejected documents", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-  const userId = 8403;
+test("draft and rejected documents live on their respective tabs", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  await setupLawyerDashboard(page, 8403);
 
-  await installReopenRejectedMocks(page, { userId });
+  // Default "Minutas" tab (Draft/Published scope) shows only the draft.
+  await expect(page.getByText("Minuta Borrador")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Contrato Rechazado")).toHaveCount(0);
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-  });
-
-  await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Archived tab (Rejected/Expired scope) shows only the rejected document.
+  await page.getByTestId("lawyer-tab-archived-documents").click();
+  await expect(page.getByTestId("signatures-list-row-701")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Minuta Borrador")).toHaveCount(0);
 });

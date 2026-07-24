@@ -88,9 +88,10 @@ test("basic user can access dashboard and sees welcome content", { tag: ['@flow:
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
-  // Dashboard should render for basic user
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  // Dashboard welcome card and the non-lawyer quick actions render
+  await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Radicar Solicitud")).toBeVisible();
+  await expect(page.getByText("Agendar Cita").first()).toBeVisible();
 
   // Verify role is basic in session
   const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
@@ -110,19 +111,19 @@ test("basic user sidebar does not show lawyer-only navigation items", { tag: ['@
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
-  // Lawyer-only items should NOT be visible for basic users
-  // "Radicar Proceso" is filtered out for basic users in SlideBar.vue
-  const radicarProceso = page.getByText("Radicar Proceso");
-  const isRadicarVisible = await radicarProceso.isVisible({ timeout: 3_000 }).catch(() => false);
-  expect(isRadicarVisible).toBe(false);
+  // Positive anchors first: sidebar and quick actions rendered for basic user
+  const sidebar = page.getByTestId("sidebar-nav");
+  await expect(sidebar.getByText("Inicio", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Mis Procesos", { exact: true })).toBeVisible();
 
-  // "Directorio" is also filtered out
-  const directorio = page.getByText("Directorio", { exact: true });
-  const isDirectorioVisible = await directorio.isVisible({ timeout: 2_000 }).catch(() => false);
-  expect(isDirectorioVisible).toBe(false);
+  // Lawyer-only quick action "Radicar Proceso" must NOT render for basic users
+  await expect(page.getByText("Radicar Proceso")).toHaveCount(0);
+
+  // "Directorio" is filtered out of the sidebar for basic users
+  await expect(sidebar.getByText("Directorio", { exact: true })).toHaveCount(0);
 });
 
-test("basic user can see common navigation items like Procesos and Solicitudes", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
+test("basic user can see common navigation items like Procesos and Servicios", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
   const userId = 9502;
 
   await installBasicUserDashboardMocks(page, { userId });
@@ -135,10 +136,10 @@ test("basic user can see common navigation items like Procesos and Solicitudes",
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
-  // Basic users should see common nav items
-  // Check for "Procesos" in sidebar (desktop view)
-  const procesos = page.locator("nav").getByText("Procesos");
-  const isProcesosVisible = await procesos.isVisible({ timeout: 5_000 }).catch(() => false);
-  // Procesos should be visible for basic users
-  expect(isProcesosVisible || true).toBeTruthy(); // quality: allow-fragile-selector (sidebar may not be visible on all viewports)
+  // Basic users keep the common nav items in the sidebar. Note: the legacy
+  // "Solicitudes" entry was replaced by "Servicios y Solicitudes".
+  const sidebar = page.getByTestId("sidebar-nav");
+  await expect(sidebar.getByText("Procesos", { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(sidebar.getByText("Servicios y Solicitudes", { exact: true })).toBeVisible();
+  await expect(sidebar.getByText("Organizaciones", { exact: true })).toBeVisible();
 });

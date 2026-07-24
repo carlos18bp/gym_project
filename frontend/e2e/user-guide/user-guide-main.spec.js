@@ -3,8 +3,12 @@ import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
 
 /**
- * E2E tests for user guide pages (UserGuideMain.vue and components)
- * Target: create tests for empty e2e/user-guide/ directory
+ * E2E tests for the user guide (UserGuideMain.vue + components).
+ *
+ * The manual is a client-side wizard: the sidebar picks a module, the module
+ * overview lists its sections, a section renders its steps/example, and the
+ * search box jumps straight to a section. Every test below drives one of those
+ * transitions instead of asserting the landing screen.
  */
 
 function buildMockUser({ id, role }) {
@@ -35,96 +39,86 @@ async function installUserGuideMocks(page, { userId, role }) {
   });
 }
 
+async function openGuide(page, { userId, role }) {
+  await installUserGuideMocks(page, { userId, role });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: {
+      id: userId,
+      role,
+      is_gym_lawyer: role === "lawyer",
+      is_profile_completed: true,
+    },
+  });
+
+  await page.goto("/user_guide");
+  await expect(page.getByRole("heading", { name: "Bienvenido al Manual de Usuario" })).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe("user guide: main page", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
-  test("user guide page loads for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6000;
+  test("lawyer opens the Directorio module from the sidebar", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6000, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Directorio", exact: true }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // User guide should load
-    await expect(page.locator("body")).toBeVisible();
+    // The welcome screen is replaced by the module content
+    await expect(page.getByRole("heading", { name: "Directorio", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bienvenido al Manual de Usuario" })).toBeHidden();
   });
 
-  test("user guide page loads for client", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6001;
+  test("client opens the Procesos module from the sidebar", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6001, role: "client" });
 
-    await installUserGuideMocks(page, { userId, role: "client" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // User guide should load
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Procesos", exact: true })).toBeVisible();
+    await expect(page.getByText("Gestión y consulta de procesos judiciales")).toBeVisible();
   });
 
-  test("user guide shows navigation structure", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6002;
+  test("client sidebar omits the lawyer-only Directorio module", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6002, role: "client" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Should have navigation elements
-    await expect(page.locator("body")).toBeVisible();
+    // Selecting a module never reveals modules outside the role's catalogue
+    await expect(sidebar.getByRole("button", { name: "Directorio", exact: true })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: "Agendar Cita", exact: true })).toBeVisible();
   });
 });
 
 test.describe("user guide: navigation component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
   test("user can navigate between guide sections", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6010;
+    await openGuide(page, { userId: 6010, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Procesos", exact: true })).toBeVisible();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    // Switching module swaps the whole content pane
+    await sidebar.getByRole("button", { name: "Archivos Jurídicos", exact: true }).click();
 
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Look for navigation links or buttons
-    const navLinks = page.getByRole("link").or(page.getByRole("button"));
-    const linkCount = await navLinks.count();
-
-    // Page should have interactive elements
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Archivos Jurídicos", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Procesos", exact: true })).toBeHidden();
   });
 
   test("navigation highlights current section", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6011;
+    await openGuide(page, { userId: 6011, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    const procesos = sidebar.getByRole("button", { name: "Procesos", exact: true });
+    const directorio = sidebar.getByRole("button", { name: "Directorio", exact: true });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await procesos.click();
+    await expect(procesos).toHaveAttribute("aria-current", "true");
+    await expect(directorio).toHaveAttribute("aria-current", "false");
 
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
+    await directorio.click();
+    await expect(directorio).toHaveAttribute("aria-current", "true");
+    await expect(procesos).toHaveAttribute("aria-current", "false");
   });
 });
 
@@ -140,17 +134,13 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for search input
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await searchInput.fill("documento");
-      await page.waitForLoadState('domcontentloaded');
-    }
+    // Typing 3+ characters triggers the guide search and opens the results dropdown
+    const searchInput = page.getByPlaceholder("Buscar en el manual...");
+    await expect(searchInput).toBeVisible({ timeout: 10_000 });
+    await searchInput.fill("documento");
 
-    // Page should respond
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeVisible({ timeout: 5_000 });
   });
 
   test("search filters guide content", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -164,61 +154,49 @@ test.describe("user guide: search component", { tag: ['@flow:user-guide-navigati
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for search input
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await searchInput.fill("proceso");
-      await page.waitForLoadState('domcontentloaded');
-      
-      // Clear search
-      await searchInput.clear();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    const searchInput = page.getByPlaceholder("Buscar en el manual...");
+    await expect(searchInput).toBeVisible({ timeout: 10_000 });
 
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
+    // Searching shows the results dropdown
+    await searchInput.fill("proceso");
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeVisible({ timeout: 5_000 });
+
+    // Clearing the input (below the 3-char threshold) closes the dropdown
+    await searchInput.clear();
+    await expect(page.getByText(/resultado\(s\) encontrado\(s\)/)).toBeHidden();
   });
 });
 
 test.describe("user guide: module guide component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
   test("module guide displays content sections", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6030;
+    await openGuide(page, { userId: 6030, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Secciones Disponibles:" })).toBeVisible();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    // Opening a section card swaps the overview for the section detail
+    await page.getByRole("button", { name: "Filtros y Búsqueda" }).click();
 
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Should have content sections
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Filtros y Búsqueda" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Paso a Paso:" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Secciones Disponibles:" })).toBeHidden();
   });
 
-  test("module guide is scrollable", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6031;
+  test("back button returns from a section to the module overview", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6031, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
+    await page.getByRole("button", { name: "Filtros y Búsqueda" }).click();
+    await expect(page.getByRole("heading", { name: "Filtros y Búsqueda" })).toBeVisible();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await page.getByRole("button", { name: "Volver al módulo" }).click();
 
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Scroll the page
-    await page.evaluate(() => window.scrollBy(0, 300));
-    await page.waitForLoadState('domcontentloaded');
-
-    // Page should respond to scrolling
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Secciones Disponibles:" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Volver al módulo" })).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Paso a Paso:" })).toBeHidden();
   });
 });
 
@@ -234,93 +212,77 @@ test.describe("user guide: example modal component", { tag: ['@flow:user-guide-n
     });
 
     await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
 
-    // Look for example buttons or links
-    const exampleBtn = page.getByRole("button", { name: /ejemplo|example|ver/i }).first();
-    if (await exampleBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await exampleBtn.click();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    // Navigate: sidebar module "Procesos" → section card in the module overview
+    const sidebar = page.locator("aside");
+    await expect(sidebar.getByRole("button", { name: "Procesos", exact: true })).toBeVisible({ timeout: 10_000 });
+    await sidebar.getByRole("button", { name: "Procesos", exact: true }).click();
+    await page.getByRole("button", { name: "Radicar Proceso (Solo Abogados)" }).click();
 
-    // Page should be stable
-    await expect(page.locator("body")).toBeVisible();
+    // The section exposes the example trigger
+    await page.getByRole("button", { name: "Ver Ejemplo Completo" }).click();
+
+    // ExampleModal opens with the example content
+    await expect(page.getByRole("heading", { name: "Ejemplo: Radicar un Proceso de Tutela" })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Paso a paso para crear un nuevo proceso de tutela en el sistema.")).toBeVisible();
+
+    // Closing the modal removes the example content
+    await page.getByRole("button", { name: "Entendido" }).click();
+    await expect(page.getByRole("heading", { name: "Ejemplo: Radicar un Proceso de Tutela" })).toBeHidden();
   });
 });
 
 test.describe("user guide: role info card component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
-  test("role info card shows relevant information", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6050;
+  test("selecting a search result opens the matching module section", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6050, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    // The welcome screen introduces the role before the user searches
+    await expect(page.getByText("10 módulos disponibles")).toBeVisible();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    const searchInput = page.getByPlaceholder("Buscar en el manual...");
+    await searchInput.fill("Alertas Personalizadas");
+    await page.getByRole("button", { name: /Alertas Personalizadas/ }).first().click();
 
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Page should display role-appropriate content
-    await expect(page.locator("body")).toBeVisible();
+    // The picked result navigates straight into the SECOP section
+    await expect(page.getByRole("heading", { name: "Alertas Personalizadas" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Volver al módulo" })).toBeVisible();
+    await expect(page.getByText("10 módulos disponibles")).toBeHidden();
   });
 });
 
 test.describe("user guide: quick links card component", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
   test("quick links provide shortcuts", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6060;
+    await openGuide(page, { userId: 6060, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const quickLinks = page.getByRole("heading", { name: "Enlaces Rápidos" }).locator("..");
+    await quickLinks.getByRole("button", { name: "Directorio" }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    // Look for quick links
-    const links = page.getByRole("link");
-    const linkCount = await links.count();
-
-    // Page should have links
-    await expect(page.locator("body")).toBeVisible();
+    // The shortcut opens the module without touching the sidebar
+    await expect(page.getByRole("heading", { name: "Directorio", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Enlaces Rápidos" })).toBeHidden();
   });
 });
 
 test.describe("user guide: SECOP module", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
-  test("SECOP module is listed in navigation for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6070;
+  test("lawyer opens the SECOP module from navigation", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6070, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "SECOP — Contratación Estatal" }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    await expect(page.getByText(/SECOP/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "SECOP — Contratación Estatal" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Pestañas de SECOP" })).toBeVisible();
   });
 
-  test("SECOP module is listed in navigation for basic role", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6071;
+  test("basic role opens the SECOP module and sees its plan restriction", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6071, role: "basic" });
 
-    await installUserGuideMocks(page, { userId, role: "basic" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "SECOP — Contratación Estatal" }).click();
+    await page.getByRole("button", { name: "Pestañas de SECOP" }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "basic", is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    await expect(page.getByText(/SECOP/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Restricciones:" })).toBeVisible();
+    await expect(page.getByText(/El rol básico ve el módulo con un overlay/)).toBeVisible();
   });
 
   test("search surfaces SECOP content for UNSPSC query", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -344,36 +306,25 @@ test.describe("user guide: SECOP module", { tag: ['@flow:user-guide-navigation',
 });
 
 test.describe("user guide: Servicios y Trámites module", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, () => {
-  test("Servicios module is listed in navigation for client", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6080;
+  test("client opens the Servicios y Trámites module from navigation", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6080, role: "client" });
 
-    await installUserGuideMocks(page, { userId, role: "client" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Servicios y Trámites" }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    await expect(page.getByText(/Servicios y Trámites/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Servicios y Trámites" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Catálogo de Servicios" })).toBeVisible();
   });
 
-  test("Servicios module is listed in navigation for lawyer", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 6081;
+  test("lawyer opens the Servicios inbox section reserved for lawyers", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await openGuide(page, { userId: 6081, role: "lawyer" });
 
-    await installUserGuideMocks(page, { userId, role: "lawyer" });
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Servicios y Trámites" }).click();
+    await page.getByRole("button", { name: "Bandeja de Solicitudes (Abogados)" }).click();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/user_guide");
-    await page.waitForLoadState("domcontentloaded");
-
-    await expect(page.getByText(/Servicios y Trámites/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Bandeja de Solicitudes (Abogados)" })).toBeVisible();
+    await expect(page.getByText("Gestionar las solicitudes recibidas")).toBeVisible();
   });
 
   test("search surfaces Servicios content for radicado query", { tag: ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3', '@role:shared'] }, async ({ page }) => {

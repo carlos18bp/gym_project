@@ -2,7 +2,7 @@
 name: git-sync
 description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos via gh CLI y elige target de rebase PR-aware (politica: max 1 PR release, max 2 con error), luego fetch + rebase + conflict resolution. Defaults to the current repo (cwd); pass --all para iterar LOCAL_PROJECTS + toolkit."
 allowed-tools: Bash
-argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
+argument-hint: "[--all-repos (repos de este host)] [--all-vps (todos los VPS)]"
 ---
 
 # Git Sync
@@ -15,7 +15,7 @@ Sync the current local branch with its remote counterpart. Handles dirty working
 >   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
 >   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
 >   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
-> - Con `--all`: `/git-sync --all` → itera sobre `LOCAL_PROJECTS` del host
+> - Con `--all-repos`: itera sobre `LOCAL_PROJECTS` del host
 >   + `vps-ops-toolkit`.
 >
 > No acepta nombres de proyecto individuales — para operar en un repo
@@ -28,13 +28,14 @@ Sync the current local branch with its remote counterpart. Handles dirty working
 ```bash
 ARGS_RAW="${ARGUMENTS:-}"
 OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
+ALL_VPS=0; ALL_REPOS=0
 
 case "$ARGS_RAW" in
     "")
         # Repo actual — el del cwd (donde se lanzó Claude Code)
         REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
             echo "❌ ERROR: el directorio actual no es un repo git."
-            echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all."
+            echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all-repos."
             exit 2
         }
         cd "$REPO_ROOT"                        # anclar el cwd al top del repo
@@ -42,15 +43,23 @@ case "$ARGS_RAW" in
         REPO_DIR_OVERRIDE="$REPO_ROOT"
         MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
         ;;
-    "--all")
+    "--all-repos")
         source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
         PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
         REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-        MODE_LABEL="--all (${#REPOS[@]} repos)"
-        ;;
+        MODE_LABEL="--all-repos (${#REPOS[@]} repos)"; ALL_REPOS=1 ;;
+    "--all-vps")
+        # Eje fleet: delega en propagate-toolkit-commit.sh tras sincronizar local.
+        cd "$OPS_ROOT"; REPOS=("vps-ops-toolkit"); REPO_DIR_OVERRIDE="$OPS_ROOT"
+        MODE_LABEL="--all-vps (toolkit, local + fleet)"; ALL_VPS=1 ;;
+    "--all")
+        echo "❌ ERROR: --all es ambiguo y quedó retirado."
+        echo "   ¿Todos los repos de ESTE host? → --all-repos"
+        echo "   ¿El toolkit en TODOS los VPS?  → --all-vps"
+        exit 2 ;;
     *)
         echo "❌ ERROR: argumento desconocido '$ARGS_RAW'."
-        echo "   Válido: (vacío) → repo actual  |  --all → todos los locales."
+        echo "   Válido: (vacío) → repo actual  |  --all-repos → repos de este host."
         exit 2
         ;;
 esac
@@ -361,3 +370,21 @@ Casos con acción pendiente (omitir línea ✨, agregar `## Next steps`):
 En modo `--all` (loop sobre repos), el reporte agrega columna `Repo` antes
 de `Dimensión` y se considera tabla grande (>15 filas) — agregar
 `### Resumen ejecutivo` con conteo y `### Top 3 acciones prioritarias`.
+
+---
+
+## Fleet (`--all-vps`)
+
+Si `ALL_VPS=1`, **después** de sincronizar el/los repo(s) local(es), delegá en el
+orquestador multi-host (Tailscale). El toolkit rebasa contra `origin/master`; un
+repo de proyecto contra **su propio upstream (`@{u}`)**, nunca cross-branch.
+
+```bash
+REPOS_FLAG="--repos=toolkit"
+[ "${ALL_REPOS:-0}" = "1" ] && REPOS_FLAG="--repos=all"
+bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --apply "$REPOS_FLAG"
+```
+
+`exit 75` = pausa de auth de Tailscale: mostrale el link al operador, esperá la
+autorización y re-corré (idempotente). Precondición: el local debe estar pusheado.
+Conflicto remoto ⇒ `rebase --abort` + reporte; working tree intacto.

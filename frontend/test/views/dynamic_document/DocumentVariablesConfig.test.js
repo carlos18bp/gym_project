@@ -198,7 +198,7 @@ describe("DocumentVariablesConfig.vue", () => {
     const options = summarySelect.findAll("option");
     const values = options.map((o) => o.element.value);
     expect(values).toEqual(
-      expect.arrayContaining(["none", "counterparty", "object", "value", "term", "subscription_date", "start_date", "end_date"])
+      expect.arrayContaining(["none", "counterparty", "object", "value", "term", "subscription_date", "start_date", "end_date", "payment_installments"])
     );
   });
 
@@ -341,6 +341,18 @@ describe("DocumentVariablesConfig.vue", () => {
     await flushPromises();
 
     expect(store.selectedDocument.variables[0].field_type).toBe("date");
+  });
+
+  test("changing summary_field to 'payment_installments' auto-adjusts field_type to 'number'", async () => {
+    const { store } = setupStore(pinia);
+    const wrapper = await mountComponent(pinia);
+
+    const summarySelect = wrapper.find("#summary_field_0"); // quality: allow-fragile-selector (stable DOM id)
+    await summarySelect.setValue("payment_installments");
+    await summarySelect.trigger("change");
+    await flushPromises();
+
+    expect(store.selectedDocument.variables[0].field_type).toBe("number");
   });
 
   test("duplicate summary_field classification resets previous variable", async () => {

@@ -8,16 +8,22 @@ import {
 /**
  * DocumentForm field-type interaction tests.
  * Covers: rendering of 6 field types, currency prefix, validation errors, save button state.
+ *
+ * The form is always reached the way a client reaches it: dashboard → "Nuevo
+ * Documento" → template row → "Usar plantilla" → name → "Continuar".
  */
 
 const userId = 4000;
+const TEMPLATE_TITLE = "Template With All Fields";
+const LAWYER_ID = 999;
 
 function buildDocWithVariables() {
   return buildMockDocument({
     id: 500,
-    title: "Template With All Fields",
+    title: TEMPLATE_TITLE,
     state: "Published",
-    createdBy: userId,
+    createdBy: LAWYER_ID,
+    assignedTo: null,
     content: "<p>{{ClientName}} owes {{Amount}}</p>",
     variables: [
       { name_en: "ClientName", name_es: "Nombre Cliente", field_type: "input", value: "", tooltip: "Enter name" },
@@ -30,7 +36,12 @@ function buildDocWithVariables() {
   });
 }
 
-async function setupAndNavigate(page) {
+/**
+ * Walks the client from the dashboard to the "name your document" step of the
+ * template flow. Each test finishes the walk with its own "Continuar" click so
+ * the navigation into DocumentForm is exercised by the test itself.
+ */
+async function openTemplateNameStep(page) {
   const doc = buildDocWithVariables();
 
   await installDynamicDocumentApiMocks(page, {
@@ -49,12 +60,21 @@ async function setupAndNavigate(page) {
     },
   });
 
-  await page.goto(`/dynamic_document_dashboard/document/use/creator/${doc.id}/${encodeURIComponent("My Doc")}`);
+  await page.goto("/dynamic_document_dashboard");
+  await page.getByRole("button", { name: "Nuevo Documento" }).click();
+  await expect(page.getByText(TEMPLATE_TITLE, { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.getByText(TEMPLATE_TITLE, { exact: true }).click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-useTemplate").click();
+  await page.locator("#document-name").fill("My Doc"); // quality: allow-fragile-selector (stable DOM id)
 }
 
 test("document form renders all 6 field types with labels", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
-  await setupAndNavigate(page);
+  await openTemplateNameStep(page);
 
+  await page.getByRole("button", { name: "Continuar" }).click();
+
+  await expect(page).toHaveURL(/document\/use\/creator\/500/, { timeout: 15_000 });
   await expect(page.getByText("Nombre Cliente")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Descripción")).toBeVisible();
   await expect(page.getByText("Monto")).toBeVisible();
@@ -71,7 +91,8 @@ test("document form renders all 6 field types with labels", { tag: ['@flow:docs-
 });
 
 test("document form generate button disabled until all fields filled", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
-  await setupAndNavigate(page);
+  await openTemplateNameStep(page);
+  await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByText("Nombre Cliente")).toBeVisible({ timeout: 15_000 });
 
@@ -91,20 +112,26 @@ test("document form generate button disabled until all fields filled", { tag: ['
 });
 
 test("document form cancel button navigates back to dashboard", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P3', '@role:client'] }, async ({ page }) => {
-  await setupAndNavigate(page);
+  await openTemplateNameStep(page);
+  await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByText("Nombre Cliente")).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "Cancelar" }).click();
-  await expect(page).toHaveURL(/dynamic_document_dashboard/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/dynamic_document_dashboard$/, { timeout: 10_000 });
 });
 
 test("document form select field renders options", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P3', '@role:client'] }, async ({ page }) => {
-  await setupAndNavigate(page);
+  await openTemplateNameStep(page);
+  await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByText("Categoría")).toBeVisible({ timeout: 15_000 });
 
   const select = page.locator("#field-5"); // quality: allow-fragile-selector (stable DOM id)
   const options = select.locator("option");
   await expect(options).toHaveCount(3); // "Seleccione una opción" + 2 real options
+
+  // Picking an option is what proves the list is usable, not just present.
+  await select.selectOption("Option B");
+  await expect(select).toHaveValue("Option B");
 });

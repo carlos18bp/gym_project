@@ -12,9 +12,11 @@ This document applies to:
 
 | Test Type | Location | Runner |
 |-----------|----------|--------|
-| Backend unit/integration | `backend/core_app/tests/**` | pytest |
-| Frontend unit/component | `frontend/test/**` | Jest |
+| Backend unit/integration | `backend/<app>/tests/**` | pytest |
+| Frontend unit/component | `frontend/test/**` or `frontend/src/**/__tests__/**` | Jest / Vitest |
 | Frontend E2E flows | `frontend/e2e/**` | Playwright |
+
+> The exact location of frontend unit tests depends on the project structure. Common patterns: `frontend/test/` (standalone test dir), `src/**/__tests__/` (co-located). Configure the pattern in `jest.config.cjs` / `vitest.config.js`.
 
 > **Note:** These standards focus on test quality and maintainability only. They do not change production business logic.
 
@@ -110,33 +112,32 @@ Tests must be organized by domain/layer, not by coverage goals.
 **Backend Structure:**
 
 ```
-backend/core_app/tests/
+backend/<app>/tests/
+├── conftest.py       # Shared pytest fixtures
+├── factories.py      # Model factories and payload helpers
 ├── models/           # Model unit tests (validation, properties, methods)
 │   ├── test_user.py
-│   ├── test_product.py
-│   └── test_order.py
+│   └── test_product.py
 ├── serializers/      # Serializer unit tests (validation, transformation)
-│   ├── test_user_serializers.py
 │   └── test_product_serializers.py
 ├── views/            # API endpoint tests (integration-light)
-│   ├── test_auth_views.py
 │   └── test_product_views.py
-├── services/         # Business logic service tests
-│   └── test_email_service.py
+├── services/         # Business logic service tests (if services/ exists)
 ├── utils/            # Utility function tests
-│   └── test_helpers.py
-└── tasks/            # Background task tests (Celery, jobs)
-    └── test_notification_tasks.py
+├── contracts/        # OpenAPI/schema contract tests
+├── integration/      # Cross-layer integration tests
+├── management/       # Management command tests
+└── test_admin.py     # Django admin tests (standalone)
 ```
 
 **Frontend Structure:**
 
 ```
 frontend/
-├── test/                    # Unit/component tests (Jest)
-│   ├── stores/              # Pinia store tests
-│   ├── components/          # Vue component tests
-│   ├── composables/         # Composable/hook tests
+├── test/                    # Unit/component tests (Jest / Vitest)
+│   ├── stores/              # Store tests (Pinia / Redux / Zustand)
+│   ├── components/          # Component tests (Vue Test Utils / React Testing Library)
+│   ├── composables/         # Composable / custom hook tests
 │   ├── router/              # Router guard tests
 │   └── shared/              # Shared test utilities
 └── e2e/                     # E2E flows (Playwright)
@@ -144,6 +145,8 @@ frontend/
     ├── products/            # Product management flows
     └── helpers/             # E2E utilities and mocks
 ```
+
+> Location of unit tests may differ by project: `frontend/test/` (standalone) or `src/**/__tests__/` (co-located). Both are valid — configure the pattern in your test runner config.
 
 ---
 
@@ -1295,7 +1298,7 @@ scripts/
     ├── patterns.py               # Compiled regex patterns
     ├── backend_analyzer.py       # Python/pytest analyzer (AST-based)
     ├── js_ast_bridge.py          # Bridge to Node.js Babel parser
-    ├── frontend_unit_analyzer.py # Jest/Vue Test Utils analyzer
+    ├── frontend_unit_analyzer.py # Jest / Vitest unit analyzer (framework-agnostic)
     └── frontend_e2e_analyzer.py  # Playwright E2E analyzer
 
 frontend/scripts/

@@ -1,3 +1,4 @@
+// quality: disable network_dependency (pure orchestration helper: its observable outcomes ARE the collaborator effects - authStore.login, router.push, showNotification)
 const mockAxiosPost = jest.fn();
 const mockShowNotification = jest.fn();
 const mockSignInWithMicrosoft = jest.fn();

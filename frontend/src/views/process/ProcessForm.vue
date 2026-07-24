@@ -396,6 +396,55 @@
             </Combobox>
         </div>
 
+        <!-- Responsible lawyer selector (defaults to the logged-in lawyer) -->
+        <div>
+          <Combobox as="div" v-model="selectedLawyer">
+            <ComboboxLabel class="block text-sm font-medium leading-6 text-primary">
+              Abogado responsable
+              <span class="text-red-500">*</span>
+            </ComboboxLabel>
+            <div class="relative mt-2">
+              <ComboboxInput
+                data-testid="process-lawyer-input"
+                class="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-12 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+                @change="lawyerQuery = $event.target.value"
+                @blur="lawyerQuery = ''"
+                :display-value="(lawyer) => lawyer ? `${lawyer.last_name} ${lawyer.first_name}`.trim() || lawyer.email : ''"
+                placeholder="Seleccionar abogado responsable"
+              />
+              <ComboboxButton class="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+                <ChevronDownIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+              </ComboboxButton>
+
+              <ComboboxOptions
+                v-if="filteredLawyers.length > 0"
+                class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+              >
+                <ComboboxOption
+                  v-for="lawyer in filteredLawyers"
+                  :key="lawyer.id"
+                  :value="lawyer"
+                  as="template"
+                  v-slot="{ active, selected }"
+                >
+                  <li
+                    :data-testid="`process-lawyer-option-${lawyer.id}`"
+                    :class="[
+                      'relative cursor-default select-none py-2 pl-3 pr-9',
+                      active ? 'bg-secondary text-white' : 'text-primary',
+                    ]"
+                  >
+                    <span :class="['truncate block', selected && 'font-semibold']">
+                      {{ lawyer.last_name }} {{ lawyer.first_name }}
+                      <span v-if="lawyer.is_archived" class="text-xs text-amber-600">(archivado)</span>
+                    </span>
+                  </li>
+                </ComboboxOption>
+              </ComboboxOptions>
+            </div>
+          </Combobox>
+        </div>
+
         <!-- Third row: etapas procesales (restaurado) -->
         <div>
           <!-- Stages table -->
@@ -883,6 +932,16 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error initializing process form auxiliary data:', error);
   }
+
+  // Create mode: default the responsible lawyer to the logged-in user.
+  if (!programIdParam.value && !selectedLawyer.value) {
+    const currentId = authStore.userAuth?.id;
+    const currentLawyer =
+      userStore.userById(currentId) ||
+      (userStore.currentUser?.id === currentId ? userStore.currentUser : null);
+    selectedLawyer.value = currentLawyer;
+    formData.lawyerId = currentLawyer?.id || currentId || "";
+  }
 });
 
 /**
@@ -950,7 +1009,10 @@ function assignProcessToFormData(process) {
     ? [...process.clients]
     : [];
   formData.clientIds = selectedClients.value.map((client) => client.id);
-  formData.lawyerId = process.lawyer.id || "";
+  // Prefill the responsible-lawyer selector from the process (keeps an
+  // archived assignee visible via filteredLawyers).
+  selectedLawyer.value = process.lawyer || null;
+  formData.lawyerId = process.lawyer?.id || "";
   formData.progress = typeof process.progress === "number" ? process.progress : 0;
 
   // Assign stages
@@ -1056,8 +1118,10 @@ const validateFormData = () => {
 const onSubmit = async () => {
   formData.caseTypeId = selectedCaseType.value?.id || "";
   formData.clientIds = selectedClients.value.map((client) => client.id);
-  formData.lawyerId = authStore.userAuth?.id || "";
-  
+  // Assign to the lawyer chosen in the selector (defaults to the current
+  // user in create mode); falls back to the logged-in user as a safety net.
+  formData.lawyerId = selectedLawyer.value?.id || authStore.userAuth?.id || "";
+
   // Ensure process ID is set for updates
   if (actionParam.value === 'edit' && programIdParam.value) {
     console.log("Submitting with process ID:", programIdParam.value);
@@ -1115,8 +1179,9 @@ const archiveProcess = async () => {
     formData.processIdParam = programIdParam.value;
     formData.caseTypeId = selectedCaseType.value?.id || "";
     formData.clientIds = selectedClients.value.map((client) => client.id);
-    formData.lawyerId = authStore.userAuth?.id || "";
-    
+    // Preserve the assigned lawyer when archiving the process.
+    formData.lawyerId = selectedLawyer.value?.id || authStore.userAuth?.id || "";
+
     // Use the archive flag to differentiate this from regular updates
     formData.isArchiving = true;
 
@@ -1178,6 +1243,38 @@ const selectedClient = ref(null);
  * @constant {Ref<Array<object>>}
  */
 const selectedClients = ref([]);
+
+/**
+ * The responsible lawyer selected for this process (single-select).
+ * Defaults to the logged-in lawyer on create; prefilled from the process
+ * on edit (keeping an archived assignee visible/selected).
+ *
+ * @constant {Ref<Object|null>}
+ */
+const selectedLawyer = ref(null);
+const lawyerQuery = ref("");
+
+/**
+ * Active lawyers available in the selector, plus the currently assigned
+ * lawyer in edit mode even if archived (so an existing assignment stays
+ * visible), filtered by the search query.
+ *
+ * @constant {ComputedRef<Array>}
+ */
+const filteredLawyers = computed(() => {
+  const options = [...userStore.lawyers];
+  const current = selectedLawyer.value;
+  if (current && !options.some((l) => l.id === current.id)) {
+    options.unshift(current);
+  }
+  const q = lawyerQuery.value.toLowerCase();
+  if (!q) return options;
+  return options.filter((lawyer) =>
+    ["first_name", "last_name", "email"].some(
+      (field) => lawyer[field]?.toLowerCase().includes(q)
+    )
+  );
+});
 
 /**
  * Filters the list of users (clients, basic, and corporate_client) based on the search query.

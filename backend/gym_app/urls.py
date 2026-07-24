@@ -13,9 +13,9 @@ This module defines all the URL patterns for the gym application, organized into
 - Reports (Excel report generation)
 - SECOP public procurement (processes, classifications, alerts)
 """
-from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification
+from .views import intranet_gym, userAuth, user, case_type, process, legal_request, corporate_request, organization, organization_posts, legal_update, reports, captcha, subscription, secop, service_tramite, notification, tour_progress, admin_reassignment
 from .views.layouts import sendEmail
-from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views
+from .views.dynamic_documents import document_views, signature_views, tag_folder_views, permission_views, relationship_views, payments_views
 from django.urls import path
 
 # Authentication URLs
@@ -38,7 +38,13 @@ user_urls = [
     path('users/update_signature/<int:user_id>/', user.update_signature, name='update-signature'),
     path('user-activities/', user.get_user_activities, name='user-activities'),
     path('create-activity/', user.create_activity, name='create-activity'),
-    
+
+    # Admin data reassignment (admin-only)
+    path('admin/reassignment/summary/', admin_reassignment.reassignment_summary, name='reassignment-summary'),
+    path('admin/reassignment/execute/', admin_reassignment.execute_reassignment, name='reassignment-execute'),
+    path('admin/lawyers/<int:user_id>/archive/', admin_reassignment.archive_lawyer, name='archive-lawyer'),
+    path('admin/lawyers/<int:user_id>/unarchive/', admin_reassignment.unarchive_lawyer, name='unarchive-lawyer'),
+
     # User global letterhead management
     path('user/letterhead/upload/', document_views.upload_user_letterhead_image, name='upload-user-letterhead-image'),
     path('user/letterhead/', document_views.get_user_letterhead_image, name='get-user-letterhead-image'),
@@ -238,6 +244,13 @@ dynamic_document_urls = [
     path('dynamic-documents/<int:document_id>/available-for-relationship/', relationship_views.list_available_documents_for_relationship, name='list-available-documents-for-relationship'),
     path('dynamic-documents/relationships/create/', relationship_views.create_document_relationship, name='create-document-relationship'),
     path('dynamic-documents/relationships/<int:relationship_id>/delete/', relationship_views.delete_document_relationship, name='delete-document-relationship'),
+
+    # Contract execution: cuentas de cobro per installment
+    path('dynamic-documents/<int:pk>/payment-records/', payments_views.list_payment_records, name='list-payment-records'),
+    path('dynamic-documents/<int:pk>/payment-records/upload/', payments_views.upload_payment_record, name='upload-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/accept/', payments_views.accept_payment_record, name='accept-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/reject/', payments_views.reject_payment_record, name='reject-payment-record'),
+    path('dynamic-documents/<int:pk>/payment-records/<int:record_id>/download/', payments_views.download_payment_record_file, name='download-payment-record-file'),
 ]
 
 # Legal update management URLs
@@ -318,6 +331,12 @@ notification_urls = [
     path('notifications/<int:pk>/delete/', notification.notification_delete, name='notification-delete'),
 ]
 
+# Guided tour progress URLs
+tour_progress_urls = [
+    path('tour-progress/', tour_progress.tour_progress_status, name='tour-progress-status'),
+    path('tour-progress/complete/', tour_progress.tour_progress_complete, name='tour-progress-complete'),
+]
+
 # Services and procedures module URLs
 service_tramite_urls = [
     # Catalog visibility
@@ -365,5 +384,6 @@ urlpatterns = (
     subscription_urls +
     secop_urls +
     service_tramite_urls +
-    notification_urls
+    notification_urls +
+    tour_progress_urls
 )

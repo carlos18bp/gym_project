@@ -5,20 +5,20 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n67 routes"]
-        Views["44 View Pages"]
-        Components["111 Components"]
-        Stores["44 Pinia Stores"]
-        Composables["14 Composables"]
+        Router["Vue Router\n69 routes"]
+        Views["45 View Pages"]
+        Components["115 Components"]
+        Stores["46 Pinia Stores"]
+        Composables["15 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.2.14)"]
-        DRF["Django REST Framework\n~194 API endpoints"]
-        Models["54 Models\n(14 model files)"]
-        Serializers["12 Serializer files"]
-        Views_BE["29 View files"]
-        Utils["3 Utility modules"]
+        DRF["Django REST Framework\n~205 API endpoints"]
+        Models["56 Models\n(15 model files)"]
+        Serializers["13 Serializer files"]
+        Views_BE["32 View files"]
+        Utils["4 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
     end
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n94 test files"]
-        Jest["Jest\n181 test files"]
-        PW["Playwright\n195 E2E specs"]
+        Pytest["pytest\n101 test files"]
+        Jest["Jest\n207 test files"]
+        PW["Playwright\n201 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -197,30 +197,31 @@ erDiagram
 
 ## 5. Model Details
 
-### 5.1 Users Domain (3 models)
+### 5.1 Users Domain (4 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
-| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (admin/client/lawyer/corporate_client/basic, default='basic'; 5 roles total, 4 client-facing), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
+| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (admin/client/lawyer/corporate_client/basic, default='basic'; 5 roles total, 4 client-facing), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, is_archived (archive() clears is_active → kills live JWTs; login blocked on all 3 auth methods), created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
 | `ActivityFeed` | action_type (create/edit/finish/delete/update/download/other), description, created_at | FK → User; max 20 per user (auto-cleanup on save) |
 | `UserSignature` | signature_image, method (upload/draw), ip_address, created_at | OneToOne → User |
+| `TourProgress` | module_name (dynamic_documents), completed_at (STALE_AFTER_DAYS=30 → tour re-offered) | FK → User (CASCADE); one row per user/module |
 
 ### 5.2 Processes Domain (5 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
 | `Case` | type | — (lookup table for case types) |
-| `Process` | authority, authority_email, plaintiff, defendant, ref, subcase, progress (0-100), created_at | FK → Case, FK → User (lawyer), M2M → User (clients), M2M → Stage, M2M → CaseFile |
+| `Process` | authority, authority_email, plaintiff, defendant, ref, subcase, progress (0-100), created_at | FK → Case, FK → User (lawyer, PROTECT — reassign via admin module before deleting a lawyer), M2M → User (clients), M2M → Stage, M2M → CaseFile |
 | `Stage` | status, date, created_at | No FK — linked via Process M2M |
 | `CaseFile` | file, created_at | No FK — linked via Process M2M; physical file deleted on model delete (signal) |
 | `RecentProcess` | last_viewed | FK → User, FK → Process; unique_together=[user, process] |
 
-### 5.3 Dynamic Documents Domain (9 models)
+### 5.3 Dynamic Documents Domain (10 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
 | `Tag` | name (unique), color_id | FK → User (created_by, SET_NULL) |
-| `DynamicDocument` | title, content, is_public, letterhead_image, letterhead_word_template | FK → User (created_by), M2M → Tag (tags) |
+| `DynamicDocument` | title, content, is_public, letterhead_image, letterhead_word_template | FK → User (created_by, immutable), FK → User (managed_by, SET_NULL — current manager; backfilled from created_by; lawyer scope + minuta rights follow this field), M2M → Tag (tags) |
 | `DocumentVariable` | name, type (input/text_area/number/date/email/select), value, summary_field (none/counterparty/object/value/term/subscription_date/start_date) | FK → DynamicDocument |
 | `DocumentSignature` | signed (bool), signed_at, rejected (bool), rejected_at | FK → DynamicDocument, FK → User (signer) |
 | `DocumentVisibilityPermission` | — | FK → DynamicDocument, FK → User |
@@ -228,6 +229,7 @@ erDiagram
 | `RecentDocument` | viewed_at | FK → User, FK → DynamicDocument |
 | `DocumentFolder` | name, color_id | FK → User (owner), M2M → DynamicDocument (documents) |
 | `DocumentRelationship` | (no extra fields) | FK → DynamicDocument (source_document), FK → DynamicDocument (target_document); bidirectional |
+| `DocumentPaymentRecord` | installment_number, file, original_name, amount, notes, status (uploaded/accepted/rejected), rejection_reason, uploaded_at | FK → DynamicDocument (document), FK → User (uploaded_by); cuenta de cobro per installment of a fully signed contract |
 
 ### 5.4 Organizations Domain (4 models)
 

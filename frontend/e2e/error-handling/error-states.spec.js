@@ -1,12 +1,17 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
+import { installForgetPasswordApiMocks } from "../helpers/forgetPasswordMocks.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
 /**
- * E2E tests for error handling and error states
- * Target: create tests for empty e2e/error-handling/ directory
+ * E2E tests for error handling and error states.
+ *
+ * Every scenario drives the form that produces the failing request, so the
+ * assertion is on what the user sees *after* the API answers (notification,
+ * cleared field, retry succeeding) rather than on a pre-rendered page.
  */
 
 function buildMockUser({ id, role }) {
@@ -21,44 +26,79 @@ function buildMockUser({ id, role }) {
   };
 }
 
+/**
+ * Sign-in mocks with a configurable failure status. The session is stateful:
+ * validate_token only succeeds once sign_in has returned 200.
+ */
+async function installSignInMocks(page, { signInStatus = 200, userId = 4200 } = {}) {
+  const user = buildMockUser({ id: userId, role: "lawyer" });
+  const nowIso = new Date().toISOString();
+  let isLoggedIn = false;
+
+  await mockApi(page, async ({ route, apiPath }) => {
+    if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    if (apiPath === "google-captcha/verify/") return { status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) };
+
+    if (apiPath === "validate_token/") {
+      if (isLoggedIn) return { status: 200, contentType: "application/json", body: "{}" };
+      return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
+    }
+
+    if (apiPath === "sign_in/" && route.request().method() === "POST") {
+      if (signInStatus !== 200) {
+        return { status: signInStatus, contentType: "application/json", body: JSON.stringify({ detail: "request rejected" }) };
+      }
+      isLoggedIn = true;
+      return { status: 200, contentType: "application/json", body: JSON.stringify({ access: "e2e-recovered-token", user }) };
+    }
+
+    if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
+    if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
+    if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
+    if (apiPath === "user-activities/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "create-activity/") return { status: 201, contentType: "application/json", body: JSON.stringify({ id: 1, action_type: "view", description: "", created_at: nowIso }) };
+    if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
+    if (apiPath === "processes/") return { status: 200, contentType: "application/json", body: "[]" };
+
+    return null;
+  });
+}
+
+async function fillSignInForm(page) {
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="email"]').fill("e2e@example.com");
+  // quality: allow-fragile-selector (stable application ID)
+  await page.locator('[id="password"]').fill("SecurePass1!");
+  await bypassCaptcha(page);
+}
+
 test.describe("error handling: 404 not found", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
   test("non-existent route shows 404 or redirects", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    // audit: load-only flow (router catch-all guard: loading the unknown URL is
+    // itself the behaviour under test)
     await page.goto("/non-existent-page-xyz");
-    await page.waitForLoadState("networkidle");
 
-    // Should show 404 page or redirect to home/login
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible();
   });
 
-  test("invalid document ID shows appropriate error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 4000;
-    const user = buildMockUser({ id: userId, role: "lawyer" });
+  test("unknown email on the password reset form surfaces the 404 error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await installForgetPasswordApiMocks(page, { sendPasscodeStatus: 404 });
 
-    await mockApi(page, async ({ route, apiPath }) => {
-      if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
-      if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-      if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-      if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    await page.goto("/forget_password");
+    await expect(page.getByRole("heading", { name: "No te preocupes, vamos ayudarte" })).toBeVisible({ timeout: 15_000 });
 
-      // Return 404 for document
-      if (apiPath.match(/^dynamic-documents\/999999\/$/)) {
-        return { status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Not found" }) };
-      }
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="email"]').fill("ghost-user@example.com");
+    await bypassCaptcha(page);
+    await page.getByRole("button", { name: /Enviar código/ }).click();
 
-      return null;
-    });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/dynamic_document_dashboard/document/999999");
-    await page.waitForLoadState("networkidle");
-
-    // Should handle 404 gracefully
-    await expect(page.locator("body")).toBeVisible();
+    // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Usuario no encontrado", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/forget_password/);
   });
 });
 
@@ -83,215 +123,186 @@ test.describe("error handling: 401 unauthorized", { tag: ['@flow:misc-error-hand
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
+    // audit: load-only flow (route guard: the redirect on load is the behaviour)
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // Should redirect to login or show auth error
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible();
   });
 
   test("missing token redirects to login", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    // No auth setup
+    // audit: load-only flow (route guard: the redirect on load is the behaviour)
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // Should redirect to login
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible();
   });
 });
 
 test.describe("error handling: 403 forbidden", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("access to forbidden resource shows error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 4020;
-    const user = buildMockUser({ id: userId, role: "client" });
+  test("sign-in forbidden by the API shows the generic error notification", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await installSignInMocks(page, { signInStatus: 403, userId: 4020 });
 
-    await mockApi(page, async ({ route, apiPath }) => {
-      if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
-      if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-      if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    await page.goto("/sign_in");
+    await fillSignInForm(page);
 
-      // Return 403 for admin endpoint
-      if (apiPath === "admin/settings/") {
-        return { status: 403, contentType: "application/json", body: JSON.stringify({ detail: "Permission denied" }) };
-      }
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-      return null;
-    });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "client", is_profile_completed: true },
-    });
-
-    await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
-
-    // Dashboard should still load for client
-    await expect(page.locator("body")).toBeVisible();
+    // 403 is neither 401 nor 400, so the catch-all branch is what the user sees
+    // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Error en el inicio de sesión", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/sign_in/);
+    expect(await page.evaluate(() => localStorage.getItem("token"))).toBeNull();
   });
 });
 
 test.describe("error handling: 500 server error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("server error is handled gracefully", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 4030;
-    const user = buildMockUser({ id: userId, role: "lawyer" });
+  test("sign-in answered with 500 clears the password and keeps the form usable", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await installSignInMocks(page, { signInStatus: 500, userId: 4030 });
 
-    await mockApi(page, async ({ route, apiPath }) => {
-      if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
-      if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-      if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-      if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+    await page.goto("/sign_in");
+    await fillSignInForm(page);
 
-      // Return 500 for some endpoints
-      if (apiPath === "user-activities/") {
-        return { status: 500, contentType: "application/json", body: JSON.stringify({ error: "Internal server error" }) };
-      }
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-      if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
+    // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Error en el inicio de sesión", { timeout: 10_000 });
 
-      return null;
-    });
-
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
-
-    await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
-
-    // Dashboard should still render despite partial errors
-    await expect(page.locator("body")).toBeVisible();
+    // The failed attempt wipes the password so the user must retype it
+    // quality: allow-fragile-selector (stable application ID)
+    await expect(page.locator('[id="password"]')).toHaveValue("");
+    // quality: allow-fragile-selector (stable application ID)
+    await expect(page.locator('[id="email"]')).toHaveValue("e2e@example.com");
   });
 });
 
 test.describe("error handling: network errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("offline indicator shows when network is unavailable", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    // This test simulates offline behavior
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+  test("dropped sign-in request shows the error and stores no session", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    await installSignInMocks(page, { userId: 4040 });
+    // Registered after the base mocks so it wins: the transport itself fails.
+    await page.route("**/api/sign_in/", (route) => route.abort("failed"));
 
-    // Page should handle offline gracefully
-    await expect(page.locator("body")).toBeVisible();
+    await page.goto("/sign_in");
+    await fillSignInForm(page);
+
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
+
+    // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Error en el inicio de sesión", { timeout: 10_000 });
+    expect(await page.evaluate(() => localStorage.getItem("token"))).toBeNull();
+    await expect(page).toHaveURL(/\/sign_in/);
   });
 
   test("app recovers from temporary network failure", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 4040;
-    const user = buildMockUser({ id: userId, role: "lawyer" });
-    let requestCount = 0;
+    await installSignInMocks(page, { userId: 4041 });
+    // Only the first submission is dropped; the retry reaches the API.
+    await page.route("**/api/sign_in/", (route) => route.abort("failed"), { times: 1 });
 
-    await mockApi(page, async ({ route, apiPath }) => {
-      requestCount++;
-      
-      if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
-      if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-      if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-      if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-      if (apiPath === "user-activities/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
+    await page.goto("/sign_in");
+    await fillSignInForm(page);
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-      return null;
-    });
+    // quality: allow-fragile-selector (SweetAlert2 popup, precedent in suite)
+    const errorPopup = page.locator('[class~="swal2-popup"]');
+    await expect(errorPopup).toContainText("Error en el inicio de sesión", { timeout: 10_000 });
+    // quality: allow-fragile-selector (SweetAlert2 confirm button, precedent in suite)
+    await page.locator('[class~="swal2-confirm"]').click();
+    await expect(errorPopup).toBeHidden();
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    // The user retypes the wiped password and submits again — now it goes through
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="password"]').fill("SecurePass1!");
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-    await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
-
-    // App should be functional
-    await expect(page.locator("body")).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
+    expect(await page.evaluate(() => localStorage.getItem("token"))).toBe("e2e-recovered-token");
   });
 });
 
 test.describe("error handling: form validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
   test("form shows validation errors for invalid input", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    await page.goto("/sign-in");
-    await page.waitForLoadState("networkidle");
+    await mockApi(page, async ({ apiPath }) => {
+      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+      if (apiPath === "validate_token/") return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
+      return null;
+    });
 
-    // Try to submit empty form
-    const submitBtn = page.getByRole("button", { name: /ingresar|sign in|login/i }).first();
-    if (await submitBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await submitBtn.click();
-      await page.waitForLoadState('domcontentloaded');
-    }
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-    // Form should show validation errors or remain on page
-    await expect(page.locator("body")).toBeVisible();
+    // Submitting the empty form surfaces the client-side validation error
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Email is required", { timeout: 10_000 });
+
+    // The user stays on the sign-in page
+    await expect(page).toHaveURL(/\/sign_in/);
   });
 
   test("form shows server validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
     await mockApi(page, async ({ route, apiPath }) => {
       if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
+      if (apiPath === "google-captcha/verify/") return { status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) };
+      if (apiPath === "validate_token/") return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "invalid" }) };
 
-      // Return validation error for login
-      if (apiPath === "token/" && route.request().method() === "POST") {
-        return { status: 400, contentType: "application/json", body: JSON.stringify({ detail: "Invalid credentials" }) };
+      // Reject the credentials at the API boundary
+      if (apiPath === "sign_in/" && route.request().method() === "POST") {
+        return { status: 401, contentType: "application/json", body: JSON.stringify({ error: "Credenciales inválidas" }) };
       }
 
       return null;
     });
 
-    await page.goto("/sign-in");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/sign_in");
+    await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
-    // Fill in invalid credentials
-    const emailInput = page.getByPlaceholder(/email|correo/i).first();
-    const passInput = page.getByPlaceholder(/contraseña|password/i).first();
-    
-    if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await emailInput.fill("invalid@example.com");
-      await passInput.fill("wrongpassword");
-      
-      const submitBtn = page.getByRole("button", { name: /ingresar|sign in|login/i }).first();
-      if (await submitBtn.isVisible()) {
-        await submitBtn.click();
-        await page.waitForLoadState('networkidle');
-      }
-    }
+    // Fill in invalid credentials and submit
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="email"]').fill("invalid@example.com");
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator('[id="password"]').fill("wrongpassword");
+    await bypassCaptcha(page);
 
-    // Should show error message or remain on form
-    await expect(page.locator("body")).toBeVisible();
+    const submitBtn = page.getByRole("button", { name: "Iniciar sesión" });
+    await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+    await submitBtn.click();
+
+    // The 401 surfaces the invalid-credentials notification and the user
+    // remains on the sign-in page
+    await expect(page.locator('[class~="swal2-popup"]')).toContainText("Credenciales inválidas", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/sign_in/);
   });
 });
 
 test.describe("error handling: timeout errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("app handles slow responses gracefully", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    const userId = 4050;
-    const user = buildMockUser({ id: userId, role: "lawyer" });
+  test("slow sign-in response keeps the submit button in its loading state", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    const slowResponse = { access: "e2e-recovered-token", user: buildMockUser({ id: 4200, role: "lawyer" }) };
 
-    await mockApi(page, async ({ route, apiPath }) => {
-      if (apiPath === "validate_token/") return { status: 200, contentType: "application/json", body: "{}" };
-      if (apiPath === "users/") return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-      if (apiPath === `users/${userId}/`) return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-      if (apiPath === `users/${userId}/signature/`) return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
-      if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-      if (apiPath === "user-activities/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "recent-processes/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "dynamic-documents/recent/") return { status: 200, contentType: "application/json", body: "[]" };
-      if (apiPath === "legal-updates/active/") return { status: 200, contentType: "application/json", body: "[]" };
-
-      return null;
+    await installSignInMocks(page, { userId: 4200 });
+    // The session becomes valid as soon as the delayed sign-in answers, so the
+    // dashboard guard lets the user through.
+    await page.route("**/api/validate_token/", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: "{}" })
+    );
+    // Hold the answer back so the in-flight UI state is observable.
+    await page.route("**/api/sign_in/", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(slowResponse),
+      });
     });
 
-    await setAuthLocalStorage(page, {
-      token: "e2e-token",
-      userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-    });
+    await page.goto("/sign_in");
+    await fillSignInForm(page);
 
-    await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "Iniciar sesión" }).click();
 
-    // App should load
-    await expect(page.locator("body")).toBeVisible();
+    // While the request is in flight the button reports progress and is locked
+    const submitButton = page.getByRole("button", { name: "Validando credenciales..." });
+    await expect(submitButton).toBeVisible({ timeout: 5_000 });
+    await expect(submitButton).toBeDisabled();
+
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20_000 });
   });
 });

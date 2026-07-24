@@ -6,7 +6,10 @@
     </div>
 
     <!-- Hero header -->
-    <div class="bg-gradient-to-r from-[#4393ff] to-[#5dbde6] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <!-- lg:pr-24 keeps right-side actions clear of the floating notification
+         bell (fixed top-6 right-8, z-50), which otherwise overlaps them once
+         the mobile top bar disappears at lg. -->
+    <div class="bg-gradient-to-r from-[#4393ff] to-[#5dbde6] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:pr-24">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1

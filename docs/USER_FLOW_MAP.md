@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** April 10, 2026
-**Versión:** 1.9.2
+**Fecha:** July 7, 2026
+**Versión:** 1.11.0
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -394,6 +394,30 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 **Ramificaciones:**
 - └── **Reconexión:** El usuario recupera internet y vuelve a navegar por la app
+
+---
+
+## Flujos — Admin
+
+### admin-data-reassignment: Reasignación de datos de abogado
+- **Módulo:** admin | **Prioridad:** P1 | **Ruta:** `/data_reassignment` | **E2E:** ✅ (`data-reassignment-flow.spec.js` — 5 tests: transferencia+archivado, restauración, entrada por quick action del dashboard, error de backend en execute, guard no-admin)
+- **Descripción:** Módulo exclusivo de administradores para transferir procesos y documentos de un abogado a otro y archivar cuentas de abogados. Acceso desde el menú lateral "Reasignación de Datos" (solo admin) y el botón rápido del dashboard. La transferencia es atómica: los procesos pasan al destino, la gestión de documentos (`managed_by`) también, y `assigned_to` migra solo cuando era el abogado origen; `created_by` nunca cambia (auditoría). Los documentos en estados de firma (Pendiente/Firmado/Rechazado/Vencido) no son transferibles. Archivar un abogado bloquea su login por todos los métodos, lo excluye de listados y notificaciones, y es reversible.
+
+**Pasos:**
+1. El administrador entra a `/data_reassignment` (guard `requiresAdmin`; los no-admin son redirigidos al dashboard)
+2. Selecciona el abogado origen → el sistema carga la vista previa (procesos + documentos elegibles + no elegibles con motivo)
+3. Selecciona el abogado destino (excluye al origen y a los archivados)
+4. Marca procesos/documentos (o "Seleccionar todos"); opcionalmente "Archivar abogado origen al finalizar"
+5. Confirma en el modal → transferencia atómica → toast de éxito con el resumen (y aviso de archivado si aplica)
+6. Los abogados archivados pueden restaurarse desde la card "Abogados archivados"
+
+**Ramificaciones:**
+- ├── **Documentos en firma:** listados como no transferibles con motivo (En proceso de firma / Firmado / Rechazado / Vencido); excluidos del "Seleccionar todos"
+- ├── **Documentos personales del abogado (assigned_to = origen):** su `assigned_to` migra al destino; los asignados a clientes conservan su cliente
+- ├── **Minutas:** su gestión (`managed_by`) migra, por lo que aparecen en el scope "Mías" del destino y desaparecen del origen
+- ├── **Archivar origen:** bloqueo total de login (tradicional + Google/Outlook), exclusión de listados y notificaciones; reversible vía "Restaurar"
+- ├── **Error en la transferencia:** si el backend rechaza (400), el modal se cierra y el toast de error muestra el motivo devuelto
+- └── **No-admin:** el guard redirige al dashboard; el ítem de menú y el botón rápido no se muestran
 
 ---
 
@@ -1057,6 +1081,50 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 ### docs-profile-navigation: Navegación documentos-perfil
 - **Módulo:** documents | **Prioridad:** P4 | **Ruta:** N/A | **E2E:** ✅
 - **Descripción:** Navegación entre documentos y perfil de usuario
+
+---
+
+### docs-contract-execution: Ejecución del contrato — cuentas de cobro
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard` (tab Dcs. Formalizados) | **E2E:** ✅ (`contract-execution-flow.spec.js`)
+- **Descripción:** Los documentos completamente firmados con una variable clasificada como "Forma de pago (N cuotas)" habilitan el submódulo de ejecución del contrato: registro secuencial de cuentas de cobro por cuota. El menú del documento firmado gana "Subir Cuenta de Cobro" (cuando hay cuota disponible) y "Ver Cuentas de Cobro" (modal con barra de progreso X/N, total de montos aceptados, estado por cuota — Pendiente/Cargada/Aceptada/Rechazada — descarga de comprobantes y panel de revisión del abogado). Reglas autoritativas en backend: la cuota N+1 se habilita solo cuando N fue aceptada; una cuota en revisión bloquea nuevas cargas (409); el rechazo exige motivo y reabre el mismo slot conservando el historial.
+
+**Pasos:**
+1. Abogado clasifica una variable de la minuta como "Forma de pago (N cuotas)" (field_type number, valor entero ≥1); el dato aparece en el resumen del documento
+2. Con el documento `FullySigned`, cliente asignado (o abogado creador) abre "Subir Cuenta de Cobro": cuota auto-seleccionada, archivo PDF/JPG/PNG/DOCX ≤20MB, monto y notas opcionales
+3. El abogado recibe notificación (correo + campana) y revisa en "Ver Cuentas de Cobro": descarga el archivo y acepta o rechaza con motivo obligatorio
+4. Aceptar habilita la siguiente cuota; rechazar notifica al cliente con el motivo y reabre el mismo slot para re-carga
+5. Ambas partes consultan el historial (progreso, contabilidad de montos, quién cargó y cuándo) y descargan comprobantes
+
+**Ramificaciones:**
+- ├── **Cliente asignado:** puede cargar y consultar; nunca revisar
+- ├── **Abogado creador:** puede cargar en nombre del cliente (sin auto-notificación), revisar y consultar
+- ├── **Cuota en revisión:** nadie puede cargar hasta la decisión (409 en backend, CTA oculto en UI)
+- ├── **Cuota rechazada:** re-carga sobre el MISMO registro; el motivo anterior queda visible como historial
+- ├── **Documento sin forma de pago:** el submódulo no aparece (fail-safe, docs existentes intactos)
+- └── **Terceros:** 403 en API y sin acciones en el menú
+
+---
+
+### docs-guided-tour: Tour guiado del módulo Archivos Jurídicos
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (`docs-guided-tour-flow.spec.js`)
+- **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay tintado de marca con spotlight redondeado, popover con eyebrow "Guía · Archivos Jurídicos", barra de progreso animada + conteo "Paso X de Y", botones "Siguiente"/"Anterior"/"Omitir guía" y navegación por teclado (← →). Abre con una tarjeta de bienvenida ("Comenzar recorrido" / "Ahora no") y cierra resaltando el botón "?" del header ("Entendido"), con una breve celebración de confetti solo al completarlo. Diferenciado por rol (abogado 10 pasos de contenido, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal brandeado a los 30 días, re-lanzamiento manual con el botón "?" (que muestra un ping azul mientras la guía esté pendiente).
+
+**Pasos:**
+1. Usuario entra a `/dynamic_document_dashboard` por primera vez (status `never`); el botón "?" muestra un ping azul
+2. Tras cargar la página aparece la tarjeta de bienvenida centrada; "Comenzar recorrido" inicia (o "Ahora no" declina y registra la vista)
+3. "Siguiente" recorre pestañas y botones ("Nueva Minuta", "Nuevo Documento", "Firma Electrónica", "Membrete Global") con barra de progreso "Paso X de 10/7"; el tour cambia de pestaña automáticamente cuando el elemento vive en otra tab
+4. El último paso resalta el botón "?" del header; "Entendido" cierra con confetti y registra la completación (`POST /api/tour-progress/complete/`)
+5. Omitir ("Omitir guía"/✕/"Ahora no") también registra la completación, sin confetti; el ping del "?" desaparece
+6. En visitas posteriores (<30 días, status `recent`) el tour no se auto-inicia; el botón "?" lo relanza a demanda desde la bienvenida
+7. Pasados 30 días (status `stale`) aparece el modal brandeado "¿Quieres ver la guía del módulo de Archivos Jurídicos?" ("Ver la guía" / "Ahora no"); rechazar también resetea el reloj de 30 días
+
+**Ramificaciones:**
+- ├── **Abogado/Admin:** 10 pasos de contenido (incluye Minutas, Dcs. Clientes, Nueva Minuta) + bienvenida y cierre
+- ├── **Cliente/Basic/Corporate:** 7 pasos de contenido (Carpetas, Mis Documentos, Por Firmar, Formalizados) + bienvenida y cierre
+- ├── **Móvil (<md):** pasos de pestañas individuales se omiten (viven en dropdown colapsado) — 3 pasos de contenido + bienvenida y cierre
+- ├── **Con firmas pendientes:** paso de contenido extra resaltando "Dcs. Por Firmar" antes del cierre
+- ├── **prefers-reduced-motion:** sin animaciones (pop-in, barra, ping, confetti)
+- └── **Deep link (?tab=/?lawyerTab=):** el auto-inicio se suprime (el usuario llegó con un propósito)
 
 ---
 
@@ -2059,7 +2127,7 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Dashboard | 8 | 8 | 0 | 0 |
 | Directory | 1 | 1 | 0 | 0 |
 | Processes | 11 | 11 | 0 | 0 |
-| Documents | 32 | 32 | 0 | 0 |
+| Documents | 34 | 34 | 0 | 0 |
 | Signatures | 12 | 12 | 0 | 0 |
 | Legal Requests | 8 | 8 | 0 | 0 |
 | Organizations | 16 | 16 | 0 | 0 |
@@ -2070,7 +2138,8 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Notifications | 1 | 1 | 0 | 0 |
 | Misc | 4 | 4 | 0 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
-| **Total** | **150** | **150** | **0** | **0** |
+| Admin | 1 | 1 | 0 | 0 |
+| **Total** | **153** | **153** | **0** | **0** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
 >
@@ -2081,6 +2150,72 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ---
 
-**Documento generado:** July 16, 2026
-**Versión:** 1.9.4
-**Estado:** 150/150 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz regenerada con `frontend/scripts/generate-coverage.js` (cobertura estática por tags `@flow:`) contra `flow-definitions.json` v1.9.3. Nota: el artefacto local `e2e-results/flow-coverage.json` del 07-07 con 153 flujos provenía de las definiciones de la rama `release-august-2026-c-v2` (PR #95: `admin-data-reassignment`, `docs-contract-execution`, `docs-guided-tour`) — esos 3 flujos llegarán a esta rama cuando mergee el PR.
+## Flujos añadidos — Auditoría exhaustiva 2026-07-22 (v1.12.0)
+
+Auditoría de doble fuente (interacciones frontend + clasificación de 205 endpoints) sobre el registro v1.11.0. Se detectaron y cubrieron 11 flujos:
+
+### notification-mark-read / notification-snooze / notification-archive-toggle / notification-delete / notification-pagination
+- **Módulo:** notifications | **Prioridad:** P3-P4 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js` — 6 tests)
+- **Descripción:** Acciones por ítem del centro de notificaciones: marcar leída/no-leída (individual y masiva, badge sincronizado), posponer con intervalos (1h/3h/1d/3d), archivar/desarchivar entre pestañas, eliminar definitivamente y paginación Anterior/Siguiente. Nota: la auditoría destapó y corrigió un bug real — el menú de snooze quedaba invisible/enterrado al salir del hover de la fila (fix: barra de acciones fijada con z-20 mientras su menú está abierto).
+
+### service-admin-delete
+- **Módulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ✅ (`service-admin-flow.spec.js`)
+- **Descripción:** Admin selecciona un servicio, pulsa "Eliminar servicio", confirma en SweetAlert ("Sí, eliminar") y el servicio sale del catálogo; las solicitudes ya enviadas se conservan.
+
+### process-users-modal
+- **Módulo:** processes | **Prioridad:** P3 | **Ruta:** `/process_detail/:id` | **E2E:** ✅ (`process-detail-actions.spec.js`)
+- **Descripción:** "Ver usuarios" abre el modal de participantes del proceso con los clientes asociados (avatar/iniciales + nombre) y estado vacío si no hay usuarios.
+
+### sign-download-signatures-pdf
+- **Módulo:** signatures | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard/signed-documents` | **E2E:** ✅ (`signed-documents-flow.spec.js`)
+- **Descripción:** Sobre un documento completamente firmado, la acción "Descargar Doc. Formalizado" del menú de la tarjeta descarga el certificado de firmas (`generate-signatures-pdf`). Requiere estado FullySigned y ≥1 firma registrada.
+
+### org-corporate-dashboard-stats
+- **Módulo:** organizations | **Prioridad:** P2 | **Ruta:** dashboard corporativo | **E2E:** ✅ (`organizations-corporate-invite-member-stats.spec.js`)
+- **Descripción:** KPIs del dashboard del cliente corporativo (organizaciones, miembros, invitaciones pendientes) servidos por `organizations/stats/`; se actualizan tras invitar un miembro.
+
+### directory-navigate-to-process
+- **Módulo:** directory | **Prioridad:** P4 | **Ruta:** `/directory_list` | **E2E:** ✅ (`directory.spec.js`)
+- **Descripción:** Desde el modal de detalle de usuario, "Ver proceso" navega al detalle y "Ver todos en Procesos" al listado filtrado por el usuario.
+
+### secop-list-error-retry
+- **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅ (`secop-list-error-retry.spec.js`)
+- **Descripción:** Ante un fallo de carga del listado, se muestra el estado de error con "Reintentar"; el botón recarga y renderiza la tabla.
+
+**Clasificados como no-flujo (auditoría 2026-07-22):** endpoints huérfanos sin consumidor de componente (candidatos a dead-code o UI pendiente): CRUD de legal-updates (store sin invocador), `corporate-requests/corporate/dashboard-stats/`, `organizations/<id>/public/`, y los pares `recent-documents/processes` (se escriben desde las vistas pero ningún widget los muestra). La plantilla Word de membrete SÍ tiene UI y quedó cubierta como ramificación de `docs-letterhead` (upload real en `docs-letterhead-flow.spec.js`). 20 endpoints no-UI (permisos granulares superseded, firmas legacy, webhook Wompi).
+
+---
+
+## Pasada de profundidad — Auditoría anti-synthetic 2026-07-23
+
+Reescritura de **47 specs (135 sitios sintéticos → 0)**: asserts condicionales (`if (visible)`), `.catch(() => false)` y asserts sobre `#app` reemplazados por interacciones conducidas con outcomes observables. Hallazgos estructurales corregidos: 10+ tests apuntaban a **rutas fantasma** (`/process`, `/organizations`, `/subscription`, `/privacy-policy`, `/terms-of-use` → catch-all a sign_in); labels/estados/selectores inexistentes ("InProgress", "Nueva Solicitud", `/sign-in`); fixtures con shapes inválidos. Dead-code adicional confirmado: **no existe UI de gestión de suscripción** (cancel/reactivate/update-payment sin componente) ni CRUD de legal-updates. La pestaña Carpetas no tiene buscador (test infalsificable reemplazado). Variantes añadidas: rol basic en SECOP (overlays de upgrade) y mobile en el centro de notificaciones.
+
+---
+
+## Auditoría "interacción real" — 2026-07-23 (ronda 6)
+
+Segunda pasada de profundidad, con criterio distinto al anti-synthetic de R5: **¿el test ejecuta la acción del usuario, o fabrica el estado final con mocks y aserta lo que él mismo cocinó?** Medida con `scripts/audit_e2e_interactions.py` (persistido, sale con código 1 mientras queden sospechosos).
+
+| Categoría | Antes | Después |
+|---|---|---|
+| Interactivos (conducen la acción) | 394 | **544** |
+| Guards / empty states / restricciones (legítimos) | 86 | 75 |
+| Marcados `// audit: load-only flow` | 0 | 11 |
+| **Solo renderizan un mock (sospechosos)** | **159** | **0** |
+
+Los 159 se reescribieron para ejecutar la acción y asertar la transición. Validación del criterio "puede fallar" por mutación: quitar `pageSize` del watcher de `SecopList.vue` pone rojo el test de tamaño de página; restaurarlo lo devuelve a verde. El criterio quedó escrito en `docs/TESTING_QUALITY_STANDARDS.md` § "Drive the Interaction, Assert the Transition" para specs futuros.
+
+**Bugs y código muerto que destapó la reescritura:**
+- 🐛 **Botón de sincronización SECOP inerte**: `SyncStatus.vue` no declara `defineEmits`, así que `@trigger-sync` nunca dispara y `POST secop/sync/trigger/` jamás se envía — el usuario ve un spinner de 180 s y no pasa nada. Pendiente de decisión de producto (arreglarlo lanzaría sincronizaciones reales contra Socrata).
+- 🐛 **Botón de limpiar firma sin nombre accesible** (solo-icono, sin `aria-label`): su test estaba muerto porque el locator nunca hacía match. Hueco de accesibilidad real.
+- **`document-key-fields.spec.js` probaba un campo inexistente** (`is_key` no aparece en `src/`): el spec entero verificaba una funcionalidad fantasma; reescrito contra `summary_field`.
+- Navegación falsificada con `page.evaluate(router.push(...))` en lugar de usar la UI.
+- Rutas sin punto de entrada: `/dynamic_document_dashboard/signed-documents`, `/subscriptions`, `/legal_requests` (el sidebar filtra ambos ítems), `/no_connection` (nada escucha `navigator.onLine`).
+- Ramas muertas: sub-secciones de `GuideNavigation.vue` que ningún módulo define; SweetAlert "Firmantes requeridos" inalcanzable porque el botón ya se deshabilita; `deleteOrganization` en el store sin componente que lo llame.
+- `hasMore` con page size hardcodeado a 20 en `LegalRequestsList.vue`.
+
+---
+
+**Documento generado:** July 22, 2026
+**Versión:** 1.12.0
+**Estado:** 164/164 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.12.0 (cobertura estática por tags `@flow:`).

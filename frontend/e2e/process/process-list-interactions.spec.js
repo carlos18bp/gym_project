@@ -23,23 +23,37 @@ function buildUser({ id, role = "lawyer" }) {
   };
 }
 
-function buildProcess({ id, lawyerId, clientId, ref, progress = 25, plaintiff = "Demandante", defendant = "Demandado" }) {
+function buildProcess({
+  id,
+  lawyerId,
+  clientId,
+  ref,
+  progress = 25,
+  plaintiff = "Demandante",
+  defendant = "Demandado",
+  caseType = "Civil",
+  caseId = 1,
+  stageStatus = "Inicio",
+  clientFirstName = "Cliente",
+  clientLastName = "Test",
+  createdAt = new Date().toISOString(),
+}) {
   return {
     id,
-    clients: [{ id: clientId, first_name: "Cliente", last_name: "Test", email: "client@test.com", role: "client", photo_profile: "" }],
+    clients: [{ id: clientId, first_name: clientFirstName, last_name: clientLastName, email: "client@test.com", role: "client", photo_profile: "" }],
     lawyer: { id: lawyerId, first_name: "Abogado", last_name: "Test", email: "lawyer@test.com" },
-    case: { id: 1, type: "Civil" },
+    case: { id: caseId, type: caseType },
     subcase: "Subcaso Test",
     ref: ref || `RAD-${id}`,
     authority: "Juzgado 1 Civil",
     authority_email: "juzgado@test.com",
     plaintiff,
     defendant,
-    stages: [{ status: "Inicio", date: new Date().toISOString(), description: "Etapa inicial" }],
+    stages: [{ status: stageStatus, date: new Date().toISOString(), description: "Etapa inicial" }],
     progress,
     case_files: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: createdAt,
+    updated_at: createdAt,
   };
 }
 
@@ -80,19 +94,26 @@ async function installProcessMocks(page, { userId, role = "lawyer", processes = 
 // ---------- Tab navigation ----------
 
 test.describe("ProcessList tab navigation", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
-  test("lawyer sees Mis Procesos and Todos los Procesos tabs", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("switching to Todos los Procesos tab reveals another lawyer's process", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 3200;
     const processes = [
-      buildProcess({ id: 1, lawyerId: userId, clientId: 999, ref: "RAD-200", progress: 40 }),
+      buildProcess({ id: 1, lawyerId: userId, clientId: 999, ref: "RAD-200", progress: 40, plaintiff: "Proceso Propio" }),
+      buildProcess({ id: 2, lawyerId: 8888, clientId: 998, ref: "RAD-201", progress: 10, plaintiff: "Proceso Ajeno" }),
     ];
 
     await installProcessMocks(page, { userId, processes });
     await page.goto("/process_list");
 
-    // Tabs should be visible
-    await expect(page.getByRole("button", { name: "Mis Procesos" })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: "Todos los Procesos" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Procesos Archivados" })).toBeVisible();
+    // Starting point: "Mis Procesos" only lists the processes owned by this lawyer
+    await expect(page.getByText("Proceso Propio")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Proceso Ajeno")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Todos los Procesos" }).click();
+
+    // Transition: the other lawyer's process appears and the URL carries the tab
+    await expect(page.getByText("Proceso Ajeno")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Proceso Propio")).toBeVisible();
+    await expect(page).toHaveURL(/group=general/);
   });
 
   test("switching to Procesos Archivados tab shows empty state or archived list", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
@@ -114,34 +135,51 @@ test.describe("ProcessList tab navigation", { tag: ['@flow:process-list-view', '
 // ---------- Process list rendering ----------
 
 test.describe("ProcessList renders process data", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
-  test("process plaintiff, defendant and case type are visible in table", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("filtering by Tipo keeps only the matching plaintiff and defendant row", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 3210;
     const processes = [
-      buildProcess({ id: 10, lawyerId: userId, clientId: 999, ref: "RAD-VISIBLE", progress: 60, plaintiff: "Juan Pérez", defendant: "María López" }),
+      buildProcess({ id: 10, lawyerId: userId, clientId: 999, ref: "RAD-VISIBLE", progress: 60, plaintiff: "Juan Pérez", defendant: "María López", caseType: "Civil", caseId: 1 }),
+      buildProcess({ id: 12, lawyerId: userId, clientId: 997, ref: "RAD-PENAL", progress: 30, plaintiff: "Sofía Penal", defendant: "Hugo Penal", caseType: "Penal", caseId: 2 }),
     ];
 
     await installProcessMocks(page, { userId, processes });
     await page.goto("/process_list");
-    await expect(page.getByRole("button", { name: "Mis Procesos" })).toBeVisible({ timeout: 10_000 });
 
-    // Table columns show plaintiff, defendant, case type
+    // Starting point: both processes are listed
     await expect(page.getByText("Juan Pérez")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Sofía Penal")).toBeVisible();
+
+    await page.getByRole("button", { name: "Tipo" }).click();
+    await page.getByRole("menuitem", { name: "Civil" }).click();
+
+    // Transition: only the Civil row survives, with its plaintiff/defendant/type
+    await expect(page.getByText("Sofía Penal")).toHaveCount(0);
+    await expect(page.getByText("Juan Pérez")).toBeVisible();
     await expect(page.getByText("María López")).toBeVisible();
-    await expect(page.getByText("Civil")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Civil" })).toBeVisible();
   });
 
-  test("process progress percentage is rendered", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("filtering by Etapa keeps the progress percentage of the matching process", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 3211;
     const processes = [
-      buildProcess({ id: 11, lawyerId: userId, clientId: 999, ref: "RAD-PROGRESS", progress: 75 }),
+      buildProcess({ id: 11, lawyerId: userId, clientId: 999, ref: "RAD-PROGRESS", progress: 75, stageStatus: "Inicio", plaintiff: "Inicio Caso" }),
+      buildProcess({ id: 13, lawyerId: userId, clientId: 996, ref: "RAD-OTRA", progress: 42, stageStatus: "Alegatos", plaintiff: "Alegatos Caso" }),
     ];
 
     await installProcessMocks(page, { userId, processes });
     await page.goto("/process_list");
-    await expect(page.getByRole("button", { name: "Mis Procesos" })).toBeVisible({ timeout: 10_000 });
 
-    // Progress percentage should be visible in the table
+    // Starting point: both progress values are on screen
     await expect(page.getByText("75%")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("42%")).toBeVisible();
+
+    await page.getByRole("button", { name: "Etapa" }).click();
+    await page.getByRole("menuitem", { name: "Inicio" }).click();
+
+    // Transition: only the "Inicio" process (75%) remains
+    await expect(page.getByText("42%")).toHaveCount(0);
+    await expect(page.getByText("75%")).toBeVisible();
+    await expect(page.getByText("Inicio Caso")).toBeVisible();
   });
 });
 
@@ -164,42 +202,52 @@ test.describe("ProcessList search filtering", { tag: ['@flow:process-list-view',
     await expect(page.getByText("Pedro Martín")).toBeVisible();
 
     // Type in search field
-    const searchInput = page.getByPlaceholder(/buscar|search/i).first();
-    if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await searchInput.fill("Carlos");
-      // Wait for filtering
-      await expect(page.getByText("Carlos Gómez")).toBeVisible({ timeout: 5_000 });
-    }
+    const searchInput = page.getByPlaceholder("Buscar procesos...");
+    await expect(searchInput).toBeVisible({ timeout: 5_000 });
+    await searchInput.fill("Carlos");
+
+    // Filtering keeps the match and removes the non-matching process
+    await expect(page.getByText("Carlos Gómez")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Pedro Martín")).toHaveCount(0);
   });
 });
 
-test.describe("ProcessList multiple processes rendering", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
-  test("renders multiple processes with different progress values", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test.describe("ProcessList sorting", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
+  test("sorting by Nombre (A-Z) reorders the rendered process rows", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 3240;
     const processes = [
-      buildProcess({ id: 40, lawyerId: userId, clientId: 999, ref: "RAD-1", progress: 25, plaintiff: "Primer Caso" }),
-      buildProcess({ id: 41, lawyerId: userId, clientId: 998, ref: "RAD-2", progress: 75, plaintiff: "Segundo Caso" }),
-      buildProcess({ id: 42, lawyerId: userId, clientId: 997, ref: "RAD-3", progress: 100, plaintiff: "Tercer Caso" }),
+      buildProcess({ id: 40, lawyerId: userId, clientId: 999, ref: "RAD-1", progress: 25, plaintiff: "Primer Caso", clientFirstName: "Zulema", clientLastName: "Zapata", createdAt: "2026-03-03T10:00:00Z" }),
+      buildProcess({ id: 41, lawyerId: userId, clientId: 998, ref: "RAD-2", progress: 75, plaintiff: "Segundo Caso", clientFirstName: "Mario", clientLastName: "Medina", createdAt: "2026-02-02T10:00:00Z" }),
+      buildProcess({ id: 42, lawyerId: userId, clientId: 997, ref: "RAD-3", progress: 100, plaintiff: "Tercer Caso", clientFirstName: "Aurora", clientLastName: "Alvarez", createdAt: "2026-01-01T10:00:00Z" }),
     ];
 
     await installProcessMocks(page, { userId, processes });
     await page.goto("/process_list");
-    await expect(page.getByRole("button", { name: "Mis Procesos" })).toBeVisible({ timeout: 10_000 });
 
-    // All three processes should render
-    await expect(page.getByText("Primer Caso")).toBeVisible();
-    await expect(page.getByText("Segundo Caso")).toBeVisible();
-    await expect(page.getByText("Tercer Caso")).toBeVisible();
+    // Starting point: default sort is "Más recientes" — newest created_at first.
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    const rows = page.getByRole("row");
+    await expect(rows).toHaveCount(4, { timeout: 10_000 });
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    await expect(rows.nth(1)).toContainText("Zulema Zapata");
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    await expect(rows.nth(3)).toContainText("Aurora Alvarez");
 
-    // Progress values should be visible
-    await expect(page.getByText("25%")).toBeVisible();
-    await expect(page.getByText("75%")).toBeVisible();
-    await expect(page.getByText("100%")).toBeVisible();
+    await page.getByRole("button", { name: "Más recientes" }).click();
+    await page.getByRole("menuitem", { name: "Nombre (A-Z)" }).click();
+
+    // Transition: rows are re-ordered alphabetically by client name
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    await expect(rows.nth(1)).toContainText("Aurora Alvarez");
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    await expect(rows.nth(2)).toContainText("Mario Medina");
+    // quality: allow-fragile-selector (row order IS the behaviour under test, so positional access is required)
+    await expect(rows.nth(3)).toContainText("Zulema Zapata");
   });
 });
 
 test.describe("ProcessList client-specific features", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
-  test("client sees Nueva Solicitud button", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("client clicking Solicitar Información opens the legal request form", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 3220;
     const processes = [
       buildProcess({ id: 20, lawyerId: 999, clientId: userId, ref: "RAD-CLIENT" }),
@@ -208,11 +256,13 @@ test.describe("ProcessList client-specific features", { tag: ['@flow:process-lis
     await installProcessMocks(page, { userId, role: "client", processes });
     await page.goto("/process_list");
 
-    // Wait for the page to load
-    await expect(page.getByRole("button", { name: /Mis Procesos/i })).toBeVisible({ timeout: 10_000 });
-
-    // "Solicitar Información" button should be visible for clients
+    // Starting point: the client is on the process list
     const requestBtn = page.getByRole("button", { name: /Solicitar Información/i });
-    await expect(requestBtn).toBeVisible({ timeout: 5000 });
+    await expect(requestBtn).toBeVisible({ timeout: 10_000 });
+
+    await requestBtn.click();
+
+    // Transition: the legal request creation view takes over
+    await expect(page).toHaveURL(/\/legal_request_create/, { timeout: 10_000 });
   });
 });

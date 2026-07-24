@@ -14,7 +14,7 @@ import {
 const userId = 4100;
 const documentId = 600;
 
-async function setupAndNavigateToConfig(page) {
+async function setupAndOpenEditor(page) {
   const nowIso = new Date().toISOString();
 
   await installTinyMceCloudStub(page);
@@ -71,27 +71,31 @@ async function setupAndNavigateToConfig(page) {
 
   await page.goto(`/dynamic_document_dashboard/lawyer/editor/edit/${documentId}`);
   await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible({ timeout: 15_000 });
+}
+
+async function setupAndNavigateToConfig(page) {
+  await setupAndOpenEditor(page);
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page).toHaveURL(/\/dynamic_document_dashboard\/lawyer\/variables-config/);
 }
 
 test("variables config page renders variables and action buttons", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
-  await setupAndNavigateToConfig(page);
+  await setupAndOpenEditor(page);
+
+  await page.getByRole("button", { name: "Continuar" }).click();
 
   // Title from the mocked document.
+  await expect(page).toHaveURL(/\/dynamic_document_dashboard\/lawyer\/variables-config/);
   await expect(page.getByRole("heading", { name: "Minuta Interactions E2E" })).toBeVisible();
 
   // Both variables are listed by their English name.
   await expect(page.getByRole("heading", { name: "Field1" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Field2" })).toBeVisible();
 
-  // Action buttons for the save/publish/cancel flow. Scoped to #app because
-  // the layout may render a duplicate mobile footer.
-  // quality: allow-fragile-selector (stable application ID)
-  const app = page.locator("#app");
-  await expect(app.getByRole("button", { name: "Guardar como borrador" }).first()).toBeVisible();
-  await expect(app.getByRole("button", { name: "Publicar" }).first()).toBeVisible();
-  await expect(app.getByRole("button", { name: "Cancelar" }).first()).toBeVisible();
+  // Action buttons for the save/publish/cancel flow.
+  await expect(page.getByTestId("variables-config-save-draft")).toBeVisible();
+  await expect(page.getByTestId("variables-config-publish")).toBeVisible();
+  await expect(page.getByTestId("variables-config-cancel")).toBeVisible();
 });
 
 test("variables config: selecting 'Valor' classification reveals currency selector", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

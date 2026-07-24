@@ -87,7 +87,7 @@ async function installDashboardWithLegalUpdatesMocks(page, { userId, role, legal
   });
 }
 
-test("dashboard renders legal updates carousel with content and links", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("clicking a legal update link opens the external source in a new tab", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
   const userId = 4200;
 
   const updates = [
@@ -116,20 +116,26 @@ test("dashboard renders legal updates carousel with content and links", { tag: [
     userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
   });
 
+  // The external source is stubbed so the click never leaves the harness
+  await page.context().route("https://example.com/**", async (route) =>
+    route.fulfill({ status: 200, contentType: "text/html", body: "<h1>Reforma</h1>" })
+  );
+
   await page.goto("/dashboard");
 
-  // Wait for dashboard to load
+  // Starting point: the carousel shows the first update and its link
   await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
-
-  // Legal updates carousel should render with the first update content
   await expect(page.getByText("Nueva reforma tributaria aprobada en Colombia")).toBeVisible({ timeout: 10_000 });
 
-  // The link should be visible and have the correct text
-  await expect(page.getByText("Leer reforma completa")).toBeVisible();
-
-  // Verify the link has the correct href
-  const link = page.getByText("Leer reforma completa");
+  const link = page.getByRole("link", { name: "Leer reforma completa" });
   await expect(link).toHaveAttribute("href", "https://example.com/reforma");
+
+  const popupPromise = page.waitForEvent("popup");
+  await link.click();
+
+  // Transition: a new tab opens on the linked source
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL("https://example.com/reforma");
 });
 
 test("dashboard renders empty state when no legal updates exist", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
@@ -181,11 +187,18 @@ test("client also sees legal updates on dashboard", { tag: ['@flow:dashboard-leg
     userAuth: { id: userId, role: "client", is_profile_completed: true },
   });
 
-  await page.goto("/dashboard");
+  // Starting point: the client is on the process list, no legal updates in sight
+  await page.goto("/process_list");
+  await expect(page.getByPlaceholder("Buscar procesos...")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Información importante para clientes")).toHaveCount(0);
 
+  // quality: allow-fragile-selector (the desktop sidebar has no role/testid of its own; this is the established locator across dashboard specs)
+  const sidebar = page.locator("div.lg\\:fixed.lg\\:inset-y-0");
+  await sidebar.getByRole("link", { name: "Inicio", exact: true }).click();
+
+  // Transition: the dashboard renders and the client sees the legal update
+  await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByText("Procesos activos")).toBeVisible({ timeout: 15_000 });
-
-  // Client should see the legal update content
   await expect(page.getByText("Información importante para clientes")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Consultar normativa")).toBeVisible();
 });

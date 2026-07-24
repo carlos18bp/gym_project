@@ -114,6 +114,24 @@ export async function installSubscriptionsApiMocks(
       }
     }
 
+    // Wompi public key — required by Checkout.vue onMounted for paid plans.
+    if (apiPath === "subscriptions/wompi-config/") {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ public_key: "pub_test_e2e_key" }),
+      };
+    }
+
+    // Integrity signature for the Wompi widget flow.
+    if (apiPath === "subscriptions/generate-signature/") {
+      return {
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ signature: "e2e-integrity-signature" }),
+      };
+    }
+
     // Captcha (some views may request this opportunistically)
     if (apiPath === "google-captcha/site-key/") {
       return {

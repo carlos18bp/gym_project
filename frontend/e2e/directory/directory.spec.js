@@ -137,3 +137,35 @@ test("directory search clears when input is emptied", { tag: ['@flow:directory-s
   await expect(list.getByText("Carlos Abogado (Abogado)")).toBeVisible();
   await expect(list.getByText("María Cliente (Cliente)")).toBeVisible();
 });
+
+test("user modal navigates to a process detail and to the full process list", { tag: ['@flow:directory-navigate-to-process', '@module:directory', '@priority:P4', '@role:lawyer'] }, async ({ page }) => {
+  const lawyerId = 1900;
+  const clientId = 1901;
+
+  const users = [
+    buildMockUser({ id: lawyerId, role: "lawyer", firstName: "E2E", lastName: "Lawyer", email: "lawyer@example.com", identification: "LAW-1" }),
+    buildMockUser({ id: clientId, role: "client", firstName: "Ana", lastName: "Client", email: "ana@example.com", identification: "CLI-1" }),
+  ];
+  const processes = [buildMockProcess({ id: 501, lawyerId, clientId })];
+
+  await installDirectoryApiMocks(page, { currentUserId: lawyerId, users, processes });
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: lawyerId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/directory_list");
+  const list = page.locator("main ul.divide-y.divide-gray-100");
+  await list.getByText("Ana Client (Cliente)").click();
+  await expect(page.getByText("Procesos del usuario")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ver proceso" }).first().click();
+  await expect(page).toHaveURL(/\/process_detail\/501/, { timeout: 10_000 });
+
+  await page.goto("/directory_list");
+  await list.getByText("Ana Client (Cliente)").click();
+  await expect(page.getByText("Procesos del usuario")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ver todos en Procesos" }).click();
+  await expect(page).toHaveURL(new RegExp(`/process_list/${clientId}`), { timeout: 10_000 });
+});

@@ -138,11 +138,13 @@ async function installSubscriptionSignUpMocks(page, { userId, signUpResponse = "
 
 const alertDialog = (page) => page.getByRole("dialog");
 
-async function dismissAlertIfVisible(page, timeout = 10_000) {
+async function dismissAlert(page, expectedText) {
+  const dialog = alertDialog(page);
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toContainText(expectedText);
   const confirmButton = page.getByRole("button", { name: /^(ok|aceptar|confirmar|si|sí)$/i });
-  if (await confirmButton.isVisible({ timeout }).catch(() => false)) {
-    await confirmButton.click();
-  }
+  await expect(confirmButton).toBeVisible();
+  await confirmButton.click();
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll(".swal2-container").forEach((el) => el.remove());
@@ -151,31 +153,25 @@ async function dismissAlertIfVisible(page, timeout = 10_000) {
   });
 }
 
-test("subscription sign-up page renders form with all required fields", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("visitor without an account switches from subscription sign-in to sign-up", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const userId = 8000;
 
   await installSubscriptionSignUpMocks(page, { userId });
 
-  await page.goto("/subscription/sign_up?plan=cliente");
-  await page.waitForLoadState("networkidle");
+  await page.goto("/subscription/sign_in?plan=cliente");
+  await expect(page.getByRole("heading", { name: "Inicia sesión para continuar" })).toBeVisible({ timeout: 15_000 });
 
-  await expect(page.getByRole("heading", { name: "Crea tu cuenta" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Regístrate para completar tu suscripción")).toBeVisible();
+  await page.getByRole("link", { name: "Regístrate aquí" }).click();
 
+  // The chosen plan survives the switch and the registration form is served
+  await expect(page).toHaveURL(/\/subscription\/sign_up\?plan=cliente/);
+  await expect(page.getByRole("heading", { name: "Crea tu cuenta" })).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#email")).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#first_name")).toBeVisible();
   // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#last_name")).toBeVisible();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#password")).toBeVisible();
-  // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#confirm_password")).toBeVisible();
-
-  await expect(page.getByText("políticas de privacidad")).toBeVisible();
-  await expect(page.getByText("Inicia sesión aquí")).toBeVisible();
-  await expect(page.getByText("Volver a planes")).toBeVisible();
 });
 
 test("subscription sign-up sends verification code and completes registration", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
@@ -206,8 +202,8 @@ test("subscription sign-up sends verification code and completes registration", 
   await expect(registerBtn).toBeEnabled({ timeout: 10_000 });
   await registerBtn.click();
 
-  await expect(alertDialog(page)).toBeVisible({ timeout: 10_000 });
-  await dismissAlertIfVisible(page);
+  // Verification-code-sent notification must appear before the passcode step
+  await dismissAlert(page, "código");
 
   // quality: allow-fragile-selector (stable application ID)
   await expect(page.locator("#passcode")).toBeVisible({ timeout: 10_000 });
@@ -217,7 +213,7 @@ test("subscription sign-up sends verification code and completes registration", 
   await page.getByRole("button", { name: "Verificar y crear cuenta" }).click();
 
   // Dismiss success notification so it doesn't block navigation
-  await dismissAlertIfVisible(page, 5_000);
+  await dismissAlert(page, "Registro exitoso");
 
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });

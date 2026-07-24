@@ -87,6 +87,41 @@ export const adminStaffContent = {
       ]
     },
     {
+      id: 'admin-data-reassignment',
+      name: 'Reasignación de Datos de Abogado',
+      description: 'Transferir procesos y documentos entre abogados y archivar cuentas',
+      roles: ['admin'],
+      content: `
+        <p>El módulo <strong>Reasignación de Datos</strong> (menú lateral "Reasignación de Datos", solo visible para administradores) permite transferir los procesos y documentos de un abogado a otro — útil cuando un abogado deja la firma, se ausenta, o para redistribuir la carga.</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Selección:</strong> elige un abogado origen y un abogado destino (el destino excluye automáticamente al origen y a los abogados archivados).</li>
+          <li><strong>Vista previa:</strong> el sistema lista los procesos y los documentos transferibles con casillas de selección individual y "Seleccionar todos". Los documentos en proceso de firma (Pendiente de Firmas, Firmado, Rechazado, Vencido) aparecen como <strong>no transferibles</strong> con el motivo.</li>
+          <li><strong>Ejecución atómica:</strong> al confirmar, todo se transfiere o nada. Los procesos pasan al abogado destino y la gestión de los documentos también; el campo "creado por" nunca cambia (auditoría).</li>
+          <li><strong>Archivado (opcional):</strong> marca "Archivar abogado origen al finalizar" para desactivar su cuenta.</li>
+        </ul>
+        <p class="mt-2">El botón <strong>"Reasignar Datos"</strong> del dashboard es un acceso rápido, y las tarjetas de métricas muestran abogados activos vs archivados.</p>
+      `,
+      features: [
+        'Selectores de abogado origen/destino con validación (deben ser distintos y el destino activo)',
+        'Vista previa con checkboxes por proceso/documento y "Seleccionar todos"',
+        'Documentos en estados de firma protegidos: no se pueden transferir (se muestran con el motivo)',
+        'Transferencia atómica (todo o nada) con registro en el historial de actividad de ambos abogados',
+        'Archivar el abogado origen: bloquea su login (tradicional y Google/Outlook), lo excluye de listados y notificaciones',
+        'Card "Abogados archivados" con botón "Restaurar" — el archivado es reversible'
+      ],
+      restrictions: [
+        'Solo usuarios con rol admin (o is_staff/is_superuser) acceden al módulo — los abogados no lo ven',
+        'El campo "creado por" del documento nunca se modifica: la trazabilidad de autoría se preserva',
+        'Un abogado con procesos asignados no puede eliminarse del sistema; debe archivarse',
+        'Los documentos en firma (Pendiente/Firmado/Rechazado/Vencido) no son elegibles para transferencia'
+      ],
+      tips: [
+        'Revisa la vista previa y los documentos no transferibles antes de confirmar',
+        'El filtro "Mis Documentos" de cada abogado incluye lo que creó O lo que ahora gestiona tras una reasignación',
+        'Si archivas por error, restaura al abogado desde la card "Abogados archivados"'
+      ]
+    },
+    {
       id: 'admin-secop-services-visibility',
       name: 'Visibilidad transversal: SECOP y Servicios',
       description: 'Qué información adicional ves vs un usuario regular',

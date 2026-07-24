@@ -15,34 +15,34 @@ const buildClientAuth = ({ userId }) => ({
   },
 });
 
-async function openAddFilesModal(page, { userId }) {
+/**
+ * Land on the legal request detail page — the state the user sees *before*
+ * touching the add-files feature. Each test drives the opening click itself so
+ * the action under test is never hidden inside this helper.
+ */
+async function gotoLegalRequestDetail(page, { userId }) {
   await installLegalRequestsApiMocks(page, {
     userId,
     role: "client",
-  });
-
-  // Mock file upload endpoint
-  await page.route("**/api/legal_requests/*/files/", async (route) => {
-    if (route.request().method() === "POST") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ message: "Files uploaded successfully", files: [] }),
-      });
-    }
-    return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
   });
 
   await setAuthLocalStorage(page, buildClientAuth({ userId }));
 
   // Navigate to legal request detail
   await page.goto("/legal_request_detail/1001");
-  await page.waitForLoadState("networkidle");
 
   // Wait for the detail page to load
   await expect(
     page.getByRole("heading", { name: "Detalle de Solicitud" })
+  ).toBeVisible({ timeout: 15_000 });
+
+  await expect(
+    page.getByRole("button", { name: /Agregar archivos/i })
   ).toBeVisible({ timeout: 10_000 });
+}
+
+async function openAddFilesModal(page, { userId }) {
+  await gotoLegalRequestDetail(page, { userId });
 
   // Click "Agregar archivos" button
   await page.getByRole("button", { name: /Agregar archivos/i }).click();
@@ -57,7 +57,16 @@ test.describe("AddFilesModal", { tag: ['@flow:legal-add-files', '@module:legal-r
   test("client opens add files modal and sees upload area", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:client'] }, async ({ page }) => {
     const userId = 9000;
 
-    await openAddFilesModal(page, { userId });
+    await gotoLegalRequestDetail(page, { userId });
+
+    // The modal does not exist until the user asks for it
+    await expect(page.getByRole("heading", { name: "Agregar Archivos" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: /Agregar archivos/i }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Agregar Archivos" })
+    ).toBeVisible({ timeout: 10_000 });
 
     // Upload area should be visible
     await expect(page.getByText("Arrastra archivos aquí")).toBeVisible();

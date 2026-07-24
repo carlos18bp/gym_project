@@ -3,6 +3,7 @@ import re
 import os
 import logging
 from django.db.models import Q
+from django.db.models.functions import Lower
 from django.http import FileResponse, Http404
 from django.template.loader import get_template
 from PIL import Image
@@ -52,7 +53,7 @@ def get_optimized_document_queryset(base_qs=None):
     """
     qs = base_qs if base_qs is not None else DynamicDocument.objects.all()
     return qs.select_related(
-        'created_by', 'assigned_to', 'formalized_by'
+        'created_by', 'assigned_to', 'managed_by', 'formalized_by'
     ).prefetch_related(
         'variables',
         Prefetch('tags', queryset=Tag.objects.select_related('created_by')),
@@ -61,6 +62,7 @@ def get_optimized_document_queryset(base_qs=None):
         'usability_permissions',
         'relationships_as_source',
         'relationships_as_target',
+        'payment_records',
     )
 
 
@@ -139,7 +141,10 @@ def list_dynamic_documents(request):
         queryset = queryset.filter(assigned_to_id=client_id)
 
     if lawyer_id:
-        queryset = queryset.filter(created_by_id=lawyer_id)
+        # Scoped by the CURRENT manager (created OR reassigned to). Backfill
+        # makes this equivalent to created_by for pre-feature data; after a
+        # transfer, minutas move between lawyers' "Mías" scope correctly.
+        queryset = queryset.filter(managed_by_id=lawyer_id)
 
     # Filter minutas flagged as collaboratively editable ("Compartidas" scope)
     shared = request.query_params.get('shared', '')
@@ -212,11 +217,13 @@ def list_dynamic_documents(request):
 
     # Sort parameter
     sort_by = request.query_params.get('sort_by', 'recent')
+    # Lower() keeps name ordering case-insensitive on every backend (MySQL's
+    # _ci collation already behaves this way; SQLite's binary collation does not).
     sort_map = {
         'recent': '-updated_at',
         'oldest': 'updated_at',
-        'name-asc': 'title',
-        'name-desc': '-title',
+        'name-asc': Lower('title').asc(),
+        'name-desc': Lower('title').desc(),
     }
     order_field = sort_map.get(sort_by, '-updated_at')
     queryset = queryset.order_by(order_field)
@@ -342,9 +349,12 @@ def update_dynamic_document(request, pk):
             status=status.HTTP_403_FORBIDDEN
         )
 
-    # Prevent modifying the `created_by` field
+    # Prevent modifying the `created_by` field (audit) and `managed_by`
+    # (only the admin reassignment endpoint may change management).
     if 'created_by' in request.data:
         request.data.pop('created_by')
+    if 'managed_by' in request.data:
+        request.data.pop('managed_by')
 
     # Validate and update the document
     serializer = DynamicDocumentSerializer(document, data=request.data, partial=True, context={'request': request})

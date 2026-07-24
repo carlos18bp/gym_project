@@ -1,6 +1,6 @@
 ---
 auto_execution_mode: 2
-description: "Sync current branch (default: current repo from cwd; pass --all to iterate over LOCAL_PROJECTS + toolkit on this host)"
+description: "Sync current branch (default: current repo from cwd; pass --all-repos (repos de este host) o --all-vps (fleet); --all es error)"
 ---
 Sync the current local branch with its remote counterpart using fetch + pull --rebase.
 
@@ -9,7 +9,7 @@ Sync the current local branch with its remote counterpart using fetch + pull --r
 >   actual (cwd)**, resuelto con `git rev-parse --show-toplevel`; **NO se
 >   asume `vps-ops-toolkit`**. Ignorá el estado del hook `SessionStart`
 >   (siempre reporta el toolkit) para decidir el target — lo manda el cwd.
-> - Con `--all`: `/git-sync --all` → itera sobre `LOCAL_PROJECTS` del host
+> - Con `--all-repos`: itera sobre `LOCAL_PROJECTS` del host
 >   + `vps-ops-toolkit`. No acepta nombres de proyecto individuales —
 >   para un repo específico, lanzá Claude desde ese repo (o `cd` a él).
 
@@ -18,18 +18,29 @@ Phase 0 — Resolución de la lista de repos:
 ```bash
 ARGS_RAW="${ARGUMENTS:-}"
 OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
+ALL_VPS=0; ALL_REPOS=0
 case "$ARGS_RAW" in
     "")
         REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "❌ ERROR: el directorio actual no es un repo git."; exit 2; }
         cd "$REPO_ROOT"        # anclar el cwd al top del repo
         REPOS=("$(basename "$REPO_ROOT")"); REPO_DIR_OVERRIDE="$REPO_ROOT"
         MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)" ;;
-    "--all")
+    "--all-repos")
         source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
         PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
         REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-        MODE_LABEL="--all (${#REPOS[@]} repos)" ;;
-    *) echo "❌ ERROR: argumento desconocido '$ARGS_RAW'. Válido: (vacío) o --all"; exit 2 ;;
+        MODE_LABEL="--all-repos (${#REPOS[@]} repos)"; ALL_REPOS=1 ;;
+    "--all-vps")
+        # Eje fleet: delega en propagate-toolkit-commit.sh tras sincronizar local.
+        cd "$OPS_ROOT"; REPOS=("vps-ops-toolkit"); REPO_DIR_OVERRIDE="$OPS_ROOT"
+        MODE_LABEL="--all-vps (toolkit, local + fleet)"; ALL_VPS=1 ;;
+    "--all")
+        echo "❌ ERROR: --all es ambiguo y quedó retirado."
+        echo "   ¿Todos los repos de ESTE host? → --all-repos"
+        echo "   ¿El toolkit en TODOS los VPS?  → --all-vps"
+        exit 2 ;;
+
+    *) echo "❌ ERROR: argumento desconocido '$ARGS_RAW'. Válido: (vacío) | --all-repos | --all-vps"; exit 2 ;;
 esac
 if [ -n "${REPO_DIR_OVERRIDE:-}" ]; then VALID_REPOS=("${REPOS[@]}"); else
 VALID_REPOS=()
@@ -146,3 +157,21 @@ Casos con acción pendiente (omitir línea ✨, agregar `## Next steps`):
 En modo `--all` (loop sobre repos), el reporte agrega columna `Repo` antes
 de `Dimensión` y se considera tabla grande (>15 filas) — agregar
 `### Resumen ejecutivo` con conteo y `### Top 3 acciones prioritarias`.
+
+---
+
+## Fleet (`--all-vps`)
+
+Si `ALL_VPS=1`, **después** de sincronizar el/los repo(s) local(es), delegá en el
+orquestador multi-host (Tailscale). El toolkit rebasa contra `origin/master`; un
+repo de proyecto contra **su propio upstream (`@{u}`)**, nunca cross-branch.
+
+```bash
+REPOS_FLAG="--repos=toolkit"
+[ "${ALL_REPOS:-0}" = "1" ] && REPOS_FLAG="--repos=all"
+bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --apply "$REPOS_FLAG"
+```
+
+`exit 75` = pausa de auth de Tailscale: mostrale el link al operador, esperá la
+autorización y re-corré (idempotente). Precondición: el local debe estar pusheado.
+Conflicto remoto ⇒ `rebase --abort` + reporte; working tree intacto.

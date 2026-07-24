@@ -1,6 +1,6 @@
 ---
 auto_execution_mode: 2
-description: "Create git commit and push (default: current repo from cwd; pass --all to iterate over LOCAL_PROJECTS + toolkit on this host)"
+description: "Create git commit and push (default: current repo from cwd; pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host; --all-vps y --all son error (no hay modo fleet))"
 ---
 
 > **⚠️ How to invoke**:
@@ -8,7 +8,7 @@ description: "Create git commit and push (default: current repo from cwd; pass -
 >   actual (cwd)**, resuelto con `git rev-parse --show-toplevel`; **NO se
 >   asume `vps-ops-toolkit`**. Ignorá el estado del hook `SessionStart`
 >   (siempre reporta el toolkit) para decidir el target — lo manda el cwd.
-> - Con `--all`: `/git-commit --all` → itera sobre `LOCAL_PROJECTS` del
+> - Con `--all-repos`: itera sobre `LOCAL_PROJECTS` del
 >   host + `vps-ops-toolkit`. Repos clean → SKIP; con cambios → mensaje
 >   propio + commit + push independiente.
 
@@ -23,11 +23,20 @@ case "$ARGS_RAW" in
         cd "$REPO_ROOT"        # anclar el cwd al top del repo
         REPOS=("$(basename "$REPO_ROOT")"); REPO_DIR_OVERRIDE="$REPO_ROOT"
         MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)" ;;
-    "--all")
+    "--all-repos")
         source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
         PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
         REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-        MODE_LABEL="--all (${#REPOS[@]} repos)" ;;
+        MODE_LABEL="--all-repos (${#REPOS[@]} repos)" ;;
+    "--all-vps")
+        echo "❌ ERROR: git-commit NO tiene modo fleet."
+        echo "   No se commitea a ciegas en clones de otros VPS (pueden estar dirty o"
+        echo "   en rama de release). Para el eje fleet: /git-sync --all-vps"
+        exit 2 ;;
+    "--all")
+        echo "❌ ERROR: --all es ambiguo y quedó retirado."
+        echo "   ¿Todos los repos de ESTE host? → --all-repos"
+        exit 2 ;;
     *) echo "❌ ERROR: argumento desconocido '$ARGS_RAW'. Válido: (vacío) o --all"; exit 2 ;;
 esac
 if [ -n "${REPO_DIR_OVERRIDE:-}" ]; then VALID_REPOS=("${REPOS[@]}"); else

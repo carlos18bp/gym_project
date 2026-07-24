@@ -147,7 +147,7 @@ test("client sees request detail with attached files listed", { tag: ['@flow:leg
   await expect(page.getByText("No hay archivos adjuntos")).toBeHidden();
 });
 
-test("client sees response thread section on request detail", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client posts a reply on the response thread", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
   const userId = 9882;
 
   await installLegalRequestsApiMocks(page, {
@@ -156,40 +156,6 @@ test("client sees response thread section on request detail", { tag: ['@flow:leg
     requestTypeName: "Consulta",
     disciplineName: "Civil",
     requestDescription: "Solicitud con respuestas",
-  });
-
-  // Override detail with responses
-  await page.route("**/api/legal_requests/1001/", async (route) => {
-    if (route.request().method() === "GET") {
-      const detail = buildMockLegalRequestDetail({
-        id: 1001,
-        userId,
-        requestNumber: "REQ-1001",
-        status: "IN_REVIEW",
-        firstName: "Client",
-        lastName: "User",
-        email: "client@example.com",
-        requestTypeName: "Consulta",
-        disciplineName: "Civil",
-        description: "Solicitud con respuestas",
-        files: [],
-        responses: [
-          {
-            id: 5001,
-            request: 1001,
-            response_text: "Ya estamos revisando su solicitud.",
-            created_at: new Date().toISOString(),
-          },
-        ],
-      });
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(detail),
-      });
-    } else {
-      await route.continue();
-    }
   });
 
   await setAuthLocalStorage(page, {
@@ -201,6 +167,27 @@ test("client sees response thread section on request detail", { tag: ['@flow:leg
 
   await expect(page.getByRole("heading", { name: "REQ-1001" })).toBeVisible({ timeout: 15_000 });
 
-  // Response thread should show the response
-  await expect(page.getByText("Ya estamos revisando su solicitud.")).toBeVisible({ timeout: 10_000 });
+  // The thread starts empty and the submit button is inert
+  await expect(page.getByText("No hay respuestas aún")).toBeVisible({ timeout: 10_000 });
+  const submit = page.getByRole("button", { name: "Responder" });
+  await expect(submit).toBeDisabled();
+
+  await page
+    .getByPlaceholder("Escribe tu respuesta o pregunta adicional...")
+    .fill("Adjunto el contrato firmado, quedo atento.");
+  await expect(submit).toBeEnabled();
+
+  const responseRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes("/api/legal_requests/1001/responses/") &&
+      request.method() === "POST"
+  );
+  await submit.click();
+  const sent = await responseRequest;
+  expect(sent.postData()).toContain("Adjunto el contrato firmado, quedo atento.");
+
+  // The new message joins the conversation and the form resets
+  await expect(page.getByText("Adjunto el contrato firmado, quedo atento.")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No hay respuestas aún")).toHaveCount(0);
+  await expect(submit).toBeDisabled();
 });
